@@ -45,7 +45,7 @@ public final class HardRushP0 implements ModInitializer {
                 dispatcher.register(Commands.literal("hardrushp0")
                         .requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
                         .executes(context -> reply(context.getSource(),
-                                "HardRush P0：仅技术验证。命令：status、world create <seed>、world enter <player> <overworld|nether|end>、disguise <player> <zombie|skeleton|creeper>、clear <player>。"))
+                                "HardRush P0：仅技术验证。命令：status、world create <seed>、world enter <player> <overworld|nether|end>、disguise <player> <zombie|skeleton|creeper>、selfview <player> <hidden|visible>、clear <player>。"))
                         .then(Commands.literal("status").executes(context ->
                                 reply(context.getSource(), WorldProbe.status()))
                                 .then(Commands.argument("player", EntityArgument.player())
@@ -81,6 +81,16 @@ public final class HardRushP0 implements ModInitializer {
                                                     return attempt(context.getSource(), () -> DisguiseProbe.apply(
                                                             player, StringArgumentType.getString(context, "kind")));
                                                 }))))
+                        .then(Commands.literal("selfview")
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .then(Commands.argument("mode", StringArgumentType.word())
+                                                .suggests((context, builder) -> {
+                                                    builder.suggest("hidden").suggest("visible");
+                                                    return builder.buildFuture();
+                                                })
+                                                .executes(context -> attempt(context.getSource(), () -> DisguiseProbe.setSelfView(
+                                                        EntityArgument.getPlayer(context, "player"),
+                                                        StringArgumentType.getString(context, "mode")))))))
                         .then(Commands.literal("clear")
                                 .then(Commands.argument("player", EntityArgument.player())
                                         .executes(context -> {

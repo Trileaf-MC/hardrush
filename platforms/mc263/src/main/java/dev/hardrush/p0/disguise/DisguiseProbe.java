@@ -60,6 +60,10 @@ public final class DisguiseProbe {
     private DisguiseProbe() {}
 
     public static String apply(ServerPlayer player, String requestedType) {
+        return apply(player, requestedType, true);
+    }
+
+    private static String apply(ServerPlayer player, String requestedType, boolean selfVisible) {
         requireMainThread(player);
         String name = requestedType.toLowerCase(Locale.ROOT);
         EntityType<? extends Mob> type = switch (name) {
@@ -83,6 +87,7 @@ public final class DisguiseProbe {
         model.setNoGravity(true);
         model.setSilent(true);
         State state = new State(player, name, type, model);
+        state.selfVisible = selfVisible;
         state.updateModel();
         ACTIVE.put(player.getUUID(), state);
         BY_ENTITY.put(player.getId(), state);
@@ -134,23 +139,27 @@ public final class DisguiseProbe {
             if (player != state.owner || player.level() != state.level) {
                 String type = state.name;
                 clear(player);
-                RESUME.put(player.getUUID(), new Resume(type, server.getTickCount() + 10));
+                RESUME.put(player.getUUID(), new Resume(type, state.selfVisible, server.getTickCount() + 10));
                 continue;
             }
 
             List<SynchedEntityData.DataValue<?>> previous = state.metadata;
             state.updateModel();
-            sendRaw(player, ClientboundEntityPositionSyncPacket.of(state.model));
-            sendRaw(player, new ClientboundRotateHeadPacket(state.model, angle(player.getYHeadRot())));
+            if (state.selfVisible) {
+                sendRaw(player, ClientboundEntityPositionSyncPacket.of(state.model));
+                sendRaw(player, new ClientboundRotateHeadPacket(state.model, angle(player.getYHeadRot())));
+            }
             if (!previous.equals(state.metadata)) {
-                sendRaw(player, new ClientboundSetEntityDataPacket(state.model.getId(), state.metadata));
+                if (state.selfVisible) {
+                    sendRaw(player, new ClientboundSetEntityDataPacket(state.model.getId(), state.metadata));
+                }
                 for (ServerPlayer observer : PlayerLookup.tracking(player)) {
                     sendRaw(observer, new ClientboundSetEntityDataPacket(state.realId, state.metadata));
                 }
             }
             // 26.3 uses the new SwingAnimation packet, not old Animate action 0.
             float swing = player.getSwingAnimation(0);
-            if (player.isSwinging() && (!state.wasSwinging || swing < state.lastSwing)) {
+            if (state.selfVisible && player.isSwinging() && (!state.wasSwinging || swing < state.lastSwing)) {
                 var description = player.getCurrentSwing();
                 if (description != null) {
                     sendRaw(player, new ClientboundSwingAnimationPacket(
@@ -159,7 +168,7 @@ public final class DisguiseProbe {
             }
             state.wasSwinging = player.isSwinging();
             state.lastSwing = swing;
-            if (player.hurtTime > state.lastHurtTime) {
+            if (state.selfVisible && player.hurtTime > state.lastHurtTime) {
                 sendRaw(player, new ClientboundHurtAnimationPacket(state.model.getId(), player.getYRot()));
             }
             state.lastHurtTime = player.hurtTime;
@@ -175,8 +184,38 @@ public final class DisguiseProbe {
             if (server.getTickCount() < entry.getValue().tick()) continue;
             RESUME.remove(entry.getKey());
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
-            if (player != null) player.sendSystemMessage(Component.literal(apply(player, entry.getValue().name())));
+            if (player != null) player.sendSystemMessage(Component.literal(
+                apply(player, entry.getValue().name(), entry.getValue().selfVisible())));
         }
+    }
+
+    /** Explicit fallback probe; vanilla does not report F5 changes to the server. */
+    public static String setSelfView(ServerPlayer player, String mode) {
+        requireMainThread(player);
+        if (!mode.equals("visible") && !mode.equals("hidden")) {
+            return "拒绝：selfview 只接受 visible 或 hidden。";
+        }
+        boolean visible = mode.equals("visible");
+        State state = ACTIVE.get(player.getUUID());
+        if (state == null) {
+            Resume resume = RESUME.get(player.getUUID());
+            if (resume == null) return "拒绝：请先启用 P0 伪装。";
+            RESUME.put(player.getUUID(), new Resume(resume.name(), visible, resume.tick()));
+            return "已设置恢复后的自身显示：" + mode;
+        }
+        if (state.selfVisible != visible) {
+            state.selfVisible = visible;
+            if (visible) {
+                state.updateModel();
+                List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();
+                addSelfBodyPackets(state, packets);
+                sendRaw(player, new ClientboundBundlePacket(packets));
+            } else {
+                sendRaw(player, new ClientboundRemoveEntitiesPacket(state.model.getId()));
+            }
+        }
+        return "已切换实验性自身显示。" + status(player)
+            + "；hidden 供第一人称操作，visible 供 F5 外观预览；这不是自动 F5 方案。";
     }
 
     /** Main-thread diagnostic intended for both operators and packet smoke tests. */
@@ -186,9 +225,12 @@ public final class DisguiseProbe {
         return "disguise=" + state.name + "; realId=" + state.realId
             + "; selfId=" + state.model.getId() + "; selfUuid=" + state.model.getUUID()
             + "; metadataFields=" + state.metadata.size()
+            + "; selfView=" + (state.selfVisible ? "visible" : "hidden")
+            + "; selfSpawned=" + state.selfVisible
             + "; selfContainsEye=" + state.model.getBoundingBox().contains(player.getEyePosition())
             + "; pickableFromInside=" + state.model.canBePickedFromInside()
-            + "; physics=player; equipment=empty-only; selfTargeting=unresolved; visualAcceptance=pending";
+            + "; physics=player; equipment=empty-only; selfTargeting="
+            + (state.selfVisible ? "unresolved" : "self-not-spawned") + "; visualAcceptance=pending";
     }
 
     /** Called by the outbound mixin; never changes the original packet object. */
@@ -254,10 +296,14 @@ public final class DisguiseProbe {
         List<Packet<? super ClientGamePacketListener>> packets = new ArrayList<>();
         packets.add(ClientboundSetPlayerTeamPacket.createAddOrModifyPacket(state.selfTeam, true));
         packets.add(ownFlags(player, true));
-        packets.add(spawn(state.model.getId(), state.model.getUUID(), player, state.type));
+        if (state.selfVisible) addSelfBodyPackets(state, packets);
+        sendRaw(player, new ClientboundBundlePacket(packets));
+    }
+
+    private static void addSelfBodyPackets(State state, List<Packet<? super ClientGamePacketListener>> packets) {
+        packets.add(spawn(state.model.getId(), state.model.getUUID(), state.owner, state.type));
         packets.add(new ClientboundSetEntityDataPacket(state.model.getId(), state.metadata));
         packets.add(new ClientboundUpdateAttributesPacket(state.model.getId(), state.model.getAttributes().getSyncableAttributes()));
-        sendRaw(player, new ClientboundBundlePacket(packets));
     }
 
     private static void removeSelf(ServerPlayer player, State state) {
@@ -321,7 +367,7 @@ public final class DisguiseProbe {
         if (!player.level().getServer().isSameThread()) throw new IllegalStateException("Disguise operations require the server thread");
     }
 
-    private record Resume(String name, int tick) {}
+    private record Resume(String name, boolean selfVisible, int tick) {}
 
     private static final class State {
         private final ServerPlayer owner;
@@ -337,6 +383,7 @@ public final class DisguiseProbe {
         private boolean wasSwinging;
         private float lastSwing;
         private int lastHurtTime;
+        private boolean selfVisible = true;
 
         private State(ServerPlayer owner, String name, EntityType<? extends Mob> type, Mob model) {
             this.owner = owner;
