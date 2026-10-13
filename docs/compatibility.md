@@ -6,7 +6,7 @@
 
 首发目标固定为 26.1.2、26.2、26.3。26.3 官方发布于 2026 年 9 月 15 日；其版本清单要求 Java 25。[26.3 官方公告](https://www.minecraft.net/en-us/article/minecraft-java-edition-26-3)、[Mojang 版本元数据](https://piston-meta.mojang.com/v1/packages/702fe59163c6ee6578607daa85811d9bc9c7cc40/26.3.json)。
 
-26 系列采用 Java 25。Fabric 对 26.3 发布时建议 Loom 1.17、Gradle 9.6.0、Loader 0.19.5；这些是初始候选，开发开始时需把实际可解析版本及校验锁进构建文件。26.1 的非混淆迁移意味着旧版 Fabric 构建示例不能原样复制。[Fabric 26.3](https://fabricmc.net/2026/09/15/263.html)、[Fabric 26.1](https://fabricmc.net/2026/03/14/261.html)。
+26 系列采用 Java 25。当前 26.3 P0 已使用 Gradle 9.6.0、Loom 1.17.21、Loader 0.19.5、Fabric API 0.162.0+26.3 和 Fantasy 0.8.4+26.3 完成构建与运行；完整发布依赖及另外两个版本仍须分别锁定。26.1 的非混淆迁移意味着旧版 Fabric 构建示例不能原样复制。[Fabric 26.3](https://fabricmc.net/2026/09/15/263.html)、[Fabric 26.1](https://fabricmc.net/2026/03/14/261.html)。
 
 ## 依赖候选矩阵
 
@@ -33,6 +33,8 @@ DisguiseLib 的 `main` 快照 `5d0b1d295500a9b95babca2f2ffe9ee0f54ce141` 声明�
 
 首次变身的跟踪刷新是否必然向本人生成替身、第一人称是否被遮挡、恢复后是否留下隐身，都仍需实测。客户端本体、可见替身与实际碰撞体也不是天然一致的。该源码只能支持“有候选路径”，不能支持“完整需求已实现”。[变身刷新入口](https://github.com/NucleoidMC/DisguiseLib/blob/5d0b1d295500a9b95babca2f2ffe9ee0f54ce141/src/main/java/xyz/nucleoid/disguiselib/impl/mixin/EntityMixin_Disguise.java#L148)。
 
+以上待测结论针对候选库本身。HardRush 自有 P0 原型已经实测确认完整替身的遮挡和自身选取，手动隐藏方案也未满足自动 F5 要求；不能用自有原型的结果替候选库签署兼容结论。最新记录见 [自身外观证据](p0-self-view-evidence.md)，后续锁定与联合测试见 [P0b 任务](implementation-plan.md#p0b-多版本与依赖可行性)。
+
 Trexler 的 `mc-disguises` 声明支持 self-view，但所核源码 `53f10c4fb311f564efbdb7511951d6cd84ca6e83` 将本人替身缩放为 1/3，且保留本地玩家；不能据此满足完整第三人称变身要求。它可作实现参考，不作为已完成方案。[替身源码](https://github.com/Trexler180/mc-disguises/blob/53f10c4fb311f564efbdb7511951d6cd84ca6e83/src/main/java/com/coffee/disguises/packet/PacketInterceptor.java#L272)、[自身元数据处理](https://github.com/Trexler180/mc-disguises/blob/53f10c4fb311f564efbdb7511951d6cd84ca6e83/src/main/java/com/coffee/disguises/mixin/EntityDataUpdateMixin.java#L312)。
 
 Polymer 支持服务端内容及虚拟实体，是实现工具，并不直接证明 HardRush 的 self-view、受伤和回放组合可用。[Polymer 文档](https://polymer.pb4.eu/latest/)、[虚拟实体说明](https://polymer.pb4.eu/latest/polymer-virtual-entity/basics/)。
@@ -45,8 +47,8 @@ AntiXray 支持按自定义维度 ID 配置，默认全局保护未开启。Hard
 
 Grim 当前说明覆盖到 26.3，但核查的 Fabric Alpha 发行物元数据只列到 26.2。这不证明 26.3 不能运行，也不足以证明可用于发布。需要锁定可审计构建、核验元数据／源码，并验证伪装实体、末影龙多部位、移动属性和传送。此前任何旧构建的兼容判断不能直接外推到当前构建。[Grim 说明](https://github.com/GrimAnticheat/Grim/tree/2.0)、[当前候选元数据](https://api.modrinth.com/v2/version/IwwpOU1A)。
 
-## 实现前必须产出的锁定结果
+## 正式功能开发前需补齐的锁定结果
 
-第一阶段为每个目标版本产出一份锁定清单：Minecraft、Java、Loader、Loom、Gradle、Fabric API、选用的世界与伪装库、SQLite 驱动、GUI、回放、防作弊及传递依赖的版本、下载来源、校验值、许可证。源码适配另记固定 commit 和本地修改。
+26.3 P0 的基础构建及调试依赖已有锁定记录；P0b 仍需为每个目标版本补齐正式依赖清单：Minecraft、Java、Loader、Loom、Gradle、Fabric API、选用的世界与伪装方案、SQLite 驱动、GUI、回放、防作弊及传递依赖的版本、下载来源、校验值、许可证。源码适配另记固定 commit 和本地修改。
 
-第一阶段同时决定最终 self-view 路线、碰撞／受伤模型、回放格式和防护组合。缺失可用现成库时允许实现服务器适配器；不允许用需要客户端模组的库来绕过原版客户端约定。没有通过对应版本的硬性验收，就不发布该版本的正式兼容声明。
+P0／P0b 还需确定并验证最终 self-view 路线、碰撞／受伤模型、回放格式和防护组合。缺失可用现成库时允许实现服务器适配器；不允许用需要客户端模组的库来绕过原版客户端约定。没有通过对应版本的硬性验收，就不发布该版本的正式兼容声明。

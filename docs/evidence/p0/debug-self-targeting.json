@@ -1,0 +1,141 @@
+{
+  "round": "8e7ef667-ad98-4507-97fc-439847d19460",
+  "before": {
+    "eye": {
+      "x": 96.5,
+      "y": 151.62000000476837,
+      "z": -25.5
+    },
+    "yaw": 180.0,
+    "pitch": 0.0,
+    "lookingAt": {
+      "type": "none"
+    },
+    "rays": [
+      {
+        "hit": false,
+        "col": 0,
+        "row": 0
+      }
+    ],
+    "entities": []
+  },
+  "forms": {
+    "zombie": {
+      "server": {
+        "command": "hardrushp0 disguise HRDebug zombie",
+        "success": true,
+        "resultValue": 1,
+        "output": [
+          "已启用空装 P0 外观原型。disguise=zombie; realId=1711; selfId=2505; selfUuid=0f9f6221-9ed3-4eca-ae97-2ef5241f755d; metadataFields=4; selfContainsEye=true; pickableFromInside=true; physics=player; equipment=empty-only; selfTargeting=unresolved; visualAcceptance=pending；真实 F5、第一人称、碰撞、防作弊和回放尚需验收。"
+        ]
+      },
+      "scene": {
+        "eye": {
+          "x": 96.5,
+          "y": 151.62000000476837,
+          "z": -25.5
+        },
+        "yaw": 180.0,
+        "pitch": 0.0,
+        "lookingAt": {
+          "type": "entity",
+          "id": "minecraft:zombie",
+          "name": "Zombie"
+        },
+        "rays": [
+          {
+            "hit": false,
+            "col": 0,
+            "row": 0
+          }
+        ],
+        "entities": []
+      }
+    },
+    "skeleton": {
+      "server": {
+        "command": "hardrushp0 disguise HRDebug skeleton",
+        "success": true,
+        "resultValue": 1,
+        "output": [
+          "已启用空装 P0 外观原型。disguise=skeleton; realId=1711; selfId=2507; selfUuid=b5c9a5f9-bd40-42c8-8667-95c79e1d1c6b; metadataFields=4; selfContainsEye=true; pickableFromInside=true; physics=player; equipment=empty-only; selfTargeting=unresolved; visualAcceptance=pending；真实 F5、第一人称、碰撞、防作弊和回放尚需验收。"
+        ]
+      },
+      "scene": {
+        "eye": {
+          "x": 96.5,
+          "y": 151.62000000476837,
+          "z": -25.5
+        },
+        "yaw": 180.0,
+        "pitch": 0.0,
+        "lookingAt": {
+          "type": "entity",
+          "id": "minecraft:skeleton",
+          "name": "Skeleton"
+        },
+        "rays": [
+          {
+            "hit": false,
+            "col": 0,
+            "row": 0
+          }
+        ],
+        "entities": []
+      }
+    },
+    "creeper": {
+      "server": {
+        "command": "hardrushp0 disguise HRDebug creeper",
+        "success": true,
+        "resultValue": 1,
+        "output": [
+          "已启用空装 P0 外观原型。disguise=creeper; realId=1711; selfId=2508; selfUuid=b075a100-45cf-4fdf-b0ac-a96f240d63a5; metadataFields=4; selfContainsEye=true; pickableFromInside=true; physics=player; equipment=empty-only; selfTargeting=unresolved; visualAcceptance=pending；真实 F5、第一人称、碰撞、防作弊和回放尚需验收。"
+        ]
+      },
+      "scene": {
+        "eye": {
+          "x": 96.5,
+          "y": 151.62000000476837,
+          "z": -25.5
+        },
+        "yaw": 180.0,
+        "pitch": 0.0,
+        "lookingAt": {
+          "type": "entity",
+          "id": "minecraft:creeper",
+          "name": "Creeper"
+        },
+        "rays": [
+          {
+            "hit": false,
+            "col": 0,
+            "row": 0
+          }
+        ],
+        "entities": []
+      }
+    }
+  },
+  "after": {
+    "eye": {
+      "x": 96.5,
+      "y": 151.62000000476837,
+      "z": -25.5
+    },
+    "yaw": 180.0,
+    "pitch": 0.0,
+    "lookingAt": {
+      "type": "none"
+    },
+    "rays": [
+      {
+        "hit": false,
+        "col": 0,
+        "row": 0
+      }
+    ],
+    "entities": []
+  }
+}

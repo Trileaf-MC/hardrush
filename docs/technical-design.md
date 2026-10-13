@@ -2,22 +2,22 @@
 
 推荐采用 Fabric 服务端模组、独立于 Minecraft API 的 Java 规则核心、SQLite 持久化，以及按 Minecraft 版本隔离的适配层。大厅长期加载，每轮创建并管理三个持久维度。纯原版客户端、自身第三人称怪物外观和模组内部轮换是设计约束。
 
-本设计用于开始实现与技术验证，当前目录没有模组代码或可安装 JAR。依赖证据见 [版本与依赖核查](compatibility.md)，产品含义以 [产品需求](requirements.md) 为准。关键技术原型不过关时保留需求、停止对应发布，不静默降级。
+本设计定义目标架构。当前已具备可构建的 26.3 P0 模组、实验 JAR、伪装与单轮三维度代码；规则核心仍为空，SQLite、完整玩法及其他版本适配尚未实现。P0 因自身外观问题未通过，实验 JAR 不能当作正式发布包。依赖证据见 [版本与依赖核查](compatibility.md)，产品含义以 [产品需求](requirements.md) 为准，任务状态和依赖见 [开发任务清单](implementation-plan.md)。关键技术原型不过关时保留需求、停止对应发布，不静默降级。
 
 ## 工程结构与版本适配
 
-建议使用 Java 25、Gradle Wrapper 和 Fabric Loom。26.1 已切换到非混淆发布及新的 Loom 插件方式，不能照搬旧版本 `modImplementation` 和 remap 插件配置。26.3 的官方工具链建议可作为初始锁定候选，实际构建配置须由各目标版本验证。[Fabric 26.1 迁移说明](https://fabricmc.net/2026/03/14/261.html)、[Fabric 26.3 开发说明](https://fabricmc.net/2026/09/15/263.html)。
+当前 P0 使用 Java 25、Gradle Wrapper 9.6.0 和 Fabric Loom 1.17.21。26.1 已切换到非混淆发布及新的 Loom 插件方式，不能照搬旧版本 `modImplementation` 和 remap 插件配置；另外两个目标版本仍须单独验证构建配置。[Fabric 26.1 迁移说明](https://fabricmc.net/2026/03/14/261.html)、[Fabric 26.3 开发说明](https://fabricmc.net/2026/09/15/263.html)。
 
-建议目录如下，均为未来实现结构：
+目标目录及当前状态如下；已有目录不代表其中的完整职责已经实现：
 
 ```text
-core/                  轮次、身份、计时、归因、规则、应用命令
-persistence/           SQLite、迁移、事件记录、任务恢复
-integration-contracts/ 世界、实体、GUI、回放与防作弊能力接口
-platforms/mc2612/      26.1.2 Fabric 入口、事件和 Mixin
-platforms/mc262/       26.2 Fabric 入口、事件和 Mixin
-platforms/mc263/       26.3 Fabric 入口、事件和 Mixin
-test-support/          假时钟、事件重放、故障注入和共享契约测试
+core/                  已建空模块；待实现轮次、身份、计时、归因与规则
+persistence/           待建；SQLite、迁移、事件记录、任务恢复
+integration-contracts/ 待建；世界、实体、GUI、回放与防作弊能力接口
+platforms/mc2612/       待建；26.1.2 Fabric 适配
+platforms/mc262/        待建；26.2 Fabric 适配
+platforms/mc263/        已有 P0 主代码、JUnit、GameTest 和隔离 debugTools
+test-support/          待建；假时钟、事件重放、故障注入和共享契约测试
 ```
 
 核心代码不得引用 Minecraft 实体、网络包或 NBT 类。共享接口包括 `RoundWorldManager`、`PlayerStateGateway`、`DamageAttributionGateway`、`DisguiseGateway`、`BookGateway`、`ReplayGateway` 和 `ProtectionGateway`。接口方法名是设计契约，不是已存在的库 API。
@@ -82,6 +82,8 @@ test-support/          假时钟、事件重放、故障注入和共享契约测
 ## 伪装与战斗实体
 
 推荐保持服务端受控玩家作为移动和操作主体，通过每观察者的原版实体包显示怪物；为自身视角建立单独的 self-view 路径。候选实现为 DisguiseLib 或基于 Polymer 虚拟实体的版本适配器。只使用原版僵尸、骷髅、苦力怕及原版技能物品，不注册客户端必须认识的新实体类型。
+
+当前 P0 实际使用自有数据包原型，没有将上述伪装候选库作为已采用方案。完整尺寸本人替身在第一人称遮挡并参与选取；手动 `selfview hidden|visible` 仅用于诊断，不能自动配合原版 F5。路线仍待解决，现有证据与尝试见 [自身外观记录](p0-self-view-evidence.md)。
 
 不能把“其他人看到变身”视为 self-view 已完成。原型必须同时验证隐藏本地玩家可见模型、自身第三人称前后视角、第一人称可操作性、影子及手持物、动画、重连、传送、复生和伪装解除。不能要求玩家执行会安装客户端内容的操作。
 

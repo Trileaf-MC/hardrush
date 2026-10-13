@@ -1,0 +1,115 @@
+{
+  "status": {
+    "command": "hardrushp0 status",
+    "success": true,
+    "resultValue": 1,
+    "output": [
+      "P0 \u4e16\u754c\u5c31\u7eea\uff1bround=8e7ef667-ad98-4507-97fc-439847d19460\uff1bseed=12345\uff1bspawn=96, 132, -23\uff1boverworld=hardrush:p0_8e7ef667ad98450797fc439847d19460/overworld\uff1bnether=hardrush:p0_8e7ef667ad98450797fc439847d19460/nether\uff1bend=hardrush:p0_8e7ef667ad98450797fc439847d19460/end\uff1bdragonFight=true\uff1bdragonUUID=1b5fc10e-660c-4e53-81e3-dce1fa8e4219\uff1bpreviouslyKilled=false"
+    ]
+  },
+  "dragon": {
+    "dimension": "hardrush:p0_8e7ef667ad98450797fc439847d19460/end",
+    "center": {
+      "x": 0.0,
+      "y": 80.0,
+      "z": 0.0
+    },
+    "centerSource": "given",
+    "total": 9,
+    "returned": 9,
+    "entities": [
+      {
+        "uuid": "89357713-2e83-4ca1-8134-04bc937d411a",
+        "type": "minecraft:ender_dragon",
+        "name": "Ender Dragon",
+        "isPlayer": false,
+        "x": -1.5983389974608588,
+        "y": 79.96906069569913,
+        "z": 4.31655204596775,
+        "distance": 4.60307140471481
+      },
+      {
+        "uuid": "32705369-4855-4b86-a853-baeecf55e6bc",
+        "type": "minecraft:ender_dragon",
+        "name": "Ender Dragon",
+        "isPlayer": false,
+        "x": -2.5878538251891303,
+        "y": 80.09480104499188,
+        "z": 4.245659205343895,
+        "distance": 4.973087245021841
+      },
+      {
+        "uuid": "219ba518-6726-438c-b965-d8340e7d4f6d",
+        "type": "minecraft:ender_dragon",
+        "name": "Ender Dragon",
+        "isPlayer": false,
+        "x": -7.695650702811735,
+        "y": 80.02361444287625,
+        "z": 3.484148237135581,
+        "distance": 8.447655670062204
+      },
+      {
+        "uuid": "58915d43-58c8-4380-866f-8000a77bb93d",
+        "type": "minecraft:ender_dragon",
+        "name": "Ender Dragon",
+        "isPlayer": false,
+        "x": -4.685783302880781,
+        "y": 82.02361444287625,
+        "z": 6.866558346178703,
+        "distance": 8.55577022227982
+      },
+      {
+        "uuid": "1b5fc10e-660c-4e53-81e3-dce1fa8e4219",
+        "type": "minecraft:ender_dragon",
+        "name": "Ender Dragon",
+        "isPlayer": false,
+        "x": -8.030185139276044,
+        "y": 80.02361444287625,
+        "z": 3.8557484478022377,
+        "distance": 8.907930573690589,
+        "health": 200.0,
+        "maxHealth": 200.0
+      },
+      {
+        "uuid": "8cce876a-1d7e-4900-86ee-73681a092340",
+        "type": "minecraft:ender_dragon",
+        "name": "Ender Dragon",
+        "isPlayer": false,
+        "x": -10.272415793038862,
+        "y": 82.95860566656201,
+        "z": 3.4181079894568245,
+        "distance": 11.223160693088005
+      },
+      {
+        "uuid": "c3e9a707-3607-476d-a7d0-0042fe3df554",
+        "type": "minecraft:ender_dragon",
+        "name": "Ender Dragon",
+        "isPlayer": false,
+        "x": -11.374586975671308,
+        "y": 82.02361444287625,
+        "z": 0.8449385494257728,
+        "distance": 11.584047886332067
+      },
+      {
+        "uuid": "0e933403-6af8-4098-b3cf-b1ae3ac1a1c7",
+        "type": "minecraft:ender_dragon",
+        "name": "Ender Dragon",
+        "isPlayer": false,
+        "x": -11.25000063190605,
+        "y": 83.46963432533288,
+        "z": 1.675409111406974,
+        "distance": 11.891504205103749
+      },
+      {
+        "uuid": "5ba36eb3-00c3-41f6-9b5a-a0dd090d4070",
+        "type": "minecraft:ender_dragon",
+        "name": "Ender Dragon",
+        "isPlayer": false,
+        "x": -12.154642975427167,
+        "y": 83.96534636982274,
+        "z": -0.10194369849903184,
+        "distance": 12.785527373183752
+      }
+    ]
+  }
+}
