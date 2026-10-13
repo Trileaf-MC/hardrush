@@ -1,0 +1,24 @@
+{
+  "minecraft": "26.3",
+  "mcpfabricSource": {
+    "commit": "f0acc37be526a7c38e52cf1337f3e60e570b4e9d",
+    "url": "https://codeload.github.com/denfry/mcpfabric/tar.gz/f0acc37be526a7c38e52cf1337f3e60e570b4e9d",
+    "sha256": "6c6e26fad051c34928ab3febfa007ace8d5ba96b1ee93528ef2b279ff2858682"
+  },
+  "mods": [
+    {
+      "name": "mcpfabric",
+      "version": "0.5.1+26.3",
+      "url": "https://cdn.modrinth.com/data/eA63YgUh/versions/YoxCdwC5/mcpfabric-0.5.1%2B26.3.jar",
+      "filename": "mcpfabric-0.5.1+26.3.jar",
+      "sha512": "4d26635249282307defb1af429fe3c1c1e5cf89af4843ee9b84d70821921a71b04cf1841c9d0b3f15b189df97964f1e9321ccf05ffbed91efe8478f3ac703b9f"
+    },
+    {
+      "name": "spark",
+      "version": "1.10.187-fabric",
+      "url": "https://cdn.modrinth.com/data/l6YH9Als/versions/e3hsPc1o/spark-1.10.187-fabric.jar",
+      "filename": "spark-1.10.187-fabric.jar",
+      "sha512": "c74bf5d5a16b2445ec6ea717eac756412b272a8015e91f91a7bf5a27e6f2f99c4a11878d434510f941f37b0344b3a7d1ba0dd6c34e80642762c48fb6e9a93894"
+    }
+  ]
+}

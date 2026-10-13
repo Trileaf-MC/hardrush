@@ -22,6 +22,17 @@ dependencies {
 
 test { useJUnitPlatform() }
 
+sourceSets {
+    debugTools {
+        compileClasspath += sourceSets.main.compileClasspath
+    }
+}
+
+tasks.register('debugToolsJar', Jar) {
+    archiveBaseName = 'hardrush-debug-tools'
+    from sourceSets.debugTools.output
+}
+
 loom {
     runs {
         server {
@@ -29,10 +40,58 @@ loom {
             runDir rootProject.file('.local/server-p0').absolutePath
             programArg 'nogui'
         }
+        debugServer {
+            server()
+            runDir rootProject.file('.local/debug/server').absolutePath
+            programArg 'nogui'
+            vmArg '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:5005'
+        }
+        debugClient {
+            client()
+            runDir rootProject.file('.local/debug/client').absolutePath
+            programArgs '--username', 'HRDebug', '--offlineDeveloperMode', '--quickPlayMultiplayer', '127.0.0.1:25586'
+            vmArg '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:5006'
+        }
     }
 }
 
 tasks.named('runServer') { standardInput = System.in }
+
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = 'hardrush-gametest'
+        enableGameTests = true
+        enableClientGameTests = true
+        // The helper copies the existing accepted EULA; it never accepts it for the user.
+        eula = false
+    }
+}
+
+loom.runs.named('clientGameTest') {
+    programArgs '--username', 'HRDebug', '--offlineDeveloperMode'
+    vmArg "-Dhardrush.root=${rootProject.projectDir}"
+}
+
+tasks.register('prepareDebugTools', Exec) {
+    commandLine 'python3', rootProject.file('scripts/debug-tools.py'), 'prepare'
+}
+
+['runDebugServer', 'runDebugClient', 'runGameTest', 'runClientGameTest'].each { name ->
+    tasks.named(name) { dependsOn 'prepareDebugTools' }
+}
+
+['runDebugServer': 'server', 'runDebugClient': 'client'].each { name, side ->
+    tasks.named(name) {
+        dependsOn 'debugToolsJar'
+        doFirst {
+            copy {
+                from tasks.named('debugToolsJar').get().archiveFile
+                into rootProject.file(".local/debug/${side}/mods")
+            }
+        }
+    }
+}
 
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(25) }

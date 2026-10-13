@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "hardrush-gametest",
+  "version": "1.0.0",
+  "name": "HardRush development GameTests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": ["dev.hardrush.gametest.HardRushServerGameTest"],
+    "fabric-client-gametest": ["dev.hardrush.gametest.HardRushClientGameTest"]
+  }
+}

@@ -7,4 +7,6 @@
 .DS_Store
 *.log
 **/node_modules/
+.codex/config.toml
+**/__pycache__/
 

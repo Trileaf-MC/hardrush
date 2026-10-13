@@ -10,6 +10,9 @@ HardRush 自身的发布许可证尚未选择。本文件仅记录原型使用�
 | Fabric API | `0.162.0+26.3` | 服务端外部依赖 | [源代码／Apache 2.0](https://github.com/FabricMC/fabric) |
 | Fabric Loom | `1.17.21` | 仅构建依赖 | [源代码／MIT](https://github.com/FabricMC/fabric-loom) |
 | JUnit | `5.14.0` | 仅测试依赖 | [源代码／EPL 2.0](https://github.com/junit-team/junit5) |
+| MCPFabric | `0.5.1+26.3`；MCP 源码 `f0acc37be526a7c38e52cf1337f3e60e570b4e9d` | 仅独立开发实例与本地 MCP 进程；JAR 未修改 | [固定源码／MIT](https://github.com/denfry/mcpfabric/tree/f0acc37be526a7c38e52cf1337f3e60e570b4e9d) |
+| spark | `1.10.187-fabric` | 仅独立开发实例；JAR 未修改；本项目另有开发专用启动兼容 Mixin | [源代码／GPL v3](https://github.com/lucko/spark)，[Modrinth 固定版本](https://modrinth.com/mod/spark/version/e3hsPc1o) |
+| MCP TypeScript SDK / Zod / TypeScript | `1.31.0` / `4.6.5` / `7.0.2` | MCPFabric 本地进程及其编译；由 pnpm 锁定，未嵌入 HardRush JAR | [SDK／MIT](https://github.com/modelcontextprotocol/typescript-sdk)，[Zod／MIT](https://github.com/colinhacks/zod)，[TypeScript／Apache 2.0](https://github.com/microsoft/TypeScript) |
 
 Fantasy 的嵌入项保持独立 JAR，不复制或改写其源代码；固定版本源码可从上表取得。构建脚本显式声明该依赖，开发者可以替换为兼容的修改版本并重新构建。正式分发前仍须完成全部依赖和分发材料审查。
 
