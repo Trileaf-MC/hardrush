@@ -1,0 +1,56 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+base { archivesName = 'hardrush' }
+version = "${rootProject.hardrush_version}+mc${minecraft_version}"
+
+repositories { maven { url = 'https://maven.nucleoid.xyz/' } }
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+    implementation "xyz.nucleoid:fantasy:${fantasy_version}"
+    include "xyz.nucleoid:fantasy:${fantasy_version}"
+    implementation project(':core')
+    include project(':core')
+    testImplementation platform('org.junit:junit-bom:5.14.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test { useJUnitPlatform() }
+
+loom {
+    runs {
+        server {
+            server()
+            runDir rootProject.file('.local/server-p0').absolutePath
+            programArg 'nogui'
+        }
+    }
+}
+
+tasks.named('runServer') { standardInput = System.in }
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(25) }
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') { expand version: project.version }
+}
+
+tasks.named('jar') {
+    from(rootProject.file('THIRD-PARTY.md'))
+    from(rootProject.file('licenses')) { into 'META-INF/licenses' }
+}
+

@@ -1,0 +1,16 @@
+plugins {
+    id 'base'
+}
+
+allprojects {
+    group = 'dev.hardrush'
+    version = rootProject.hardrush_version
+    repositories { mavenCentral() }
+}
+
+tasks.register('checkP0') {
+    group = 'verification'
+    description = 'Build the 26.3 P0 mod and run automated checks (not a visual acceptance).'
+    dependsOn ':core:check', ':platforms:mc263:check', ':platforms:mc263:jar'
+}
+

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "hardrush",
+  "version": "${version}",
+  "name": "HardRush P0",
+  "description": "Server-only technical prototype for round worlds and monster self-view.",
+  "environment": "server",
+  "entrypoints": { "main": ["dev.hardrush.p0.HardRushP0"] },
+  "mixins": ["hardrush.p0.disguise.mixins.json", "hardrush.p0.world.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "26.3",
+    "java": ">=25",
+    "fabric-api": "*",
+    "fantasy": "0.8.4+26.3"
+  }
+}
+
