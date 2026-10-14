@@ -320,13 +320,13 @@ class SqliteRoundStoreTest {
     @Test
     void rejectsNewerSchemasWithoutChangingTheirVersionOrJournalMode() throws Exception {
         try (var raw = raw(); var sql = raw.createStatement()) {
-            sql.execute("PRAGMA user_version=2");
+            sql.execute("PRAGMA user_version=3");
             sql.execute("CREATE TABLE future_data(value TEXT)");
             sql.execute("INSERT INTO future_data VALUES ('preserved')");
         }
         assertThrows(SQLException.class, () -> new SqliteRoundStore(database));
         try (var raw = raw(); var sql = raw.createStatement()) {
-            try (var rows = sql.executeQuery("PRAGMA user_version")) { assertTrue(rows.next()); assertEquals(2, rows.getInt(1)); }
+            try (var rows = sql.executeQuery("PRAGMA user_version")) { assertTrue(rows.next()); assertEquals(3, rows.getInt(1)); }
             try (var rows = sql.executeQuery("PRAGMA journal_mode")) { assertTrue(rows.next()); assertEquals("delete", rows.getString(1)); }
             try (var rows = sql.executeQuery("SELECT value FROM future_data")) { assertTrue(rows.next()); assertEquals("preserved", rows.getString(1)); }
         }

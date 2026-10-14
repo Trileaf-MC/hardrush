@@ -42,6 +42,13 @@ final class WriteDigest {
 
     static byte[] payload(byte[] payload) { return sha256().digest(payload); }
 
+    static byte[] evidence(EvidenceWrite write) {
+        return encoded(out -> {
+            string(out, "EVIDENCE"); uuid(out, write.roundId());
+            string(out, write.kind()); bytes(out, write.payload());
+        });
+    }
+
     private static byte[] encoded(Encoding encoding) {
         var digest = sha256();
         try (var out = new DataOutputStream(new DigestOutputStream(OutputStream.nullOutputStream(), digest))) {

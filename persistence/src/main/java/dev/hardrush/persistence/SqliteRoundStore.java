@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /** Durable, Minecraft-independent storage. Calls serialize on one connection and may block for IO. */
 public final class SqliteRoundStore implements AutoCloseable {
-    public static final int SCHEMA_VERSION = 1;
+    public static final int SCHEMA_VERSION = 2;
     public static final int DEFAULT_BUSY_TIMEOUT_MILLIS = 1_000;
 
     private final Path databasePath;
@@ -44,11 +44,12 @@ public final class SqliteRoundStore implements AutoCloseable {
                 statement.execute("PRAGMA synchronous=FULL");
                 statement.execute("PRAGMA foreign_keys=ON");
             }
-            if (version == 0) transaction(() -> {
+            if (version < SCHEMA_VERSION) transaction(() -> {
                 // Another connection may have migrated while this one waited for the write lock.
                 int lockedVersion = schemaVersion();
                 if (lockedVersion > SCHEMA_VERSION) throw new SQLException("Database schema is newer than this build: " + lockedVersion);
                 if (lockedVersion == 0) migrateInitialSchema();
+                if (schemaVersion() == 1) migrateEvidenceSchema();
                 return null;
             });
         } catch (SQLException | RuntimeException | Error failure) {
@@ -87,6 +88,50 @@ public final class SqliteRoundStore implements AutoCloseable {
         Objects.requireNonNull(roundId, "roundId");
         checkOpenPath();
         return loadInternal(roundId);
+    }
+
+    public synchronized CommitResult recordEvidence(EvidenceWrite write) throws SQLException {
+        Objects.requireNonNull(write); checkOpenPath();
+        byte[] digest = WriteDigest.evidence(write);
+        return transaction(() -> {
+            if (duplicate(write.eventId(), digest)) return CommitResult.DUPLICATE;
+            if (loadInternal(write.roundId()).isEmpty()) throw new SQLException("Evidence round is not committed");
+            try (var statement = connection.prepareStatement("""
+                    INSERT INTO evidence_events(event_id, round_id, kind, payload, write_digest, payload_digest)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """)) {
+                statement.setString(1, write.eventId().toString()); statement.setString(2, write.roundId().toString());
+                statement.setString(3, write.kind()); statement.setBytes(4, write.payload());
+                statement.setBytes(5, digest); statement.setBytes(6, WriteDigest.payload(write.payload()));
+                statement.executeUpdate();
+            }
+            return CommitResult.APPLIED;
+        });
+    }
+
+    /** Bounded, insertion-ordered query; payload integrity is checked before returning evidence. */
+    public synchronized List<EvidenceWrite> evidence(UUID roundId, String kind, int limit) throws SQLException {
+        Objects.requireNonNull(roundId); StoreValues.text(kind, "kind", 64);
+        if (limit < 1 || limit > 1000) throw new IllegalArgumentException("Evidence limit must be 1..1000");
+        checkOpenPath();
+        var result = new ArrayList<EvidenceWrite>();
+        try (var statement = connection.prepareStatement("""
+                SELECT * FROM evidence_events WHERE round_id=? AND kind=? ORDER BY sequence LIMIT ?
+                """)) {
+            statement.setString(1, roundId.toString()); statement.setString(2, kind); statement.setInt(3, limit);
+            try (var rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    byte[] payload = rows.getBytes("payload");
+                    validatePayload(payload, rows.getBytes("payload_digest"), "Evidence");
+                    var write = new EvidenceWrite(roundId, UUID.fromString(rows.getString("event_id")), kind, payload);
+                    if (!java.security.MessageDigest.isEqual(WriteDigest.evidence(write), rows.getBytes("write_digest"))) {
+                        throw new SQLException("Evidence labels or digest do not match");
+                    }
+                    result.add(write);
+                }
+            }
+        }
+        return List.copyOf(result);
     }
 
     public synchronized Optional<SnapshotData> latest() throws SQLException {
@@ -284,7 +329,25 @@ public final class SqliteRoundStore implements AutoCloseable {
                         revision INTEGER NOT NULL REFERENCES config_events(revision)
                     )
                     """);
-            statement.execute("PRAGMA user_version=" + SCHEMA_VERSION);
+            statement.execute("PRAGMA user_version=1");
+        }
+    }
+
+    private void migrateEvidenceSchema() throws SQLException {
+        try (var statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE evidence_events (
+                        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                        event_id TEXT NOT NULL UNIQUE,
+                        round_id TEXT NOT NULL REFERENCES round_snapshots(round_id),
+                        kind TEXT NOT NULL,
+                        payload BLOB NOT NULL,
+                        write_digest BLOB NOT NULL CHECK(length(write_digest)=32),
+                        payload_digest BLOB NOT NULL CHECK(length(payload_digest)=32)
+                    )
+                    """);
+            statement.execute("CREATE INDEX evidence_by_round ON evidence_events(round_id, kind, sequence)");
+            statement.execute("PRAGMA user_version=2");
         }
     }
 
@@ -332,8 +395,12 @@ public final class SqliteRoundStore implements AutoCloseable {
     }
 
     private boolean duplicate(UUID eventId, byte[] digest) throws SQLException {
-        try (var statement = connection.prepareStatement("SELECT write_digest FROM store_events WHERE event_id=?")) {
+        try (var statement = connection.prepareStatement("""
+                SELECT write_digest FROM store_events WHERE event_id=?
+                UNION ALL SELECT write_digest FROM evidence_events WHERE event_id=?
+                """)) {
             statement.setString(1, eventId.toString());
+            statement.setString(2, eventId.toString());
             try (var rows = statement.executeQuery()) {
                 if (!rows.next()) return false;
                 if (!java.security.MessageDigest.isEqual(rows.getBytes(1), digest)) throw new EventCollisionException(eventId);
