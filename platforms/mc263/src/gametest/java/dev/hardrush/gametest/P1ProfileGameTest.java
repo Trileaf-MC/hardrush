@@ -45,11 +45,12 @@ public final class P1ProfileGameTest {
             java.nio.file.Files.createDirectories(root);
             java.nio.file.Files.writeString(blockedPlayerDirectory, "retain-this-failed-profile-fixture");
         } catch (java.io.IOException error) { throw new IllegalStateException(error); }
-        var profiles = new P1PlayerProfiles(server, root, test::getLevel, () -> position);
+        var heldCallbacks = new java.util.ArrayDeque<Runnable>();
+        var profiles = new P1PlayerProfiles(server, root, test::getLevel, () -> position, heldCallbacks::add);
         try {
             profiles.onLogin(player);
             profiles.tick(round(UUID.randomUUID(), 1, player, GameMode.NORMAL));
-            // The same server-thread call enters the shutdown barrier before the worker's failure callback can run.
+            // Explicitly hold callbacks: a completed future may otherwise run whenComplete inline on this thread.
             test.assertTrue(profiles.failure(player.getUUID()).isEmpty(), "Main-thread failure callback has not run before shutdown starts");
             boolean refused = false;
             try { profiles.close(); }

@@ -144,7 +144,7 @@ test-support/          当前假时钟、重放、故障注入和契约测试在
 
 数据库中的多表状态可以在单事务提交；Minecraft 世界文件、客户端包和录像文件不在同一事务中。系统只承诺通过幂等操作与恢复取得一致结果，不声称跨这些系统天然“恰好一次”。
 
-当前落地的表名与上述目标模型分别记录：P1 使用 `round_snapshots`、`store_events`、`operations`、`pending_rules` 等基础表，schema 2 增加 `evidence_events`，schema 3 增加 `round_terminals`。`commitTerminal` 将实际致死证据、原始 SETTLING 快照、全局 FINISH 事件及每轮唯一终局行放进同一版本 CAS 事务；任一写入失败全部回滚。原终局快照和因果 payload 保留摘要，后续庆祝／停服检查点只能推进阶段／版本，不能修改胜者、已停止成绩、规则、种子或轮次身份；相同操作可重放，冲突内容拒绝。schema 2→3 的 DDL 与迁移版本一起提交，历史已有结果保留，不为旧数据伪造首龙因果。统计、分榜、TAB 和历史书的数据入口仍待后续批次。
+当前落地的表名与上述目标模型分别记录：P1 使用 `round_snapshots`、`store_events`、`operations`、`pending_rules` 等基础表，schema 2 增加 `evidence_events`，schema 3 增加 `round_terminals`。`commitTerminal` 将实际致死证据、原始 SETTLING 快照、全局 FINISH 事件及每轮唯一终局行放进同一版本 CAS 事务；任一写入失败全部回滚。原终局快照和因果 payload 保留摘要，后续庆祝／停服检查点只能推进阶段／版本，不能修改胜者、已停止成绩、规则、种子或轮次身份；相同操作可重放，冲突内容拒绝。schema 2→3 的 DDL 与迁移版本一起提交，历史已有结果保留，不为旧数据伪造首龙因果。2026-10-14 第四批已接通 schema 4 的 `history_rounds`、`participant_records`、`progress_events`、`round_advancements`、`advancement_sets` 和 `book_deliveries`：快照事务投影参与者，进度按 UUID／ID 去重并记录集合指纹，首次终局冻结历史；只按完整规则指纹纳入可信、计时确定的通关记录。TAB 和原版成书经独立适配器展示；库存原版保存回读核验后才 ACK 自动书册，满包保留待领。详见 [P1 第四批记录](p1-records-books.md)，完整管理审计与跨系统强制终止窗口仍待后续任务。
 
 ## 防作弊与回放
 

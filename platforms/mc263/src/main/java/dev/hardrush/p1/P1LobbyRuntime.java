@@ -1,6 +1,7 @@
 package dev.hardrush.p1;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.api.OperationTag;
 import dev.hardrush.core.api.ReplayPort;
@@ -12,6 +13,14 @@ import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
 import dev.hardrush.p1.combat.P1CombatRuntime;
+import dev.hardrush.p1.record.P1ProgressRuntime;
+import dev.hardrush.p1.record.P1TabRuntime;
+import dev.hardrush.p1.record.P1HistoryCommands;
+import dev.hardrush.core.book.HistoryBookService;
+import dev.hardrush.core.record.*;
+import dev.hardrush.p1.book.P1BookPort;
+import dev.hardrush.p1.book.P1BookInventorySaver;
+import dev.hardrush.p1.book.P1BookReader;
 import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.combat.CombatEventCodec;
@@ -50,6 +59,9 @@ public final class P1LobbyRuntime {
     private static final Map<MinecraftServer, CompletableFuture<Void>> RELEASES = new IdentityHashMap<>();
     private static final Map<MinecraftServer, ReplayPort> RECORDINGS = new IdentityHashMap<>();
     private static final Map<MinecraftServer, CompletableFuture<Void>> REPLAY_FLUSHES = new IdentityHashMap<>();
+    private static final Map<MinecraftServer, P1TabRuntime> TABS = new IdentityHashMap<>();
+    private static final Map<MinecraftServer, HistoryBookService> BOOKS = new IdentityHashMap<>();
+    private static final Map<MinecraftServer, Map<UUID, BookAttempt>> BOOK_ATTEMPTS = new IdentityHashMap<>();
     private static boolean initialized;
 
     private P1LobbyRuntime() {}
@@ -75,7 +87,38 @@ public final class P1LobbyRuntime {
                     }), (message, error) -> LOGGER.error(message, error));
             reference[0] = session;
             SESSIONS.put(server, session);
+            TABS.put(server, new P1TabRuntime());
+            BOOK_ATTEMPTS.put(server, new java.util.HashMap<>());
+            BOOKS.put(server, new HistoryBookService(new HistoryBookService.HistorySource() {
+                @Override public java.util.concurrent.CompletionStage<Optional<RoundHistory>> latestHistoryBefore(long sequence) { return session.latestHistoryBefore(sequence); }
+                @Override public java.util.concurrent.CompletionStage<Optional<RoundHistory>> roundHistory(UUID roundId) { return session.history(roundId); }
+                @Override public java.util.concurrent.CompletionStage<Long> participantCount(UUID roundId) { return session.participantCount(roundId); }
+                @Override public java.util.concurrent.CompletionStage<java.util.List<ParticipantRecord>> participantRecords(UUID roundId, int limit, int offset) { return session.participants(roundId, limit, offset); }
+                @Override public java.util.concurrent.CompletionStage<Optional<ParticipantRecord>> participantRecord(UUID roundId, UUID playerId) { return session.participant(roundId, playerId); }
+                @Override public java.util.concurrent.CompletionStage<java.util.List<LeaderboardEntry>> leaderboard(String fingerprint, int limit, int offset) {
+                    return offset == 0 ? session.leaderboard(fingerprint, limit)
+                            : CompletableFuture.failedFuture(new IllegalArgumentException("仅提供榜单首页"));
+                }
+            }, new HistoryBookService.Claims() {
+                @Override public java.util.concurrent.CompletionStage<BookClaim> ensureAutomaticBookClaim(UUID playerId, UUID roundId, int edition, int volume) { return session.ensureBook(playerId, roundId, edition, volume); }
+                @Override public java.util.concurrent.CompletionStage<Boolean> markBookDelivered(BookClaim claim) { return session.markBookDelivered(claim.playerId(), claim.roundId(), claim.edition(), claim.volume()); }
+            }, new P1BookPort(server, (tag, playerId) -> {
+                var player = server.getPlayerList().getPlayer(playerId);
+                return player != null && session.snapshot().filter(round -> round.roundId().equals(tag.roundId())).isPresent()
+                        && canReceiveBook(player);
+            }, new P1BookInventorySaver(server)), MonotonicClock.system()));
             session.onCommitted((before, after) -> applyPlayers(server, before, after));
+            session.onRecordsChanged(() -> refreshTab(server, true));
+            P1ProgressRuntime.configure(server, player -> {
+                var round = session.view().orElse(null);
+                var worlds = WORLDS.get(server);
+                var participant = round == null ? null : round.participants().get(player.getUUID());
+                if (round == null || round.phase() != RoundPhase.RUNNING || session.competitionLocked() || !player.isAlive() || participant == null || !participant.online()
+                        || participant.role() != ParticipantRole.HUMAN_ACTIVE || worlds == null || !worlds.ready()
+                        || !profiles.isReady(player.getUUID(), round)
+                        || !P1RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), player.level())) return Optional.empty();
+                return Optional.of(new P1ProgressRuntime.Context(round.roundId(), round.challengeNanos()));
+            }, session::recordProgress);
             P1CombatRuntime.configure(server, new P1CombatRuntime.RoundAccess() {
                 @Override public Optional<java.util.UUID> roundOf(net.minecraft.server.level.ServerLevel level) {
                     var round = session.snapshot().orElse(null);
@@ -120,6 +163,7 @@ public final class P1LobbyRuntime {
                         var profiles = PROFILES.get(server);
                         if (profiles.manages(player)) profiles.returnToLobby(player);
                     }
+                    refreshTab(server, false);
                     return;
                 }
                 var round = session.snapshot().orElse(null);
@@ -133,6 +177,7 @@ public final class P1LobbyRuntime {
                 var profiles = PROFILES.get(server);
                 var activeWorlds = worlds;
                 profiles.tick(round);
+                refreshTab(server, false);
                 if (worlds != null && worlds.ready()) session.adaptersReady(round.roundId());
                 if (round.phase() == RoundPhase.ROTATING) {
                     rotate(server, session, round, worlds, profiles);
@@ -177,6 +222,8 @@ public final class P1LobbyRuntime {
                         session.onOnline(player.getUUID(), player.getScoreboardName(), true);
                     }
                 }
+                P1ProgressRuntime.tick(server);
+                automaticBooks(server);
                 session.tick();
             } catch (RuntimeException error) { session.adapterFailure("世界／档案适配失败", error); }
         });
@@ -246,6 +293,10 @@ public final class P1LobbyRuntime {
             try { session.close(); }
             catch (Exception error) { LOGGER.error("P1 stop flush failed; retain database and inspect diagnostics", error); }
             SESSIONS.remove(server);
+            TABS.remove(server);
+            BOOKS.remove(server);
+            BOOK_ATTEMPTS.remove(server);
+            P1ProgressRuntime.unconfigure(server);
             P1CombatRuntime.unconfigure(server);
         });
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
@@ -282,6 +333,13 @@ public final class P1LobbyRuntime {
                                                 .suggests((context, builder) -> builder.suggest("normal").suggest("hardcore").buildFuture())
                                                 .executes(context -> nextMode(context.getSource(),
                                                         StringArgumentType.getString(context, "mode"))))))));
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(
+                P1HistoryCommands.attach(Commands.literal("hardrush")
+                        .then(Commands.literal("read-book")
+                                .executes(context -> readBook(context.getSource(), -1))
+                                .then(Commands.argument("slot", IntegerArgumentType.integer(1, 36))
+                                        .executes(context -> readBook(context.getSource(), IntegerArgumentType.getInteger(context, "slot") - 1)))),
+                        SESSIONS::get, P1LobbyRuntime::manualBook)));
     }
 
     private static int status(CommandSourceStack source) {
@@ -346,15 +404,18 @@ public final class P1LobbyRuntime {
     }
 
     private static void applyPlayers(MinecraftServer server, RoundSnapshot before, RoundSnapshot after) {
+        refreshTab(server, true);
         if (!before.roundId().equals(after.roundId())) {
             WORLDS.remove(server);
             RELEASES.remove(server);
             REPLAY_FLUSHES.remove(server);
             ADMITTED.get(server).clear();
+            BOOK_ATTEMPTS.get(server).clear();
             return;
         }
         if (before.result() == null && after.result() != null) {
-            var winner = after.result().winner() == null ? "胜者待核验" : after.participants().get(after.result().winner()).name();
+            var winner = after.result().winner() == null ? "胜者待核验"
+                    : dev.hardrush.core.book.SafeBookText.literal(after.participants().get(after.result().winner()).name(), 64);
             server.getPlayerList().broadcastSystemMessage(Component.literal("本轮已通关：" + winner
                     + "，有效挑战 " + after.challengeMillis() + " ms。庆祝结束后返回大厅并轮换。"), false);
         }
@@ -380,6 +441,107 @@ public final class P1LobbyRuntime {
             }
         }
     }
+
+    private static void refreshTab(MinecraftServer server, boolean immediate) {
+        var session = SESSIONS.get(server);
+        var tab = TABS.get(server);
+        if (session != null && tab != null) session.view().ifPresent(round ->
+                tab.refresh(server, round, session.endEntrants(), session.problem(), immediate));
+    }
+
+    private static void manualBook(CommandSourceStack source, UUID roundId, int volume) {
+        var player = source.getPlayer();
+        var service = BOOKS.get(source.getServer());
+        var session = SESSIONS.get(source.getServer());
+        if (player == null || service == null || session == null || !canReceiveBook(player)) {
+            source.sendFailure(Component.literal("档案核验完成后可在大厅或本轮人类比赛中领书。")); return;
+        }
+        var round = session.snapshot().orElseThrow();
+        service.manual(player.getUUID(), roundId, volume, round.rules().fingerprint(),
+                new OperationTag(round.roundId(), UUID.randomUUID(), round.version())).whenComplete((result, error) -> {
+            if (SESSIONS.get(source.getServer()) != session || source.getServer().getPlayerList().getPlayer(player.getUUID()) != player) return;
+            player.sendSystemMessage(Component.literal(error == null ? bookMessage(result.status()) : "历史书暂未领到，请稍后重试。"));
+        });
+    }
+
+    private static int readBook(CommandSourceStack source, int slot) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        var player = source.getPlayerOrException();
+        if (!canReceiveBook(player)) {
+            source.sendFailure(Component.literal("档案核验完成后可读取历史书。")); return 0;
+        }
+        if (!P1BookReader.open(player, slot)) {
+            source.sendFailure(Component.literal("指定格位没有历史书。可用 /hardrush book <轮次> 领取。")); return 0;
+        }
+        return 1;
+    }
+
+    public static boolean lobbyBookReady(ServerPlayer player) {
+        var server = player.level().getServer();
+        var session = SESSIONS.get(server);
+        var round = session == null ? null : session.snapshot().orElse(null);
+        if (round == null || session.state() != P1LobbySession.State.OPEN || !profileReady(player)
+                || player.level() != server.overworld()) return false;
+        var participant = round.participants().get(player.getUUID());
+        return (round.phase() == RoundPhase.PREPARING || round.phase() == RoundPhase.WAITING
+                || round.phase() == RoundPhase.COUNTDOWN || round.phase() == RoundPhase.RUNNING)
+                && (participant == null || participant.lifeSequence() == 0);
+    }
+
+    private static boolean canReceiveBook(ServerPlayer player) {
+        if (lobbyBookReady(player)) return true;
+        var session = SESSIONS.get(player.level().getServer());
+        return session != null && !session.competitionLocked() && profileReady(player) && !P1PlayerProfiles.isLocked(player);
+    }
+
+    private static void automaticBooks(MinecraftServer server) {
+        var session = SESSIONS.get(server);
+        var service = BOOKS.get(server);
+        var attempts = BOOK_ATTEMPTS.get(server);
+        if (session == null || service == null || attempts == null) return;
+        var round = session.snapshot().orElseThrow();
+        long now = System.nanoTime();
+        attempts.keySet().removeIf(id -> server.getPlayerList().getPlayer(id) == null);
+        long active = attempts.values().stream().filter(attempt -> attempt.inFlight).count();
+        for (var player : server.getPlayerList().getPlayers()) {
+            if (active >= 4 || !lobbyBookReady(player)) continue;
+            var attempt = attempts.computeIfAbsent(player.getUUID(), id -> new BookAttempt());
+            if (attempt.done || attempt.inFlight || now < attempt.retryAt) continue;
+            attempt.inFlight = true;
+            active++;
+            service.automatic(player.getUUID(), round.sequence(), round.rules().fingerprint(),
+                    new OperationTag(round.roundId(), UUID.randomUUID(), round.version())).whenComplete((result, error) -> {
+                if (BOOK_ATTEMPTS.get(server) != attempts || attempts.get(player.getUUID()) != attempt) return;
+                attempt.inFlight = false;
+                attempt.retryAt = System.nanoTime() + 5_000_000_000L;
+                if (error != null) return;
+                attempt.done = result.status() == HistoryBookService.Status.DELIVERED
+                        || result.status() == HistoryBookService.Status.ALREADY_DELIVERED
+                        || result.status() == HistoryBookService.Status.NO_HISTORY;
+                if (server.getPlayerList().getPlayer(player.getUUID()) == player
+                        && (result.status() == HistoryBookService.Status.DELIVERED
+                            || result.status() == HistoryBookService.Status.INVENTORY_FULL && !attempt.fullNotified)) {
+                    player.sendSystemMessage(Component.literal(bookMessage(result.status())));
+                    if (result.status() == HistoryBookService.Status.INVENTORY_FULL) attempt.fullNotified = true;
+                }
+            });
+        }
+    }
+
+    private static String bookMessage(HistoryBookService.Status status) {
+        return switch (status) {
+            case DELIVERED -> "历史成书已放入背包；/hardrush read-book 可读取，主册含历史查询与分卷入口。";
+            case ALREADY_DELIVERED -> "本版主册已自动发放。可用 /hardrush book <轮次> 手工补领。";
+            case INVENTORY_FULL -> "背包已满，历史主册保留待领；空出格位后自动重试。";
+            case RATE_LIMITED -> "手工领书间隔为5秒，请稍后重试。";
+            case INVALID_VOLUME -> "该卷不存在，请查看主册列出的卷数。";
+            case NO_HISTORY -> "暂无该轮已结算历史。";
+            case OFFLINE -> "玩家离线，主册仍保留待领。";
+            case BUSY -> "领书请求正在处理，请稍后重试。";
+            case STALE_SCOPE -> "轮次或档案状态已变化，请重新领书。";
+            case RETRYABLE_FAILURE -> "历史书发放或库存保存未完成，自动主册保留待领。";
+        };
+    }
+    private static final class BookAttempt { boolean inFlight; boolean done; boolean fullNotified; long retryAt; }
 
     /** Integration seam: an installed recorder must verify its final writes before world release. */
     public static void installReplay(MinecraftServer server, ReplayPort recordings) {

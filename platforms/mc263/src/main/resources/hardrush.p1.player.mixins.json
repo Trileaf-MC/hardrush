@@ -11,6 +11,7 @@
     "PlayerIsolationNetworkMixin",
     "PlayerAdvancementProfileAccessor",
     "PlayerAdvancementIsolationMixin",
+    "PlayerProgressDimensionMixin",
     "PlayerProfileInputAccessor"
   ],
   "injectors": {

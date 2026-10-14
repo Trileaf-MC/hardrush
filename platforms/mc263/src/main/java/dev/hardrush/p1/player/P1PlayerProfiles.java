@@ -69,11 +69,19 @@ public final class P1PlayerProfiles implements AutoCloseable {
     private final CompletableFuture<ProfileJournal> journal;
     private boolean closed;
     private volatile Throwable ioFailure;
+    private final java.util.concurrent.Executor callbacks;
 
     public P1PlayerProfiles(MinecraftServer server, Path root, Supplier<ServerLevel> lobby, Supplier<Vec3> lobbySpawn) {
+        this(server, root, lobby, lobbySpawn, server::execute);
+    }
+
+    /** Callback executor seam lets a headless fixture hold callbacks while testing the independent IO barrier. */
+    public P1PlayerProfiles(MinecraftServer server, Path root, Supplier<ServerLevel> lobby, Supplier<Vec3> lobbySpawn,
+            java.util.concurrent.Executor callbacks) {
         this.server = server;
         this.lobby = lobby;
         this.lobbySpawn = lobbySpawn;
+        this.callbacks = java.util.Objects.requireNonNull(callbacks);
         io = Executors.newSingleThreadExecutor(task -> {
             var thread = new Thread(task, "hardrush-p1-profiles");
             thread.setDaemon(true);
@@ -458,7 +466,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
                     : encode(entry.original);
             var prepared = store.prepare(playerId, entry.source, target, oldSnapshot);
             return new Plan(false, null, prepared);
-        }).whenComplete((plan, error) -> server.execute(() -> {
+        }).whenComplete((plan, error) -> callbacks.execute(() -> {
             if (!current(entry, target)) return;
             if (error != null) { fail(entry, error); return; }
             if (plan.same()) {
@@ -485,7 +493,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
                     }
                     store.advance(playerId, target, ProfileJournal.Phase.APPLIED, ProfileJournal.Phase.VERIFIED);
                     return null;
-                }).whenComplete((ignored, phaseError) -> server.execute(() -> {
+                }).whenComplete((ignored, phaseError) -> callbacks.execute(() -> {
                     if (!current(entry, target)) return;
                     if (phaseError != null) fail(entry, phaseError);
                     else { entry.diskSafe = true; entry.ready = true; }

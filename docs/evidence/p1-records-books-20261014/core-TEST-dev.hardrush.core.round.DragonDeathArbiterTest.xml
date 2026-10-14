@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.core.round.DragonDeathArbiterTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-14T14:55:02.948Z" hostname="Mac" time="0.006">
+  <properties/>
+  <testcase name="monsterCreationIdentityCannotWinEvenWhenOwnerIsCurrentlyHuman()" classname="dev.hardrush.core.round.DragonDeathArbiterTest" time="0.001"/>
+  <testcase name="unadmittedOrFutureLifeSourceIsPendingRatherThanInventingWinner()" classname="dev.hardrush.core.round.DragonDeathArbiterTest" time="0.001"/>
+  <testcase name="humanFinalHitWinsUsingCreationIdentityAfterSameBatchDeathAndDisconnect()" classname="dev.hardrush.core.round.DragonDeathArbiterTest" time="0.0"/>
+  <testcase name="alreadyTerminalResultCannotBeAdjudicatedAgain()" classname="dev.hardrush.core.round.DragonDeathArbiterTest" time="0.0"/>
+  <testcase name="unknownActualDeathCompletesButRetainsPendingAttribution()" classname="dev.hardrush.core.round.DragonDeathArbiterTest" time="0.0"/>
+  <testcase name="humanArrowFromEarlierLifeRemainsHumanAfterRespawn()" classname="dev.hardrush.core.round.DragonDeathArbiterTest" time="0.0"/>
+  <testcase name="staleRoundCannotWinEvenForSameParticipant()" classname="dev.hardrush.core.round.DragonDeathArbiterTest" time="0.0"/>
+  <testcase name="wrongDragonNonlethalOrWrongRoundEventIsRejected()" classname="dev.hardrush.core.round.DragonDeathArbiterTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

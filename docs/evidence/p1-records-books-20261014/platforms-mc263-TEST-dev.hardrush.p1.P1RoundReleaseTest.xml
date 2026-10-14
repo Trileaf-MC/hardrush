@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p1.P1RoundReleaseTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-14T15:00:22.217Z" hostname="Mac" time="0.006">
+  <properties/>
+  <testcase name="wrongRoundOrExpiredCallbackNeverReleasesANewWorld()" classname="dev.hardrush.p1.P1RoundReleaseTest" time="0.002"/>
+  <testcase name="installedRecorderMustVerifyThenWorldCloseRunsOnMainThreadAndFinishes()" classname="dev.hardrush.p1.P1RoundReleaseTest" time="0.001"/>
+  <testcase name="failedWorldSaveCannotSatisfyRotationBarrier()" classname="dev.hardrush.p1.P1RoundReleaseTest" time="0.0"/>
+  <testcase name="disabledRecorderClosesWorldsWithoutClaimingASavedRecording()" classname="dev.hardrush.p1.P1RoundReleaseTest" time="0.0"/>
+  <testcase name="shutdownCanDrainRecordingIoWithoutRunningAWorldReleaseCallback()" classname="dev.hardrush.p1.P1RoundReleaseTest" time="0.0"/>
+  <testcase name="unavailableOrUnverifiedRecordingRetainsWorlds()" classname="dev.hardrush.p1.P1RoundReleaseTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -15,6 +15,12 @@ import dev.hardrush.persistence.CommitResult;
 import dev.hardrush.persistence.SnapshotWrite;
 import dev.hardrush.persistence.SqliteRoundStore;
 import dev.hardrush.persistence.EvidenceWrite;
+import dev.hardrush.core.record.ProgressWrite;
+import dev.hardrush.core.record.RoundHistory;
+import dev.hardrush.core.record.ParticipantRecord;
+import dev.hardrush.core.record.LeaderboardEntry;
+import dev.hardrush.core.record.BookClaim;
+import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -77,6 +83,10 @@ public final class P1LobbySession implements AutoCloseable {
     private CompletableFuture<CommitResult> pendingRotationWrite;
     private RoundSnapshot pendingNextRound;
     private Long shutdownBoundary;
+    private int progressPending;
+    private int queriesPending;
+    private long endEntrants;
+    private Runnable recordsChanged = () -> {};
 
     public P1LobbySession(Path database, MonotonicClock clock, Executor callbacks) {
         this(database, clock, callbacks, (message, error) -> {});
@@ -132,7 +142,7 @@ public final class P1LobbySession implements AutoCloseable {
             requireCommitted(store.commit(new SnapshotWrite(snapshot.roundId(), -1, 0,
                     RoundSnapshotCodec.encode(snapshot), UUID.randomUUID(), "ROUND_PREPARING")));
         }
-        return new Loaded(snapshot, rules, latest.isEmpty());
+        return new Loaded(snapshot, rules, latest.isEmpty(), store.endEntrantCount(snapshot.roundId()));
     }
 
     private void install(Loaded loaded) {
@@ -141,6 +151,7 @@ public final class P1LobbySession implements AutoCloseable {
                 ? RoundEngine.create(stored.roundId(), stored.sequence(), stored.seed(), stored.rules(), this::engineTime)
                 : RoundEngine.restore(stored, this::engineTime);
         nextRules = loaded.nextRules();
+        endEntrants = loaded.endEntrants();
         // An externally restored later phase needs the future world/profile
         // adapters. Keep its durable phase visible without progressing it.
         unsupportedPhase = engine.committed().phase() != RoundPhase.PREPARING;
@@ -162,6 +173,8 @@ public final class P1LobbySession implements AutoCloseable {
     public Optional<RulesConfig> nextRules() { return Optional.ofNullable(nextRules); }
     public boolean mutationPending() { return pendingWrite != null || pendingRulesWrite != null || pendingRotationWrite != null; }
     public Optional<RoundSnapshot> view() { return engine == null ? Optional.empty() : Optional.of(engine.view()); }
+    public long endEntrants() { return endEntrants; }
+    public void onRecordsChanged(Runnable listener) { recordsChanged = Objects.requireNonNull(listener); }
 
     /** Immediately closes new competitive actions, even while the terminal transaction is queued. */
     public boolean competitionLocked() {
@@ -228,6 +241,7 @@ public final class P1LobbySession implements AutoCloseable {
         firstDragonId = null;
         terminalQueued = false;
         requestedRespawns.clear();
+        endEntrants = 0;
         adaptersReady = false;
         unsupportedPhase = false;
         lastCheckpointNanos = clock.nanoTime();
@@ -264,6 +278,89 @@ public final class P1LobbySession implements AutoCloseable {
                 if (error != null) fail("战斗证据保存失败", error);
             });
         });
+    }
+
+    /** The native collector calls this at observation time, before any later FINISH can enter the IO queue. */
+    public void recordProgress(ProgressWrite progress) {
+        if (competitionLocked() || stopping || !adaptersReady || !engine.committed().roundId().equals(progress.roundId())) return;
+        var participant = engine.committed().participants().get(progress.playerId());
+        if (participant == null || !participant.online() || !participant.role().isActiveHuman()) return;
+        if (progressPending >= 256) { fail("统计记录队列超出预算", new IllegalStateException("暂停比赛并保留档案")); return; }
+        progressPending++;
+        supplyIo(() -> {
+            requireCommitted(store.recordProgress(progress));
+            return store.endEntrantCount(progress.roundId());
+        }).whenComplete((count, error) -> {
+            if (error != null) evidenceFailure = error;
+            callbacks.execute(() -> {
+                progressPending--;
+                if (stopping) return;
+                if (error != null) fail("参赛统计保存失败", error);
+                else if (engine.committed().roundId().equals(progress.roundId())) {
+                    boolean changed = endEntrants != count;
+                    endEntrants = count;
+                    if (changed) recordsChanged.run();
+                }
+            });
+        });
+    }
+
+    public CompletableFuture<List<RoundHistory>> history(int limit, int offset) {
+        return query(() -> store.history(limit, offset));
+    }
+    public CompletableFuture<Optional<RoundHistory>> history(UUID roundId) {
+        return query(() -> store.roundHistory(roundId));
+    }
+    public CompletableFuture<Optional<RoundHistory>> historyBySequence(long sequence) {
+        return query(() -> store.historyBySequence(sequence));
+    }
+    public CompletableFuture<Optional<RoundHistory>> latestHistoryBefore(long sequence) {
+        return query(() -> store.latestHistoryBefore(sequence));
+    }
+    public CompletableFuture<List<LeaderboardEntry>> leaderboard(String fingerprint, int limit) {
+        return query(() -> store.leaderboard(fingerprint, limit));
+    }
+    public CompletableFuture<List<ParticipantRecord>> participants(UUID roundId, int limit, int offset) {
+        return query(() -> store.participantRecords(roundId, limit, offset));
+    }
+    public CompletableFuture<Optional<ParticipantRecord>> participant(UUID roundId, UUID playerId) {
+        return query(() -> store.participantRecord(roundId, playerId));
+    }
+    public CompletableFuture<Long> participantCount(UUID roundId) { return query(() -> store.participantCount(roundId)); }
+    public CompletableFuture<BookClaim> ensureBook(UUID player, UUID roundId, int edition, int volume) {
+        return durableBook(() -> store.ensureAutomaticBookClaim(player, roundId, edition, volume));
+    }
+    public CompletableFuture<Boolean> markBookDelivered(UUID player, UUID roundId, int edition, int volume) {
+        return durableBook(() -> store.markBookDelivered(player, roundId, edition, volume));
+    }
+
+    private <T> CompletableFuture<T> durableBook(IoAction<T> action) {
+        return query(action, true);
+    }
+
+    /** Bounded async reads; public futures are completed on the server callback executor. */
+    private <T> CompletableFuture<T> query(IoAction<T> action) {
+        return query(action, false);
+    }
+    private <T> CompletableFuture<T> query(IoAction<T> action, boolean durable) {
+        if (stopping || state != State.OPEN) return CompletableFuture.failedFuture(new IllegalStateException(status()));
+        if (queriesPending >= 32) return CompletableFuture.failedFuture(new IllegalStateException("历史查询繁忙，请稍后重试。"));
+        queriesPending++;
+        var delivered = new CompletableFuture<T>();
+        supplyIo(action).whenComplete((value, error) -> {
+            // The shutdown barrier sees failed durable IO without requiring a main-thread callback.
+            if (durable && error != null) evidenceFailure = error;
+            callbacks.execute(() -> {
+            queriesPending--;
+            if (stopping) delivered.completeExceptionally(new IllegalStateException("服务器正在停止。"));
+            else if (error != null) {
+                if (durable) fail("历史书待领状态保存失败", error);
+                delivered.completeExceptionally(error);
+            }
+            else delivered.complete(value);
+            });
+        });
+        return delivered;
     }
 
     public String status() {
@@ -573,7 +670,7 @@ public final class P1LobbySession implements AutoCloseable {
         if (!"26.3".equals(rules.minecraftVersion())) throw new IllegalArgumentException("此适配器仅支持 Minecraft 26.3");
     }
     private static String modeName(GameMode mode) { return mode == GameMode.HARDCORE ? "极限" : "普通"; }
-    private record Loaded(RoundSnapshot snapshot, RulesConfig nextRules, boolean fresh) {}
+    private record Loaded(RoundSnapshot snapshot, RulesConfig nextRules, boolean fresh, long endEntrants) {}
     private record QueuedEvent(long time, Function<RoundEngine, RoundTransition> action) {}
     @FunctionalInterface private interface IoAction<T> { T run() throws Exception; }
 }

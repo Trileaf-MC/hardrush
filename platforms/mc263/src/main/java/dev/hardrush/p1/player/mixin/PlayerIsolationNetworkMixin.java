@@ -2,6 +2,9 @@ package dev.hardrush.p1.player.mixin;
 
 import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p1.combat.P1CombatRuntime;
+import dev.hardrush.p1.P1LobbyRuntime;
+import dev.hardrush.p1.book.P1BookPort;
+import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundChatCommandSignedPacket;
 import net.minecraft.network.chat.LastSeenMessages;
@@ -20,8 +23,8 @@ public abstract class PlayerIsolationNetworkMixin {
 
     // Off-thread invocations proceed to vanilla's PacketUtils scheduling. The replay on the server thread is cancelled here.
     @Inject(method = {"handleMovePlayer", "handleMoveVehicle", "handlePlayerInput", "handlePlayerAction",
-            "handleUseItemOn", "handleUseItem", "handleAttack", "handleInteract", "handlePunch",
-            "handlePlayerCommand", "handlePaddleBoat", "handleSetCarriedItem", "handleContainerClose",
+            "handleUseItemOn", "handleAttack", "handleInteract", "handlePunch",
+            "handlePlayerCommand", "handlePaddleBoat", "handleContainerClose",
             "handleContainerClick", "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
             "handlePlayerAbilities", "handleSpectatorAction", "handleTeleportToEntityPacket",
             "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
@@ -35,7 +38,7 @@ public abstract class PlayerIsolationNetworkMixin {
     }
 
     // Celebration allows movement and closing a menu, while sealing all new competitive actions.
-    @Inject(method = {"handlePlayerAction", "handleUseItemOn", "handleUseItem", "handleAttack", "handleInteract", "handlePunch",
+    @Inject(method = {"handlePlayerAction", "handleUseItemOn", "handleAttack", "handleInteract", "handlePunch",
             "handleContainerClick", "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
             "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
             "handlePickItemFromBlock", "handlePickItemFromEntity", "handleBundleItemSelectedPacket",
@@ -45,6 +48,22 @@ public abstract class PlayerIsolationNetworkMixin {
             at = @At("HEAD"), cancellable = true)
     private void hardrush$holdCompetition(CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && P1CombatRuntime.competitionFrozen(player.level())) ci.cancel();
+    }
+
+    @Inject(method = "handleSetCarriedItem", at = @At("HEAD"), cancellable = true)
+    private void hardrush$bookSlotSelection(CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && P1PlayerProfiles.isLocked(player)
+                && !P1LobbyRuntime.lobbyBookReady(player)) ci.cancel();
+    }
+
+    @Inject(method = "handleUseItem", at = @At("HEAD"), cancellable = true)
+    private void hardrush$readHistoryBook(ServerboundUseItemPacket packet, CallbackInfo ci) {
+        if (!player.level().getServer().isSameThread()) return;
+        boolean locked = P1PlayerProfiles.isLocked(player);
+        if (!locked && !P1CombatRuntime.competitionFrozen(player.level())) return;
+        // Only a generated written book can be used while other item/gameplay input stays sealed.
+        if (!P1BookPort.isHistoryBook(player.getItemInHand(packet.hand()))
+                || locked && !P1LobbyRuntime.lobbyBookReady(player)) ci.cancel();
     }
 
     @Inject(method = "handleClientCommand", at = @At("HEAD"), cancellable = true)

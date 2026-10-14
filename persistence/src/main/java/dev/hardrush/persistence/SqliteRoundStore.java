@@ -5,12 +5,12 @@ import dev.hardrush.core.round.DragonDeathArbiter;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.core.round.RoundSnapshotCodec;
+import dev.hardrush.core.record.*;
 import org.sqlite.SQLiteConfig;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -21,11 +21,12 @@ import java.util.UUID;
 
 /** Durable, Minecraft-independent storage. Calls serialize on one connection and may block for IO. */
 public final class SqliteRoundStore implements AutoCloseable {
-    public static final int SCHEMA_VERSION = 3;
+    public static final int SCHEMA_VERSION = 4;
     public static final int DEFAULT_BUSY_TIMEOUT_MILLIS = 1_000;
 
     private final Path databasePath;
     private final Connection connection;
+    private final SqliteRecordIndex records;
 
     public SqliteRoundStore(Path databasePath) throws IOException, SQLException {
         this(databasePath, DEFAULT_BUSY_TIMEOUT_MILLIS);
@@ -36,7 +37,10 @@ public final class SqliteRoundStore implements AutoCloseable {
         this.databasePath = SafeDatabasePath.prepare(Objects.requireNonNull(databasePath, "databasePath"));
         var config = new SQLiteConfig();
         config.setBusyTimeout(busyTimeoutMillis);
-        connection = DriverManager.getConnection("jdbc:sqlite:" + this.databasePath, config.toProperties());
+        // Fabric/Knot can initialize the store before JDBC's service loader sees the mod class loader.
+        // Connect directly through the bundled driver instead of depending on TCCL/SPI registration order.
+        connection = new org.sqlite.JDBC().connect("jdbc:sqlite:" + this.databasePath, config.toProperties());
+        records = new SqliteRecordIndex(connection);
         try {
             var version = schemaVersion();
             if (version > SCHEMA_VERSION) throw new SQLException("Database schema is newer than this build: " + version);
@@ -56,6 +60,7 @@ public final class SqliteRoundStore implements AutoCloseable {
                 if (lockedVersion == 0) migrateInitialSchema();
                 if (schemaVersion() == 1) migrateEvidenceSchema();
                 if (schemaVersion() == 2) migrateTerminalSchema();
+                if (schemaVersion() == 3) migrateRecordSchema();
                 return null;
             });
         } catch (SQLException | RuntimeException | Error failure) {
@@ -72,10 +77,12 @@ public final class SqliteRoundStore implements AutoCloseable {
             if (duplicate(write.eventId(), digest)) return CommitResult.DUPLICATE;
             var current = loadInternal(write.roundId());
             if (current.map(SnapshotData::version).orElse(-1L) != write.expectedVersion()) return CommitResult.STALE;
+            if (current.isPresent()) preserveRoundIdentity(write, current.orElseThrow());
             var terminal = terminalInternal(write.roundId());
             if (terminal.isPresent()) preserveTerminal(write, terminal.orElseThrow());
             else if (current.isPresent()) preserveLegacyTerminal(write, current.orElseThrow());
             insertSnapshot(write, digest);
+            records.index(write, false);
             return CommitResult.APPLIED;
         });
     }
@@ -121,6 +128,7 @@ public final class SqliteRoundStore implements AutoCloseable {
                 statement.setBytes(5, write.payload()); statement.setBytes(6, WriteDigest.payload(write.payload()));
                 statement.executeUpdate();
             }
+            records.index(write, true);
             return CommitResult.APPLIED;
         });
     }
@@ -128,6 +136,98 @@ public final class SqliteRoundStore implements AutoCloseable {
     public synchronized Optional<TerminalData> terminal(UUID roundId) throws SQLException {
         Objects.requireNonNull(roundId); checkOpenPath();
         return terminalInternal(roundId);
+    }
+
+    /** Immutable settled histories only. Active seeds are never returned by these APIs. */
+    public synchronized Optional<RoundHistory> roundHistory(UUID roundId) throws SQLException {
+        Objects.requireNonNull(roundId); checkOpenPath();
+        var value = records.history(roundId); if (value.isPresent()) verifyHistory(value.orElseThrow()); return value;
+    }
+    public synchronized Optional<RoundHistory> historyBySequence(long sequence) throws SQLException {
+        checkOpenPath(); var value = records.bySequence(sequence, false);
+        if (value.isPresent()) verifyHistory(value.orElseThrow()); return value;
+    }
+    public synchronized Optional<RoundHistory> roundBySequence(long sequence) throws SQLException { return historyBySequence(sequence); }
+    public synchronized Optional<RoundHistory> latestHistoryBefore(long sequence) throws SQLException {
+        checkOpenPath(); var value = records.bySequence(sequence, true);
+        if (value.isPresent()) verifyHistory(value.orElseThrow()); return value;
+    }
+    public synchronized List<RoundHistory> history(int limit, int offset) throws SQLException {
+        checkOpenPath(); var values = records.histories(limit, offset); for (var value : values) verifyHistory(value); return values;
+    }
+    public synchronized List<LeaderboardEntry> leaderboard(String rulesFingerprint, int limit) throws SQLException {
+        checkOpenPath(); var values = records.leaderboard(rulesFingerprint, limit);
+        for (var value : values) verifyHistory(value.round()); return values;
+    }
+    public synchronized List<ParticipantRecord> participantRecords(UUID roundId, int limit, int offset) throws SQLException {
+        Objects.requireNonNull(roundId); checkOpenPath(); return records.participants(roundId, limit, offset);
+    }
+    public synchronized Optional<ParticipantRecord> participantRecord(UUID roundId, UUID playerId) throws SQLException {
+        Objects.requireNonNull(roundId); Objects.requireNonNull(playerId); checkOpenPath(); return records.participant(roundId, playerId);
+    }
+    public synchronized long participantCount(UUID roundId) throws SQLException {
+        Objects.requireNonNull(roundId); checkOpenPath(); return records.participantCount(roundId);
+    }
+    public synchronized long endEntrantCount(UUID roundId) throws SQLException {
+        Objects.requireNonNull(roundId); checkOpenPath(); return records.endCount(roundId);
+    }
+    public synchronized CommitResult recordProgress(ProgressWrite write) throws SQLException {
+        Objects.requireNonNull(write); checkOpenPath();
+        byte[] digest = WriteDigest.payload(RecordEncoding.progress(write));
+        return transaction(() -> {
+            if (duplicate(write.eventId(), digest)) {
+                records.verifyProgress(write.eventId());
+                return CommitResult.DUPLICATE;
+            }
+            var snapshot = loadInternal(write.roundId());
+            if (snapshot.isEmpty()) return CommitResult.STALE;
+            return records.progress(write, snapshot.orElseThrow());
+        });
+    }
+    public synchronized List<String> advancementIds(UUID roundId, UUID playerId, int limit, int offset) throws SQLException {
+        Objects.requireNonNull(roundId); Objects.requireNonNull(playerId); checkOpenPath();
+        return records.advancementIds(roundId, playerId, limit, offset);
+    }
+    public synchronized BookClaim ensureAutomaticBookClaim(UUID playerId, UUID roundId, int edition, int volume) throws SQLException {
+        Objects.requireNonNull(playerId); Objects.requireNonNull(roundId); checkOpenPath();
+        return transaction(() -> records.ensureClaim(playerId, roundId, edition, volume));
+    }
+    public synchronized Optional<BookClaim> latestAutomaticBookClaim(UUID playerId) throws SQLException {
+        Objects.requireNonNull(playerId); checkOpenPath(); return records.latestClaim(playerId);
+    }
+    public synchronized boolean markBookDelivered(UUID playerId, UUID roundId, int edition, int volume) throws SQLException {
+        Objects.requireNonNull(playerId); Objects.requireNonNull(roundId); checkOpenPath();
+        return transaction(() -> records.deliver(playerId, roundId, edition, volume));
+    }
+
+    private void verifyHistory(RoundHistory history) throws SQLException {
+        var terminal = terminalInternal(history.roundId());
+        if (terminal.isEmpty()) {
+            if (history.trustedWinner()) throw new SQLException("Trusted history has no original terminal evidence");
+            return; // Legacy results and explicit failure/abort can legitimately have no dragon-death evidence.
+        }
+        var original = RoundSnapshotCodec.decode(terminal.orElseThrow().snapshot().payload());
+        if (!Objects.equals(history.result(), original.result()) || history.sequence() != original.sequence()
+                || history.seed() != original.seed() || !history.rules().equals(original.rules())
+                || history.challengeNanos() != original.challengeNanos() || history.timingUncertain() != original.timingUncertain()
+                || history.trustedWinner() != (original.result().winner() != null)) {
+            throw new SQLException("History does not match its original terminal evidence");
+        }
+    }
+
+    private void migrateRecordSchema() throws SQLException {
+        records.migrate();
+        var snapshots = new ArrayList<SnapshotData>();
+        try (var statement = connection.createStatement(); var rows = statement.executeQuery("SELECT round_id FROM round_snapshots")) {
+            while (rows.next()) snapshots.add(loadInternal(UUID.fromString(rows.getString(1))).orElseThrow());
+        }
+        for (var snapshot : snapshots) {
+            var terminal = terminalInternal(snapshot.roundId());
+            if (terminal.isPresent()) records.index(terminal.orElseThrow().snapshot(), true);
+            else records.index(new SnapshotWrite(snapshot.roundId(), snapshot.version() - 1, snapshot.version(),
+                    snapshot.payload(), UUID.randomUUID(), "LEGACY_INDEX"), false);
+        }
+        try (var statement = connection.createStatement()) { statement.execute("PRAGMA user_version=4"); }
     }
 
     public synchronized Optional<SnapshotData> load(UUID roundId) throws SQLException {
@@ -435,6 +535,17 @@ public final class SqliteRoundStore implements AutoCloseable {
         preserveTerminal(after, original);
     }
 
+    private static void preserveRoundIdentity(SnapshotWrite write, SnapshotData current) {
+        RoundSnapshot before;
+        try { before = RoundSnapshotCodec.decode(current.payload()); }
+        catch (IllegalArgumentException opaqueLegacyPayload) { return; }
+        var after = RoundSnapshotCodec.decode(write.payload());
+        if (!after.roundId().equals(write.roundId()) || after.version() != write.newVersion()
+                || after.sequence() != before.sequence() || after.seed() != before.seed() || !after.rules().equals(before.rules())) {
+            throw new IllegalArgumentException("A round's identity, seed and immutable rules snapshot cannot change");
+        }
+    }
+
     private static void preserveTerminal(RoundSnapshot after, RoundSnapshot original) {
         if (!Objects.equals(after.result(), original.result())
                 || after.challengeNanos() != original.challengeNanos()
@@ -591,9 +702,11 @@ public final class SqliteRoundStore implements AutoCloseable {
         try (var statement = connection.prepareStatement("""
                 SELECT write_digest FROM store_events WHERE event_id=?
                 UNION ALL SELECT write_digest FROM evidence_events WHERE event_id=?
+                UNION ALL SELECT write_digest FROM progress_events WHERE event_id=?
                 """)) {
             statement.setString(1, eventId.toString());
             statement.setString(2, eventId.toString());
+            statement.setString(3, eventId.toString());
             try (var rows = statement.executeQuery()) {
                 boolean found = false;
                 while (rows.next()) {

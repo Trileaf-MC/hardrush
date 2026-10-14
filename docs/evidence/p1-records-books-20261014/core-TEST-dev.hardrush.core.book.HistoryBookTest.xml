@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.core.book.HistoryBookTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-14T14:55:02.836Z" hostname="Mac" time="0.071">
+  <properties/>
+  <testcase name="staleAdapterCallbackCannotAcknowledgeClaim()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.033"/>
+  <testcase name="concurrentRequestWaitsAndIoFailureReleasesFlightWithoutInventingDelivery()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.005"/>
+  <testcase name="noTerminalHistoryCreatesNoClaimAndWrongRulesCannotProduceRankedBook()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.002"/>
+  <testcase name="failedAckRetriesSameDeliveryOperationWithoutClaimConsumption()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.01"/>
+  <testcase name="literalSanitizesNamesWithoutInterpretingPlayerText()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.002"/>
+  <testcase name="volumesContainResultCurrentRulesLeaderboardAndCompleteRosterSlices()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.003"/>
+  <testcase name="automaticDeduplicatesOnlyNewestClaimAndNeverReplaysOlderOfflineRounds()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.002"/>
+  <testcase name="manualRepeatIsRateLimitedButNeverConsumesAutomaticClaim()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.003"/>
+  <testcase name="fullAndOfflineLeaveAutomaticClaimPending()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.003"/>
+  <testcase name="hostileMaximumNamesAndCountersStillFitOneBoundedVolume()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.003"/>
+  <testcase name="paginationWrapsCjkAndKeepsUnicodePairsAndBounds()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
