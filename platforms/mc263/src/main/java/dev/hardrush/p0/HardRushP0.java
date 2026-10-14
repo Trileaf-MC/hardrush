@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.hardrush.p0.disguise.DisguiseProbe;
 import dev.hardrush.p0.monster.MonsterRoles;
 import dev.hardrush.p0.world.WorldProbe;
+import dev.hardrush.p1.P1LobbyRuntime;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -24,6 +25,7 @@ public final class HardRushP0 implements ModInitializer {
     @Override
     public void onInitialize() {
         MonsterRoles.initialize();
+        P1LobbyRuntime.initialize();
         LOGGER.info("HardRush P0: operator world/appearance/monster-role probes; formal race/lobby/rewards are not implemented");
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             try {

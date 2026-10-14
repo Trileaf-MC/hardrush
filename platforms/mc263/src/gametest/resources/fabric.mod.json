@@ -5,7 +5,7 @@
   "name": "HardRush development GameTests",
   "environment": "*",
   "entrypoints": {
-    "fabric-gametest": ["dev.hardrush.gametest.HardRushServerGameTest", "dev.hardrush.gametest.HardRushWorldBoundaryGameTest", "dev.hardrush.gametest.MonsterAppearanceGameTest", "dev.hardrush.gametest.MonsterRoleGameTest"],
+    "fabric-gametest": ["dev.hardrush.gametest.HardRushServerGameTest", "dev.hardrush.gametest.HardRushWorldBoundaryGameTest", "dev.hardrush.gametest.MonsterAppearanceGameTest", "dev.hardrush.gametest.MonsterRoleGameTest", "dev.hardrush.gametest.P1LobbyGameTest"],
     "fabric-client-gametest": ["dev.hardrush.gametest.HardRushClientGameTest"]
   }
 }

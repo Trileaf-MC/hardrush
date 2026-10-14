@@ -1,0 +1,5 @@
+package dev.hardrush.core.round;
+
+public enum RoundPhase {
+    PREPARING, WAITING, COUNTDOWN, RUNNING, RESCUE, SETTLING, CELEBRATING, ROTATING, RECOVERY_REQUIRED
+}

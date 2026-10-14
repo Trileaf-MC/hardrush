@@ -10,6 +10,7 @@ HardRush 自身的发布许可证尚未选择。本文件仅记录原型使用�
 | Fabric API | `0.162.0+26.3` | 服务端外部依赖 | [源代码／Apache 2.0](https://github.com/FabricMC/fabric) |
 | Fabric Loom | `1.17.21` | 仅构建依赖 | [源代码／MIT](https://github.com/FabricMC/fabric-loom) |
 | JUnit | `5.14.0` | 仅测试依赖 | [源代码／EPL 2.0](https://github.com/junit-team/junit5) |
+| SQLite JDBC | `3.53.4.0` | P1 `persistence` 运行依赖，Loom 添加 Fabric 元数据后以独立 JAR 内嵌，保留原代码、原生库和许可证 | [上游](https://github.com/xerial/sqlite-jdbc)，[Apache 2.0](persistence/licenses/SQLite-jdbc-Apache-2.0.txt)、[Zentus BSD 2-Clause](persistence/licenses/SQLite-jdbc-Zentus-BSD-2-Clause.txt)；原始／嵌套校验见 [P1 证据](docs/evidence/p1-foundations-20261014/manifest.json) |
 | MCPFabric | `0.5.1+26.3`；MCP 源码 `f0acc37be526a7c38e52cf1337f3e60e570b4e9d` | 仅独立开发实例与本地 MCP 进程；JAR 未修改 | [固定源码／MIT](https://github.com/denfry/mcpfabric/tree/f0acc37be526a7c38e52cf1337f3e60e570b4e9d) |
 | spark | `1.10.187-fabric` | 仅独立开发实例；JAR 未修改；本项目另有开发专用启动兼容 Mixin | [源代码／GPL v3](https://github.com/lucko/spark)，[Modrinth 固定版本](https://modrinth.com/mod/spark/version/e3hsPc1o) |
 | MCP TypeScript SDK / Zod / TypeScript | `1.31.0` / `4.6.5` / `7.0.2` | MCPFabric 本地进程及其编译；由 pnpm 锁定，未嵌入 HardRush JAR | [SDK／MIT](https://github.com/modelcontextprotocol/typescript-sdk)，[Zod／MIT](https://github.com/colinhacks/zod)，[TypeScript／Apache 2.0](https://github.com/microsoft/TypeScript) |
@@ -22,7 +23,7 @@ HardRush 的 P0 伪装实现为本项目代码，未嵌入 DisguiseLib、Polymer
 
 ## P0b 基础依赖探针
 
-`probes/p0b` 为独立、仅服务端的核查工程，未给 P0 发布模组增加运行依赖。三个探针分别使用对应 Fabric API、Fantasy 和 SGui，直接版本在 [versions.json](probes/p0b/versions.json)，实际传递依赖、校验及许可证出处在 [P0b 证据](docs/p0b-dependency-evidence.md)。
+`probes/p0b` 为独立、仅服务端的核查工程；SQLite JDBC 已在后续 P1 基础中成为运行依赖，SGui 仍仅在该探针工程。三个探针分别使用对应 Fabric API、Fantasy 和 SGui，直接版本在 [versions.json](probes/p0b/versions.json)，实际传递依赖、校验及许可证出处在 [P0b 证据](docs/p0b-dependency-evidence.md)。
 
 | 组件 | 锁定版本 | 使用方式与许可证 |
 | --- | --- | --- |

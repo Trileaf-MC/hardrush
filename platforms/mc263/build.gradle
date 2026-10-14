@@ -15,12 +15,18 @@ dependencies {
     include "xyz.nucleoid:fantasy:${fantasy_version}"
     implementation project(':core')
     include project(':core')
+    implementation project(':persistence')
+    include project(':persistence')
+    include 'org.xerial:sqlite-jdbc:3.53.4.0'
     testImplementation platform('org.junit:junit-bom:5.14.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-test { useJUnitPlatform() }
+test {
+    useJUnitPlatform()
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
 
 sourceSets {
     debugTools {
@@ -72,6 +78,16 @@ fabricApi {
 loom.runs.named('clientGameTest') {
     programArgs '--username', 'HRDebug', '--offlineDeveloperMode'
     vmArg "-Dhardrush.root=${rootProject.projectDir}"
+}
+
+// Explicit opt-in for the server-only P1 foundation; never enables a graphical test client.
+['server', 'debugServer', 'gameTest'].each { name ->
+    loom.runs.named(name) {
+        if (providers.gradleProperty('hardrushP1').orNull == 'true') {
+            vmArg '-Dhardrush.p1.enabled=true'
+            vmArg '--enable-native-access=ALL-UNNAMED'
+        }
+    }
 }
 
 tasks.register('prepareDebugTools', Exec) {

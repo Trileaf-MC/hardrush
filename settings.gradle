@@ -7,5 +7,5 @@ pluginManagement {
 }
 
 rootProject.name = 'hardrush'
-include 'core', 'platforms:mc263'
+include 'core', 'persistence', 'platforms:mc263'
 

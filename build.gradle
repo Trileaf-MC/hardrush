@@ -14,3 +14,9 @@ tasks.register('checkP0') {
     dependsOn ':core:check', ':platforms:mc263:check', ':platforms:mc263:jar'
 }
 
+tasks.register('checkP1') {
+    group = 'verification'
+    description = 'Verify the first P1 foundations and the 26.3 adapter without a graphical client.'
+    dependsOn ':core:check', ':persistence:check', ':platforms:mc263:check', ':platforms:mc263:jar'
+}
+

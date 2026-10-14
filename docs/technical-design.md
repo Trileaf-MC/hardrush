@@ -2,7 +2,7 @@
 
 推荐采用 Fabric 服务端模组、独立于 Minecraft API 的 Java 规则核心、SQLite 持久化，以及按 Minecraft 版本隔离的适配层。大厅长期加载，每轮创建并管理三个持久维度。纯原版客户端、旁人完整怪物外观与本人正常操作、模组内部轮换是设计约束；本人普通外观已于 2026-10-14 获得用户明确允许。
 
-本设计定义目标架构。当前已具备可构建的 26.3 P0 模组、实验 JAR、旁人怪物／本人 Steve 外观和单轮三维度；用户双原版操作验收已通过并接受轻微尺寸差异，连续生命周期及最终截图归档正在完成。规则核心仍为空，正式 SQLite 持久化、完整玩法及其他版本最终适配尚未实现。P0 阶段仍未放行，实验 JAR 不作为正式发布包。依赖证据见 [版本与依赖核查](compatibility.md)，产品规则见 [产品需求](requirements.md)，阶段与任务状态见 [开发任务清单](implementation-plan.md)。
+本设计定义目标架构。当前已有 26.3 P0 外观、单轮三维度及真实角色原型；用户双原版操作验收已通过并接受轻微尺寸差异，完整 P0 验收仍未放行。2026-10-14 按用户指示提前交付 P1 第一批独立规则、不可变配置、SQLite 幂等基础和轮次／计时核心，见 [实现与验证](p1-foundations.md)。实际比赛世界、档案隔离、尾刀、轮换及其他版本最终适配尚未接通，实验 JAR 不作为正式发布包。依赖证据见 [版本与依赖核查](compatibility.md)，产品规则见 [产品需求](requirements.md)，阶段与任务状态见 [开发任务清单](implementation-plan.md)。
 
 ## 工程结构与版本适配
 
@@ -11,14 +11,14 @@
 目标目录及当前状态如下；已有目录不代表其中的完整职责已经实现：
 
 ```text
-core/                  已建空模块；待实现轮次、身份、计时、归因与规则
-persistence/           待建；SQLite、迁移、事件记录、任务恢复
-integration-contracts/ 待建；世界、实体、GUI、回放与防作弊能力接口
+core/                  已实现轮次／身份／计时核心、配置与纯 Java 接口；实际攻击归因待接入
+persistence/           已实现 SQLite、事务迁移、事件／版本、操作三阶段及异步 IO；历史／战斗索引待扩展
+integration-contracts/ 当前接口在 core/api；实际世界／实体／GUI／回放适配待接通
 platforms/mc2612/       待建；26.1.2 Fabric 适配
 platforms/mc262/        待建；26.2 Fabric 适配
 platforms/mc263/        已有 P0 主代码、JUnit、GameTest 和隔离 debugTools
 probes/p0b/             已有三版基础依赖／SQLite／原版容器探针，非完整平台适配
-test-support/          待建；假时钟、事件重放、故障注入和共享契约测试
+test-support/          当前假时钟、重放、故障注入和契约测试在各模块 JUnit 测试源码中
 ```
 
 核心代码不得引用 Minecraft 实体、网络包或 NBT 类。共享接口包括 `RoundWorldManager`、`PlayerStateGateway`、`DamageAttributionGateway`、`DisguiseGateway`、`BookGateway`、`ReplayGateway` 和 `ProtectionGateway`。接口方法名是设计契约，不是已存在的库 API。

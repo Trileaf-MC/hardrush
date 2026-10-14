@@ -1,0 +1,18 @@
+plugins { id 'java-library' }
+
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 25 }
+
+dependencies {
+    implementation 'org.xerial:sqlite-jdbc:3.53.4.0'
+    testImplementation platform('org.junit:junit-bom:5.14.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+jar { from('licenses') { into 'META-INF/licenses' } }
