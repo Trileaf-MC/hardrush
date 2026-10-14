@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.persistence.AsyncRoundWriterTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-14T10:18:38.538Z" hostname="LeifMacBookPro2023.local" time="0.624">
+  <properties/>
+  <testcase name="closePreservesOwnerInterruptAndStillDrainsAcceptedWork()" classname="dev.hardrush.persistence.AsyncRoundWriterTest" time="0.519"/>
+  <testcase name="closeDrainsEveryAcceptedWriteThenClosesStoreAndRejectsNewSubmissions()" classname="dev.hardrush.persistence.AsyncRoundWriterTest" time="0.038"/>
+  <testcase name="boundedQueueRejectsExcessWorkAndNeverRunsDatabaseIoOnSubmittingThread()" classname="dev.hardrush.persistence.AsyncRoundWriterTest" time="0.009"/>
+  <testcase name="asyncNativeWriteFailurePropagatesAndAllowsExplicitRetry()" classname="dev.hardrush.persistence.AsyncRoundWriterTest" time="0.04"/>
+  <testcase name="failedWriteCompletesExceptionallyWithoutPoisoningTheQueueOrPublishingData()" classname="dev.hardrush.persistence.AsyncRoundWriterTest" time="0.005"/>
+  <testcase name="completionRetainsRoundEventAndVersionTagsAndReadsUseTheSameQueue()" classname="dev.hardrush.persistence.AsyncRoundWriterTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

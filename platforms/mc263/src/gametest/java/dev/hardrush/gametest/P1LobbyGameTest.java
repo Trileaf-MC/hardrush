@@ -40,7 +40,8 @@ public final class P1LobbyGameTest {
                     var round = P1LobbyRuntime.snapshot(server).orElseThrow();
                     identity[0] = round.roundId();
                     fingerprint[0] = round.rules().fingerprint();
-                    test.assertValueEqual(round.phase(), RoundPhase.PREPARING, "Initial round awaits real world adapters");
+                    test.assertTrue(round.phase() == RoundPhase.PREPARING || round.phase() == RoundPhase.WAITING
+                            || round.phase() == RoundPhase.RECOVERY_REQUIRED, "Initial round prepares, waits, or retains an earlier crash marker");
                     test.assertTrue(!round.cleanShutdown(), "Running process was marked dirty before runtime opened");
                     test.assertValueEqual(round.challengeNanos(), 0L, "Worldless foundation has no race time");
                     test.assertTrue(round.participants().isEmpty(), "Worldless foundation has no participants");
@@ -72,7 +73,8 @@ public final class P1LobbyGameTest {
                 .thenExecute(() -> {
                     var round = P1LobbyRuntime.snapshot(server).orElseThrow();
                     test.assertValueEqual(round.roundId(), identity[0], "Commands preserve round identity");
-                    test.assertValueEqual(round.phase(), RoundPhase.PREPARING, "Commands cannot unlock world preparation");
+                    test.assertTrue(round.phase() == RoundPhase.PREPARING || round.phase() == RoundPhase.WAITING
+                            || round.phase() == RoundPhase.RECOVERY_REQUIRED, "Commands cannot start a race or clear a crash marker");
                     test.assertValueEqual(round.challengeNanos(), 0L, "Commands cannot fabricate race time");
                     test.assertTrue(round.participants().isEmpty(), "No fake participating players");
                     test.assertValueEqual(dispatch(server.createCommandSourceStack(), "hardrush status"), 1,

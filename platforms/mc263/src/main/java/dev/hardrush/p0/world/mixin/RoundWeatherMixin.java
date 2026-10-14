@@ -1,6 +1,7 @@
 package dev.hardrush.p0.world.mixin;
 
 import dev.hardrush.p0.world.RoundRuntimeLevel;
+import dev.hardrush.p1.world.P1RoundRuntimeLevel;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.WeatherData;
@@ -14,6 +15,8 @@ public abstract class RoundWeatherMixin {
     @Redirect(method = "<init>", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/MinecraftServer;getWeatherData()Lnet/minecraft/world/level/saveddata/WeatherData;"))
     private WeatherData hardrush$initialWeather(MinecraftServer server) {
-        return (Object) this instanceof RoundRuntimeLevel level ? level.getWeatherData() : server.getWeatherData();
+        if ((Object) this instanceof RoundRuntimeLevel level) return level.getWeatherData();
+        if ((Object) this instanceof P1RoundRuntimeLevel level) return level.getWeatherData();
+        return server.getWeatherData();
     }
 }

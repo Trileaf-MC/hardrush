@@ -494,7 +494,8 @@ public final class MonsterRoleGameTest {
         var player=new ServerPlayer(server,test.getLevel(),profile,ClientInformation.createDefault());
         var connection=new SinkConnection();
         CHANNELS.put(player.getUUID(),new EmbeddedChannel(connection));
-        server.getPlayerList().placeNewPlayer(connection,player,CommonListenerCookie.createInitial(profile,false));
+        dev.hardrush.p1.player.P1PlayerProfiles.runUnmanagedFixture(() ->
+                server.getPlayerList().placeNewPlayer(connection,player,CommonListenerCookie.createInitial(profile,false)));
         for(int dx=-6;dx<=6;dx++)for(int dz=-6;dz<=6;dz++) {
             test.getLevel().setBlockAndUpdate(new BlockPos(center+dx,149,dz),Blocks.SMOOTH_STONE.defaultBlockState());
             for(int y=150;y<=154;y++)test.getLevel().setBlockAndUpdate(new BlockPos(center+dx,y,dz),Blocks.AIR.defaultBlockState());

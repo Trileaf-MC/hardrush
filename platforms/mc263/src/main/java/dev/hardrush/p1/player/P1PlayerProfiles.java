@@ -1,0 +1,707 @@
+package dev.hardrush.p1.player;
+
+import dev.hardrush.core.config.GameMode;
+import dev.hardrush.core.round.RoundSnapshot;
+import dev.hardrush.core.round.RoundPhase;
+import dev.hardrush.core.round.ParticipantRole;
+import dev.hardrush.p1.player.mixin.PlayerProfileResetAccessor;
+import dev.hardrush.p1.player.mixin.PlayerCooldownAccessor;
+import dev.hardrush.p1.player.mixin.PlayerAdvancementProfileAccessor;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.advancements.AdvancementProgress;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtAccounter;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetHealthPacket;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.ai.attributes.AttributeMap;
+import net.minecraft.world.entity.player.Abilities;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.food.FoodData;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.inventory.AbstractCraftingMenu;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/** Main-thread player quarantine with a separate archive worker and generation-tagged callbacks. */
+public final class P1PlayerProfiles implements AutoCloseable {
+    private static final Logger LOGGER = LoggerFactory.getLogger("hardrush-p1-profiles");
+    private static final Map<MinecraftServer, P1PlayerProfiles> SERVICES = new IdentityHashMap<>();
+    private static final ThreadLocal<Integer> UNMANAGED_FIXTURE_DEPTH = ThreadLocal.withInitial(() -> 0);
+    private static final String FRESH = "hardrush_fresh_profile";
+    private static final String SUSPENSION_ID = "hardrush_suspension_id";
+    private final MinecraftServer server;
+    private final Supplier<ServerLevel> lobby;
+    private final Supplier<Vec3> lobbySpawn;
+    private final Map<UUID, Entry> players = new LinkedHashMap<>();
+    private final ExecutorService io;
+    private final CompletableFuture<ProfileJournal> journal;
+    private boolean closed;
+
+    public P1PlayerProfiles(MinecraftServer server, Path root, Supplier<ServerLevel> lobby, Supplier<Vec3> lobbySpawn) {
+        this.server = server;
+        this.lobby = lobby;
+        this.lobbySpawn = lobbySpawn;
+        io = Executors.newSingleThreadExecutor(task -> {
+            var thread = new Thread(task, "hardrush-p1-profiles");
+            thread.setDaemon(true);
+            return thread;
+        });
+        journal = supply(() -> new ProfileJournal(root));
+    }
+
+    public static void install(MinecraftServer server, P1PlayerProfiles service) {
+        if (SERVICES.putIfAbsent(server, service) != null) throw new IllegalStateException("Profile service already installed");
+    }
+
+    public static void uninstall(MinecraftServer server) { SERVICES.remove(server); }
+
+    /** Explicit scope used by the separately packaged GameTest helper; no environment-based production exemption. */
+    public static void runUnmanagedFixture(Runnable fixture) {
+        int previous = UNMANAGED_FIXTURE_DEPTH.get();
+        UNMANAGED_FIXTURE_DEPTH.set(previous + 1);
+        try { fixture.run(); }
+        finally {
+            if (previous == 0) UNMANAGED_FIXTURE_DEPTH.remove();
+            else UNMANAGED_FIXTURE_DEPTH.set(previous);
+        }
+    }
+
+    /** HEAD of placeNewPlayer: before the login packet and before player/world tick or gameplay packets. */
+    public static void beforeLogin(ServerPlayer player) {
+        if (UNMANAGED_FIXTURE_DEPTH.get() > 0) {
+            ((ProfileTagged) player).hardrush$isolated(false);
+            return;
+        }
+        if (!Boolean.getBoolean("hardrush.p1.enabled")) return;
+        var service = SERVICES.get(player.level().getServer());
+        if (service != null) service.onLogin(player);
+        else {
+            // Initialization failure must never fall back to entering the saved competition world.
+            ((ProfileTagged) player).hardrush$isolated(true);
+            player.stopRiding();
+            var server = player.level().getServer();
+            var level = server.overworld();
+            player.setServerLevel(level);
+            var spawn = level.getRespawnData().pos();
+            player.setPos(spawn.getX() + .5, spawn.getY(), spawn.getZ() + .5);
+        }
+    }
+
+    public static void afterLogin(ServerPlayer player) {
+        if (UNMANAGED_FIXTURE_DEPTH.get() > 0) return;
+        var service = SERVICES.get(player.level().getServer());
+        if (service != null) service.onConnected(player);
+    }
+
+    public static boolean isLocked(ServerPlayer player) {
+        if (!Boolean.getBoolean("hardrush.p1.enabled")) return false;
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        if (entry == null || entry.player != player) return ((ProfileTagged) player).hardrush$isolated();
+        return !entry.admitted;
+    }
+
+    /** Before durable suspension exists, retain vanilla player/advancement files rather than saving lobby coordinates. */
+    public static boolean allowVanillaSave(ServerPlayer player) {
+        if (!Boolean.getBoolean("hardrush.p1.enabled")) return true;
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        if (entry == null || entry.player != player) return !((ProfileTagged) player).hardrush$isolated();
+        return entry.admitted || entry.diskSafe;
+    }
+
+    public static boolean isRespawnAllowed(ServerPlayer player) {
+        return Boolean.getBoolean("hardrush.p1.enabled") && ((ProfileTagged) player).hardrush$respawnPermitted()
+                && isLocked(player);
+    }
+
+    public void onLogin(ServerPlayer player) {
+        requireMainThread();
+        var tagged = (ProfileTagged) player;
+        var source = tagged.hardrush$generation();
+        boolean wasIsolated = tagged.hardrush$isolated();
+        CompoundTag original = capture(player, false);
+        if (player.connection == null) tagged.hardrush$loadedProfile().ifPresent(loaded -> {
+            for (String lateField : new String[]{"Dimension", "Pos", "Rotation", "RootVehicle", ServerPlayer.ENDER_PEARLS_TAG}) {
+                if (loaded.contains(lateField)) original.put(lateField, loaded.get(lateField).copy());
+            }
+        });
+        var entry = new Entry(player, source, wasIsolated, original);
+        players.put(player.getUUID(), entry);
+        tagged.hardrush$isolated(true);
+        tagged.hardrush$respawnPermitted(false);
+        player.stopRiding();
+        player.ejectPassengers();
+        player.setServerLevel(lobby.get());
+        player.setPos(lobbySpawn.get());
+        player.setDeltaMovement(Vec3.ZERO);
+        player.resetFallDistance();
+        player.portalProcess = null;
+        for (var pearl : Set.copyOf(player.getEnderPearls())) pearl.discard();
+    }
+
+    public void onConnected(ServerPlayer player) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        if (entry == null || entry.player != player) onLogin(player);
+        ((ProfileTagged) player).hardrush$clearLoadedProfile();
+        moveToLobby(player);
+        player.sendSystemMessage(Component.literal("玩家档案正在隔离并核验；完成后才允许加入本轮。"));
+    }
+
+    public void onDisconnect(ServerPlayer player) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        if (entry != null && entry.player == player) {
+            entry.connected = false;
+            players.remove(player.getUUID());
+        }
+    }
+
+    /** Ordinary vanilla respawn preserves ender storage/advancements and the vanilla bed/anchor destination. */
+    public void onRespawn(ServerPlayer previous, ServerPlayer replacement, RoundSnapshot round) {
+        requireMainThread();
+        var entry = players.get(previous.getUUID());
+        if (round.rules().mode() != GameMode.NORMAL || entry == null || entry.player != previous || !entry.admitted && !entry.deathScreenPermit
+                || !generation(round).equals(entry.target)) {
+            onLogin(replacement);
+            moveToLobby(replacement);
+            return;
+        }
+        ((ProfileTagged) replacement).hardrush$generation(entry.target);
+        ((ProfileTagged) replacement).hardrush$suspensionId(((ProfileTagged) previous).hardrush$suspensionId());
+        ((ProfileTagged) replacement).hardrush$isolated(false);
+        var participant = round.participants().get(replacement.getUUID());
+        if (participant == null) throw new IllegalStateException("普通重生缺少本轮参与身份");
+        int nextLife = Math.addExact(participant.lifeSequence(), 1);
+        ((ProfileTagged) replacement).hardrush$lifeSequence(nextLife);
+        ((ProfileTagged) replacement).hardrush$respawnPermitted(false);
+        var rebound = new Entry(replacement, Optional.of(entry.target), false, capture(replacement, false));
+        rebound.target = entry.target;
+        rebound.awaitingRespawn = true;
+        rebound.expectedRespawnLife = nextLife;
+        ((ProfileTagged) replacement).hardrush$isolated(true);
+        players.put(replacement.getUUID(), rebound);
+        prepare(rebound, entry.target);
+    }
+
+    /** Unlock the vanilla bed/anchor destination only after the replacement life has durably committed. */
+    public boolean confirmRespawn(ServerPlayer player, RoundSnapshot round) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        var participant = round.participants().get(player.getUUID());
+        if (closed || round.rules().mode() != GameMode.NORMAL || round.phase() != RoundPhase.RUNNING
+                || entry == null || entry.player != player || !isReady(player.getUUID(), round)
+                || participant == null || participant.role() != ParticipantRole.HUMAN_ACTIVE
+                || participant.lifeSequence() != entry.expectedRespawnLife) return false;
+        if (!entry.awaitingRespawn) return entry.admitted;
+        entry.awaitingRespawn = false;
+        entry.admitted = true;
+        ((ProfileTagged) player).hardrush$isolated(false);
+        ((ProfileTagged) player).hardrush$respawnPermitted(false);
+        return true;
+    }
+
+    /** Restore a committed dead human's same-round context, exposing only vanilla's respawn request. */
+    public boolean permitRespawn(ServerPlayer player, RoundSnapshot round, Predicate<ServerLevel> belongsToRound) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        var participant = round.participants().get(player.getUUID());
+        if (closed || round.rules().mode() != GameMode.NORMAL || round.phase() != RoundPhase.RUNNING
+                || !isReady(player.getUUID(), round) || entry.player != player || entry.fresh || entry.admitted
+                || participant == null || participant.role() != ParticipantRole.HUMAN_RESPAWNING) return false;
+        if (entry.deathScreenPermit || entry.awaitingRespawn) return true;
+        try {
+            var snapshot = entry.resume;
+            if (snapshot == null) throw new IllegalStateException("本轮死亡恢复档案缺失");
+            int savedLife = snapshot.getIntOr("hardrush_life_sequence", 0);
+            float health = snapshot.getFloatOr("Health", 0);
+            int nextLife = Math.addExact(participant.lifeSequence(), 1);
+            boolean deadLife = health <= 0 && savedLife == participant.lifeSequence();
+            boolean newbornLife = health > 0 && savedLife == nextLife;
+            if (!deadLife && !newbornLife) throw new IllegalStateException("原版存档与死亡生命序号不一致，保留档案等待核验");
+            var dimension = snapshot.getString("Dimension").map(Identifier::parse)
+                    .map(id -> ResourceKey.create(Registries.DIMENSION, id)).map(server::getLevel).orElse(null);
+            if (dimension == null || !belongsToRound.test(dimension)) throw new IllegalStateException("死亡位置不属于本轮已就绪维度");
+            player.load(TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), snapshot.copy()));
+            ((ProfileTagged) player).hardrush$clearLoadedProfile();
+            restoreCarriedAndCrafting(player, snapshot);
+            restoreAdvancements(player, snapshot);
+            var position = player.position();
+            player.teleportTo(dimension, position.x, position.y, position.z, Set.of(), player.getYRot(), player.getXRot(), true);
+            ((ProfileTagged) player).hardrush$generation(entry.target);
+            ((ProfileTagged) player).hardrush$isolated(true);
+            ((ProfileTagged) player).hardrush$lifeSequence(savedLife);
+            ((ProfileTagged) player).hardrush$respawnPermitted(deadLife);
+            entry.deathScreenPermit = deadLife;
+            entry.awaitingRespawn = newbornLife;
+            entry.expectedRespawnLife = nextLife;
+            player.resetSentInfo();
+            player.inventoryMenu.sendAllDataToRemote();
+            player.connection.send(new ClientboundSetHealthPacket(player.getHealth(), player.getFoodData().getFoodLevel(), player.getFoodData().getSaturationLevel()));
+            return true;
+        } catch (RuntimeException error) { fail(entry, error); moveToLobby(player); return false; }
+    }
+
+    /** A stamped vanilla newborn saved before SQLite completion needs the existing replacement life committed, not a second respawn. */
+    public boolean respawnCommitPending(ServerPlayer player, RoundSnapshot round) {
+        var entry = players.get(player.getUUID());
+        var participant = round.participants().get(player.getUUID());
+        return entry != null && entry.player == player && entry.awaitingRespawn && !entry.deathScreenPermit
+                && isReady(player.getUUID(), round) && participant != null
+                && participant.role() == ParticipantRole.HUMAN_RESPAWNING
+                && entry.expectedRespawnLife == participant.lifeSequence() + 1;
+    }
+
+    public void tick(RoundSnapshot round) {
+        requireMainThread();
+        if (closed) return;
+        var target = generation(round);
+        for (var entry : java.util.List.copyOf(players.values())) {
+            if (!entry.connected) continue;
+            if (entry.target != null && !entry.target.equals(target)) {
+                onLogin(entry.player);
+                entry = players.get(entry.player.getUUID());
+                moveToLobby(entry.player);
+            }
+            if (entry.target == null && entry.problem.isEmpty()) prepare(entry, target);
+        }
+    }
+
+    public boolean isReady(UUID playerId) {
+        var entry = players.get(playerId);
+        return entry != null && entry.connected && entry.ready && entry.problem.isEmpty();
+    }
+
+    public boolean isReady(UUID playerId, RoundSnapshot round) {
+        var entry = players.get(playerId);
+        return isReady(playerId) && generation(round).equals(entry.target)
+                && ((ProfileTagged) entry.player).hardrush$generation().map(entry.target::equals).orElse(false);
+    }
+
+    public boolean manages(ServerPlayer player) {
+        var entry = players.get(player.getUUID());
+        return entry != null && entry.player == player;
+    }
+
+    public String diagnostic(UUID playerId) {
+        var entry = players.get(playerId);
+        if (entry == null) return "unmanaged";
+        return "source=" + entry.source + ",target=" + entry.target + ",initiallyIsolated=" + entry.wasIsolated
+                + ",fresh=" + entry.fresh + ",ready=" + entry.ready + ",admitted=" + entry.admitted
+                + ",originalInventory=" + entry.original.getListOrEmpty("Inventory")
+                + ",resumeInventory=" + (entry.resume == null ? "missing" : entry.resume.getListOrEmpty("Inventory"));
+    }
+
+    public Optional<String> failure(UUID playerId) {
+        var entry = players.get(playerId);
+        return entry == null || entry.problem.isEmpty() ? Optional.empty() : Optional.of(entry.problem);
+    }
+
+    /** Called only after the participant/online transition has committed. Returns false without unlocking on failure. */
+    public boolean admit(ServerPlayer player, RoundSnapshot round, ServerLevel spawnLevel, Vec3 spawn,
+            Predicate<ServerLevel> belongsToRound) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        var participant = round.participants().get(player.getUUID());
+        if (closed || round.rules().mode() != GameMode.NORMAL || !isReady(player.getUUID(), round)
+                || round.phase() != RoundPhase.RUNNING || participant == null
+                || participant.role() != ParticipantRole.HUMAN_ACTIVE
+                || entry.player != player || !generation(round).equals(entry.target)) return false;
+        if (entry.admitted) return true;
+        if (entry.awaitingRespawn) return confirmRespawn(player, round);
+        try {
+            if (!entry.fresh) {
+                var snapshot = entry.resume;
+                if (snapshot == null) throw new IllegalStateException("本轮恢复档案缺失");
+                if (snapshot.getIntOr("hardrush_life_sequence", 0) != participant.lifeSequence()) {
+                    throw new IllegalStateException("人类档案生命序号不匹配，禁止恢复旧生命物资");
+                }
+                var dimension = snapshot.getString("Dimension").map(Identifier::parse)
+                        .map(id -> ResourceKey.create(Registries.DIMENSION, id))
+                        .map(server::getLevel).orElse(null);
+                if (dimension == null || !belongsToRound.test(dimension)) {
+                    throw new IllegalStateException("本轮恢复位置不属于已就绪的三个维度");
+                }
+                player.load(TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), snapshot.copy()));
+                ((ProfileTagged) player).hardrush$clearLoadedProfile();
+                restoreCarriedAndCrafting(player, snapshot);
+                restoreAdvancements(player, snapshot);
+                var position = player.position();
+                player.teleportTo(dimension, position.x, position.y, position.z, Set.of(), player.getYRot(), player.getXRot(), true);
+            } else {
+                if (!belongsToRound.test(spawnLevel)) throw new IllegalStateException("本轮出生点维度未就绪");
+                player.teleportTo(spawnLevel, spawn.x, spawn.y, spawn.z, Set.of(), 0, 0, true);
+            }
+            ((ProfileTagged) player).hardrush$generation(entry.target);
+            ((ProfileTagged) player).hardrush$lifeSequence(participant.lifeSequence());
+            ((ProfileTagged) player).hardrush$isolated(false);
+            ((ProfileTagged) player).hardrush$respawnPermitted(false);
+            entry.admitted = true;
+            if (!entry.fresh) {
+                var input = TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), entry.resume);
+                player.loadAndSpawnParentVehicle(input);
+                player.loadAndSpawnEnderPearls(input);
+            }
+            player.resetSentInfo();
+            player.onUpdateAbilities();
+            player.inventoryMenu.sendAllDataToRemote();
+            server.getPlayerList().sendActivePlayerEffects(player);
+            return true;
+        } catch (RuntimeException error) { fail(entry, error); moveToLobby(player); return false; }
+    }
+
+    /** A completed participant remains suspended in the lobby until another durable entry permits restoration. */
+    public void returnToLobby(ServerPlayer player) {
+        var entry = players.get(player.getUUID());
+        if (entry != null && entry.player == player && !entry.admitted) {
+            moveToLobby(player);
+            return;
+        }
+        onLogin(player);
+        var suspended = players.get(player.getUUID());
+        // Session failure can stop tick(). Save the captured same-generation survival state immediately,
+        // so a normal stop while quarantined cannot discard the player's latest inventory or coordinates.
+        suspended.source.ifPresent(generation -> prepare(suspended, generation));
+        moveToLobby(player);
+    }
+
+    private void prepare(Entry entry, ProfileJournal.Generation target) {
+        entry.target = target;
+        var playerId = entry.player.getUUID();
+        supply(() -> {
+            var store = journal.join();
+            boolean same = entry.source.map(target::equals).orElse(false);
+            var transition = store.transition(playerId);
+            // A clean stop while suspended may retain an older vanilla marker because saves were held.
+            // The verified current-generation suspension is authoritative, and must not become an empty reset.
+            if (!same && transition.isPresent() && transition.get().target().equals(target)
+                    && transition.get().phase() == ProfileJournal.Phase.VERIFIED) {
+                var suspended = store.suspended(playerId, target);
+                if (suspended.isPresent()) {
+                    var restored = decode(suspended.get());
+                    if (!restored.getBooleanOr(FRESH, false)) return new Plan(true, restored, transition.get());
+                }
+            }
+            if (same && transition.isPresent() && transition.get().target().equals(target)
+                    && transition.get().phase() == ProfileJournal.Phase.VERIFIED) {
+                byte[] resume;
+                var storedSuspension = store.suspended(playerId, target);
+                var storedSnapshot = storedSuspension.isPresent() ? decode(storedSuspension.get()) : null;
+                boolean newerSuspension = storedSnapshot != null && !storedSnapshot.getBooleanOr(FRESH, false)
+                        && !storedSnapshot.getStringOr(SUSPENSION_ID, "").equals(entry.original.getStringOr(SUSPENSION_ID, ""));
+                if (entry.wasIsolated || newerSuspension) resume = storedSuspension
+                        .orElseThrow(() -> new IOException("隔离中的本轮恢复档案缺失"));
+                else {
+                    var snapshot = entry.original.copy();
+                    snapshot.putString(SUSPENSION_ID, UUID.randomUUID().toString());
+                    resume = encode(snapshot);
+                    store.suspend(playerId, target, resume);
+                }
+                return new Plan(true, decode(resume), transition.get());
+            }
+            if (same && transition.isEmpty()) throw new IOException("玩家代数存在，但持久化转换记录缺失");
+            byte[] oldSnapshot = entry.wasIsolated && entry.source.isPresent()
+                    ? store.suspended(playerId, entry.source.get()).orElseGet(() -> uncheckedEncode(entry.original))
+                    : encode(entry.original);
+            var prepared = store.prepare(playerId, entry.source, target, oldSnapshot);
+            return new Plan(false, null, prepared);
+        }).whenComplete((plan, error) -> server.execute(() -> {
+            if (!current(entry, target)) return;
+            if (error != null) { fail(entry, error); return; }
+            if (plan.same()) {
+                entry.resume = plan.snapshot();
+                entry.fresh = entry.resume.getBooleanOr(FRESH, false);
+                ((ProfileTagged) entry.player).hardrush$generation(target);
+                ((ProfileTagged) entry.player).hardrush$suspensionId(entry.resume.getStringOr(SUSPENSION_ID, ""));
+                closeSuspendedContainer(entry.player);
+                entry.diskSafe = true;
+                entry.ready = true;
+                return;
+            }
+            try {
+                resetForNewRound(entry.player, target);
+                ((ProfileTagged) entry.player).hardrush$suspensionId(UUID.randomUUID().toString());
+                entry.resume = capture(entry.player, true);
+                entry.fresh = true;
+                var resetSnapshot = entry.resume.copy();
+                supply(() -> {
+                    var store = journal.join();
+                    store.suspend(playerId, target, encode(resetSnapshot));
+                    if (plan.transition().phase() == ProfileJournal.Phase.PREPARED) {
+                        store.advance(playerId, target, ProfileJournal.Phase.PREPARED, ProfileJournal.Phase.APPLIED);
+                    }
+                    store.advance(playerId, target, ProfileJournal.Phase.APPLIED, ProfileJournal.Phase.VERIFIED);
+                    return null;
+                }).whenComplete((ignored, phaseError) -> server.execute(() -> {
+                    if (!current(entry, target)) return;
+                    if (phaseError != null) fail(entry, phaseError);
+                    else { entry.diskSafe = true; entry.ready = true; }
+                }));
+            } catch (RuntimeException resetError) { fail(entry, resetError); }
+        }));
+    }
+
+    private boolean current(Entry entry, ProfileJournal.Generation target) {
+        return !closed && players.get(entry.player.getUUID()) == entry && target.equals(entry.target);
+    }
+
+    private void fail(Entry entry, Throwable error) {
+        while (error instanceof CompletionException && error.getCause() != null) error = error.getCause();
+        entry.problem = "档案转换失败，已保留旧档案并禁止参赛：" + error.getMessage();
+        entry.ready = false;
+        entry.admitted = false;
+        ((ProfileTagged) entry.player).hardrush$isolated(true);
+        ((ProfileTagged) entry.player).hardrush$respawnPermitted(false);
+        LOGGER.error("{} UUID={}", entry.problem, entry.player.getUUID(), error);
+        if (entry.connected && entry.player.connection != null) entry.player.sendSystemMessage(Component.literal(entry.problem));
+    }
+
+    private void moveToLobby(ServerPlayer player) {
+        var position = lobbySpawn.get();
+        player.teleportTo(lobby.get(), position.x, position.y, position.z, Set.of(), 0, 0, true);
+        player.setDeltaMovement(Vec3.ZERO);
+        player.resetFallDistance();
+    }
+
+    private static CompoundTag capture(ServerPlayer player, boolean fresh) {
+        var output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
+        player.saveWithoutId(output);
+        output.store("hardrush_carried", ItemStack.OPTIONAL_CODEC, player.containerMenu.getCarried().copy());
+        var craft = output.list("hardrush_crafting", ItemStack.OPTIONAL_CODEC);
+        for (int slot = 0; slot < player.inventoryMenu.getCraftSlots().getContainerSize(); slot++) {
+            craft.add(player.inventoryMenu.getCraftSlots().getItem(slot).copy());
+        }
+        if (player.containerMenu instanceof AbstractCraftingMenu external && external != player.inventoryMenu) {
+            var externalItems = output.list("hardrush_external_crafting", ItemStack.OPTIONAL_CODEC);
+            external.getInputGridSlots().forEach(slot -> externalItems.add(slot.getItem().copy()));
+        }
+        var advancements = output.child("hardrush_archived_advancements");
+        for (var holder : player.level().getServer().getAdvancements().getAllAdvancements()) {
+            var progress = player.getAdvancements().getOrStartProgress(holder);
+            if (progress.hasProgress()) advancements.store(holder.id().toString(), AdvancementProgress.CODEC, progress);
+        }
+        var tag = output.buildResult();
+        tag.putBoolean(FRESH, fresh);
+        return tag.copy();
+    }
+
+    private static void restoreCarriedAndCrafting(ServerPlayer player, CompoundTag snapshot) {
+        var input = TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), snapshot);
+        player.inventoryMenu.setCarried(input.read("hardrush_carried", ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY));
+        var crafting = input.listOrEmpty("hardrush_crafting", ItemStack.OPTIONAL_CODEC);
+        int slot = 0;
+        for (var stack : crafting) {
+            if (slot < player.inventoryMenu.getCraftSlots().getContainerSize()) player.inventoryMenu.getCraftSlots().setItem(slot++, stack);
+        }
+        // Crafting-table input belongs to this player. Shared chest contents are deliberately absent from the snapshot.
+        for (var stack : input.listOrEmpty("hardrush_external_crafting", ItemStack.OPTIONAL_CODEC)) {
+            if (stack.isEmpty()) continue;
+            int empty = player.getInventory().getFreeSlot();
+            if (empty < 0) throw new IllegalStateException("恢复工作台物品需要背包空位，旧档案已保留");
+            player.getInventory().setItem(empty, stack);
+        }
+    }
+
+    private static void restoreAdvancements(ServerPlayer player, CompoundTag snapshot) {
+        var access = (PlayerAdvancementProfileAccessor) player.getAdvancements();
+        player.getAdvancements().clearTriggers();
+        access.hardrush$progress().clear();
+        access.hardrush$visible().clear();
+        access.hardrush$progressChanged().clear();
+        access.hardrush$rootsToUpdate().clear();
+        access.hardrush$firstPacket(true);
+        var input = TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(), snapshot)
+                .childOrEmpty("hardrush_archived_advancements");
+        for (var holder : player.level().getServer().getAdvancements().getAllAdvancements()) {
+            var progress = input.read(holder.id().toString(), AdvancementProgress.CODEC).orElseGet(AdvancementProgress::new);
+            progress.update(holder.value().requirements());
+            access.hardrush$progress().put(holder, progress);
+            access.hardrush$progressChanged().add(holder);
+            access.hardrush$markVisibility(holder);
+            access.hardrush$registerListeners(holder);
+        }
+        player.getAdvancements().setSelectedTab(null);
+        player.getAdvancements().flushDirty(player, true);
+    }
+
+    private static void closeSuspendedContainer(ServerPlayer player) {
+        player.containerMenu.setCarried(ItemStack.EMPTY);
+        if (player.containerMenu instanceof AbstractCraftingMenu crafting) {
+            crafting.getInputGridSlots().forEach(slot -> slot.set(ItemStack.EMPTY));
+        }
+        player.inventoryMenu.getCraftSlots().clearContent();
+        player.closeContainer();
+    }
+
+    /** Cross-round only. Ordinary death/respawn must never call this method. */
+    public static void resetForNewRound(ServerPlayer player, ProfileJournal.Generation generation) {
+        closeSuspendedContainer(player);
+        player.getInventory().clearContent();
+        for (var slot : EquipmentSlot.values()) player.setItemSlot(slot, ItemStack.EMPTY);
+        player.getInventory().setSelectedSlot(0);
+        player.getEnderChestInventory().clearContent();
+        player.removeAllEffects();
+        player.clearPostEffects();
+        var defaults = new AttributeMap(Player.createAttributes().build());
+        for (var packed : player.getAttributes().pack()) {
+            var instance = player.getAttributes().getInstance(packed.attribute());
+            if (instance == null) continue;
+            instance.removeModifiers();
+            instance.setBaseValue(defaults.hasAttribute(packed.attribute())
+                    ? defaults.getBaseValue(packed.attribute()) : packed.attribute().value().getDefaultValue());
+        }
+        player.setHealth(player.getMaxHealth());
+        player.setAbsorptionAmount(0);
+        ((PlayerProfileResetAccessor) player).hardrush$setFoodData(new FoodData());
+        for (var cooldown : Set.copyOf(((PlayerCooldownAccessor) player.getCooldowns()).hardrush$cooldowns().keySet())) {
+            player.getCooldowns().removeCooldown(cooldown);
+        }
+        player.experienceLevel = 0;
+        player.totalExperience = 0;
+        player.experienceProgress = 0;
+        player.setScore(0);
+        player.getAbilities().apply(new Abilities().pack());
+        player.setGameMode(GameType.SURVIVAL);
+        player.setPermanentlyInvulnerable(false);
+        player.setNoGravity(false);
+        player.setRespawnPosition(null, false);
+        player.setLastDeathLocation(Optional.empty());
+        player.stopRiding();
+        player.ejectPassengers();
+        player.setShoulderParrotLeft(Optional.empty());
+        player.setShoulderParrotRight(Optional.empty());
+        player.setCamera(player);
+        player.stopUsingItem();
+        player.stopSleeping();
+        player.clearSleepingPos();
+        player.setPose(Pose.STANDING);
+        player.setSprinting(false);
+        player.setSwimming(false);
+        player.clearFire();
+        player.clearFreeze();
+        player.setAirSupply(player.getMaxAirSupply());
+        player.resetFallDistance();
+        player.resetCurrentImpulseContext();
+        player.setDeltaMovement(Vec3.ZERO);
+        player.setKnownMovement(Vec3.ZERO);
+        player.portalProcess = null;
+        player.setPortalCooldown(0);
+        player.setInvulnerableTime(0);
+        player.setArrowCount(0);
+        player.setStingerCount(0);
+        player.clearRaidOmenPosition();
+        if (player.fishing != null) { player.fishing.discard(); player.fishing = null; }
+        // Old pearls must never teleport a now-reset player back to the sealed generation.
+        for (var pearl : Set.copyOf(player.getEnderPearls())) pearl.discard();
+        for (var holder : player.level().getServer().getAdvancements().getAllAdvancements()) {
+            var completed = new java.util.ArrayList<String>();
+            player.getAdvancements().getOrStartProgress(holder).getCompletedCriteria().forEach(completed::add);
+            completed.forEach(criterion -> player.getAdvancements().revoke(holder, criterion));
+        }
+        player.getAdvancements().setSelectedTab(null);
+        player.resetRecipes(player.level().getServer().getRecipeManager().getRecipes());
+        player.getRecipeBook().sendInitialRecipeBook(player);
+        player.getAdvancements().flushDirty(player, true);
+        ((ProfileTagged) player).hardrush$generation(generation);
+        ((ProfileTagged) player).hardrush$lifeSequence(0);
+        ((ProfileTagged) player).hardrush$respawnPermitted(false);
+        ((ProfileTagged) player).hardrush$isolated(true);
+        player.resetSentInfo();
+        player.onUpdateAbilities();
+        player.inventoryMenu.sendAllDataToRemote();
+    }
+
+    private static ProfileJournal.Generation generation(RoundSnapshot round) {
+        return new ProfileJournal.Generation(round.roundId(), round.sequence());
+    }
+
+    private void requireMainThread() {
+        if (!server.isSameThread()) throw new IllegalStateException("Minecraft profile changes require the server thread");
+    }
+
+    private <T> CompletableFuture<T> supply(IoAction<T> action) {
+        return CompletableFuture.supplyAsync(() -> {
+            try { return action.run(); }
+            catch (Exception error) { throw new CompletionException(error); }
+        }, io);
+    }
+
+    private static byte[] encode(CompoundTag snapshot) throws IOException {
+        var bytes = new ByteArrayOutputStream();
+        NbtIo.writeCompressed(snapshot, bytes);
+        return bytes.toByteArray();
+    }
+
+    private static byte[] uncheckedEncode(CompoundTag snapshot) {
+        try { return encode(snapshot); }
+        catch (IOException error) { throw new CompletionException(error); }
+    }
+
+    private static CompoundTag decode(byte[] bytes) throws IOException {
+        return NbtIo.readCompressed(new ByteArrayInputStream(bytes), NbtAccounter.create(16 * 1024 * 1024));
+    }
+
+    @Override public void close() throws Exception {
+        requireMainThread();
+        closed = true;
+        io.shutdown();
+        if (!io.awaitTermination(30, TimeUnit.SECONDS)) throw new IOException("Player archive worker did not drain; retain all files");
+        journal.join();
+    }
+
+    private static final class Entry {
+        final ServerPlayer player;
+        final Optional<ProfileJournal.Generation> source;
+        final boolean wasIsolated;
+        final CompoundTag original;
+        ProfileJournal.Generation target;
+        CompoundTag resume;
+        boolean connected = true;
+        boolean diskSafe;
+        boolean ready;
+        boolean fresh;
+        boolean admitted;
+        boolean awaitingRespawn;
+        int expectedRespawnLife;
+        boolean deathScreenPermit;
+        String problem = "";
+        Entry(ServerPlayer player, Optional<ProfileJournal.Generation> source, boolean wasIsolated, CompoundTag original) {
+            this.player = player; this.source = source; this.wasIsolated = wasIsolated; this.original = original;
+        }
+    }
+    private record Plan(boolean same, CompoundTag snapshot, ProfileJournal.Transition transition) {}
+    @FunctionalInterface private interface IoAction<T> { T run() throws Exception; }
+}

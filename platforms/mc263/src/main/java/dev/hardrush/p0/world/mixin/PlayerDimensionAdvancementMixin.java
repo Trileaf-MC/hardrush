@@ -1,6 +1,6 @@
 package dev.hardrush.p0.world.mixin;
 
-import dev.hardrush.p0.world.WorldProbe;
+import dev.hardrush.p1.world.RoundWorldRouting;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -23,9 +23,9 @@ public abstract class PlayerDimensionAdvancementMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerPlayer;setServerLevel(Lnet/minecraft/server/level/ServerLevel;)V"))
     private void hardrush$rememberNetherEntry(TeleportTransition transition, CallbackInfoReturnable<ServerPlayer> cir) {
         ServerPlayer player = (ServerPlayer) (Object) this;
-        if (WorldProbe.owns(player.level()) && WorldProbe.owns(transition.newLevel())
-                && WorldProbe.semanticDimension(player.level()).equals(Level.OVERWORLD)
-                && WorldProbe.semanticDimension(transition.newLevel()).equals(Level.NETHER)) {
+        if (RoundWorldRouting.sameRound(player.level(), transition.newLevel())
+                && RoundWorldRouting.semanticDimension(player.level()).equals(Level.OVERWORLD)
+                && RoundWorldRouting.semanticDimension(transition.newLevel()).equals(Level.NETHER)) {
             enteredNetherPosition = player.position();
         }
     }
@@ -34,7 +34,7 @@ public abstract class PlayerDimensionAdvancementMixin {
             target = "Lnet/minecraft/server/level/ServerLevel;dimension()Lnet/minecraft/resources/ResourceKey;"), require = 2)
     private ResourceKey<Level> hardrush$advancementDimension(ServerLevel level, ServerLevel source) {
         ServerPlayer player = (ServerPlayer) (Object) this;
-        return WorldProbe.owns(source) && WorldProbe.owns(player.level())
-                ? WorldProbe.semanticDimension(level) : level.dimension();
+        return RoundWorldRouting.sameRound(source, player.level())
+                ? RoundWorldRouting.semanticDimension(level) : level.dimension();
     }
 }

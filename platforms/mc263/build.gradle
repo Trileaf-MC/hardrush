@@ -86,6 +86,9 @@ loom.runs.named('clientGameTest') {
         if (providers.gradleProperty('hardrushP1').orNull == 'true') {
             vmArg '-Dhardrush.p1.enabled=true'
             vmArg '--enable-native-access=ALL-UNNAMED'
+            if (providers.gradleProperty('hardrushP1InitialMode').isPresent()) {
+                vmArg "-Dhardrush.p1.initialMode=${providers.gradleProperty('hardrushP1InitialMode').get()}"
+            }
         }
     }
 }

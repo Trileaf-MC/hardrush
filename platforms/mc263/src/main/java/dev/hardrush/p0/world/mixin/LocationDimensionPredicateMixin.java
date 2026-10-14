@@ -1,6 +1,6 @@
 package dev.hardrush.p0.world.mixin;
 
-import dev.hardrush.p0.world.WorldProbe;
+import dev.hardrush.p1.world.RoundWorldRouting;
 import net.minecraft.advancements.predicates.LocationPredicate;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -17,7 +17,7 @@ public abstract class LocationDimensionPredicateMixin {
         var expected = ((LocationPredicate) (Object) this).dimension().orElse(null);
         // Preserve data packs that explicitly target the real custom dimension key.
         if (expected != null && (expected.equals(Level.OVERWORLD) || expected.equals(Level.NETHER) || expected.equals(Level.END))) {
-            return WorldProbe.semanticDimension(level);
+            return RoundWorldRouting.semanticDimension(level);
         }
         return level.dimension();
     }

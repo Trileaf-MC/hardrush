@@ -1,6 +1,6 @@
 package dev.hardrush.p0.world.mixin;
 
-import dev.hardrush.p0.world.WorldProbe;
+import dev.hardrush.p1.world.RoundWorldRouting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.commands.WeatherCommand;
@@ -14,7 +14,7 @@ public abstract class RoundWeatherCommandMixin {
             target = "Lnet/minecraft/server/MinecraftServer;setWeatherParameters(IIZZ)V"))
     private static void hardrush$weatherInSourceLevel(MinecraftServer server, int clearTime, int weatherTime,
             boolean raining, boolean thundering, CommandSourceStack source, int duration) {
-        if (!WorldProbe.owns(source.getLevel())) {
+        if (!RoundWorldRouting.owns(source.getLevel())) {
             server.setWeatherParameters(clearTime, weatherTime, raining, thundering);
             return;
         }

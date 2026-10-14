@@ -53,6 +53,15 @@ public final class RoundEngine {
     }
 
     public RoundTransition proposeJoin(UUID eventId, UUID playerId, String name) {
+        return proposeJoin(eventId, playerId, name, false);
+    }
+
+    /** Platform admission is durable before play opens; online timing begins at the later unlock event. */
+    public RoundTransition proposeAdmissionJoin(UUID eventId, UUID playerId, String name) {
+        return proposeJoin(eventId, playerId, name, true);
+    }
+
+    private RoundTransition proposeJoin(UUID eventId, UUID playerId, String name, boolean admissionPending) {
         RoundSnapshot before = capture();
         requirePhase(before, RoundPhase.WAITING, RoundPhase.COUNTDOWN, RoundPhase.RUNNING, RoundPhase.RESCUE);
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
@@ -67,6 +76,7 @@ public final class RoundEngine {
         long remaining = before.remainingPhaseNanos();
         if (phase == RoundPhase.RUNNING || phase == RoundPhase.RESCUE) {
             player = player.start(before.challengeNanos());
+            if (admissionPending) player = player.withSession(name, false);
             phase = RoundPhase.RUNNING;
             remaining = 0;
         }
@@ -111,14 +121,18 @@ public final class RoundEngine {
     }
 
     public RoundTransition proposeNormalDeath(UUID eventId, UUID playerId, int expectedLifeSequence) {
-        return normalIdentity(eventId, playerId, expectedLifeSequence, ParticipantRole.HUMAN_ACTIVE, ParticipantRole.HUMAN_RESPAWNING, "NORMAL_DEATH");
+        return normalIdentity(eventId, playerId, expectedLifeSequence, ParticipantRole.HUMAN_ACTIVE, ParticipantRole.HUMAN_RESPAWNING, "NORMAL_DEATH", false);
     }
 
     public RoundTransition proposeNormalRespawn(UUID eventId, UUID playerId, int expectedLifeSequence) {
-        return normalIdentity(eventId, playerId, expectedLifeSequence, ParticipantRole.HUMAN_RESPAWNING, ParticipantRole.HUMAN_ACTIVE, "NORMAL_RESPAWN");
+        return normalIdentity(eventId, playerId, expectedLifeSequence, ParticipantRole.HUMAN_RESPAWNING, ParticipantRole.HUMAN_ACTIVE, "NORMAL_RESPAWN", false);
     }
 
-    private RoundTransition normalIdentity(UUID eventId, UUID playerId, int expectedLifeSequence, ParticipantRole expected, ParticipantRole target, String type) {
+    public RoundTransition proposeAdmissionRespawn(UUID eventId, UUID playerId, int expectedLifeSequence) {
+        return normalIdentity(eventId, playerId, expectedLifeSequence, ParticipantRole.HUMAN_RESPAWNING, ParticipantRole.HUMAN_ACTIVE, "NORMAL_RESPAWN", true);
+    }
+
+    private RoundTransition normalIdentity(UUID eventId, UUID playerId, int expectedLifeSequence, ParticipantRole expected, ParticipantRole target, String type, boolean admissionPending) {
         RoundSnapshot before = capture();
         requirePhase(before, RoundPhase.RUNNING);
         if (before.rules().mode() != GameMode.NORMAL) throw new IllegalStateException("Hardcore death requires P2 death-batch rules");
@@ -130,6 +144,7 @@ public final class RoundEngine {
             changed = new Participant(changed.id(), changed.name(), target, changed.online(), false,
                     changed.humanNanos(), changed.joinedAtChallengeNanos(), Math.addExact(changed.lifeSequence(), 1), false);
         }
+        if (admissionPending) changed = changed.withSession(changed.name(), false);
         players.put(playerId, changed);
         return proposal(eventId, type, before, before.phase(), 0, players, before.result(), false);
     }
@@ -157,6 +172,12 @@ public final class RoundEngine {
     }
 
     public RoundTransition proposeTick(UUID eventId) {
+        return proposeTick(eventId, false);
+    }
+
+    public RoundTransition proposeAdmissionTick(UUID eventId) { return proposeTick(eventId, true); }
+
+    private RoundTransition proposeTick(UUID eventId, boolean admissionPending) {
         RoundSnapshot before = capture();
         RoundPhase phase = before.phase();
         long remaining = before.remainingPhaseNanos();
@@ -168,7 +189,9 @@ public final class RoundEngine {
                 players.replaceAll((id, p) -> p.withReady(false));
             } else if (remaining == 0) {
                 phase = RoundPhase.RUNNING;
-                players.replaceAll((id, p) -> p.ready() && p.online() ? p.start(0) : p.withReady(false));
+                players.replaceAll((id, p) -> p.ready() && p.online()
+                        ? admissionPending ? p.start(0).withSession(p.name(), false) : p.start(0)
+                        : p.withReady(false));
             }
         } else if (phase == RoundPhase.SETTLING) {
             phase = remaining == 0 ? RoundPhase.ROTATING : RoundPhase.CELEBRATING;

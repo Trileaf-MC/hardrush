@@ -11,10 +11,15 @@
       "dev.hardrush.gametest.MonsterAppearanceGameTest",
       "dev.hardrush.gametest.MonsterRoleGameTest",
       "dev.hardrush.gametest.P1LobbyGameTest",
-      "dev.hardrush.gametest.P1CombatGameTest"
+      "dev.hardrush.gametest.P1CombatGameTest",
+      "dev.hardrush.gametest.P1WorldPreparationGameTest",
+      "dev.hardrush.gametest.P1ProfileGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"
     ]
-  }
+  },
+  "mixins": [
+    "hardrush.gametest.mixins.json"
+  ]
 }

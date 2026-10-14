@@ -1,0 +1,932 @@
+{
+  "date": "2026-10-14",
+  "baseline_commit": "b2d070e1ad3c9b8edbae04169eac145d94e510ae",
+  "branch": "main",
+  "minecraft": "26.3",
+  "java": 25,
+  "sqlite_jdbc": "3.53.4.0",
+  "sqlite_schema": 2,
+  "commands": [
+    "scripts/p0-gradle.sh :platforms:mc263:test checkP1 :platforms:mc263:runGameTest -PhardrushP1=true --console=plain",
+    "git diff --check"
+  ],
+  "junit": {
+    "tests": 105,
+    "failures": 0,
+    "errors": 0,
+    "suites": [
+      {
+        "module": "core",
+        "suite": "dev.hardrush.core.api.AdapterContractTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/core-TEST-dev.hardrush.core.api.AdapterContractTest.xml"
+      },
+      {
+        "module": "core",
+        "suite": "dev.hardrush.core.api.MonotonicClockTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/core-TEST-dev.hardrush.core.api.MonotonicClockTest.xml"
+      },
+      {
+        "module": "core",
+        "suite": "dev.hardrush.core.combat.CombatCausalityTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/core-TEST-dev.hardrush.core.combat.CombatCausalityTest.xml"
+      },
+      {
+        "module": "core",
+        "suite": "dev.hardrush.core.config.RulesConfigTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/core-TEST-dev.hardrush.core.config.RulesConfigTest.xml"
+      },
+      {
+        "module": "core",
+        "suite": "dev.hardrush.core.round.RoundEngineTest",
+        "tests": 19,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/core-TEST-dev.hardrush.core.round.RoundEngineTest.xml"
+      },
+      {
+        "module": "persistence",
+        "suite": "dev.hardrush.persistence.AsyncRoundWriterTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/persistence-TEST-dev.hardrush.persistence.AsyncRoundWriterTest.xml"
+      },
+      {
+        "module": "persistence",
+        "suite": "dev.hardrush.persistence.EvidenceStoreTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/persistence-TEST-dev.hardrush.persistence.EvidenceStoreTest.xml"
+      },
+      {
+        "module": "persistence",
+        "suite": "dev.hardrush.persistence.SqliteRoundStoreTest",
+        "tests": 21,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/persistence-TEST-dev.hardrush.persistence.SqliteRoundStoreTest.xml"
+      },
+      {
+        "module": "platforms/mc263",
+        "suite": "dev.hardrush.p0.world.WorldManifestTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/platforms-mc263-TEST-dev.hardrush.p0.world.WorldManifestTest.xml"
+      },
+      {
+        "module": "platforms/mc263",
+        "suite": "dev.hardrush.p1.P1LobbySessionTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/platforms-mc263-TEST-dev.hardrush.p1.P1LobbySessionTest.xml"
+      },
+      {
+        "module": "platforms/mc263",
+        "suite": "dev.hardrush.p1.player.ProfileJournalTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/platforms-mc263-TEST-dev.hardrush.p1.player.ProfileJournalTest.xml"
+      },
+      {
+        "module": "platforms/mc263",
+        "suite": "dev.hardrush.p1.world.P1WorldManifestTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-world-profiles-combat-20261014/platforms-mc263-TEST-dev.hardrush.p1.world.P1WorldManifestTest.xml"
+      }
+    ]
+  },
+  "server_gametest": {
+    "tests": 48,
+    "required_passed": 48,
+    "graphical_client": false,
+    "log": {
+      "path": "docs/evidence/p1-world-profiles-combat-20261014/check-p1-final.log",
+      "bytes": 64913,
+      "sha256": "f54a30a960a055f8175a535d3e08f963efb1324ab6fac7f3e5db689555fa62a3"
+    }
+  },
+  "metrics": {
+    "initial_prepare": {
+      "elapsed_ms": 7544,
+      "longest_chunk_ms": 1668,
+      "max_adapter_tick_us": 10685,
+      "candidates": 15,
+      "changed_blocks": 1217
+    },
+    "ready_world_reopen": {
+      "elapsed_ms": 1376,
+      "changed_blocks": 0
+    },
+    "manifest_retry": {
+      "elapsed_ms": 1022,
+      "changed_blocks": 0
+    },
+    "single_dimension_failure_retry": {
+      "elapsed_ms": 6501,
+      "same_round_seed": true
+    },
+    "scope": "Local parallel headless fixtures, not a global MSPT or P4 load benchmark"
+  },
+  "artifacts": [
+    {
+      "path": "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar",
+      "bytes": 12382942,
+      "sha256": "197d5e6617e89fe4af16cef74f2c7e57c7d79c225797309a73462afb69fd817e"
+    }
+  ],
+  "jar_inspection": {
+    "forbidden_entries": [],
+    "environment": "server",
+    "minecraft": "26.3",
+    "nested_jars": [
+      "META-INF/jars/core-0.1.0-p0.jar",
+      "META-INF/jars/fantasy-0.8.4+26.3.jar",
+      "META-INF/jars/persistence-0.1.0-p0.jar",
+      "META-INF/jars/sqlite-jdbc-3.53.4.0.jar"
+    ]
+  },
+  "source": [
+    {
+      "path": "core/src/main/java/dev/hardrush/core/api/BookPort.java",
+      "bytes": 1058,
+      "sha256": "7afa2adfd86867f498a15b426a4dbfa00a1ee55d98efae1195aa434fc53a8426"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/api/DamagePort.java",
+      "bytes": 2171,
+      "sha256": "0ac25931066522fc231f87fe8cb93a186c5ab396b35bd6aab414120357890927"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/api/DisguisePort.java",
+      "bytes": 504,
+      "sha256": "ac39a828b65cc62241218f8398fc7bbc0a676ed00723aea71180e3c277d81a28"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/api/MonotonicClock.java",
+      "bytes": 269,
+      "sha256": "fae64996a046435ecdf622109be4140fb88aef8edc43ae3d872136180676d107"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/api/OperationResult.java",
+      "bytes": 1439,
+      "sha256": "f75e973e22b038ed8197d2ca81c51fd2ac25f5d9439af59e8614ea90c3352acc"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/api/OperationTag.java",
+      "bytes": 677,
+      "sha256": "92d5abf33dc32128c25a50696232eeaa04ecfdc9520b75a12846ccb332c9dff3"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/api/PlayerPort.java",
+      "bytes": 1110,
+      "sha256": "8535b0352872a056bdbbc8d7e345a4f2f7661ac76c735ada1f1404dbe3215520"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/api/ProtectionPort.java",
+      "bytes": 859,
+      "sha256": "3d4741b5364249d3d5e7b723a5d8691ee32f152b2d4ec35d53f2ae1418a8809d"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/api/ReplayPort.java",
+      "bytes": 976,
+      "sha256": "501b5b6bfeca52efb4f7ce69d45c383a3b89f2c1657f489576a518619568fba2"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/api/WorldPort.java",
+      "bytes": 1903,
+      "sha256": "1f5d9702c31164dc7f004033f59cf7d2efbf321de51bd97af7698f30d702be4c"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/api/WorldPosition.java",
+      "bytes": 613,
+      "sha256": "eee2b94f4314a6161e84c1a07e3ebd158916a99d20e39c8a70ed47b5b19640d1"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/combat/CombatActor.java",
+      "bytes": 1105,
+      "sha256": "215833db41b63a0ac6518ccc830a6552bbbc94709279bf9e2eed51908756db1f"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/combat/CombatEvent.java",
+      "bytes": 1700,
+      "sha256": "471d296e521e16196590f62f366fb0c2b90a2659f8bce70804b7b7f16e91d6ca"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/combat/CombatEventCodec.java",
+      "bytes": 3398,
+      "sha256": "d7c3c191b5518f31c7829347de711ad79875d1ab27b652ca6d04baca0172bb96"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/combat/CombatLedger.java",
+      "bytes": 925,
+      "sha256": "410b5bdbdba51020d824782d47795a6ab9d6ba6098328dda0d92add1e2dc4495"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/combat/CombatOrigin.java",
+      "bytes": 1907,
+      "sha256": "da9fa3fa2b5f2f1cc96f21cf040059d56aae5672f056d49d051388925e4ecb30"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/combat/CombatOriginCodec.java",
+      "bytes": 2756,
+      "sha256": "478c785a8197ac599cd6ec8a408baacc7226ec02c5f14f57c4518f61d11d6ad1"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/config/Difficulty.java",
+      "bytes": 145,
+      "sha256": "329d5e9756192b7938b17de6ef52b6c281b261916241f4983c48d0df0bec667d"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/config/GameMode.java",
+      "bytes": 161,
+      "sha256": "c2abe85294bf5dd3dbf06853d3b2d045f4068f46a9c42e2570782e0d31389ba0"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/config/RulesConfig.java",
+      "bytes": 13433,
+      "sha256": "94062b1be420977f5e406df30cf9b8ce93d4fc1f89dc8e3bc07800b753209593"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/config/RulesConfigFile.java",
+      "bytes": 835,
+      "sha256": "68ef10dd3cba396a2473b9e64ee13170ebb7df9b0e422f0f37c5468ce063b532"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/round/Participant.java",
+      "bytes": 2284,
+      "sha256": "08b26328cc403b58d373d98c8df78a6bc9dd0c087eb3eb878c5daf7a023418fe"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/round/ParticipantRole.java",
+      "bytes": 400,
+      "sha256": "c8a7a00a975b58c55c98a3b25d800248bb69aa09c774bd8a759c024ed7b0fd2f"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/round/PauseReason.java",
+      "bytes": 154,
+      "sha256": "85c3423f5ae2fec59ee0055f71ebb3a6c5e0b2c969d978872a0d81549b14c43f"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/round/RoundEngine.java",
+      "bytes": 16574,
+      "sha256": "6574dfaf1dda75ae4d0ab6c95ba9572ed3df556605d08a86458f30884dee156c"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/round/RoundPhase.java",
+      "bytes": 164,
+      "sha256": "907fed33a0f8238c713d5a81cea4f3c238382c676001f35a020a6f8a88a53902"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/round/RoundResult.java",
+      "bytes": 629,
+      "sha256": "bca90a4e8ebe3eaed3313e55122c8ccef715efc365e2c1c701f17a64c05f2ce9"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/round/RoundSnapshot.java",
+      "bytes": 2499,
+      "sha256": "0449715f56fe2147b991061fc22a3aa9af956dc37b769ac5940249e94f478eed"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/round/RoundSnapshotCodec.java",
+      "bytes": 6277,
+      "sha256": "692051eb902d79b643d20643d2f9b34b7d5cc9219eb5da866c0dbba3edb1c23d"
+    },
+    {
+      "path": "core/src/main/java/dev/hardrush/core/round/RoundTransition.java",
+      "bytes": 702,
+      "sha256": "9f1aefea99928197f2dda4cad985e7e2c5adc0ea4bf89bd0d2527fe4b8c364a1"
+    },
+    {
+      "path": "core/src/test/java/dev/hardrush/core/api/AdapterContractTest.java",
+      "bytes": 4179,
+      "sha256": "bb5d844f9df6aa5e0b8f723bb1a28564875f7f4a982613ab615d2a40aa0d14e4"
+    },
+    {
+      "path": "core/src/test/java/dev/hardrush/core/api/MonotonicClockTest.java",
+      "bytes": 1323,
+      "sha256": "e43c9c63d4f6b324d651c909a994d973a8f3433f01e1044af3373657d0735654"
+    },
+    {
+      "path": "core/src/test/java/dev/hardrush/core/combat/CombatCausalityTest.java",
+      "bytes": 6057,
+      "sha256": "acc0edc73a480dbb0a2f815e146b884c8b3deb63c4579adebfcdc3a2c0102b05"
+    },
+    {
+      "path": "core/src/test/java/dev/hardrush/core/config/RulesConfigTest.java",
+      "bytes": 9367,
+      "sha256": "fa8129d9722b52fc36e5076f419e05cb6132a90ff5872d342db4c1f0b43fdc5e"
+    },
+    {
+      "path": "core/src/test/java/dev/hardrush/core/round/RoundEngineTest.java",
+      "bytes": 16000,
+      "sha256": "be2901efccf3e1fbd7cf67acbd19b62db66272626f95adfa78b166f500f5548b"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/AsyncRoundWriter.java",
+      "bytes": 5253,
+      "sha256": "9bbb4e74462f5e900e2bf57f2f591a46e61eabe95f8911a509a832f953736034"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/CommitResult.java",
+      "bytes": 102,
+      "sha256": "bf8f59f8830bcccf8af2075ad0591b268fd0d6f2b356320b40f2ba206f711d3f"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/EventCollisionException.java",
+      "bytes": 290,
+      "sha256": "6080f1d7bfcd96c2a83ace906801bd6fbd469047d8c2058313b1f4d9cc49d81a"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/EvidenceWrite.java",
+      "bytes": 637,
+      "sha256": "22db5da22c6052b9da87aae6ce1b1a3599adae5861f452bdd3a65627f656c021"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/OperationAdvanceResult.java",
+      "bytes": 112,
+      "sha256": "12ffae8b3f712a40ccdfd360e33f3967927c0036b7042351ff26ea03c82d37eb"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/OperationData.java",
+      "bytes": 851,
+      "sha256": "1bd3ce70db1ef5a8b6cd0bbf50bce1089088f82d0a97308a04033d41a9abb542"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/OperationStage.java",
+      "bytes": 106,
+      "sha256": "839f6da5867874badf344977e5cb20135bb78e6e9a67e39af3949b76d6b3eedb"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/PreparedOperation.java",
+      "bytes": 712,
+      "sha256": "7046d8eee6cd79dd3cef79ceb7c1926b2cfe925206d1d8ca434cb421faac0f1d"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/SafeDatabasePath.java",
+      "bytes": 2106,
+      "sha256": "b652e0b95e929ad68e14491ee6cb91b2a47473a70d8c998907128540201b3e66"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/SnapshotData.java",
+      "bytes": 475,
+      "sha256": "cc799419c65d71817e0faed4687669741c5fb23736357795cbf75eada487674d"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/SnapshotWrite.java",
+      "bytes": 1618,
+      "sha256": "73a8d551f75942c3abdfbcf4c65ab6a4e0b20acf4a1ae8823966e6dd7ce199c9"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/SqliteRoundStore.java",
+      "bytes": 27334,
+      "sha256": "9bc4360f1f7d571892f01988a1e8bd1d687cb7cbf3cbc0034db5c8184c90ce36"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/StoreValues.java",
+      "bytes": 491,
+      "sha256": "768bb1164c5b74dd96ed3f8f38cc5621718538eb6953789417430ba5454ecbbe"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/WriteCompletion.java",
+      "bytes": 242,
+      "sha256": "3491e337feccc6f0ab25efa1bfe4bc2e184f2958131e5e99811bddd2741de526"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/WriteDigest.java",
+      "bytes": 3039,
+      "sha256": "3719f0263e775eba1380697c4a5ef298b43a190f37ad8aaeadebffc33ded11bb"
+    },
+    {
+      "path": "persistence/src/test/java/dev/hardrush/persistence/AsyncRoundWriterTest.java",
+      "bytes": 8277,
+      "sha256": "833fb76e9b4364d8badefc0bcc00e20bf3f9ad9d94492cddfbead7a8ee85bc26"
+    },
+    {
+      "path": "persistence/src/test/java/dev/hardrush/persistence/EvidenceStoreTest.java",
+      "bytes": 4059,
+      "sha256": "6b23df43824d575eed305fcb029b66e8f72c5af29080f0c082841b6fd648b169"
+    },
+    {
+      "path": "persistence/src/test/java/dev/hardrush/persistence/SqliteRoundStoreTest.java",
+      "bytes": 23997,
+      "sha256": "764a1ec2aca4c37e4f079ff39926090a2928bcb4625d88a46fd189a605a7b3cf"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/HardRushClientGameTest.java",
+      "bytes": 14813,
+      "sha256": "0aca8dbb6db4e1d4288a536d595ff05c95dfc7b36465f6f007d5d7740a7d73a6"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/HardRushServerGameTest.java",
+      "bytes": 5741,
+      "sha256": "7c7021f19ac6cdefa10f67c10ad1029fa3e1868543731ff80f51d26301a3d1a2"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/HardRushWorldBoundaryGameTest.java",
+      "bytes": 34800,
+      "sha256": "8ba702b2592ffefe093bf770bfca1eac468ddbf1fd51df156dc726233c1461d7"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/MonsterAppearanceGameTest.java",
+      "bytes": 26383,
+      "sha256": "39520b028784568fa9bf639c88e4fd4b50ab6fe85217a09f73d1d80b88d984fd"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/MonsterRoleGameTest.java",
+      "bytes": 37577,
+      "sha256": "6f4b25efa74e89c44143322c62879b0b0829d0dd1834bae53c31ee8dc12506d2"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P1CombatGameTest.java",
+      "bytes": 19242,
+      "sha256": "8d9377355dfc13bb9be8b91ab9da7b339f6ad89d6c94bf344172431ea6a82875"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P1LobbyGameTest.java",
+      "bytes": 6177,
+      "sha256": "1026216aed4196e470f405bea8c87d0e10e23745c25b5e0fed627473958b8f67"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P1ProfileGameTest.java",
+      "bytes": 35351,
+      "sha256": "c29dd6229663db8e8fe0246240b36ca85cdf3e5f7b7be8c9ee7ac4c48676a253"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P1WorldPreparationGameTest.java",
+      "bytes": 21536,
+      "sha256": "e2d6cdeab3b23c6b26571c25f47ee20e1b083eec03b60787eaa5980b2ab976a3"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/mixin/UnmanagedMockPlayerMixin.java",
+      "bytes": 1201,
+      "sha256": "d5ae209a1012ca3a274f4e35aff52b6662b8729f12e9d931772b715fd35e70fc"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/resources/fabric.mod.json",
+      "bytes": 768,
+      "sha256": "11e6b14a5ae18db648d57e77f285680a812ad60c871c4ffe10a89d1389916368"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/resources/hardrush.gametest.mixins.json",
+      "bytes": 182,
+      "sha256": "6cd81d25bb7b943875c94d88a8bd9f9b7d6feb32312a4bd921b1ecd4c9730809"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/HardRushP0.java",
+      "bytes": 9104,
+      "sha256": "e4a13be6f38775105152c9f071724e728c3bb69d165549e37292ee14dabf41c3"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/DisguiseProbe.java",
+      "bytes": 16376,
+      "sha256": "22747b82fde61b0ec74f4c1b5064a04b1c5caca994f80bfba3533f26d1d2b39b"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/OwnerSkin.java",
+      "bytes": 8536,
+      "sha256": "3d53e5cb915a3cebf439e1f23a42734d432e37c6e4cc97195d3772fe4a2f5ac2"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/mixin/DisguiseConnectionMixin.java",
+      "bytes": 1572,
+      "sha256": "d029e25fc7fcf003815739e8d194e34a6940da403376191796f9abfc953f4344"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/mixin/PlayerInfoPacketAccessor.java",
+      "bytes": 576,
+      "sha256": "2487577555f3fb2c93764c005746b914299313c286dab46d78535ec649458d3b"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/MonsterEquipment.java",
+      "bytes": 4191,
+      "sha256": "5bb983e21048037fcfd70278cb9e58bec5453c9de18c2c892a7001ec942976ca"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/MonsterRoles.java",
+      "bytes": 33274,
+      "sha256": "3ceae6530574ba544e0eb8c634b42319c07f8cfbbb085729c64721f49525da56"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterArrowMixin.java",
+      "bytes": 826,
+      "sha256": "cd971de6aeebfe651086fb323976634b05b5ec017fa636832e04061d26f475af"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterEnchantmentMixin.java",
+      "bytes": 714,
+      "sha256": "eae10b7778523be66d7d617f75622ea7a92b38d1c3a8a9a58ca4a816cd694329"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterEntityAccessor.java",
+      "bytes": 519,
+      "sha256": "e105b2e9cebaf32f5f8633fcc1004897537f6925636a8936c294a58dbee2fd4a"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterExperienceMixin.java",
+      "bytes": 678,
+      "sha256": "178858f9eebe50978bc80b9cf0c33bb6a4937dcaae677b2917dc5d83e6c5bfe3"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterFoodMixin.java",
+      "bytes": 777,
+      "sha256": "dfe9a5152bdca2e199a3d45db5fc36fb62d654ec78547697ef8ca4194b97b8d4"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterInventoryMixin.java",
+      "bytes": 3225,
+      "sha256": "e34ffce6b603b9cacb1e221b5039d70a0357ab92c30dbdd251db2a40e21f4ee5"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterLivingAccessor.java",
+      "bytes": 586,
+      "sha256": "f8dd971cf520250d6d37a8667bbb48fa377dd73c5f3b30da4b00563c20f1963f"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterLivingMixin.java",
+      "bytes": 2419,
+      "sha256": "e4c0a5cb939d81eee0d0d2976ff037fc9c61a86c4bb53b94007b48ae9a9dab8e"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterMobAccessor.java",
+      "bytes": 522,
+      "sha256": "64e3ef194a59dbc2f92f986ea042f4910d7e97c136ce82df8d6d137e38727c29"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterPickupMixin.java",
+      "bytes": 836,
+      "sha256": "6512d886f6295ca71bd542b3460832b5d0f915746f74f61318294e8c0889aec2"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterPlayerMixin.java",
+      "bytes": 1833,
+      "sha256": "3888c7d3060ddc830c94bafe8f5211f7296f4ea3f8e63f97d639f03f6c31b4e5"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/NativeCreeperAccessor.java",
+      "bytes": 362,
+      "sha256": "567aa4ef5c0dfff4991295256ce39a9407fd2087f81fa8de9a3b08a60b63aeea"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/SummonTargetMixin.java",
+      "bytes": 1455,
+      "sha256": "5f77f35ec2d9ddaaa1097ae616bed4df046a9d4f35fe334c66b15b59c9ec33f4"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/SummonedZombieMixin.java",
+      "bytes": 686,
+      "sha256": "84d388dc813c3353b9472b186c65b38c671bab1fe955349e6a2f127f55b23c9a"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/RoundRuntimeLevel.java",
+      "bytes": 3055,
+      "sha256": "cf3bbec9a78e9e3f45aa0354f76fb51c6326efa0707cfd1e5a25a1f633f883a6"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/WorldManifest.java",
+      "bytes": 6047,
+      "sha256": "abee7b74f91fca9c38ed452a7e457878110420899909f524111a21a27fac126f"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/WorldProbe.java",
+      "bytes": 17509,
+      "sha256": "6490373ad0ed4f3cdc7be0ffbd98d5709255cd55cada320221ff60ca4125565b"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/EndPortalRoutingMixin.java",
+      "bytes": 1461,
+      "sha256": "647ba57a1d4179419807e7936854682fa42adf4adc66be371e1cf69bb4aed20e"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/LocationDimensionPredicateMixin.java",
+      "bytes": 1189,
+      "sha256": "f729783eb477fda2ec45cede3789d13b80bd12194eee5f64757435fa1e956735"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/NetherPortalRoutingMixin.java",
+      "bytes": 1483,
+      "sha256": "786fc5fec879a4dab809a99b0f0541316e3141afe80ea98e86a2e10320644379"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/PlayerDimensionAdvancementMixin.java",
+      "bytes": 2253,
+      "sha256": "be9710945fa22f18d68e32834600830410a4d0590c07328ff74d713c1953b2cc"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/PlayerRespawnRoutingMixin.java",
+      "bytes": 1782,
+      "sha256": "fb3197929f9a86d695a0146ac7e87e38ebfe6b2b52c6ad48e8d0b12ce6f950f7"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/RoundWeatherCommandMixin.java",
+      "bytes": 1296,
+      "sha256": "2617cce113c2b00c00049bd545a17e243a4825186053db2d9e9f5e511f1e082d"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/RoundWeatherMixin.java",
+      "bytes": 1106,
+      "sha256": "a678f8b435de892fbda75d7e7c77bd1d48ecf24d674258b7e40e0949245bb281"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/RuntimeLevelSeedMixin.java",
+      "bytes": 969,
+      "sha256": "2d6971b4b6f750e987b00a3ba9387eac3aa2ecee801c22aae30194d05769692a"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbyRuntime.java",
+      "bytes": 20346,
+      "sha256": "da83ac0e0b8a7665a6512132e953783d032b7be91416a34533219da21baf2aa4"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbySession.java",
+      "bytes": 23844,
+      "sha256": "760c18e3ae3e939bed0c1b553beec01a8740e21156064f9f60b957f65374e038"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/CombatOriginHolder.java",
+      "bytes": 395,
+      "sha256": "6cbc59841aaa8d7dfa0a0a0e2830707a93c3b4cd251d67ef43d3690bc2c8f72b"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/P1CombatRuntime.java",
+      "bytes": 10058,
+      "sha256": "889d076ab5ec6adf9e51ce8e5661c0e5daf881125dbb18df8c14dc20bb189269"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatAnchorMixin.java",
+      "bytes": 1269,
+      "sha256": "8c4577d7431b20bb8e7487687d61c8cb82cbef8f6e61ff63f96933408ad52a24"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatBedMixin.java",
+      "bytes": 1155,
+      "sha256": "1907f5e7663908db58bc5c112dc2ff2cac8fb15f4055f129fe04cd8bd9f452e2"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatCrystalMixin.java",
+      "bytes": 933,
+      "sha256": "7e8071e5c3b1da6a4a7e2e32715d90ef012a9d6e5799f1dbe219a0716d9e05ed"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatDragonMixin.java",
+      "bytes": 2367,
+      "sha256": "96c6f911dba8b57fc1ca294259627915b0b3a124368ee065e63cf1cc7919ea8c"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatEntityMixin.java",
+      "bytes": 2025,
+      "sha256": "04b99af3103181f42a8ed93dc1d693ebfbf9c70cbfb439091e2ee9c7b9e8d8bc"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatExplosionMixin.java",
+      "bytes": 840,
+      "sha256": "f2209af6c8b75dda1314d367bf79d55fbd17d32ba5a9a313e6478e728bf47be1"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatLivingMixin.java",
+      "bytes": 1160,
+      "sha256": "515d60aeeeaf8a85108ba9112d7e4b4e0df3fd558f9fc9045b7bf4b55289c52a"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatProjectileMixin.java",
+      "bytes": 684,
+      "sha256": "a54bf18d745181a47c788e895194369471bfba1a51ce073e8cca3b7161664fb4"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatTntBlockMixin.java",
+      "bytes": 1399,
+      "sha256": "27781c11f2445410a4b394f2e56db02df9214f544b58d78ecd6033e03401f688"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatTntMixin.java",
+      "bytes": 808,
+      "sha256": "1b737f8a0817495950b0fe00629ff00a95ab5274a3e1d9739f1e56d543ae32e3"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/P1PlayerProfiles.java",
+      "bytes": 38024,
+      "sha256": "4d077e7591ac93cc38f3e966f7dcef3a024ef091270b9bfef71cf117a23d0c3d"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/ProfileJournal.java",
+      "bytes": 8930,
+      "sha256": "f7df173d5b1553be28d76b0c659268440a0e4908246a76344eb56008f15cc31a"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/ProfileTagged.java",
+      "bytes": 815,
+      "sha256": "ba4daecfd3d612316a8c8ce952f801aa1cdcdd7477e9896bc8932c48f624520a"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/mixin/PlayerAdvancementIsolationMixin.java",
+      "bytes": 902,
+      "sha256": "c281b73ca396628e1743ed7db403637c39454ec845316e8f8bfe6be714726992"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/mixin/PlayerAdvancementProfileAccessor.java",
+      "bytes": 1100,
+      "sha256": "36a40835bcc2dc2e78425bb84b0371a40fdf7a19d333b78f31caa74157779c76"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/mixin/PlayerCooldownAccessor.java",
+      "bytes": 383,
+      "sha256": "ca4e1d3177bc77a4f9471212269e4a7da3419db6867a9f781bbb1dae452a8331"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/mixin/PlayerIsolationEntityMixin.java",
+      "bytes": 1823,
+      "sha256": "83add2b61182735eab2da39ce036f59c048bc55e1b615311ee4c1c9c7495aea8"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/mixin/PlayerIsolationNetworkMixin.java",
+      "bytes": 3520,
+      "sha256": "58445352bdea8bb97358dd39b7879b4705cc0f1470c46060fa47700aa81dbad2"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/mixin/PlayerLoginIsolationMixin.java",
+      "bytes": 1295,
+      "sha256": "57e79c0a7cf4d1c87e80a6d66143a82b99dba4cab94b5435a5783fd76393fed1"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/mixin/PlayerProfileInputAccessor.java",
+      "bytes": 354,
+      "sha256": "40de1f1246bb4ad08137dffbff1dcf414a7f37481aa7e7e8449edbd032c37728"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/mixin/PlayerProfileResetAccessor.java",
+      "bytes": 363,
+      "sha256": "01928a43e538a3884b08b88c1ca29a03f36eb61b1e36b8fb1df918030ab67450"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/mixin/PlayerProfileTagMixin.java",
+      "bytes": 3913,
+      "sha256": "ebea44b977c3fdeaaa689077597ff6344912faee10a53458d0d8b88452d5adf6"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/world/P1RoundRuntimeLevel.java",
+      "bytes": 2701,
+      "sha256": "e177c3dda5788d5f74c3c6ff0cc50e4a6d13566ff26af3e4284eca6a0813d6bf"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/world/P1RoundWorldBundle.java",
+      "bytes": 32391,
+      "sha256": "cf84dd37dcf67d485a2ba29cbcfaa4bb4e387f87fad6549fe4bdbb9f4d524a1c"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/world/P1WorldManifest.java",
+      "bytes": 8068,
+      "sha256": "6b1f86f2b53e149f181b2137f49baaeeb5398e16df3ace95a7b728de71627b64"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/world/P1WorldPaths.java",
+      "bytes": 3004,
+      "sha256": "b31e17e0cf8bc6c80ba10276069c703abee283654022baae6d4aa591fae324ea"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/world/RoundWorldRouting.java",
+      "bytes": 1541,
+      "sha256": "b4f5e8bc88528b7e2684d498e1ff8e37708a8aba5598a7cf7a1727ee878f1862"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/fabric.mod.json",
+      "bytes": 677,
+      "sha256": "49fd1febfe7c2289cd2fa8be6e63154f16d1c2a1afd8cc260e05261811422593"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush/steve-profile.json",
+      "bytes": 847,
+      "sha256": "64c1581ce81ccb1967f513e4c2c246a290eea6e567e3f4efda9ee7e132a6fb51"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush.p0.disguise.mixins.json",
+      "bytes": 214,
+      "sha256": "0fbb1cd5f62d108f0a8de59f93490282eec39ecd03c013d1b29af6f54d691cae"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush.p0.monster.mixins.json",
+      "bytes": 484,
+      "sha256": "7bcf4af295c0cc7022e3be1dcf7896390025e98d8814514836366d2051c648f7"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush.p0.world.mixins.json",
+      "bytes": 382,
+      "sha256": "4521c6546f3959b4bbe98e0c8143d6bfc0fdc743c871f5501c2ca020fa3b3480"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush.p1.combat.mixins.json",
+      "bytes": 371,
+      "sha256": "df99e2bdee6c63ae28ca6c20e9fcc4f58b80f4340b981c7496168c6c4e3f4c6b"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush.p1.player.mixins.json",
+      "bytes": 475,
+      "sha256": "6bbd5d27dfcb04d3dcc0428ba3ce7f5aa9bcf0f238d98aa9d4ae1d37078a74ba"
+    },
+    {
+      "path": "platforms/mc263/src/test/java/dev/hardrush/p0/world/WorldManifestTest.java",
+      "bytes": 6075,
+      "sha256": "26e8345748a1b4e1d4d67d13276340636facee4028440087dabb961937bcdb6e"
+    },
+    {
+      "path": "platforms/mc263/src/test/java/dev/hardrush/p1/P1LobbySessionTest.java",
+      "bytes": 24084,
+      "sha256": "452f06fd9618e1a3b8270731f77d7e4ce6f3aaaa2917de24f033d443d1bfb654"
+    },
+    {
+      "path": "platforms/mc263/src/test/java/dev/hardrush/p1/player/ProfileJournalTest.java",
+      "bytes": 6300,
+      "sha256": "80a8509283dbd7f755f83961f0ca8a49bf997261308c01474fd870e0478ade6a"
+    },
+    {
+      "path": "platforms/mc263/src/test/java/dev/hardrush/p1/world/P1WorldManifestTest.java",
+      "bytes": 6459,
+      "sha256": "4b360cd3752bb53b53bbc7948e8c5be74ba1d18ee526923179d62b9d716d7936"
+    },
+    {
+      "path": "build.gradle",
+      "bytes": 639,
+      "sha256": "66614d08af8147cc0026703e3386b417795ced7fc6ba762f1df7aac0650eef62"
+    },
+    {
+      "path": "settings.gradle",
+      "bytes": 233,
+      "sha256": "6d4bab7cdfb31a7a6ec9100261f37e1ee916c9a33453788da87069b497eca788"
+    },
+    {
+      "path": "gradle.properties",
+      "bytes": 241,
+      "sha256": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c"
+    },
+    {
+      "path": "platforms/mc263/build.gradle",
+      "bytes": 4242,
+      "sha256": "4b52bd3cde4f12032fbdf7b8715a1b8fc126c824fbf38d371dff03208acf797f"
+    },
+    {
+      "path": "core/build.gradle",
+      "bytes": 331,
+      "sha256": "dbcc671637261badab875942d8f0502319463a5b81ce6211021975ba5b8e7f49"
+    },
+    {
+      "path": "persistence/build.gradle",
+      "bytes": 586,
+      "sha256": "004e3098f460911d459c0b476088b11414cd6a96737cf64afe30ab8d44419466"
+    },
+    {
+      "path": "scripts/p0-gradle.sh",
+      "bytes": 411,
+      "sha256": "9fef15e5837c1a5fb71e699c647eb1f25b9db57dfef9a88060de055235ee02ec"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "bytes": 37636,
+      "sha256": "8fe9deb881a278a9326fd0483e41f1c14098e22763a1660272ab02f163005892"
+    },
+    {
+      "path": "docs/p1-world-profiles-combat.md",
+      "bytes": 6561,
+      "sha256": "0867365b3c9ec59e7960693feba6cff2ca8ff6fdb518319d34ae6c28c2f13b9b"
+    },
+    {
+      "path": "docs/人工客户端测试/P1世界档案与普通模式.md",
+      "bytes": 2955,
+      "sha256": "3227eb1c58bdf062f8629c33a25e2f608d8450736e2bab25009ecd54fc7b7888"
+    }
+  ],
+  "limits": [
+    "Layered Session/world/profile automation; no complete ordinary player flow with a fresh-process login",
+    "No real clients, screenshots, browser or computer use",
+    "No unique terminal settlement, automatic rotation, history/TAB/books or P2 hardcore gameplay",
+    "No 10-round acceptance or final multi-version adaptation",
+    "No commit, push, release or deployment"
+  ]
+}

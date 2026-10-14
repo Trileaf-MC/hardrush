@@ -1,6 +1,7 @@
 package dev.hardrush.p0.world.mixin;
 
 import dev.hardrush.p0.world.RoundRuntimeLevel;
+import dev.hardrush.p1.world.P1RoundRuntimeLevel;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,6 +14,8 @@ public abstract class RuntimeLevelSeedMixin {
     @Redirect(method = "<init>", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/world/level/levelgen/WorldOptions;seed()J"))
     private long hardrush$roundSeed(WorldOptions options) {
-        return (Object) this instanceof RoundRuntimeLevel level ? level.getSeed() : options.seed();
+        if ((Object) this instanceof RoundRuntimeLevel level) return level.getSeed();
+        if ((Object) this instanceof P1RoundRuntimeLevel level) return level.getSeed();
+        return options.seed();
     }
 }

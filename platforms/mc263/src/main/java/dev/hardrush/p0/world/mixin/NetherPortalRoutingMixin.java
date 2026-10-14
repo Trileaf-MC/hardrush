@@ -1,6 +1,6 @@
 package dev.hardrush.p0.world.mixin;
 
-import dev.hardrush.p0.world.WorldProbe;
+import dev.hardrush.p1.world.RoundWorldRouting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -17,13 +17,13 @@ public abstract class NetherPortalRoutingMixin {
     @Redirect(method = "getPortalDestination", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/level/ServerLevel;dimension()Lnet/minecraft/resources/ResourceKey;"), require = 2)
     private ResourceKey<Level> hardrush$semanticDimension(ServerLevel level) {
-        return WorldProbe.semanticDimension(level);
+        return RoundWorldRouting.semanticDimension(level);
     }
 
     @Redirect(method = "getPortalDestination", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/MinecraftServer;getLevel(Lnet/minecraft/resources/ResourceKey;)Lnet/minecraft/server/level/ServerLevel;"))
     private ServerLevel hardrush$roundDestination(MinecraftServer server, ResourceKey<Level> requested,
                                                   ServerLevel source, Entity entity, BlockPos entry) {
-        return WorldProbe.portalDestination(source, requested);
+        return RoundWorldRouting.portalDestination(source, requested);
     }
 }

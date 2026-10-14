@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "package": "dev.hardrush.p1.player.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "PlayerProfileTagMixin",
+    "PlayerProfileResetAccessor",
+    "PlayerCooldownAccessor",
+    "PlayerLoginIsolationMixin",
+    "PlayerIsolationEntityMixin",
+    "PlayerIsolationNetworkMixin",
+    "PlayerAdvancementProfileAccessor",
+    "PlayerAdvancementIsolationMixin",
+    "PlayerProfileInputAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

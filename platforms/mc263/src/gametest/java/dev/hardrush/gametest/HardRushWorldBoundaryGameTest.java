@@ -153,7 +153,10 @@ public final class HardRushWorldBoundaryGameTest {
                     var cookie = CommonListenerCookie.createInitial(profile, false);
                     var connection = new Connection(PacketFlow.SERVERBOUND);
                     var channel = new EmbeddedChannel(connection);
-                    ServerPlayer reconnected = prepare.spawnPlayer(connection, cookie);
+                    var reconnectFixture = new ServerPlayer[1];
+                    dev.hardrush.p1.player.P1PlayerProfiles.runUnmanagedFixture(() ->
+                            reconnectFixture[0] = prepare.spawnPlayer(connection, cookie));
+                    ServerPlayer reconnected = reconnectFixture[0];
                     try {
                         test.assertTrue(reconnected.level() == nether && reconnected.position().distanceTo(position) < 0.01, "Same UUID loads the persisted round location");
                         test.assertTrue(reconnected.getInventory().getItem(0).is(Items.DIAMOND)
