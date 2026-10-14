@@ -31,3 +31,7 @@ HardRush 的 P0 伪装实现为本项目代码，未嵌入 DisguiseLib、Polymer
 | SQLite JDBC | `3.53.4.0`，三版相同 | Loom 添加 Fabric 加载元数据后嵌入，原代码／原生库／许可证条目字节保持不变；原始和嵌套 JAR 分别记录校验；[Apache 2.0](probes/p0b/licenses/SQLite-jdbc-Apache-2.0.txt)及保留的 [Zentus BSD 2-Clause](probes/p0b/licenses/SQLite-jdbc-Zentus-BSD-2-Clause.txt)；[上游](https://github.com/xerial/sqlite-jdbc) |
 
 许可证索引区分 POM／父 POM、原 JAR 中的文本／模组声明与固定上游源码快照。部分 Mojang 官方运行库没有在 POM／JAR 声明独立许可证，已明确记录这种情况；这些文件仅存在 Minecraft 构建缓存，未嵌入或随仓库分发。不将该记录当作这些组件可任意重新分发的授权。完整发布组合仍由 P4 审查。
+
+## 本人 Steve 外观资料
+
+2026-10-14 固定的 [Mojang MHF_Steve 公开皮肤描述](https://sessionserver.mojang.com/session/minecraft/profile/c06f89064c8a49119c29ea1dbd1aab82?unsigned=false) 保存于 `platforms/mc263/src/main/resources/hardrush/steve-profile.json`。仅包含公开的纹理描述与来源，不打包 Minecraft 图片、账户凭据或客户端代码；由原版客户端从 `textures.minecraft.net` 加载。本人的临时外观属性无签名，仅限本人的原版本地皮肤路径，真实认证 profile 和其他观察者的数据保持权威来源。不能据此宣称该皮肤图片可以任意重新分发，详见 [实现记录](docs/p0-observer-appearance.md)。

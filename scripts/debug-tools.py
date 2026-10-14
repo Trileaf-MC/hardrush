@@ -93,10 +93,19 @@ def prepare():
             'gamemode=creative', 'difficulty=normal', 'max-players=4', 'spawn-protection=0',
             'view-distance=4', 'simulation-distance=4', 'pause-when-empty-seconds=0',
             'motd=HardRush isolated debug', '']))
-    identity = dict(name='HRDebug', uuid=str(uuid.UUID(bytes=hashlib.md5(b'OfflinePlayer:HRDebug').digest(), version=3)))
-    for name, data in [('whitelist.json', [identity]), ('ops.json', [dict(identity, level=4, bypassesPlayerLimit=False)])]:
-        if not (server / name).exists():
-            (server / name).write_text(json.dumps(data, indent=2))
+    identities = [dict(name=name, uuid=str(uuid.UUID(bytes=hashlib.md5(('OfflinePlayer:' + name).encode()).digest(), version=3)))
+                  for name in ('HRDebug', 'HRProbeA', 'HRProbeB')]
+    for name in ('whitelist.json', 'ops.json'):
+        path = server / name
+        existing = json.loads(path.read_text()) if path.exists() else []
+        for identity in identities:
+            matches = [entry for entry in existing if entry['uuid'] == identity['uuid'] or entry['name'] == identity['name']]
+            if matches:
+                if any(entry['uuid'] != identity['uuid'] or entry['name'] != identity['name'] for entry in matches):
+                    raise RuntimeError('Unexpected isolated probe identity in ' + name)
+                continue
+            existing.append(identity if name == 'whitelist.json' else dict(identity, level=4, bypassesPlayerLimit=False))
+        path.write_text(json.dumps(existing, indent=2) + '\n')
     # Server GameTest and in-process client test servers use a separate EULA file.
     for side in ['gameTest', 'clientGameTest']:
         run = ROOT / 'platforms/mc263/build/run' / side

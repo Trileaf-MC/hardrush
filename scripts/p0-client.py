@@ -39,6 +39,7 @@ OFFICIAL_HOSTS = {
 }
 PROFILES = ("HRProbeA", "HRProbeB")
 SERVER = "127.0.0.1:25585"
+SERVERS = (SERVER, "127.0.0.1:25586")
 RUNTIME_DIRECTORIES = ("game", "home", "tmp", "cache", "config", "data", "natives/java", "natives/jna", "natives/lwjgl", "natives/netty")
 
 
@@ -286,7 +287,9 @@ def arguments(version: dict, category: str, replacements: dict, features: dict) 
     return result
 
 
-def command(profile: str) -> list[str]:
+def command(profile: str, server: str = SERVER) -> list[str]:
+    if server not in SERVERS:
+        raise SystemExit("The vanilla probes may connect only to the two isolated loopback servers.")
     version = metadata()
     directory = profile_path(profile)
     offline_uuid = uuid.UUID(bytes=hashlib.md5(f"OfflinePlayer:{profile}".encode()).digest(), version=3)
@@ -300,7 +303,7 @@ def command(profile: str) -> list[str]:
         "natives_directory": str(directory / "natives"), "launcher_name": "HardRushP0",
         "launcher_version": "1", "classpath": os.pathsep.join(classpath),
         "resolution_width": "960", "resolution_height": "600",
-        "quickPlayMultiplayer": SERVER,
+        "quickPlayMultiplayer": server,
     }
     features = {"has_custom_resolution": True, "is_quick_play_multiplayer": True}
     log = version["logging"]["client"]
@@ -313,7 +316,7 @@ def command(profile: str) -> list[str]:
             + arguments(version, "game", replacements, features))
 
 
-def prepare_app(profile: str) -> None:
+def prepare_app(profile: str, server: str = SERVER) -> None:
     """Build a native macOS bundle without executing its official Minecraft Main."""
     verify()
     java, java_source = java_executable()
@@ -332,7 +335,7 @@ def prepare_app(profile: str) -> None:
         raise SystemExit(f"App bundle already exists; refusing to replace a possibly running app: {bundle}")
     input_directory = confined(BASE / "app-input")
     input_directory.mkdir(parents=True, exist_ok=True)
-    launch = command(profile)
+    launch = command(profile, server)
     classpath_offset = launch.index("-cp")
     sources = [Path(item) for item in launch[classpath_offset + 1].split(os.pathsep)]
     for source in sources:
@@ -380,7 +383,7 @@ def prepare_app(profile: str) -> None:
         "bundle": str(bundle), "mainClass": launch[main_class_offset],
         "minecraft": "26.3", "javaSource": java_source, "runtimeCopiedFrom": str(java.parent.parent),
         "officialJarCount": len(sources), "allBundledJarHashesVerified": True,
-        "clientMods": [], "resourcePacks": [], "server": SERVER,
+        "clientMods": [], "resourcePacks": [], "server": server,
         "gameDirectory": str(directory / "game"), "offlineDeveloperMode": True,
         "validation": "App image generated and artifact hashes checked; this command did not launch a client.",
     }
@@ -397,6 +400,8 @@ def main() -> None:
     for action in ("show", "launch", "prepare-app", "launch-app"):
         child = subparsers.add_parser(action, help="Show, prepare, or explicitly run one isolated offline probe client.")
         child.add_argument("profile", choices=PROFILES)
+        child.add_argument("--server", choices=SERVERS, default=SERVER,
+                           help="Use 25585 for the P0 server or 25586 for the isolated debug server.")
     args = parser.parse_args()
     if platform.system() != "Darwin" or platform.machine() != "arm64":
         raise SystemExit("This P0 launcher is restricted to Darwin arm64.")
@@ -405,9 +410,9 @@ def main() -> None:
     elif args.action == "verify":
         verify()
     elif args.action == "show":
-        print(shlex.join(command(args.profile)))
+        print(shlex.join(command(args.profile, args.server)))
     elif args.action == "prepare-app":
-        prepare_app(args.profile)
+        prepare_app(args.profile, args.server)
     else:
         verify()
         # No authenticated credentials are discovered, inherited from a launcher, or synthesized.
@@ -416,16 +421,23 @@ def main() -> None:
         for subdirectory in RUNTIME_DIRECTORIES:
             confined(directory / subdirectory, directory).mkdir(parents=True, exist_ok=True)
         environment = runtime_environment(args.profile)
-        print(f"Launching {args.profile} toward isolated loopback probe {SERVER}; no account session is used.", flush=True)
+        print(f"Launching {args.profile} toward isolated loopback probe {args.server}; no account session is used.", flush=True)
         if args.action == "launch-app":
             name = "HardRushProbe" + args.profile[-1]
             bundle = confined(BASE / "apps" / (name + ".app"))
             executable = confined(bundle / "Contents/MacOS" / name)
             if not executable.is_file():
                 raise SystemExit(f"Native launcher is missing; run prepare-app {args.profile} first.")
-            launch = [str(executable)]
+            # Explicit game arguments override jpackage's baked-in defaults;
+            # keep the native app identity/window while selecting the local server.
+            vanilla = command(args.profile, args.server)
+            main_offset = vanilla.index("-cp") + 2
+            for source in (Path(item) for item in vanilla[main_offset - 1].split(os.pathsep)):
+                if digest(bundle / "Contents/app" / source.name) != digest(source):
+                    raise SystemExit(f"Native app official artifact changed: {source.name}")
+            launch = [str(executable), *vanilla[main_offset + 1:]]
         else:
-            launch = command(args.profile)
+            launch = command(args.profile, args.server)
         # Explicit cwd also keeps relative native-launcher and Log4j files in the profile.
         sys.exit(subprocess.call(launch, cwd=directory / "game", env=environment))
 

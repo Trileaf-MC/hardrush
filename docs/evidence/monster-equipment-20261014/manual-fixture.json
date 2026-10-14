@@ -1,0 +1,136 @@
+{
+  "server": "127.0.0.1:25586",
+  "monster": "HRProbeA",
+  "human": "HRProbeB",
+  "commands": [
+    {
+      "command": "hardrushp0 clear HRProbeA",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "已解除 HRProbeA 的原型伪装。"
+      ]
+    },
+    {
+      "command": "clear HRProbeA",
+      "success": true,
+      "resultValue": 136,
+      "output": [
+        "Removed 136 item(s) from player HRProbeA"
+      ]
+    },
+    {
+      "command": "item replace entity HRProbeA armor.head with air",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) on HRProbeA with [Air]"
+      ]
+    },
+    {
+      "command": "item replace entity HRProbeA armor.chest with air",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) on HRProbeA with [Air]"
+      ]
+    },
+    {
+      "command": "item replace entity HRProbeA armor.legs with air",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) on HRProbeA with [Air]"
+      ]
+    },
+    {
+      "command": "item replace entity HRProbeA armor.feet with air",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) on HRProbeA with [Air]"
+      ]
+    },
+    {
+      "command": "item replace entity HRProbeA weapon.offhand with air",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) on HRProbeA with [Air]"
+      ]
+    },
+    {
+      "command": "time set midnight",
+      "success": true,
+      "resultValue": 1098000,
+      "output": [
+        "Set minecraft:overworld to time marker minecraft:midnight"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 60 150 62 chest",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 60, 150, 62"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run item replace block 60 150 62 container.0 with ender_pearl 16",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) at 60, 150, 62 with [Ender Pearl]"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run item replace block 60 150 62 container.1 with bow",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) at 60, 150, 62 with [Bow]"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run item replace block 60 150 62 container.2 with diamond_helmet",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) at 60, 150, 62 with [Diamond Helmet]"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run item replace block 60 150 62 container.3 with diamond_sword",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) at 60, 150, 62 with [Diamond Sword]"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run item replace block 60 150 62 container.4 with elytra",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) at 60, 150, 62 with [Elytra]"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run item replace block 60 150 62 container.5 with bow[enchantments={power:3}]",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) at 60, 150, 62 with [Bow]"
+      ]
+    },
+    {
+      "command": "hardrushp0 disguise HRProbeA zombie",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "已进入真实怪物角色；僵尸／骷髅自动拾取装备，背包换装与普通物品操作禁用。monster=zombie; nativeMaxHealth=20.0; nativeMovementAttribute=0.23000000417232513; playerMovementEquivalent=0.05290000191926958; nativeAttackDamage=3.0; intrinsicArmor=2.0; equipment=automatic; ordinaryItems=false; burstRemaining=0; arrowsFired=0"
+      ]
+    }
+  ],
+  "stage": "operator role prototype; formal death/lobby/rewards pending"
+}

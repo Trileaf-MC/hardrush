@@ -1,0 +1,55 @@
+{
+  "HRProbeA": {
+    "command": "hardrushp0 status HRProbeA",
+    "success": true,
+    "resultValue": 1,
+    "output": [
+      "disguise=zombie; realId=55; selfView=player; selfSpawned=false; selfSkin=steve; skinRefresh=sent; physics=player; equipment=preserved; visualAcceptance=pending"
+    ]
+  },
+  "HRProbeB": {
+    "command": "hardrushp0 status HRProbeB",
+    "success": true,
+    "resultValue": 1,
+    "output": [
+      "disguise=off; realId=247"
+    ]
+  },
+  "players": {
+    "count": 2,
+    "players": [
+      {
+        "name": "HRProbeA",
+        "uuid": "e60a7360-09e9-3ab7-8399-221e3c44b822",
+        "x": 64.5,
+        "y": 150.0,
+        "z": 64.5,
+        "yaw": -180.0,
+        "pitch": 0.0,
+        "dimension": "minecraft:overworld",
+        "health": 20.0,
+        "maxHealth": 20.0,
+        "food": 20,
+        "gameMode": "survival",
+        "ping": 0,
+        "xpLevel": 0
+      },
+      {
+        "name": "HRProbeB",
+        "uuid": "ad130186-a3c7-33a0-9b67-8a0e1491afc9",
+        "x": 64.5,
+        "y": 150.0,
+        "z": 61.5,
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "dimension": "minecraft:overworld",
+        "health": 20.0,
+        "maxHealth": 20.0,
+        "food": 20,
+        "gameMode": "survival",
+        "ping": 1,
+        "xpLevel": 0
+      }
+    ]
+  }
+}

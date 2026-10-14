@@ -3,6 +3,7 @@ package dev.hardrush.p0;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.hardrush.p0.disguise.DisguiseProbe;
+import dev.hardrush.p0.monster.MonsterRoles;
 import dev.hardrush.p0.world.WorldProbe;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -22,7 +23,8 @@ public final class HardRushP0 implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        LOGGER.info("HardRush P0: experimental operator-only probes; no race or balance implementation");
+        MonsterRoles.initialize();
+        LOGGER.info("HardRush P0: operator world/appearance/monster-role probes; formal race/lobby/rewards are not implemented");
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             try {
                 WorldProbe.initialize(server);
@@ -31,13 +33,16 @@ public final class HardRushP0 implements ModInitializer {
                 LOGGER.error("P0 world recovery failed; inspect the manifest before retrying", error);
             }
         });
-        ServerTickEvents.END_SERVER_TICK.register(DisguiseProbe::tick);
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-                DisguiseProbe.onDisconnect(handler.player));
+        ServerTickEvents.END_SERVER_TICK.register(server -> { MonsterRoles.tick(server); DisguiseProbe.tick(server); });
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            MonsterRoles.onDisconnect(handler.player); DisguiseProbe.onDisconnect(handler.player);
+        });
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+            MonsterRoles.onJoin(handler.player); DisguiseProbe.onJoin(handler.player);
+        });
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
-            for (var player : server.getPlayerList().getPlayers()) {
-                DisguiseProbe.clear(player);
-            }
+            MonsterRoles.stop(server);
+            DisguiseProbe.stop(server);
             WorldProbe.close(server);
         });
 
@@ -45,12 +50,13 @@ public final class HardRushP0 implements ModInitializer {
                 dispatcher.register(Commands.literal("hardrushp0")
                         .requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
                         .executes(context -> reply(context.getSource(),
-                                "HardRush P0：仅技术验证。命令：status、world create <seed>、world enter <player> <overworld|nether|end>、disguise <player> <zombie|skeleton|creeper>、selfview <player> <hidden|visible>、clear <player>。"))
+                                "HardRush P0：角色行为原型。命令：status、world create <seed>、world enter <player> <overworld|nether|end>、disguise <player> <zombie|skeleton|creeper>、skill <player>、clear <player>。disguise 进入真实角色；appearance 仅供外观诊断，不改变玩法身份。"))
                         .then(Commands.literal("status").executes(context ->
                                 reply(context.getSource(), WorldProbe.status()))
                                 .then(Commands.argument("player", EntityArgument.player())
                                         .executes(context -> reply(context.getSource(),
-                                                DisguiseProbe.status(EntityArgument.getPlayer(context, "player"))))))
+                                                DisguiseProbe.status(EntityArgument.getPlayer(context, "player")) + "; "
+                                                + MonsterRoles.status(EntityArgument.getPlayer(context, "player"))))))
                         .then(Commands.literal("world")
                                 .then(Commands.literal("create")
                                         .then(Commands.argument("seed", LongArgumentType.longArg())
@@ -78,23 +84,29 @@ public final class HardRushP0 implements ModInitializer {
                                                 })
                                                 .executes(context -> {
                                                     var player = EntityArgument.getPlayer(context, "player");
-                                                    return attempt(context.getSource(), () -> DisguiseProbe.apply(
+                                            return attempt(context.getSource(), () -> MonsterRoles.select(
                                                             player, StringArgumentType.getString(context, "kind")));
                                                 }))))
-                        .then(Commands.literal("selfview")
+                        .then(Commands.literal("appearance")
                                 .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("mode", StringArgumentType.word())
-                                                .suggests((context, builder) -> {
-                                                    builder.suggest("hidden").suggest("visible");
-                                                    return builder.buildFuture();
-                                                })
-                                                .executes(context -> attempt(context.getSource(), () -> DisguiseProbe.setSelfView(
-                                                        EntityArgument.getPlayer(context, "player"),
-                                                        StringArgumentType.getString(context, "mode")))))))
+                                    .then(Commands.argument("kind", StringArgumentType.word())
+                                        .executes(context -> {
+                                            var player=EntityArgument.getPlayer(context,"player");
+                                            if (MonsterRoles.isMonster(player)) return reply(context.getSource(),"请先 clear 角色，再进行仅外观诊断。");
+                                            return attempt(context.getSource(), () -> DisguiseProbe.apply(player,StringArgumentType.getString(context,"kind")));
+                                        }))))
+                        .then(Commands.literal("skill")
+                                .then(Commands.argument("player", EntityArgument.player())
+                                    .executes(context -> {
+                                        var player = EntityArgument.getPlayer(context, "player");
+                                        boolean used = MonsterRoles.summon(player) || MonsterRoles.burst(player) || MonsterRoles.ignite(player);
+                                        return reply(context.getSource(), used ? "已使用角色技能。" : "技能尚未就绪或场地／角色不允许。");
+                                    })))
                         .then(Commands.literal("clear")
                                 .then(Commands.argument("player", EntityArgument.player())
                                         .executes(context -> {
                                             var player = EntityArgument.getPlayer(context, "player");
+                                            MonsterRoles.clear(player);
                                             DisguiseProbe.clear(player);
                                             return reply(context.getSource(), "已解除 " + player.getScoreboardName() + " 的原型伪装。");
                                         })))));

@@ -1,0 +1,10 @@
+{
+  "source": "https://sessionserver.mojang.com/session/minecraft/profile/c06f89064c8a49119c29ea1dbd1aab82?unsigned=false",
+  "profileId": "c06f89064c8a49119c29ea1dbd1aab82",
+  "profileName": "MHF_Steve",
+  "property": {
+    "name": "textures",
+    "value": "ewogICJ0aW1lc3RhbXAiIDogMTc5MTk0MTk4MjEyMiwKICAicHJvZmlsZUlkIiA6ICJjMDZmODkwNjRjOGE0OTExOWMyOWVhMWRiZDFhYWI4MiIsCiAgInByb2ZpbGVOYW1lIiA6ICJNSEZfU3RldmUiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZDVjNGVlNWNlMjBhZWQ5ZTMzZTg2NmM2NmNhYTM3MTc4NjA2MjM0YjM3MjEwODRiZjAxZDEzMzIwZmIyZWIzZiIsCiAgICAgICJtZXRhZGF0YSIgOiB7CiAgICAgICAgIm1vZGVsIiA6ICJzbGltIgogICAgICB9CiAgICB9CiAgfQp9"
+  },
+  "use": "Unsigned owner-only cosmetic texture; authenticated player profile stays unchanged."
+}

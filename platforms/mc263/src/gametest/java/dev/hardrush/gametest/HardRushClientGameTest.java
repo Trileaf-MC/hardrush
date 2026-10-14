@@ -33,121 +33,103 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
         test.waitFor(client -> client.player != null && client.level != null && client.getConnection() != null, 1200);
         test.waitForScreen(null);
         JsonArray evidence = new JsonArray();
+        String originalSkin = test.computeOnClient(client -> client.player.getSkin().body().texturePath().toString());
         try {
-            for (String slot : new String[]{"weapon.mainhand", "weapon.offhand", "armor.head", "armor.chest", "armor.legs", "armor.feet"}) {
-                command("item replace entity HRDebug " + slot + " with minecraft:air");
-            }
+            command("hardrushp0 clear HRDebug");
+            command("hardrushdebug actor clear");
             command("gamemode survival HRDebug");
-            evidence.add(command("attribute HRDebug minecraft:attack_damage base get"));
-            evidence.add(command("attribute HRDebug minecraft:attack_damage get"));
             command("effect clear HRDebug");
             command("time set day");
             command("execute in minecraft:overworld run tp HRDebug 0.5 150 0.5 0 0");
+            test.waitFor(client -> client.level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD), 400);
+            test.waitForScreen(null);
+            test.waitTicks(40); // A saved Nether login must finish loading the Overworld fixture.
+            command("hardrushdebug actor cleanup");
             command("fill -8 149 -8 8 149 8 minecraft:stone");
             command("fill -8 150 -8 8 158 8 minecraft:air");
-            command("kill @e[tag=hr_selfview_target]");
-            command("execute positioned 0.5 150 0.5 run kill @e[type=minecraft:item,distance=..10]");
-            command("summon minecraft:pig 0.5 150 2.5 {NoAI:1b,NoGravity:1b,Silent:1b,Tags:[\"hr_selfview_target\"]}");
+            command("item replace entity HRDebug weapon.mainhand with minecraft:diamond_sword");
+            command("item replace entity HRDebug armor.chest with minecraft:diamond_chestplate");
+            command("experience set HRDebug 7 levels");
             test.waitTicks(30);
             for (String kind : new String[]{"zombie", "skeleton", "creeper"}) {
                 command("tp HRDebug 0.5 150 0.5 0 0");
-                command("item replace entity HRDebug weapon.mainhand with minecraft:air");
-                var applied = command("hardrushp0 disguise HRDebug " + kind);
+                var applied = command("hardrushp0 appearance HRDebug " + kind);
                 if (!applied.toString().contains("disguise=" + kind)) throw new AssertionError("Disguise rejected: " + applied);
-                test.waitFor(HardRushClientGameTest::hasSelfBody, 400);
+                test.waitTicks(20);
+                evidence.add(snapshot(test, kind + "-after-profile-refresh"));
+                test.waitFor(client -> client.player != null && !client.player.isInvisible()
+                    && client.getCameraEntity() == client.player && !hasSelfBody(client)
+                    && client.player.getSkin().body().texturePath().toString().equals("minecraft:skins/a37f02d925dbe17722606a1d624d0b4ddeaf398d"), 1200);
+                test.waitForScreen(null);
+                test.runOnClient(client -> {
+                    if (!client.player.getMainHandItem().is(net.minecraft.world.item.Items.DIAMOND_SWORD)
+                        || !client.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).is(net.minecraft.world.item.Items.DIAMOND_CHESTPLATE)
+                        || client.player.experienceLevel != 7) throw new AssertionError("Skin refresh lost inventory or experience");
+                });
+                evidence.add(snapshot(test, kind + "-owner-steve-first-person"));
+                screenshot(test, "hardrush-" + kind + "-owner-steve-first-person");
+                for (CameraType perspective : new CameraType[]{CameraType.THIRD_PERSON_BACK, CameraType.THIRD_PERSON_FRONT, CameraType.FIRST_PERSON}) {
+                    test.getInput().pressKey(options -> options.keyTogglePerspective);
+                    test.waitFor(client -> client.options.getCameraType() == perspective);
+                    evidence.add(snapshot(test, kind + "-" + perspective.name()));
+                    screenshot(test, "hardrush-" + kind + "-owner-" + perspective.name().toLowerCase(java.util.Locale.ROOT));
+                }
+
+                command("hardrushdebug actor " + kind);
+                test.waitFor(client -> visibleTarget(client, kind), 400);
+                var aim = test.computeOnClient(client -> {
+                    net.minecraft.world.entity.Entity target = null;
+                    for (var entity : client.level.entitiesForRendering()) {
+                        if (entity.getUUID().equals(java.util.UUID.fromString("989b216e-c951-4c81-b41c-7b19082677aa"))) target = entity;
+                    }
+                    if (target == null) throw new AssertionError("Observer target vanished before aiming");
+                    var delta = target.getBoundingBox().getCenter().subtract(client.player.getEyePosition());
+                    return new float[]{(float)(Math.atan2(delta.z, delta.x) * 180 / Math.PI - 90),
+                        (float)(-Math.atan2(delta.y, Math.sqrt(delta.x * delta.x + delta.z * delta.z)) * 180 / Math.PI)};
+                });
+                test.getInput().lookAt(aim[0], aim[1]);
                 test.waitFor(client -> client.hitResult instanceof EntityHitResult hit
-                    && hit.getEntity().distanceTo(client.player) < 1, 400);
-                evidence.add(snapshot(test, kind + "-visible-baseline"));
-                screenshot(test, "hardrush-" + kind + "-visible-first-person");
-
-                if (kind.equals("zombie")) {
-                    var before = command("data get entity HRDebug Pos");
-                    command("hardrushdebug camera HRDebug self");
-                    test.waitFor(client -> client.getCameraEntity() != client.player, 100);
-                    test.waitTicks(5);
-                    evidence.add(snapshot(test, "camera-before-movement"));
-                    screenshot(test, "hardrush-camera-first-person");
-                    test.getInput().holdKeyFor(options -> options.keyUp, 20);
-                    var after = command("data get entity HRDebug Pos");
-                    JsonObject camera = snapshot(test, "camera-after-movement");
-                    camera.add("serverPositionBefore", before);
-                    camera.add("serverPositionAfter", after);
-                    evidence.add(camera);
-                    if (!before.equals(after)) throw new AssertionError("Camera experiment unexpectedly sent movement; re-evaluate result");
-                    command("hardrushdebug camera HRDebug reset");
-                    test.waitFor(client -> client.getCameraEntity() == client.player, 100);
-                    command("tp HRDebug 0.5 150 0.5 0 0");
-                }
-
-                command("hardrushp0 selfview HRDebug hidden");
-                test.waitFor(client -> !hasSelfBody(client) && client.getCameraEntity() == client.player, 100);
-                test.getInput().lookAt(0, 25);
-                test.waitFor(client -> client.hitResult instanceof EntityHitResult hit && hit.getEntity().getType() == EntityTypes.PIG, 100);
-                evidence.add(snapshot(test, kind + "-hidden-aim"));
-                screenshot(test, "hardrush-" + kind + "-hidden-first-person");
-                command("data merge entity @e[tag=hr_selfview_target,limit=1] {Health:10.0f}");
-                test.waitTicks(25);
+                    && hit.getEntity().getUUID().equals(java.util.UUID.fromString("989b216e-c951-4c81-b41c-7b19082677aa")), 400);
+                evidence.add(snapshot(test, kind + "-observer-monster"));
+                screenshot(test, "hardrush-" + kind + "-observer-monster");
+                test.waitTicks(80); // Vanilla login/teleport spawn protection must expire.
+                var healthBefore = command("data get entity HRVisualTarget Health");
                 test.getInput().pressKey(options -> options.keyAttack);
-                test.waitTicks(10);
-                var health = command("data get entity @e[tag=hr_selfview_target,limit=1] Health");
-                if (health.get("resultValue").getAsInt() >= 10) throw new AssertionError("Attack caused no server damage: " + health);
-                JsonObject attack = snapshot(test, kind + "-hidden-attack");
-                attack.add("serverTargetHealth", health);
-                evidence.add(attack);
-                test.getInput().lookAt(0, 80);
-                test.waitFor(client -> client.hitResult != null && !(client.hitResult instanceof EntityHitResult), 100);
-                screenshot(test, "hardrush-" + kind + "-hidden-look-down");
-                test.getInput().lookAt(0, 0);
-
-                command("hardrushp0 selfview HRDebug visible");
-                test.waitFor(HardRushClientGameTest::hasSelfBody, 100);
-                test.getInput().pressKey(options -> options.keyTogglePerspective);
-                test.waitFor(client -> client.options.getCameraType() == CameraType.THIRD_PERSON_BACK);
-                screenshot(test, "hardrush-" + kind + "-manual-third-person-back");
-                test.getInput().pressKey(options -> options.keyTogglePerspective);
-                test.waitFor(client -> client.options.getCameraType() == CameraType.THIRD_PERSON_FRONT);
-                screenshot(test, "hardrush-" + kind + "-manual-third-person-front");
-                test.getInput().pressKey(options -> options.keyTogglePerspective);
-                test.waitFor(client -> client.options.getCameraType() == CameraType.FIRST_PERSON);
-                command("hardrushp0 selfview HRDebug hidden");
-                test.waitFor(client -> !hasSelfBody(client), 100);
-                for (int cycle = 0; cycle < 20; cycle++) {
-                    command("hardrushp0 selfview HRDebug visible");
-                    test.waitFor(HardRushClientGameTest::hasSelfBody, 100);
-                    command("hardrushp0 selfview HRDebug hidden");
-                    test.waitFor(client -> !hasSelfBody(client), 100);
+                test.waitTicks(8);
+                var healthAfter = command("data get entity HRVisualTarget Health");
+                if (healthAfter.get("resultValue").getAsInt() >= healthBefore.get("resultValue").getAsInt()) {
+                    throw new AssertionError("Visible monster attack did not reach its authoritative player");
                 }
-                evidence.add(snapshot(test, kind + "-after-20-toggles"));
+                JsonObject attack = snapshot(test, kind + "-authoritative-attack");
+                attack.add("healthBefore", healthBefore); attack.add("healthAfter", healthAfter); evidence.add(attack);
+                command("hardrushdebug actor clear");
+                test.waitTicks(10);
             }
-            var movementBefore = command("data get entity HRDebug Pos");
+            var before = command("data get entity HRDebug Pos");
             test.getInput().holdKeyFor(options -> options.keyLeft, 10);
-            var movementAfter = command("data get entity HRDebug Pos");
-            if (movementBefore.equals(movementAfter)) throw new AssertionError("Hidden self-view did not send movement");
-            JsonObject movement = snapshot(test, "hidden-movement");
-            movement.add("serverPositionBefore", movementBefore);
-            movement.add("serverPositionAfter", movementAfter);
-            evidence.add(movement);
-
+            var after = command("data get entity HRDebug Pos");
+            if (before.equals(after)) throw new AssertionError("Native owner camera did not send movement");
+            JsonObject movement = snapshot(test, "native-owner-movement");
+            movement.add("serverPositionBefore", before); movement.add("serverPositionAfter", after); evidence.add(movement);
             command("hardrushp0 world enter HRDebug nether");
             test.waitFor(client -> client.level.dimension().toString().contains("/nether"), 400);
-            test.waitTicks(40);
-            if (!command("hardrushp0 status HRDebug").toString().contains("selfSpawned=false")) {
-                throw new AssertionError("Hidden mode lost after dimension change");
-            }
-            test.runOnClient(client -> {
-                if (hasSelfBody(client)) throw new AssertionError("Unexpected self body after dimension change");
-            });
-            evidence.add(snapshot(test, "hidden-after-dimension-change"));
+            test.waitFor(client -> !client.player.isInvisible() && !hasSelfBody(client)
+                && client.getCameraEntity() == client.player, 400);
+            test.waitTicks(30);
+            evidence.add(snapshot(test, "owner-after-dimension-change"));
             command("hardrushp0 clear HRDebug");
-            test.waitFor(client -> !hasSelfBody(client) && !client.player.isInvisible() && client.getCameraEntity() == client.player, 100);
-            evidence.add(snapshot(test, "cleared"));
-            screenshot(test, "hardrush-disguise-cleared");
+            test.waitFor(client -> client.player.getSkin().body().texturePath().toString().equals(originalSkin)
+                && !hasSelfBody(client) && !client.player.isInvisible(), 1200);
+            test.waitForScreen(null);
+            evidence.add(snapshot(test, "cleared-original-skin"));
+            screenshot(test, "hardrush-original-skin-restored");
         } finally {
             try {
-                Path out = Path.of(System.getProperty("hardrush.root"), ".local/research/self-view/client-results.json");
+                Path out = Path.of(System.getProperty("hardrush.root"), ".local/research/observer-appearance/client-results.json");
+                Files.createDirectories(out.getParent());
                 Files.writeString(out, new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(evidence));
             } catch (java.io.IOException error) { throw new IllegalStateException(error); }
-            command("hardrushdebug camera HRDebug reset");
+            command("hardrushdebug actor clear");
             command("hardrushp0 clear HRDebug");
             test.runOnClient(client -> client.disconnectFromWorld(net.minecraft.network.chat.Component.literal("GameTest complete")));
             test.setScreen(TitleScreen::new);
@@ -155,9 +137,18 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
         }
     }
 
+    private static boolean visibleTarget(net.minecraft.client.Minecraft client, String kind) {
+        var entity = client.level.getEntity(java.util.UUID.fromString("989b216e-c951-4c81-b41c-7b19082677aa"));
+        return entity != null && entity.getType() == switch (kind) {
+            case "zombie" -> EntityTypes.ZOMBIE;
+            case "skeleton" -> EntityTypes.SKELETON;
+            default -> EntityTypes.CREEPER;
+        };
+    }
+
     private static void screenshot(ClientGameTestContext test, String name) {
         test.takeScreenshot(TestScreenshotOptions.of(name).disableCounterPrefix().withDestinationDir(
-            Path.of(System.getProperty("hardrush.root"), ".local/research/self-view/screenshots")));
+            Path.of(System.getProperty("hardrush.root"), ".local/research/observer-appearance/screenshots")));
     }
 
     private static boolean hasSelfBody(net.minecraft.client.Minecraft client) {
@@ -179,10 +170,19 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
             result.addProperty("playerInvisible", client.player.isInvisible());
             result.addProperty("attackDamage", client.player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE));
             result.addProperty("selfBodyPresent", hasSelfBody(client));
+            result.addProperty("skinTexture", client.player.getSkin().body().texturePath().toString());
+            result.addProperty("skinModel", client.player.getSkin().model().name());
             result.addProperty("hit", client.hitResult instanceof EntityHitResult hit ? hit.getEntity().getType().toString()
                 : client.hitResult == null ? "null" : client.hitResult.getType().name());
             for (var entity : client.level.entitiesForRendering()) {
-                if (entity.getType() == EntityTypes.PIG && entity instanceof LivingEntity living) result.addProperty("targetHealth", living.getHealth());
+                if (entity.getUUID().equals(java.util.UUID.fromString("989b216e-c951-4c81-b41c-7b19082677aa"))
+                        && entity instanceof LivingEntity living) {
+                    result.addProperty("visibleMonsterHealth", living.getHealth());
+                    result.addProperty("visibleMonsterId", entity.getId());
+                    result.addProperty("visibleMonsterType", entity.getType().toString());
+                    result.addProperty("visibleMonsterWeapon", living.getMainHandItem().getItem().toString());
+                    result.addProperty("visibleMonsterHelmet", living.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD).getItem().toString());
+                }
             }
             return result;
         });
@@ -206,11 +206,8 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
                 var result = JsonParser.parseString(response.body()).getAsJsonObject();
                 if (response.statusCode() != 200 || result.has("error")) throw new IllegalStateException(response.body());
                 if (!result.getAsJsonObject("result").get("success").getAsBoolean()
-                        && !(command.startsWith("kill @e[tag=hr_selfview_target]")
-                            || command.startsWith("execute positioned 0.5 150 0.5 run kill @e[type=minecraft:item,")
-                            || (command.equals("effect clear HRDebug") && response.body().contains("Target has no effects to remove"))
-                            || (command.startsWith("fill ") && response.body().contains("No blocks were filled"))
-                            || (command.startsWith("data merge entity @e[tag=hr_selfview_target,") && response.body().contains("Nothing changed")))) {
+                        && !((command.equals("effect clear HRDebug") && response.body().contains("Target has no effects to remove"))
+                            || (command.startsWith("fill ") && response.body().contains("No blocks were filled")))) {
                     throw new IllegalStateException("Command failed: " + response.body());
                 }
                 return result.getAsJsonObject("result");

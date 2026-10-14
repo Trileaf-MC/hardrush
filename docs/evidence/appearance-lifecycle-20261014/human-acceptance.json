@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-14",
+  "source": "direct human replies in this chat",
+  "manualResult": "全部符合预期",
+  "scope": [
+    "owner F5 front/back/first person and look down",
+    "three observer monster types",
+    "movement and aiming",
+    "sword/bow head/body/edge hits",
+    "equipment/swing/hurt",
+    "sprint/crouch/jump/doorway/steps/swim",
+    "clear restore"
+  ],
+  "acceptedDeviation": "这个差异可以接受。以后对于不太严重影响玩家体验的这种小差异都可以接受",
+  "dimensionDeviation": {
+    "playerHeight": 1.8,
+    "zombieHeight": 1.95,
+    "skeletonHeight": 1.99,
+    "creeperHeight": 1.7
+  },
+  "dimensionsDecision": "keep native player movement and authoritative combat entity; retain native mob observer selection",
+  "unverifiedVisualArchive": "new clean-vanilla F2 screenshots and shadow image pending; desktop capture failed twice",
+  "formalDeathMonsterGameplay": "P2 not implemented"
+}

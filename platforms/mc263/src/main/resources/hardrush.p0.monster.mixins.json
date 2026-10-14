@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "dev.hardrush.p0.monster.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": ["MonsterMobAccessor", "MonsterEntityAccessor", "MonsterLivingAccessor", "MonsterEnchantmentMixin", "MonsterPlayerMixin", "NativeCreeperAccessor", "MonsterInventoryMixin", "MonsterLivingMixin", "MonsterPickupMixin", "MonsterExperienceMixin", "MonsterFoodMixin", "SummonedZombieMixin", "MonsterArrowMixin", "SummonTargetMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

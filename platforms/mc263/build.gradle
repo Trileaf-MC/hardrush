@@ -25,6 +25,7 @@ test { useJUnitPlatform() }
 sourceSets {
     debugTools {
         compileClasspath += sourceSets.main.compileClasspath
+        compileClasspath += sourceSets.main.output
     }
 }
 

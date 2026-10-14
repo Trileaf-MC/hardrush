@@ -1,0 +1,539 @@
+{
+  "server": "127.0.0.1:25586",
+  "target": "HRProbeA",
+  "observer": "HRProbeB",
+  "arena": [
+    47,
+    147,
+    47,
+    81,
+    158,
+    81
+  ],
+  "commands": [
+    {
+      "command": "execute in minecraft:overworld run forceload add 47 47 81 81",
+      "success": false,
+      "resultValue": 0,
+      "output": [
+        "No chunks were marked for force loading"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 47 148 47 81 158 81 air",
+      "success": true,
+      "resultValue": 1465,
+      "output": [
+        "Successfully filled 1465 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 48 149 48 80 149 80 smooth_stone",
+      "success": true,
+      "resultValue": 1089,
+      "output": [
+        "Successfully filled 1089 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 47 150 47 81 151 47 glass",
+      "success": true,
+      "resultValue": 70,
+      "output": [
+        "Successfully filled 70 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 47 150 81 81 151 81 glass",
+      "success": true,
+      "resultValue": 70,
+      "output": [
+        "Successfully filled 70 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 47 150 48 47 151 80 glass",
+      "success": true,
+      "resultValue": 66,
+      "output": [
+        "Successfully filled 66 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 81 150 48 81 151 80 glass",
+      "success": true,
+      "resultValue": 66,
+      "output": [
+        "Successfully filled 66 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 52 150 58 58 152 58 oak_planks",
+      "success": true,
+      "resultValue": 21,
+      "output": [
+        "Successfully filled 21 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 55 150 58 55 151 58 air",
+      "success": true,
+      "resultValue": 2,
+      "output": [
+        "Successfully filled 2 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 55 150 58 oak_door[facing=north,half=lower,open=true]",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 55, 150, 58"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 55 151 58 oak_door[facing=north,half=upper,open=true]",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 55, 151, 58"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 68 150 56 stone_slab",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 68, 150, 56"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 69 150 56 stone_stairs[facing=east]",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 69, 150, 56"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 70 150 56 stone",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 70, 150, 56"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 68 147 68 76 147 76 smooth_stone",
+      "success": false,
+      "resultValue": 0,
+      "output": [
+        "No blocks were filled"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 68 148 68 76 149 76 water",
+      "success": true,
+      "resultValue": 162,
+      "output": [
+        "Successfully filled 162 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 68 148 68 68 149 76 smooth_stone",
+      "success": true,
+      "resultValue": 18,
+      "output": [
+        "Successfully filled 18 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 76 148 68 76 149 76 smooth_stone",
+      "success": true,
+      "resultValue": 18,
+      "output": [
+        "Successfully filled 18 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 69 148 68 75 149 68 smooth_stone",
+      "success": true,
+      "resultValue": 14,
+      "output": [
+        "Successfully filled 14 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run fill 69 148 76 75 149 76 smooth_stone",
+      "success": true,
+      "resultValue": 14,
+      "output": [
+        "Successfully filled 14 block(s)"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 72 148 69 stone_stairs[facing=north]",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 72, 148, 69"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 72 149 68 stone_stairs[facing=north]",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 72, 149, 68"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 64 149 64 gold_block",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 64, 149, 64"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 64 149 61 emerald_block",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 64, 149, 61"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 50 149 50 sea_lantern",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 50, 149, 50"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run setblock 78 149 78 sea_lantern",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Changed the block at 78, 149, 78"
+      ]
+    },
+    {
+      "command": "time set day",
+      "success": true,
+      "resultValue": 1081000,
+      "output": [
+        "Set minecraft:overworld to time marker minecraft:day"
+      ]
+    },
+    {
+      "command": "weather clear",
+      "success": true,
+      "resultValue": -1,
+      "output": [
+        "Set the weather to clear"
+      ]
+    },
+    {
+      "command": "gamerule keep_inventory true",
+      "success": false,
+      "resultValue": 0,
+      "output": [
+        "Game rule keep_inventory is already set to true"
+      ]
+    },
+    {
+      "command": "hardrushp0 clear HRProbeA",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "已解除 HRProbeA 的原型伪装。"
+      ]
+    },
+    {
+      "command": "gamemode survival HRProbeA",
+      "success": true,
+      "resultValue": 0,
+      "output": []
+    },
+    {
+      "command": "effect clear HRProbeA",
+      "success": false,
+      "resultValue": 0,
+      "output": [
+        "Target has no effects to remove"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run tp HRProbeA 64.5 150 64.5 180 0",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Teleported HRProbeA to 64.500000, 150.000000, 64.500000"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run spawnpoint HRProbeA 64 150 64",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Set spawn point to 64, 150, 64 [0.0, 0.0] in minecraft:overworld for HRProbeA"
+      ]
+    },
+    {
+      "command": "clear HRProbeA",
+      "success": false,
+      "resultValue": 0,
+      "output": [
+        "No items were found on player HRProbeA"
+      ]
+    },
+    {
+      "command": "give HRProbeA diamond_sword",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 1 [Diamond Sword] to HRProbeA"
+      ]
+    },
+    {
+      "command": "give HRProbeA bow",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 1 [Bow] to HRProbeA"
+      ]
+    },
+    {
+      "command": "give HRProbeA arrow 64",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 64 [Arrow] to HRProbeA"
+      ]
+    },
+    {
+      "command": "give HRProbeA cooked_beef 64",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 64 [Steak] to HRProbeA"
+      ]
+    },
+    {
+      "command": "give HRProbeA shield",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 1 [Shield] to HRProbeA"
+      ]
+    },
+    {
+      "command": "give HRProbeA diamond_helmet",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 1 [Diamond Helmet] to HRProbeA"
+      ]
+    },
+    {
+      "command": "give HRProbeA diamond_chestplate",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 1 [Diamond Chestplate] to HRProbeA"
+      ]
+    },
+    {
+      "command": "item replace entity HRProbeA armor.head with diamond_helmet",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) on HRProbeA with [Diamond Helmet]"
+      ]
+    },
+    {
+      "command": "item replace entity HRProbeA armor.chest with diamond_chestplate",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) on HRProbeA with [Diamond Chestplate]"
+      ]
+    },
+    {
+      "command": "item replace entity HRProbeA weapon.offhand with shield",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) on HRProbeA with [Shield]"
+      ]
+    },
+    {
+      "command": "effect give HRProbeA instant_health 1 10",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Applied effect Instant Health to HRProbeA"
+      ]
+    },
+    {
+      "command": "effect give HRProbeA saturation 1 10",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Applied effect Saturation to HRProbeA"
+      ]
+    },
+    {
+      "command": "hardrushp0 clear HRProbeB",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "已解除 HRProbeB 的原型伪装。"
+      ]
+    },
+    {
+      "command": "gamemode survival HRProbeB",
+      "success": true,
+      "resultValue": 0,
+      "output": []
+    },
+    {
+      "command": "effect clear HRProbeB",
+      "success": false,
+      "resultValue": 0,
+      "output": [
+        "Target has no effects to remove"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run tp HRProbeB 64.5 150 61.5 0 0",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Teleported HRProbeB to 64.500000, 150.000000, 61.500000"
+      ]
+    },
+    {
+      "command": "execute in minecraft:overworld run spawnpoint HRProbeB 64 150 64",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Set spawn point to 64, 150, 64 [0.0, 0.0] in minecraft:overworld for HRProbeB"
+      ]
+    },
+    {
+      "command": "clear HRProbeB",
+      "success": true,
+      "resultValue": 136,
+      "output": [
+        "Removed 136 item(s) from player HRProbeB"
+      ]
+    },
+    {
+      "command": "give HRProbeB diamond_sword",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 1 [Diamond Sword] to HRProbeB"
+      ]
+    },
+    {
+      "command": "give HRProbeB bow",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 1 [Bow] to HRProbeB"
+      ]
+    },
+    {
+      "command": "give HRProbeB arrow 64",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 64 [Arrow] to HRProbeB"
+      ]
+    },
+    {
+      "command": "give HRProbeB cooked_beef 64",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 64 [Steak] to HRProbeB"
+      ]
+    },
+    {
+      "command": "give HRProbeB shield",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 1 [Shield] to HRProbeB"
+      ]
+    },
+    {
+      "command": "give HRProbeB diamond_helmet",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 1 [Diamond Helmet] to HRProbeB"
+      ]
+    },
+    {
+      "command": "give HRProbeB diamond_chestplate",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Gave 1 [Diamond Chestplate] to HRProbeB"
+      ]
+    },
+    {
+      "command": "item replace entity HRProbeB armor.head with diamond_helmet",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) on HRProbeB with [Diamond Helmet]"
+      ]
+    },
+    {
+      "command": "item replace entity HRProbeB armor.chest with diamond_chestplate",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) on HRProbeB with [Diamond Chestplate]"
+      ]
+    },
+    {
+      "command": "item replace entity HRProbeB weapon.offhand with shield",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Replaced 1 slot(s) on HRProbeB with [Shield]"
+      ]
+    },
+    {
+      "command": "effect give HRProbeB instant_health 1 10",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Applied effect Instant Health to HRProbeB"
+      ]
+    },
+    {
+      "command": "effect give HRProbeB saturation 1 10",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "Applied effect Saturation to HRProbeB"
+      ]
+    },
+    {
+      "command": "hardrushp0 appearance HRProbeA zombie",
+      "success": true,
+      "resultValue": 1,
+      "output": [
+        "已设置旁人怪物外观，本人使用原版玩家模型／Steve 皮肤。disguise=zombie; realId=10; selfView=player; selfSpawned=false; selfSkin=steve; skinRefresh=sent; physics=player; equipment=preserved; visualAcceptance=pending"
+      ]
+    }
+  ]
+}

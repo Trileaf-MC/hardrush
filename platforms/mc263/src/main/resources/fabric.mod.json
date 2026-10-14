@@ -3,10 +3,10 @@
   "id": "hardrush",
   "version": "${version}",
   "name": "HardRush P0",
-  "description": "Server-only technical prototype for round worlds and monster self-view.",
+  "description": "Server-only technical prototype for round worlds, observer appearance and native monster roles.",
   "environment": "server",
   "entrypoints": { "main": ["dev.hardrush.p0.HardRushP0"] },
-  "mixins": ["hardrush.p0.disguise.mixins.json", "hardrush.p0.world.mixins.json"],
+  "mixins": ["hardrush.p0.disguise.mixins.json", "hardrush.p0.world.mixins.json", "hardrush.p0.monster.mixins.json"],
   "depends": {
     "fabricloader": ">=0.19.5",
     "minecraft": "26.3",

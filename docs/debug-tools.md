@@ -2,7 +2,7 @@
 
 2026-10-13 已实际接通 MCPFabric、Fabric 服务端及客户端 GameTest、JDWP/JDI 和 spark。该环境针对当前 `platforms/mc263`；26.1.2、26.2 尚未接入或验收。
 
-调试实例与现有 `.local/server-p0`、两个官方原版 HRProbe 客户端分开。带模组的 HRDebug 客户端用于开发与自动化，不能替代“原版客户端可完整游玩”的产品验收。这里的通过也不代表完整 P0、第一人称战斗、真正的传送门或龙战已经验收。
+调试实例与现有 `.local/server-p0` 分开。带模组的 HRDebug 客户端用于开发与自动化，不能替代“原版客户端可完整游玩”的产品验收；两个干净官方 HRProbe 客户端可用 `p0-client.py --server 127.0.0.1:25586` 连接隔离调试服务端。这里的通过也不代表完整 P0、第一人称战斗、真正的传送门或龙战已经验收。
 
 原版客户端人工验收时，代理负责准备环境、明确步骤、采集日志和定位问题；高频战斗、依赖手感或明显适合人工完成的操作直接交给用户。先用服务端回归与受控夹具降低人工操作成本，避免把完整重复战斗交给用户。P0-14 的低血量回归、原版最后一击夹具及人工交接见 [原版末地流程进展](p0-vanilla-end-evidence.md)。
 
@@ -18,12 +18,14 @@
 | 游戏服务端 | `127.0.0.1:25586`，`.local/debug/server` |
 | 服务端 / 客户端 MCP HTTP Bridge | `127.0.0.1:25599` / `127.0.0.1:25601`，必须携带本地 Bearer Token |
 | 服务端 / 客户端 JDWP | `127.0.0.1:5005` / `127.0.0.1:5006`，启动时不暂停 |
-| 本地测试身份 | HRDebug，离线开发模式、回环监听、服务端白名单与 OP 4 |
+| 本地测试身份 | HRDebug／HRProbeA／HRProbeB，离线开发模式、回环监听、服务端白名单与 OP 4 |
 | MCP 入口 | `hardrush_server` / `hardrush_client`，stdio；每个入口发现 75 个工具 |
 
 `scripts/debug-tools.lock.json` 固定 JAR 的下载地址、SHA-512，以及 MCP 源码压缩包的提交和 SHA-256；`scripts/mcpfabric-pnpm-lock.yaml` 固定 Node 依赖。准备过程使用 Corepack pnpm，源码和依赖均保存在忽略的 `.local/devtools`。
 
 所有凭据保存在 `.local/debug/<side>/config/mcpfabric.config.json`，不会复制进 MCP 注册配置、源码或日志。启动器在启动时读取 Token。开发工具 JAR 与 GameTest 代码均不进入 HardRush 发布 JAR。
+
+新外观双原版场地由 `scripts/p0-appearance.py` 准备；完整连续验证由 `scripts/p0-appearance-cycles.py --run` 执行。操作、人工通过结论及范围见 [生命周期与人工验收](p0-appearance-manual.md)。场地交给用户后，不在用户操作中自动重置。
 
 ## 准备、启动与停止
 
@@ -104,14 +106,14 @@ python3 scripts/debug-tools.py start --side client
 
 测试源码在 `platforms/mc263/src/gametest`，与发布代码分开：
 
-- 服务端测试：三个运行时维度的种子与所有传送门目标路由、末地战斗对象、同种子幂等、异种子拒绝、三种伪装的启用／解除，以及装备保护。另直接调用原版 `Portal.getPortalDestination` 验证末地进入／返回的 Mixin 路由；仍不替代实际门碰撞、玩家床／锚和完整龙战。
+- 服务端测试：三个运行时维度的种子与所有传送门目标路由、末地战斗对象、同种子幂等、异种子拒绝、三种伪装的启用／解除，以及装备保留。另直接调用原版 `Portal.getPortalDestination` 验证末地进入／返回的 Mixin 路由；仍不替代实际门碰撞、玩家床／锚和完整龙战。
 - 客户端测试最初覆盖：连接真正的 HardRush 专用服，通过 Bridge 构造空装伪装，断言附近的 zombie 实体、模拟 F5、截图及解除；当前覆盖范围已扩展如下。
 
-同日 self-view 修复回归已扩展该客户端测试：三种模型的 visible 失败基线、hidden 瞄准／原版空手伤害、每种 20 次显示切换、移动、一次跨维度恢复和解除；同时验证直接相机替换会停止正常移动并选中真实玩家。截图现在明确保存到 `.local/research/self-view/screenshots/`，结构化结果为该目录上一级的 `client-results.json`。相机实验仅由 debugTools 装载，命令 `hardrushdebug camera HRDebug self`／`reset`；100 个服务端 tick 内自动恢复。测试通过不等于原版自动 F5 方案通过，详情见 [self-view 记录](p0-self-view-evidence.md)。
+2026-10-13 的 self-view 修复回归是历史快照，记录 visible／hidden 及相机实验的失败与限制，见 [旧 self-view 记录](p0-self-view-evidence.md)。2026-10-14 新实现已删除这套显示切换和相机实验；当前客户端测试覆盖本人 Steve 皮肤与原皮肤恢复、F5 前后视角、第一人称移动、装备／经验保留、旁人三种怪物、真实玩家致死前伤害及跨维度。截图位于 `.local/research/observer-appearance/screenshots/`，结构化结果位于上级 `client-results.json`。`hardrushdebug actor <zombie|skeleton|creeper|respawn|cleanup|clear>` 只在独立 debugTools 中提供原版网络测试演员，不进入发布 JAR。新实现及验收边界见 [外观记录](p0-observer-appearance.md)。
 
-P0-15 随后新增 `HardRushWorldBoundaryGameTest` 的 10 项服务端测试，当前服务端总数为 13 项 HardRush + 1 项框架测试。床／锚、死亡、珍珠、载具、PrepareSpawnTask 模拟重连、进度、时钟／天气及四水晶复召的实际覆盖与夹具范围见 [世界边界记录](p0-world-boundaries.md)。本次没有运行客户端 GameTest；历史 self-view 客户端证据不作新构建视觉通过结论。
+P0-15 随后新增 `HardRushWorldBoundaryGameTest` 的 10 项服务端测试，当时服务端总数为 13 项 HardRush + 1 项框架测试；2026-10-14 的外观及生命周期、真实角色、自动装备回归继续扩展，总计 34 项 HardRush + 1 项框架测试。最新 `checkP0` 与 9 项 JUnit 通过，来源见 [角色与自动装备记录](p0-monster-roles.md)。床／锚、死亡、珍珠、载具、PrepareSpawnTask 模拟重连、进度、时钟／天气及四水晶复召的实际覆盖与夹具范围见 [世界边界记录](p0-world-boundaries.md)。最新装备批次没有重跑图形客户端 GameTest；历史 self-view 客户端证据不作新构建视觉通过结论。
 
-早期客户端测试截图在 `platforms/mc263/build/run/clientGameTest/screenshots/`；当前 self-view 回归使用上文的显式输出目录，归档证据见 [self-view 清单](evidence/self-view-20261013/manifest.json)。服务端测试使用可删除的 `build/run/gameTest`；debug-world 和 P0 世界不会被 GameTest 清理。Loom 同时测试时会写共享测试目录，应顺序执行这两种 GameTest。
+早期客户端测试截图在 `platforms/mc263/build/run/clientGameTest/screenshots/`；旧 self-view 回归使用 `.local/research/self-view/screenshots/`，新旁人外观回归使用上文的 observer-appearance 输出目录，归档证据见 [self-view 清单](evidence/self-view-20261013/manifest.json)。服务端测试使用可删除的 `build/run/gameTest`；debug-world 和 P0 世界不会被 GameTest 清理。Loom 同时测试时会写共享测试目录，应顺序执行这两种 GameTest。
 
 ## JDWP 与实际断点
 

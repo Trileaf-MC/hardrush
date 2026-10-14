@@ -30,6 +30,8 @@ ServerReplay 对应发行证据：[26.1 候选](https://api.modrinth.com/v2/vers
 
 ## 自身第三人称的源码证据
 
+2026-10-14 用户已允许本人普通外观。以下 self-view 源码研究保留为旧要求下的历史候选，不再是必须完成的路线；当前方案仅要求旁人完整怪物外观与本人原版操作。26.3 新实现已移除本人隐藏／替身路径并采用固定 Steve 皮肤资料，验证见 [新外观记录](p0-observer-appearance.md)；仍不能将其他版本或完整阶段记为已通过。
+
 DisguiseLib 的 `main` 快照 `5d0b1d295500a9b95babca2f2ffe9ee0f54ce141` 声明构建目标为 26.3，模组版本为 1.3.6。网络处理源码对本人设置隐身元数据，为替身生成独立实体 ID／UUID，并同步位置与朝向。这提供了值得验证的实现方向。[版本配置](https://github.com/NucleoidMC/DisguiseLib/blob/5d0b1d295500a9b95babca2f2ffe9ee0f54ce141/gradle.properties)、[self-view 相关源码](https://github.com/NucleoidMC/DisguiseLib/blob/5d0b1d295500a9b95babca2f2ffe9ee0f54ce141/src/main/java/xyz/nucleoid/disguiselib/impl/mixin/ServerPlayNetworkHandlerMixin_Disguiser.java#L75)。
 
 首次变身的跟踪刷新是否必然向本人生成替身、第一人称是否被遮挡、恢复后是否留下隐身，都仍需实测。客户端本体、可见替身与实际碰撞体也不是天然一致的。该源码只能支持“有候选路径”，不能支持“完整需求已实现”。[变身刷新入口](https://github.com/NucleoidMC/DisguiseLib/blob/5d0b1d295500a9b95babca2f2ffe9ee0f54ce141/src/main/java/xyz/nucleoid/disguiselib/impl/mixin/EntityMixin_Disguise.java#L148)。
@@ -50,6 +52,6 @@ Grim 当前说明覆盖到 26.3，但核查的 Fabric Alpha 发行物元数据�
 
 ## 正式功能开发前需补齐的锁定结果
 
-三版基础构建、Fantasy、SQLite 和 SGui 的版本／传递依赖／来源／校验／许可证已在 P0b-01／07 归档；自有 P0 外观实现来源有指纹，最终路线仍待 B01。回放、防矿透、防作弊及最终外观方案的锁定与集成依照 P0b-02～06 完成，不能把本轮基础探针标成完整正式依赖组合。源码适配另记固定 commit 和本地修改。
+三版基础构建、Fantasy、SQLite 和 SGui 的版本／传递依赖／来源／校验／许可证已在 P0b-01／07 归档；自有 P0 外观实现来源有指纹，旧 B01 已随需求调整撤销，26.3 旁人怪物／本人 Steve 方案已实现，其他版本和完整验收仍待完成。回放、防矿透、防作弊及最终外观方案的锁定与集成依照 P0b-02～06 完成，不能把本轮基础探针标成完整正式依赖组合。源码适配另记固定 commit 和本地修改。
 
-P0／P0b 还需确定并验证最终 self-view 路线、碰撞／受伤模型、回放格式和防护组合。缺失可用现成库时允许实现服务器适配器；不允许用需要客户端模组的库来绕过原版客户端约定。没有通过对应版本的硬性验收，就不发布该版本的正式兼容声明。
+P0／P0b 还需补齐仅向旁人显示怪物路线的原版／多版本验收、碰撞／受伤模型、回放格式和防护组合；本人允许普通外观，不必再解决自身怪物 self-view。缺失可用现成库时允许实现服务器适配器；不允许用需要客户端模组的库来绕过原版客户端约定。没有通过对应版本的硬性验收，就不发布该版本的正式兼容声明。

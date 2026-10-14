@@ -1,0 +1,80 @@
+{
+  "HRProbeA": {
+    "name": "HRProbeA",
+    "uuid": "e60a7360-09e9-3ab7-8399-221e3c44b822",
+    "id": 45,
+    "instance": 250453175,
+    "dimension": "minecraft:overworld",
+    "loaded": true,
+    "teleportPending": false,
+    "alive": true,
+    "health": 20.0,
+    "invisible": false,
+    "nativeCamera": true,
+    "inventoryMenu": true,
+    "team": "",
+    "permission": "OWNERS",
+    "gameMode": "adventure",
+    "attributes": {
+      "minecraft:step_height": 0.6,
+      "minecraft:movement_speed": 0.05290000191926958,
+      "minecraft:entity_interaction_range": 3.0,
+      "minecraft:max_health": 20.0,
+      "minecraft:attack_speed": 1.0,
+      "minecraft:armor": 2.0,
+      "minecraft:block_interaction_range": 4.5,
+      "minecraft:armor_toughness": 0.0
+    },
+    "equipment": {
+      "mainhand": "minecraft:air",
+      "offhand": "minecraft:air",
+      "feet": "minecraft:air",
+      "legs": "minecraft:air",
+      "chest": "minecraft:air",
+      "head": "minecraft:air",
+      "body": "minecraft:air",
+      "saddle": "minecraft:air"
+    },
+    "matchingEntities": 1,
+    "appearance": "disguise=zombie; realId=45; selfView=player; selfSpawned=false; selfSkin=steve; skinRefresh=sent; physics=player; equipment=preserved; visualAcceptance=pending",
+    "monster": "monster=zombie; nativeMaxHealth=20.0; nativeMovementAttribute=0.23000000417232513; playerMovementEquivalent=0.05290000191926958; nativeAttackDamage=3.0; intrinsicArmor=2.0; roleOnly=true; ordinaryItems=false; burstRemaining=0; arrowsFired=0"
+  },
+  "HRProbeB": {
+    "name": "HRProbeB",
+    "uuid": "ad130186-a3c7-33a0-9b67-8a0e1491afc9",
+    "id": 46,
+    "instance": 166836266,
+    "dimension": "minecraft:overworld",
+    "loaded": true,
+    "teleportPending": false,
+    "alive": true,
+    "health": 20.0,
+    "invisible": false,
+    "nativeCamera": true,
+    "inventoryMenu": true,
+    "team": "",
+    "permission": "OWNERS",
+    "gameMode": "survival",
+    "attributes": {
+      "minecraft:movement_speed": 0.10000000149011612,
+      "minecraft:entity_interaction_range": 3.0,
+      "minecraft:attack_speed": 1.5999999046325684,
+      "minecraft:armor": 11.0,
+      "minecraft:block_interaction_range": 4.5,
+      "minecraft:armor_toughness": 4.0
+    },
+    "equipment": {
+      "mainhand": "minecraft:diamond_sword",
+      "offhand": "minecraft:shield",
+      "feet": "minecraft:air",
+      "legs": "minecraft:air",
+      "chest": "minecraft:diamond_chestplate",
+      "head": "minecraft:diamond_helmet",
+      "body": "minecraft:air",
+      "saddle": "minecraft:air"
+    },
+    "matchingEntities": 1,
+    "appearance": "disguise=off; realId=46",
+    "monster": "monster=off"
+  }
+}

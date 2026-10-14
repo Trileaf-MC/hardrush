@@ -1,0 +1,337 @@
+{
+  "date": "2026-10-14",
+  "baselineCommit": "acb3574d166ada40953f0d1ffd6363cfef7bc51d",
+  "sourceState": "uncommitted role code unchanged; documentation updated for revoked equipment ban and mechanism discussion",
+  "scope": "26.3 operator role prototype, no formal automatic death/lobby/30s spawn/rewards/SQLite flow",
+  "userRequirements": {
+    "nativeSpeciesDefaults": true,
+    "zombieExtraSkill": "two native baby zombies",
+    "skeletonExtraSkill": "three native monster arrows",
+    "ordinaryItemsEquipmentContainers": {
+      "equipmentTotalBan": "revoked by user on 2026-10-14",
+      "equipmentStyle": "native automatic pickup/equip/replacement; details under discussion",
+      "ordinaryHumanItemAbilities": "species-bound; gear permission does not grant free inventory, containers or arbitrary item use"
+    },
+    "acceptedSmallDimensions": true
+  },
+  "checks": {
+    "junit": 9,
+    "requiredServerGameTests": 30,
+    "projectServerGameTests": 29,
+    "frameworkGameTests": 1,
+    "roleGameTests": 8,
+    "clientAppearanceRegression": "one run reached Steve/F5/observer rendering then target-aim timeout; fixture corrected",
+    "graphicalClientRetries": "two startup stalls in SDL_GL_SwapWindow, no test connection; first owned JVM thread dump saved",
+    "nativeRoleManual": "deferred by user after fixture preparation; combine this skipped test with selected new mechanics after discussion and implementation",
+    "fullP0": "not passed",
+    "fullP2": "not passed",
+    "nativeClients": "both official clients connected and natively respawned at fixture readiness; readiness evidence is historical and does not assert current client state"
+  },
+  "artifact": {
+    "path": "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar",
+    "bytes": 163211,
+    "sha256": "59b9d171cb1eb768c1cc0c856b612ea91beb4a956beeeb87ad09c9aed3775216",
+    "forbiddenEntries": [],
+    "nested": [
+      {
+        "path": "META-INF/jars/core-0.1.0-p0.jar",
+        "sha256": "59606c5afbd67e54412591ff9354d490ebd835ee40c5a862f1207d5ae957a25e",
+        "forbiddenEntries": []
+      },
+      {
+        "path": "META-INF/jars/fantasy-0.8.4+26.3.jar",
+        "sha256": "579a8f061b4d8339c900972e11b0cc3713844cdb183f48dce2c63d330220834a",
+        "forbiddenEntries": []
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "THIRD-PARTY.md",
+      "sha256": "6965541ecc46a1c6118141f5c1a2f42a5b14cfb379dc094cc710f0d894211a84"
+    },
+    {
+      "path": "docs/decisions.md",
+      "sha256": "ca1736602126e1774a3879f0e628dc66bf4c03735536bea7f70ad765aecc8c03"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "sha256": "ccc090b8f32eecaf8ff7b56bef9cf7a6ed94d2168d3b2aadc9e1adf17b0e8d1e"
+    },
+    {
+      "path": "docs/monster-balance.md",
+      "sha256": "9ac0ddb5fa880154b96e1a49e782bb1d66270fccc83ddd8ce1583b5e03e589e9"
+    },
+    {
+      "path": "docs/p0-monster-roles.md",
+      "sha256": "ed158fa34798fba29a6bd4432aac130195a61ad946c91b738ce16868a1abaa2d"
+    },
+    {
+      "path": "docs/requirements.md",
+      "sha256": "381485c40a7cce07685743a211ac83c6a664e21a9b256e3cf80875f28b4137df"
+    },
+    {
+      "path": "platforms/mc263/build.gradle",
+      "sha256": "29919a685c110a82a8b159d9c669ce2ad9af6d32a2b595910b33118c90bbc8ce"
+    },
+    {
+      "path": "platforms/mc263/src/debugTools/java/dev/hardrush/debug/AppearanceTestFixtures.java",
+      "sha256": "e4c75d1d482d6a127ce867cae5db3021113d678e63e8699124ada406e961d05c"
+    },
+    {
+      "path": "platforms/mc263/src/debugTools/java/dev/hardrush/debug/mixin/LoadAcknowledgementAccessor.java",
+      "sha256": "82b6d3f93584e3bcb0bb65ee64a3934a6965a59fbfc630733c667b2b6c243fe7"
+    },
+    {
+      "path": "platforms/mc263/src/debugTools/java/dev/hardrush/debug/mixin/SparkStartupPingMixin.java",
+      "sha256": "4a2692722531802ccbc3ed2f2d1c63b26174a5ec9b2d3e54fecc8b93e17940bd"
+    },
+    {
+      "path": "platforms/mc263/src/debugTools/resources/fabric.mod.json",
+      "sha256": "21a63cca73f3db9945538abdf1736bd793a2e8c03b8995e6a9466e3962621fb5"
+    },
+    {
+      "path": "platforms/mc263/src/debugTools/resources/hardrush.debug-tools.mixins.json",
+      "sha256": "7c946a6116681bc3469642c493bea9d825f326cc832471515220086fad036077"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/HardRushClientGameTest.java",
+      "sha256": "0aca8dbb6db4e1d4288a536d595ff05c95dfc7b36465f6f007d5d7740a7d73a6"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/HardRushServerGameTest.java",
+      "sha256": "7c7021f19ac6cdefa10f67c10ad1029fa3e1868543731ff80f51d26301a3d1a2"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/HardRushWorldBoundaryGameTest.java",
+      "sha256": "eeaa91b176adb6b8f5ef4614529403206bcfab61345b9c9aba65eeb4caf4f0fc"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/MonsterAppearanceGameTest.java",
+      "sha256": "1ed5f663737b3a1b2598e7d9e66775575e2e33138e4d6e19b5a70b9ca69c8f6c"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/MonsterRoleGameTest.java",
+      "sha256": "46f70b04805c0dd8638814aab165f22047d67508deba61a1c14c62ed05b52019"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/resources/fabric.mod.json",
+      "sha256": "8723ce714f44f1a95bed2d1aed34bc6f34b1bcb7a7ac49c350902ef1777efc7e"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/HardRushP0.java",
+      "sha256": "f6c64c98997fe56653c928f6d48ac50937240aafb57606bc1521a654c8a6bca7"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/DisguiseProbe.java",
+      "sha256": "5536f1b54b55e8a9a2619b3a288051478cc861692c269d80126b13cde76611ee"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/OwnerSkin.java",
+      "sha256": "3d53e5cb915a3cebf439e1f23a42734d432e37c6e4cc97195d3772fe4a2f5ac2"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/mixin/DisguiseConnectionMixin.java",
+      "sha256": "d029e25fc7fcf003815739e8d194e34a6940da403376191796f9abfc953f4344"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/mixin/PlayerInfoPacketAccessor.java",
+      "sha256": "2487577555f3fb2c93764c005746b914299313c286dab46d78535ec649458d3b"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/MonsterRoles.java",
+      "sha256": "db95b612d083e4289707bba44e7962a0101d2afad677216e594067f67f4da791"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterArrowMixin.java",
+      "sha256": "cd971de6aeebfe651086fb323976634b05b5ec017fa636832e04061d26f475af"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterExperienceMixin.java",
+      "sha256": "178858f9eebe50978bc80b9cf0c33bb6a4937dcaae677b2917dc5d83e6c5bfe3"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterFoodMixin.java",
+      "sha256": "dfe9a5152bdca2e199a3d45db5fc36fb62d654ec78547697ef8ca4194b97b8d4"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterInventoryMixin.java",
+      "sha256": "e34ffce6b603b9cacb1e221b5039d70a0357ab92c30dbdd251db2a40e21f4ee5"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterLivingMixin.java",
+      "sha256": "161737b271c9814adc065c8eebacf1c01cafefd5083b53e94339123593d36395"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterMobAccessor.java",
+      "sha256": "1ec89a8ecfe1ecb60ff72feb0347f359d4d949eb4518068359b104e43e9fd207"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterPickupMixin.java",
+      "sha256": "b7d55ed2c15cf6b2ad1137a88830865054bdf12380abfbde4ff355ab70b5dd2d"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/NativeCreeperAccessor.java",
+      "sha256": "567aa4ef5c0dfff4991295256ce39a9407fd2087f81fa8de9a3b08a60b63aeea"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/SummonTargetMixin.java",
+      "sha256": "5f77f35ec2d9ddaaa1097ae616bed4df046a9d4f35fe334c66b15b59c9ec33f4"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/SummonedZombieMixin.java",
+      "sha256": "84d388dc813c3353b9472b186c65b38c671bab1fe955349e6a2f127f55b23c9a"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/RoundRuntimeLevel.java",
+      "sha256": "cf3bbec9a78e9e3f45aa0354f76fb51c6326efa0707cfd1e5a25a1f633f883a6"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/WorldManifest.java",
+      "sha256": "abee7b74f91fca9c38ed452a7e457878110420899909f524111a21a27fac126f"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/WorldProbe.java",
+      "sha256": "6490373ad0ed4f3cdc7be0ffbd98d5709255cd55cada320221ff60ca4125565b"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/EndPortalRoutingMixin.java",
+      "sha256": "86ad8995a1bb1121a60c4eabaa4cd5ef505b3e3d2300ed4af33a3adfd95d8fd9"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/LocationDimensionPredicateMixin.java",
+      "sha256": "73784ac19b1e2746f768cd36c13de982971371c791cb41b2f782a28c56b9fdc4"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/NetherPortalRoutingMixin.java",
+      "sha256": "05fbff7a93c06d463dba27e15c6f91ab72b0063769f751c29d88f1890724608a"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/PlayerDimensionAdvancementMixin.java",
+      "sha256": "2f39978ef6bc74beeb6d96e9b91e8f6016d0731592565ebc45446f3121d124db"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/PlayerRespawnRoutingMixin.java",
+      "sha256": "e77afc6f6aef195e3dd1ba92727c8121d27b6a32cab807213d46a82d8c89bb28"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/RoundWeatherCommandMixin.java",
+      "sha256": "e7a261daff8a1d77682337586602f18b7dcfb0216e1a00f085f465f9484b5215"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/RoundWeatherMixin.java",
+      "sha256": "c41ae51c3a9da34601018addefb3cc9a2a95bdadbedbc58f1882b666459fcc72"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/RuntimeLevelSeedMixin.java",
+      "sha256": "766affa79b0c3da5bc69ae3561fabcb842e9dc382a883ac924fad292e7ff8d63"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/fabric.mod.json",
+      "sha256": "17375267d91c7d1fe89948ff9c3152fb2c2f8d7e247bb1b74a8c20b1daefc53c"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush/steve-profile.json",
+      "sha256": "64c1581ce81ccb1967f513e4c2c246a290eea6e567e3f4efda9ee7e132a6fb51"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush.p0.disguise.mixins.json",
+      "sha256": "0fbb1cd5f62d108f0a8de59f93490282eec39ecd03c013d1b29af6f54d691cae"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush.p0.monster.mixins.json",
+      "sha256": "389ae0f5d42eb9d11ba19e158a42f91a5d382fe53d439616aa9260841c4a4129"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush.p0.world.mixins.json",
+      "sha256": "4521c6546f3959b4bbe98e0c8143d6bfc0fdc743c871f5501c2ca020fa3b3480"
+    },
+    {
+      "path": "scripts/debug-tools.py",
+      "sha256": "4ea6970e053549730b885395bc205d651f73164e92018a63aec2c97d017e2002"
+    },
+    {
+      "path": "scripts/p0-appearance-cycles.py",
+      "sha256": "bb3ce9dd0e7ed66edd25dc0916c472c4c1e05bd84b9bcd375d3e9a033c89b4a0"
+    },
+    {
+      "path": "scripts/p0-appearance.py",
+      "sha256": "b3c5adac20d801f8f2292e49d43351c5efb06308087c3184833d1986b15fd4cc"
+    },
+    {
+      "path": "scripts/p0-client.py",
+      "sha256": "f0d9c7447159744f3888fa94851fe2e549434efa77e40426a651496bfea65c56"
+    },
+    {
+      "path": "scripts/p0-monster.py",
+      "sha256": "d94fcab39d4126f79a05045efe5f52f5243c9196aaed543d65570d819f8b8d12"
+    }
+  ],
+  "files": [
+    {
+      "path": "client-startup-thread-dump.txt",
+      "bytes": 11172,
+      "sha256": "7febbd4110c216189154e9572eabd500fc80cc0e4a9c6672dfaa3d735e86c6d6"
+    },
+    {
+      "path": "monster-client-aim-final.log",
+      "bytes": 15243,
+      "sha256": "be5a2040fed1df26378fe1f41bbee8d9747e5812e9f37f5f0a3ba32e86c802e0"
+    },
+    {
+      "path": "monster-client-appearance.log",
+      "bytes": 27034,
+      "sha256": "de72f1a9c401ec0a1dfe24f352dd117f65045a22add3b0a3a9721fdcb2d87ef4"
+    },
+    {
+      "path": "monster-client-render-retry.log",
+      "bytes": 7843,
+      "sha256": "e25846327db7529d10e527c88b49248672e30b867107357481cfdfa65ddf35ca"
+    },
+    {
+      "path": "monster-first-tests.log",
+      "bytes": 43843,
+      "sha256": "c569404008932f5e73352c28bcb59c41d295f6c3412c08beef3240f9b634fa05"
+    },
+    {
+      "path": "monster-native-reach-tests.log",
+      "bytes": 46691,
+      "sha256": "ce05e41180fb8fdd0564275d3947bd1183cb7fe590d9d17f73737a105ebe2b05"
+    },
+    {
+      "path": "monster-real-player-tests.log",
+      "bytes": 45861,
+      "sha256": "67cf9f3cb1cbe2a45cada8d38dace1ae341a023e417eec8b97d73349eccba4e7"
+    },
+    {
+      "path": "monster-release-check.log",
+      "bytes": 39927,
+      "sha256": "b8b1f5d55ac81f1345749e9f23777080b156bec73909c80f4dc193fb01b2a60e"
+    },
+    {
+      "path": "docs/evidence/monster-roles-20261014/HRProbeA-relaunch-client.log",
+      "sha256": "381bb93945cf21d9743fcfa9c09a93d4bb67d8f5defd21936684bf6289601185"
+    },
+    {
+      "path": "docs/evidence/monster-roles-20261014/HRProbeB-relaunch-client.log",
+      "sha256": "5d0d90c26b37dd6d165f6f95175ce4c8f92535e40b8056181213b2d92c975706"
+    },
+    {
+      "path": "docs/evidence/monster-roles-20261014/native-role-ready.json",
+      "sha256": "c25cb1568b1c10b16df44e7290c8d19d9a361df60b1dd0c4c7833ff2a8be0c26"
+    },
+    {
+      "path": "docs/evidence/monster-roles-20261014/native-role-fixture.json",
+      "sha256": "cdea9ad875bb21069944672f4159fde839d527e7613a21b1e96f272048e6e4fa"
+    }
+  ],
+  "discussionRecord": "docs/p0-monster-roles.md: Wiki mechanisms and equipment candidates; suggestions not implemented or accepted as test results",
+  "archiveNormalizations": [
+    {
+      "path": "docs/evidence/monster-roles-20261014/client-startup-thread-dump.txt",
+      "change": "remove trailing whitespace and extra blank line at EOF; stack frames and runtime data preserved",
+      "originalSha256": "9b24555dce5ca68e62f8ef992af33095c96d1998ab5f906bf18c1d2a7fa7766a",
+      "archivedSha256": "7febbd4110c216189154e9572eabd500fc80cc0e4a9c6672dfaa3d735e86c6d6"
+    }
+  ]
+}

@@ -76,29 +76,23 @@ public final class HardRushServerGameTest {
     }
 
     @GameTest(maxTicks = 100)
-    public void disguiseLifecycleAndEquipmentGuard(GameTestHelper test) {
+    public void disguisePreservesEquipment(GameTestHelper test) {
         var player = test.makeMockServerPlayerInLevel();
         try {
             for (String kind : new String[]{"zombie", "skeleton", "creeper"}) {
                 DisguiseProbe.apply(player, kind);
                 test.assertTrue(DisguiseProbe.status(player).contains("disguise=" + kind), "Disguise applied: " + kind);
-                for (int i = 0; i < 3; i++) {
-                    DisguiseProbe.setSelfView(player, "hidden");
-                    test.assertTrue(DisguiseProbe.status(player).contains("selfSpawned=false"), "Self hidden without clearing disguise");
-                    DisguiseProbe.setSelfView(player, "hidden");
-                    DisguiseProbe.setSelfView(player, "visible");
-                    test.assertTrue(DisguiseProbe.status(player).contains("selfSpawned=true"), "Self restored");
-                }
+                test.assertTrue(DisguiseProbe.status(player).contains("selfView=player; selfSpawned=false"), "Native owner model without self mob");
                 String before = DisguiseProbe.status(player);
-                DisguiseProbe.setSelfView(player, "unknown");
+                DisguiseProbe.apply(player, "unknown");
                 test.assertValueEqual(DisguiseProbe.status(player), before, "Invalid mode preserves disguise");
                 DisguiseProbe.clear(player);
                 test.assertTrue(DisguiseProbe.status(player).startsWith("disguise=off"), "Disguise cleared");
             }
             player.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_SWORD));
             DisguiseProbe.apply(player, "zombie");
-            test.assertTrue(DisguiseProbe.status(player).startsWith("disguise=off"), "Equipment blocks disguise");
-            test.assertTrue(player.getMainHandItem().is(Items.DIAMOND_SWORD), "Rejected disguise preserves item");
+            test.assertTrue(DisguiseProbe.status(player).contains("disguise=zombie"), "Equipment permits disguise");
+            test.assertTrue(player.getMainHandItem().is(Items.DIAMOND_SWORD), "Disguise preserves item");
         } finally {
             DisguiseProbe.clear(player);
             test.getLevel().getServer().getPlayerList().remove(player);
