@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.Mixin;
 public abstract class CombatLivingMixin {
     @WrapMethod(method="hurtServer")
     private boolean damage(ServerLevel level, DamageSource source, float amount, Operation<Boolean> original) {
+        if (P1CombatRuntime.rejectDamage(level)) return false;
         if (!((Object)this instanceof ServerPlayer player)) return original.call(level, source, amount);
         float before = player.getHealth();
         try (var ignored = P1CombatRuntime.damage(level, source)) {

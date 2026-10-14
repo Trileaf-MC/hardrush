@@ -68,6 +68,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
     private final ExecutorService io;
     private final CompletableFuture<ProfileJournal> journal;
     private boolean closed;
+    private volatile Throwable ioFailure;
 
     public P1PlayerProfiles(MinecraftServer server, Path root, Supplier<ServerLevel> lobby, Supplier<Vec3> lobbySpawn) {
         this.server = server;
@@ -158,6 +159,9 @@ public final class P1PlayerProfiles implements AutoCloseable {
                 if (loaded.contains(lateField)) original.put(lateField, loaded.get(lateField).copy());
             }
         });
+        // The carried/crafting stacks were captured above. Close before moving away from the old world;
+        // native menu removal must not drop or return another copy while that suspension is retained.
+        closeSuspendedContainer(player);
         var entry = new Entry(player, source, wasIsolated, original);
         players.put(player.getUUID(), entry);
         tagged.hardrush$isolated(true);
@@ -177,6 +181,9 @@ public final class P1PlayerProfiles implements AutoCloseable {
         var entry = players.get(player.getUUID());
         if (entry == null || entry.player != player) onLogin(player);
         ((ProfileTagged) player).hardrush$clearLoadedProfile();
+        // Pre-connection capture cannot notify crafting listeners. The captured state remains
+        // quarantined until this first safe opportunity to clear and close the native menu.
+        closeSuspendedContainer(player);
         moveToLobby(player);
         player.sendSystemMessage(Component.literal("玩家档案正在隔离并核验；完成后才允许加入本轮。"));
     }
@@ -333,13 +340,26 @@ public final class P1PlayerProfiles implements AutoCloseable {
     /** Called only after the participant/online transition has committed. Returns false without unlocking on failure. */
     public boolean admit(ServerPlayer player, RoundSnapshot round, ServerLevel spawnLevel, Vec3 spawn,
             Predicate<ServerLevel> belongsToRound) {
+        return admit(player, round, spawnLevel, spawn, belongsToRound, false);
+    }
+
+    /** Restore an already active same-round life to view results; no admission or timing event is created. */
+    public boolean admitCelebration(ServerPlayer player, RoundSnapshot round, ServerLevel spawnLevel, Vec3 spawn,
+            Predicate<ServerLevel> belongsToRound) {
+        return admit(player, round, spawnLevel, spawn, belongsToRound, true);
+    }
+
+    private boolean admit(ServerPlayer player, RoundSnapshot round, ServerLevel spawnLevel, Vec3 spawn,
+            Predicate<ServerLevel> belongsToRound, boolean celebration) {
         requireMainThread();
         var entry = players.get(player.getUUID());
         var participant = round.participants().get(player.getUUID());
         if (closed || round.rules().mode() != GameMode.NORMAL || !isReady(player.getUUID(), round)
-                || round.phase() != RoundPhase.RUNNING || participant == null
+                || (celebration ? round.phase() != RoundPhase.SETTLING && round.phase() != RoundPhase.CELEBRATING
+                        : round.phase() != RoundPhase.RUNNING) || participant == null
                 || participant.role() != ParticipantRole.HUMAN_ACTIVE
                 || entry.player != player || !generation(round).equals(entry.target)) return false;
+        if (celebration && (entry.fresh || entry.awaitingRespawn)) return false;
         if (entry.admitted) return true;
         if (entry.awaitingRespawn) return confirmRespawn(player, round);
         try {
@@ -558,6 +578,9 @@ public final class P1PlayerProfiles implements AutoCloseable {
     }
 
     private static void closeSuspendedContainer(ServerPlayer player) {
+        // InventoryMenu slot changes themselves send recipe packets, even if closeContainer is skipped.
+        // Before a connection exists there is no open client menu; defer all menu mutations to onConnected.
+        if (player.connection == null) return;
         player.containerMenu.setCarried(ItemStack.EMPTY);
         if (player.containerMenu instanceof AbstractCraftingMenu crafting) {
             crafting.getInputGridSlots().forEach(slot -> slot.set(ItemStack.EMPTY));
@@ -655,7 +678,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
     private <T> CompletableFuture<T> supply(IoAction<T> action) {
         return CompletableFuture.supplyAsync(() -> {
             try { return action.run(); }
-            catch (Exception error) { throw new CompletionException(error); }
+            catch (Exception error) { ioFailure = error; throw new CompletionException(error); }
         }, io);
     }
 
@@ -680,6 +703,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
         io.shutdown();
         if (!io.awaitTermination(30, TimeUnit.SECONDS)) throw new IOException("Player archive worker did not drain; retain all files");
         journal.join();
+        if (ioFailure != null) throw new IOException("玩家档案后台写入失败，禁止保存正常停服标记", ioFailure);
     }
 
     private static final class Entry {

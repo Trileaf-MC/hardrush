@@ -33,6 +33,95 @@ import net.minecraft.world.phys.Vec3;
 
 /** Server-only fixtures; no graphical clients, screenshots or computer-use interaction. */
 public final class P1ProfileGameTest {
+    @GameTest(maxTicks = 100)
+    public void shutdownRejectsAProfileWriteFailureBeforeItsMainThreadCallback(GameTestHelper test) {
+        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        var server = test.getLevel().getServer();
+        var player = test.makeMockServerPlayerInLevel();
+        var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
+        var blockedPlayerDirectory = root.resolve(player.getUUID().toString());
+        try {
+            java.nio.file.Files.createDirectories(root);
+            java.nio.file.Files.writeString(blockedPlayerDirectory, "retain-this-failed-profile-fixture");
+        } catch (java.io.IOException error) { throw new IllegalStateException(error); }
+        var profiles = new P1PlayerProfiles(server, root, test::getLevel, () -> position);
+        try {
+            profiles.onLogin(player);
+            profiles.tick(round(UUID.randomUUID(), 1, player, GameMode.NORMAL));
+            // The same server-thread call enters the shutdown barrier before the worker's failure callback can run.
+            test.assertTrue(profiles.failure(player.getUUID()).isEmpty(), "Main-thread failure callback has not run before shutdown starts");
+            boolean refused = false;
+            try { profiles.close(); }
+            catch (java.io.IOException expected) { refused = expected.getMessage().contains("后台写入失败"); }
+            test.assertTrue(refused, "A drained failed archive write forbids a normal-stop success even before its callback runs");
+            test.assertValueEqual(java.nio.file.Files.readString(blockedPlayerDirectory), "retain-this-failed-profile-fixture",
+                    "A failed player directory remains intact for recovery");
+        } catch (Exception error) { throw new IllegalStateException(error); }
+        finally {
+            ((ProfileTagged) player).hardrush$isolated(false);
+            server.getPlayerList().remove(player);
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks = 1000)
+    public void celebrationReconnectRestoresOneSuspensionAndClosesTheOldContainer(GameTestHelper test) {
+        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        var server = test.getLevel().getServer();
+        var player = test.makeMockServerPlayerInLevel();
+        var lobby = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(4, 2, 4)));
+        var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
+        var profiles = new P1PlayerProfiles(server, root, test::getLevel, () -> lobby);
+        var initial = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        var celebrating = new RoundSnapshot(initial.roundId(), initial.sequence(), initial.seed(), initial.version(), initial.rules(),
+                RoundPhase.CELEBRATING, PauseReason.SETTLED, 123_000_000_000L, 500_000_000_000L,
+                initial.participants(), false, false, new dev.hardrush.core.round.RoundResult(
+                        dev.hardrush.core.round.RoundResult.Kind.COMPLETED, player.getUUID(), "可信首龙攻击"));
+        var shared = new net.minecraft.world.SimpleContainer(27);
+        shared.setItem(0, new ItemStack(Items.EMERALD, 5));
+        profiles.onLogin(player);
+        profiles.tick(initial);
+        test.startSequence()
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), initial), "Initial profile ready"))
+                .thenExecute(() -> {
+                    test.assertTrue(!profiles.admitCelebration(player, celebrating, test.getLevel(), position, level -> level == test.getLevel()),
+                            "A fresh lobby entrant cannot be admitted to a finished round");
+                    test.assertTrue(profiles.admit(player, initial, test.getLevel(), position, level -> level == test.getLevel()), "Human entered during the live race");
+                    player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));
+                    player.containerMenu = net.minecraft.world.inventory.ChestMenu.threeRows(42, player.getInventory(), shared);
+                    player.containerMenu.setCarried(new ItemStack(Items.GOLD_INGOT, 2));
+                    profiles.returnToLobby(player);
+                    test.assertTrue(player.containerMenu == player.inventoryMenu && player.inventoryMenu.getCarried().isEmpty(),
+                            "Suspension closes the old container synchronously before world evacuation");
+                    test.assertTrue(shared.getItem(0).is(Items.EMERALD) && shared.getItem(0).getCount() == 5,
+                            "Shared chest contents remain in their old world rather than entering the player snapshot");
+                    profiles.tick(celebrating);
+                })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), celebrating), "Same-round celebration suspension is durable"))
+                .thenExecute(() -> {
+                    test.assertTrue(profiles.admitCelebration(player, celebrating, test.getLevel(), lobby, level -> level == test.getLevel()),
+                            "An existing active human may restore to inspect celebration results");
+                    test.assertTrue(!P1PlayerProfiles.isLocked(player) && player.position().distanceTo(position) < .01,
+                            "Celebration restoration unlocks movement at the original same-round position");
+                    test.assertTrue(player.getInventory().getItem(0).is(Items.DIAMOND) && player.getInventory().getItem(0).getCount() == 3,
+                            "One same-round human inventory is restored");
+                    test.assertTrue(player.inventoryMenu.getCarried().is(Items.GOLD_INGOT) && player.inventoryMenu.getCarried().getCount() == 2,
+                            "The captured cursor stack is restored once after its old menu was closed");
+                    test.assertValueEqual(celebrating.challengeNanos(), 123_000_000_000L, "Profile restoration does not mutate settled race time");
+                    profiles.returnToLobby(player);
+                    profiles.tick(celebrating);
+                })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), celebrating), "Second suspension is durable"))
+                .thenExecute(() -> {
+                    test.assertTrue(profiles.admitCelebration(player, celebrating, test.getLevel(), lobby, level -> level == test.getLevel()), "Repeated celebration reentry stays in this life");
+                    test.assertTrue(player.inventoryMenu.getCarried().getCount() == 2, "Repeated suspension cannot duplicate the cursor item");
+                    try { profiles.close(); } catch (Exception error) { throw new IllegalStateException(error); }
+                    server.getPlayerList().remove(player);
+                }).thenSucceed();
+    }
+
     @GameTest(maxTicks = 1200)
     public void resetSuspensionReconnectAndThreeOfflineRounds(GameTestHelper test) {
         if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
@@ -143,11 +232,13 @@ public final class P1ProfileGameTest {
                 .resolve("hardrush/profile-tests/" + UUID.randomUUID()), test::getLevel, () -> position);
         try {
             player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 2));
+            player.inventoryMenu.setCarried(new ItemStack(Items.GOLD_INGOT, 3));
             profiles.onLogin(player);
             test.assertTrue(player.connection == null, "Fixture exercises the actual pre-connection stage");
             test.assertTrue(((ProfileTagged) player).hardrush$isolated(), "Connectionless login is already gated");
             test.assertTrue(player.position().distanceTo(position) < .01, "Login packet will initially use the safe lobby location");
             test.assertTrue(player.getInventory().getItem(0).is(Items.DIAMOND), "Old state remains intact until its archive is sealed");
+            test.assertTrue(player.inventoryMenu.getCarried().is(Items.GOLD_INGOT), "Connectionless capture defers menu listeners until onConnected rather than sending recipe packets");
             profiles.close();
         } catch (Exception error) { throw new IllegalStateException(error); }
         test.succeed();

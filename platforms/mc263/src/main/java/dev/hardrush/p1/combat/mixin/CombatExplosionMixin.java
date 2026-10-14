@@ -16,6 +16,7 @@ public abstract class CombatExplosionMixin {
     @Shadow @Final private Entity source;
     @WrapMethod(method="explode")
     private int batch(Operation<Integer> original) {
+        if (P1CombatRuntime.rejectDamage(level)) return 0;
         try (var ignored = P1CombatRuntime.explosion(level, source)) { return original.call(); }
     }
 }

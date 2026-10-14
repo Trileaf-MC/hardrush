@@ -1,6 +1,7 @@
 package dev.hardrush.p1.player.mixin;
 
 import dev.hardrush.p1.player.P1PlayerProfiles;
+import dev.hardrush.p1.combat.P1CombatRuntime;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundChatCommandSignedPacket;
 import net.minecraft.network.chat.LastSeenMessages;
@@ -31,6 +32,19 @@ public abstract class PlayerIsolationNetworkMixin {
             at = @At("HEAD"), cancellable = true)
     private void hardrush$holdGameplay(CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && P1PlayerProfiles.isLocked(player)) ci.cancel();
+    }
+
+    // Celebration allows movement and closing a menu, while sealing all new competitive actions.
+    @Inject(method = {"handlePlayerAction", "handleUseItemOn", "handleUseItem", "handleAttack", "handleInteract", "handlePunch",
+            "handleContainerClick", "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
+            "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
+            "handlePickItemFromBlock", "handlePickItemFromEntity", "handleBundleItemSelectedPacket",
+            "handleContainerSlotStateChanged", "handleSetCommandBlock", "handleSetCommandMinecart",
+            "handleSetStructureBlock", "handleSetTestBlock", "handleTestInstanceBlockAction", "handleSetJigsawBlock",
+            "handleJigsawGenerate", "handleSetGameRule", "handleChangeDifficulty", "handleChangeGameMode", "handleLockDifficulty"},
+            at = @At("HEAD"), cancellable = true)
+    private void hardrush$holdCompetition(CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && P1CombatRuntime.competitionFrozen(player.level())) ci.cancel();
     }
 
     @Inject(method = "handleClientCommand", at = @At("HEAD"), cancellable = true)

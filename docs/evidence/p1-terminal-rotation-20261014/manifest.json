@@ -1,0 +1,403 @@
+{
+  "date": "2026-10-14",
+  "generated_at_local": "2026-10-14T22:11:54.800996+08:00",
+  "baseline_commit": "e88b3290138331c1190522cb83b1df35e2d9b572",
+  "branch": "main",
+  "uncommitted": true,
+  "minecraft": "26.3",
+  "java": 25,
+  "sqlite_jdbc": "3.53.4.0",
+  "sqlite_schema": 3,
+  "commands": [
+    "scripts/p0-gradle.sh checkP1 :platforms:mc263:runGameTest -PhardrushP1=true --console=plain",
+    "git diff --check"
+  ],
+  "junit": {
+    "tests": 139,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": [
+      {
+        "module": "core",
+        "suite": "dev.hardrush.core.api.AdapterContractTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/core-TEST-dev.hardrush.core.api.AdapterContractTest.xml",
+        "sha256": "f986fbc5aa72249397d662772d14c4b1c15dca914e764a9607981677b65ed39d"
+      },
+      {
+        "module": "core",
+        "suite": "dev.hardrush.core.api.MonotonicClockTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/core-TEST-dev.hardrush.core.api.MonotonicClockTest.xml",
+        "sha256": "e1a1fd88f7c37734868dcaa9400d00ce6df6fad8c9b0d724736f1c4a0f784b63"
+      },
+      {
+        "module": "core",
+        "suite": "dev.hardrush.core.combat.CombatCausalityTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/core-TEST-dev.hardrush.core.combat.CombatCausalityTest.xml",
+        "sha256": "eb0369d306d8f0b7237f4424cf9acefe990fb28a996228cfeb0fbe0ab0067210"
+      },
+      {
+        "module": "core",
+        "suite": "dev.hardrush.core.config.RulesConfigTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/core-TEST-dev.hardrush.core.config.RulesConfigTest.xml",
+        "sha256": "3fd71a9227a22dc2133b9c904ac2704c7c056279d26e0cb61af4d7ef67848014"
+      },
+      {
+        "module": "core",
+        "suite": "dev.hardrush.core.round.DragonDeathArbiterTest",
+        "tests": 8,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/core-TEST-dev.hardrush.core.round.DragonDeathArbiterTest.xml",
+        "sha256": "cde7edc698d32ce388d1033adf65dc7dd54fc75b56f5f4801b0097190dc29e5a"
+      },
+      {
+        "module": "core",
+        "suite": "dev.hardrush.core.round.RoundEngineTest",
+        "tests": 19,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/core-TEST-dev.hardrush.core.round.RoundEngineTest.xml",
+        "sha256": "955ecc9f1dc4e4e69e289bf10d8d1308e42d1aad6dc6d1528f1d9b2469de7736"
+      },
+      {
+        "module": "persistence",
+        "suite": "dev.hardrush.persistence.AsyncRoundWriterTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/persistence-TEST-dev.hardrush.persistence.AsyncRoundWriterTest.xml",
+        "sha256": "254fdd6a2159b3d41ae91b2f5a62a3737709b3e5aa6601a4a352a0ff1dd56a20"
+      },
+      {
+        "module": "persistence",
+        "suite": "dev.hardrush.persistence.EvidenceStoreTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/persistence-TEST-dev.hardrush.persistence.EvidenceStoreTest.xml",
+        "sha256": "41401a66192e01731d3212f1ba363416dad96aab08cf173b54d0f34d88aba1a9"
+      },
+      {
+        "module": "persistence",
+        "suite": "dev.hardrush.persistence.SqliteRoundStoreTest",
+        "tests": 21,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/persistence-TEST-dev.hardrush.persistence.SqliteRoundStoreTest.xml",
+        "sha256": "7d69118749b940a9326136a6ccfca68c6c1beb65b9d95a2b02a45d89af5104b0"
+      },
+      {
+        "module": "persistence",
+        "suite": "dev.hardrush.persistence.TerminalTransactionTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/persistence-TEST-dev.hardrush.persistence.TerminalTransactionTest.xml",
+        "sha256": "ef12a110775c7415d6693967cda182aba83c3a398a974a94f902f5beac83d584"
+      },
+      {
+        "module": "platforms/mc263",
+        "suite": "dev.hardrush.p0.world.WorldManifestTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/platforms-mc263-TEST-dev.hardrush.p0.world.WorldManifestTest.xml",
+        "sha256": "81a70a0b76d14c18c6a0c54ce2fa87a9d9f480337b83362953a35e577aa96327"
+      },
+      {
+        "module": "platforms/mc263",
+        "suite": "dev.hardrush.p1.P1LobbySessionTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/platforms-mc263-TEST-dev.hardrush.p1.P1LobbySessionTest.xml",
+        "sha256": "8e0dc0aae65af6059f054ed6b96c8516430d0475507f1b19f444b05f2d211133"
+      },
+      {
+        "module": "platforms/mc263",
+        "suite": "dev.hardrush.p1.P1RoundReleaseTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/platforms-mc263-TEST-dev.hardrush.p1.P1RoundReleaseTest.xml",
+        "sha256": "80d30c23e8e43065b3cda708a386b90730a1c0907e0e4fcb573e28874a03a367"
+      },
+      {
+        "module": "platforms/mc263",
+        "suite": "dev.hardrush.p1.P1TerminalSessionTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/platforms-mc263-TEST-dev.hardrush.p1.P1TerminalSessionTest.xml",
+        "sha256": "8b1102f5a6dc210a36afee132f15cd230a45a798d65a029265b8116e69b5388e"
+      },
+      {
+        "module": "platforms/mc263",
+        "suite": "dev.hardrush.p1.player.ProfileJournalTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/platforms-mc263-TEST-dev.hardrush.p1.player.ProfileJournalTest.xml",
+        "sha256": "d9a8656de5e1a7f0975068d2d1f77a4016016113e05a3a16c39798b43d055859"
+      },
+      {
+        "module": "platforms/mc263",
+        "suite": "dev.hardrush.p1.world.P1WorldManifestTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "report": "docs/evidence/p1-terminal-rotation-20261014/platforms-mc263-TEST-dev.hardrush.p1.world.P1WorldManifestTest.xml",
+        "sha256": "a8febfd0ccef838e54ee97c4097e8b1574f9b1eed50eb2dc1bc5f52c6a02b927"
+      }
+    ]
+  },
+  "gametest": {
+    "required_tests": 52,
+    "failures": 0,
+    "elapsed_seconds": 16.76,
+    "environment": "headless native server; simulated player protocol; independent random test worlds",
+    "log": "docs/evidence/p1-terminal-rotation-20261014/check-p1-final.log"
+  },
+  "build": {
+    "success": true,
+    "elapsed_seconds": 27,
+    "artifact": "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar",
+    "sha256": "a37d30610d570d66eeccc764bb3469d183cc2f66c74d4100c4acc2205b16427f",
+    "bytes": 12408470
+  },
+  "release_jar_isolation": {
+    "passed": true,
+    "checked": [
+      {
+        "jar": "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar",
+        "entries": 131
+      },
+      {
+        "jar": "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar!META-INF/jars/core-0.1.0-p0.jar",
+        "entries": 60
+      },
+      {
+        "jar": "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar!META-INF/jars/fantasy-0.8.4+26.3.jar",
+        "entries": 60
+      },
+      {
+        "jar": "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar!META-INF/jars/persistence-0.1.0-p0.jar",
+        "entries": 28
+      },
+      {
+        "jar": "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar!META-INF/jars/sqlite-jdbc-3.53.4.0.jar",
+        "entries": 207
+      }
+    ],
+    "forbidden_entries": []
+  },
+  "source_files": [
+    {
+      "path": "core/src/main/java/dev/hardrush/core/round/DragonDeathArbiter.java",
+      "sha256": "4aa915e322cbe0187ffab50022084ed8208c0464a7852d60bf2b4152e75f6061"
+    },
+    {
+      "path": "core/src/test/java/dev/hardrush/core/round/DragonDeathArbiterTest.java",
+      "sha256": "831b8684734057da51c2ab96a70208c5daccb48d1bc8e04a09bb05e032a01060"
+    },
+    {
+      "path": "persistence/build.gradle",
+      "sha256": "54b06f59bcc066a77069f7f309fed0dcab80ca92b10c807a7ca28e9a6c9a3d3c"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/SqliteRoundStore.java",
+      "sha256": "5c6274594e471c01747224b093ff09953d604d60cfcc0728566687a9b23663e0"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/TerminalData.java",
+      "sha256": "c87d922ab2c2a1890e1115f8d45d589b595a9a32d837fff1848a93c900fd3584"
+    },
+    {
+      "path": "persistence/src/main/java/dev/hardrush/persistence/WriteDigest.java",
+      "sha256": "20e0b09acba3bf4ae8022e358e864e4c8a057bfd51b777716dd8ab003640ec9f"
+    },
+    {
+      "path": "persistence/src/test/java/dev/hardrush/persistence/EvidenceStoreTest.java",
+      "sha256": "b9de4142b8b3f2eb3717fda9db62081b08ded31fbd9554440773affd1b6e255a"
+    },
+    {
+      "path": "persistence/src/test/java/dev/hardrush/persistence/SqliteRoundStoreTest.java",
+      "sha256": "c1c4b12626b99ec249474c475b830e3b74a108fee77baced2fd6020194d1529e"
+    },
+    {
+      "path": "persistence/src/test/java/dev/hardrush/persistence/TerminalTransactionTest.java",
+      "sha256": "1ee378c982009a5eb0ee0dd268f8023fb6efb7a32ef5391eea5ee69aa365848c"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P1CombatGameTest.java",
+      "sha256": "a6ce6b6a855c7f3256977daf0d79f69ec640efdbff73ceead67e275ee586b3b8"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P1ProfileGameTest.java",
+      "sha256": "94d34a6d360d464a422be668691ceb7d15a34e7bded01666aab12b48c8f0a129"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P1WorldPreparationGameTest.java",
+      "sha256": "b3429d461376222f9315727d39470c123eabf83781ba10d03db200c00d49badc"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbyRuntime.java",
+      "sha256": "bfa109d41f18e2c1a50c08b461bd06a503f7ad7c48b3c3eaf31b23bb7a5829e7"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbySession.java",
+      "sha256": "350665831b85a6c98189259eafc321c4064eff2a25048d859c39206188bb7622"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/P1RoundRelease.java",
+      "sha256": "ccc2423c8c31edb0b6793e7d23ae1e598e1dcc627b74391bc0bf82e8b2c885b6"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/P1CombatRuntime.java",
+      "sha256": "ced7dc65fd0315260e028183c3acd24589e910540960a0dccdc16ead66538834"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatAnchorMixin.java",
+      "sha256": "c33224ad2a4933f2f2f55f4f83b8629cfcbfe29a912ac93cf3c9247c0b4c5ab9"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatArrowImpactMixin.java",
+      "sha256": "9170b3091d6876f4455aaf43b981ca2e6e4c99c1650b628e83f826b02050c824"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatBedMixin.java",
+      "sha256": "4405855a6724110b421c7824cfcbfcfcc391fbb9f9a409da65e64f8d8f89cd0c"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatCrystalMixin.java",
+      "sha256": "c32f2aabc6468a0d6c011f94091bc46c465bb2eeb4440ba50cdfb91f16540e7f"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatExplosionMixin.java",
+      "sha256": "c94ab7dc6541cd048cfae38e3eb2ed38ee0168bc8ce995684923e86199b14471"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatLivingMixin.java",
+      "sha256": "857829444c08bb7391c5c77673f1b79c631818b61b8ea6b3d7b4deacb76e1415"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatPickupMixin.java",
+      "sha256": "0c2e45785ed6af734a7a4fceb6e213729b7828cdfbd0ccaa63e78e1c6a3d3af7"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatPlayerAttackMixin.java",
+      "sha256": "f1734be279f241ecf5c7cbadf779f14e4d569710a71b595ae3ad1e635de60c4d"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/combat/mixin/CombatTntBlockMixin.java",
+      "sha256": "355d6957f815d794de08ddc8b60215a5c23ca8c37c4bb560932bd81a29eb7c1d"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/P1PlayerProfiles.java",
+      "sha256": "49c9c709676b64c15566ca16da515cfe893645142ab3a395f597a47319d322c0"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/player/mixin/PlayerIsolationNetworkMixin.java",
+      "sha256": "2fae220a9254f11cad8eeadf2ec4c9973f43cace45d36dbff3aad65259390b9c"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/world/P1RoundRuntimeLevel.java",
+      "sha256": "b70a48969fa9379f780b3210623283a2fd2aa8c9428ddd01bb75bd0ff6953e76"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/world/P1RoundWorldBundle.java",
+      "sha256": "ea79c5217e208f21e2ac906334f5d45c5cd71484a63198a6a00660cc962530e8"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p1/world/P1WorldPaths.java",
+      "sha256": "abb38944beb6f1c8753f1f16d2bd0b63b8d366ebb7544b70292d66115f224b1d"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush.p1.combat.mixins.json",
+      "sha256": "cf2cf62fd3d67f5ad75e4ebd8c381e86f49c0e7ce0f218378052a8d942c985f6"
+    },
+    {
+      "path": "platforms/mc263/src/test/java/dev/hardrush/p1/P1RoundReleaseTest.java",
+      "sha256": "c53936d17cbf1d36b13f8ee572740252b550c905b0c90a38d478b401844cce44"
+    },
+    {
+      "path": "platforms/mc263/src/test/java/dev/hardrush/p1/P1TerminalSessionTest.java",
+      "sha256": "f9244cdffa224467a353987687e9543cc5fe8076f1b2b12dcf0ad1bb68d74cf4"
+    },
+    {
+      "path": "platforms/mc263/src/test/java/dev/hardrush/p1/world/P1WorldManifestTest.java",
+      "sha256": "71ad0c997f6af6a7959cee32134056dd6dbcc0e88155977b6051c6ed68ca133d"
+    }
+  ],
+  "logs": [
+    {
+      "path": "docs/evidence/p1-terminal-rotation-20261014/check-p1-final.log",
+      "sha256": "a310d4a53006fca0d544ef131cb06ddaf00f41890a7f4f1dfe724b61b3c9972a"
+    },
+    {
+      "path": "docs/evidence/p1-terminal-rotation-20261014/status-and-build.log",
+      "sha256": "ada627d99a14ba72a96e1c85fd0feb1f9887f86735f621bd22b67873b50a65f5"
+    },
+    {
+      "path": "docs/evidence/p1-terminal-rotation-20261014/world-close-focused.log",
+      "sha256": "c0b6db00e050d7917b5b94030425f3f266cdbd17cbfd1b3d6c0eee53d4472fd9"
+    }
+  ],
+  "scope": [
+    "First native END dragon identity; causal winner; capture-time freeze; batch-close normal human death; atomic CAS unique terminal and evidence",
+    "SQLite schema 1/2 to 3 rollback, replay, collision, corruption detection and protection of original stopped result",
+    "Celebration restart, late IO, old callbacks, profile suspension and preconnection menu handling; native item/experience pickup gate",
+    "Recorder disabled/VERIFIED/failed/stale barriers and shutdown IO completion; world save, true Fantasy unload/native close, exact ownership paths and reopen with preserved buildings",
+    "Real profile IO failure before queued main-thread callback cannot be treated as a clean shutdown"
+  ],
+  "fixtures": {
+    "native_dragon_health": 0.1,
+    "arena_loaded_check": "skipped",
+    "dragon_attack": "native Player.attack; no modified base damage",
+    "timers": "fake monotonic clock for long durations; not ten minutes of real client gameplay",
+    "replay": "fake adapter contract only; actual recorder not installed"
+  },
+  "not_verified": [
+    "real vanilla client gameplay/screenshots/computer use",
+    "full integrated ten-round run",
+    "actual playable recording",
+    "hardcore P2 death/monster/revival/rescue",
+    "leaderboards/TAB/history books",
+    "complete three-version release"
+  ],
+  "development_tasks": {
+    "P1-07": "implemented and automatically verified",
+    "P1-10": "normal/development lifecycle implemented; stage acceptance pending",
+    "P1-11": "normal-stop barriers and phase/session recovery implemented; process/client acceptance pending",
+    "P1-G": "not accepted"
+  }
+}

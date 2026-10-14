@@ -19,6 +19,7 @@ public abstract class CombatAnchorMixin {
     @WrapMethod(method="useWithoutItem")
     private InteractionResult used(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit, Operation<InteractionResult> original) {
         if (!(level instanceof ServerLevel serverLevel)) return original.call(state, level, pos, player, hit);
+        if (P1CombatRuntime.competitionFrozen(serverLevel)) return InteractionResult.FAIL;
         try (var ignored = P1CombatRuntime.playerAction(serverLevel, player, AttackKind.RESPAWN_ANCHOR)) {
             return original.call(state, level, pos, player, hit);
         }

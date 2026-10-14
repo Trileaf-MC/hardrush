@@ -42,6 +42,7 @@ public final class P1WorldPreparationGameTest {
         var occupiedEnd = new RuntimeLevelHandle[1];
         var openedLevels = new java.util.ArrayList<ServerLevel>();
         var manifestBeforeFailure = new String[1];
+        var closed = new java.util.concurrent.CompletableFuture<?>[1];
         long started = System.nanoTime();
         var lastDiagnostic = new long[1];
         test.startSequence()
@@ -126,15 +127,18 @@ public final class P1WorldPreparationGameTest {
                     test.assertTrue(P1RoundWorldBundle.portalDestination(partialOverworld[0], Level.END) == bundle.level(Level.END),
                             "Ready routing opens only the replacement P1 End in the same round");
                     org.slf4j.LoggerFactory.getLogger("hardrush-p1-world-test").info("P1 W05 single-dimension retry metrics: {}", bundle.metrics());
-                    bundle.close();
-                    test.assertTrue(bundle.diagnostics().contains("held=0"), "Closing releases all temporary preparation tickets");
+                    closed[0] = bundle.saveAndClose().toCompletableFuture();
                 })
                 .thenWaitUntil(() -> {
+                    bundle.tick();
+                    paceAndDiagnose(test, bundle, started, lastDiagnostic);
+                    if (closed[0].isCompletedExceptionally()) closed[0].join();
+                    test.assertTrue(closed[0].isDone(), "Save-and-close finishes before rotation or recovery");
                     test.assertTrue(openedLevels.stream().allMatch(level -> server.getLevel(level.dimension()) == null),
-                            "Fantasy unregisters every disposable fixture level before native IO cleanup");
+                            "Fantasy unregisters every owned fixture before save-and-close succeeds");
                 })
                 .thenExecute(() -> {
-                    openedLevels.forEach(P1WorldPreparationGameTest::closeNativeFixture);
+                    test.assertTrue(bundle.diagnostics().contains("held=0"), "Closing releases all temporary preparation tickets");
                     test.assertTrue(java.nio.file.Files.exists(bundle.manifestPath()), "Successful retry cleanup retains recovery evidence");
                 })
                 .thenSucceed();
@@ -150,6 +154,8 @@ public final class P1WorldPreparationGameTest {
         var damaged = new P1RoundWorldBundle[1];
         var building = new net.minecraft.core.BlockPos[1];
         var preservedManifest = new String[1];
+        var closed = new java.util.concurrent.CompletableFuture<?>[1];
+        var initialLevels = new java.util.ArrayList<ServerLevel>();
         long started = System.nanoTime();
         var lastDiagnostic = new long[1];
         test.assertFalse(bundle.ready(), "Opening an identity cannot announce world readiness");
@@ -171,6 +177,7 @@ public final class P1WorldPreparationGameTest {
                     var nether = bundle.level(Level.NETHER);
                     var end = bundle.level(Level.END);
                     for (var level : java.util.List.of(overworld, nether, end)) {
+                        initialLevels.add(level);
                         test.assertTrue(P1RoundWorldBundle.owns(level), "P1 has exact dimension ownership");
                         test.assertFalse(WorldProbe.owns(level), "P1 never reuses the P0 world bundle");
                         test.assertValueEqual(level.getSeed(), snapshot.seed(), "All dimensions share this round's seed");
@@ -192,8 +199,58 @@ public final class P1WorldPreparationGameTest {
                     org.slf4j.LoggerFactory.getLogger("hardrush-p1-world-test").info("P1 initial preparation metrics: {}", bundle.metrics());
                     building[0] = bundle.spawn().offset(3, 0, 3);
                     overworld.setBlockAndUpdate(building[0], Blocks.CHEST.defaultBlockState());
-                    bundle.close();
+                    var player = test.makeMockServerPlayerInLevel();
+                    try {
+                        for (var level : initialLevels) {
+                            player.teleportTo(level, bundle.spawn().getX() + .5, bundle.spawn().getY(), bundle.spawn().getZ() + .5,
+                                    java.util.Set.of(), 0, 0, true);
+                            boolean refused = false;
+                            try { bundle.saveAndClose(); }
+                            catch (IllegalStateException expected) { refused = expected.getMessage().contains("玩家"); }
+                            test.assertTrue(refused, "Save-and-close refuses players in each owned dimension");
+                            test.assertTrue(bundle.ready(), "An occupied close refusal does not modify readiness or enqueue unloading");
+                            test.assertTrue(initialLevels.stream().allMatch(owned -> server.getLevel(owned.dimension()) == owned),
+                                    "Occupied refusal retains all three registered dimensions");
+                        }
+                    } finally {
+                        player.teleportTo(test.getLevel(), test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)).getX(),
+                                test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)).getY(),
+                                test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)).getZ(), java.util.Set.of(), 0, 0, true);
+                        server.getPlayerList().remove(player);
+                    }
+                    // Tamper only this random disposable round's manifest: reject lobby/root paths
+                    // before saving or releasing even one native handle, then retry after restoring it.
+                    try {
+                        preservedManifest[0] = java.nio.file.Files.readString(bundle.manifestPath());
+                        var json = com.google.gson.JsonParser.parseString(preservedManifest[0]).getAsJsonObject();
+                        json.getAsJsonObject("dimensions").getAsJsonObject("end").addProperty("ownedPath", ".");
+                        java.nio.file.Files.writeString(bundle.manifestPath(), json.toString());
+                    } catch (java.io.IOException error) { throw new IllegalStateException(error); }
+                    closed[0] = bundle.saveAndClose().toCompletableFuture();
                     test.assertFalse(bundle.ready(), "Closed bundle cannot accept entry");
+                    boolean competingOpenRefused = false;
+                    try { P1RoundWorldBundle.open(server, snapshot); }
+                    catch (IllegalStateException expected) { competingOpenRefused = expected.getMessage().contains("真实关闭"); }
+                    test.assertTrue(competingOpenRefused, "A pending close cannot be canceled by reopening the same ID");
+                })
+                .thenWaitUntil(() -> {
+                    bundle.tick();
+                    paceAndDiagnose(test, bundle, started, lastDiagnostic);
+                    test.assertTrue(closed[0].isCompletedExceptionally(), "Tampered world ownership rejects close");
+                })
+                .thenExecute(() -> {
+                    test.assertValueEqual(bundle.state(), P1RoundWorldBundle.State.CLOSE_FAILED, "Unsafe close has an explicit recoverable state");
+                    test.assertTrue(initialLevels.stream().allMatch(level -> server.getLevel(level.dimension()) == level),
+                            "Ownership failure retains all three active worlds");
+                    test.assertTrue(java.nio.file.Files.isDirectory(server.getWorldPath(LevelResource.ROOT)), "Ownership refusal retains lobby and root");
+                    try { java.nio.file.Files.writeString(bundle.manifestPath(), preservedManifest[0]); }
+                    catch (java.io.IOException error) { throw new IllegalStateException(error); }
+                    closed[0] = bundle.saveAndClose().toCompletableFuture();
+                })
+                .thenWaitUntil(() -> awaitClosed(test, bundle, closed[0], started, lastDiagnostic))
+                .thenExecute(() -> {
+                    test.assertTrue(initialLevels.stream().allMatch(level -> server.getLevel(level.dimension()) == null),
+                            "Successful close completes only after all dimensions leave the server registry");
                     test.assertTrue(java.nio.file.Files.exists(bundle.manifestPath()), "Closing retains recovery and ownership manifest");
                     recovered[0] = P1RoundWorldBundle.open(server, snapshot);
                 })
@@ -210,7 +267,12 @@ public final class P1WorldPreparationGameTest {
                     test.assertValueEqual(recovered[0].roundId(), snapshot.roundId(), "Restore keeps the same round identity");
                     test.assertValueEqual(overworld.getSeed(), snapshot.seed(), "Restore keeps the same seed");
                     org.slf4j.LoggerFactory.getLogger("hardrush-p1-world-test").info("P1 ready-world recovery metrics: {}", recovered[0].metrics());
-                    recovered[0].close();
+                    test.assertTrue(initialLevels.stream().noneMatch(level -> level == recovered[0].level(Level.OVERWORLD)),
+                            "Recovery acquires a fresh native handle after releasing old region IO");
+                    closed[0] = recovered[0].saveAndClose().toCompletableFuture();
+                })
+                .thenWaitUntil(() -> awaitClosed(test, recovered[0], closed[0], started, lastDiagnostic))
+                .thenExecute(() -> {
                     try {
                         preservedManifest[0] = java.nio.file.Files.readString(recovered[0].manifestPath());
                         java.nio.file.Files.writeString(recovered[0].manifestPath(), "{partial");
@@ -244,7 +306,10 @@ public final class P1WorldPreparationGameTest {
                     test.assertValueEqual(readFailure[0].metrics().changedBlocks(), 0, "Retry never regenerates ready world terrain");
                     org.slf4j.LoggerFactory.getLogger("hardrush-p1-world-test").info("P1 same-round retry metrics: {}", readFailure[0].metrics());
                     overworld.setBlockAndUpdate(readFailure[0].spawn().below(), Blocks.LAVA.defaultBlockState());
-                    readFailure[0].close();
+                    closed[0] = readFailure[0].saveAndClose().toCompletableFuture();
+                })
+                .thenWaitUntil(() -> awaitClosed(test, readFailure[0], closed[0], started, lastDiagnostic))
+                .thenExecute(() -> {
                     damaged[0] = P1RoundWorldBundle.open(server, snapshot);
                 })
                 .thenWaitUntil(() -> {
@@ -256,9 +321,20 @@ public final class P1WorldPreparationGameTest {
                     test.assertFalse(damaged[0].ready(), "Damaged ready-world infrastructure cannot unlock participation");
                     test.assertTrue(damaged[0].failure().orElseThrow().contains("受损"), "Recovery explains damaged spawn and manual action");
                     test.assertValueEqual(damaged[0].metrics().changedBlocks(), 0, "Unsafe recovery never silently repairs player terrain");
-                    damaged[0].close();
+                    closed[0] = damaged[0].saveAndClose().toCompletableFuture();
                 })
+                .thenWaitUntil(() -> awaitClosed(test, damaged[0], closed[0], started, lastDiagnostic))
                 .thenSucceed();
+    }
+
+    private static void awaitClosed(GameTestHelper test, P1RoundWorldBundle bundle,
+            java.util.concurrent.CompletableFuture<?> completion, long started, long[] lastDiagnostic) {
+        bundle.tick();
+        paceAndDiagnose(test, bundle, started, lastDiagnostic);
+        if (completion.isCompletedExceptionally()) completion.join();
+        test.assertTrue(completion.isDone(), "Native world save, Fantasy unregister and region IO close finish before success");
+        test.assertValueEqual(bundle.state(), P1RoundWorldBundle.State.CLOSED, "Successful close has no remaining world entry");
+        test.assertTrue(bundle.saveAndClose().toCompletableFuture().isDone(), "Completed close is idempotent");
     }
 
     private static void paceAndDiagnose(GameTestHelper test, P1RoundWorldBundle bundle, long started, long[] lastDiagnostic) {

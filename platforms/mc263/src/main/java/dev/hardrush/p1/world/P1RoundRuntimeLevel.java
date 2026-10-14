@@ -21,9 +21,11 @@ public final class P1RoundRuntimeLevel extends RuntimeLevel {
     private RuntimeClockManager roundClocks;
     private boolean ticksRoundClocks;
     private P1RoundWorldBundle owner;
+    private final boolean persistent;
 
     public P1RoundRuntimeLevel(MinecraftServer server, ResourceKey<Level> key, RuntimeLevelConfig config, Style style) {
         super(server, key, config, style);
+        persistent = style == Style.PERSISTENT;
     }
 
     void bind(P1RoundWorldBundle owner, P1RoundRuntimeLevel overworld) {
@@ -41,6 +43,7 @@ public final class P1RoundRuntimeLevel extends RuntimeLevel {
     }
 
     P1RoundWorldBundle owner() { return owner; }
+    boolean persistent() { return persistent; }
 
     @Override public LevelData.RespawnData getRespawnData() {
         return owner == null ? super.getRespawnData() : owner.respawnData();

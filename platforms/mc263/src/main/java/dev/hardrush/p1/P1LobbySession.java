@@ -8,6 +8,9 @@ import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.core.round.RoundSnapshotCodec;
 import dev.hardrush.core.round.RoundTransition;
+import dev.hardrush.core.round.DragonDeathArbiter;
+import dev.hardrush.core.combat.CombatEvent;
+import dev.hardrush.core.combat.CombatEventCodec;
 import dev.hardrush.persistence.CommitResult;
 import dev.hardrush.persistence.SnapshotWrite;
 import dev.hardrush.persistence.SqliteRoundStore;
@@ -68,6 +71,12 @@ public final class P1LobbySession implements AutoCloseable {
     private CompletableFuture<CommitResult> pendingRulesWrite;
     private int evidencePending;
     private volatile Throwable evidenceFailure;
+    private CombatEvent terminalCandidate;
+    private UUID firstDragonId;
+    private boolean terminalQueued;
+    private CompletableFuture<CommitResult> pendingRotationWrite;
+    private RoundSnapshot pendingNextRound;
+    private Long shutdownBoundary;
 
     public P1LobbySession(Path database, MonotonicClock clock, Executor callbacks) {
         this(database, clock, callbacks, (message, error) -> {});
@@ -151,8 +160,79 @@ public final class P1LobbySession implements AutoCloseable {
         return engine == null ? Optional.empty() : Optional.of(engine.committed());
     }
     public Optional<RulesConfig> nextRules() { return Optional.ofNullable(nextRules); }
-    public boolean mutationPending() { return pendingWrite != null || pendingRulesWrite != null; }
+    public boolean mutationPending() { return pendingWrite != null || pendingRulesWrite != null || pendingRotationWrite != null; }
     public Optional<RoundSnapshot> view() { return engine == null ? Optional.empty() : Optional.of(engine.view()); }
+
+    /** Immediately closes new competitive actions, even while the terminal transaction is queued. */
+    public boolean competitionLocked() {
+        return shutdownBoundary != null || state != State.OPEN || terminalCandidate != null || engine == null
+                || engine.committed().phase() != RoundPhase.RUNNING;
+    }
+
+    public Optional<UUID> terminalBatchId() {
+        return terminalCandidate == null ? Optional.empty() : Optional.of(terminalCandidate.batchId());
+    }
+
+    /** Called only after the platform verifies the native first dragon and its irreversible death. */
+    public void captureDragonDeath(CombatEvent event, UUID dragonId) {
+        Objects.requireNonNull(event); Objects.requireNonNull(dragonId);
+        if (stopping || state != State.OPEN || !adaptersReady || terminalCandidate != null
+                || !event.roundId().equals(engine.committed().roundId())
+                || engine.committed().result() != null || engine.committed().phase() != RoundPhase.RUNNING) return;
+        // Validate before locking; source identity is frozen at attack creation, not checked against today's role.
+        DragonDeathArbiter.adjudicate(engine.committed(), event, dragonId);
+        terminalCandidate = event;
+        firstDragonId = dragonId;
+    }
+
+    /** Complete the native batch first, so simultaneous human deaths precede its single terminal transaction. */
+    public void finishDamageBatch(UUID roundId, UUID batchId) {
+        if (terminalCandidate == null || terminalQueued || !terminalCandidate.roundId().equals(roundId)
+                || !terminalCandidate.batchId().equals(batchId)) return;
+        terminalQueued = true;
+        var death = terminalCandidate;
+        var dragon = firstDragonId;
+        enqueueAt(death.observedNanoTime(), e -> e.proposeFinish(UUID.randomUUID(),
+                DragonDeathArbiter.adjudicate(e.committed(), death, dragon)));
+    }
+
+    /** A verified adapter calls this only after players, recordings and all world handles have been released. */
+    public void rotationReady(UUID oldRoundId) {
+        if (stopping || state != State.OPEN || mutationPending() || !events.isEmpty()
+                || !engine.committed().roundId().equals(oldRoundId)
+                || engine.committed().phase() != RoundPhase.ROTATING) return;
+        var next = RoundEngine.create(UUID.randomUUID(), Math.addExact(engine.committed().sequence(), 1),
+                ThreadLocalRandom.current().nextLong(), nextRules, this::engineTime).committed();
+        pendingNextRound = next;
+        adaptersReady = false;
+        unsupportedPhase = true;
+        var write = supplyIo(() -> store.commit(new SnapshotWrite(next.roundId(), -1, 0,
+                RoundSnapshotCodec.encode(next), UUID.randomUUID(), "ROUND_PREPARING")));
+        pendingRotationWrite = write;
+        write.whenComplete((result, error) -> callbacks.execute(() -> {
+            if (stopping || pendingRotationWrite != write || pendingNextRound != next) return;
+            pendingRotationWrite = null;
+            pendingNextRound = null;
+            if (error != null || result == CommitResult.STALE) {
+                fail("下轮创建提交失败", error != null ? error : new IllegalStateException("轮次版本已过期"));
+                return;
+            }
+            installNextRound(next);
+        }));
+    }
+
+    private void installNextRound(RoundSnapshot next) {
+        var before = engine.committed();
+        engine = RoundEngine.create(next.roundId(), next.sequence(), next.seed(), next.rules(), this::engineTime);
+        terminalCandidate = null;
+        firstDragonId = null;
+        terminalQueued = false;
+        requestedRespawns.clear();
+        adaptersReady = false;
+        unsupportedPhase = false;
+        lastCheckpointNanos = clock.nanoTime();
+        if (!stopping) committedListener.accept(before, next);
+    }
 
     public void onCommitted(BiConsumer<RoundSnapshot, RoundSnapshot> listener) {
         committedListener = Objects.requireNonNull(listener);
@@ -163,8 +243,7 @@ public final class P1LobbySession implements AutoCloseable {
         if (state != State.OPEN || mutationPending() || engine == null
                 || !engine.committed().roundId().equals(roundId)) return;
         var phase = engine.committed().phase();
-        if (phase == RoundPhase.RECOVERY_REQUIRED || phase == RoundPhase.RESCUE
-                || phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING || phase == RoundPhase.ROTATING) return;
+        if (phase == RoundPhase.RECOVERY_REQUIRED || phase == RoundPhase.RESCUE) return;
         adaptersReady = true;
         unsupportedPhase = false;
         if (phase == RoundPhase.PREPARING) submit(engine.proposeWorldReady(UUID.randomUUID()));
@@ -198,7 +277,11 @@ public final class P1LobbySession implements AutoCloseable {
                 + "。" + (mutationPending() ? "正在提交状态。" : "")
                 + (adaptersReady ? "有效挑战 " + engine.view().challengeMillis() + " ms，在线活人 "
                     + engine.view().onlineHumans() + "，暂停原因 " + engine.view().pauseReason() + "。"
-                    : unsupportedPhase ? "已保留原阶段；正在核对世界与档案。" : ADAPTERS_PENDING);
+                    : unsupportedPhase ? "已保留原阶段；正在核对世界与档案。" : ADAPTERS_PENDING)
+                + (round.result() == null ? "" : "结算 " + round.result().kind() + "，胜者 "
+                    + (round.result().winner() == null ? "待核验" : round.participants().get(round.result().winner()).name()
+                        + "（" + round.result().winner() + "）")
+                    + "，阶段剩余 " + engine.view().remainingPhaseMillis() + " ms。");
     }
 
     public Reply requestJoin(UUID playerId, String name) {
@@ -225,6 +308,7 @@ public final class P1LobbySession implements AutoCloseable {
     }
 
     private void requestAction(java.util.function.Supplier<RoundTransition> action, Consumer<Reply> reply, String success) {
+        if (terminalCandidate != null || shutdownBoundary != null) { reply.accept(new Reply(false, "本轮已冻结，不能开始新的竞技操作。")); return; }
         if (state != State.OPEN || stopping || !adaptersReady) { reply.accept(blockedParticipation()); return; }
         if (mutationPending() || !events.isEmpty()) { reply.accept(new Reply(false, "上一项状态仍在提交，请稍后重试。")); return; }
         try { submit(action.get(), reply, success); }
@@ -240,6 +324,7 @@ public final class P1LobbySession implements AutoCloseable {
         if (stopping) return;
         if (connected) online.put(playerId, name);
         else online.remove(playerId);
+        if (terminalCandidate != null && !terminalQueued) return;
         if (adaptersReady && engine != null && (engine.committed().participants().containsKey(playerId)
                 || pendingTransition != null && pendingTransition.after().participants().containsKey(playerId))) {
             enqueue(e -> e.proposeOnline(UUID.randomUUID(), playerId, name, connected));
@@ -247,11 +332,19 @@ public final class P1LobbySession implements AutoCloseable {
     }
 
     public void normalDeath(UUID playerId, int lifeSequence) {
-        enqueue(e -> e.proposeNormalDeath(UUID.randomUUID(), playerId, lifeSequence));
+        normalDeath(playerId, lifeSequence, null);
+    }
+
+    public void normalDeath(UUID playerId, int lifeSequence, UUID batchId) {
+        if (engine == null || engine.committed().phase() != RoundPhase.RUNNING) return;
+        if (terminalCandidate != null) {
+            if (terminalQueued || !terminalCandidate.batchId().equals(batchId)) return;
+            enqueueAt(terminalCandidate.observedNanoTime(), e -> e.proposeNormalDeath(UUID.randomUUID(), playerId, lifeSequence));
+        } else enqueue(e -> e.proposeNormalDeath(UUID.randomUUID(), playerId, lifeSequence));
     }
 
     public void normalRespawn(UUID playerId, int lifeSequence) {
-        if (stopping || state != State.OPEN || !adaptersReady
+        if (stopping || state != State.OPEN || !adaptersReady || competitionLocked()
                 || Objects.equals(requestedRespawns.get(playerId), lifeSequence)) return;
         requestedRespawns.put(playerId, lifeSequence);
         enqueue(e -> e.proposeAdmissionRespawn(UUID.randomUUID(), playerId, lifeSequence));
@@ -260,9 +353,13 @@ public final class P1LobbySession implements AutoCloseable {
     private long engineTime() { return eventTime == Long.MIN_VALUE ? clock.nanoTime() : eventTime; }
 
     private void enqueue(Function<RoundEngine, RoundTransition> action) {
+        enqueueAt(clock.nanoTime(), action);
+    }
+
+    private void enqueueAt(long time, Function<RoundEngine, RoundTransition> action) {
         if (stopping || state != State.OPEN || !adaptersReady) return;
         if (events.size() >= 256) { fail("关键事件队列超出预算", new IllegalStateException("保留存档并停止比赛")); return; }
-        events.add(new QueuedEvent(clock.nanoTime(), action));
+        events.add(new QueuedEvent(time, action));
         drainEvent();
     }
 
@@ -300,6 +397,7 @@ public final class P1LobbySession implements AutoCloseable {
     }
 
     public void tick() {
+        if (shutdownBoundary != null || terminalCandidate != null && !terminalQueued) return;
         if (stopping || state != State.OPEN || unsupportedPhase || mutationPending()) return;
         if (!events.isEmpty()) { drainEvent(); return; }
         var round = engine.committed();
@@ -329,8 +427,7 @@ public final class P1LobbySession implements AutoCloseable {
     private void submit(RoundTransition transition, Consumer<Reply> reply, String success) {
         pendingTransition = transition;
         var after = transition.after();
-        var write = supplyIo(() -> store.commit(new SnapshotWrite(after.roundId(), transition.before().version(),
-                after.version(), RoundSnapshotCodec.encode(after), transition.eventId(), transition.eventType())));
+        var write = supplyIo(() -> commitTransition(transition));
         pendingWrite = write;
         write.whenComplete((result, error) -> callbacks.execute(() -> {
             if (stopping || pendingWrite != write || pendingTransition != transition) return;
@@ -341,6 +438,17 @@ public final class P1LobbySession implements AutoCloseable {
             reply.accept(new Reply(state == State.OPEN, state == State.OPEN ? success : problem));
             drainEvent();
         }));
+    }
+
+    private CommitResult commitTransition(RoundTransition transition) throws Exception {
+        var after = transition.after();
+        var write = new SnapshotWrite(after.roundId(), transition.before().version(), after.version(),
+                RoundSnapshotCodec.encode(after), transition.eventId(), transition.eventType());
+        if (transition.eventType().equals("FINISH") && terminalCandidate != null) {
+            return store.commitTerminal(write, new EvidenceWrite(terminalCandidate.roundId(), terminalCandidate.eventId(),
+                    "COMBAT", CombatEventCodec.encode(terminalCandidate)), firstDragonId);
+        }
+        return store.commit(write);
     }
 
     private void complete(RoundTransition transition, CommitResult result, Throwable error) {
@@ -365,7 +473,8 @@ public final class P1LobbySession implements AutoCloseable {
     @Override
     public void close() throws Exception {
         if (stopping) return;
-        long shutdownTime = clock.nanoTime();
+        long shutdownTime = shutdownBoundary == null ? clock.nanoTime() : shutdownBoundary;
+        if (terminalCandidate != null && !terminalQueued) finishDamageBatch(terminalCandidate.roundId(), terminalCandidate.batchId());
         stopping = true;
         Throwable failure = null;
         try {
@@ -378,7 +487,7 @@ public final class P1LobbySession implements AutoCloseable {
                 var transition = pendingTransition;
                 try { complete(transition, pendingWrite.get(), null); }
                 catch (Exception error) { complete(transition, null, error); throw error; }
-                if (state == State.FAILED) throw new IllegalStateException(problem);
+                if (engine.committed().phase() == RoundPhase.RECOVERY_REQUIRED) throw new IllegalStateException(problem);
                 pendingWrite = null;
                 pendingTransition = null;
             }
@@ -386,15 +495,22 @@ public final class P1LobbySession implements AutoCloseable {
                 requireCommitted(pendingRulesWrite.get());
                 pendingRulesWrite = null;
             }
-            while (!events.isEmpty() && state == State.OPEN) {
+            if (pendingRotationWrite != null) {
+                requireCommitted(pendingRotationWrite.get());
+                eventTime = shutdownTime;
+                installNextRound(pendingNextRound);
+                eventTime = Long.MIN_VALUE;
+                pendingRotationWrite = null;
+                pendingNextRound = null;
+            }
+            while (!events.isEmpty() && engine.committed().phase() != RoundPhase.RECOVERY_REQUIRED) {
                 var event = events.remove();
                 eventTime = event.time();
                 var transition = event.action().apply(engine);
                 eventTime = Long.MIN_VALUE;
-                var after = transition.after();
-                var result = supplyIo(() -> store.commit(new SnapshotWrite(after.roundId(), transition.before().version(),
-                        after.version(), RoundSnapshotCodec.encode(after), transition.eventId(), transition.eventType()))).get();
+                var result = supplyIo(() -> commitTransition(transition)).get();
                 complete(transition, result, null);
+                requireCommitted(result);
             }
             // Every accepted evidence write precedes this barrier on the single IO worker.
             // A failed evidence write must never be followed by a clean-stop marker.
@@ -424,6 +540,12 @@ public final class P1LobbySession implements AutoCloseable {
             state = State.CLOSED;
         }
         if (failure != null) throw new IllegalStateException("P1 正常停服保存未完成，请保留数据库并检查日志", failure);
+    }
+
+    /** Capture the stop time before the platform drains profile, recording and world IO. */
+    public void prepareStop() {
+        if (shutdownBoundary == null) shutdownBoundary = clock.nanoTime();
+        if (terminalCandidate != null && !terminalQueued) finishDamageBatch(terminalCandidate.roundId(), terminalCandidate.batchId());
     }
 
     private void fail(String prefix, Throwable error) {

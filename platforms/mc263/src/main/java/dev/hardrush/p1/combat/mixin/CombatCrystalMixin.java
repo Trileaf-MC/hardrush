@@ -11,6 +11,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(EndCrystal.class)
 public abstract class CombatCrystalMixin {
+    @Inject(method="hurtServer", at=@At("HEAD"), cancellable=true)
+    private void frozen(ServerLevel level, DamageSource source, float amount, CallbackInfoReturnable<Boolean> ci) {
+        if (P1CombatRuntime.rejectDamage(level)) ci.setReturnValue(false);
+    }
     @Inject(method="hurtServer", at=@At(value="INVOKE", target="Lnet/minecraft/world/entity/boss/enderdragon/EndCrystal;remove(Lnet/minecraft/world/entity/Entity$RemovalReason;)V"))
     private void triggered(ServerLevel level, DamageSource source, float amount, CallbackInfoReturnable<Boolean> ci) {
         P1CombatRuntime.crystalTriggered(level, (EndCrystal)(Object)this, source);

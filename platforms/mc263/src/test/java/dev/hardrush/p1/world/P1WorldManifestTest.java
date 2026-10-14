@@ -109,6 +109,39 @@ final class P1WorldManifestTest {
         assertDoesNotThrow(() -> P1WorldPaths.validate(root, ROUND, "overworld", P1WorldPaths.world(root, ROUND, "overworld")));
     }
 
+    @Test void substitutedRoundOrDimensionOwnerCannotAuthorizeClosingTheActiveWorld() throws IOException {
+        Path root = temporary.toRealPath(), file = P1WorldPaths.manifest(root, ROUND);
+        manifest().write(root, file);
+        String initial = Files.readString(file);
+        for (String property : List.of("id", "type", "ownedPath")) {
+            var json = JsonParser.parseString(initial).getAsJsonObject();
+            String foreign = switch (property) {
+                case "id" -> P1WorldPaths.identifier(UUID.randomUUID(), "nether");
+                case "type" -> "overworld";
+                default -> root.relativize(P1WorldPaths.world(root, UUID.randomUUID(), "nether")).toString();
+            };
+            json.getAsJsonObject("dimensions").getAsJsonObject("nether").addProperty(property, foreign);
+            Files.writeString(file, json.toString());
+            String evidence = Files.readString(file);
+            assertThrows(IOException.class, () -> P1WorldManifest.read(root, file));
+            assertEquals(evidence, Files.readString(file));
+        }
+        assertTrue(Files.isDirectory(root));
+    }
+
+    @Test void symlinkRootAndRegularFileInAWorldPathAreRejectedWithoutTouchingTargets() throws IOException {
+        Path realRoot = temporary.toRealPath();
+        Path alias = realRoot.resolve("alias");
+        Files.createSymbolicLink(alias, realRoot);
+        assertThrows(IOException.class, () -> P1WorldPaths.validate(alias, ROUND, "end", P1WorldPaths.world(alias, ROUND, "end")));
+        Path world = P1WorldPaths.world(realRoot, ROUND, "end");
+        Files.createDirectories(world.getParent());
+        Files.writeString(world, "operator recovery evidence");
+        assertThrows(IOException.class, () -> P1WorldPaths.validate(realRoot, ROUND, "end", world));
+        assertEquals("operator recovery evidence", Files.readString(world));
+        assertTrue(Files.isSymbolicLink(alias));
+    }
+
     private static P1WorldManifest manifest() {
         var generators = new LinkedHashMap<String, JsonElement>();
         for (String dimension : P1WorldManifest.DIMENSIONS) {

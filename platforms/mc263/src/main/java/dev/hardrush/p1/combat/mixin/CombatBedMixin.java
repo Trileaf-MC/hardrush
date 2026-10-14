@@ -18,6 +18,7 @@ public abstract class CombatBedMixin {
     @WrapMethod(method="destroyOnUse")
     private InteractionResult used(BlockState state, Level level, BlockPos pos, Player player, Operation<InteractionResult> original) {
         if (!(level instanceof ServerLevel serverLevel)) return original.call(state, level, pos, player);
+        if (P1CombatRuntime.competitionFrozen(serverLevel)) return InteractionResult.FAIL;
         try (var ignored = P1CombatRuntime.playerAction(serverLevel, player, AttackKind.BED)) {
             return original.call(state, level, pos, player);
         }

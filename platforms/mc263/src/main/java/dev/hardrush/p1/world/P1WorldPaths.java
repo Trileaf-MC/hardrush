@@ -33,7 +33,9 @@ public final class P1WorldPaths {
         checkAncestors(expected, true);
         if (Files.exists(expected, LinkOption.NOFOLLOW_LINKS)) {
             try (var entries = Files.walk(expected)) {
-                for (Path entry : entries.toList()) {
+                var iterator = entries.iterator();
+                while (iterator.hasNext()) {
+                    Path entry = iterator.next();
                     if (Files.isSymbolicLink(entry) || !(Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS)
                             || Files.isRegularFile(entry, LinkOption.NOFOLLOW_LINKS))) {
                         throw new IOException("拒绝世界目录内的链接或特殊文件: " + entry);

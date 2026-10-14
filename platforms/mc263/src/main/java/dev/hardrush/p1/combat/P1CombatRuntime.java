@@ -21,6 +21,12 @@ public final class P1CombatRuntime {
     public interface RoundAccess {
         Optional<UUID> roundOf(ServerLevel level);
         Optional<CombatActor> actor(UUID roundId, UUID playerId);
+        /** A captured terminal event seals new batches; the already running batch may finish. */
+        default boolean mayDamage(ServerLevel level, UUID currentBatch) { return true; }
+        /** Packet admission never inherits the currently executing damage batch. */
+        default boolean competitionFrozen(ServerLevel level) { return false; }
+        /** Runs synchronously after the outermost scope for this batch has completed. */
+        default void batchClosed(UUID roundId, UUID batchId) {}
     }
     public interface Scope extends AutoCloseable { @Override void close(); }
     private record Binding(RoundAccess rounds, Consumer<CombatEvent> events) {}
@@ -52,7 +58,7 @@ public final class P1CombatRuntime {
     private static Optional<CombatOrigin> created(ServerLevel level, Entity owner, AttackKind kind, Optional<UUID> direct) {
         var round = round(level);
         if (round.isEmpty() || !(owner instanceof ServerPlayer player) || owner.level() != level
-                || owner.isRemoved() || !player.isAlive()) return Optional.empty();
+                || owner.isRemoved() || !player.isAlive() || rejectDamage(level)) return Optional.empty();
         var actor = BINDINGS.get(level.getServer()).rounds.actor(round.get(), owner.getUUID());
         if (actor.isEmpty() || !actor.get().mayCreateAttack()) return Optional.empty();
         return Optional.of(new CombatOrigin(round.get(), UUID.randomUUID(), actor.get(), kind, direct, List.of()));
@@ -60,6 +66,20 @@ public final class P1CombatRuntime {
     private static Cause current(ServerLevel level) {
         var top = CAUSES.get().peek();
         return top != null && top.level == level ? top : null;
+    }
+    public static boolean competitionFrozen(ServerLevel level) {
+        var binding = BINDINGS.get(level.getServer());
+        return binding != null && binding.rounds.roundOf(level).isPresent() && binding.rounds.competitionFrozen(level);
+    }
+    public static boolean rejectDamage(ServerLevel level) {
+        var binding = BINDINGS.get(level.getServer());
+        if (binding == null || binding.rounds.roundOf(level).isEmpty()) return false;
+        var cause = current(level);
+        return !binding.rounds.mayDamage(level, cause == null ? null : cause.batchId);
+    }
+    public static Optional<UUID> currentBatch(ServerLevel level) {
+        var cause = current(level);
+        return cause == null ? Optional.empty() : Optional.of(cause.batchId);
     }
     private static Optional<CombatOrigin> child(Optional<CombatOrigin> parent, AttackKind kind, UUID direct) {
         if (parent.isEmpty()) return Optional.empty();
@@ -113,7 +133,13 @@ public final class P1CombatRuntime {
             var stack = CAUSES.get();
             if (stack.peek() != cause) throw new IllegalStateException("Combat cause scopes closed out of order");
             stack.pop();
+            boolean batchFinished = stack.stream().noneMatch(parent -> parent.level == cause.level
+                    && parent.roundId.equals(cause.roundId) && parent.batchId.equals(cause.batchId));
             if (stack.isEmpty()) CAUSES.remove();
+            if (batchFinished) {
+                var binding = BINDINGS.get(level.getServer());
+                if (binding != null) binding.rounds.batchClosed(cause.roundId, cause.batchId);
+            }
         };
     }
     private static Optional<CombatOrigin> resolve(ServerLevel level, DamageSource source) {
@@ -125,6 +151,11 @@ public final class P1CombatRuntime {
             return cause == null ? Optional.empty() : cause.origin;
         }
         if ((source.is(DamageTypes.PLAYER_ATTACK) || source.is(DamageTypes.MOB_ATTACK)) && direct instanceof ServerPlayer) {
+            var action = current(level);
+            if (action != null && action.origin.filter(origin -> origin.kind() == AttackKind.MELEE
+                    && origin.actor().playerId().equals(direct.getUUID()) && origin.roundId().equals(action.roundId)).isPresent()) {
+                return action.origin;
+            }
             return created(level, direct, AttackKind.MELEE, Optional.of(direct.getUUID()));
         }
         return Optional.empty();
@@ -138,6 +169,7 @@ public final class P1CombatRuntime {
     }
     /** Frozen hostile/old-round sources cannot reach dragon damage even after their owner changes identity. */
     public static boolean rejectDragonAttack(ServerLevel level, DamageSource source) {
+        if (rejectDamage(level)) return true;
         var round = round(level);
         var cause = current(level);
         var origin = cause == null ? resolve(level, source) : cause.origin;

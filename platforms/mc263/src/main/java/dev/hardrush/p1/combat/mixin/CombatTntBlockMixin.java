@@ -17,11 +17,13 @@ import org.spongepowered.asm.mixin.Mixin;
 public abstract class CombatTntBlockMixin {
     @WrapMethod(method="wasExploded")
     private void chain(ServerLevel level, BlockPos pos, Explosion explosion, Operation<Void> original) {
+        if (P1CombatRuntime.rejectDamage(level)) return;
         try (var ignored = P1CombatRuntime.tntChain(level, explosion)) { original.call(level, pos, explosion); }
     }
     @WrapMethod(method="onProjectileHit")
     private void projectile(Level level, BlockState state, BlockHitResult hit, Projectile projectile, Operation<Void> original) {
         if (!(level instanceof ServerLevel serverLevel)) { original.call(level, state, hit, projectile); return; }
+        if (P1CombatRuntime.rejectDamage(serverLevel)) return;
         try (var ignored = P1CombatRuntime.projectileAction(serverLevel, projectile)) { original.call(level, state, hit, projectile); }
     }
 }

@@ -2,6 +2,8 @@ package dev.hardrush.p1;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.hardrush.core.api.MonotonicClock;
+import dev.hardrush.core.api.OperationTag;
+import dev.hardrush.core.api.ReplayPort;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.RoundSnapshot;
@@ -11,6 +13,7 @@ import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
 import dev.hardrush.p1.combat.P1CombatRuntime;
 import dev.hardrush.core.combat.CombatActor;
+import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.combat.CombatEventCodec;
 import dev.hardrush.persistence.EvidenceWrite;
 import net.minecraft.world.level.Level;
@@ -19,6 +22,8 @@ import java.util.IdentityHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -42,6 +47,9 @@ public final class P1LobbyRuntime {
     private static final Map<MinecraftServer, P1RoundWorldBundle> WORLDS = new IdentityHashMap<>();
     private static final Map<MinecraftServer, P1PlayerProfiles> PROFILES = new IdentityHashMap<>();
     private static final Map<MinecraftServer, Map<java.util.UUID, String>> ADMITTED = new IdentityHashMap<>();
+    private static final Map<MinecraftServer, CompletableFuture<Void>> RELEASES = new IdentityHashMap<>();
+    private static final Map<MinecraftServer, ReplayPort> RECORDINGS = new IdentityHashMap<>();
+    private static final Map<MinecraftServer, CompletableFuture<Void>> REPLAY_FLUSHES = new IdentityHashMap<>();
     private static boolean initialized;
 
     private P1LobbyRuntime() {}
@@ -72,18 +80,33 @@ public final class P1LobbyRuntime {
                 @Override public Optional<java.util.UUID> roundOf(net.minecraft.server.level.ServerLevel level) {
                     var round = session.snapshot().orElse(null);
                     var worlds = WORLDS.get(server);
-                    return round != null && session.state() == P1LobbySession.State.OPEN
-                            && round.phase() == RoundPhase.RUNNING && worlds != null && worlds.ready()
+                    return round != null && worlds != null && worlds.ready()
                             && P1RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), level)
                             ? Optional.of(round.roundId()) : Optional.empty();
                 }
                 @Override public Optional<CombatActor> actor(java.util.UUID roundId, java.util.UUID playerId) {
+                    if (session.competitionLocked()) return Optional.empty();
                     return session.snapshot().filter(round -> round.roundId().equals(roundId))
                             .map(round -> round.participants().get(playerId))
                             .filter(participant -> participant.role() == ParticipantRole.HUMAN_ACTIVE)
                             .map(participant -> new CombatActor(participant.id(), participant.role(), participant.lifeSequence(), 0));
                 }
-            }, event -> session.recordEvidence(new EvidenceWrite(event.roundId(), event.eventId(), "COMBAT", CombatEventCodec.encode(event))));
+                @Override public boolean competitionFrozen(net.minecraft.server.level.ServerLevel level) {
+                    return session.competitionLocked();
+                }
+                @Override public boolean mayDamage(net.minecraft.server.level.ServerLevel level, UUID batchId) {
+                    return !session.competitionLocked() || session.terminalBatchId().filter(id -> id.equals(batchId)).isPresent();
+                }
+                @Override public void batchClosed(UUID roundId, UUID batchId) { session.finishDamageBatch(roundId, batchId); }
+            }, event -> {
+                var worlds = WORLDS.get(server);
+                var dragon = verifiedFirstDragon(worlds, event);
+                if (dragon.isPresent()) {
+                    session.captureDragonDeath(event, dragon.orElseThrow());
+                    return;
+                }
+                session.recordEvidence(new EvidenceWrite(event.roundId(), event.eventId(), "COMBAT", CombatEventCodec.encode(event)));
+            });
             while (!bootstrapCallbacks.isEmpty()) bootstrapCallbacks.remove().run();
             LOGGER.info("P1 enabled; independent world preparation and player profile isolation gate participation");
         });
@@ -111,6 +134,11 @@ public final class P1LobbyRuntime {
                 var activeWorlds = worlds;
                 profiles.tick(round);
                 if (worlds != null && worlds.ready()) session.adaptersReady(round.roundId());
+                if (round.phase() == RoundPhase.ROTATING) {
+                    rotate(server, session, round, worlds, profiles);
+                    session.tick();
+                    return;
+                }
                 for (var player : server.getPlayerList().getPlayers()) {
                     var profileFailure = profiles.failure(player.getUUID());
                     if (profileFailure.isPresent()) {
@@ -119,6 +147,15 @@ public final class P1LobbyRuntime {
                     if (!profiles.isReady(player.getUUID(), round)) continue;
                     var names = ADMITTED.get(server);
                     var participant = round.participants().get(player.getUUID());
+                    if (round.phase() == RoundPhase.SETTLING || round.phase() == RoundPhase.CELEBRATING) {
+                        if (participant != null && participant.role() == ParticipantRole.HUMAN_ACTIVE
+                                && worlds != null && worlds.ready() && P1PlayerProfiles.isLocked(player)) {
+                            profiles.admitCelebration(player, round, worlds.level(Level.OVERWORLD),
+                                    Vec3.atBottomCenterOf(worlds.spawn()),
+                                    level -> P1RoundWorldBundle.sameRound(activeWorlds.level(Level.OVERWORLD), level));
+                        }
+                        continue;
+                    }
                     if (participant != null && participant.role() == ParticipantRole.HUMAN_RESPAWNING
                             && worlds != null && worlds.ready()) {
                         profiles.permitRespawn(player, round,
@@ -157,7 +194,8 @@ public final class P1LobbyRuntime {
             var round = session == null ? null : session.snapshot().orElse(null);
             var participant = round == null ? null : round.participants().get(player.getUUID());
             if (participant != null && participant.role() == ParticipantRole.HUMAN_ACTIVE
-                    && P1RoundWorldBundle.owns(player.level())) session.normalDeath(player.getUUID(), participant.lifeSequence());
+                    && P1RoundWorldBundle.owns(player.level())) session.normalDeath(player.getUUID(), participant.lifeSequence(),
+                            P1CombatRuntime.currentBatch(player.level()).orElse(null));
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
             if (alive) return;
@@ -171,28 +209,43 @@ public final class P1LobbyRuntime {
             }
         });
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
-            var session = SESSIONS.remove(server);
+            var session = SESSIONS.get(server);
             if (session == null) return;
-            try { session.close(); }
-            catch (Exception error) { LOGGER.error("P1 stop flush failed; retain database and inspect diagnostics", error); }
+            session.prepareStop();
             var profiles = PROFILES.get(server);
             if (profiles != null) for (var player : server.getPlayerList().getPlayers()) {
                 if (!profiles.manages(player)) continue;
                 try { profiles.returnToLobby(player); }
-                catch (RuntimeException error) { LOGGER.error("P1 stop profile suspension failed: {}", player.getUUID(), error); }
+                catch (RuntimeException error) { session.adapterFailure("正常停服档案封存失败", error); }
             }
+            var recorder = RECORDINGS.get(server);
+            if (recorder != null) try {
+                var barrier = REPLAY_FLUSHES.get(server);
+                if (barrier == null) {
+                    var round = session.snapshot().orElseThrow();
+                    barrier = P1RoundRelease.stopRecordings(recorder,
+                            new OperationTag(round.roundId(), UUID.randomUUID(), round.version())).toCompletableFuture();
+                }
+                barrier.get(30, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (Exception error) { session.adapterFailure("正常停服回放保存未核验", error); }
             var worlds = WORLDS.remove(server);
             if (worlds != null) {
                 try { worlds.shutdown(); }
-                catch (RuntimeException error) { LOGGER.error("P1 world stop flush failed", error); }
+                catch (RuntimeException error) { session.adapterFailure("正常停服世界保存失败", error); }
             }
             PROFILES.remove(server);
             if (profiles != null) {
                 try { profiles.close(); }
-                catch (Exception error) { LOGGER.error("P1 profile stop flush failed", error); }
+                catch (Exception error) { session.adapterFailure("正常停服档案排空失败", error); }
                 P1PlayerProfiles.uninstall(server);
             }
             ADMITTED.remove(server);
+            RELEASES.remove(server);
+            RECORDINGS.remove(server);
+            REPLAY_FLUSHES.remove(server);
+            try { session.close(); }
+            catch (Exception error) { LOGGER.error("P1 stop flush failed; retain database and inspect diagnostics", error); }
+            SESSIONS.remove(server);
             P1CombatRuntime.unconfigure(server);
         });
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
@@ -264,6 +317,18 @@ public final class P1LobbyRuntime {
         return session != null && session.mutationPending();
     }
 
+    /** Native fight identity, actual END entity and first-kill state must all agree. */
+    public static Optional<UUID> verifiedFirstDragon(P1RoundWorldBundle worlds, CombatEvent event) {
+        if (!event.lethal() || worlds == null || !worlds.ready() || !worlds.roundId().equals(event.roundId())) return Optional.empty();
+        var end = worlds.level(Level.END);
+        var fight = end.getDragonFight();
+        if (fight == null || fight.hasPreviouslyKilledDragon() || !event.victimId().equals(fight.dragonUUID())
+                || !(end.getEntity(event.victimId()) instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon)) {
+            return Optional.empty();
+        }
+        return Optional.of(event.victimId());
+    }
+
     private static int ready(CommandSourceStack source, boolean ready) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         var player = source.getPlayerOrException();
         var session = SESSIONS.get(source.getServer());
@@ -281,6 +346,19 @@ public final class P1LobbyRuntime {
     }
 
     private static void applyPlayers(MinecraftServer server, RoundSnapshot before, RoundSnapshot after) {
+        if (!before.roundId().equals(after.roundId())) {
+            WORLDS.remove(server);
+            RELEASES.remove(server);
+            REPLAY_FLUSHES.remove(server);
+            ADMITTED.get(server).clear();
+            return;
+        }
+        if (before.result() == null && after.result() != null) {
+            var winner = after.result().winner() == null ? "胜者待核验" : after.participants().get(after.result().winner()).name();
+            server.getPlayerList().broadcastSystemMessage(Component.literal("本轮已通关：" + winner
+                    + "，有效挑战 " + after.challengeMillis() + " ms。庆祝结束后返回大厅并轮换。"), false);
+        }
+        if (after.phase() != RoundPhase.RUNNING) return;
         var worlds = WORLDS.get(server);
         var profiles = PROFILES.get(server);
         if (worlds == null || profiles == null || !worlds.ready()) return;
@@ -301,6 +379,55 @@ public final class P1LobbyRuntime {
                 if (!participant.online()) SESSIONS.get(server).onOnline(player.getUUID(), player.getScoreboardName(), true);
             }
         }
+    }
+
+    /** Integration seam: an installed recorder must verify its final writes before world release. */
+    public static void installReplay(MinecraftServer server, ReplayPort recordings) {
+        if (!server.isSameThread()) throw new IllegalStateException("回放适配器必须在服务端主线程安装");
+        if (RELEASES.containsKey(server)) throw new IllegalStateException("轮换已开始，不能更换回放适配器");
+        RECORDINGS.put(server, java.util.Objects.requireNonNull(recordings));
+    }
+
+    private static void rotate(MinecraftServer server, P1LobbySession session, RoundSnapshot round,
+            P1RoundWorldBundle worlds, P1PlayerProfiles profiles) {
+        var release = RELEASES.get(server);
+        if (release != null) {
+            if (!release.isDone()) return;
+            release.join(); // Any failed recorder/save retains this round and enters the failure gate.
+            session.rotationReady(round.roundId());
+            return;
+        }
+        if (worlds == null || !worlds.ready() || session.mutationPending()) return;
+        for (var player : server.getPlayerList().getPlayers()) {
+            if (profiles.manages(player) && profiles.failure(player.getUUID()).isPresent()) {
+                throw new IllegalStateException("轮换档案封存失败：" + profiles.failure(player.getUUID()).orElseThrow());
+            }
+            if (profiles.manages(player)) profiles.returnToLobby(player);
+            else if (P1RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), player.level())) {
+                player.stopRiding(); player.ejectPassengers(); player.closeContainer();
+                var spawn = server.overworld().getRespawnData().pos();
+                player.teleportTo(server.overworld(), spawn.getX() + .5, spawn.getY(), spawn.getZ() + .5,
+                        java.util.Set.of(), 0, 0, true);
+            }
+        }
+        // Do not replace the old profile generation while its survival suspension is still being written.
+        if (server.getPlayerList().getPlayers().stream().anyMatch(player -> profiles.manages(player)
+                && !profiles.isReady(player.getUUID(), round))) return;
+        var completion = new CompletableFuture<Void>();
+        RELEASES.put(server, completion);
+        var recorder = RECORDINGS.get(server);
+        if (recorder == null) LOGGER.info("P1 round {}: replay integration is disabled; no recording is claimed", round.roundId());
+        var tag = new OperationTag(round.roundId(), UUID.randomUUID(), round.version());
+        var recordingBarrier = recorder == null ? CompletableFuture.<Void>completedFuture(null)
+                : P1RoundRelease.stopRecordings(recorder, tag).toCompletableFuture();
+        REPLAY_FLUSHES.put(server, recordingBarrier);
+        P1RoundRelease.releaseAfterRecordings(recordingBarrier, server::execute,
+                () -> SESSIONS.get(server) == session && WORLDS.get(server) == worlds
+                        && session.state() == P1LobbySession.State.OPEN
+                        && session.snapshot().orElseThrow().roundId().equals(round.roundId()), worlds::saveAndClose)
+                .whenComplete((ignored, error) -> {
+                    if (error == null) completion.complete(null); else completion.completeExceptionally(error);
+                });
     }
 
     private static int nextMode(CommandSourceStack source, String argument) {

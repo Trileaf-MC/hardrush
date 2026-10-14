@@ -12,7 +12,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -45,13 +47,14 @@ import net.minecraft.world.phys.Vec3;
 import xyz.nucleoid.fantasy.Fantasy;
 import xyz.nucleoid.fantasy.RuntimeLevelConfig;
 import xyz.nucleoid.fantasy.RuntimeLevelHandle;
+import xyz.nucleoid.fantasy.mixin.MinecraftServerAccess;
 
 /**
  * Main-thread world preparation with asynchronous native chunk generation and manifest IO.
  * No getChunk/getChunkFuture, worker-thread world edits, deletion, or P0 world reuse.
  */
 public final class P1RoundWorldBundle implements AutoCloseable {
-    public enum State { OPENING_MANIFEST, OPENING_DIMENSIONS, SEARCHING, LOADING_REGION, VALIDATING, BUILDING, SAVING_MANIFEST, READY, FAILED, CLOSED }
+    public enum State { OPENING_MANIFEST, OPENING_DIMENSIONS, SEARCHING, LOADING_REGION, VALIDATING, BUILDING, SAVING_MANIFEST, READY, FAILED, CLOSING, CLOSE_FAILED, CLOSED }
     public record Metrics(long elapsedMillis, long longestChunkMillis, long maximumTickMicros, int candidates, int changedBlocks) {}
     private static final long TICK_BUDGET_NANOS = 2_000_000;
     private static final int CANDIDATES_PER_TICK = 16;
@@ -59,6 +62,7 @@ public final class P1RoundWorldBundle implements AutoCloseable {
     private static final int MAX_IN_FLIGHT = 2;
     private static final long CHUNK_TIMEOUT_NANOS = TimeUnit.MINUTES.toNanos(2);
     private static final TicketType PREPARATION = new TicketType(TicketType.NO_TIMEOUT, TicketType.FLAG_LOADING);
+    private static final Map<MinecraftServer, Map<UUID, P1RoundWorldBundle>> CLAIMS = new java.util.IdentityHashMap<>();
 
     private final MinecraftServer server;
     private final RoundSnapshot snapshot;
@@ -73,6 +77,11 @@ public final class P1RoundWorldBundle implements AutoCloseable {
     private final ArrayDeque<Edit> edits = new ArrayDeque<>();
     private final List<ChunkPos> searchChunks = new ArrayList<>();
     private CompletableFuture<P1WorldManifest> manifestIo;
+    private CompletableFuture<P1WorldManifest> closeValidation;
+    private CompletableFuture<Void> closeCompletion;
+    private final java.util.Set<ServerLevel> closedNativeLevels = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+    private boolean unloadQueued;
+    private long closeStartedNanos;
     private P1WorldManifest manifest;
     private State state = State.OPENING_MANIFEST;
     private String failure = "";
@@ -109,7 +118,14 @@ public final class P1RoundWorldBundle implements AutoCloseable {
     }
 
     public static P1RoundWorldBundle open(MinecraftServer server, RoundSnapshot snapshot) {
-        return new P1RoundWorldBundle(server, snapshot);
+        requireMainThread(server);
+        var claims = CLAIMS.computeIfAbsent(server, ignored -> new LinkedHashMap<>());
+        if (claims.containsKey(snapshot.roundId())) {
+            throw new IllegalStateException("本轮世界仍被准备或关闭会话持有；等待真实关闭完成后重开: " + snapshot.roundId());
+        }
+        var bundle = new P1RoundWorldBundle(server, snapshot);
+        claims.put(snapshot.roundId(), bundle);
+        return bundle;
     }
 
     private void beginManifest() {
@@ -149,6 +165,8 @@ public final class P1RoundWorldBundle implements AutoCloseable {
     /** One dimension constructor per tick; terrain/search/edit work also has quantity and time budgets. */
     public void tick() {
         requireMainThread(server);
+        if (state == State.CLOSING) { tickClose(); return; }
+        if (state == State.CLOSE_FAILED) return;
         if (state == State.FAILED || state == State.CLOSED || state == State.READY) return;
         long tickStart = System.nanoTime();
         try {
@@ -181,8 +199,9 @@ public final class P1RoundWorldBundle implements AutoCloseable {
         var key = key(name);
         var existing = server.getLevel(key);
         if (existing != null && !(existing instanceof P1RoundRuntimeLevel)) throw new IllegalStateException("维度已被其他实现占用: " + key);
-        if (existing instanceof P1RoundRuntimeLevel opened && opened.owner() != null && opened.owner() != this
-                && opened.owner().state != State.CLOSED) throw new IllegalStateException("本轮世界已被另一准备会话持有: " + key);
+        if (existing instanceof P1RoundRuntimeLevel opened && (opened.owner() != this || !opened.persistent())) {
+            throw new IllegalStateException("本轮世界已被另一准备会话持有或不是持久世界: " + key);
+        }
         var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
         var generator = ChunkGenerator.CODEC.parse(ops, manifest.generators.get(name)).getOrThrow();
         var config = new RuntimeLevelConfig().setSeed(manifest.seed).setGenerator(generator)
@@ -450,21 +469,120 @@ public final class P1RoundWorldBundle implements AutoCloseable {
 
     public void save() {
         requireMainThread(server);
+        if (state == State.CLOSED || unloadQueued) throw new IllegalStateException("本轮世界正在关闭或已经关闭，不能再次保存");
+        requireOwnedHandles(true);
         for (var handle : handles.values()) handle.asLevel().save(null, true, false);
     }
 
-    /** Unloads persistent levels through Fantasy after evacuation, retaining all owned files. */
-    @Override public void close() {
+    /**
+     * Starts a verified save/unload on the main thread after evacuation. Call tick() until the
+     * completion finishes: Fantasy unload is queued and does not close native region IO itself.
+     * Success means every handle is unregistered and every native level is closed. No file is
+     * deleted. A refused close leaves the bundle intact; CLOSE_FAILED can be retried after repair.
+     */
+    public CompletionStage<Void> saveAndClose() {
         requireMainThread(server);
-        if (state == State.CLOSED) return;
+        if (state == State.CLOSED) return CompletableFuture.completedFuture(null);
+        if (state == State.CLOSING) return closeCompletion.minimalCompletionStage();
+        requireOwnedHandles(!unloadQueued);
+        requireEvacuated();
+        closeCompletion = new CompletableFuture<>();
+        closeStartedNanos = System.nanoTime();
+        failure = "";
+        state = State.CLOSING;
+        // Join neither manifest writes nor directory scans on the server thread. This read checks
+        // current persisted ownership rather than trusting the manifest cached when preparation began.
+        var pending = manifestIo == null ? CompletableFuture.<P1WorldManifest>completedFuture(null) : manifestIo;
+        closeValidation = pending.handle((stored, error) -> null).thenApplyAsync(ignored -> {
+            try {
+                if (handles.isEmpty()) {
+                    // No native handle was acquired, so a failed/missing manifest is recovery evidence
+                    // rather than permission to touch any world. There is nothing to unload or save.
+                    P1WorldPaths.checkAncestors(manifestPath, false);
+                    return null;
+                }
+                var stored = P1WorldManifest.read(root, manifestPath);
+                stored.requireSnapshot(snapshot);
+                if (manifest == null || !manifest.generators.equals(stored.generators)) {
+                    throw new java.io.IOException("世界生成器清单在持有期间变化；拒绝保存或关闭，保留原始恢复证据");
+                }
+                return stored;
+            } catch (Exception error) { throw new java.util.concurrent.CompletionException(error); }
+        }, io);
+        return closeCompletion.minimalCompletionStage();
+    }
+
+    /** AutoCloseable compatibility only initiates unloading; use saveAndClose() to await success. */
+    @Override public void close() { saveAndClose(); }
+
+    private void tickClose() {
+        try {
+            if (!closeValidation.isDone()) return;
+            closeValidation.join();
+            requireEvacuated();
+            requireOwnedHandles(!unloadQueued);
+            if (!unloadQueued) {
+                releaseTickets(null);
+                for (var handle : handles.values()) handle.asLevel().save(null, true, false);
+                for (var handle : handles.values()) handle.unload();
+                unloadQueued = true;
+                return;
+            }
+            for (var handle : handles.values()) {
+                var level = handle.asLevel();
+                if (server.getLevel(level.dimension()) == level) {
+                    if (System.nanoTime() - closeStartedNanos > CHUNK_TIMEOUT_NANOS) {
+                        throw new IllegalStateException("Fantasy 世界注销超时；保留文件并等待人工恢复，可重试关闭");
+                    }
+                    return;
+                }
+            }
+            for (var handle : handles.values()) {
+                var level = handle.asLevel();
+                if (!closedNativeLevels.contains(level)) {
+                    level.close();
+                    closedNativeLevels.add(level);
+                }
+            }
+            io.shutdown();
+            finishClosed();
+            closeCompletion.complete(null);
+        } catch (Exception error) {
+            Throwable cause = error;
+            while (cause.getCause() != null) cause = cause.getCause();
+            failure = "CLOSING: " + cause.getMessage();
+            state = State.CLOSE_FAILED;
+            closeCompletion.completeExceptionally(error);
+        }
+    }
+
+    private void requireEvacuated() {
         for (var handle : handles.values()) if (!handle.asLevel().players().isEmpty()) {
             throw new IllegalStateException("关闭本轮世界前必须将全部玩家送回大厅");
         }
-        finishManifestIo();
-        releaseTickets(null);
-        save();
-        for (var handle : handles.values()) handle.unload();
-        finishClosed();
+        for (var player : server.getPlayerList().getPlayers()) if (handles.values().stream().anyMatch(handle -> handle.asLevel() == player.level())) {
+            throw new IllegalStateException("在线玩家仍引用本轮世界；必须先安全回大厅");
+        }
+    }
+
+    private void requireOwnedHandles(boolean registered) {
+        for (var entry : handles.entrySet()) {
+            var level = entry.getValue().asLevel();
+            var expectedKey = key(entry.getKey());
+            var active = server.getLevel(expectedKey);
+            if (!(level instanceof P1RoundRuntimeLevel owned) || owned.owner() != this || !owned.persistent()
+                    || level.getServer() != server || level == server.overworld()
+                    || !level.dimension().equals(expectedKey) || level.getSeed() != snapshot.seed()
+                    || (registered ? active != level : active != null && active != level)) {
+                throw new IllegalStateException("拒绝保存或关闭未由本轮持有的活动世界: " + expectedKey);
+            }
+            Path actual = ((MinecraftServerAccess) server).getStorageSource().getDimensionPath(expectedKey).toAbsolutePath().normalize();
+            if (!P1WorldPaths.world(root, snapshot.roundId(), entry.getKey()).equals(actual)) {
+                throw new IllegalStateException("拒绝保存或关闭存储路径不符的世界: " + actual);
+            }
+            try { P1WorldPaths.checkAncestors(actual, true); }
+            catch (java.io.IOException error) { throw new IllegalStateException("拒绝保存或关闭不安全的世界路径", error); }
+        }
     }
 
     /**
@@ -475,10 +593,22 @@ public final class P1RoundWorldBundle implements AutoCloseable {
     public void shutdown() {
         requireMainThread(server);
         if (state == State.CLOSED) return;
+        requireOwnedHandles(!unloadQueued);
         finishManifestIo();
         releaseTickets(null);
-        save();
+        if (!unloadQueued) for (var handle : handles.values()) handle.asLevel().save(null, true, false);
+        else for (var handle : handles.values()) {
+            var level = handle.asLevel();
+            if (server.getLevel(level.dimension()) == null && !closedNativeLevels.contains(level)) {
+                try { level.close(); }
+                catch (java.io.IOException error) { throw new IllegalStateException(error); }
+                closedNativeLevels.add(level);
+            }
+        }
         finishClosed();
+        if (closeCompletion != null && !closeCompletion.isDone()) {
+            closeCompletion.completeExceptionally(new IllegalStateException("服务器关闭中；注册世界交由原版关闭循环释放"));
+        }
     }
 
     private void finishManifestIo() {
@@ -494,6 +624,11 @@ public final class P1RoundWorldBundle implements AutoCloseable {
         startedRequests.clear();
         requested.clear();
         edits.clear();
+        var claims = CLAIMS.get(server);
+        if (claims != null) {
+            claims.remove(snapshot.roundId(), this);
+            if (claims.isEmpty()) CLAIMS.remove(server);
+        }
     }
 
     private void fail(Throwable error) {
