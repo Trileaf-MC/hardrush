@@ -12,6 +12,7 @@ HardRush 是面向原版客户端的 Fabric 多人速通挑战模组。玩家在
 - [验收与开发顺序](docs/acceptance.md)
 - [P0 至 P4 开发任务清单与依赖](docs/implementation-plan.md)
 - [P0 原型验证与运行方法](docs/p0-validation.md)
+- [P0b 三版本基础依赖、SQLite 与原版容器核查](docs/p0b-dependency-evidence.md)
 - [MCPFabric、GameTest、JDWP 与 spark 调试环境](docs/debug-tools.md)
 - [第三方组件](THIRD-PARTY.md)
 
@@ -19,7 +20,7 @@ HardRush 是面向原版客户端的 Fabric 多人速通挑战模组。玩家在
 
 本目录已开始实现 26.3 的 P0 原型：服务端伪装协议、单轮持久三维度和管理员探针命令。它尚不是可开服比赛的 HardRush，完整赛制、轮换、技能、复生、排行榜与历史书均未实现。P0 验收结果与已知阻塞见验证记录，不能把构建成功视为功能通过。
 
-后续推进以 [开发任务清单](docs/implementation-plan.md) 为入口：按任务编号维护已完成、未完成和阻塞状态，列出依赖、验收条件与已有证据。阶段顺序为 P0 → P0b → P1 → P2 → P3 → P4；当前直接阻塞为 B01，其他世界验证可独立推进。
+后续推进以 [开发任务清单](docs/implementation-plan.md) 为入口：按任务编号维护已完成、未完成和阻塞状态，列出依赖、验收条件与已有证据。阶段顺序为 P0 → P0b → P1 → P2 → P3 → P4；当前直接阻塞为 B01。2026-10-14 已提前完成三版基础依赖、SQLite 与 SGui 的独立服务端探针，不代表最终多版本玩法适配通过。
 
 当前 **P0 未通过**：三种怪物的完整 F5 外观可见，但第一人称被自身模型遮挡，准星也会选中自身替身。原型和失败证据已保留；下一步须解决 self-view，再推进正式玩法。
 
@@ -28,3 +29,5 @@ HardRush 是面向原版客户端的 Fabric 多人速通挑战模组。玩家在
 构建需要 Java 25，运行 `scripts/p0-gradle.sh checkP0`。原型 JAR 位于 `platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar`；仅供隔离测试，依赖 Fabric Loader 0.19.5 与 Fabric API 0.162.0+26.3。
 
 26.3 开发调试入口：`python3 scripts/debug-tools.py start --side client` 启动独立服务端和带 MCPFabric/spark 的开发客户端；`python3 scripts/debug-tools.py verify` 复验游戏测试、MCP 控制、源码断点和实际性能采样。工具只存在于开发实例，完整操作与证据见调试文档。
+
+P0b 无图形界面基础依赖复验：`scripts/p0-gradle.sh -p probes/p0b checkP0bDependencies --console=plain`，逐版运行 SQLite／SGui／Fantasy 加载探针。该独立工程不访问 P0 存档，完整结果与边界见 [P0b 记录](docs/p0b-dependency-evidence.md)。

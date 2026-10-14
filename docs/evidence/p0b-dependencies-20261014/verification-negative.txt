@@ -1,0 +1,24 @@
+Starting a Gradle Daemon, 1 incompatible and 1 stopped Daemons could not be reused, use --status for details
+> Task :resolveDriver FAILED
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Build file '/Users/leifwebber/projects/minecraft/hardrush/.local/p0b/verification-negative/build.gradle' line: 4
+
+* What went wrong:
+Execution failed for task ':resolveDriver' (registered in build file 'build.gradle').
+> Dependency verification failed for configuration ':runtimeClasspath'
+  One artifact failed verification: sqlite-jdbc-3.53.4.0.jar (org.xerial:sqlite-jdbc:3.53.4.0) from repository MavenRepo
+  This can indicate that a dependency has been compromised. Please carefully verify the checksums.
+  
+  Open this report for more details: file:///Users/leifwebber/projects/minecraft/hardrush/.local/p0b/verification-negative/build/reports/dependency-verification/at-1791939998071/dependency-verification-report.html
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 3s
+1 actionable task: 1 executed

@@ -1,0 +1,24 @@
+
+> Configure project :
+Fabric Loom: 1.17.21
+Fabric Loom: 1.17.21
+Fabric Loom: 1.17.21
+
+> Task :mc2612:compileJava NO-SOURCE
+> Task :mc2612:processResources UP-TO-DATE
+> Task :mc2612:classes UP-TO-DATE
+> Task :mc2612:processIncludeJars UP-TO-DATE
+> Task :mc262:compileJava NO-SOURCE
+> Task :mc262:processResources UP-TO-DATE
+> Task :mc262:classes UP-TO-DATE
+> Task :mc262:processIncludeJars UP-TO-DATE
+> Task :mc263:compileJava NO-SOURCE
+> Task :mc263:processResources UP-TO-DATE
+> Task :mc263:classes UP-TO-DATE
+> Task :mc263:processIncludeJars UP-TO-DATE
+> Task :mc2612:jar
+> Task :mc262:jar
+> Task :mc263:jar
+
+BUILD SUCCESSFUL in 1s
+9 actionable tasks: 3 executed, 6 up-to-date

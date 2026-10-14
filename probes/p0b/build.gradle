@@ -1,0 +1,119 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.security.MessageDigest
+
+plugins {
+    id 'base'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+}
+
+def matrix = new JsonSlurper().parse(file('versions.json'))
+
+subprojects {
+    apply plugin: 'net.fabricmc.fabric-loom'
+    group = 'dev.hardrush.probe'
+    version = "0.1.0-p0b+mc${matrix[name].minecraft}"
+    base { archivesName = 'hardrush-p0b-probe' }
+
+    repositories {
+        mavenCentral()
+        maven { url = 'https://maven.nucleoid.xyz/' }
+    }
+    dependencies {
+        minecraft "com.mojang:minecraft:${matrix[name].minecraft}"
+        implementation "net.fabricmc:fabric-loader:${loader_version}"
+        implementation "net.fabricmc.fabric-api:fabric-api:${matrix[name].fabricApi}"
+        ['xyz.nucleoid:fantasy': matrix[name].fantasy, 'eu.pb4:sgui': matrix[name].sgui,
+         'org.xerial:sqlite-jdbc': sqlite_version].each { module, selected ->
+            implementation "${module}:${selected}"
+            include "${module}:${selected}"
+        }
+    }
+    dependencyLocking { lockAllConfigurations() }
+    java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+    tasks.withType(JavaCompile).configureEach { options.release = 25; options.encoding = 'UTF-8' }
+    sourceSets.main.resources.srcDir rootProject.file('src/main/resources')
+    processResources {
+        inputs.property 'version', project.version
+        inputs.property 'minecraft', matrix[project.name].minecraft
+        filesMatching('fabric.mod.json') {
+            expand version: project.version, minecraft: matrix[project.name].minecraft
+        }
+    }
+    fabricApi {
+        configureTests {
+            createSourceSet = true
+            modId = 'hardrush-p0b-gametest'
+            enableGameTests = true
+            enableClientGameTests = false
+            eula = false
+        }
+    }
+    sourceSets.gametest.java.srcDir rootProject.file('src/gametest/java')
+    sourceSets.gametest.resources.srcDir rootProject.file('src/gametest/resources')
+    loom.runs.named('gameTest') {
+        vmArg '--enable-native-access=ALL-UNNAMED'
+    }
+    tasks.register('prepareProbeEula') {
+        doLast {
+            def accepted = rootProject.file('../../.local/server-p0/eula.txt')
+            if (!accepted.exists() || !accepted.readLines().any { it.trim() == 'eula=true' }) {
+                throw new GradleException('Review and accept the EULA in .local/server-p0/eula.txt; this probe never accepts it.')
+            }
+            def target = layout.buildDirectory.file('run/gameTest/eula.txt').get().asFile
+            target.parentFile.mkdirs()
+            target.text = accepted.text
+        }
+    }
+    tasks.named('runGameTest') { dependsOn 'prepareProbeEula' }
+    tasks.named('jar') {
+        from(rootProject.file('../../THIRD-PARTY.md'))
+        from(rootProject.file('licenses')) { into 'META-INF/licenses' }
+        from(rootProject.file('../../licenses/GPL-3.0.txt')) { into 'META-INF/licenses' }
+    }
+
+    // Record what Gradle actually resolved, including the independent Loom tool graph.
+    tasks.register('dependencyInventory') {
+        doLast {
+            def sha256 = { File source ->
+                def digest = MessageDigest.getInstance('SHA-256')
+                source.withInputStream { stream ->
+                    byte[] buffer = new byte[65536]
+                    int size
+                    while ((size = stream.read(buffer)) != -1) digest.update(buffer, 0, size)
+                }
+                digest.digest().encodeHex().toString()
+            }
+            def configurationsToRecord = ['runtimeClasspath', 'gametestRuntimeClasspath', 'minecraftLibraries',
+                                          'minecraftServerLibraries', 'minecraftRuntimeLibraries', 'loaderLibraries', 'include']
+            def graphs = [:]
+            configurationsToRecord.each { configName ->
+                def config = configurations.findByName(configName)
+                if (config != null && config.canBeResolved) {
+                    graphs[configName] = config.resolvedConfiguration.resolvedArtifacts.collect { artifact ->
+                        [coordinate: artifact.moduleVersion.id.toString(), file: artifact.file.name,
+                         sha256: sha256(artifact.file), classifier: artifact.classifier,
+                         generated: artifact.moduleVersion.id.group == 'net.minecraft']
+                    }.sort { a, b -> a.coordinate <=> b.coordinate ?: a.file <=> b.file }
+                }
+            }
+            graphs['buildscript'] = rootProject.buildscript.configurations.classpath.resolvedConfiguration.resolvedArtifacts.collect { artifact ->
+                [coordinate: artifact.moduleVersion.id.toString(), file: artifact.file.name, sha256: sha256(artifact.file),
+                 classifier: artifact.classifier, generated: false]
+            }.sort { a, b -> a.coordinate <=> b.coordinate ?: a.file <=> b.file }
+            def target = layout.buildDirectory.file('reports/dependencies.json').get().asFile
+            target.parentFile.mkdirs()
+            target.text = JsonOutput.prettyPrint(JsonOutput.toJson([minecraft: matrix[project.name].minecraft,
+                      java: System.getProperty('java.runtime.version'), gradle: gradle.gradleVersion,
+                      direct: matrix[project.name] + [loader: loader_version, loom: loom_version, sqlite: sqlite_version], graphs: graphs])) + '\n'
+        }
+    }
+}
+
+tasks.register('checkP0bDependencies') {
+    group = 'verification'
+    description = 'Headless dependency probes only; not a full HardRush adapter or client acceptance.'
+    dependsOn subprojects.collect { it.tasks.named('jar') }
+    dependsOn subprojects.collect { it.tasks.named('runGameTest') }
+    dependsOn subprojects.collect { it.tasks.named('dependencyInventory') }
+}

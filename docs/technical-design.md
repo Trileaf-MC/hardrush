@@ -17,6 +17,7 @@ integration-contracts/ 待建；世界、实体、GUI、回放与防作弊能力
 platforms/mc2612/       待建；26.1.2 Fabric 适配
 platforms/mc262/        待建；26.2 Fabric 适配
 platforms/mc263/        已有 P0 主代码、JUnit、GameTest 和隔离 debugTools
+probes/p0b/             已有三版基础依赖／SQLite／原版容器探针，非完整平台适配
 test-support/          待建；假时钟、事件重放、故障注入和共享契约测试
 ```
 

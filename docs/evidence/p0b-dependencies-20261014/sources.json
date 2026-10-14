@@ -1,0 +1,37 @@
+[
+  {
+    "coordinate": "eu.pb4:sgui:2.0.0+26.1",
+    "sourceJar": "https://maven.nucleoid.xyz/eu/pb4/sgui/2.0.0+26.1/sgui-2.0.0+26.1-sources.jar",
+    "sha256": "38754f21b39fe384b59781ff287ea2135ef1585f24f968b6786ed622902b48d9"
+  },
+  {
+    "coordinate": "eu.pb4:sgui:2.1.0+26.2",
+    "sourceJar": "https://maven.nucleoid.xyz/eu/pb4/sgui/2.1.0+26.2/sgui-2.1.0+26.2-sources.jar",
+    "sha256": "177ffd5c701006e3ee9c93383317411244af849a5db5fa7a12a170f7fc9d25a9"
+  },
+  {
+    "coordinate": "eu.pb4:sgui:2.2.1+26.3",
+    "sourceJar": "https://maven.nucleoid.xyz/eu/pb4/sgui/2.2.1+26.3/sgui-2.2.1+26.3-sources.jar",
+    "sha256": "9459f5400080ba3fc34b86d55f352b6951deb90687762d237ab12080818620f3"
+  },
+  {
+    "coordinate": "xyz.nucleoid:fantasy:0.8.0+26.1.2",
+    "sourceJar": "https://maven.nucleoid.xyz/xyz/nucleoid/fantasy/0.8.0+26.1.2/fantasy-0.8.0+26.1.2-sources.jar",
+    "sha256": "b4e963725d690a3608aff33c63bdde641bdbdc92194c1bdc3e7d65779dd12f5a"
+  },
+  {
+    "coordinate": "xyz.nucleoid:fantasy:0.8.3+26.2",
+    "sourceJar": "https://maven.nucleoid.xyz/xyz/nucleoid/fantasy/0.8.3+26.2/fantasy-0.8.3+26.2-sources.jar",
+    "sha256": "a0b63cd3a0627e4c1dd55d51cebe2a49a366214c29820e767192b73045f37ea9"
+  },
+  {
+    "coordinate": "xyz.nucleoid:fantasy:0.8.4+26.3",
+    "sourceJar": "https://maven.nucleoid.xyz/xyz/nucleoid/fantasy/0.8.4+26.3/fantasy-0.8.4+26.3-sources.jar",
+    "sha256": "003c163e9aea222be33b091db9ed562f716007a54f3722a876a620d1e47e7e26"
+  },
+  {
+    "coordinate": "org.xerial:sqlite-jdbc:3.53.4.0",
+    "sourceJar": "https://repo.maven.apache.org/maven2/org/xerial/sqlite-jdbc/3.53.4.0/sqlite-jdbc-3.53.4.0-sources.jar",
+    "sha256": "6f3fca1257fd02891e9b17b296b4e888cdd6af6d3e077ff7e50991657d69ed46"
+  }
+]

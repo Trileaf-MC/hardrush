@@ -1,0 +1,10 @@
+pluginManagement {
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'hardrush-p0b-probes'
+include 'mc2612', 'mc262', 'mc263'

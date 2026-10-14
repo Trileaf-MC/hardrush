@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "hardrush-p0b-gametest",
+  "version": "1.0.0",
+  "name": "HardRush P0b headless dependency tests",
+  "environment": "server",
+  "entrypoints": {"fabric-gametest": ["dev.hardrush.probe.DependencyGameTest"]}
+}

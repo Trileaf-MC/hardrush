@@ -1,0 +1,703 @@
+{
+  "capturedAt": "2026-10-14T09:14:46.558804+08:00",
+  "baselineCommit": "dc703979ec2675f61ace0c7e46cb4278635c99c7",
+  "sourceState": "Uncommitted working tree; pre-existing P0 world/End changes preserved.",
+  "scope": [
+    "P0b-01 base dependencies only",
+    "P0b-07 SQLite/native vanilla-container entry points"
+  ],
+  "b01Changed": false,
+  "clientUsed": "None; EmbeddedChannel simulated connections only.",
+  "sources": [
+    {
+      "path": "probes/p0b/README.md",
+      "sha256": "a13c93cdd76211b5e565891a4ae95fc56d215b3a3317c0a302358bdb56abeec9",
+      "bytes": 2096
+    },
+    {
+      "path": "probes/p0b/build.gradle",
+      "sha256": "dd280c7c218dcc20fbc598a6161fb6dc3b40a9bbbbed48c83e45e21f00cfe21d",
+      "bytes": 5869
+    },
+    {
+      "path": "probes/p0b/gradle/verification-metadata.xml",
+      "sha256": "58844040420ad030b88d803292a68c1fcbbb2844b5d862dc507d6818a5b8fc8e",
+      "bytes": 200524
+    },
+    {
+      "path": "probes/p0b/gradle.properties",
+      "sha256": "deb2ee8ddf9f063d21a8b5a9782e0bbd6051c131d88785ab66f5f68a18c9885e",
+      "bytes": 156
+    },
+    {
+      "path": "probes/p0b/licenses/SGui-LGPL-3.0.txt",
+      "sha256": "a5681bf9b05db14d86776930017c647ad9e6e56ff6bbcfdf21e5848288dfaf1b",
+      "bytes": 7651
+    },
+    {
+      "path": "probes/p0b/licenses/SQLite-jdbc-Apache-2.0.txt",
+      "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5",
+      "bytes": 11560
+    },
+    {
+      "path": "probes/p0b/licenses/SQLite-jdbc-Zentus-BSD-2-Clause.txt",
+      "sha256": "89167dab92289c7e5e2b65b044f0856b703d05e5d5e35c3548e73d9c7d2f5048",
+      "bytes": 1312
+    },
+    {
+      "path": "probes/p0b/mc2612/build.gradle",
+      "sha256": "b386de7280ee4ebcb705bf126ba4336ae8cf36fd72232eade0b91e03c6112864",
+      "bytes": 72
+    },
+    {
+      "path": "probes/p0b/mc2612/gradle.lockfile",
+      "sha256": "8e1a870671c55d10d13b213fe62bbaca5ccab4ad81211aa7c198ce4f0fad79a2",
+      "bytes": 35873
+    },
+    {
+      "path": "probes/p0b/mc262/build.gradle",
+      "sha256": "d5312d123e331a39670489de66a7e1d8ab124c1d682ad2ba56e46ba6f10f410f",
+      "bytes": 70
+    },
+    {
+      "path": "probes/p0b/mc262/gradle.lockfile",
+      "sha256": "e3877ea804df828b043ecb286079092ec4bf30d236c5ffb993fb4967d665853f",
+      "bytes": 37543
+    },
+    {
+      "path": "probes/p0b/mc263/build.gradle",
+      "sha256": "9a6b0242d000887938614c180d17774b4653dabd5053673e069b6bb200e1a257",
+      "bytes": 70
+    },
+    {
+      "path": "probes/p0b/mc263/gradle.lockfile",
+      "sha256": "dcf0292d34f4160996c870e0c8cdba38027b17e1a091f3755bbe9c75fcc26410",
+      "bytes": 37197
+    },
+    {
+      "path": "probes/p0b/settings.gradle",
+      "sha256": "257a6d12121cf8366801e9807e17e7a7596f33fef3b3ef4f04a644197beec2ea",
+      "bytes": 229
+    },
+    {
+      "path": "probes/p0b/src/gametest/java/dev/hardrush/probe/DependencyGameTest.java",
+      "sha256": "90a5982a53e87d52c2d5c0b94b6a837d52085f99b859beb4b44b60d0d3641845",
+      "bytes": 9368
+    },
+    {
+      "path": "probes/p0b/src/gametest/resources/fabric.mod.json",
+      "sha256": "9928a5608915a75a2b42b4151bfc5917718bcfd54769ae0199c21f8af69f00ab",
+      "bytes": 240
+    },
+    {
+      "path": "probes/p0b/src/main/resources/fabric.mod.json",
+      "sha256": "6bb4ce5b15f50eaa51a3764aebddd060745a06473992fedb7b062babbd5162b1",
+      "bytes": 303
+    },
+    {
+      "path": "probes/p0b/versions.json",
+      "sha256": "55822c22844e3b842b662a1305903fe9b679e4ae3aab565530497e6e6d48642c",
+      "bytes": 340
+    },
+    {
+      "path": "README.md",
+      "sha256": "eebd00e9284a06e59536a664eeb6ba01fe7b14cf1eee9166e9d720f424e6c63d",
+      "bytes": 3513
+    },
+    {
+      "path": "THIRD-PARTY.md",
+      "sha256": "d3598a4dd85458bde7369e3aa046e32560b4caa15d1d6249cf9c18575f8e13bc",
+      "bytes": 4304
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "sha256": "31df63b3e0cefd4073a9405f1d83f236838803919fd5aa342b6d3428dbcc10b5",
+      "bytes": 31128
+    },
+    {
+      "path": "docs/compatibility.md",
+      "sha256": "c6a6dc4a848b02167ac2c4c44bef86794274d78ad79958c9d0047d6d914f00df",
+      "bytes": 8266
+    },
+    {
+      "path": "docs/technical-design.md",
+      "sha256": "d7d4bbcf9225cf80630d113effb690e0e6c4a200091fdad793655d085b75dd6a",
+      "bytes": 21535
+    },
+    {
+      "path": "docs/p0b-dependency-evidence.md",
+      "sha256": "4e60f61244f6a0e97a1108a51dbd425c60d6df3455a39e6267b44fd527fba381",
+      "bytes": 7786
+    },
+    {
+      "path": "scripts/p0-gradle.sh",
+      "sha256": "9fef15e5837c1a5fb71e699c647eb1f25b9db57dfef9a88060de055235ee02ec",
+      "bytes": 411
+    },
+    {
+      "path": "licenses/GPL-3.0.txt",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "bytes": 35149
+    }
+  ],
+  "existingDisguiseSourceOriginOnly": [
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/DisguiseProbe.java",
+      "sha256": "5048b406435f66005562aba765aa7844702c3825c7ba5cafdd01a299948126fc",
+      "bytes": 22322
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/mixin/DisguiseConnectionMixin.java",
+      "sha256": "146df81c0f6df85662152f270309d52da67039855c973ab755bd066db4348bff",
+      "bytes": 955
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/mixin/DisguiseEntityAccessor.java",
+      "sha256": "b1432cf79bb6df5c603b80b75d498dd25e6def51bf1d3628e0001018386ab428",
+      "bytes": 536
+    }
+  ],
+  "platformResults": {
+    "mc2612": {
+      "minecraft": "26.1.2",
+      "artifacts": 151,
+      "testResult": {
+        "projectTests": 3,
+        "frameworkTests": 1,
+        "failed": 0
+      },
+      "report": "mc2612-dependencies.json"
+    },
+    "mc262": {
+      "minecraft": "26.2",
+      "artifacts": 163,
+      "testResult": {
+        "projectTests": 3,
+        "frameworkTests": 1,
+        "failed": 0
+      },
+      "report": "mc262-dependencies.json"
+    },
+    "mc263": {
+      "minecraft": "26.3",
+      "artifacts": 160,
+      "testResult": {
+        "projectTests": 3,
+        "frameworkTests": 1,
+        "failed": 0
+      },
+      "report": "mc263-dependencies.json"
+    }
+  },
+  "packaging": [
+    {
+      "platform": "mc2612",
+      "jar": {
+        "path": "probes/p0b/mc2612/build/libs/hardrush-p0b-probe-0.1.0-p0b+mc26.1.2.jar",
+        "sha256": "edd3416114c2cf62fe2018ffaae46931d6781004679d1d9fb3eafcd96408a06d",
+        "bytes": 12147175
+      },
+      "embedded": [
+        {
+          "path": "META-INF/jars/fantasy-0.8.0+26.1.2.jar",
+          "sha256": "c56f2ba4dce50889b9dacce82cc2cfb2ea0f4dd6101193a231d3e6ac3a1b2439",
+          "bytes": 62328,
+          "fabricMetadata": {
+            "schemaVersion": 1,
+            "id": "fantasy",
+            "version": "0.8.0+26.1.2",
+            "name": "Fantasy",
+            "description": "Fantasy is a library that allows for dimensions to be created and destroyed at runtime on the server.",
+            "authors": [
+              "Nucleoid Contributors"
+            ],
+            "license": "LGPLv3",
+            "environment": "*",
+            "entrypoints": {
+              "main": [
+                "xyz.nucleoid.fantasy.FantasyInitializer"
+              ]
+            },
+            "mixins": [
+              "fantasy.mixins.json"
+            ],
+            "accessWidener": "fantasy.accesswidener",
+            "icon": "icon.png",
+            "custom": {
+              "modmenu": {
+                "badges": [
+                  "library"
+                ]
+              }
+            },
+            "depends": {
+              "fabricloader": ">=0.15.10",
+              "minecraft": ">=26.1- <26.2",
+              "fabric-api": "*",
+              "java": ">=25"
+            }
+          },
+          "upstreamCoordinate": "xyz.nucleoid:fantasy:0.8.0+26.1.2",
+          "upstreamJarSha256": "c56f2ba4dce50889b9dacce82cc2cfb2ea0f4dd6101193a231d3e6ac3a1b2439",
+          "payloadDifferences": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          }
+        },
+        {
+          "path": "META-INF/jars/sgui-2.0.0+26.1.jar",
+          "sha256": "0127b242695e00c1a36764ecb2f16ff94a4231e4af5f8a5c90f50ba73a005c33",
+          "bytes": 108005,
+          "fabricMetadata": {
+            "schemaVersion": 1,
+            "id": "sgui",
+            "version": "2.0.0+26.1",
+            "name": "sgui",
+            "description": "Library for creating server side guis!",
+            "authors": [
+              "Patbox"
+            ],
+            "contributors": [
+              "aws404"
+            ],
+            "contact": {
+              "homepage": "https://pb4.eu",
+              "sources": "https://github.com/Patbox/sgui"
+            },
+            "license": "LGPLv3",
+            "icon": "assets/icon.png",
+            "environment": "*",
+            "entrypoints": {},
+            "accessWidener": "sgui.accesswidener",
+            "mixins": [
+              "sgui.mixins.json"
+            ],
+            "depends": {
+              "minecraft": ">=26.1-"
+            },
+            "custom": {
+              "modmenu": {
+                "badges": [
+                  "library"
+                ]
+              }
+            }
+          },
+          "upstreamCoordinate": "eu.pb4:sgui:2.0.0+26.1",
+          "upstreamJarSha256": "0127b242695e00c1a36764ecb2f16ff94a4231e4af5f8a5c90f50ba73a005c33",
+          "payloadDifferences": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          }
+        },
+        {
+          "path": "META-INF/jars/sqlite-jdbc-3.53.4.0.jar",
+          "sha256": "57525d07ce37e7922371553dfb784a311431b1c08ec293711048c27dbaf6093f",
+          "bytes": 12002613,
+          "fabricMetadata": {
+            "schemaVersion": 1,
+            "id": "org_xerial_sqlite-jdbc",
+            "version": "3.53.4.0",
+            "name": "sqlite-jdbc",
+            "custom": {
+              "fabric-loom:generated": true
+            }
+          },
+          "upstreamCoordinate": "org.xerial:sqlite-jdbc:3.53.4.0",
+          "upstreamJarSha256": "bcb1f51e36f940867e83342f9efbf5968ac44a6bef4d397bb4af7b17b45cd2fb",
+          "payloadDifferences": {
+            "added": [
+              "fabric.mod.json"
+            ],
+            "removed": [],
+            "changed": []
+          }
+        }
+      ],
+      "testClasses": [
+        {
+          "path": "probes/p0b/mc2612/build/classes/java/gametest/dev/hardrush/probe/DependencyGameTest$RecordingConnection.class",
+          "sha256": "50bdb7853010232e588b3ab90c40eec3bbd3e9493e517d8d287b7e24a3dd2d7a",
+          "bytes": 1862
+        },
+        {
+          "path": "probes/p0b/mc2612/build/classes/java/gametest/dev/hardrush/probe/DependencyGameTest.class",
+          "sha256": "afa195796abdd1db2ba4f69d1ae939a0f4e095a5a125a1566cc068daacce6d8f",
+          "bytes": 15476
+        }
+      ],
+      "testClassesInProbeJar": false
+    },
+    {
+      "platform": "mc262",
+      "jar": {
+        "path": "probes/p0b/mc262/build/libs/hardrush-p0b-probe-0.1.0-p0b+mc26.2.jar",
+        "sha256": "199358604f6860f26f400f272536f2071d23fdf7ac3a6ea796567e0eb8ae09e8",
+        "bytes": 12147592
+      },
+      "embedded": [
+        {
+          "path": "META-INF/jars/fantasy-0.8.3+26.2.jar",
+          "sha256": "29535b2b7f9cba4e02b2fc256029c436ba1500c856d3af751a3efd85a5c37e21",
+          "bytes": 62568,
+          "fabricMetadata": {
+            "schemaVersion": 1,
+            "id": "fantasy",
+            "version": "0.8.3+26.2",
+            "name": "Fantasy",
+            "description": "Fantasy is a library that allows for dimensions to be created and destroyed at runtime on the server.",
+            "authors": [
+              "Nucleoid Contributors"
+            ],
+            "license": "LGPLv3",
+            "environment": "*",
+            "entrypoints": {
+              "main": [
+                "xyz.nucleoid.fantasy.FantasyInitializer"
+              ]
+            },
+            "mixins": [
+              "fantasy.mixins.json"
+            ],
+            "accessWidener": "fantasy.accesswidener",
+            "icon": "icon.png",
+            "custom": {
+              "modmenu": {
+                "badges": [
+                  "library"
+                ]
+              }
+            },
+            "depends": {
+              "fabricloader": ">=0.15.10",
+              "minecraft": ">=26.2-",
+              "fabric-api": "*",
+              "java": ">=25"
+            }
+          },
+          "upstreamCoordinate": "xyz.nucleoid:fantasy:0.8.3+26.2",
+          "upstreamJarSha256": "29535b2b7f9cba4e02b2fc256029c436ba1500c856d3af751a3efd85a5c37e21",
+          "payloadDifferences": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          }
+        },
+        {
+          "path": "META-INF/jars/sgui-2.1.0+26.2.jar",
+          "sha256": "741984361a6d0eea648377ce573c40a7bb31a2369f3bf606d7070261aac6ca5a",
+          "bytes": 108163,
+          "fabricMetadata": {
+            "schemaVersion": 1,
+            "id": "sgui",
+            "version": "2.1.0+26.2",
+            "name": "sgui",
+            "description": "Library for creating server side guis!",
+            "authors": [
+              "Patbox"
+            ],
+            "contributors": [
+              "aws404"
+            ],
+            "contact": {
+              "homepage": "https://pb4.eu",
+              "sources": "https://github.com/Patbox/sgui"
+            },
+            "license": "LGPLv3",
+            "icon": "assets/icon.png",
+            "environment": "*",
+            "entrypoints": {},
+            "accessWidener": "sgui.accesswidener",
+            "mixins": [
+              "sgui.mixins.json"
+            ],
+            "depends": {
+              "minecraft": ">=26.1-"
+            },
+            "custom": {
+              "modmenu": {
+                "badges": [
+                  "library"
+                ]
+              }
+            }
+          },
+          "upstreamCoordinate": "eu.pb4:sgui:2.1.0+26.2",
+          "upstreamJarSha256": "741984361a6d0eea648377ce573c40a7bb31a2369f3bf606d7070261aac6ca5a",
+          "payloadDifferences": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          }
+        },
+        {
+          "path": "META-INF/jars/sqlite-jdbc-3.53.4.0.jar",
+          "sha256": "57525d07ce37e7922371553dfb784a311431b1c08ec293711048c27dbaf6093f",
+          "bytes": 12002613,
+          "fabricMetadata": {
+            "schemaVersion": 1,
+            "id": "org_xerial_sqlite-jdbc",
+            "version": "3.53.4.0",
+            "name": "sqlite-jdbc",
+            "custom": {
+              "fabric-loom:generated": true
+            }
+          },
+          "upstreamCoordinate": "org.xerial:sqlite-jdbc:3.53.4.0",
+          "upstreamJarSha256": "bcb1f51e36f940867e83342f9efbf5968ac44a6bef4d397bb4af7b17b45cd2fb",
+          "payloadDifferences": {
+            "added": [
+              "fabric.mod.json"
+            ],
+            "removed": [],
+            "changed": []
+          }
+        }
+      ],
+      "testClasses": [
+        {
+          "path": "probes/p0b/mc262/build/classes/java/gametest/dev/hardrush/probe/DependencyGameTest$RecordingConnection.class",
+          "sha256": "50bdb7853010232e588b3ab90c40eec3bbd3e9493e517d8d287b7e24a3dd2d7a",
+          "bytes": 1862
+        },
+        {
+          "path": "probes/p0b/mc262/build/classes/java/gametest/dev/hardrush/probe/DependencyGameTest.class",
+          "sha256": "afa195796abdd1db2ba4f69d1ae939a0f4e095a5a125a1566cc068daacce6d8f",
+          "bytes": 15476
+        }
+      ],
+      "testClassesInProbeJar": false
+    },
+    {
+      "platform": "mc263",
+      "jar": {
+        "path": "probes/p0b/mc263/build/libs/hardrush-p0b-probe-0.1.0-p0b+mc26.3.jar",
+        "sha256": "5ffc71afb87dfd22d66e475b317d44137f96700d8e385106ab1b1e6630730218",
+        "bytes": 12147498
+      },
+      "embedded": [
+        {
+          "path": "META-INF/jars/fantasy-0.8.4+26.3.jar",
+          "sha256": "579a8f061b4d8339c900972e11b0cc3713844cdb183f48dce2c63d330220834a",
+          "bytes": 61812,
+          "fabricMetadata": {
+            "schemaVersion": 1,
+            "id": "fantasy",
+            "version": "0.8.4+26.3",
+            "name": "Fantasy",
+            "description": "Fantasy is a library that allows for dimensions to be created and destroyed at runtime on the server.",
+            "authors": [
+              "Nucleoid Contributors"
+            ],
+            "license": "LGPLv3",
+            "environment": "*",
+            "entrypoints": {
+              "main": [
+                "xyz.nucleoid.fantasy.FantasyInitializer"
+              ]
+            },
+            "mixins": [
+              "fantasy.mixins.json"
+            ],
+            "accessWidener": "fantasy.accesswidener",
+            "icon": "icon.png",
+            "custom": {
+              "modmenu": {
+                "badges": [
+                  "library"
+                ]
+              }
+            },
+            "depends": {
+              "fabricloader": ">=0.15.10",
+              "minecraft": ">=26.3-",
+              "fabric-api": "*",
+              "java": ">=25"
+            }
+          },
+          "upstreamCoordinate": "xyz.nucleoid:fantasy:0.8.4+26.3",
+          "upstreamJarSha256": "579a8f061b4d8339c900972e11b0cc3713844cdb183f48dce2c63d330220834a",
+          "payloadDifferences": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          }
+        },
+        {
+          "path": "META-INF/jars/sgui-2.2.1+26.3.jar",
+          "sha256": "8850e395067a3864a11a742ef576850f42aec8572c89f5f6fdf4e0d52c60ee07",
+          "bytes": 108877,
+          "fabricMetadata": {
+            "schemaVersion": 1,
+            "id": "sgui",
+            "version": "2.2.1+26.3",
+            "name": "sgui",
+            "description": "Library for creating server side guis!",
+            "authors": [
+              "Patbox"
+            ],
+            "contributors": [
+              "aws404"
+            ],
+            "contact": {
+              "homepage": "https://pb4.eu",
+              "sources": "https://github.com/Patbox/sgui"
+            },
+            "license": "LGPLv3",
+            "icon": "assets/icon.png",
+            "environment": "*",
+            "entrypoints": {},
+            "accessWidener": "sgui.accesswidener",
+            "mixins": [
+              "sgui.mixins.json"
+            ],
+            "depends": {
+              "minecraft": ">=26.1-"
+            },
+            "custom": {
+              "modmenu": {
+                "badges": [
+                  "library"
+                ]
+              }
+            }
+          },
+          "upstreamCoordinate": "eu.pb4:sgui:2.2.1+26.3",
+          "upstreamJarSha256": "8850e395067a3864a11a742ef576850f42aec8572c89f5f6fdf4e0d52c60ee07",
+          "payloadDifferences": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          }
+        },
+        {
+          "path": "META-INF/jars/sqlite-jdbc-3.53.4.0.jar",
+          "sha256": "57525d07ce37e7922371553dfb784a311431b1c08ec293711048c27dbaf6093f",
+          "bytes": 12002613,
+          "fabricMetadata": {
+            "schemaVersion": 1,
+            "id": "org_xerial_sqlite-jdbc",
+            "version": "3.53.4.0",
+            "name": "sqlite-jdbc",
+            "custom": {
+              "fabric-loom:generated": true
+            }
+          },
+          "upstreamCoordinate": "org.xerial:sqlite-jdbc:3.53.4.0",
+          "upstreamJarSha256": "bcb1f51e36f940867e83342f9efbf5968ac44a6bef4d397bb4af7b17b45cd2fb",
+          "payloadDifferences": {
+            "added": [
+              "fabric.mod.json"
+            ],
+            "removed": [],
+            "changed": []
+          }
+        }
+      ],
+      "testClasses": [
+        {
+          "path": "probes/p0b/mc263/build/classes/java/gametest/dev/hardrush/probe/DependencyGameTest$RecordingConnection.class",
+          "sha256": "50bdb7853010232e588b3ab90c40eec3bbd3e9493e517d8d287b7e24a3dd2d7a",
+          "bytes": 1862
+        },
+        {
+          "path": "probes/p0b/mc263/build/classes/java/gametest/dev/hardrush/probe/DependencyGameTest.class",
+          "sha256": "afa195796abdd1db2ba4f69d1ae939a0f4e095a5a125a1566cc068daacce6d8f",
+          "bytes": 15476
+        }
+      ],
+      "testClassesInProbeJar": false
+    }
+  ],
+  "negativeVerification": {
+    "expectedFailureConfirmed": true,
+    "productionMetadataModified": false
+  },
+  "evidenceFiles": [
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/build-artifacts.txt",
+      "sha256": "84ce0c58a6b3e5669d1e95d8d7cfa360ad561a8ee2ad2378dd7ad79709a8d07d",
+      "bytes": 680
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/check-bootstrap.txt",
+      "sha256": "5e86d416049ab31b8d3fa05c8703f6497f90125c6484233e4b97237e90877423",
+      "bytes": 35914
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/check-final.txt",
+      "sha256": "fcd90f331a03a42d9da565cc1d976b6be8770894f65f1834ea6e1d0b56f3d46e",
+      "bytes": 19704
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/check-locked.txt",
+      "sha256": "44316907477dd4e70e9b4e54c1ac162859f258193d308d85d95520fef9b96475",
+      "bytes": 20475
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/licenses.json",
+      "sha256": "4f78fd33abb360b2d7879b2a481d3151a9013cca7d97322291173ec0a26b78cc",
+      "bytes": 148219
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/mc2612-dependencies.json",
+      "sha256": "094d682ecec2a20ce4257e4a811fffec6067c4b08dc3c54f745dd02fd6fce152",
+      "bytes": 111954
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/mc262-dependencies.json",
+      "sha256": "1d03bd15d319b81009a0d92a89f65bc4e6b8d2bffe78a42ccbd7e28291d93e41",
+      "bytes": 120882
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/mc263-dependencies.json",
+      "sha256": "82611762a3f85c8f6759cc79b2971f6029bac0607ae17bfd1744c8c6ac89d0ef",
+      "bytes": 118821
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/minecraft-inputs.json",
+      "sha256": "4be68af11ec98db7ef01a8a68b82bd29559fa6ffb0b2623043eb4226417609ff",
+      "bytes": 3340
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/sources.json",
+      "sha256": "2cba5f17573610d554d4e637c02b7b03a87ce973fc9523cd456f7e91d3c38429",
+      "bytes": 1729
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/toolchains.json",
+      "sha256": "1afff423949e06b3d4726c304d17185396d47c2802b80f1b638a2fbb56c5f1fd",
+      "bytes": 4862
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/verification-negative/build.gradle",
+      "sha256": "dc46372a3da018aa739854584e754a7c2777fcd263531677cf060b7713760749",
+      "bytes": 209
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/verification-negative/mutation.json",
+      "sha256": "c0531a45e2cc55a4ca00bb01b65deaaa239e2c28304829c4ea9091acd1c8c875",
+      "bytes": 274
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/verification-negative/settings.gradle",
+      "sha256": "8d7fc235a63501eb4a2579dba0bb0883d17f7d1177517423160516b618e269a9",
+      "bytes": 52
+    },
+    {
+      "path": "docs/evidence/p0b-dependencies-20261014/verification-negative.txt",
+      "sha256": "1f6e9335353416f653f716035bcd42aabb17d539a56c580e0ca099ebc994dc88",
+      "bytes": 1216
+    }
+  ],
+  "limits": [
+    "No actual client visuals/login",
+    "No full P0 adapters for 26.1.2/26.2",
+    "No final disguise route",
+    "No production schema/asynchronous persistence/GUI authorization",
+    "No multi-process/crash or other OS SQLite validation",
+    "No replay, AntiXray, Grim, phase acceptance, commit, push, deployment or release"
+  ]
+}
