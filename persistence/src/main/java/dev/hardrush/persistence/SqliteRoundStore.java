@@ -1,5 +1,10 @@
 package dev.hardrush.persistence;
 
+import dev.hardrush.core.combat.CombatEventCodec;
+import dev.hardrush.core.round.DragonDeathArbiter;
+import dev.hardrush.core.round.RoundPhase;
+import dev.hardrush.core.round.RoundSnapshot;
+import dev.hardrush.core.round.RoundSnapshotCodec;
 import org.sqlite.SQLiteConfig;
 
 import java.io.IOException;
@@ -16,7 +21,7 @@ import java.util.UUID;
 
 /** Durable, Minecraft-independent storage. Calls serialize on one connection and may block for IO. */
 public final class SqliteRoundStore implements AutoCloseable {
-    public static final int SCHEMA_VERSION = 2;
+    public static final int SCHEMA_VERSION = 3;
     public static final int DEFAULT_BUSY_TIMEOUT_MILLIS = 1_000;
 
     private final Path databasePath;
@@ -50,6 +55,7 @@ public final class SqliteRoundStore implements AutoCloseable {
                 if (lockedVersion > SCHEMA_VERSION) throw new SQLException("Database schema is newer than this build: " + lockedVersion);
                 if (lockedVersion == 0) migrateInitialSchema();
                 if (schemaVersion() == 1) migrateEvidenceSchema();
+                if (schemaVersion() == 2) migrateTerminalSchema();
                 return null;
             });
         } catch (SQLException | RuntimeException | Error failure) {
@@ -66,28 +72,70 @@ public final class SqliteRoundStore implements AutoCloseable {
             if (duplicate(write.eventId(), digest)) return CommitResult.DUPLICATE;
             var current = loadInternal(write.roundId());
             if (current.map(SnapshotData::version).orElse(-1L) != write.expectedVersion()) return CommitResult.STALE;
-            long revision = insertEvent(write.eventId(), "ROUND", write.roundId(), write.eventType(), null,
-                    write.expectedVersion(), write.newVersion(), digest, WriteDigest.payload(write.payload()));
-            try (var statement = connection.prepareStatement("""
-                    INSERT INTO round_snapshots(round_id, version, payload, revision) VALUES (?, ?, ?, ?)
-                    ON CONFLICT(round_id) DO UPDATE SET version=excluded.version,
-                        payload=excluded.payload, revision=excluded.revision
-                    """)) {
-                statement.setString(1, write.roundId().toString());
-                statement.setLong(2, write.newVersion());
-                statement.setBytes(3, write.payload());
-                statement.setLong(4, revision);
-                statement.executeUpdate();
-            }
-            for (var operation : write.operations()) insertOperation(write, operation);
+            var terminal = terminalInternal(write.roundId());
+            if (terminal.isPresent()) preserveTerminal(write, terminal.orElseThrow());
+            else if (current.isPresent()) preserveLegacyTerminal(write, current.orElseThrow());
+            insertSnapshot(write, digest);
             return CommitResult.APPLIED;
         });
+    }
+
+    /** First-dragon evidence, original SETTLING snapshot and unique terminal row share one CAS transaction. */
+    public synchronized CommitResult commitTerminal(SnapshotWrite write, EvidenceWrite evidence,
+                                                    UUID firstDragonId) throws SQLException {
+        Objects.requireNonNull(write); Objects.requireNonNull(evidence); Objects.requireNonNull(firstDragonId);
+        RoundSnapshot settling = validateTerminalTags(write, evidence, firstDragonId);
+        checkOpenPath();
+        byte[] digest = WriteDigest.terminal(write, evidence, firstDragonId);
+        return transaction(() -> {
+            if (duplicate(write.eventId(), digest)) {
+                var stored = terminalInternal(write.roundId());
+                if (stored.isEmpty() || !stored.orElseThrow().eventId().equals(write.eventId())) {
+                    throw new SQLException("Terminal event has no owning terminal record");
+                }
+                return CommitResult.DUPLICATE;
+            }
+            boolean existingEvidence = duplicate(evidence.eventId(), WriteDigest.evidence(evidence));
+            if (existingEvidence) evidenceInternal(evidence.eventId());
+            var current = loadInternal(write.roundId());
+            if (current.isEmpty() || current.orElseThrow().version() != write.expectedVersion()) return CommitResult.STALE;
+            if (terminalInternal(write.roundId()).isPresent()) return CommitResult.STALE;
+            RoundSnapshot before = RoundSnapshotCodec.decode(current.orElseThrow().payload());
+            if (before.result() != null) return CommitResult.STALE;
+            var death = CombatEventCodec.decode(evidence.payload());
+            if (!settling.result().equals(DragonDeathArbiter.adjudicate(before, death, firstDragonId))) {
+                throw new IllegalArgumentException("SETTLING result does not match actual dragon-death evidence");
+            }
+            if (before.sequence() != settling.sequence() || before.seed() != settling.seed()
+                    || !before.rules().equals(settling.rules()) || settling.challengeNanos() < before.challengeNanos()) {
+                throw new IllegalArgumentException("Terminal snapshot changed the round identity or reversed time");
+            }
+            if (!existingEvidence) insertEvidence(evidence);
+            insertSnapshot(write, digest);
+            try (var statement = connection.prepareStatement("""
+                    INSERT INTO round_terminals(round_id, event_id, combat_event_id, first_dragon_id, payload, payload_digest)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """)) {
+                statement.setString(1, write.roundId().toString()); statement.setString(2, write.eventId().toString());
+                statement.setString(3, evidence.eventId().toString()); statement.setString(4, firstDragonId.toString());
+                statement.setBytes(5, write.payload()); statement.setBytes(6, WriteDigest.payload(write.payload()));
+                statement.executeUpdate();
+            }
+            return CommitResult.APPLIED;
+        });
+    }
+
+    public synchronized Optional<TerminalData> terminal(UUID roundId) throws SQLException {
+        Objects.requireNonNull(roundId); checkOpenPath();
+        return terminalInternal(roundId);
     }
 
     public synchronized Optional<SnapshotData> load(UUID roundId) throws SQLException {
         Objects.requireNonNull(roundId, "roundId");
         checkOpenPath();
-        return loadInternal(roundId);
+        var stored = loadInternal(roundId);
+        if (stored.isPresent()) verifyTerminalCurrent(stored.orElseThrow());
+        return stored;
     }
 
     public synchronized CommitResult recordEvidence(EvidenceWrite write) throws SQLException {
@@ -96,15 +144,7 @@ public final class SqliteRoundStore implements AutoCloseable {
         return transaction(() -> {
             if (duplicate(write.eventId(), digest)) return CommitResult.DUPLICATE;
             if (loadInternal(write.roundId()).isEmpty()) throw new SQLException("Evidence round is not committed");
-            try (var statement = connection.prepareStatement("""
-                    INSERT INTO evidence_events(event_id, round_id, kind, payload, write_digest, payload_digest)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """)) {
-                statement.setString(1, write.eventId().toString()); statement.setString(2, write.roundId().toString());
-                statement.setString(3, write.kind()); statement.setBytes(4, write.payload());
-                statement.setBytes(5, digest); statement.setBytes(6, WriteDigest.payload(write.payload()));
-                statement.executeUpdate();
-            }
+            insertEvidence(write);
             return CommitResult.APPLIED;
         });
     }
@@ -151,7 +191,9 @@ public final class SqliteRoundStore implements AutoCloseable {
             if (rows.getString("creation_event_id") == null) {
                 throw new SQLException("Round snapshot has no owning creation event");
             }
-            return Optional.of(snapshot(rows));
+            var stored = snapshot(rows);
+            verifyTerminalCurrent(stored);
+            return Optional.of(stored);
         }
     }
 
@@ -351,6 +393,157 @@ public final class SqliteRoundStore implements AutoCloseable {
         }
     }
 
+    private void migrateTerminalSchema() throws SQLException {
+        try (var statement = connection.createStatement()) {
+            statement.execute("""
+                    CREATE TABLE round_terminals (
+                        round_id TEXT PRIMARY KEY REFERENCES round_snapshots(round_id),
+                        event_id TEXT NOT NULL UNIQUE REFERENCES store_events(event_id),
+                        combat_event_id TEXT NOT NULL UNIQUE REFERENCES evidence_events(event_id),
+                        first_dragon_id TEXT NOT NULL,
+                        payload BLOB NOT NULL,
+                        payload_digest BLOB NOT NULL CHECK(length(payload_digest)=32)
+                    )
+                    """);
+            statement.execute("PRAGMA user_version=3");
+        }
+    }
+
+    private static RoundSnapshot validateTerminalTags(SnapshotWrite write, EvidenceWrite evidence, UUID firstDragonId) {
+        if (write.expectedVersion() < 0 || !"FINISH".equals(write.eventType())
+                || !"COMBAT".equals(evidence.kind()) || !write.roundId().equals(evidence.roundId())
+                || write.eventId().equals(evidence.eventId())) {
+            throw new IllegalArgumentException("Invalid first-dragon terminal write tags");
+        }
+        var snapshot = RoundSnapshotCodec.decode(write.payload());
+        var death = CombatEventCodec.decode(evidence.payload());
+        if (!snapshot.roundId().equals(write.roundId()) || snapshot.version() != write.newVersion()
+                || snapshot.phase() != RoundPhase.SETTLING || snapshot.cleanShutdown()
+                || !death.roundId().equals(write.roundId()) || !death.eventId().equals(evidence.eventId())
+                || !death.victimId().equals(firstDragonId) || !death.lethal()) {
+            throw new IllegalArgumentException("Terminal must contain this round's SETTLING snapshot and actual first-dragon death");
+        }
+        return snapshot;
+    }
+
+    private static void preserveTerminal(SnapshotWrite write, TerminalData terminal) {
+        var original = RoundSnapshotCodec.decode(terminal.snapshot().payload());
+        var after = RoundSnapshotCodec.decode(write.payload());
+        if (!after.roundId().equals(write.roundId()) || after.version() != write.newVersion()) {
+            throw new IllegalArgumentException("Snapshot payload does not match its round/version tags");
+        }
+        preserveTerminal(after, original);
+    }
+
+    private static void preserveTerminal(RoundSnapshot after, RoundSnapshot original) {
+        if (!Objects.equals(after.result(), original.result())
+                || after.challengeNanos() != original.challengeNanos()
+                || after.sequence() != original.sequence() || after.seed() != original.seed()
+                || !after.rules().equals(original.rules())) {
+            throw new IllegalArgumentException("A committed terminal result and stopped challenge time cannot be replaced");
+        }
+    }
+
+    private static void preserveLegacyTerminal(SnapshotWrite write, SnapshotData current) {
+        // Earlier schemas allowed opaque snapshots, including a completed round without causal evidence.
+        // Preserve any recognizable legacy result without inventing a first-dragon terminal record.
+        RoundSnapshot before;
+        try { before = RoundSnapshotCodec.decode(current.payload()); }
+        catch (IllegalArgumentException opaqueLegacyPayload) { return; }
+        if (before.result() != null) {
+            var after = RoundSnapshotCodec.decode(write.payload());
+            if (!after.roundId().equals(write.roundId()) || after.version() != write.newVersion()) {
+                throw new IllegalArgumentException("Snapshot payload does not match its round/version tags");
+            }
+            preserveTerminal(after, before);
+        }
+    }
+
+    private void verifyTerminalCurrent(SnapshotData current) throws SQLException {
+        var terminal = terminalInternal(current.roundId());
+        if (terminal.isPresent()) {
+            try {
+                var snapshot = RoundSnapshotCodec.decode(current.payload());
+                if (snapshot.version() != current.version() || !snapshot.roundId().equals(current.roundId())) {
+                    throw new IllegalArgumentException("Snapshot payload does not match its round/version tags");
+                }
+                preserveTerminal(snapshot, RoundSnapshotCodec.decode(terminal.orElseThrow().snapshot().payload()));
+            } catch (IllegalArgumentException invalid) {
+                throw new SQLException("Current snapshot does not preserve its original terminal result", invalid);
+            }
+        }
+    }
+
+    private EvidenceWrite evidenceInternal(UUID eventId) throws SQLException {
+        try (var statement = connection.prepareStatement("SELECT * FROM evidence_events WHERE event_id=?")) {
+            statement.setString(1, eventId.toString());
+            try (var rows = statement.executeQuery()) {
+                if (!rows.next()) throw new SQLException("Existing evidence event is missing its evidence row");
+                byte[] payload = rows.getBytes("payload");
+                validatePayload(payload, rows.getBytes("payload_digest"), "Existing combat evidence");
+                try {
+                    var evidence = new EvidenceWrite(UUID.fromString(rows.getString("round_id")), eventId,
+                            rows.getString("kind"), payload);
+                    if (!java.security.MessageDigest.isEqual(WriteDigest.evidence(evidence), rows.getBytes("write_digest"))) {
+                        throw new SQLException("Existing evidence labels or digest do not match");
+                    }
+                    return evidence;
+                } catch (IllegalArgumentException invalid) {
+                    throw new SQLException("Existing evidence tags are invalid", invalid);
+                }
+            }
+        }
+    }
+
+    private Optional<TerminalData> terminalInternal(UUID roundId) throws SQLException {
+        try (var statement = connection.prepareStatement("""
+                SELECT terminal.*, committed.scope_type AS event_scope, committed.round_id AS event_round_id,
+                    committed.expected_version, committed.new_version, committed.event_type, committed.write_digest,
+                    committed.payload_digest AS event_payload_digest,
+                    evidence.round_id AS evidence_round_id, evidence.kind AS evidence_kind,
+                    evidence.payload AS evidence_payload, evidence.write_digest AS evidence_write_digest,
+                    evidence.payload_digest AS evidence_payload_digest
+                FROM round_terminals AS terminal
+                LEFT JOIN store_events AS committed ON committed.event_id=terminal.event_id
+                LEFT JOIN evidence_events AS evidence ON evidence.event_id=terminal.combat_event_id
+                WHERE terminal.round_id=?
+                """)) {
+            statement.setString(1, roundId.toString());
+            try (var rows = statement.executeQuery()) {
+                if (!rows.next()) return Optional.empty();
+                if (!"ROUND".equals(rows.getString("event_scope"))
+                        || !roundId.toString().equals(rows.getString("event_round_id"))
+                        || !roundId.toString().equals(rows.getString("evidence_round_id"))) {
+                    throw new SQLException("Terminal record has missing or inconsistent owning events");
+                }
+                byte[] payload = rows.getBytes("payload");
+                byte[] evidencePayload = rows.getBytes("evidence_payload");
+                validatePayload(payload, rows.getBytes("payload_digest"), "Terminal snapshot");
+                validatePayload(payload, rows.getBytes("event_payload_digest"), "Terminal event snapshot");
+                validatePayload(evidencePayload, rows.getBytes("evidence_payload_digest"), "Terminal combat evidence");
+                try {
+                    UUID eventId = UUID.fromString(rows.getString("event_id"));
+                    var operations = readOperations(roundId, false).stream().filter(value -> value.eventId().equals(eventId))
+                            .map(value -> new PreparedOperation(value.operationId(), value.operationType(),
+                                    value.expectedVersion(), value.payload())).toList();
+                    var snapshot = new SnapshotWrite(roundId, rows.getLong("expected_version"), rows.getLong("new_version"),
+                            payload, eventId, rows.getString("event_type"), operations);
+                    var evidence = new EvidenceWrite(roundId, UUID.fromString(rows.getString("combat_event_id")),
+                            rows.getString("evidence_kind"), evidencePayload);
+                    UUID firstDragonId = UUID.fromString(rows.getString("first_dragon_id"));
+                    validateTerminalTags(snapshot, evidence, firstDragonId);
+                    if (!java.security.MessageDigest.isEqual(WriteDigest.evidence(evidence), rows.getBytes("evidence_write_digest"))
+                            || !java.security.MessageDigest.isEqual(WriteDigest.terminal(snapshot, evidence, firstDragonId), rows.getBytes("write_digest"))) {
+                        throw new SQLException("Terminal labels or owning write digests do not match");
+                    }
+                    return Optional.of(new TerminalData(snapshot, evidence, firstDragonId));
+                } catch (IllegalArgumentException malformed) {
+                    throw new SQLException("Terminal payload or tags are invalid", malformed);
+                }
+            }
+        }
+    }
+
     private int schemaVersion() throws SQLException {
         try (var statement = connection.createStatement(); var rows = statement.executeQuery("PRAGMA user_version")) {
             if (!rows.next()) throw new SQLException("SQLite schema version is missing");
@@ -402,9 +595,12 @@ public final class SqliteRoundStore implements AutoCloseable {
             statement.setString(1, eventId.toString());
             statement.setString(2, eventId.toString());
             try (var rows = statement.executeQuery()) {
-                if (!rows.next()) return false;
-                if (!java.security.MessageDigest.isEqual(rows.getBytes(1), digest)) throw new EventCollisionException(eventId);
-                return true;
+                boolean found = false;
+                while (rows.next()) {
+                    found = true;
+                    if (!java.security.MessageDigest.isEqual(rows.getBytes(1), digest)) throw new EventCollisionException(eventId);
+                }
+                return found;
             }
         }
     }
@@ -429,6 +625,32 @@ public final class SqliteRoundStore implements AutoCloseable {
         try (var statement = connection.createStatement(); var rows = statement.executeQuery("SELECT last_insert_rowid()")) {
             if (!rows.next()) throw new SQLException("Inserted event revision is missing");
             return rows.getLong(1);
+        }
+    }
+
+    private void insertSnapshot(SnapshotWrite write, byte[] digest) throws SQLException {
+        long revision = insertEvent(write.eventId(), "ROUND", write.roundId(), write.eventType(), null,
+                write.expectedVersion(), write.newVersion(), digest, WriteDigest.payload(write.payload()));
+        try (var statement = connection.prepareStatement("""
+                INSERT INTO round_snapshots(round_id, version, payload, revision) VALUES (?, ?, ?, ?)
+                ON CONFLICT(round_id) DO UPDATE SET version=excluded.version,
+                    payload=excluded.payload, revision=excluded.revision
+                """)) {
+            statement.setString(1, write.roundId().toString()); statement.setLong(2, write.newVersion());
+            statement.setBytes(3, write.payload()); statement.setLong(4, revision); statement.executeUpdate();
+        }
+        for (var operation : write.operations()) insertOperation(write, operation);
+    }
+
+    private void insertEvidence(EvidenceWrite write) throws SQLException {
+        try (var statement = connection.prepareStatement("""
+                INSERT INTO evidence_events(event_id, round_id, kind, payload, write_digest, payload_digest)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """)) {
+            statement.setString(1, write.eventId().toString()); statement.setString(2, write.roundId().toString());
+            statement.setString(3, write.kind()); statement.setBytes(4, write.payload());
+            statement.setBytes(5, WriteDigest.evidence(write)); statement.setBytes(6, WriteDigest.payload(write.payload()));
+            statement.executeUpdate();
         }
     }
 

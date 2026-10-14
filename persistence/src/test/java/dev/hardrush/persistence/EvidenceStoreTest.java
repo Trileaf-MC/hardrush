@@ -41,6 +41,7 @@ final class EvidenceStoreTest {
         UUID round = UUID.randomUUID();
         try (var store = new SqliteRoundStore(database)) { store.commit(initial(round)); }
         try (var connection = DriverManager.getConnection("jdbc:sqlite:" + database); var sql = connection.createStatement()) {
+            sql.execute("DROP TABLE round_terminals");
             sql.execute("DROP TABLE evidence_events");
             sql.execute("PRAGMA user_version=1");
             sql.execute("CREATE TABLE evidence_events(unrelated TEXT)");

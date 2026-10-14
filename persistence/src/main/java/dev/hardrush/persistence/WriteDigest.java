@@ -49,6 +49,16 @@ final class WriteDigest {
         });
     }
 
+    static byte[] terminal(SnapshotWrite snapshot, EvidenceWrite evidence, UUID firstDragonId) {
+        return encoded(out -> {
+            string(out, "FIRST_DRAGON_TERMINAL");
+            bytes(out, snapshot(snapshot));
+            uuid(out, evidence.eventId());
+            bytes(out, evidence(evidence));
+            uuid(out, firstDragonId);
+        });
+    }
+
     private static byte[] encoded(Encoding encoding) {
         var digest = sha256();
         try (var out = new DataOutputStream(new DigestOutputStream(OutputStream.nullOutputStream(), digest))) {
