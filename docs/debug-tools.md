@@ -4,6 +4,8 @@
 
 调试实例与现有 `.local/server-p0`、两个官方原版 HRProbe 客户端分开。带模组的 HRDebug 客户端用于开发与自动化，不能替代“原版客户端可完整游玩”的产品验收。这里的通过也不代表完整 P0、第一人称战斗、真正的传送门或龙战已经验收。
 
+原版客户端人工验收时，代理负责准备环境、明确步骤、采集日志和定位问题；高频战斗、依赖手感或明显适合人工完成的操作直接交给用户。先用服务端回归与受控夹具降低人工操作成本，避免把完整重复战斗交给用户。P0-14 的低血量回归、原版最后一击夹具及人工交接见 [原版末地流程进展](p0-vanilla-end-evidence.md)。
+
 ## 固定环境与入口
 
 | 项目 | 固定值 / 地址 |
@@ -106,6 +108,8 @@ python3 scripts/debug-tools.py start --side client
 - 客户端测试最初覆盖：连接真正的 HardRush 专用服，通过 Bridge 构造空装伪装，断言附近的 zombie 实体、模拟 F5、截图及解除；当前覆盖范围已扩展如下。
 
 同日 self-view 修复回归已扩展该客户端测试：三种模型的 visible 失败基线、hidden 瞄准／原版空手伤害、每种 20 次显示切换、移动、一次跨维度恢复和解除；同时验证直接相机替换会停止正常移动并选中真实玩家。截图现在明确保存到 `.local/research/self-view/screenshots/`，结构化结果为该目录上一级的 `client-results.json`。相机实验仅由 debugTools 装载，命令 `hardrushdebug camera HRDebug self`／`reset`；100 个服务端 tick 内自动恢复。测试通过不等于原版自动 F5 方案通过，详情见 [self-view 记录](p0-self-view-evidence.md)。
+
+P0-15 随后新增 `HardRushWorldBoundaryGameTest` 的 10 项服务端测试，当前服务端总数为 13 项 HardRush + 1 项框架测试。床／锚、死亡、珍珠、载具、PrepareSpawnTask 模拟重连、进度、时钟／天气及四水晶复召的实际覆盖与夹具范围见 [世界边界记录](p0-world-boundaries.md)。本次没有运行客户端 GameTest；历史 self-view 客户端证据不作新构建视觉通过结论。
 
 早期客户端测试截图在 `platforms/mc263/build/run/clientGameTest/screenshots/`；当前 self-view 回归使用上文的显式输出目录，归档证据见 [self-view 清单](evidence/self-view-20261013/manifest.json)。服务端测试使用可删除的 `build/run/gameTest`；debug-world 和 P0 世界不会被 GameTest 清理。Loom 同时测试时会写共享测试目录，应顺序执行这两种 GameTest。
 

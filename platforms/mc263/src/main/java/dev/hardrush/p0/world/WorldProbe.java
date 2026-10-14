@@ -127,6 +127,9 @@ public final class WorldProbe {
             }
         }
         ServerLevel overworld = current.handles.get("overworld").asLevel();
+        for (RuntimeLevelHandle handle : current.handles.values()) {
+            ((RoundRuntimeLevel) handle.asLevel()).initializeRoundClocks((RoundRuntimeLevel) overworld);
+        }
         if (current.manifest.spawn == null) {
             // Match vanilla's seed-dependent spawn region instead of assuming (0, 0) is land.
             var source = overworld.getChunkSource();

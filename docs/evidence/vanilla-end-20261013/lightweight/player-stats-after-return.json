@@ -1,0 +1,55 @@
+{
+  "stats": {
+    "minecraft:killed_by": {
+      "minecraft:enderman": 1,
+      "minecraft:ender_dragon": 3
+    },
+    "minecraft:used": {
+      "minecraft:golden_apple": 4,
+      "minecraft:diamond_pickaxe": 9,
+      "minecraft:totem_of_undying": 4,
+      "minecraft:diamond_sword": 15,
+      "minecraft:ender_pearl": 3,
+      "minecraft:bow": 13
+    },
+    "minecraft:killed": {
+      "minecraft:enderman": 1,
+      "minecraft:ender_dragon": 1
+    },
+    "minecraft:picked_up": {
+      "minecraft:water_bucket": 1,
+      "minecraft:leaf_litter": 3,
+      "minecraft:ender_pearl": 1,
+      "minecraft:cobblestone": 1,
+      "minecraft:diamond_helmet": 1,
+      "minecraft:white_bed": 4,
+      "minecraft:end_stone": 8,
+      "minecraft:golden_apple": 14
+    },
+    "minecraft:custom": {
+      "minecraft:time_since_rest": 119316,
+      "minecraft:walk_one_cm": 23177,
+      "minecraft:leave_game": 5,
+      "minecraft:mob_kills": 3,
+      "minecraft:walk_under_water_one_cm": 725,
+      "minecraft:damage_taken": 2415,
+      "minecraft:damage_dealt": 250,
+      "minecraft:play_time": 225356,
+      "minecraft:damage_absorbed": 281,
+      "minecraft:jump": 127,
+      "minecraft:time_since_death": 106428,
+      "minecraft:sprint_one_cm": 1789,
+      "minecraft:fall_one_cm": 4556,
+      "minecraft:total_world_time": 225356,
+      "minecraft:fly_one_cm": 5774,
+      "minecraft:crouch_one_cm": 75,
+      "minecraft:sneak_time": 2745,
+      "minecraft:deaths": 4
+    },
+    "minecraft:mined": {
+      "minecraft:end_stone": 8,
+      "minecraft:stone": 1
+    }
+  },
+  "DataVersion": 5023
+}

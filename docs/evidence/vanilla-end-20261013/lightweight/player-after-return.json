@@ -1,0 +1,46 @@
+{
+  "source": ".local/server-p0/p0-lobby/players/data/e60a7360-09e9-3ab7-8399-221e3c44b822.dat",
+  "sourceSHA256": "f8352c4b197178ea9b1ccdeb158240eb71bad9fe6b5f5e4ce04d533d0a3a1ea5",
+  "Dimension": "hardrush:p0_99898f68a3644469b8376664da246c39/overworld",
+  "Pos": [
+    96.5,
+    132,
+    -22.5
+  ],
+  "Health": 17.96190643310547,
+  "playerGameType": 0,
+  "abilities": {
+    "invulnerable": 0,
+    "mayfly": 0,
+    "instabuild": 0,
+    "walkSpeed": 0.10000000149011612,
+    "mayBuild": 1,
+    "flying": 0,
+    "flySpeed": 0.05000000074505806
+  },
+  "Inventory": [
+    {
+      "components": {
+        "minecraft:damage": 2
+      },
+      "count": 1,
+      "Slot": 0,
+      "id": "minecraft:diamond_sword"
+    }
+  ],
+  "seenCredits": 0,
+  "LastDeathLocation": {
+    "pos": [
+      -9,
+      62,
+      -36
+    ],
+    "dimension": "hardrush:p0_99898f68a3644469b8376664da246c39/end"
+  },
+  "UUID": [
+    -435522720,
+    166279863,
+    -2087116258,
+    1011136546
+  ]
+}

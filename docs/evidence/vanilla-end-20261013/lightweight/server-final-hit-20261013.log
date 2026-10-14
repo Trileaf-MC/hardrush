@@ -1,0 +1,266 @@
+[21:40:04] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 26.3 with Fabric Loader 0.19.5
+[21:40:04] [main/INFO] (FabricLoader/Mappings) Mappings not present!
+[21:40:04] [main/INFO] (FabricLoader) Loading 45 mods:
+	- fabric-advancement-api-v1 1.0.0+38c7a2d55d
+	- fabric-api 0.162.0+26.3
+	- fabric-api-base 2.0.6+fcdff87f5d
+	- fabric-api-lookup-api-v1 2.0.24+3434d6d95d
+	- fabric-biome-api-v1 20.1.0+c6aa69a85d
+	- fabric-block-api-v1 3.1.0+0ae6f9115d
+	- fabric-block-getter-api-v2 2.0.9+3434d6d95d
+	- fabric-command-api-v2 3.1.2+fcdff87f5d
+	- fabric-content-registries-v0 15.0.4+74ed1ea55d
+	- fabric-convention-tags-v2 4.10.3+6b5b47fd5d
+	- fabric-crash-report-info-v1 1.0.7+fcdff87f5d
+	- fabric-creative-tab-api-v1 5.0.21+fcdff87f5d
+	- fabric-data-attachment-api-v1 2.2.31+b9b88df45d
+	- fabric-data-generation-api-v1 27.3.0+5be2453c5d
+	- fabric-debug-api-v1 1.0.4+3434d6d95d
+	- fabric-dimensions-v1 5.1.19+47f74c985d
+	- fabric-entity-events-v1 6.0.4+3434d6d95d
+	- fabric-events-interaction-v0 5.3.7+b9b88df45d
+	- fabric-game-rule-api-v1 4.0.10+3434d6d95d
+	- fabric-gametest-api-v1 4.0.33+3434d6d95d
+	- fabric-item-api-v1 14.7.0+cf6bc2db5d
+	- fabric-lifecycle-events-v1 4.1.9+ffef5f675d
+	- fabric-loot-api-v3 4.0.8+4068fd645d
+	- fabric-menu-api-v1 2.0.28+ed66f0a35d
+	- fabric-message-api-v1 7.0.10+3434d6d95d
+	- fabric-networking-api-v1 6.3.9+b9b88df45d
+	- fabric-object-builder-api-v1 24.1.10+3434d6d95d
+	- fabric-particles-v1 5.0.25+3434d6d95d
+	- fabric-permission-api-v1 1.0.8+fcdff87f5d
+	- fabric-recipe-api-v1 10.0.9+b9b88df45d
+	- fabric-registry-sync-v0 8.0.2+1ca9f6365d
+	- fabric-rendering-fluids-v1 6.0.6+3434d6d95d
+	- fabric-resource-conditions-api-v1 6.2.0+0d124ae85d
+	- fabric-resource-loader-v0 3.3.26+4fc5413f5d
+	- fabric-resource-loader-v1 3.0.4+fcdff87f5d
+	- fabric-serialization-api-v1 2.0.7+74ed1ea55d
+	- fabric-tag-api-v1 2.1.10+fcdff87f5d
+	- fabric-transfer-api-v1 8.0.25+fcdff87f5d
+	- fabric-transitive-access-wideners-v1 8.1.16+52268a0e5d
+	- fabricloader 0.19.5
+	- fantasy 0.8.4+26.3
+	- hardrush 0.1.0-p0+mc26.3
+	- java 25
+	- minecraft 26.3
+	- mixinextras 0.5.5
+[21:40:04] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/Users/leifwebber/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.17.4+mixin.0.8.7/5f66cc9f59b8efaa942155a3d5a30599bf6640dd/sponge-mixin-0.17.4+mixin.0.8.7.jar Service=Knot/Fabric Env=SERVER
+[21:40:05] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.5).
+[21:40:06] [main/WARN] (MacOperatingSystem) Unable to parse version 27.0 to a codename.
+[21:40:08] [main/INFO] (hardrush-p0) HardRush P0: experimental operator-only probes; no race or balance implementation
+[21:40:08] [main/INFO] (Minecraft) Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
+[21:40:09] [Worker-Main-8/INFO] (Minecraft) Loaded 1866 advancements
+[21:40:09] [main/INFO] (BiomeModificationImpl) Applied 0 biome modifications to 0 of 67 new biomes in 651.4 μs
+[21:40:09] [Server thread/INFO] (Minecraft) Starting minecraft server version 26.3
+[21:40:09] [Server thread/INFO] (Minecraft) Loading properties
+[21:40:09] [Server thread/INFO] (Minecraft) Default game type: CREATIVE
+[21:40:09] [Server thread/INFO] (Minecraft) Generating keypair
+[21:40:10] [Server thread/INFO] (Minecraft) Starting Minecraft server on 127.0.0.1:25585
+[21:40:10] [Server thread/WARN] (Minecraft) **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[21:40:10] [Server thread/WARN] (Minecraft) The server will make no attempt to authenticate usernames. Beware.
+[21:40:10] [Server thread/WARN] (Minecraft) While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[21:40:10] [Server thread/WARN] (Minecraft) To change this, set "online-mode" to "true" in the server.properties file.
+[21:40:10] [Server thread/INFO] (Minecraft) Preparing level "p0-lobby"
+[21:40:10] [Server thread/INFO] (Minecraft) Loading 0 persistent chunks...
+[21:40:10] [Server thread/INFO] (Minecraft) Preparing spawn area: 100%
+[21:40:10] [Server thread/INFO] (Minecraft) Time elapsed: 56 ms
+[21:40:10] [Server thread/INFO] (Minecraft) Done (0.298s)! For help, type "help"
+[21:40:10] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[p0-lobby]'/minecraft:overworld
+[21:40:10] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[p0-lobby]'/minecraft:the_end
+[21:40:10] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[p0-lobby]'/minecraft:the_nether
+[21:40:10] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=99898f68-a364-4469-b837-6664da246c39；seed=12345；spawn=96, 132, -23；overworld=hardrush:p0_99898f68a3644469b8376664da246c39/overworld；nether=hardrush:p0_99898f68a3644469b8376664da246c39/nether；end=hardrush:p0_99898f68a3644469b8376664da246c39/end；dragonFight=true；dragonUUID=0e4d6ba9-0703-4446-be9d-a7b07a09cb83；previouslyKilled=false
+[21:40:10] [Server thread/INFO] (hardrush-p0) HardRush P0 worlds: P0 世界就绪；round=99898f68-a364-4469-b837-6664da246c39；seed=12345；spawn=96, 132, -23；overworld=hardrush:p0_99898f68a3644469b8376664da246c39/overworld；nether=hardrush:p0_99898f68a3644469b8376664da246c39/nether；end=hardrush:p0_99898f68a3644469b8376664da246c39/end；dragonFight=true；dragonUUID=0e4d6ba9-0703-4446-be9d-a7b07a09cb83；previouslyKilled=false
+[21:41:43] [Server thread/INFO] (Minecraft) System chat: P0 世界就绪；round=99898f68-a364-4469-b837-6664da246c39；seed=12345；spawn=96, 132, -23；overworld=hardrush:p0_99898f68a3644469b8376664da246c39/overworld；nether=hardrush:p0_99898f68a3644469b8376664da246c39/nether；end=hardrush:p0_99898f68a3644469b8376664da246c39/end；dragonFight=true；dragonUUID=0e4d6ba9-0703-4446-be9d-a7b07a09cb83；previouslyKilled=false
+[21:41:50] [Server thread/INFO] (Minecraft) HRProbeA[/127.0.0.1:52585] logged in with entity id 32 at (100.5, 49.0, 0.8477976970190969)
+[21:41:50] [Server thread/INFO] (Minecraft) System chat: HRProbeA joined the game
+[21:42:05] [Server thread/INFO] (Minecraft) System chat: HRProbeA has reached the goal [Postmortal]
+[21:42:28] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: 13.5199995f
+[21:42:28] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 200.0f
+[21:42:28] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: [I; 239954857, 117654598, -1096964176, 2047462275]
+[21:45:09] [Server thread/INFO] (Minecraft) System chat: HRProbeA was killed by Ender Dragon using magic
+[21:47:18] [Server thread/INFO] (Minecraft) HRProbeA lost connection: Disconnected
+[21:47:18] [Server thread/INFO] (Minecraft) System chat: HRProbeA left the game
+[21:47:40] [Server thread/INFO] (Minecraft) HRProbeA[/127.0.0.1:53051] logged in with entity id 446 at (107.9299596757391, 40.0, 8.270547960555241)
+[21:47:40] [Server thread/INFO] (Minecraft) System chat: HRProbeA joined the game
+[21:47:45] [Server thread/INFO] (Minecraft) System chat: The difficulty is Normal
+[21:47:45] [Server thread/INFO] (Minecraft) System chat: P0 世界就绪；round=99898f68-a364-4469-b837-6664da246c39；seed=12345；spawn=96, 132, -23；overworld=hardrush:p0_99898f68a3644469b8376664da246c39/overworld；nether=hardrush:p0_99898f68a3644469b8376664da246c39/nether；end=hardrush:p0_99898f68a3644469b8376664da246c39/end；dragonFight=true；dragonUUID=0e4d6ba9-0703-4446-be9d-a7b07a09cb83；previouslyKilled=false
+[21:49:34] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: "hardrush:p0_99898f68a3644469b8376664da246c39/overworld"
+[21:49:34] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [91.8606177358197d, 130.23152379758702d, -28.69999998807907d]
+[21:49:34] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: {invulnerable: 0b, mayfly: 0b, instabuild: 0b, walkSpeed: 0.1f, mayBuild: 1b, flying: 0b, flySpeed: 0.05f}
+[21:49:34] [Server thread/INFO] (Minecraft) System chat: The base value of attribute Attack Damage for entity HRProbeA is 1.0
+[21:49:34] [Server thread/INFO] (Minecraft) System chat: Saving the game (this may take a moment!)
+[21:49:34] [Server thread/INFO] (Minecraft) System chat: Saved the game
+[21:49:34] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[21:50:08] [Server thread/INFO] (Minecraft) System chat: HRProbeA has made the advancement [We Need to Go Deeper]
+[21:55:04] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [9.299561f, 9.750021f]
+[21:55:05] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [24.299652f, 2.2500215f]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: No items were found on player HRProbeA
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Helmet]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Chestplate]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Leggings]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Boots]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Sword]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Bow]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Steak]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Golden Apple]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [End Stone]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Water Bucket]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [White Bed]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [White Bed]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Pickaxe]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Totem of Undying]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Gave 128 [Arrow] to HRProbeA
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: Gave 8 [White Bed] to HRProbeA
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [100.90984032375538d, 136.0d, -25.764413214440737d]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [24.299652f, 2.2500215f]
+[21:55:51] [Server thread/INFO] (Minecraft) System chat: The base value of attribute Attack Damage for entity HRProbeA is 1.0
+[21:57:00] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: End Crystal has the following entity data: [33.5d, 83.0d, -24.5d]
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: End Crystal has the following entity data: [42.5d, 98.0d, 0.5d]
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: End Crystal has the following entity data: [33.5d, 104.0d, 24.5d]
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: End Crystal has the following entity data: [12.5d, 92.0d, 39.5d]
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: End Crystal has the following entity data: [12.5d, 86.0d, -39.5d]
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: End Crystal has the following entity data: [-12.5d, 89.0d, -39.5d]
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: End Crystal has the following entity data: [-12.5d, 77.0d, 39.5d]
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: End Crystal has the following entity data: [-33.5d, 95.0d, 24.5d]
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: End Crystal has the following entity data: [-41.5d, 101.0d, -0.5d]
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: End Crystal has the following entity data: [-33.5d, 80.0d, -24.5d]
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 1
+[22:01:35] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 200.0f
+[22:03:51] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[22:03:51] [Server thread/INFO] (Minecraft) System chat: End Crystal has the following entity data: [42.5d, 98.0d, 0.5d]
+[22:03:52] [Server thread/INFO] (Minecraft) System chat: HRProbeA was killed by Ender Dragon using magic
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: No items were found on player HRProbeA
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Helmet]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Chestplate]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Leggings]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Boots]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [White Bed]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [White Bed]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [White Bed]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [White Bed]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [White Bed]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [White Bed]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Golden Apple]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Ender Pearl]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Pickaxe]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Totem of Undying]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Gave 1 [Diamond Sword] to HRProbeA
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Gave 1 [Bow] to HRProbeA
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Gave 128 [Arrow] to HRProbeA
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Gave 1 [Water Bucket] to HRProbeA
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: Gave 64 [End Stone] to HRProbeA
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [96.5d, 132.0d, -22.5d]
+[22:07:14] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [0.0f, 0.0f]
+[22:07:28] [Server thread/INFO] (Minecraft) System chat: HRProbeA has made the advancement [Stone Age]
+[22:08:10] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [61.467834741657335d, 59.0d, 0.4787893368894021d]
+[22:08:52] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [27.156416948523844d, 65.0d, -15.617964514860377d]
+[22:08:52] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [109.94997f, -30.60001f]
+[22:08:52] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 0
+[22:08:55] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[22:09:12] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[22:09:51] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[22:10:16] [Server thread/INFO] (Minecraft) System chat: HRProbeA was slain by Enderman
+[22:13:39] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [96.5d, 132.0d, -22.5d]
+[22:13:39] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: "hardrush:p0_99898f68a3644469b8376664da246c39/overworld"
+[22:13:39] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: []
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Helmet]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Chestplate]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Leggings]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Boots]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Sword]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Bow]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Steak]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Golden Apple]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Ender Pearl]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Water Bucket]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [End Stone]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [White Bed]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Pickaxe]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Totem of Undying]
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Gave 128 [Arrow] to HRProbeA
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Gave 8 [White Bed] to HRProbeA
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: {invulnerable: 0b, mayfly: 0b, instabuild: 0b, walkSpeed: 0.1f, mayBuild: 1b, flying: 0b, flySpeed: 0.05f}
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: The base value of attribute Attack Damage for entity HRProbeA is 1.0
+[22:14:10] [Server thread/INFO] (Minecraft) [Not Secure] [Server] P0_14_HANDOFF_ENTRY_PORTAL_PRESENT
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Saving the game (this may take a moment!)
+[22:14:10] [Server thread/INFO] (Minecraft) System chat: Saved the game
+[22:16:06] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[22:17:21] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[22:17:33] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[22:17:43] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[22:17:53] [Server thread/INFO] (Minecraft) System chat: HRProbeA has made the advancement [Monster Hunter]
+[22:20:55] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[22:20:58] [Server thread/INFO] (Minecraft) System chat: HRProbeA was killed by Ender Dragon using magic
+[22:23:50] [Server thread/INFO] (Minecraft) System chat: P0 世界就绪；round=99898f68-a364-4469-b837-6664da246c39；seed=12345；spawn=96, 132, -23；overworld=hardrush:p0_99898f68a3644469b8376664da246c39/overworld；nether=hardrush:p0_99898f68a3644469b8376664da246c39/nether；end=hardrush:p0_99898f68a3644469b8376664da246c39/end；dragonFight=true；dragonUUID=0e4d6ba9-0703-4446-be9d-a7b07a09cb83；previouslyKilled=false
+[22:23:50] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: "hardrush:p0_99898f68a3644469b8376664da246c39/end"
+[22:33:46] [Server thread/INFO] (Minecraft) System chat: There are 1 of a max of 4 players online: HRProbeA
+[22:33:46] [Server thread/INFO] (Minecraft) System chat: P0 世界就绪；round=99898f68-a364-4469-b837-6664da246c39；seed=12345；spawn=96, 132, -23；overworld=hardrush:p0_99898f68a3644469b8376664da246c39/overworld；nether=hardrush:p0_99898f68a3644469b8376664da246c39/nether；end=hardrush:p0_99898f68a3644469b8376664da246c39/end；dragonFight=true；dragonUUID=0e4d6ba9-0703-4446-be9d-a7b07a09cb83；previouslyKilled=false
+[22:33:46] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: 20.0f
+[22:33:46] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [100.16949649316898d, 49.0d, 0.5054675717747174d]
+[22:33:46] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: "hardrush:p0_99898f68a3644469b8376664da246c39/end"
+[22:34:33] [Server thread/INFO] (Minecraft) System chat: The game is frozen
+[22:34:33] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: [3.257464266204579d, 70.67445792998123d, 0.10946303163653351d]
+[22:34:33] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: [-96.10997f, 0.0f]
+[22:34:33] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 3
+[22:34:33] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 200.0f
+[22:39:41] [Server thread/INFO] (Minecraft) System chat: There are 1 of a max of 4 players online: HRProbeA
+[22:39:41] [Server thread/INFO] (Minecraft) System chat: The game is frozen
+[22:39:41] [Server thread/INFO] (Minecraft) System chat: Target tick rate: 20.0 per second.
+Average time per tick: 0.4ms (Target: 50.0ms)
+[22:39:41] [Server thread/INFO] (Minecraft) System chat: Percentiles: P50: 0.3ms P95: 0.7ms P99: 2.2ms. Sample: 100
+[22:45:35] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 200.0f
+[22:45:35] [Server thread/INFO] (Minecraft) System chat: Teleported Ender Dragon to 0.500000, 68.000000, 0.500000
+[22:45:35] [Server thread/INFO] (Minecraft) System chat: Modified entity data of Ender Dragon
+[22:45:35] [Server thread/INFO] (Minecraft) System chat: Stepping 1 tick(s)
+[22:45:46] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: {Motion: [0.0d, 0.0d, 0.0d], Brain: {memories: {}}, Health: 0.1f, sitting_damage_received: 10.542328f, Invulnerable: 0b, FallFlying: 0b, LeftHanded: 0b, fall_distance: 0.0d, Air: 300s, OnGround: 1b, PortalCooldown: 0, AbsorptionAmount: 0.0f, Rotation: [0.0f, 0.0f], current_impulse_context_reset_grace_time: 0, DragonPhase: 6, Pos: [0.5d, 68.0d, 0.5d], DeathTime: 0s, Fire: 0s, CanPickUpLoot: 0b, DragonDeathTime: 0, attributes: [], PersistenceRequired: 0b, UUID: [I; 239954857, 117654598, -1096964176, 2047462275], HurtTime: 0s}
+[22:46:20] [Server thread/INFO] (Minecraft) System chat: Successfully filled 35 block(s)
+[22:46:20] [Server thread/INFO] (Minecraft) System chat: Teleported HRProbeA to 0.500000, 66.000000, -8.300000
+[22:46:20] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Sword]
+[22:46:20] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Chestplate]
+[22:46:20] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Leggings]
+[22:46:20] [Server thread/INFO] (Minecraft) System chat: Replaced 1 slot(s) on HRProbeA with [Diamond Boots]
+[22:46:20] [Server thread/INFO] (Minecraft) System chat: The base value of attribute Attack Damage for entity HRProbeA is 1.0
+[22:46:20] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: {Brain: {memories: {}}, post_effects: [], SleepTimer: 0s, Invulnerable: 0b, FallFlying: 0b, PortalCooldown: 0, AbsorptionAmount: 0.0f, abilities: {invulnerable: 0b, mayfly: 0b, instabuild: 0b, walkSpeed: 0.1f, mayBuild: 1b, flying: 0b, flySpeed: 0.05f}, recipeBook: {recipes: ["minecraft:stone_sword", "minecraft:chest", "minecraft:stone_spear", "minecraft:end_stone_bricks", "minecraft:oak_boat", "minecraft:crafting_table", "minecraft:spruce_boat", "minecraft:bamboo_raft", "minecraft:stone_axe", "minecraft:cobblestone_wall", "minecraft:stone", "minecraft:cauldron", "minecraft:furnace", "minecraft:dark_oak_boat", "minecraft:end_stone_bricks_from_end_stone_stonecutting", "minecraft:poplar_boat", "minecraft:birch_boat", "minecraft:cobblestone_stairs_from_cobblestone_stonecutting", "minecraft:end_stone_brick_stairs_from_end_stone_stonecutting", "minecraft:cobblestone_slab_from_cobblestone_stonecutting", "minecraft:cobblestone_slab", "minecraft:acacia_boat", "minecraft:pale_oak_boat", "minecraft:jungle_boat", "minecraft:dispenser", "minecraft:stone_shovel", "minecraft:stone_hoe", "minecraft:mangrove_boat", "minecraft:stone_pickaxe", "minecraft:cherry_boat", "minecraft:cobblestone_stairs", "minecraft:end_stone_brick_slab_from_end_stone_stonecutting", "minecraft:lever", "minecraft:end_stone_brick_wall_from_end_stone_stonecutting", "minecraft:cobblestone_wall_from_cobblestone_stonecutting"], toBeDisplayed: ["minecraft:stone_sword", "minecraft:chest", "minecraft:stone_spear", "minecraft:end_stone_bricks", "minecraft:oak_boat", "minecraft:crafting_table", "minecraft:spruce_boat", "minecraft:bamboo_raft", "minecraft:stone_axe", "minecraft:cobblestone_wall", "minecraft:stone", "minecraft:cauldron", "minecraft:furnace", "minecraft:dark_oak_boat", "minecraft:end_stone_bricks_from_end_stone_stonecutting", "minecraft:poplar_boat", "minecraft:birch_boat", "minecraft:cobblestone_stairs_from_cobblestone_stonecutting", "minecraft:end_stone_brick_stairs_from_end_stone_stonecutting", "minecraft:cobblestone_slab_from_cobblestone_stonecutting", "minecraft:cobblestone_slab", "minecraft:acacia_boat", "minecraft:pale_oak_boat", "minecraft:jungle_boat", "minecraft:dispenser", "minecraft:stone_shovel", "minecraft:stone_hoe", "minecraft:mangrove_boat", "minecraft:stone_pickaxe", "minecraft:cherry_boat", "minecraft:cobblestone_stairs", "minecraft:end_stone_brick_slab_from_end_stone_stonecutting", "minecraft:lever", "minecraft:end_stone_brick_wall_from_end_stone_stonecutting", "minecraft:cobblestone_wall_from_cobblestone_stonecutting"]}, DeathTime: 0s, XpSeed: 298553739, XpTotal: 0, UUID: [I; -435522720, 166279863, -2087116258, 1011136546], playerGameType: 0, SelectedItem: {count: 1, id: "minecraft:diamond_sword"}, seenCredits: 0b, Motion: [0.0d, 0.0d, 0.0d], Health: 20.0f, foodSaturationLevel: 5.0f, equipment: {feet: {count: 1, id: "minecraft:diamond_boots"}, chest: {count: 1, id: "minecraft:diamond_chestplate"}, legs: {count: 1, id: "minecraft:diamond_leggings"}}, fall_distance: 0.0d, Air: 300s, OnGround: 1b, Dimension: "hardrush:p0_99898f68a3644469b8376664da246c39/end", Rotation: [0.0f, 3.0f], XpLevel: 0, current_impulse_context_reset_grace_time: 0, warden_spawn_tracker: {warning_level: 0, ticks_since_last_warning: 4387, cooldown_ticks: 0}, Score: 0, Pos: [0.5d, 66.0d, -8.3d], previousPlayerGameType: 1, Fire: -20s, XpP: 0.0f, EnderItems: [], attributes: [{id: "minecraft:max_absorption", base: 0.0d}, {id: "minecraft:attack_damage", base: 1.0d}, {id: "minecraft:block_interaction_range", base: 4.5d}, {id: "minecraft:oxygen_bonus", base: 0.0d}, {id: "minecraft:movement_speed", base: 0.10000000149011612d}, {id: "minecraft:entity_interaction_range", base: 3.0d}, {id: "minecraft:armor_toughness", base: 0.0d}, {id: "minecraft:armor", base: 0.0d}, {id: "minecraft:waypoint_transmit_range", base: 6.0E7d}, {id: "minecraft:attack_speed", base: 4.0d}], DataVersion: 5023, foodLevel: 20, foodExhaustionLevel: 0.0f, spawn_extra_particles_on_fall: 0b, HurtTime: 0s, SelectedItemSlot: 0, Inventory: [{count: 1, Slot: 0b, id: "minecraft:diamond_sword"}], LastDeathLocation: {pos: [I; -9, 62, -36], dimension: "hardrush:p0_99898f68a3644469b8376664da246c39/end"}, foodTickTimer: 0}
+[22:48:01] [Server thread/INFO] (Minecraft) System chat: Successfully filled 10 block(s)
+[22:48:01] [Server thread/INFO] (Minecraft) System chat: Teleported HRProbeA to 0.500000, 68.000000, -4.300000
+[22:48:01] [Server thread/INFO] (Minecraft) System chat: Stepping 2 tick(s)
+[22:48:01] [Server thread/INFO] (Minecraft) Player HRProbeA standing on air - force-sending blocks below
+[22:48:39] [Server thread/INFO] (Minecraft) System chat: Teleported HRProbeA to 0.500000, 68.000000, -4.300000
+[22:48:39] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 0.1f
+[22:48:39] [Server thread/INFO] (Minecraft) System chat: The game is frozen
+[22:48:39] [Server thread/INFO] (Minecraft) System chat: Target tick rate: 20.0 per second.
+Average time per tick: 0.5ms (Target: 50.0ms)
+[22:48:39] [Server thread/INFO] (Minecraft) System chat: Percentiles: P50: 0.4ms P95: 0.7ms P99: 15.2ms. Sample: 100
+[22:49:30] [Server thread/INFO] (Minecraft) System chat: Successfully filled 6 block(s)
+[22:49:30] [Server thread/INFO] (Minecraft) System chat: Successfully filled 6 block(s)
+[22:49:30] [Server thread/INFO] (Minecraft) System chat: Teleported HRProbeA to 0.500000, 67.000000, -8.300000
+[22:49:30] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [0.5d, 67.0d, -8.3d]
+[22:51:16] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 0.1f
+[22:53:06] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 0.1f
+[22:53:06] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 0
+[22:53:06] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [0.5d, 67.0d, -8.3d]
+[23:55:19] [Server thread/INFO] (Minecraft) System chat: HRProbeA has made the advancement [Free the End]
+[23:55:48] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 0.0f
+[23:55:48] [Server thread/INFO] (Minecraft) System chat: Ender Dragon has the following entity data: 0
+[23:55:48] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [0.5d, 67.0d, -8.3d]
+[23:55:48] [Server thread/INFO] (Minecraft) System chat: The game is frozen
+[23:55:48] [Server thread/INFO] (Minecraft) System chat: Target tick rate: 20.0 per second.
+Average time per tick: 0.8ms (Target: 50.0ms)
+[23:55:48] [Server thread/INFO] (Minecraft) System chat: Percentiles: P50: 0.3ms P95: 3.5ms P99: 7.2ms. Sample: 100
+[23:57:21] [Server thread/INFO] (Minecraft) System chat: The game is running normally
+[23:57:23] [Server thread/WARN] (Minecraft) Can't keep up! Is the server overloaded? Running 3532ms or 70 ticks behind
+[23:57:39] [Server thread/INFO] (Minecraft) System chat: No entity was found
+[23:57:39] [Server thread/INFO] (Minecraft) System chat: P0 世界就绪；round=99898f68-a364-4469-b837-6664da246c39；seed=12345；spawn=96, 132, -23；overworld=hardrush:p0_99898f68a3644469b8376664da246c39/overworld；nether=hardrush:p0_99898f68a3644469b8376664da246c39/nether；end=hardrush:p0_99898f68a3644469b8376664da246c39/end；dragonFight=true；dragonUUID=0e4d6ba9-0703-4446-be9d-a7b07a09cb83；previouslyKilled=true
+[23:58:14] [Server thread/INFO] (Minecraft) System chat: Test passed
+[23:58:14] [Server thread/INFO] (Minecraft) System chat: Test passed
+[23:58:14] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: "hardrush:p0_99898f68a3644469b8376664da246c39/end"
+[23:58:14] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [0.5d, 67.0d, -8.3d]
+[23:58:14] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: 17.961906f
+[23:58:14] [Server thread/INFO] (Minecraft) System chat: Saving the game (this may take a moment!)
+[23:58:14] [Server thread/INFO] (Minecraft) System chat: Saved the game
+[23:59:45] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: "hardrush:p0_99898f68a3644469b8376664da246c39/overworld"
+[23:59:45] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: [96.5d, 132.0d, -22.5d]
+[23:59:45] [Server thread/INFO] (Minecraft) System chat: HRProbeA has the following entity data: 0b

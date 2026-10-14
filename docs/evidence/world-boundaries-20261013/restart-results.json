@@ -1,0 +1,56 @@
+{
+  "minecraft": "26.3",
+  "client": "none",
+  "roundId": "8e7ef667-ad98-4507-97fc-439847d19460",
+  "dimension": "hardrush:p0_8e7ef667ad98450797fc439847d19460/overworld",
+  "timestamp": "2026-10-13T12:59:03.914216+00:00",
+  "original": {
+    "dimension": "hardrush:p0_8e7ef667ad98450797fc439847d19460/overworld",
+    "dayTime": 13993,
+    "gameTime": 318421,
+    "day": 0,
+    "raining": false,
+    "thundering": false
+  },
+  "lobbyOriginal": {
+    "dimension": "minecraft:overworld",
+    "dayTime": 9684,
+    "gameTime": 318421,
+    "day": 13,
+    "raining": true,
+    "thundering": false
+  },
+  "beforeRestart": {
+    "dimension": "hardrush:p0_8e7ef667ad98450797fc439847d19460/overworld",
+    "dayTime": 17098,
+    "gameTime": 318519,
+    "day": 0,
+    "raining": true,
+    "thundering": true
+  },
+  "afterRestart": {
+    "dimension": "hardrush:p0_8e7ef667ad98450797fc439847d19460/overworld",
+    "dayTime": 17104,
+    "gameTime": 318525,
+    "day": 0,
+    "raining": true,
+    "thundering": true
+  },
+  "lobbyAfterRestart": {
+    "dimension": "minecraft:overworld",
+    "dayTime": 9788,
+    "gameTime": 318525,
+    "day": 13,
+    "raining": true,
+    "thundering": false
+  },
+  "passed": true,
+  "restored": {
+    "dimension": "hardrush:p0_8e7ef667ad98450797fc439847d19460/overworld",
+    "dayTime": 13999,
+    "gameTime": 318533,
+    "day": 0,
+    "raining": false,
+    "thundering": false
+  }
+}

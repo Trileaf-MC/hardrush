@@ -1,0 +1,199 @@
+{
+  "recorded_at": "2026-10-13T21:01:54.368477+08:00",
+  "result": "P0_15_SERVER_BOUNDARIES_PASSED_P0_BLOCKED_B01",
+  "git_head": "dc703979ec2675f61ace0c7e46cb4278635c99c7",
+  "uncommitted": true,
+  "runtime": {
+    "minecraft": "26.3",
+    "java": "25.0.4.1+1",
+    "loader": "0.19.5",
+    "fabric_api": "0.162.0+26.3",
+    "fantasy": "0.8.4+26.3"
+  },
+  "artifact": {
+    "path": "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar",
+    "bytes": 125935,
+    "sha256": "ff8cb27f516141a1698f90d8d8891c3817adf0ac4d88084f64ef233384e66550",
+    "nested_jars": [
+      "META-INF/jars/core-0.1.0-p0.jar",
+      "META-INF/jars/fantasy-0.8.4+26.3.jar"
+    ],
+    "debug_or_test_code_found": []
+  },
+  "tests": {
+    "server_gametest_passed": 14,
+    "hardrush_server_gametest_passed": 13,
+    "new_world_boundary_gametest_passed": 10,
+    "framework_server_gametest_passed": 1,
+    "junit": {
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "junit_timestamp": "2026-10-13T12:57:09.519Z",
+    "final_junit_task": "UP-TO-DATE",
+    "normal_restart_passed": true,
+    "client_tests_run": false,
+    "dragon_respawn_fixture": "Preset prior kill and native podium; vanilla arena-loaded test hook, Portal ticket; all native crystal respawn stages."
+  },
+  "sources": [
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/HardRushP0.java",
+      "bytes": 7904,
+      "sha256": "78bd6e3ec046e2fd67fc7a8a5f04eaf51842f3cefaaea8e3a304e1d59c5f1c72"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/DisguiseProbe.java",
+      "bytes": 22322,
+      "sha256": "5048b406435f66005562aba765aa7844702c3825c7ba5cafdd01a299948126fc"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/mixin/DisguiseConnectionMixin.java",
+      "bytes": 955,
+      "sha256": "146df81c0f6df85662152f270309d52da67039855c973ab755bd066db4348bff"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/disguise/mixin/DisguiseEntityAccessor.java",
+      "bytes": 536,
+      "sha256": "b1432cf79bb6df5c603b80b75d498dd25e6def51bf1d3628e0001018386ab428"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/RoundRuntimeLevel.java",
+      "bytes": 3055,
+      "sha256": "cf3bbec9a78e9e3f45aa0354f76fb51c6326efa0707cfd1e5a25a1f633f883a6"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/WorldManifest.java",
+      "bytes": 6047,
+      "sha256": "abee7b74f91fca9c38ed452a7e457878110420899909f524111a21a27fac126f"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/WorldProbe.java",
+      "bytes": 17509,
+      "sha256": "6490373ad0ed4f3cdc7be0ffbd98d5709255cd55cada320221ff60ca4125565b"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/EndPortalRoutingMixin.java",
+      "bytes": 1440,
+      "sha256": "86ad8995a1bb1121a60c4eabaa4cd5ef505b3e3d2300ed4af33a3adfd95d8fd9"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/LocationDimensionPredicateMixin.java",
+      "bytes": 1175,
+      "sha256": "73784ac19b1e2746f768cd36c13de982971371c791cb41b2f782a28c56b9fdc4"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/NetherPortalRoutingMixin.java",
+      "bytes": 1462,
+      "sha256": "05fbff7a93c06d463dba27e15c6f91ab72b0063769f751c29d88f1890724608a"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/PlayerDimensionAdvancementMixin.java",
+      "bytes": 2239,
+      "sha256": "2f39978ef6bc74beeb6d96e9b91e8f6016d0731592565ebc45446f3121d124db"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/PlayerRespawnRoutingMixin.java",
+      "bytes": 1733,
+      "sha256": "e77afc6f6aef195e3dd1ba92727c8121d27b6a32cab807213d46a82d8c89bb28"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/RoundWeatherCommandMixin.java",
+      "bytes": 1282,
+      "sha256": "e7a261daff8a1d77682337586602f18b7dcfb0216e1a00f085f465f9484b5215"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/RoundWeatherMixin.java",
+      "bytes": 944,
+      "sha256": "c41ae51c3a9da34601018addefb3cc9a2a95bdadbedbc58f1882b666459fcc72"
+    },
+    {
+      "path": "platforms/mc263/src/main/java/dev/hardrush/p0/world/mixin/RuntimeLevelSeedMixin.java",
+      "bytes": 814,
+      "sha256": "766affa79b0c3da5bc69ae3561fabcb842e9dc382a883ac924fad292e7ff8d63"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/fabric.mod.json",
+      "bytes": 509,
+      "sha256": "ac892e2aa3734a59c33df5a3ae138bd64536cd90dfb79e44a44af15f4759faf8"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush.p0.disguise.mixins.json",
+      "bytes": 212,
+      "sha256": "cf71492aadfc2173121fab8a54856b77d6eed2ca9bb203a2f2b8fd52f060baf5"
+    },
+    {
+      "path": "platforms/mc263/src/main/resources/hardrush.p0.world.mixins.json",
+      "bytes": 382,
+      "sha256": "4521c6546f3959b4bbe98e0c8143d6bfc0fdc743c871f5501c2ca020fa3b3480"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/HardRushClientGameTest.java",
+      "bytes": 14624,
+      "sha256": "b5ec0d35a0f07bb5c46f41d8675f175fffe451d679ae9d047b83fed129c83a93"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/HardRushServerGameTest.java",
+      "bytes": 6124,
+      "sha256": "636a46ddb5d6187d54d22a26600897b64dfc54abf554084d75cf4b290ee9cb72"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/java/dev/hardrush/gametest/HardRushWorldBoundaryGameTest.java",
+      "bytes": 30169,
+      "sha256": "702eeaceb0a0491dc68e3e5d7e0545a5cd7c35983ebd94ec0817b4e278966ee7"
+    },
+    {
+      "path": "platforms/mc263/src/gametest/resources/fabric.mod.json",
+      "bytes": 373,
+      "sha256": "6c81d97c21606936b8b25f1094fdc247208980a373a7ba862623a304a46e310b"
+    },
+    {
+      "path": "platforms/mc263/build.gradle",
+      "bytes": 3443,
+      "sha256": "d46445bfa25c92ae17dba509beabafcbb35d0d81f6a929c9eb56a18adb019ba6"
+    },
+    {
+      "path": "gradle.properties",
+      "bytes": 241,
+      "sha256": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c"
+    },
+    {
+      "path": "scripts/p0-gradle.sh",
+      "bytes": 411,
+      "sha256": "9fef15e5837c1a5fb71e699c647eb1f25b9db57dfef9a88060de055235ee02ec"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "docs/evidence/world-boundaries-20261013/baseline.txt",
+      "bytes": 20561,
+      "sha256": "91b22bd29c1e66930182dbb3f1971af29df1d1b56684c197aad1fa5647911fdc"
+    },
+    {
+      "path": "docs/evidence/world-boundaries-20261013/checkP0.txt",
+      "bytes": 26249,
+      "sha256": "9551b83ccf8ba2756fee320cc898577059894e2aeb6ad7c64fce568370de1022"
+    },
+    {
+      "path": "docs/evidence/world-boundaries-20261013/junit.xml",
+      "bytes": 1585,
+      "sha256": "a57ef38e92d96348f6fe4a79ca4db56a4292eff5980dda3be162bc0c2727b8ab"
+    },
+    {
+      "path": "docs/evidence/world-boundaries-20261013/restart-results.json",
+      "bytes": 1400,
+      "sha256": "9fc527b2e6d9089092dc75602380237ed9fc4e3a0311c303baddadf460690a90"
+    },
+    {
+      "path": "docs/evidence/world-boundaries-20261013/restart.txt",
+      "bytes": 3620,
+      "sha256": "240b68648dc29e894e3385eaefb2bd0fb82e7d77ee93d8143838a3663e0e168f"
+    },
+    {
+      "path": "docs/evidence/world-boundaries-20261013/verify-restart.py",
+      "bytes": 3446,
+      "sha256": "0f7e4dfd67c232f39339397e28ef25990cdd3d69dbe3498153c34e211dce1b13"
+    }
+  ]
+}

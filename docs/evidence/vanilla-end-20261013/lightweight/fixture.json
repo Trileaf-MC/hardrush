@@ -1,0 +1,134 @@
+{
+  "recordedAt": "2026-10-13T16:45:49.445784+00:00",
+  "status": "passed-controlled-vanilla-flow",
+  "roundId": "99898f68-a364-4469-b837-6664da246c39",
+  "dragonUUID": "0e4d6ba9-0703-4446-be9d-a7b07a09cb83",
+  "client": "HRProbeA official vanilla 26.3",
+  "server": "127.0.0.1:25585",
+  "preparation": {
+    "frozen": true,
+    "nativeDragonHealth": 0.1,
+    "nativeDragonPhase": 6,
+    "nativeDragonPosition": [
+      0.5,
+      68,
+      0.5
+    ],
+    "playerPosition": [
+      0.5,
+      67,
+      -8.3
+    ],
+    "playerRotation": [
+      0,
+      -8
+    ],
+    "survival": true,
+    "baseAttackDamage": 1,
+    "weapon": "unenchanted minecraft:diamond_sword",
+    "invulnerable": false,
+    "flying": false,
+    "glassPlatform": {
+      "lower": [
+        -3,
+        65,
+        -11,
+        3,
+        65,
+        -7
+      ],
+      "upper": [
+        -1,
+        66,
+        -9,
+        1,
+        66,
+        -8
+      ]
+    },
+    "fixtureTickSteps": [
+      1,
+      2
+    ],
+    "preparationKnockback": {
+      "playerHealthAfter": 18,
+      "repositionedWhileFrozen": true
+    },
+    "adminTeleportsWithinEnd": true,
+    "entryProof": "Earlier real portal entry remains separate; these teleports only prepare the final hit.",
+    "killCommandUsedOnDragon": false,
+    "dragonSummoned": false,
+    "clientMods": [],
+    "nativeKeyboardEventsUsed": false
+  },
+  "serverRegression": {
+    "requiredGameTests": 14,
+    "checkP0Passed": true,
+    "repeatPassed": true,
+    "ordinaryAttack": "Player.attack on native dragon head at health 0.1, base attack 1",
+    "deathAnimation": "Before 200 ticks dragon remains and portal is inactive; native completion creates active portal",
+    "state": "Both kill flags and original UUID survive CODEC round trip",
+    "return": "Native portal destination and ServerPlayer teleport transition return to own overworld; seenCredits true is a mock fixture",
+    "respawn": "Native four-crystal stages create exactly one new dragon; lobby fight UUID unchanged",
+    "testWorldIsolation": "Only separate GameTest world was archived after failures; vanilla evidence world preserved",
+    "failedAttempts": [
+      "gametest-attempt-1.log",
+      "gametest-attempt-2.log"
+    ],
+    "realClientBoundary": "GameTest mock connection does not cover client input, portal collision, credits screen or full survival combat"
+  },
+  "pending": [],
+  "fullSurvivalFightClaimed": false,
+  "actualResult": {
+    "humanConfirmedFinalHit": true,
+    "humanConfirmedNaturalExitReturn": true,
+    "nativeKillAdvancementAt": "2026-10-13 23:55:19 +0800",
+    "healthVerifiedZeroAt": "2026-10-13 23:55:48 +0800",
+    "deathTicksWhileFrozen": 0,
+    "unfrozenAt": "2026-10-13 23:57:21 +0800",
+    "nativeDragonRemovedAndPreviouslyKilledAt": "2026-10-13 23:57:39 +0800",
+    "nativeExitBlocksVerifiedAt": "2026-10-13 23:58:14 +0800",
+    "nativeExitBlocks": [
+      [
+        0,
+        64,
+        -2
+      ],
+      [
+        1,
+        64,
+        -1
+      ]
+    ],
+    "returnVerifiedAt": "2026-10-13 23:59:45 +0800",
+    "saveAndReturnRecheckedAt": "2026-10-14 00:00:27 +0800",
+    "returnDimension": "hardrush:p0_99898f68a3644469b8376664da246c39/overworld",
+    "returnPosition": [
+      96.5,
+      132,
+      -22.5
+    ],
+    "returnHealth": 17.96190643310547,
+    "returnSurvival": true,
+    "ordinaryBaseAttack": 1,
+    "adminTeleportUsedAfterFinalHit": false,
+    "deathRespawnUsedForThisReturn": false,
+    "nativeDragonKillStat": 1,
+    "savedDragonKilled": true,
+    "savedPreviouslyKilled": true,
+    "savedOriginalDragonUUIDPreserved": true,
+    "serverFrozen": false,
+    "serverLeftRunning": true,
+    "clientVerificationAfterReturn": "5230 official files verified; both isolated profiles clean",
+    "graphicsCapture": "Computer Use -3811; no death-animation or return screenshots",
+    "creditsScreenVerified": false,
+    "playerSeenCredits": false,
+    "observationScope": "Real-client advancement log and user confirmation, server queries and saved data; no frame-by-frame animation observation"
+  },
+  "outOfScope": [
+    "full-health survival combat",
+    "credits screen",
+    "HardRush scoring",
+    "real-client crystal respawn"
+  ]
+}

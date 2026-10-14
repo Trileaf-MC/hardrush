@@ -5,7 +5,7 @@
   "name": "HardRush development GameTests",
   "environment": "*",
   "entrypoints": {
-    "fabric-gametest": ["dev.hardrush.gametest.HardRushServerGameTest"],
+    "fabric-gametest": ["dev.hardrush.gametest.HardRushServerGameTest", "dev.hardrush.gametest.HardRushWorldBoundaryGameTest"],
     "fabric-client-gametest": ["dev.hardrush.gametest.HardRushClientGameTest"]
   }
 }
