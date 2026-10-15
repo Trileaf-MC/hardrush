@@ -1,0 +1,174 @@
+{
+  "schema": 1,
+  "capturedAt": "2026-10-15T14:29:47.418837+08:00",
+  "baselineCommit": "c3c0dff16e9aa92a2544aebf538b35e898d02702",
+  "commitState": "验证采集时工作树未提交；实现已由 implementationCommits 所列提交交付，文档与证据随本记录提交；未推送或发布。",
+  "commands": [
+    {
+      "command": "scripts/p0-gradle.sh checkP3 :platforms:mc263:runGameTest -PhardrushP1=true --console=plain",
+      "exitCode": 0,
+      "log": "check-output.txt",
+      "requiredGameTests": 99,
+      "inactiveGates": 4,
+      "junit": {
+        "core": {
+          "tests": 143,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "persistence": {
+          "tests": 94,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "platforms/mc263": {
+          "tests": 92,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      }
+    },
+    {
+      "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP3Storage=true --console=plain",
+      "exitCode": 0,
+      "log": "storage-runtime-output.txt",
+      "requiredGameTests": 1
+    },
+    {
+      "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP2Lobby=true --console=plain",
+      "exitCode": 0,
+      "log": "lobby-runtime-output.txt",
+      "requiredGameTests": 1,
+      "nativeRevivalCycles": 20
+    },
+    {
+      "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP1TenRounds=true --console=plain",
+      "exitCode": 0,
+      "log": "normal-ten-round-output.txt",
+      "requiredGameTests": 1,
+      "completedRounds": 10
+    },
+    {
+      "command": "python3 scripts/p1-server-restart.py --phase RUNNING",
+      "exitCode": 0,
+      "log": "normal-server-restart-output.txt",
+      "normalDedicatedServerScenarios": 1,
+      "dedicatedServerJvms": 2,
+      "result": "normal-restart/result.json"
+    },
+    {
+      "command": "python3 -m unittest discover -s scripts -p test_p1_server_restart.py -v",
+      "exitCode": 0,
+      "log": "restart-parser-output.txt",
+      "pythonTests": 6
+    }
+  ],
+  "sourcesSha256": {
+    "README.md": "458020ea80ab2052d5f605a86427a60853554d8b0ce36bb8fcaec92bab7894f2",
+    "build.gradle": "375fd18a7ffc6151d0d050a8ef0beef81a46b63a81c5e2196a4dc25229019830",
+    "core/src/main/java/dev/hardrush/core/round/RoundEngine.java": "68cc60fe565f007d30fc83da7faba58ae21282befb566b831ecfe95915e5b54a",
+    "core/src/main/java/dev/hardrush/core/round/RoundSnapshotCodec.java": "a4a682724ccf3c65d433a61b3e65fee6e295ebae663febd5ffe656384ad93309",
+    "docs/implementation-plan.md": "7b3b278c516661fe836f95e3eff587205b5b6ac1efdb2914be2eab0fcc7e5c5b",
+    "docs/p3-crash-storage.md": "45e97c5f04499a51e09a8649d74199636c4e59f0ca27958ad02ae509fbf05c01",
+    "docs/technical-design.md": "9b05f6c5ead9892b0d5010b3da6b6e1ba23f303232d8bc4363bcd3632a55dcda",
+    "docs/人工客户端测试/P3崩溃隔离与存储故障.md": "8cca5f8e95f1471398616cc4a82149797fcd8cc1efa8428f52fd6162a979b8c9",
+    "persistence/src/main/java/dev/hardrush/persistence/SqliteRoundStore.java": "18b4cca8389d03a610a08d000c41939a657dee2f1a3dc9a4032de7939b49bda3",
+    "persistence/src/test/java/dev/hardrush/persistence/P3CrashProcessFixture.java": "119d662c178a4fa0a1eb2b3286ab7ff121aa3668980c22fbd038176f67221763",
+    "persistence/src/test/java/dev/hardrush/persistence/P3CrashRecoveryTest.java": "05dfde8e4fab82e7312bffde2f73907e95b361580ccc177df960e0c4d303e13c",
+    "persistence/src/test/java/dev/hardrush/persistence/P3FaultFixture.java": "2f98d9925406b77b398cc3dda7531462432ce0c881e8c9cf55364286e160c9fa",
+    "persistence/src/test/java/dev/hardrush/persistence/P3StorageFaultTest.java": "004d9a6a313b96d5d95469f82353eb7a93c4b58a7614dc62ce8166434f55ea89",
+    "platforms/mc263/build.gradle": "99c3ae8f7153d3678b9441909433c199068a6a347b4ab9163251c53128568233",
+    "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P1ProfileGameTest.java": "6f1d8393fe39b4ae5f1b453c54ee5593814e3b80d21a30b8fc732ea4a75209e4",
+    "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P3StorageGameTest.java": "9a0a1f3a49ac2b5cbe0e563ccfec16916d9fea4a8594e09f0f613e51c0c9c812",
+    "platforms/mc263/src/gametest/resources/fabric.mod.json": "b2881b4066a80580882087932836dc2c1b6e35e14a9331c2b61e50647125c378",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbyRuntime.java": "3a403fef1b1b8fd299c935ca4c4db87fc85471d2c485ed518d5e08e7f569ac90",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbySession.java": "4114449c6982b01d0ea4717fca77589d3f20b480cbbf68e43be3d5c5a6069c32",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/player/P1PlayerProfiles.java": "9b67349567ec63f118559f7ed2923e98d20e6b2d4d78dc7bda64e408ff418eb6",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/player/ProfileJournal.java": "dfbc1d7443e01a5b352294dd68358da43d35a52c62dceb28c18f3c0b0a74319b",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/storage/P1StorageFailure.java": "6ac2bd6d467cd34c83b2f045b6d353026440f8645812662c47716b02851f632b",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/storage/P1StorageGuard.java": "334ef993507d16253493334b0937caf1c2b9fab5821cc8d323315cebba107e74",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/world/P1RoundWorldBundle.java": "5498eec5f4d070079c9f31269d8ef7def7c79f4f73cf597437220b0e7d53455b",
+    "platforms/mc263/src/test/java/dev/hardrush/p1/P3CrashProcessFixture.java": "5379e20c77defc33d1d2e595ee1925a59c59f823993b0c3c1e768ac2378dc9e6",
+    "platforms/mc263/src/test/java/dev/hardrush/p1/P3CrashProcessTest.java": "39950746d3c634360cb727b11eb53c6d6f059ae1d9f2fed90164e8f141cbd421",
+    "platforms/mc263/src/test/java/dev/hardrush/p1/player/ProfileCrashProcessFixture.java": "0025b81e237214fcba2b9bdca403b9c7d36c180f3cd8e2d93005b12e9efcb983",
+    "platforms/mc263/src/test/java/dev/hardrush/p1/player/ProfileJournalCrashTest.java": "d33e2936c6bce5215ef6602371fce0a69f4a492bdfc3f447d2d8efc42d91a041",
+    "platforms/mc263/src/test/java/dev/hardrush/p1/player/ProfileJournalTest.java": "9b42c9fc0ce174cc5bf13b2940b8b3005da46fd34d746ea5ed9ee7ae413e4e86",
+    "platforms/mc263/src/test/java/dev/hardrush/p1/storage/P1StorageGuardTest.java": "586d07550cc2a2b204f0777adcdbdea1728044c5403e786ba82e7731bba13ced",
+    "scripts/p1-server-restart.py": "e58176f8a1dd1fda3be3b7d1fa368914c8d2c48af2428ca13b46c68f2656b9ac",
+    "scripts/test_p1_server_restart.py": "c4328affbfd640609c3160ca655f8757bec0ab305240161ce494277635f9cee4"
+  },
+  "artifactsSha256": {
+    "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar": "2a566bbcf319c569e1dc1d96c9d810cdd7195f26d5ce2b1fe49b0beda9095af9"
+  },
+  "evidenceSha256": {
+    "check-output.txt": "e18113440585aaa024f799457bae75f6342767bb9fb7d1b7ed70b74dad4d4c8a",
+    "junit-summary.json": "befbdcdf4800d0e2f97501bce144aa9ee05539e599f2167ef48c3d0300ec852f",
+    "lobby-runtime-output.txt": "1b541b6049e923274a99da54acf69dcddd8a574dfe760d2692df7d9725bd43dd",
+    "normal-restart/build-output.txt": "7474393891b99b649c2afaf982212137ac94590babee1553389cdda0e45f7350",
+    "normal-restart/build-result.json": "cd297791ec3204d64b949cc5270af3493a9aa9a54eac161e7a641cf5312cf4b0",
+    "normal-restart/recover-evidence.json": "303818919d50d8f230bd5c29118142b6058bceffbc7c02096ed6dc0848eccdc8",
+    "normal-restart/recover-output.txt": "c9bd4c846fc8131c621c61b2cc5b2841c238eb072c61960f6fd26f78dffede35",
+    "normal-restart/recover-result.json": "3c9e13e0a4f3fbd56a4bd66b87b730e5c2782ceb9a8399b75fc614af38bb609e",
+    "normal-restart/result.json": "74131ba346442e95b43702bb0219f71f88c07a4e8324a09a5799b27e38ea225c",
+    "normal-restart/write-evidence.json": "d2ebd0730e219f6ba060f86d43a5326153c72e823e7c69ecabf9c2bdf771dcad",
+    "normal-restart/write-output.txt": "9bf71d637349c923bcd5e3574c66137216ba522f675cbac74980e2af3ed5891a",
+    "normal-restart/write-result.json": "c663d26a48599cc25721e9ddf0e311f3f7157c670d634207a47bfb5b5294a9c7",
+    "normal-server-restart-initial-output.txt": "bdef139c905cc489e9cac4a5f449bbe954fb6b82acb5830970950a0d803f4954",
+    "normal-server-restart-output.txt": "709dc9ac5d08b47e0c81c7a16990887f9fc8e2ee1473954a97c2ace15077ade9",
+    "normal-ten-round-output.txt": "5b68c43a7a1c29ebfe9d51c9ff010e047cb5e4687aa45ac7bab3a00bf26b8127",
+    "persistence-TEST-dev.hardrush.persistence.P3CrashRecoveryTest.xml": "83d408897536dc83d2b22229b798f35e9b1d4f6af43eff0d2bff78f7599633d3",
+    "persistence-TEST-dev.hardrush.persistence.P3StorageFaultTest.xml": "7e16cfada34f9df2f28143abbbef8a243ad32da50d115dbc7df2e1ac93394e1f",
+    "platforms-mc263-TEST-dev.hardrush.p1.P1LobbySessionTest.xml": "575c8b6b63eaad198f541aea8eb698f97733a23ec64b6433ea87eec05b66cb68",
+    "platforms-mc263-TEST-dev.hardrush.p1.P1ProcessRestartTest.xml": "5f829dd431647a2906b47598a2029ff1830ef3db58c965e7f1a18c96503d6b8f",
+    "platforms-mc263-TEST-dev.hardrush.p1.P2DeathBatchSessionTest.xml": "6961b33ac01817338d8eb3c664e8f86f837256ca9fa698654ffb0f4c1154446d",
+    "platforms-mc263-TEST-dev.hardrush.p1.P3CrashProcessTest.xml": "d78be35a58e704176ad45cc7b1a78a051993a53466e46457b230e272a77be1fc",
+    "platforms-mc263-TEST-dev.hardrush.p1.player.ProfileJournalCrashTest.xml": "29ed6ccf3d0f6d6bb683c1161095b2aecdf5c6d91d2e11021fbe6654717d10cc",
+    "platforms-mc263-TEST-dev.hardrush.p1.player.ProfileJournalTest.xml": "a9bfc15369aeb314fb8f3d1c2d9d326c82a7490b5d02a25ba25b77130a4497a6",
+    "platforms-mc263-TEST-dev.hardrush.p1.storage.P1StorageGuardTest.xml": "a10ce3e6d6de85658dbb09362ccd1970a83f12dc7ebbddf61ee39a37850ea755",
+    "restart-parser-output.txt": "33f85e8f7503fc4e9fac5f6ea222c67bfe37ad8b642ee68bab2d45f5c5eb3449",
+    "storage-runtime-output.txt": "43097351ae5f0d46a4bda1659cec639eb2589d5be74082d7699e1e1fb240f85d"
+  },
+  "checks": {
+    "gitDiffCheck": "passed",
+    "productionJar": "生产storage类存在，未包含GameTest/debug或crash/fault测试夹具；persistence以嵌套JAR打包。",
+    "metadataJson": "parsed"
+  },
+  "crashBoundaries": {
+    "sqliteIndependentJvmCases": 12,
+    "sessionCommitBeforeCallbackCases": 3,
+    "profileJournalCases": 4,
+    "sqliteFaultCases": 9
+  },
+  "resolvedDuringValidation": [
+    "跨轮恢复不再重新reset既存PREPARED/APPLIED/VERIFIED转换；完整目标快照重用，缺失或代数不符保持隔离。",
+    "世界停止不能仅等待executor结束；排空后检查异步清单、容量、关闭核验结果，避免漏接worker失败而写clean。",
+    "已有整服正常恢复runner仅接受编码1，初次运行服务端writer PASS但脚本拒绝编码4；修复已知1..4有界前缀解析并以新隔离存档重跑通过，初次失败日志保留。"
+  ],
+  "scope": [
+    "329项JUnit（143 core/94 persistence/92 platform）、99项必需无图形GameTest（含4个未启用门禁），以及独立容量故障、正式大厅20次复生、普通十轮各1项通过；6项Python解析回归通过。",
+    "19项强终止场景使用独立writer/reader JVM；SQLite事务内halt/force kill确有未提交WAL帧，另含commit返回和Session回调未应用窗口；夹具/PID/退出码见各XML system-out。",
+    "档案journal强杀与原生玩家GameTest分层证明确定目标重用和缺失隔离；没有证明整服世界、档案与数据库共同强杀后的完整恢复。",
+    "SQLite FULL使用max_page_count；容量GameTest使用不可能达到的储备门槛；未耗尽主机磁盘或修改日常存档。",
+    "存储CONSUME夹具中的HUMAN_PROFILE operation为测试构造，未宣称生产Session资格消费与档案意图已经跨系统原子提交。",
+    "RUNNING正常整服恢复使用新隔离存档、2个独立服务端JVM、原生玩家档案和世界/SQLite IO；仅正常退出，不计为强杀恢复。",
+    "本批强杀后保持RECOVERY_REQUIRED大厅隔离，FAILED不会因修复空间自动解除；可审计恢复管理入口、整服联合故障、真实文件系统ENOSPC/只读介质、归档/回放/AntiXray/Grim/备份仍未完成。",
+    "未启动真实客户端、浏览器或computer use；人工清单已建立；P0/P0b/P1/P2/P3阶段验收未放行。"
+  ],
+  "implementationCommits": [
+    {
+      "commit": "6a18a781c308093136e4fb8b5ba776dad6d2bd3d",
+      "intent": "防止跨轮档案恢复重复重置"
+    },
+    {
+      "commit": "af602706b6f2b7ce3470982c41f51584601719f1",
+      "intent": "存储故障准备门槛与崩溃隔离矩阵"
+    },
+    {
+      "commit": "8396f840b9f27e09cf5d6bdd8b39e2906108fb38",
+      "intent": "正常重启回归快照编码兼容"
+    }
+  ]
+}

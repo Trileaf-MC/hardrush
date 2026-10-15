@@ -1,0 +1,3 @@
+P1 isolated restart evidence: /Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/85e6ceb6-ce03-4a7b-b12a-2ec21b279fd7
+FAIL: RUNNING/write: Unsupported round snapshot schema; see /Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/85e6ceb6-ce03-4a7b-b12a-2ec21b279fd7/RUNNING/write.log
+Evidence retained at /Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/85e6ceb6-ce03-4a7b-b12a-2ec21b279fd7
