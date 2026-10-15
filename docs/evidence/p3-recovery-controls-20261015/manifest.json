@@ -1,0 +1,134 @@
+{
+  "schema": 1,
+  "capturedAt": "2026-10-15T14:54:03.441712+08:00",
+  "baselineCommit": "c2795183c72fb6dd400b9866896fede2444a5ca9",
+  "commitState": "验证采集时工作树未提交；实现、人工清单与证据随本记录一同提交；未推送、部署或发布。",
+  "commands": [
+    {
+      "command": "scripts/p0-gradle.sh checkP3 :platforms:mc263:runGameTest -PhardrushP1=true --console=plain",
+      "exitCode": 0,
+      "log": "check-output.txt",
+      "requiredGameTests": 101,
+      "inactiveGates": 5,
+      "junit": {
+        "core": {
+          "tests": 143,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "persistence": {
+          "tests": 94,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "platforms/mc263": {
+          "tests": 105,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "sourceNote": "常规GameTest完成后将已关闭故障轮的免重开条件限定为timingUncertain；最终源码另经全量checkP3、独立恢复专场和正常ROTATING跨JVM回归通过。"
+    },
+    {
+      "command": "scripts/p0-gradle.sh checkP3 :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP3Recovery=true --console=plain",
+      "exitCode": 0,
+      "log": "recovery-runtime-output.txt",
+      "requiredGameTests": 1,
+      "junit": {
+        "core": {
+          "tests": 143,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "persistence": {
+          "tests": 94,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "platforms/mc263": {
+          "tests": 105,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "roundsPrepared": 3,
+      "retiredRounds": 2,
+      "successfulStorageRechecks": 2,
+      "recoveryCloseDecisions": 2,
+      "scope": "真实SQLite失败／重核与实际三维度关闭；已关闭世界场景使用测试接缝，无整服强杀。"
+    },
+    {
+      "command": "python3 scripts/p1-server-restart.py --phase ROTATING",
+      "exitCode": 0,
+      "log": "normal-rotation-output.txt",
+      "result": "normal-rotation/result.json",
+      "normalDedicatedServerScenarios": 1,
+      "dedicatedServerJvms": 2,
+      "pids": [
+        60632,
+        60729
+      ]
+    }
+  ],
+  "initialFixtureFailure": {
+    "log": "initial-fixture-failure.txt",
+    "countedAsPass": false,
+    "reason": "测试夹具在检查点尚未排空时直接替换引擎，CAS过期；已改为正式recheck事务进入隔离。仅终止该隔离测试服务端，未作为强杀恢复证据。"
+  },
+  "sourcesSha256": {
+    "README.md": "d9ee6b682e992580d494b57bac283ea5fb6f8222ceeef42fe1635f9ce7ae37c2",
+    "core/src/main/java/dev/hardrush/core/admin/AdminAction.java": "b2704a0a849f690b731c932a06ad6f7c6ac1738c9af2cea2fde6cb5916056f7d",
+    "core/src/main/java/dev/hardrush/core/round/RoundEngine.java": "92039911d3b646e4fb71e24a81fcb41499a9821a51f8ee49beb58572e5207cab",
+    "docs/implementation-plan.md": "bae5cd059aa48d57cbe1b9726cb3624ec2100e1761ed096e4b5ffa39110817ea",
+    "docs/p3-crash-storage.md": "97e472c98eddb013c7ed069c9e3f0a9347b205035d9be5538640bf9c06f47d4f",
+    "docs/p3-recovery-controls.md": "423b2a68ee337364e11aae5f3c32ad72c0b3b154c2c778c5397466bc5f1b91ed",
+    "docs/technical-design.md": "2fefd4122ee4f8685e324e87770e473b5a2547c69f114fc512f71e929459e9c9",
+    "docs/人工客户端测试/P3崩溃隔离与存储故障.md": "b6149dcee71a136eff2abf31c09152a10611528e03400f7d0f8dc055b3f383b6",
+    "docs/人工客户端测试/P3恢复决策与存储重试.md": "b2f98d4c4d4fb8cc4fd0f38d9ffcc5245e6c1e2eba2a4bfd191539b6a3870985",
+    "persistence/src/main/java/dev/hardrush/persistence/SqliteRoundStore.java": "4dda16cfe5d96b87a650399d88271ae0354db971f7ce5bc970ba931bd2685cd4",
+    "platforms/mc263/build.gradle": "1ed43179b8ca832d3e0709b06aa63dce51d3b74d7a3593f4eaff2d177b8dfe2c",
+    "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P1AdminCommandGameTest.java": "0504dfefd1c34dbe6b334792b3ab85fe51982e03ea1bc491e5f9884b36533c37",
+    "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P3RecoveryGameTest.java": "944e05441cdfe08b52768cd26f3c93d78268e8ce89ac61dc8715b6d35586ad07",
+    "platforms/mc263/src/gametest/resources/fabric.mod.json": "75a70ce06608109269c24c89013a7eadc66979eb3efcd5cf311cc57f354742c2",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbyRuntime.java": "d595071bb7c4a97df2661bd5dd5e6bc001b21f5d80783c7d3a8cfd8245c794b2",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbySession.java": "1af910359272659618ce4ea3ef965d6b47ba6250c21da1e0d95320fd5eaf1bdf",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/admin/P1AdminCommands.java": "9cda04d402fda025fc95c0c00d0ec17b8b231a168d948953250271ee16b5dde3",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/storage/P1StorageFailure.java": "111f4669b296856f068a1972c3f6b10443b8e2761884837058e0d30c709f899e",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/world/P1ClosedWorlds.java": "2ebabd09175e80ca123dcfd9fc06858caa148f1ba5260b699c12c8b06b23fa88",
+    "platforms/mc263/src/test/java/dev/hardrush/p1/P3RecoverySessionTest.java": "ce48dd90839bebb9a81a8be8fff67efd4d8e0d9d08c0b10297b75c9fad97ba2e",
+    "platforms/mc263/src/test/java/dev/hardrush/p1/world/P1WorldManifestTest.java": "bd20c8d5f18819bb34b0afd1698d03cdb6d62cbd49a5e4426d53d554d3e685b3"
+  },
+  "artifactsSha256": {
+    "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar": "29711c2cfc7910120863005417b80b7abeef225b8102f84f9cfc1da393485a10",
+    "platforms/mc263/build/libs/hardrush-debug-tools-0.1.0-p0+mc26.3.jar": "83b5376f00a39f8631724b936a1cffc8cb985be1cc97fb37533399e43475ddcc"
+  },
+  "boundaries": [
+    "没有图形客户端、浏览器或computer use。",
+    "不支持继续原活动轮；原生档案不确定状态自动修复未实现。",
+    "未完成整服资格发放／消费／终局／档案各持久化边界联合强杀或真实文件系统ENOSPC／只读介质。",
+    "P3-01／02／G及前置阶段保持未通过。"
+  ],
+  "evidenceSha256": {
+    "TEST-dev.hardrush.p1.P3RecoverySessionTest.xml": "efaedf806c5ee763b7e12ac311ac366ca1dd92ad140094acdfde27e5e14cdde2",
+    "TEST-dev.hardrush.p1.world.P1WorldManifestTest.xml": "f473145ecb9ca3fd1a299f6f9252167970b3637347c442b102aa24633a5778f7",
+    "check-output.txt": "094b67f48f9412cdb9632845846350011ce1ad1c688bb6f8cbf7a529d9fcce6b",
+    "initial-fixture-failure.txt": "5994de115ac44ff37c5f02cd78620ce92e901004d390c9b9a661316feeaa8ee5",
+    "normal-rotation/build-result.json": "f7a13a60e4cbb9ed2bb7dded96f646b2c56d1191e36d51581cca30b7551c92ca",
+    "normal-rotation/recover-evidence.json": "5dafad86c69fc85202dd2449ac501c23ea783099be1cf9b558d1534dd9d0e680",
+    "normal-rotation/recover-result.json": "112598983c0db2a9db5174792fab84b6540e6ffcfb069656807f5660c43e3986",
+    "normal-rotation/recover.log": "eaa95bce83d5eaf6cb5e486851c9886e9d354a81140bc0ccab3b9be25b91fb1f",
+    "normal-rotation/result.json": "667d4d1f20b416df645577f2f1bf674d192cf2e082b56cbb8e60dd61cb0adcec",
+    "normal-rotation/write-evidence.json": "7fdf603df2132778af85276add5f9caa350e7e7ee284085386cb2d92d155c3c0",
+    "normal-rotation/write-result.json": "131b06927d48d6fcb1c0b5bea57bd49ac4e35b7e6c58d841d87711218ddf148f",
+    "normal-rotation/write.log": "74ff3c2da5fd799c21ceaf0e41e9f0a4286d9ef01c52cdb3fb8c6d5a7bf24634",
+    "normal-rotation-output.txt": "40562b6b57720f5c797c05a0eeda4d8e088c4568023dcf83dcf35851963974de",
+    "recovery-runtime-output.txt": "3e64512d674e76c2d69e2e9ab3f813ee0492eac36b60f1253111adf55f0f0398"
+  },
+  "documentationStatusUpdate": "提交前仅更新提交状态文字；生产源码、测试、制品及原始验证日志保持采集值。"
+}

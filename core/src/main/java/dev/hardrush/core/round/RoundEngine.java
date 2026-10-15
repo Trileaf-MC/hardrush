@@ -50,6 +50,13 @@ public final class RoundEngine {
         return new RoundEngine(restored, clock);
     }
 
+    /** A repaired database proves durable facts, never that native world/profile effects completed. */
+    public static RoundEngine restoreForRecovery(RoundSnapshot stored, MonotonicClock clock) {
+        return restore(new RoundSnapshot(stored.roundId(), stored.sequence(), stored.seed(), stored.version(), stored.rules(),
+                stored.phase(), stored.pauseReason(), stored.challengeNanos(), stored.remainingPhaseNanos(),
+                stored.participants(), false, true, stored.result()), clock);
+    }
+
     public RoundSnapshot committed() { return committed; }
     public boolean pending() { return pending != null; }
     public RoundSnapshot view() { return pending == null ? project(committed, boundary, clock.nanoTime()) : pending.before(); }
@@ -498,6 +505,17 @@ public final class RoundEngine {
         RoundResult result = new RoundResult(RoundResult.Kind.ABORTED, null, AdminText.reason(reason));
         return proposal(eventId, "ADMIN_ABORT", before, RoundPhase.ROTATING, 0,
                 withoutEntitlements(before.participants()), result, false, true);
+    }
+
+    /** Retire an uncertain round without replaying any life, entitlement or native effect. */
+    public RoundTransition proposeCloseRecovery(UUID eventId, String reason) {
+        RoundSnapshot before = capture();
+        requirePhase(before, RoundPhase.RECOVERY_REQUIRED);
+        String checkedReason = AdminText.reason(reason);
+        RoundResult result = before.result() == null
+                ? new RoundResult(RoundResult.Kind.ABORTED, null, checkedReason) : before.result();
+        return proposal(eventId, "RECOVERY_CLOSE", before, RoundPhase.ROTATING, 0,
+                before.participants(), result, false, true);
     }
 
     private RoundTransition proposeTick(UUID eventId, boolean admissionPending) {

@@ -14,6 +14,8 @@ import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p2.protection.P2ProtectionRuntime;
 import dev.hardrush.p2.lobby.P2LobbyRuntime;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
+import dev.hardrush.p1.world.P1ClosedWorlds;
+import dev.hardrush.p1.world.P1WorldPaths;
 import dev.hardrush.p1.combat.P1CombatRuntime;
 import dev.hardrush.p1.record.P1ProgressRuntime;
 import dev.hardrush.p1.record.P1TabRuntime;
@@ -198,7 +200,8 @@ public final class P1LobbyRuntime {
             var session = SESSIONS.get(server);
             if (session == null) return;
             try {
-                if (session.state() == P1LobbySession.State.FAILED) {
+                if (session.state() == P1LobbySession.State.FAILED || session.state() == P1LobbySession.State.RECHECKING
+                        || session.snapshot().filter(r -> r.phase() == RoundPhase.RECOVERY_REQUIRED).isPresent()) {
                     var round = session.snapshot().orElse(null);
                     if (round != null) for (var player : server.getPlayerList().getPlayers()) {
                         var profiles = PROFILES.get(server);
@@ -210,7 +213,7 @@ public final class P1LobbyRuntime {
                 var round = session.snapshot().orElse(null);
                 if (round == null) return;
                 var worlds = WORLDS.get(server);
-                if (worlds == null && round.phase() != RoundPhase.RECOVERY_REQUIRED) {
+                if (worlds == null && !(round.phase() == RoundPhase.ROTATING && round.timingUncertain())) {
                     worlds = P1RoundWorldBundle.open(server, round);
                     WORLDS.put(server, worlds);
                 }
@@ -648,13 +651,17 @@ public final class P1LobbyRuntime {
             session.rotationReady(round.roundId());
             return;
         }
-        if (worlds == null || !worlds.ready() || session.mutationPending()) return;
+        if (session.mutationPending()) return;
+        if (worlds != null && !worlds.ready()) {
+            if (worlds.failure().isPresent()) throw new IllegalStateException("原轮世界仍有故障，禁止跳过安全释放：" + worlds.failure().orElseThrow());
+            return;
+        }
         for (var player : server.getPlayerList().getPlayers()) {
             if (profiles.manages(player) && profiles.failure(player.getUUID()).isPresent()) {
                 throw new IllegalStateException("轮换档案封存失败：" + profiles.failure(player.getUUID()).orElseThrow());
             }
             if (profiles.manages(player)) profiles.returnToLobby(player);
-            else if (P1RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), player.level())) {
+            else if (worlds != null && P1RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), player.level())) {
                 player.stopRiding(); player.ejectPassengers(); player.closeContainer();
                 var spawn = server.overworld().getRespawnData().pos();
                 player.teleportTo(server.overworld(), spawn.getX() + .5, spawn.getY(), spawn.getZ() + .5,
@@ -664,6 +671,16 @@ public final class P1LobbyRuntime {
         // Do not replace the old profile generation while its survival suspension is still being written.
         if (server.getPlayerList().getPlayers().stream().anyMatch(player -> profiles.manages(player)
                 && !profiles.isReady(player.getUUID(), round))) return;
+        if (worlds == null) {
+            // Do not recreate terrain or simulate an uncertain world merely to retire it.
+            for (var level : server.getAllLevels()) {
+                for (String dimension : java.util.List.of("overworld", "nether", "end")) {
+                    if (level.dimension().identifier().toString().equals(P1WorldPaths.identifier(round.roundId(), dimension))) {
+                        throw new IllegalStateException("恢复轮次仍有已加载原生维度，拒绝当作关闭世界轮换");
+                    }
+                }
+            }
+        }
         var completion = new CompletableFuture<Void>();
         RELEASES.put(server, completion);
         var recorder = RECORDINGS.get(server);
@@ -675,7 +692,11 @@ public final class P1LobbyRuntime {
         P1RoundRelease.releaseAfterRecordings(recordingBarrier, server::execute,
                 () -> SESSIONS.get(server) == session && WORLDS.get(server) == worlds
                         && session.state() == P1LobbySession.State.OPEN
-                        && session.snapshot().orElseThrow().roundId().equals(round.roundId()), worlds::saveAndClose)
+                        && session.snapshot().orElseThrow().roundId().equals(round.roundId()),
+                () -> worlds != null ? worlds.saveAndClose() : CompletableFuture.runAsync(() -> {
+                    try { P1ClosedWorlds.verifyRetained(server.getWorldPath(LevelResource.ROOT), round); }
+                    catch (java.io.IOException error) { throw new java.util.concurrent.CompletionException(error); }
+                }))
                 .whenComplete((ignored, error) -> {
                     if (error == null) completion.complete(null); else completion.completeExceptionally(error);
                 });

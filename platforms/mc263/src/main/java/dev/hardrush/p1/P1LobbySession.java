@@ -53,7 +53,7 @@ import java.util.function.Function;
  * and player profiles before participation is enabled.
  */
 public final class P1LobbySession implements AutoCloseable {
-    public enum State { OPENING, OPEN, FAILED, CLOSED }
+    public enum State { OPENING, OPEN, FAILED, RECHECKING, CLOSED }
     public record Reply(boolean success, String message) {}
 
     private static final long CHECKPOINT_NANOS = TimeUnit.SECONDS.toNanos(1);
@@ -61,6 +61,7 @@ public final class P1LobbySession implements AutoCloseable {
             "世界准备与玩家档案适配器尚未接通，暂不能加入或就绪。";
 
     private final MonotonicClock clock;
+    private final Path database;
     private final Executor callbacks;
     private final BiConsumer<String, Throwable> diagnostics;
     private final ExecutorService io;
@@ -104,6 +105,7 @@ public final class P1LobbySession implements AutoCloseable {
     private CompletableFuture<CommitResult> pendingAdminWrite;
     private Long adminBoundary;
     private Long failureBoundary;
+    private CompletableFuture<Loaded> pendingRecoveryWrite;
 
     public P1LobbySession(Path database, MonotonicClock clock, Executor callbacks) {
         this(database, clock, callbacks, (message, error) -> {});
@@ -112,6 +114,7 @@ public final class P1LobbySession implements AutoCloseable {
     public P1LobbySession(Path database, MonotonicClock clock, Executor callbacks,
             BiConsumer<String, Throwable> diagnostics) {
         Objects.requireNonNull(database);
+        this.database = database.toAbsolutePath().normalize();
         this.clock = Objects.requireNonNull(clock);
         this.callbacks = Objects.requireNonNull(callbacks);
         this.diagnostics = Objects.requireNonNull(diagnostics);
@@ -191,7 +194,7 @@ public final class P1LobbySession implements AutoCloseable {
         return engine == null ? Optional.empty() : Optional.of(engine.committed());
     }
     public Optional<RulesConfig> nextRules() { return Optional.ofNullable(nextRules); }
-    public boolean mutationPending() { return pendingWrite != null || pendingRulesWrite != null || pendingRotationWrite != null || pendingAdminWrite != null; }
+    public boolean mutationPending() { return pendingWrite != null || pendingRulesWrite != null || pendingRotationWrite != null || pendingAdminWrite != null || pendingRecoveryWrite != null; }
     public Optional<RoundSnapshot> view() { return engine == null ? Optional.empty() : Optional.of(engine.view()); }
     public long endEntrants() { return endEntrants; }
     public void onRecordsChanged(Runnable listener) { recordsChanged = Objects.requireNonNull(listener); }
@@ -448,6 +451,101 @@ public final class P1LobbySession implements AutoCloseable {
                 "本轮已中止并保存原因与审计；立即回大厅，安全释放旧世界后轮换。");
     }
 
+    /** This only restores database availability. Native effects and competition remain quarantined. */
+    public void recheckStorage(String actor, String reason, Consumer<Reply> reply) {
+        if (state != State.FAILED || stopping || shutdownBoundary != null || engine == null) {
+            reply.accept(new Reply(false, "仅支持已有轮次的 FAILED 数据库重新核验；启动失败需保留资料并重启处理。")); return;
+        }
+        if (mutationPending() || evidencePending != 0 || progressPending != 0 || queriesPending != 0) {
+            reply.accept(new Reply(false, "已受理的 IO 或回调尚未排空，请稍后重新申请。")); return;
+        }
+        try { validateAdminMetadata(actor, reason); }
+        catch (IllegalArgumentException error) { reply.accept(new Reply(false, error.getMessage())); return; }
+        var previous = engine.committed();
+        String previousProblem = problem;
+        state = State.RECHECKING;
+        var write = supplyIo(() -> {
+            // Never turn a missing/replaced database into a new empty bootstrap database.
+            if (!java.nio.file.Files.isRegularFile(database, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                throw new java.io.IOException("原数据库缺失或不是普通文件，拒绝重新建库");
+            }
+            if (store != null) { store.close(); store = null; }
+            store = new SqliteRoundStore(database);
+            store.checkIntegrity();
+            var data = store.latest().orElseThrow(() -> new IllegalStateException("原数据库没有轮次快照"));
+            var durable = RoundSnapshotCodec.decode(data.payload());
+            if (!data.roundId().equals(durable.roundId()) || data.version() != durable.version()
+                    || !durable.roundId().equals(previous.roundId()) || durable.version() < previous.version()
+                    || durable.sequence() != previous.sequence() || durable.seed() != previous.seed()
+                    || !durable.rules().equals(previous.rules())) {
+                throw new IllegalStateException("数据库最新轮次与故障目标不符，拒绝替换或回退原轮次");
+            }
+            requireVersion(durable.rules());
+            store.roundHistory(durable.roundId()); // Verify the immutable terminal and any audited projections.
+            var pending = store.loadPendingRules().orElseThrow(() -> new IllegalStateException("下轮规则缺失"));
+            var rules = RulesConfig.decode(new String(pending, StandardCharsets.UTF_8));
+            requireVersion(rules);
+            var recovered = RoundEngine.restoreForRecovery(durable, () -> 0);
+            var transition = recovered.proposeCheckpoint(UUID.randomUUID(), false);
+            var after = transition.after();
+            var audit = new AdminAudit(transition.eventId(), after.roundId(), actor, "RECHECK_STORAGE", reason,
+                    adminValue(durable) + ";failure=" + dev.hardrush.core.book.SafeBookText.literal(previousProblem, 4096),
+                    adminValue(after), System.currentTimeMillis());
+            requireCommitted(store.commitAdmin(new SnapshotWrite(after.roundId(), durable.version(), after.version(),
+                    RoundSnapshotCodec.encode(after), transition.eventId(), "RECOVERY_RECHECK"), audit));
+            return new Loaded(after, rules, false, store.endEntrantCount(after.roundId()));
+        });
+        pendingRecoveryWrite = write;
+        write.whenComplete((loaded, error) -> callbacks.execute(() -> {
+            if (stopping || pendingRecoveryWrite != write) return;
+            pendingRecoveryWrite = null;
+            if (error != null) {
+                fail("存储重新核验失败，继续隔离", error); reply.accept(new Reply(false, problem)); return;
+            }
+            installRecovery(loaded);
+            reply.accept(new Reply(true, "数据库已重新核验并持久化审计；仍为 RECOVERY_REQUIRED，全员留厅。世界／档案故障仍需单独修复。"));
+        }));
+    }
+
+    private void installRecovery(Loaded loaded) {
+        engine = RoundEngine.restoreForRecovery(loaded.snapshot(), this::engineTime);
+        nextRules = loaded.nextRules();
+        endEntrants = loaded.endEntrants();
+        events.clear(); requestedRespawns.clear(); deathBatches.clear(); capturedDeaths.clear();
+        terminalCandidate = null; firstDragonId = null; terminalQueued = false;
+        evidenceFailure = null; failureBoundary = null; adminBoundary = null;
+        recoveringCountdown = false; adaptersReady = false; unsupportedPhase = true;
+        lastCheckpointNanos = clock.nanoTime();
+        problem = "";
+        state = State.OPEN;
+    }
+
+    public void closeRecovery(String actor, String reason, Consumer<Reply> reply) {
+        if (state != State.OPEN || stopping || shutdownBoundary != null || engine == null
+                || engine.committed().phase() != RoundPhase.RECOVERY_REQUIRED) {
+            reply.accept(new Reply(false, "仅允许结束当前 RECOVERY_REQUIRED 轮次；FAILED 需先重新核验存储。")); return;
+        }
+        if (mutationPending() || evidencePending != 0 || progressPending != 0 || queriesPending != 0) {
+            reply.accept(new Reply(false, "已受理的 IO 尚未排空，请稍后重试。")); return;
+        }
+        try {
+            validateAdminMetadata(actor, reason);
+            var transition = engine.proposeCloseRecovery(UUID.randomUUID(), reason);
+            var audit = new AdminAudit(transition.eventId(), transition.after().roundId(), actor, "CLOSE_RECOVERY", reason,
+                    adminValue(transition.before()), adminValue(transition.after()), System.currentTimeMillis());
+            submit(transition, audit, result -> {
+                if (result.success()) { unsupportedPhase = false; recordsChanged.run(); }
+                reply.accept(result);
+            }, "恢复轮次结束决策与审计已持久化；原终局／资格记录保留，待档案、录像与世界安全释放后才创建下轮。");
+        } catch (IllegalStateException | IllegalArgumentException error) { reply.accept(new Reply(false, error.getMessage())); }
+    }
+
+    private static void validateAdminMetadata(String actor, String reason) {
+        dev.hardrush.core.admin.AdminText.text(actor, 256);
+        dev.hardrush.core.admin.AdminText.reason(reason);
+        if (actor.length() > 256) throw new IllegalArgumentException("操作者标识超过审计字段长度。");
+    }
+
     private void requestAdminTransition(String actor, String reason, boolean abort,
             java.util.function.Supplier<RoundTransition> proposal, Consumer<Reply> reply, String success) {
         if (state != State.OPEN || stopping || shutdownBoundary != null || terminalCandidate != null) {
@@ -517,7 +615,10 @@ public final class P1LobbySession implements AutoCloseable {
 
     public String status() {
         if (state == State.OPENING) return "P1 基础正在打开轮次数据库，请稍后查询。";
-        if (state == State.FAILED) return "P1 基础已停止状态变更：" + problem;
+        if (state == State.RECHECKING) return "正在重新核验原数据库并写入恢复审计；比赛继续隔离。";
+        if (state == State.FAILED) return "P1 基础已停止状态变更：" + problem
+                + (engine == null ? "" : "轮次 " + engine.committed().roundId() + "，版本 " + engine.committed().version()
+                    + "。存储修复后 OP3 可申请 /hardrush admin recheck-storage <原因>；核验后仍留厅隔离。");
         if (state == State.CLOSED) return "P1 基础已停止。";
         var round = engine.committed();
         return "P1 轮次 " + round.sequence() + "（" + round.roundId() + "），阶段 " + round.phase()
@@ -525,7 +626,7 @@ public final class P1LobbySession implements AutoCloseable {
                 + "，已持久化版本 " + round.version() + "，规则 " + round.rules().fingerprint()
                 + "。" + (mutationPending() ? "正在提交状态。" : "")
                 + (round.phase() == RoundPhase.RECOVERY_REQUIRED
-                    ? "检测到非正常停止；已提交身份、资格和原始记录保留，全员留在大厅。本批尚无解除恢复隔离的管理入口，请保留资料并按故障恢复文档处理。" : "")
+                    ? "恢复隔离中；已提交身份、资格和原始记录保留，全员留在大厅。OP4 可审查后用 /hardrush admin close-recovery <原因> 结束原轮；不会继续原比赛。" : "")
                 + (recoveringCountdown ? "正常重启倒计时已暂挂，等待原已就绪玩家完成档案核验。" : "")
                 + (adaptersReady ? "有效挑战 " + engine.view().challengeMillis() + " ms，在线活人 "
                     + engine.view().onlineHumans() + "，暂停原因 " + engine.view().pauseReason() + "。"
@@ -862,6 +963,10 @@ public final class P1LobbySession implements AutoCloseable {
         stopping = true;
         Throwable failure = null;
         try {
+            if (pendingRecoveryWrite != null) {
+                installRecovery(pendingRecoveryWrite.get());
+                pendingRecoveryWrite = null;
+            }
             if (engine == null && state != State.FAILED) {
                 eventTime = shutdownTime;
                 install(opening.get());

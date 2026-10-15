@@ -25,6 +25,8 @@ HardRush 是面向原版客户端的 Fabric 多人速通挑战模组。玩家在
 - [P2 身份与保护人工检查](docs/人工客户端测试/P2身份转换与出生保护.md)
 - [P3 第一批崩溃隔离、档案恢复与存储故障](docs/p3-crash-storage.md)
 - [P3 崩溃隔离与存储故障人工检查](docs/人工客户端测试/P3崩溃隔离与存储故障.md)
+- [P3 第二批存储重核与恢复处置](docs/p3-recovery-controls.md)
+- [P3 恢复决策与存储重试人工检查](docs/人工客户端测试/P3恢复决策与存储重试.md)
 - [第三方组件](THIRD-PARTY.md)
 
 玩法及首轮数值已经确认。开发首先验证旁人完整怪物外观与本人正常操作、动态三维度与末影龙流程，以及三版本的回放和防作弊组合，再推进完整功能。
@@ -55,4 +57,4 @@ P0b 无图形界面基础依赖复验：`scripts/p0-gradle.sh -p probes/p0b chec
 
 2026-10-15 P2 第四批继续完成 26.3 开发范围的 P2-09～16，并开放大厅复生按钮／命令：技能持久归属与原版行为专项、原生死亡批次资格发放、空装复生、60 秒救场和完整统计／重复请求防护。实现、自动结果及边界见 [复生与救场记录](docs/p2-revival-rescue.md)，真实客户端完整循环请按 [人工测试清单](docs/人工客户端测试/P2复生救场与完整闭环.md) 验证。P2-17／P2-G 仍未通过，未启动图形客户端。
 
-2026-10-15 按用户指示提前推进 P3 第一批：补真实 SQLite 不可写／容量故障与独立 JVM 强杀矩阵，修复跨轮档案恢复重复重置及缺快照误放行，增加默认 512 MiB 世界准备储备门槛和具体存储故障诊断。自动入口为 `scripts/p0-gradle.sh checkP3 -PhardrushP1=true --console=plain`，独立容量门槛／原轮重试验证另用 `:platforms:mc263:runGameTest -PhardrushP3Storage=true`。强杀后保持大厅隔离，尚无解除 RECOVERY_REQUIRED 或失败 Session 的管理恢复入口，不能据此宣称比赛已恢复或 P3-01／02 完成；实现、操作流程与验证边界见 [P3 第一批记录](docs/p3-crash-storage.md)。
+2026-10-15 按用户指示提前推进 P3：第一批补崩溃隔离、档案恢复与存储故障防护；第二批接通 OP 3 的 `admin recheck-storage` 和 OP 4 的 `admin close-recovery`，均需具体轮次确认与事务审计。数据库重核成功仍留厅隔离；结束恢复轮保留已提交资格／原始终局，安全释放后才创建下轮，已关闭的故障世界只读核验并保留文件。自动入口为 `scripts/p0-gradle.sh checkP3 -PhardrushP1=true --console=plain`，独立恢复整链另加 `:platforms:mc263:runGameTest -PhardrushP3Recovery=true`。尚不支持继续原活动轮次，P3-01／02／G 未完成；当前操作流程和边界见 [P3 第二批记录](docs/p3-recovery-controls.md)。

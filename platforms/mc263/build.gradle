@@ -215,6 +215,29 @@ tasks.named('runGameTest') {
     }
 }
 
+// Recovery mutates the formal runtime deliberately and cannot share another regression's storage.
+def p3RecoveryRunDir = rootProject.file(".local/p3-recovery/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushP3Recovery').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true'
+                || ['hardrushP1TenRounds', 'hardrushP2Identity', 'hardrushP2Lobby', 'hardrushP3Storage'].any {
+                    providers.gradleProperty(it).orNull == 'true'
+                }) throw new GradleException('P3 recovery requires -PhardrushP1=true and its own isolated run')
+        vmArg '-Dhardrush.p3.testRecovery=true'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p3recovery_game_test*'
+        runDir p3RecoveryRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushP3Recovery').orNull == 'true') {
+        doFirst {
+            p3RecoveryRunDir.mkdirs()
+            copy { from rootProject.file('.local/server-p0/eula.txt'); into p3RecoveryRunDir }
+            logger.lifecycle("Isolated P3 recovery: ${p3RecoveryRunDir}")
+        }
+    }
+}
+
 // The formal P2 listener/SQLite/profile flow needs a fresh runtime, separate from legacy lobby fixtures.
 def p2IdentityRunDir = rootProject.file(".local/p2-identity/${UUID.randomUUID()}")
 loom.runs.named('gameTest') {

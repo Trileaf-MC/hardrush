@@ -21,6 +21,45 @@ final class P1WorldManifestTest {
     @TempDir Path temporary;
     private static final UUID ROUND = UUID.fromString("482f2d01-4825-4a4a-bf14-dc4d69e8d342");
 
+    @Test void closedRecoveryVerificationRetainsEveryFileWithoutCreatingMissingDimensions() throws IOException {
+        Path root = temporary.toRealPath(), file = P1WorldPaths.manifest(root, ROUND);
+        manifest().write(root, file);
+        Path world = P1WorldPaths.world(root, ROUND, "overworld");
+        Files.createDirectories(world.resolve("region"));
+        Path marker = world.resolve("region/retained.mca"); Files.writeString(marker, "original-world");
+        byte[] original = Files.readAllBytes(file);
+        var round = RoundEngine.create(ROUND, 1, 12345, RulesConfig.defaults(), () -> 0).committed();
+        P1ClosedWorlds.verifyRetained(root, round);
+        P1ClosedWorlds.verifyRetained(root, round);
+        assertEquals("original-world", Files.readString(marker)); assertArrayEquals(original, Files.readAllBytes(file));
+        assertFalse(Files.exists(P1WorldPaths.world(root, ROUND, "nether")));
+        assertFalse(Files.exists(P1WorldPaths.world(root, ROUND, "end")));
+    }
+
+    @Test void preManifestCrashNeedsNoWorldCreationButAnUnownedExistingWorldCannotBeSkipped() throws IOException {
+        Path root = temporary.toRealPath();
+        var round = RoundEngine.create(ROUND, 1, 12345, RulesConfig.defaults(), () -> 0).committed();
+        P1ClosedWorlds.verifyRetained(root, round);
+        assertFalse(Files.exists(root.resolve("hardrush")));
+        Path world = P1WorldPaths.world(root, ROUND, "end"); Files.createDirectories(world);
+        Path marker = world.resolve("retained"); Files.writeString(marker, "unowned");
+        assertThrows(IOException.class, () -> P1ClosedWorlds.verifyRetained(root, round));
+        assertEquals("unowned", Files.readString(marker));
+    }
+
+    @Test void closedRecoveryRejectsTamperedManifestAndNestedSymlinksWithoutTouchingTargets() throws IOException {
+        Path root = temporary.toRealPath(), file = P1WorldPaths.manifest(root, ROUND);
+        manifest().write(root, file);
+        var round = RoundEngine.create(ROUND, 1, 12345, RulesConfig.defaults(), () -> 0).committed();
+        var foreign = RoundEngine.create(ROUND, 1, 42, RulesConfig.defaults(), () -> 0).committed();
+        assertThrows(IOException.class, () -> P1ClosedWorlds.verifyRetained(root, foreign));
+        Path external = Files.createDirectory(root.resolve("external"));
+        Path world = P1WorldPaths.world(root, ROUND, "end"); Files.createDirectories(world);
+        Files.createSymbolicLink(world.resolve("region"), external);
+        assertThrows(IOException.class, () -> P1ClosedWorlds.verifyRetained(root, round));
+        assertTrue(Files.isDirectory(external)); assertTrue(Files.isRegularFile(file));
+    }
+
     @Test void identityGeneratorsRulesAndAllOwnedPathsSurviveRestart() throws IOException {
         Path root = temporary.toRealPath();
         Path path = P1WorldPaths.manifest(root, ROUND);

@@ -313,6 +313,19 @@ public final class SqliteRoundStore implements AutoCloseable {
         return stored;
     }
 
+    /** Run on the IO worker during an explicit repair attempt, before testing an audited write. */
+    public synchronized void checkIntegrity() throws SQLException {
+        checkOpenPath();
+        try (var statement = connection.createStatement(); var rows = statement.executeQuery("PRAGMA quick_check")) {
+            if (!rows.next() || !"ok".equals(rows.getString(1)) || rows.next()) {
+                throw new SQLException("SQLite quick_check failed; preserve the database for offline repair");
+            }
+        }
+        try (var statement = connection.createStatement(); var rows = statement.executeQuery("PRAGMA foreign_key_check")) {
+            if (rows.next()) throw new SQLException("SQLite foreign key check failed; preserve the database for offline repair");
+        }
+    }
+
     public synchronized CommitResult recordEvidence(EvidenceWrite write) throws SQLException {
         Objects.requireNonNull(write); checkOpenPath();
         byte[] digest = WriteDigest.evidence(write);

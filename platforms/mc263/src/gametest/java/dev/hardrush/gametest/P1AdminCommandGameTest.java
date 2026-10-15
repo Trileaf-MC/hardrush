@@ -55,6 +55,7 @@ public final class P1AdminCommandGameTest {
         }
         for (String command : new String[]{"hardrush admin start 测试原因", "hardrush admin abort 测试原因",
                 "hardrush admin retry-world 测试原因", "hardrush admin next-mode normal 测试原因",
+                "hardrush admin recheck-storage 测试原因",
                 "hardrush retry-world 测试原因", "hardrush config next-mode normal 测试原因"}) {
             parses(test, dispatcher, player, command, false);
             parses(test, dispatcher, reader, command, false);
@@ -62,11 +63,55 @@ public final class P1AdminCommandGameTest {
             parses(test, dispatcher, owner, command, true);
         }
         for (String command : new String[]{"hardrush admin correct 1 5000 none 测试原因",
-                "hardrush admin validate 1 测试原因"}) {
+                "hardrush admin validate 1 测试原因", "hardrush admin close-recovery 测试原因"}) {
             parses(test, dispatcher, player, command, false);
             parses(test, dispatcher, reader, command, false);
             parses(test, dispatcher, admin, command, false);
             parses(test, dispatcher, owner, command, true);
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks = 200)
+    public void storageRepairAndRecoveryCloseRequireCurrentContextPermissionsAndOneConfirmation(GameTestHelper test) throws Exception {
+        var server = test.getLevel().getServer();
+        Path database = Files.createTempDirectory("hardrush-recovery-command-").toRealPath().resolve("rounds.sqlite");
+        seedHistoricalFixture(database);
+        var callbacks = new LinkedBlockingQueue<Runnable>(); var output = new RecordingSource();
+        try (var session = new P1LobbySession(database, () -> 0, callbacks::add)) {
+            pumpUntil(test, callbacks, () -> session.state() == P1LobbySession.State.OPEN && !session.mutationPending());
+            var commands = new P1AdminCommands(ignored -> session, ignored -> Optional.empty(), (ignored, failure) -> {});
+            var dispatcher = new CommandDispatcher<CommandSourceStack>();
+            dispatcher.register(commands.attach(Commands.literal("hardrush")));
+            var source = server.createCommandSourceStack().withSource(output);
+            var admin = permission(source, 3); var owner = permission(source, 4);
+            session.adapterFailure("测试存储故障", new IllegalStateException("first"));
+            execute(dispatcher, admin, "hardrush admin recheck-storage 存储已修复");
+            UUID stale = output.lastTicket();
+            session.adapterFailure("故障原因改变", new IllegalStateException("second"));
+            execute(dispatcher, admin, "hardrush admin confirm " + stale);
+            test.assertTrue(output.last().contains("不再匹配") || output.last().contains("no longer matches"), "Changed failure invalidates its preview");
+            test.assertValueEqual(session.state(), P1LobbySession.State.FAILED, "Stale ticket leaves the failure intact");
+            execute(dispatcher, admin, "hardrush admin recheck-storage 存储已修复");
+            UUID repair = output.lastTicket();
+            execute(dispatcher, permission(source, 2), "hardrush admin confirm " + repair);
+            test.assertTrue(output.last().contains("权限不足"), "Downgraded OP2 cannot repair storage");
+            execute(dispatcher, admin, "hardrush admin confirm " + repair);
+            pumpUntil(test, callbacks, () -> session.state() != P1LobbySession.State.RECHECKING);
+            test.assertValueEqual(session.snapshot().orElseThrow().phase(), RoundPhase.RECOVERY_REQUIRED, "Successful repair never resumes competition");
+            test.assertTrue(session.competitionLocked(), "Repaired state remains quarantined");
+            execute(dispatcher, owner, "hardrush admin close-recovery 审查后结束恢复轮");
+            UUID close = output.lastTicket();
+            execute(dispatcher, admin, "hardrush admin confirm " + close);
+            test.assertTrue(output.last().contains("权限不足"), "OP3 cannot confirm an OP4 recovery decision");
+            execute(dispatcher, owner, "hardrush admin confirm " + close);
+            pumpUntil(test, callbacks, () -> !session.mutationPending());
+            test.assertValueEqual(session.snapshot().orElseThrow().phase(), RoundPhase.ROTATING, "Decision awaits the separate world release gate");
+            test.assertValueEqual(session.snapshot().orElseThrow().sequence(), 2L, "Decision alone does not create another round");
+            execute(dispatcher, owner, "hardrush admin confirm " + close);
+            test.assertTrue(output.last().contains("已消费"), "Recovery decision is single use");
+            test.assertValueEqual(query(test, callbacks, session.audits(null, 20, 0)).size(), 2, "Exactly repair and close are audited");
+            commands.forget(server);
         }
         test.succeed();
     }

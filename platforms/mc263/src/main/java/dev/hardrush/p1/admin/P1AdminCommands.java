@@ -47,6 +47,10 @@ public final class P1AdminCommands {
             .then(withReason("start", AdminAction.START))
             .then(withReason("abort", AdminAction.ABORT))
             .then(withReason("retry-world", AdminAction.RETRY))
+            .then(withReason("recheck-storage", AdminAction.RECHECK_STORAGE))
+            .then(Commands.literal("close-recovery").requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
+                .then(Commands.argument("reason", StringArgumentType.greedyString())
+                    .executes(c -> current(c.getSource(), AdminAction.CLOSE_RECOVERY, StringArgumentType.getString(c, "reason")))))
             .then(Commands.literal("next-mode").requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
                 .then(Commands.argument("mode", StringArgumentType.word())
                     .suggests((c, b) -> b.suggest("normal").suggest("hardcore").buildFuture())
@@ -99,21 +103,35 @@ public final class P1AdminCommands {
         var round = session.snapshot().orElseThrow();
         String failure = worldFailure.apply(source.getServer()).orElse("");
         if (action == AdminAction.RETRY && failure.isEmpty()) return failure(source, "当前没有世界准备失败。日常配置不能清除状态故障。");
-        String tag = currentTag(round) + (action == AdminAction.RETRY ? ":" + digest(failure) : "");
+        if (action == AdminAction.RECHECK_STORAGE && session.state() != P1LobbySession.State.FAILED) {
+            return failure(source, "只有 FAILED 会话可申请存储重新核验；核验成功仍保持恢复隔离。");
+        }
+        if (action == AdminAction.CLOSE_RECOVERY && (session.state() != P1LobbySession.State.OPEN
+                || round.phase() != dev.hardrush.core.round.RoundPhase.RECOVERY_REQUIRED)) {
+            return failure(source, "只有 RECOVERY_REQUIRED 可申请结束恢复轮次；FAILED 需先重新核验存储。");
+        }
+        String tag = currentTag(round) + ":" + session.state() + ":" + digest(session.problem())
+                + (action == AdminAction.RECHECK_STORAGE ? ":version=" + round.version() : "")
+                + (action == AdminAction.RETRY ? ":" + digest(failure) : "");
         String impact = switch (action) {
             case START -> "跳过剩余开局倒计时；至少一名在线就绪者且世界／档案已核验；本轮成绩标待核验。";
             case ABORT -> "立即停止比赛计时、保存中止原因并全员回大厅；安全释放旧世界后创建下一轮，不入通关榜。";
             case RETRY -> "只重试原轮次、原种子的失败准备任务，保留半完成文件；不会恢复数据库／档案故障。";
+            case RECHECK_STORAGE -> "排空已受理IO后重新打开原数据库，检查完整性、原轮身份／终局和规则，并写入审计；成功仍保持 RECOVERY_REQUIRED，不重放资格／传送或继续比赛。";
+            case CLOSE_RECOVERY -> "结束此恢复轮次；已有终局与可信记录保留，未结算轮记待核验中止；不补时间、不重放资格，档案／录像／世界安全释放后才开新轮，旧文件保留。";
             default -> throw new IllegalArgumentException("Unsupported current-round action");
         };
         return issue(source, action, round.roundId(), tag, reason, impact, () -> {
             var now = session.snapshot().orElseThrow();
-            return CompletableFuture.completedFuture(currentTag(now)
+            return CompletableFuture.completedFuture(currentTag(now) + ":" + session.state() + ":" + digest(session.problem())
+                    + (action == AdminAction.RECHECK_STORAGE ? ":version=" + now.version() : "")
                     + (action == AdminAction.RETRY ? ":" + digest(worldFailure.apply(source.getServer()).orElse("")) : ""));
         }, confirmed -> {
             String actor = actor(confirmed).identity();
             if (action == AdminAction.START) session.adminStart(actor, reason, r -> reply(confirmed, r));
             else if (action == AdminAction.ABORT) session.adminAbort(actor, reason, r -> reply(confirmed, r));
+            else if (action == AdminAction.RECHECK_STORAGE) session.recheckStorage(actor, reason, r -> reply(confirmed, r));
+            else if (action == AdminAction.CLOSE_RECOVERY) session.closeRecovery(actor, reason, r -> reply(confirmed, r));
             else {
                 var audit = new AdminAudit(UUID.randomUUID(), round.roundId(), actor, "RETRY_WORLD", reason,
                         failure, "retry-requested;round=" + round.roundId() + ";seed-preserved", System.currentTimeMillis());
@@ -235,7 +253,7 @@ public final class P1AdminCommands {
     }
 
     private static boolean permitted(CommandSourceStack source, AdminAction action) {
-        return Commands.hasPermission(action == AdminAction.VERIFY_RECORD || action == AdminAction.CORRECT_RECORD
+        return Commands.hasPermission(action == AdminAction.VERIFY_RECORD || action == AdminAction.CORRECT_RECORD || action == AdminAction.CLOSE_RECOVERY
                 ? Commands.LEVEL_OWNERS : Commands.LEVEL_ADMINS).test(source);
     }
     private P1LobbySession session(CommandSourceStack source) {
@@ -251,7 +269,8 @@ public final class P1AdminCommands {
         String players = r.participants().values().stream().sorted(java.util.Comparator.comparing(p -> p.id().toString()))
                 .map(p -> p.id() + ":" + p.role() + ":" + p.online() + ":" + p.ready() + ":" + p.lifeSequence())
                 .collect(java.util.stream.Collectors.joining(";"));
-        return r.roundId() + ":" + r.phase() + ":" + r.rules().fingerprint() + ":" + digest(String.valueOf(r.result())) + ":" + digest(players);
+        return r.roundId() + ":" + r.phase() + ":" + r.rules().fingerprint() + ":" + digest(String.valueOf(r.result())) + ":" + digest(players)
+                + (r.phase() == dev.hardrush.core.round.RoundPhase.RECOVERY_REQUIRED ? ":version=" + r.version() : "");
     }
     private static String digest(String value) {
         try { return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
