@@ -108,6 +108,7 @@ def build():
     shutil.copyfile(server, bundle / 'fabric-server.jar')
     for path in mods:
         shutil.copyfile(path, bundle / 'mods' / path.name)
+    shutil.copyfile(ROOT / 'LICENSE', bundle / 'LICENSE')
     shutil.copyfile(ROOT / 'THIRD-PARTY.md', bundle / 'THIRD-PARTY.md')
     shutil.copytree(ROOT / 'licenses', bundle / 'licenses')
     source_paths = subprocess.check_output(['git', 'ls-files', '-co', '--exclude-standard', '-z'], cwd=ROOT).decode().split('\0')

@@ -304,6 +304,7 @@ processResources {
 }
 
 tasks.named('jar') {
+    from(rootProject.file('LICENSE'))
     from(rootProject.file('THIRD-PARTY.md'))
     from(rootProject.file('licenses')) { into 'META-INF/licenses' }
 }

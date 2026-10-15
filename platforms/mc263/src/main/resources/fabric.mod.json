@@ -3,6 +3,7 @@
   "id": "hardrush",
   "version": "${version}",
   "name": "HardRush P0",
+  "license": "MIT",
   "description": "Server-only technical prototype for round worlds, observer appearance and native monster roles.",
   "environment": "server",
   "entrypoints": {
