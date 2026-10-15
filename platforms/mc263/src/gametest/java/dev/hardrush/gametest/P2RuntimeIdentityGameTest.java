@@ -54,26 +54,41 @@ public final class P2RuntimeIdentityGameTest {
         if (!Boolean.getBoolean("hardrush.p2.testIdentity")) { test.succeed(); return; }
         test.assertTrue(Boolean.getBoolean("hardrush.p1.enabled"), "The dedicated run requires the real enabled runtime");
         var fixture = new Fixture(test);
+        var offlineHuman = new Fixture(test, "P2OfflineHuman");
         test.onEachTick(() -> {
             if (fixture.clock != null) fixture.clock.accumulateAndGet(System.nanoTime(), Math::max);
             fixture.acknowledge();
+            offlineHuman.acknowledge();
             test.assertFalse(P1LobbyRuntime.sessionState(fixture.server).filter(state -> state == P1LobbySession.State.FAILED).isPresent(),
                     "Production runtime failed: " + P1LobbyRuntime.status(fixture.server));
         });
         var sequence = test.startSequence()
                 .thenWaitUntil(() -> fixture.await(P1LobbyRuntime.sessionState(fixture.server)
                         .filter(state -> state == P1LobbySession.State.OPEN).isPresent(), "Runtime bootstrap"))
-                .thenExecute(fixture::installClock);
+                .thenExecute(fixture::installClock)
+                .thenExecute(() -> {
+                    offlineHuman.session = fixture.session;
+                    offlineHuman.profiles = fixture.profiles;
+                });
         fixture.login(sequence);
+        offlineHuman.login(sequence);
         sequence.thenWaitUntil(() -> fixture.await(fixture.round().phase() == RoundPhase.WAITING
                         && !fixture.session.mutationPending(), "Independent round is ready"))
                 .thenExecute(() -> fixture.command("hardrush join"))
                 .thenWaitUntil(() -> fixture.await(fixture.participant() != null && !fixture.session.mutationPending(), "Native join is durable"))
+                .thenExecute(() -> offlineHuman.command("hardrush join"))
+                .thenWaitUntil(() -> fixture.await(offlineHuman.participant() != null && !fixture.session.mutationPending(), "Second native join is durable"))
                 .thenExecute(() -> fixture.command("hardrush ready"))
                 .thenWaitUntil(() -> fixture.await(fixture.round().phase() == RoundPhase.COUNTDOWN && !fixture.session.mutationPending(), "Hardcore countdown is admitted"))
+                .thenExecute(() -> offlineHuman.command("hardrush ready"))
+                .thenWaitUntil(() -> fixture.await(offlineHuman.participant().ready() && !fixture.session.mutationPending(), "Second human is ready"))
                 .thenExecute(() -> fixture.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
                 .thenWaitUntil(() -> fixture.await(fixture.round().phase() == RoundPhase.RUNNING && !fixture.session.mutationPending()
-                        && !P1PlayerProfiles.isLocked(fixture.player), "Production runtime unlocks the first hardcore human"))
+                        && !P1PlayerProfiles.isLocked(fixture.player) && !P1PlayerProfiles.isLocked(offlineHuman.player), "Production runtime unlocks both hardcore humans"))
+                .thenExecute(offlineHuman::disconnect)
+                .thenWaitUntil(() -> fixture.await(!offlineHuman.participant().online()
+                        && offlineHuman.participant().role() == ParticipantRole.HUMAN_ACTIVE && !fixture.session.mutationPending(),
+                        "A genuinely admitted offline human preserves the round during this identity-only regression"))
                 .thenExecute(fixture::testProtectionAndRequestExit)
                 .thenWaitUntil(() -> fixture.await(fixture.participant().hasLeftProtection() && !fixture.session.mutationPending(), "The first exit is committed before movement"))
                 .thenExecute(fixture::leaveAndDie)
@@ -100,7 +115,7 @@ public final class P2RuntimeIdentityGameTest {
     private static final class Fixture {
         final GameTestHelper test;
         final MinecraftServer server;
-        final GameProfile profile = new GameProfile(UUID.randomUUID(), "P2RuntimeHuman");
+        final GameProfile profile;
         P1LobbySession session;
         P1PlayerProfiles profiles;
         AtomicLong clock;
@@ -113,7 +128,11 @@ public final class P2RuntimeIdentityGameTest {
         Vec3 outside;
         AABB drops;
         int acknowledged = Integer.MIN_VALUE;
-        Fixture(GameTestHelper test) { this.test = test; server = test.getLevel().getServer(); }
+        Fixture(GameTestHelper test) { this(test, "P2RuntimeHuman"); }
+        Fixture(GameTestHelper test, String name) {
+            this.test = test; server = test.getLevel().getServer();
+            profile = new GameProfile(UUID.randomUUID(), name);
+        }
 
         void installClock() {
             session = service("SESSIONS", P1LobbySession.class);
@@ -208,6 +227,8 @@ public final class P2RuntimeIdentityGameTest {
 
         void assertMonster() {
             player = server.getPlayerList().getPlayer(profile.id());
+            test.assertValueEqual(round().phase(), RoundPhase.RUNNING, "An offline human prevents elimination without contributing an online racer");
+            test.assertValueEqual(round().pauseReason(), PauseReason.NO_ONLINE_HUMANS, "Monster-only connections do not keep the human challenge clock running");
             test.assertValueEqual(participant().role(), ParticipantRole.MONSTER_LOBBY, "The committed UUID remains a monster");
             test.assertValueEqual(participant().lifeSequence(), 1, "Death and reconnect do not create another human life");
             test.assertTrue(participant().hasLeftProtection(), "The committed exit marker survives the identity conversion");

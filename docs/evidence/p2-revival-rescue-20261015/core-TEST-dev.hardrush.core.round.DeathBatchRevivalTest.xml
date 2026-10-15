@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.core.round.DeathBatchRevivalTest" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-10-15T04:02:11.739Z" hostname="LeifMacBookPro2023.local" time="0.043">
+  <properties/>
+  <testcase name="malformedBatchAndStaleLifeNeverLockEngineOrGrantPartialRewards()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.003"/>
+  <testcase name="rescueCleanRestartFreezesRemainingAndChallengeTimeWhilePreservingQualifications()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.004"/>
+  <testcase name="beforeDeadlineAcceptedRevivalWinsAndLaterTickCannotRaceThePendingWrite()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.001"/>
+  <testcase name="staleRoundOriginUnsupportedAttackAndUnadmittedOwnerNeverEarn()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.002"/>
+  <testcase name="deadlineRejectsNewRequestsAndExpiryInvalidatesEvenOfflineEntitlement()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.003"/>
+  <testcase name="newHumanCancelsRescueAndAnotherWipeStartsANewWindow()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.0"/>
+  <testcase name="offlineLobbySummonOwnerEarnsAndOfflineHumanPreventsAnyRescue()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.0"/>
+  <testcase name="reconnectMoreMonsterDeathsAndRoleSelectionNeverExtendRescue()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.001"/>
+  <testcase name="completionAcceptedBeforeRescueDeadlineWinsButAnUnacceptedLateDragonCannot()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.004"/>
+  <testcase name="cooldownLobbyRevivalIsAtomicFreshProtectedLifeAndRetainsProgressAndSkillDeadlines()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.005"/>
+  <testcase name="failedRevivalWriteRetainsQualificationAndRequiresRecovery()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.001"/>
+  <testcase name="noHumanAndNoEntitlementFailsWhileNormalDeathNeverUsesHardcoreSettlement()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.002"/>
+  <testcase name="oldHumanArrowAndRevivedOwnerMonsterArrowCannotBankEntitlements()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.002"/>
+  <testcase name="selfExplosionMultikillAwardsBeforeTestingLastHumanAndKeepsOneEntitlement()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.005"/>
+  <testcase name="pendingCheckpointCannotFreezeTheLiveRescueAdmissionDeadline()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.002"/>
+  <testcase name="dragonCompletionWinsTheSameBatchAsLastHumanDeathAndClearsRewards()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.001"/>
+  <testcase name="acceptedRevivalCancelsLiveRescueDeadlineThroughoutItsPendingWrite()" classname="dev.hardrush.core.round.DeathBatchRevivalTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

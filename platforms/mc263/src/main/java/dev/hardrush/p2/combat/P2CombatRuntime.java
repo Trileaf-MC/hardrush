@@ -64,7 +64,9 @@ public final class P2CombatRuntime {
         if (admitted && entity instanceof CombatOriginHolder combat && !combat.hardrush$combatOriginSealed()) {
             combat.hardrush$sealCombatOrigin(Optional.of(new CombatOrigin(round.roundId(), UUID.randomUUID(),
                     new CombatActor(owner.getUUID(), actor.role(), actor.lifeSequence(), actor.monsterDeploymentSequence()),
-                    entity instanceof AbstractArrow ? AttackKind.ARROW : AttackKind.MELEE,
+                    entity instanceof AbstractArrow ? AttackKind.ARROW
+                            : entity instanceof net.minecraft.world.entity.monster.Creeper ? AttackKind.CREEPER
+                            : dev.hardrush.p0.monster.MonsterRoles.summonOwner(entity) != null ? AttackKind.SUMMON : AttackKind.MELEE,
                     Optional.of(entity.getUUID()), List.of())));
         }
     }

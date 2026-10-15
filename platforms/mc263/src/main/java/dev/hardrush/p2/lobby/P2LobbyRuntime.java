@@ -150,7 +150,7 @@ public final class P2LobbyRuntime {
         }
         var participant = round.participants().get(player.getUUID());
         if (participant == null || !participant.role().isMonster() || !participant.online()
-                || round.phase() != RoundPhase.RUNNING || b.session.competitionLocked()) {
+                || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE || b.session.competitionLocked()) {
             tell(player, "当前身份或轮次不允许怪物操作。"); return;
         }
         if (action.equals("skill")) {
@@ -196,8 +196,20 @@ public final class P2LobbyRuntime {
                             ? "已登记本维度追猎票；每 15 秒结算，不公开坐标。" : "目标或投票身份已失效，请刷新大厅。");
                 }
                 case "deploy" -> beginDeployment(player, b, round, participant);
-                case "revive" -> tell(player, participant.revivalEntitled()
-                        ? "已持有复生资格，复生功能暂未开放。" : "当前没有复生资格，复生功能暂未开放。");
+                case "revive" -> {
+                    var worlds = b.worlds.get();
+                    if (worlds == null || !worlds.ready()
+                            || !P1RoundWorldBundle.safeStanding(worlds.level(Level.OVERWORLD), worlds.spawn())) {
+                        tell(player, "本轮出生点暂不安全，保留资格并留在大厅，请联系管理员恢复。");
+                        break;
+                    }
+                    b.committing.add(player.getUUID());
+                    b.session.requestRevival(round.roundId(), player.getUUID(), participant.lifeSequence(),
+                            participant.monsterDeploymentSequence(), reply -> {
+                                b.committing.remove(player.getUUID());
+                                if (current(player, b)) tell(player, reply.message());
+                            });
+                }
                 default -> tell(player, "未知大厅操作。");
             }
         } catch (IllegalArgumentException | IllegalStateException invalid) { tell(player, "操作未受理：" + invalid.getMessage()); }
@@ -227,7 +239,7 @@ public final class P2LobbyRuntime {
         }
         synchronize(server, b);
         var round = b.session.view().orElse(null);
-        if (round == null || round.phase() != RoundPhase.RUNNING || b.session.competitionLocked()) {
+        if (round == null || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE || b.session.competitionLocked()) {
             b.channels.clear(); b.searches.clear(); b.resumptions.clear(); return;
         }
         for (var d : List.copyOf(b.resumptions.values())) {
@@ -246,7 +258,9 @@ public final class P2LobbyRuntime {
                     || ch.player.level() != ch.level || ch.player.position().distanceToSqr(ch.origin) > .000001
                     || MonsterRoles.isIgniting(ch.player)) { b.channels.remove(entry.getKey()); continue; }
             long duration = round.rules().combatValues().get("monster.returnChannelMillis").longValue() * 1_000_000L;
-            if (System.nanoTime() - ch.started >= duration) {
+            if (System.nanoTime() - ch.started >= duration && !b.session.mutationPending()) {
+                // A completed channel waits for an existing durable operation; ordinary
+                // checkpoint contention must not consume it with a transient busy reply.
                 b.channels.remove(entry.getKey());
                 b.session.requestMonsterReturn(round.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
                         reply -> tell(ch.player, reply.message()));
@@ -351,6 +365,11 @@ public final class P2LobbyRuntime {
         }
         for (var p : after.participants().values()) {
             var old = before.participants().get(p.id());
+            if (old != null && old.role().isMonster() && p.role() == ParticipantRole.HUMAN_ACTIVE) {
+                var revived = server.getPlayerList().getPlayer(p.id());
+                if (revived != null && MonsterRoles.isMonster(revived)) MonsterRoles.clear(revived);
+                b.channels.remove(p.id()); b.searches.remove(p.id()); b.resumptions.remove(p.id());
+            }
             if (p.role() != ParticipantRole.MONSTER_LOBBY || old == null || old.role() != ParticipantRole.MONSTER_DEPLOYED) continue;
             var player = server.getPlayerList().getPlayer(p.id());
             if (player == null || !b.profiles.manages(player)) continue;
@@ -449,7 +468,7 @@ public final class P2LobbyRuntime {
                 case OVERWORLD -> Items.GRASS_BLOCK; case NETHER -> Items.NETHERRACK; case END -> Items.END_STONE;
             }, "追猎维度 " + dimensionName(dimension) + (p.monsterDimension() == dimension ? " ✓" : ""), "dimension", dimension.name()));
             buttons.add(new P2LobbyUi.Button(Items.COMPASS, "安全出场 · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒", "deploy", ""));
-            buttons.add(new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "复生资格：" + (p.revivalEntitled() ? "有" : "无") + "（复生暂未开放）", "revive", ""));
+            buttons.add(new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "复生资格：" + (p.revivalEntitled() ? "有" : "无") + "（点击空装复生）", "revive", ""));
             for (var target : candidates(player)) buttons.add(new P2LobbyUi.Button(Items.PLAYER_HEAD,
                     "投票追猎 " + target.getScoreboardName(), "vote", target.getUUID().toString()));
         }

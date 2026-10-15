@@ -53,6 +53,20 @@ final class RoundTabTest {
         assertTrue(failed.footer().contains("挑战失败"));
         assertTrue(failed.footer().contains("轮换倒计时 1 秒"));
     }
+    @Test void rescueShowsRemainingTimeWithoutInventingOnlineHumansOrExposingEntitlementOwners() {
+        var entitled = new Participant(UUID.randomUUID(), "SecretOwner", ParticipantRole.MONSTER_LOBBY,
+                true, false, 12_000_000_000L, 0, 1, true);
+        var outside = new Participant(UUID.randomUUID(), "Outside", ParticipantRole.MONSTER_DEPLOYED,
+                false, false, 5_000_000_000L, 0, 1, false);
+        var text = RoundTab.from(snapshot(RoundPhase.RESCUE, PauseReason.RESCUE, 59_000_000_001L,
+                Map.of(entitled.id(), entitled, outside.id(), outside), false, null), 1, null);
+        assertTrue(text.header().contains("等待救场"));
+        assertTrue(text.footer().contains("救场剩余 60 秒"));
+        assertTrue(text.footer().contains("人类在线 0 / 离线 0 · 怪物 2"));
+        assertTrue(text.footer().contains("进入过末地 1 人"));
+        assertFalse(text.footer().contains("SecretOwner"));
+        assertFalse(text.footer().contains("尾刀"));
+    }
     private static Participant human(String name, boolean online) {
         return new Participant(UUID.randomUUID(), name, ParticipantRole.HUMAN_ACTIVE, online, false, 0, 0, 1, false);
     }

@@ -198,7 +198,10 @@ public final class P2SafeDeploymentGameTest {
         final Vec3 target;
         Fixture(GameTestHelper test, ServerLevel level, int y) {
             this.level = java.util.Objects.requireNonNull(level);
-            feet = new BlockPos(80_000 + ARENAS.getAndIncrement() * 256, y, 80_000);
+            // The test server retains terrain between runs. Follow this run's randomized
+            // structure origin so an earlier wide corridor cannot fill today's narrow ledge.
+            var origin = test.absolutePos(BlockPos.ZERO);
+            feet = new BlockPos(origin.getX() + 80_000 + ARENAS.getAndIncrement() * 4096, y, origin.getZ() + 80_000);
             target = Vec3.atBottomCenterOf(feet);
         }
         void corridor(Block floor) { corridor(floor, 3); }

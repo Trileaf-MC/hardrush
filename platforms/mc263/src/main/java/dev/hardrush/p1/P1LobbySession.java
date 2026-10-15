@@ -13,6 +13,7 @@ import dev.hardrush.core.round.MonsterSkill;
 import dev.hardrush.core.round.MonsterDimension;
 import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.DragonDeathArbiter;
+import dev.hardrush.core.round.RoundDeath;
 import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.combat.CombatEventCodec;
 import dev.hardrush.persistence.CommitResult;
@@ -89,6 +90,9 @@ public final class P1LobbySession implements AutoCloseable {
     private CombatEvent terminalCandidate;
     private UUID firstDragonId;
     private boolean terminalQueued;
+    private final Map<UUID, Map<UUID, RoundDeath>> deathBatches = new LinkedHashMap<>();
+    private record DeathIdentity(int life, int deployment) {}
+    private final Map<UUID, DeathIdentity> capturedDeaths = new LinkedHashMap<>();
     private CompletableFuture<CommitResult> pendingRotationWrite;
     private RoundSnapshot pendingNextRound;
     private Long shutdownBoundary;
@@ -194,7 +198,9 @@ public final class P1LobbySession implements AutoCloseable {
     /** Immediately closes new competitive actions, even while the terminal transaction is queued. */
     public boolean competitionLocked() {
         return shutdownBoundary != null || adminBoundary != null || state != State.OPEN || terminalCandidate != null || engine == null
-                || engine.committed().phase() != RoundPhase.RUNNING;
+                || pendingTransition != null && pendingTransition.after().result() != null
+                || engine.rescueExpiredAt(clock.nanoTime())
+                || engine.committed().phase() != RoundPhase.RUNNING && engine.committed().phase() != RoundPhase.RESCUE;
     }
 
     public Optional<UUID> terminalBatchId() {
@@ -206,22 +212,55 @@ public final class P1LobbySession implements AutoCloseable {
         Objects.requireNonNull(event); Objects.requireNonNull(dragonId);
         if (stopping || adminBoundary != null || shutdownBoundary != null || state != State.OPEN || !adaptersReady || terminalCandidate != null
                 || !event.roundId().equals(engine.committed().roundId())
-                || engine.committed().result() != null || engine.committed().phase() != RoundPhase.RUNNING) return;
+                || pendingTransition != null && pendingTransition.after().result() != null
+                || engine.rescueExpiredAt(event.observedNanoTime())
+                || engine.committed().result() != null || engine.committed().phase() != RoundPhase.RUNNING
+                    && engine.committed().phase() != RoundPhase.RESCUE) return;
         // Validate before locking; source identity is frozen at attack creation, not checked against today's role.
         DragonDeathArbiter.adjudicate(engine.committed(), event, dragonId);
         terminalCandidate = event;
         firstDragonId = dragonId;
     }
 
-    /** Complete the native batch first, so simultaneous human deaths precede its single terminal transaction. */
+    /** Native AFTER_DEATH runs before hurtServer returns its immutable lethal evidence. */
+    public void captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId) {
+        if (engine == null || stopping || state != State.OPEN || !roundId.equals(engine.committed().roundId())
+                || engine.committed().result() != null || terminalQueued) return;
+        var participant = engine.committed().participants().get(playerId);
+        var identity = new DeathIdentity(lifeSequence, deploymentSequence);
+        if (participant == null || participant.lifeSequence() != lifeSequence
+                || participant.monsterDeploymentSequence() != deploymentSequence
+                || participant.role() != ParticipantRole.HUMAN_ACTIVE && participant.role() != ParticipantRole.MONSTER_DEPLOYED
+                || identity.equals(capturedDeaths.get(playerId))) return;
+        capturedDeaths.put(playerId, identity);
+        UUID batch = batchId == null ? UUID.randomUUID() : batchId;
+        deathBatches.computeIfAbsent(batch, ignored -> new LinkedHashMap<>()).putIfAbsent(playerId,
+                new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.empty()));
+        if (batchId == null) finishDamageBatch(roundId, batch);
+    }
+
+    public void captureLethalEvidence(CombatEvent event) {
+        if (!event.lethal()) return;
+        var deaths = deathBatches.get(event.batchId());
+        var death = deaths == null ? null : deaths.get(event.victimId());
+        if (death != null) deaths.put(event.victimId(), new RoundDeath(death.playerId(), death.lifeSequence(),
+                death.deploymentSequence(), Optional.of(event)));
+    }
+
+    /** All victims, rewards and self-death commit once, before rescue or completion is published. */
     public void finishDamageBatch(UUID roundId, UUID batchId) {
-        if (terminalCandidate == null || terminalQueued || !terminalCandidate.roundId().equals(roundId)
-                || !terminalCandidate.batchId().equals(batchId)) return;
-        terminalQueued = true;
-        var death = terminalCandidate;
+        if (engine == null || !engine.committed().roundId().equals(roundId)) return;
+        boolean completes = terminalCandidate != null && !terminalQueued
+                && terminalCandidate.roundId().equals(roundId) && terminalCandidate.batchId().equals(batchId);
+        var deaths = deathBatches.remove(batchId);
+        if (!completes && (deaths == null || deaths.isEmpty())) return;
+        if (completes) terminalQueued = true;
+        var terminal = completes ? terminalCandidate : null;
         var dragon = firstDragonId;
-        enqueueAt(death.observedNanoTime(), e -> e.proposeFinish(UUID.randomUUID(),
-                DragonDeathArbiter.adjudicate(e.committed(), death, dragon)));
+        var victims = deaths == null ? List.<RoundDeath>of() : List.copyOf(deaths.values());
+        long time = completes ? terminal.observedNanoTime() : clock.nanoTime();
+        enqueueAt(time, e -> e.proposeDeathBatch(UUID.randomUUID(), roundId, victims,
+                terminal == null ? null : DragonDeathArbiter.adjudicate(e.committed(), terminal, dragon)));
     }
 
     /** A verified adapter calls this only after players, recordings and all world handles have been released. */
@@ -255,6 +294,8 @@ public final class P1LobbySession implements AutoCloseable {
         terminalCandidate = null;
         firstDragonId = null;
         terminalQueued = false;
+        deathBatches.clear();
+        capturedDeaths.clear();
         adminBoundary = null;
         requestedRespawns.clear();
         endEntrants = 0;
@@ -275,7 +316,7 @@ public final class P1LobbySession implements AutoCloseable {
         if (state != State.OPEN || mutationPending() || engine == null
                 || !engine.committed().roundId().equals(roundId)) return;
         var phase = engine.committed().phase();
-        if (phase == RoundPhase.RECOVERY_REQUIRED || phase == RoundPhase.RESCUE) return;
+        if (phase == RoundPhase.RECOVERY_REQUIRED) return;
         adaptersReady = true;
         unsupportedPhase = false;
         if (phase == RoundPhase.PREPARING) submit(engine.proposeWorldReady(UUID.randomUUID()));
@@ -509,6 +550,12 @@ public final class P1LobbySession implements AutoCloseable {
     public void requestReady(UUID playerId, boolean ready, Consumer<Reply> reply) {
         requestAction(() -> engine.proposeReady(UUID.randomUUID(), playerId, ready), reply,
                 ready ? "已就绪；首位就绪玩家触发本轮开局倒计时。" : "已取消就绪。");
+    }
+
+    public void requestRevival(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeAdmissionRevival(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence), reply, "复生资格已消费，正在空装返回本轮出生点。");
     }
 
     public void requestMonsterSelection(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
@@ -777,7 +824,7 @@ public final class P1LobbySession implements AutoCloseable {
         var after = transition.after();
         var write = new SnapshotWrite(after.roundId(), transition.before().version(), after.version(),
                 RoundSnapshotCodec.encode(after), transition.eventId(), transition.eventType());
-        if (transition.eventType().equals("FINISH") && terminalCandidate != null) {
+        if (transition.before().result() == null && transition.after().result() != null && terminalCandidate != null) {
             return store.commitTerminal(write, new EvidenceWrite(terminalCandidate.roundId(), terminalCandidate.eventId(),
                     "COMBAT", CombatEventCodec.encode(terminalCandidate)), firstDragonId);
         }

@@ -4,6 +4,8 @@ import dev.hardrush.core.admin.AdminText;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
+import dev.hardrush.core.combat.CombatEvent;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -52,6 +54,32 @@ public final class RoundEngine {
     public boolean pending() { return pending != null; }
     public RoundSnapshot view() { return pending == null ? project(committed, boundary, clock.nanoTime()) : pending.before(); }
 
+    /**
+     * Admission guard independent of view()'s frozen pending snapshot. Ordinary writes cannot
+     * extend rescue; a valid pending revival/join has already reserved the return to RUNNING.
+     * The adapter still permits an already captured terminal damage batch to finish.
+     */
+    public boolean rescueExpiredAt(long now) {
+        RoundSnapshot base = committed;
+        long start = boundary;
+        if (pending != null) {
+            if (pending.before().phase() == RoundPhase.RESCUE && pending.after().phase() == RoundPhase.RUNNING) {
+                return false;
+            }
+            if (pending.after().phase() == RoundPhase.RESCUE) {
+                base = pending.after();
+            } else {
+                base = pending.before();
+            }
+            start = pending.capturedNanos();
+        }
+        if (base.phase() != RoundPhase.RESCUE) return false;
+        long elapsed = now - start;
+        if (elapsed < 0) return false;
+        return base.remainingPhaseNanos() == 0
+                || !base.cleanShutdown() && elapsed >= base.remainingPhaseNanos();
+    }
+
     /** Only a verified world/profile adapter may supply this event; no admin bypass in the P1 lobby. */
     public RoundTransition proposeWorldReady(UUID eventId) {
         RoundSnapshot before = capture();
@@ -71,6 +99,7 @@ public final class RoundEngine {
     private RoundTransition proposeJoin(UUID eventId, UUID playerId, String name, boolean admissionPending) {
         RoundSnapshot before = capture();
         requirePhase(before, RoundPhase.WAITING, RoundPhase.COUNTDOWN, RoundPhase.RUNNING, RoundPhase.RESCUE);
+        requireOpenRescue(before);
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         Participant existing = players.get(playerId);
         if (existing != null && existing.role() != ParticipantRole.LOBBY) {
@@ -158,6 +187,112 @@ public final class RoundEngine {
         return proposal(eventId, "HARDCORE_DEATH", before, before.phase(), 0, players, before.result(), false);
     }
 
+    /**
+     * Atomically commits all actual deaths, their non-stacking rewards and the resulting phase.
+     * completion is supplied only by the adapter's verified first-dragon arbiter for this batch.
+     */
+    public RoundTransition proposeDeathBatch(UUID eventId, UUID roundId, List<RoundDeath> deaths,
+            RoundResult completion) {
+        RoundSnapshot before = capture();
+        requirePhase(before, RoundPhase.RUNNING, RoundPhase.RESCUE);
+        requireOpenRescue(before);
+        if (!before.roundId().equals(roundId)) throw new IllegalStateException("Stale death round");
+        deaths = List.copyOf(deaths);
+        if (deaths.isEmpty() && completion == null) throw new IllegalArgumentException("Empty death batch");
+        if (completion != null && completion.kind() != RoundResult.Kind.COMPLETED) {
+            throw new IllegalArgumentException("Only verified completion may override death settlement");
+        }
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        var victims = new java.util.HashSet<UUID>();
+        UUID damageBatch = null;
+        for (RoundDeath death : deaths) {
+            if (!victims.add(death.playerId())) throw new IllegalArgumentException("Duplicate batch victim");
+            Participant player = requirePlayer(before, death.playerId());
+            if (player.lifeSequence() != death.lifeSequence()
+                    || player.monsterDeploymentSequence() != death.deploymentSequence()
+                    || player.role() != ParticipantRole.HUMAN_ACTIVE && player.role() != ParticipantRole.MONSTER_DEPLOYED) {
+                throw new IllegalStateException("Stale death identity");
+            }
+            if (death.cause().isPresent()) {
+                CombatEvent cause = death.cause().get();
+                if (!cause.roundId().equals(roundId)) throw new IllegalStateException("Stale lethal event");
+                if (damageBatch != null && !damageBatch.equals(cause.batchId())) {
+                    throw new IllegalArgumentException("Deaths must belong to one native damage batch");
+                }
+                damageBatch = cause.batchId();
+            }
+            if (player.role().isActiveHuman()) {
+                players.put(player.id(), before.rules().mode() == GameMode.NORMAL
+                        ? player.withRole(ParticipantRole.HUMAN_RESPAWNING)
+                        : new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
+                                player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
+                                player.lifeSequence(), false, player.hasLeftProtection(), MonsterRole.ZOMBIE,
+                                MonsterDimension.OVERWORLD, MONSTER_COOLDOWN_NANOS,
+                                player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis()));
+            } else {
+                players.put(player.id(), player.monsterLobby(MONSTER_COOLDOWN_NANOS));
+            }
+        }
+        // Qualify against identity at lethal collection, before applying this batch's human deaths.
+        // Returning, self-dying or disconnecting monsters retain rewards; a revived human cannot bank one.
+        if (before.rules().mode() == GameMode.HARDCORE) {
+            for (RoundDeath death : deaths) {
+                if (!before.participants().get(death.playerId()).role().isActiveHuman() || death.cause().isEmpty()) continue;
+                CombatEvent cause = death.cause().get();
+                if (cause.attribution() != CombatEvent.Attribution.MONSTER || cause.origin().isEmpty()) continue;
+                var origin = cause.origin().get();
+                if (!origin.roundId().equals(roundId)) continue;
+                boolean directMonsterAttack = switch (origin.kind()) {
+                    case MELEE, ARROW, CREEPER, SUMMON -> true;
+                    default -> false;
+                };
+                Participant owner = before.participants().get(origin.actor().playerId());
+                if (!directMonsterAttack || owner == null || !owner.role().isMonster()
+                        || origin.actor().lifeSequence() > owner.lifeSequence()
+                        || origin.actor().deploymentSequence() > owner.monsterDeploymentSequence()) continue;
+                Participant rewarded = players.get(owner.id());
+                players.put(owner.id(), rewarded.withRevivalEntitlement(true));
+            }
+        }
+        if (completion != null) {
+            return proposal(eventId, "DEATH_BATCH", before, RoundPhase.SETTLING,
+                    millisToNanos(before.rules().successCelebrationMillis()), withoutEntitlements(players), completion, false);
+        }
+        if (before.rules().mode() == GameMode.HARDCORE && !hasHuman(players)) {
+            if (players.values().stream().anyMatch(p -> p.role().isMonster() && p.revivalEntitled())) {
+                long remaining = before.phase() == RoundPhase.RESCUE ? before.remainingPhaseNanos()
+                        : millisToNanos(before.rules().combatValues().getOrDefault("round.rescueMillis", 60_000.0).longValue());
+                return proposal(eventId, "DEATH_BATCH", before, RoundPhase.RESCUE, remaining, players, null, false);
+            }
+            return failureProposal(eventId, "DEATH_BATCH", before, players, "ALL_HUMANS_DEAD");
+        }
+        return proposal(eventId, "DEATH_BATCH", before, RoundPhase.RUNNING, 0, players, null, false);
+    }
+
+    public RoundTransition proposeRevival(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        return revival(eventId, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence, false);
+    }
+
+    /** Adapter must safely install the empty human profile before unlocking the online session. */
+    public RoundTransition proposeAdmissionRevival(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        return revival(eventId, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence, true);
+    }
+
+    private RoundTransition revival(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, boolean admissionPending) {
+        RoundSnapshot before = capture();
+        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("Revival requires HARDCORE mode");
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence,
+                expectedDeploymentSequence, ParticipantRole.MONSTER_LOBBY);
+        requireOpenRescue(before);
+        if (!player.revivalEntitled()) throw new IllegalStateException("No revival entitlement");
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.revive(admissionPending));
+        return proposal(eventId, "REVIVAL", before, RoundPhase.RUNNING, 0, players, null, false);
+    }
+
     public RoundTransition proposeMonsterSelection(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence, MonsterRole role, MonsterDimension dimension) {
         Objects.requireNonNull(role); Objects.requireNonNull(dimension);
@@ -170,6 +305,7 @@ public final class RoundEngine {
     public RoundTransition proposeMonsterDeploy(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence) {
         RoundSnapshot before = capture();
+        requireOpenRescue(before);
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_LOBBY);
         if (player.monsterCooldownNanos() != 0) throw new IllegalStateException("Monster deployment cooldown has not elapsed");
@@ -184,6 +320,7 @@ public final class RoundEngine {
         RoundSnapshot before = capture();
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence,
                 expectedDeploymentSequence, ParticipantRole.MONSTER_DEPLOYED);
+        requireOpenRescue(before);
         if (player.monsterRole() != skill.role()) throw new IllegalStateException("当前怪物角色不能使用此技能。");
         if (player.monsterSkillRemainingMillis(skill, nowEpochMillis) > 0) {
             throw new IllegalStateException("技能仍在冷却。");
@@ -254,12 +391,12 @@ public final class RoundEngine {
     private RoundTransition monsterProposal(UUID eventId, String type, RoundSnapshot before, Participant player) {
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         players.put(player.id(), player);
-        return proposal(eventId, type, before, before.phase(), 0, players, before.result(), false);
+        return proposal(eventId, type, before, before.phase(), before.remainingPhaseNanos(), players, before.result(), false);
     }
 
     private static Participant requireMonster(RoundSnapshot before, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence, ParticipantRole role) {
-        requirePhase(before, RoundPhase.RUNNING);
+        requirePhase(before, RoundPhase.RUNNING, RoundPhase.RESCUE);
         if (!before.roundId().equals(roundId)) throw new IllegalStateException("Stale monster round");
         Participant player = requirePlayer(before, playerId);
         requireLife(player, role, expectedLifeSequence);
@@ -320,7 +457,8 @@ public final class RoundEngine {
             case FAILED -> before.rules().failureDisplayMillis();
             case ABORTED -> 0;
         };
-        return proposal(eventId, "FINISH", before, RoundPhase.SETTLING, millisToNanos(duration), before.participants(), result, false);
+        return proposal(eventId, "FINISH", before, RoundPhase.SETTLING, millisToNanos(duration),
+                withoutEntitlements(before.participants()), result, false);
     }
 
     public RoundTransition proposeTick(UUID eventId) {
@@ -359,7 +497,7 @@ public final class RoundEngine {
         if (before.result() != null) throw new IllegalStateException("Round already settled");
         RoundResult result = new RoundResult(RoundResult.Kind.ABORTED, null, AdminText.reason(reason));
         return proposal(eventId, "ADMIN_ABORT", before, RoundPhase.ROTATING, 0,
-                before.participants(), result, false, true);
+                withoutEntitlements(before.participants()), result, false, true);
     }
 
     private RoundTransition proposeTick(UUID eventId, boolean admissionPending) {
@@ -376,6 +514,8 @@ public final class RoundEngine {
                 phase = RoundPhase.RUNNING;
                 startReady(players, admissionPending);
             }
+        } else if (phase == RoundPhase.RESCUE && remaining == 0) {
+            return failureProposal(eventId, "TICK", before, players, "RESCUE_EXPIRED");
         } else if (phase == RoundPhase.SETTLING) {
             phase = remaining == 0 ? RoundPhase.ROTATING : RoundPhase.CELEBRATING;
         } else if (phase == RoundPhase.CELEBRATING && remaining == 0) {
@@ -449,7 +589,7 @@ public final class RoundEngine {
         }
         // Cooldown is live server time for the connected monster, independent of human race timing.
         // A clean shutdown marker freezes the captured remainder throughout server downtime.
-        if (!base.cleanShutdown() && base.phase() == RoundPhase.RUNNING) {
+        if (!base.cleanShutdown() && (base.phase() == RoundPhase.RUNNING || base.phase() == RoundPhase.RESCUE)) {
             players.replaceAll((id, p) -> p.online() && p.role() == ParticipantRole.MONSTER_LOBBY
                     ? p.elapseMonsterCooldown(elapsed) : p);
         }
@@ -476,6 +616,30 @@ public final class RoundEngine {
 
     private static long readyOnline(Map<UUID, Participant> players) {
         return players.values().stream().filter(p -> p.online() && p.ready() && p.role() == ParticipantRole.LOBBY).count();
+    }
+
+    private RoundTransition failureProposal(UUID eventId, String type, RoundSnapshot before,
+            Map<UUID, Participant> players, String reason) {
+        return proposal(eventId, type, before, RoundPhase.SETTLING,
+                millisToNanos(before.rules().failureDisplayMillis()), withoutEntitlements(players),
+                new RoundResult(RoundResult.Kind.FAILED, null, reason), false);
+    }
+
+    private static Map<UUID, Participant> withoutEntitlements(Map<UUID, Participant> players) {
+        Map<UUID, Participant> result = new LinkedHashMap<>(players);
+        result.replaceAll((id, p) -> p.revivalEntitled() ? p.withRevivalEntitlement(false) : p);
+        return result;
+    }
+
+    private static boolean hasHuman(Map<UUID, Participant> players) {
+        return players.values().stream().anyMatch(p -> p.role().isActiveHuman()
+                || p.role() == ParticipantRole.HUMAN_RESPAWNING);
+    }
+
+    private static void requireOpenRescue(RoundSnapshot snapshot) {
+        if (snapshot.phase() == RoundPhase.RESCUE && snapshot.remainingPhaseNanos() == 0) {
+            throw new IllegalStateException("Rescue deadline has passed");
+        }
     }
 
     private static void startReady(Map<UUID, Participant> players, boolean admissionPending) {

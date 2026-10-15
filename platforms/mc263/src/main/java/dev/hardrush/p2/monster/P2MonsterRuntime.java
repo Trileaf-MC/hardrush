@@ -39,7 +39,7 @@ public final class P2MonsterRuntime {
         var worlds = b.worlds.get();
         return b.session.state() == P1LobbySession.State.OPEN && !b.session.competitionLocked()
                 && r.phase() == RoundPhase.RUNNING && p.role() == ParticipantRole.MONSTER_DEPLOYED && p.online()
-                && player.isAlive() && !P1PlayerProfiles.isLocked(player) && b.profiles.isReady(p.id(), r)
+                && player.isAlive() && !player.isSpectator() && !P1PlayerProfiles.isLocked(player) && b.profiles.isReady(p.id(), r)
                 && player.level().getServer().getPlayerList().getPlayer(p.id()) == player
                 && worlds != null && worlds.ready()
                 && (player.level() == worlds.level(Level.OVERWORLD) || player.level() == worlds.level(Level.NETHER)

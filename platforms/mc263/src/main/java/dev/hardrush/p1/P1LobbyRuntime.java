@@ -188,6 +188,7 @@ public final class P1LobbyRuntime {
                     session.captureDragonDeath(event, dragon.orElseThrow());
                     return;
                 }
+                session.captureLethalEvidence(event);
                 session.recordEvidence(new EvidenceWrite(event.roundId(), event.eventId(), "COMBAT", CombatEventCodec.encode(event)));
             });
             while (!bootstrapCallbacks.isEmpty()) bootstrapCallbacks.remove().run();
@@ -265,7 +266,9 @@ public final class P1LobbyRuntime {
                         session.onOnline(player.getUUID(), player.getScoreboardName(), true);
                         continue;
                     }
-                    if (!player.getScoreboardName().equals(names.get(player.getUUID()))) {
+                    if (!player.getScoreboardName().equals(names.get(player.getUUID()))
+                            || participant != null && participant.role() == ParticipantRole.HUMAN_ACTIVE
+                                && !participant.online() && !P1PlayerProfiles.isLocked(player)) {
                         names.put(player.getUUID(), player.getScoreboardName());
                         session.onOnline(player.getUUID(), player.getScoreboardName(), true);
                     }
@@ -295,13 +298,14 @@ public final class P1LobbyRuntime {
                     && P1RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());
                 if (profiles != null) profiles.holdDeath(player);
-                session.humanDeath(player.getUUID(), participant.lifeSequence(),
+                session.captureDeath(round.roundId(), player.getUUID(), participant.lifeSequence(), participant.monsterDeploymentSequence(),
                         P1CombatRuntime.currentBatch(player.level()).orElse(null));
             } else if (participant != null && participant.role() == ParticipantRole.MONSTER_DEPLOYED
                     && P1RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());
                 if (profiles != null) profiles.holdDeath(player);
-                session.monsterDeath(round.roundId(), player.getUUID(), participant.lifeSequence(), participant.monsterDeploymentSequence());
+                session.captureDeath(round.roundId(), player.getUUID(), participant.lifeSequence(), participant.monsterDeploymentSequence(),
+                        P1CombatRuntime.currentBatch(player.level()).orElse(null));
             }
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
@@ -484,7 +488,7 @@ public final class P1LobbyRuntime {
                 if (profiles != null) for (var player : server.getPlayerList().getPlayers()) {
                     if (profiles.manages(player)) profiles.returnToLobby(player);
                 }
-                server.getPlayerList().broadcastSystemMessage(Component.literal("本轮已中止，原因："
+                server.getPlayerList().broadcastSystemMessage(Component.literal("本轮" + (after.result().kind() == dev.hardrush.core.round.RoundResult.Kind.FAILED ? "挑战失败" : "已中止") + "，原因："
                         + dev.hardrush.core.book.SafeBookText.literal(after.result().reason(), 512)
                         + "。已返回大厅，安全释放旧世界后轮换。"), false);
                 return;
@@ -494,7 +498,7 @@ public final class P1LobbyRuntime {
             server.getPlayerList().broadcastSystemMessage(Component.literal("本轮已通关：" + winner
                     + "，有效挑战 " + after.challengeMillis() + " ms。庆祝结束后返回大厅并轮换。"), false);
         }
-        if (after.phase() != RoundPhase.RUNNING) return;
+        if (after.phase() != RoundPhase.RUNNING && after.phase() != RoundPhase.RESCUE) return;
         var worlds = WORLDS.get(server);
         var profiles = PROFILES.get(server);
         if (worlds == null || profiles == null || !worlds.ready()) return;
@@ -502,17 +506,27 @@ public final class P1LobbyRuntime {
             var player = server.getPlayerList().getPlayer(participant.id());
             if (player == null || !profiles.isReady(participant.id(), after)) continue;
             var previous = before.participants().get(participant.id());
+            if (participant.role() == ParticipantRole.HUMAN_RESPAWNING) {
+                // Durable death admission and native respawn permission share the callback;
+                // an immediate respawn packet must not race the next END_SERVER_TICK.
+                profiles.permitRespawn(player, after,
+                        level -> P1RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), level));
+            }
             if (participant.role() == ParticipantRole.HUMAN_ACTIVE && P1PlayerProfiles.isLocked(player)
-                    && (previous == null || previous.role() == ParticipantRole.LOBBY
+                    && (previous == null || previous.role() == ParticipantRole.MONSTER_LOBBY || previous.role() == ParticipantRole.LOBBY
                         || previous.role() == ParticipantRole.HUMAN_RESPAWNING || !previous.online())) {
-                boolean admitted = previous != null && previous.role() == ParticipantRole.HUMAN_RESPAWNING
+                boolean revived = previous != null && previous.role() == ParticipantRole.MONSTER_LOBBY;
+                boolean admitted = revived
+                        ? profiles.revive(player, after, worlds.level(Level.OVERWORLD), Vec3.atBottomCenterOf(worlds.spawn()))
+                        : previous != null && previous.role() == ParticipantRole.HUMAN_RESPAWNING
                         ? profiles.confirmRespawn(player, after)
                         : profiles.admit(player, after, worlds.level(Level.OVERWORLD), Vec3.atBottomCenterOf(worlds.spawn()),
                             level -> P1RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), level));
                 if (!admitted) {
                     throw new IllegalStateException("已提交参与者的档案无法入场：" + participant.id());
                 }
-                if (!participant.online()) SESSIONS.get(server).onOnline(player.getUUID(), player.getScoreboardName(), true);
+                if (!participant.online() && profiles.isReady(player.getUUID(), after) && !P1PlayerProfiles.isLocked(player))
+                    SESSIONS.get(server).onOnline(player.getUUID(), player.getScoreboardName(), true);
             }
         }
     }

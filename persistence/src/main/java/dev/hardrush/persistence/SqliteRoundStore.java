@@ -604,7 +604,7 @@ public final class SqliteRoundStore implements AutoCloseable {
     }
 
     private static RoundSnapshot validateTerminalTags(SnapshotWrite write, EvidenceWrite evidence, UUID firstDragonId) {
-        if (write.expectedVersion() < 0 || !"FINISH".equals(write.eventType())
+        if (write.expectedVersion() < 0 || !("FINISH".equals(write.eventType()) || "DEATH_BATCH".equals(write.eventType()))
                 || !"COMBAT".equals(evidence.kind()) || !write.roundId().equals(evidence.roundId())
                 || write.eventId().equals(evidence.eventId())) {
             throw new IllegalArgumentException("Invalid first-dragon terminal write tags");

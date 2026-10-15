@@ -106,6 +106,18 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
                 monsterRole, monsterDimension, cooldown, monsterDeploymentSequence, monsterSkillReadyAtMillis);
     }
 
+    Participant withRevivalEntitlement(boolean entitled) {
+        return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
+                lifeSequence, entitled, hasLeftProtection, monsterRole, monsterDimension,
+                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis);
+    }
+
+    Participant revive(boolean admissionPending) {
+        return new Participant(id, name, ParticipantRole.HUMAN_ACTIVE, online && !admissionPending,
+                false, humanNanos, joinedAtChallengeNanos, Math.addExact(lifeSequence, 1), false,
+                false, monsterRole, monsterDimension, 0, monsterDeploymentSequence, monsterSkillReadyAtMillis);
+    }
+
     Participant deployMonster() {
         return new Participant(id, name, ParticipantRole.MONSTER_DEPLOYED, online, false, humanNanos,
                 joinedAtChallengeNanos, lifeSequence, revivalEntitled, hasLeftProtection,

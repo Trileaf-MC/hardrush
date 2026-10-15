@@ -72,6 +72,7 @@ public final class MonsterRoles {
     private static final Map<UUID, Role> ROLES = new HashMap<>();
     private static final Map<UUID, SkillTimers> SKILL_TIMERS = new HashMap<>();
     private static final String SUMMON_OWNER = "hardrush.summon-owner=";
+    private static final String SUMMON_EVENT = "hardrush.summon-event=";
     private static final String SHOT_OWNER = "hardrush.shot-owner=";
     private static final List<Holder<Attribute>> CONTROLLED = List.of(Attributes.MAX_HEALTH, Attributes.MOVEMENT_SPEED,
         Attributes.ARMOR, Attributes.ARMOR_TOUGHNESS, Attributes.ATTACK_DAMAGE, Attributes.ATTACK_SPEED,
@@ -297,7 +298,8 @@ public final class MonsterRoles {
             long now = System.nanoTime();
             if (role.burstRemaining > 0 && now >= role.nextBurstAt) {
                 shoot(player, role);
-                role.burstRemaining--; role.nextBurstAt = now + role.millis("skeleton.burstIntervalMillis") * 1_000_000L;
+                role.burstRemaining--;
+                role.nextBurstAt = System.nanoTime() + role.millis("skeleton.burstIntervalMillis") * 1_000_000L;
             }
             if (role.igniteAt != 0 && server.getTickCount() >= role.igniteAt) explode(player, role);
         }
@@ -411,10 +413,12 @@ public final class MonsterRoles {
     private static boolean spawnSummons(ServerPlayer player, List<Vec3> positions) {
         if (positions.stream().anyMatch(position -> !safeSummonPoint(player, BlockPos.containing(position)))) return false;
         var children = new ArrayList<Zombie>();
+        UUID event = UUID.randomUUID();
         for (Vec3 position : positions) {
             Zombie child = EntityTypes.ZOMBIE.create(player.level(), EntitySpawnReason.MOB_SUMMONED);
             child.setBaby(true); child.snapTo(position);
             child.entityTags().add(SUMMON_OWNER + player.getUUID());
+            child.entityTags().add(SUMMON_EVENT + event);
             P2CombatRuntime.stampSource(child, player);
             configureSummon(child);
             children.add(child);
@@ -433,10 +437,14 @@ public final class MonsterRoles {
 
     private static List<Vec3> safeSummonPositions(ServerPlayer player) {
         var found = new ArrayList<Vec3>();
-        for (int dx = -4; dx <= 4 && found.size() < 2; dx++) {
-            for (int dz = -4; dz <= 4 && found.size() < 2; dz++) {
-                double distance = Math.sqrt(dx * dx + dz * dz);
-                if (distance < 2 || distance > 4) continue;
+        var role = ROLES.get(player.getUUID());
+        int maximum = (int)Math.ceil(role == null ? 4 : role.value("zombie.summonMaxDistance"));
+        // Only search already loaded chunks; a large next-round configuration must not
+        // turn a skill request into an unbounded square scan or generate new terrain.
+        int loadedRadius = Math.max(1, player.level().getServer().getPlayerList().getViewDistance() + 1) * 16;
+        int radius = Math.min(maximum, loadedRadius);
+        for (int dx = -radius; dx <= radius && found.size() < 2; dx++) {
+            for (int dz = -radius; dz <= radius && found.size() < 2; dz++) {
                 BlockPos pos = player.blockPosition().offset(dx, 0, dz);
                 if (safeSummonPoint(player, pos)) found.add(Vec3.atBottomCenterOf(pos));
             }
@@ -478,17 +486,25 @@ public final class MonsterRoles {
     private static void explode(ServerPlayer player, Role role) {
         Creeper creeper = (Creeper) role.model;
         creeper.snapTo(player.position());
-        UUID owner = player.getUUID(); ServerLevel level = player.level();
+        ServerLevel level = player.level();
+        // Human victims and the owner's spent body are one causal death batch. The
+        // formal controller awards qualifications before evaluating rescue/end rules.
+        try (var batch = dev.hardrush.p1.combat.P1CombatRuntime.explosion(level, creeper)) {
+            nativeCreeperBlast(creeper, player.getUUID(), player.position(), (float)role.value("creeper.explosionStrength"));
+            role.igniteAt = 0;
+            DisguiseProbe.setCreeperSwelling(player, false);
+            player.hurtServer(level, player.damageSources().genericKill(), Float.MAX_VALUE);
+        }
+    }
+
+    /** Low-level native effect, kept separate from fuse/body transitions for native parity checks. */
+    static void nativeCreeperBlast(Creeper creeper, UUID owner, Vec3 position, float strength) {
+        var level = (ServerLevel)creeper.level();
         var calculator = new ExplosionDamageCalculator() {
             @Override public boolean shouldDamageEntity(Explosion explosion, Entity target) { return legalTarget(owner, level, target); }
             @Override public float getKnockbackMultiplier(Entity target) { return legalTarget(owner, level, target) ? super.getKnockbackMultiplier(target) : 0; }
         };
-        level.explode(creeper, null, calculator, player.position(), (float)role.value("creeper.explosionStrength"), false, Level.ExplosionInteraction.NONE);
-        role.igniteAt = 0;
-        DisguiseProbe.setCreeperSwelling(player, false);
-        // Prototype ends this body via ordinary death; the formal controller
-        // will consume this event after rewards and return to the monster lobby.
-        player.hurtServer(level, player.damageSources().genericKill(), Float.MAX_VALUE);
+        level.explode(creeper, null, calculator, position, strength, false, Level.ExplosionInteraction.NONE);
     }
 
     private static void shoot(ServerPlayer player, Role role) {
@@ -512,6 +528,8 @@ public final class MonsterRoles {
     }
 
     public static UUID summonOwner(Entity entity) { return taggedOwner(entity, SUMMON_OWNER); }
+    /** Siblings share one event ID; ordinary entity tags persist it across native saves. */
+    public static UUID summonEvent(Entity entity) { return taggedOwner(entity, SUMMON_EVENT); }
     public static Entity nativeArrowShooter(AbstractArrow arrow, Entity vanilla) {
         UUID owner = taggedOwner(arrow, SHOT_OWNER);
         if (owner == null || !(arrow.level() instanceof ServerLevel level)) return vanilla;

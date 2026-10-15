@@ -355,6 +355,72 @@ public final class P1PlayerProfiles implements AutoCloseable {
         player.portalProcess = null;
     }
 
+    /** A consumed entitlement starts an empty human life while retaining this round's progress and ender storage. */
+    public boolean revive(ServerPlayer player, RoundSnapshot round, ServerLevel spawnLevel, Vec3 spawn) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        var participant = round.participants().get(player.getUUID());
+        if (closed || entry == null || entry.player != player || !entry.monsterLobbyInitialized
+                || !isReady(player.getUUID(), round) || participant == null
+                || participant.role() != ParticipantRole.HUMAN_ACTIVE || round.phase() != RoundPhase.RUNNING
+                || !dev.hardrush.p1.world.P1RoundWorldBundle.owns(spawnLevel)
+                || !dev.hardrush.p1.world.P1RoundWorldBundle.safeStanding(spawnLevel, net.minecraft.core.BlockPos.containing(spawn))) return false;
+        try {
+            clearMonsterLobbyState(player);
+            resetHumanAttributes(player);
+            player.setAbsorptionAmount(0);
+            ((PlayerProfileResetAccessor) player).hardrush$setFoodData(new FoodData());
+            player.getAbilities().apply(new Abilities().pack());
+            player.setGameMode(GameType.SURVIVAL);
+            player.setPermanentlyInvulnerable(false);
+            player.setNoGravity(false);
+            player.setRespawnPosition(null, false);
+            player.setCamera(player);
+            player.stopUsingItem();
+            player.setAirSupply(player.getMaxAirSupply());
+            for (var pearl : Set.copyOf(player.getEnderPearls())) pearl.discard();
+            for (var cooldown : Set.copyOf(((PlayerCooldownAccessor) player.getCooldowns()).hardrush$cooldowns().keySet())) {
+                player.getCooldowns().removeCooldown(cooldown);
+            }
+            ((ProfileTagged) player).hardrush$lifeSequence(participant.lifeSequence());
+            ((ProfileTagged) player).hardrush$respawnPermitted(false);
+            if (!player.teleportTo(spawnLevel, spawn.x, spawn.y, spawn.z, Set.of(), 0, 0, true)) return false;
+            entry.monsterLobbyInitialized = false;
+            entry.deathHeld = false;
+            entry.awaitingRespawn = false;
+            entry.admitted = false;
+            entry.ready = false;
+            entry.fresh = false;
+            var snapshot = capture(player, false);
+            supply(() -> { journal.join().suspend(player.getUUID(), entry.target, encode(snapshot)); return null; })
+                    .whenComplete((ignored, error) -> callbacks.execute(() -> {
+                        if (!current(entry, generation(round))) return;
+                        if (error != null) { fail(entry, error); moveToLobby(player); return; }
+                        entry.resume = snapshot;
+                        entry.diskSafe = true;
+                        entry.ready = true;
+                        entry.admitted = true;
+                        ((ProfileTagged) player).hardrush$isolated(false);
+                        player.resetSentInfo();
+                        player.onUpdateAbilities();
+                        player.inventoryMenu.sendAllDataToRemote();
+                    }));
+            return true;
+        } catch (RuntimeException error) { fail(entry, error); moveToLobby(player); return false; }
+    }
+
+    private static void resetHumanAttributes(ServerPlayer player) {
+        var defaults = new AttributeMap(Player.createAttributes().build());
+        for (var packed : player.getAttributes().pack()) {
+            var instance = player.getAttributes().getInstance(packed.attribute());
+            if (instance == null) continue;
+            instance.removeModifiers();
+            instance.setBaseValue(defaults.hasAttribute(packed.attribute())
+                    ? defaults.getBaseValue(packed.attribute()) : packed.attribute().value().getDefaultValue());
+        }
+        player.setHealth(player.getMaxHealth());
+    }
+
     /** Ordinary vanilla respawn preserves ender storage/advancements and the vanilla bed/anchor destination. */
     public void onRespawn(ServerPlayer previous, ServerPlayer replacement, RoundSnapshot round) {
         requireMainThread();
@@ -770,15 +836,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
         player.getEnderChestInventory().clearContent();
         player.removeAllEffects();
         player.clearPostEffects();
-        var defaults = new AttributeMap(Player.createAttributes().build());
-        for (var packed : player.getAttributes().pack()) {
-            var instance = player.getAttributes().getInstance(packed.attribute());
-            if (instance == null) continue;
-            instance.removeModifiers();
-            instance.setBaseValue(defaults.hasAttribute(packed.attribute())
-                    ? defaults.getBaseValue(packed.attribute()) : packed.attribute().value().getDefaultValue());
-        }
-        player.setHealth(player.getMaxHealth());
+        resetHumanAttributes(player);
         player.setAbsorptionAmount(0);
         ((PlayerProfileResetAccessor) player).hardrush$setFoodData(new FoodData());
         for (var cooldown : Set.copyOf(((PlayerCooldownAccessor) player.getCooldowns()).hardrush$cooldowns().keySet())) {

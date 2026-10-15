@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "capturedAt": "2026-10-15T12:16:22.457441+08:00",
+  "baselineCommit": "f53c79512ff5971e8f05ee10cca4928aa79e3ad9",
+  "commitState": "本批源码、文档与验证证据一同提交；未推送或发布，以源码与制品SHA-256标识验证内容。",
+  "commands": [
+    {
+      "command": "scripts/p0-gradle.sh checkP2 :platforms:mc263:runGameTest -PhardrushP1=true --console=plain",
+      "exitCode": 0,
+      "log": "check-output.txt",
+      "requiredGameTests": 94,
+      "inactiveGates": 3,
+      "junit": {
+        "core": {
+          "tests": 143,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "persistence": {
+          "tests": 73,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "platforms/mc263": {
+          "tests": 79,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      }
+    },
+    {
+      "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP2Lobby=true --console=plain",
+      "exitCode": 0,
+      "log": "lobby-runtime-output.txt",
+      "requiredGameTests": 1,
+      "nativeRevivalCycles": 20
+    },
+    {
+      "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP2Identity=true --console=plain",
+      "exitCode": 0,
+      "log": "identity-runtime-output.txt",
+      "requiredGameTests": 1
+    },
+    {
+      "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP1TenRounds=true --console=plain",
+      "exitCode": 0,
+      "log": "normal-ten-round-output.txt",
+      "requiredGameTests": 1,
+      "completedRounds": 10
+    }
+  ],
+  "logsSha256": {
+    "check-output.txt": "296393d98a5b585d8089732a5bf07516ce85046a0e687eb438cc5cbd69b5ceed",
+    "lobby-runtime-output.txt": "1121a2ff67e8cc871864e54f21dddabde85f0ddec5abe5c71d7a57160f1afde4",
+    "identity-runtime-output.txt": "bc0a4a980ece8a770de5b18409669de986f720da0bf2916321da7f42d4c9de54",
+    "normal-ten-round-output.txt": "509d9eb732edd5d5d7f16d898cf56058f56de1960563b7b95c268c3e5f139a29"
+  },
+  "sourcesSha256": {
+    "README.md": "61a9c21ebbdc18f30daf26195572afdc4403ad4e0af37691198e5b63782cd738",
+    "core/src/main/java/dev/hardrush/core/round/Participant.java": "5a8d98da0e1b23d497647894502b8e80dd5079f2a49494e865143e17a1a43e59",
+    "core/src/main/java/dev/hardrush/core/round/RoundDeath.java": "9380b8fcb9187db68f69d6ccd3dc34832d9e0330ea29e186473447ce050c59a4",
+    "core/src/main/java/dev/hardrush/core/round/RoundEngine.java": "68cc60fe565f007d30fc83da7faba58ae21282befb566b831ecfe95915e5b54a",
+    "core/src/test/java/dev/hardrush/core/record/RoundTabTest.java": "c0dd39b882505ba1c17151e46ba04b0216486b5265b2bebf356273772b341647",
+    "core/src/test/java/dev/hardrush/core/round/DeathBatchRevivalTest.java": "0595b9d1f0f10ae0407dde07b063cade46924429a882d90e50bd8a44567432f9",
+    "docs/implementation-plan.md": "ac523d9e55fb522edaf5bb03bb7ed00d254f4230aa881892e3d2cec9544fa747",
+    "docs/monster-balance.md": "183f07f427dbcbca1bcb7d156acbe970ecfbbe8317e3c8a8e4e4e2085a5f4d58",
+    "docs/p2-revival-rescue.md": "fa851584ec94a2e3882f8c48e642339fb1156f594748cc8ac918123358eb4462",
+    "docs/requirements.md": "057f61d1754ef0582ec821f155a318f14635f8689e1369d454af69f3a0fb3597",
+    "docs/technical-design.md": "5d15b1120e0c31ff25eac272013ec97473b90655d9ee200f4db572164f6051bf",
+    "docs/人工客户端测试/P2复生救场与完整闭环.md": "747daa76c109c3a523017466ac8305155630afed2d0c024a39d9c5b1697a692d",
+    "persistence/src/main/java/dev/hardrush/persistence/SqliteRoundStore.java": "18b4cca8389d03a610a08d000c41939a657dee2f1a3dc9a4032de7939b49bda3",
+    "persistence/src/test/java/dev/hardrush/persistence/P2RevivalStoreTest.java": "8f882ef2947fdfa2cc9199d87af12d0c4022f9109f2f7670bdac8ccc97c9e8e4",
+    "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P2RuntimeIdentityGameTest.java": "e2f386c1b43a59e97d22ca7758b8bfe4be2e463415d2bee57383b3276e0e1e0c",
+    "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P2RuntimeLobbyGameTest.java": "9174aea95e902ba40167935d009386e5551a11592e3dd7cf524bfb0996b0366d",
+    "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P2SafeDeploymentGameTest.java": "f4f6f88fe6306cb9db048f3fe38d0c44dd2dc258a1e689082496c904583f3a90",
+    "platforms/mc263/src/gametest/java/dev/hardrush/p0/monster/P2MonsterSkillsGameTest.java": "e65644f7b4a91c672cd0328b699bfb7c45ad5411afaa7e1bf9b54e50c5e0e4f2",
+    "platforms/mc263/src/gametest/resources/fabric.mod.json": "576b4eace00048423ae188729df63f5057c8ebdce5b3cf3efbdf81120eb8f896",
+    "platforms/mc263/src/main/java/dev/hardrush/p0/monster/MonsterRoles.java": "c9282a82a179ef05f6cb982c0165894ba2a7d73fdfad7fde77ce914b2f153f93",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbyRuntime.java": "3a403fef1b1b8fd299c935ca4c4db87fc85471d2c485ed518d5e08e7f569ac90",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbySession.java": "eec2224d820a37f4a06490c0bc99a160d41d27db31e5ecd0a67023f15ab7d713",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/player/P1PlayerProfiles.java": "fa4f491f3cba559f746e8013b3f4bdee583b1a72e5e35a3ba0ad54ac89b3f244",
+    "platforms/mc263/src/main/java/dev/hardrush/p2/combat/P2CombatRuntime.java": "9f47e37bc6824ecb1ab24e7e0acef7dbed6060bf4d0e23bf6cec670c936d8ecf",
+    "platforms/mc263/src/main/java/dev/hardrush/p2/lobby/P2LobbyRuntime.java": "74ca5d384852e04062de41efbd5232610453b1cf7920d522554544b1e68316ad",
+    "platforms/mc263/src/main/java/dev/hardrush/p2/monster/P2MonsterRuntime.java": "ee195818bb4846bf71b8e9fc9ba58db800b9f00a20f246063a3213166d41863e",
+    "platforms/mc263/src/test/java/dev/hardrush/p1/P2DeathBatchSessionTest.java": "13f273230e8ee88aec734b1d7c23aea0a8e30dd0a4b962768e8b01bd93832bca"
+  },
+  "artifactsSha256": {
+    "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar": "c0d1b7f73b0b6408f46c824b74f76ab4e7ecb5045c527143b07a406d58f3f7be"
+  },
+  "reportsSha256": {
+    "core-TEST-dev.hardrush.core.record.RoundTabTest.xml": "2adbf551d249f310aac8f0d47c9168b8541978f1f1df5da518cd6e868fa5381c",
+    "core-TEST-dev.hardrush.core.round.DeathBatchRevivalTest.xml": "77aec3ab25289a8ff0cb699a30accd3ecf137eba83a1e7169eea210d5d44ab1c",
+    "persistence-TEST-dev.hardrush.persistence.P2RevivalStoreTest.xml": "fea6175778dcff17ee1f8cde4da08432ce9cec3de63672148612261f67838653",
+    "platforms-mc263-TEST-dev.hardrush.p1.P2DeathBatchSessionTest.xml": "5990c273185e99fbb55fe0aab583b32d79a779bcd7e08c8b4b318c247e54d93c"
+  },
+  "checks": {
+    "productionJar": "生产类存在，未包含GameTest/debug类；core/persistence作为嵌套JAR",
+    "json": "生产元数据与mixin配置已解析",
+    "gitDiffCheck": "passed"
+  },
+  "scope": [
+    "295项JUnit、94项必需无图形GameTest（含3项未启用专场门禁）；独立正式大厅20次闭环、身份整链和普通十轮各1项。",
+    "正式大厅使用原生登录/死亡/替换/容器包、真实SQLite与档案IO；两名玩家交替20次合法怪物近战击杀、资格、救场、返回与空装复生，核对各10次复生和11/10次人类死亡。",
+    "大厅为独立隔离存档、嵌入网络、受控135x135场地/模拟票、固定夜间，关闭自然刷怪且按主人UUID在ENTITY_LOAD立即NoAI；30秒出场和5秒返回使用测试计时。技能deadline为真实epoch。",
+    "技能专项保留原生召唤AI并检查寻路/自然消失/NBT来源/无掉落经验；连射检查真实>=600ms与逐箭朝向；原版Creeper36组难度/距离/遮挡/护甲对照。",
+    "常规回归与三个专场分别在最终生产源码运行，测试夹具使用源码指纹标识。",
+    "正常重开在core/Session/SQLite复核剩余救场及资格；不替代P3强制终止和磁盘故障恢复。",
+    "没有启动真实客户端、浏览器或computer use；P2-17/P2-G及前置阶段验收未通过，人工20次循环、多版本及负载仍未验收。"
+  ],
+  "resolvedDuringValidation": [
+    "原生自爆与自身死亡同批；终局持久化接受DEATH_BATCH并保留首龙证据核验。",
+    "普通死亡提交成功时同步开放原生重生许可，立即到达的重生包不再被下一tick的许可时序拒绝；正常十轮包含该原生重生回归。",
+    "复生档案写盘前保持身体隔离，写盘后才提交在线计时；出生点不安全时预检保留资格，提交后再验。",
+    "独立救场截止查询不受pending视图冻结；过期原生新伤害关门，截止前受理复生/首龙保留优先权。",
+    "完成的返厅引导等待已有SQLite写入，不用临时busy回复吞掉引导；正式夹具强制一次并发写入验证。",
+    "死亡按UUID生命/出场身份去重，旧轮和重复批次不能重发奖励或中断下一生命。",
+    "安全搜索夹具跟随本轮随机结构原点，防止重复运行的旧宽平台填平窄边；保留原有安全断言。",
+    "正式生命周期夹具关闭自然刷怪，避免黑暗测试平台的自然僵尸把主动返厅误变为败退；保持同一原生对象断言。",
+    "连射真实时间调度在无图形高速tick中有等待预算，生产从实际发射完成后计算下一箭期限；不放宽600ms或朝向断言。"
+  ]
+}

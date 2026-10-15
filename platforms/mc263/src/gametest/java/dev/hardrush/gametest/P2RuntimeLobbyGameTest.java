@@ -178,6 +178,8 @@ public final class P2RuntimeLobbyGameTest {
                     f.voluntaryReturnBody = f.monster.player;
                     f.monster.command("hardrush return");
                     f.ageReturnChannel();
+                    f.session.onOnline(f.target.profile.id(), f.target.player.getScoreboardName(), true);
+                    f.test.assertTrue(f.session.mutationPending(), "The mature return channel competes with a real SQLite write");
                 })
                 .thenWaitUntil(() -> f.await(f.monsterReady(false), "Completed return channel durably enters lobby"))
                 .thenExecute(() -> {
@@ -235,6 +237,93 @@ public final class P2RuntimeLobbyGameTest {
                     f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Outside reconnect retains its 30-second wait");
                     f.assertSkillCooldowns();
                     f.assertStored();
+                });
+        for (int cycle = 0; cycle < 20; cycle++) {
+            final int iteration = cycle;
+            final var hunter = cycle % 2 == 0 ? f.monster : f.target;
+            final var prey = cycle % 2 == 0 ? f.target : f.monster;
+            sequence.thenExecute(() -> {
+                        hunter.player = hunter.current(); prey.player = prey.current();
+                        prey.move(f.anchor);
+                    })
+                    .thenWaitUntil(() -> f.await(prey.participant().hasLeftProtection() && !f.session.mutationPending(), "Cycle human protection exit " + iteration))
+                    .thenExecute(() -> {
+                        prey.move(f.anchor);
+                        hunter.command("hardrush role zombie");
+                    })
+                    .thenWaitUntil(() -> f.await(hunter.participant().monsterRole() == MonsterRole.ZOMBIE && !f.session.mutationPending(), "Cycle role selected " + iteration))
+                    .thenExecute(() -> {
+                        f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
+                        hunter.command("hardrush deploy");
+                    })
+                    .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_DEPLOYED
+                            && MonsterRoles.isMonster(hunter.player) && !f.session.mutationPending(), "Cycle formal deployment " + iteration))
+                    .thenExecute(() -> {
+                        hunter.move(prey.player.position().add(1, 0, 0));
+                        prey.player.setHealth(1);
+                        prey.player.setInvulnerableTime(0);
+                        f.test.assertTrue(MonsterRoles.attack(hunter.player, prey.player), "Native zombie melee accepts the legal human");
+                        f.test.assertTrue(prey.player.isDeadOrDying(), "Actual native attack creates the lethal event");
+                    })
+                    .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RESCUE && hunter.participant().revivalEntitled()
+                            && prey.current() != null && prey.current().isAlive() && prey.current().level() == f.server.overworld()
+                            && f.profiles.isReady(prey.profile.id(), f.round()) && !f.session.mutationPending(), "Cycle all deaths and reward reach rescue atomically " + iteration))
+                    .thenExecute(() -> {
+                        hunter.command("hardrush return");
+                        f.ageReturnChannel(hunter);
+                    })
+                    .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_LOBBY
+                            && f.profiles.isReady(hunter.profile.id(), f.round()) && !f.session.mutationPending(), "Cycle return remains usable during rescue " + iteration))
+                    .thenExecute(() -> {
+                        f.test.assertTrue(hunter.participant().monsterCooldownNanos() > 0, "Revival is tested during the deployment cooldown");
+                        if (iteration == 0) {
+                            var worlds = f.service("WORLDS", P1RoundWorldBundle.class);
+                            var floor = worlds.spawn().below();
+                            var original = f.level.getBlockState(floor);
+                            try {
+                                // Simulate a damaged persisted spawn below the protected Level.setBlock admission path.
+                                f.level.getChunkAt(floor).setBlockState(floor, Blocks.AIR.defaultBlockState(), 2);
+                                f.test.assertFalse(P1RoundWorldBundle.safeStanding(f.level, worlds.spawn()), "The fixture really removed the protected spawn floor");
+                                int packetsBefore = hunter.connection.packets.size();
+                                hunter.command("hardrush revive");
+                                f.test.assertTrue(hunter.participant().revivalEntitled()
+                                                && hunter.participant().role() == ParticipantRole.MONSTER_LOBBY
+                                                && hunter.connection.packets.subList(packetsBefore, hunter.connection.packets.size()).stream()
+                                                    .filter(net.minecraft.network.protocol.game.ClientboundSystemChatPacket.class::isInstance)
+                                                    .map(net.minecraft.network.protocol.game.ClientboundSystemChatPacket.class::cast)
+                                                    .anyMatch(packet -> packet.content().getString().contains("出生点暂不安全")),
+                                        "An unsafe spawn rejects admission and keeps the entitlement");
+                            } finally { f.level.getChunkAt(floor).setBlockState(floor, original, 2); }
+                        }
+                        hunter.openAndClick(Items.TOTEM_OF_UNDYING);
+                        hunter.command("hardrush revive");
+                    })
+                    .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RUNNING && hunter.participant().role() == ParticipantRole.HUMAN_ACTIVE
+                            && hunter.participant().online() && !P1PlayerProfiles.isLocked(hunter.player)
+                            && f.profiles.isReady(hunter.profile.id(), f.round()) && !f.session.mutationPending(), "Cycle exactly one revival unlocks an empty human " + iteration))
+                    .thenExecute(() -> {
+                        f.test.assertFalse(hunter.participant().revivalEntitled(), "Revival consumes the sole entitlement");
+                        f.test.assertTrue(hunter.player.getInventory().isEmpty(), "Revival never restores old human gear or role controls");
+                        f.test.assertValueEqual(hunter.player.getHealth(), 20f, "Human default health is restored");
+                        f.test.assertValueEqual(hunter.player.getFoodData().getFoodLevel(), 20, "Human default food is restored");
+                        f.test.assertFalse(hunter.participant().hasLeftProtection(), "Each revived life gets one new protected exit");
+                        f.test.assertValueEqual(hunter.player.getAttribute(Attributes.ARMOR).getBaseValue(), 0d, "Intrinsic monster armor is removed");
+                        if (hunter == f.monster) {
+                            f.assertSkillCooldowns();
+                            f.test.assertValueEqual(hunter.player.getEnderChestInventory().getItem(0).getCount(), 6,
+                                    "Every new human life preserves the original same-round ender storage");
+                        }
+                    });
+        }
+        sequence.thenExecute(() -> {
+                    try (var store = new SqliteRoundStore(f.server.getWorldPath(LevelResource.ROOT).resolve("hardrush/p1.sqlite"))) {
+                        var first = store.participantRecord(f.round().roundId(), f.monster.profile.id()).orElseThrow();
+                        var second = store.participantRecord(f.round().roundId(), f.target.profile.id()).orElseThrow();
+                        f.test.assertValueEqual(first.revivalCount(), 10, "Real runtime records ten revivals for the first peer");
+                        f.test.assertValueEqual(second.revivalCount(), 10, "Real runtime records ten revivals for the second peer");
+                        f.test.assertValueEqual(first.deathCount(), 11, "Initial human death plus ten later native deaths count once");
+                        f.test.assertValueEqual(second.deathCount(), 10, "The second peer has ten native human deaths");
+                    } catch (Exception error) { throw new IllegalStateException(error); }
                     f.monster.disconnect(); f.target.disconnect();
                     FROZEN_SUMMON_OWNERS.remove(f.monster.profile.id());
                     f.level.getChunkSource().removeTicketWithRadius(LOOT_FIXTURE, f.lootChunk, ARENA_TICKET_RADIUS);
@@ -260,6 +349,7 @@ public final class P2RuntimeLobbyGameTest {
         final Map<String, Integer> skillWaitStarted = new java.util.HashMap<>();
         long summonReadyAt, burstReadyAt;
         ChunkPos lootChunk;
+        String lastStage = "";
         Fixture(GameTestHelper test) {
             this.test = test; server = test.getLevel().getServer();
             FROZEN_SUMMON_OWNERS.add(monster.profile.id());
@@ -278,6 +368,17 @@ public final class P2RuntimeLobbyGameTest {
         }
         RoundSnapshot round() { return P1LobbyRuntime.snapshot(server).orElseThrow(); }
         void await(boolean condition, String message) {
+            if (!message.equals(lastStage)) {
+                lastStage = message;
+                System.out.println("P2 lobby stage: " + message + "; tick=" + server.getTickCount());
+            }
+            if (!condition && message.equals("Completed return channel durably enters lobby")
+                    && monster.participant().role() == ParticipantRole.MONSTER_DEPLOYED
+                    && !P2LobbyRuntime.channeling(monster.player) && !session.mutationPending()) {
+                throw new IllegalStateException("A mature return channel disappeared before a durable return: "
+                        + P1LobbyRuntime.status(server) + ", position=" + monster.player.position()
+                        + ", velocity=" + monster.player.getDeltaMovement() + ", body=" + MonsterRoles.status(monster.player));
+            }
             java.util.concurrent.locks.LockSupport.parkNanos(2_000_000);
             test.assertTrue(condition, message + ": " + P1LobbyRuntime.status(server));
         }
@@ -301,6 +402,8 @@ public final class P2RuntimeLobbyGameTest {
             var worlds = service("WORLDS", P1RoundWorldBundle.class);
             level = worlds.level(Level.OVERWORLD);
             // This suite measures identity/IO lifecycle; sunlight and autonomous summon combat have their own native tests.
+            // The dark roof must not let an unrelated naturally spawned zombie replace the voluntary-return assertion with a defeat.
+            level.getGameRules().set(net.minecraft.world.level.gamerules.GameRules.SPAWN_MOBS, false, server);
             level.getGameRules().set(net.minecraft.world.level.gamerules.GameRules.ADVANCE_TIME, false, server);
             var daylight = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
                     .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
@@ -448,16 +551,17 @@ public final class P2RuntimeLobbyGameTest {
             test.assertValueEqual(monster.participant().lifeSequence(), 1, "Monster outings never create a new human life");
             test.assertValueEqual(diamonds(), 3, "Exactly one human death drop set remains");
         }
-        void ageReturnChannel() {
+        void ageReturnChannel() { ageReturnChannel(monster); }
+        void ageReturnChannel(Peer peer) {
             try {
                 Object binding = binding();
                 var channelsField = binding.getClass().getDeclaredField("channels"); channelsField.setAccessible(true);
                 @SuppressWarnings("unchecked") var channels = (Map<UUID, Object>) channelsField.get(binding);
-                Object old = channels.get(monster.profile.id());
+                Object old = channels.get(peer.profile.id());
                 test.assertTrue(old != null, "The production command created a channel before fixture clock adjustment");
                 var constructor = old.getClass().getDeclaredConstructors()[0]; constructor.setAccessible(true);
-                var p = monster.participant();
-                channels.put(monster.profile.id(), constructor.newInstance(monster.player, monster.player.level(), monster.player.position(),
+                var p = peer.participant();
+                channels.put(peer.profile.id(), constructor.newInstance(peer.player, peer.player.level(), peer.player.position(),
                         System.nanoTime() - TimeUnit.SECONDS.toNanos(6), p.lifeSequence(), p.monsterDeploymentSequence()));
             } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
         }
