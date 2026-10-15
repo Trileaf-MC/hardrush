@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 2;
+    private static final int SCHEMA = 3;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -40,6 +40,8 @@ public final class RoundSnapshotCodec {
                 out.writeBoolean(p.online()); out.writeBoolean(p.ready()); out.writeLong(p.humanNanos());
                 out.writeLong(p.joinedAtChallengeNanos()); out.writeInt(p.lifeSequence()); out.writeBoolean(p.revivalEntitled());
                 out.writeBoolean(p.hasLeftProtection());
+                writeText(out, p.monsterRole().name()); writeText(out, p.monsterDimension().name());
+                out.writeLong(p.monsterCooldownNanos()); out.writeInt(p.monsterDeploymentSequence());
             }
             out.writeBoolean(snapshot.result() != null);
             if (snapshot.result() != null) {
@@ -84,8 +86,16 @@ public final class RoundSnapshotCodec {
                 // P1 had no formal protection rule or exit record. Its existing lives receive
                 // the initial permission on upgrade; every later exit is durably recorded.
                 boolean hasLeftProtection = schema >= 2 && in.readBoolean();
+                MonsterRole monsterRole = schema >= 3 ? MonsterRole.valueOf(readText(in, 64)) : MonsterRole.ZOMBIE;
+                MonsterDimension monsterDimension = schema >= 3 ? MonsterDimension.valueOf(readText(in, 64)) : MonsterDimension.OVERWORLD;
+                // Older snapshots did not admit monster outings. Grant no bypass of the first wait.
+                long monsterCooldown = schema >= 3 ? in.readLong()
+                        : role == ParticipantRole.MONSTER_LOBBY || role == ParticipantRole.MONSTER_DEPLOYED
+                                ? RoundEngine.MONSTER_COOLDOWN_NANOS : 0;
+                int deploymentSequence = schema >= 3 ? in.readInt() : 0;
                 Participant p = new Participant(playerId, name, role, online, ready,
-                        humanNanos, joinedAt, lifeSequence, revivalEntitled, hasLeftProtection);
+                        humanNanos, joinedAt, lifeSequence, revivalEntitled, hasLeftProtection,
+                        monsterRole, monsterDimension, monsterCooldown, deploymentSequence);
                 if (players.put(playerId, p) != null) throw new IOException("Duplicate participant UUID");
             }
             RoundResult result = null;

@@ -25,6 +25,7 @@ public final class HardRushP0 implements ModInitializer {
     @Override
     public void onInitialize() {
         MonsterRoles.initialize();
+        dev.hardrush.p2.lobby.P2LobbyRuntime.initialize();
         P1LobbyRuntime.initialize();
         LOGGER.info("HardRush P0: operator world/appearance/monster-role probes; formal race/lobby/rewards are not implemented");
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {

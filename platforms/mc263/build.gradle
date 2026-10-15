@@ -257,3 +257,31 @@ tasks.named('jar') {
     from(rootProject.file('licenses')) { into 'META-INF/licenses' }
 }
 
+
+// Formal P2 lobby/sortie lifecycle, isolated from legacy fixtures and other dedicated matrices.
+def p2LobbyRunDir = rootProject.file(".local/p2-lobby/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushP2Lobby').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true'
+                || providers.gradleProperty('hardrushP1TenRounds').orNull == 'true'
+                || providers.gradleProperty('hardrushP2Identity').orNull == 'true') {
+            throw new GradleException('P2 lobby regression requires -PhardrushP1=true and its own run')
+        }
+        vmArg '-Dhardrush.p2.testLobby=true'
+        vmArg '-Dhardrush.p1.initialMode=hardcore'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p2runtime_lobby_game_test*'
+        runDir p2LobbyRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushP2Lobby').orNull == 'true') {
+        doFirst {
+            p2LobbyRunDir.mkdirs()
+            copy {
+                from rootProject.file('.local/server-p0/eula.txt')
+                into p2LobbyRunDir
+            }
+            logger.lifecycle("Isolated P2 lobby storage: ${p2LobbyRunDir}")
+        }
+    }
+}

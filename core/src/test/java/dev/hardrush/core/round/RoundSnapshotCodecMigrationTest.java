@@ -33,7 +33,7 @@ class RoundSnapshotCodecMigrationTest {
         assertFalse(migrated.participants().get(RESPAWNING).hasLeftProtection());
         assertFalse(migrated.participants().get(LOBBY).hasLeftProtection());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(2, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(3, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 
@@ -46,6 +46,28 @@ class RoundSnapshotCodecMigrationTest {
                 RoundPhase.RUNNING, PauseReason.NONE, 1, 0, Map.of(ACTIVE, left, RESPAWNING, fresh),
                 false, false, null);
         assertEquals(snapshot, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(snapshot)));
+    }
+
+    @Test void schemaTwoMonsterUpgradeRetainsEligibilityAndRequiresItsInitialWait() throws Exception {
+        var bytes = new ByteArrayOutputStream();
+        var out = new DataOutputStream(bytes);
+        out.writeInt(0x48525331); out.writeInt(2);
+        uuid(out, ROUND); out.writeLong(4); out.writeLong(123); out.writeLong(7);
+        text(out, RulesConfig.defaults().encode()); text(out, "RUNNING"); text(out, "NO_ONLINE_HUMANS");
+        out.writeLong(123_456); out.writeLong(0); out.writeBoolean(true); out.writeBoolean(false);
+        out.writeInt(1);
+        uuid(out, ACTIVE); text(out, "Monster"); text(out, "MONSTER_LOBBY");
+        out.writeBoolean(false); out.writeBoolean(false); out.writeLong(98_765); out.writeLong(25);
+        out.writeInt(3); out.writeBoolean(true); out.writeBoolean(true); out.writeBoolean(false);
+        Participant monster = RoundSnapshotCodec.decode(bytes.toByteArray()).participants().get(ACTIVE);
+        assertTrue(monster.revivalEntitled());
+        assertTrue(monster.hasLeftProtection());
+        assertEquals(3, monster.lifeSequence());
+        assertEquals(98_765, monster.humanNanos());
+        assertEquals(MonsterRole.ZOMBIE, monster.monsterRole());
+        assertEquals(MonsterDimension.OVERWORLD, monster.monsterDimension());
+        assertEquals(30_000_000_000L, monster.monsterCooldownNanos());
+        assertEquals(0, monster.monsterDeploymentSequence());
     }
 
     /** The exact P1 wire layout, independent of the current encoder's schema and added fields. */

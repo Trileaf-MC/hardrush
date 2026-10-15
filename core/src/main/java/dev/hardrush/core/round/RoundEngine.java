@@ -14,6 +14,7 @@ import java.util.UUID;
  * While a write is in flight conflicting mutations are rejected, not queued against old state.
  */
 public final class RoundEngine {
+    public static final long MONSTER_COOLDOWN_NANOS = 30_000_000_000L;
     private final MonotonicClock clock;
     private RoundSnapshot committed;
     private RoundTransition pending;
@@ -90,7 +91,11 @@ public final class RoundEngine {
         if (before.phase() == RoundPhase.RECOVERY_REQUIRED) throw new IllegalStateException("Recovery required");
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         Participant player = requirePlayer(before, playerId);
-        players.put(playerId, player.withSession(name, online));
+        Participant connected = player.withSession(name, online);
+        if (player.role() == ParticipantRole.MONSTER_DEPLOYED && player.online() != online) {
+            connected = connected.monsterLobby(MONSTER_COOLDOWN_NANOS);
+        }
+        players.put(playerId, connected);
         RoundPhase phase = before.phase();
         long remaining = before.remainingPhaseNanos();
         if (phase == RoundPhase.COUNTDOWN && readyOnline(players) == 0) {
@@ -143,8 +148,72 @@ public final class RoundEngine {
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         players.put(playerId, new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
                 player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
-                player.lifeSequence(), false, player.hasLeftProtection()));
+                player.lifeSequence(), false, player.hasLeftProtection(), MonsterRole.ZOMBIE,
+                MonsterDimension.OVERWORLD, MONSTER_COOLDOWN_NANOS, player.monsterDeploymentSequence()));
         return proposal(eventId, "HARDCORE_DEATH", before, before.phase(), 0, players, before.result(), false);
+    }
+
+    public RoundTransition proposeMonsterSelection(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, MonsterRole role, MonsterDimension dimension) {
+        Objects.requireNonNull(role); Objects.requireNonNull(dimension);
+        RoundSnapshot before = capture();
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
+                ParticipantRole.MONSTER_LOBBY);
+        return monsterProposal(eventId, "MONSTER_SELECTION", before, player.selectMonster(role, dimension));
+    }
+
+    public RoundTransition proposeMonsterDeploy(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        RoundSnapshot before = capture();
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
+                ParticipantRole.MONSTER_LOBBY);
+        if (player.monsterCooldownNanos() != 0) throw new IllegalStateException("Monster deployment cooldown has not elapsed");
+        return monsterProposal(eventId, "MONSTER_DEPLOY", before, player.deployMonster());
+    }
+
+    public RoundTransition proposeMonsterReturn(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        return monsterReturn(eventId, "MONSTER_RETURN", roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+    }
+
+    /** Adapter-only compensation after durable admission but before an outing actually opens. */
+    public RoundTransition proposeMonsterDeployCancelled(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        RoundSnapshot before = capture();
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
+                ParticipantRole.MONSTER_DEPLOYED);
+        return monsterProposal(eventId, "MONSTER_DEPLOY_CANCELLED", before, player.monsterLobby(0));
+    }
+
+    public RoundTransition proposeMonsterDeath(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        return monsterReturn(eventId, "MONSTER_DEATH", roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+    }
+
+    private RoundTransition monsterReturn(UUID eventId, String type, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        RoundSnapshot before = capture();
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
+                ParticipantRole.MONSTER_DEPLOYED);
+        return monsterProposal(eventId, type, before, player.monsterLobby(MONSTER_COOLDOWN_NANOS));
+    }
+
+    private RoundTransition monsterProposal(UUID eventId, String type, RoundSnapshot before, Participant player) {
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(player.id(), player);
+        return proposal(eventId, type, before, before.phase(), 0, players, before.result(), false);
+    }
+
+    private static Participant requireMonster(RoundSnapshot before, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, ParticipantRole role) {
+        requirePhase(before, RoundPhase.RUNNING);
+        if (!before.roundId().equals(roundId)) throw new IllegalStateException("Stale monster round");
+        Participant player = requirePlayer(before, playerId);
+        requireLife(player, role, expectedLifeSequence);
+        if (!player.online() || player.monsterDeploymentSequence() != expectedDeploymentSequence) {
+            throw new IllegalStateException("Stale or offline monster deployment");
+        }
+        return player;
     }
 
     /**
@@ -171,7 +240,8 @@ public final class RoundEngine {
         Participant changed = player.withRole(target);
         if (target == ParticipantRole.HUMAN_ACTIVE) {
             changed = new Participant(changed.id(), changed.name(), target, changed.online(), false,
-                    changed.humanNanos(), changed.joinedAtChallengeNanos(), Math.addExact(changed.lifeSequence(), 1), false, false);
+                    changed.humanNanos(), changed.joinedAtChallengeNanos(), Math.addExact(changed.lifeSequence(), 1), false, false,
+                    changed.monsterRole(), changed.monsterDimension(), changed.monsterCooldownNanos(), changed.monsterDeploymentSequence());
         }
         if (admissionPending) changed = changed.withSession(changed.name(), false);
         players.put(playerId, changed);
@@ -323,6 +393,12 @@ public final class RoundEngine {
         if (!base.cleanShutdown() && base.phase() == RoundPhase.RUNNING && base.onlineHumans() > 0) {
             challenge = Math.addExact(challenge, elapsed);
             players.replaceAll((id, p) -> p.online() && p.role().isActiveHuman() ? p.accrue(elapsed) : p);
+        }
+        // Cooldown is live server time for the connected monster, independent of human race timing.
+        // A clean shutdown marker freezes the captured remainder throughout server downtime.
+        if (!base.cleanShutdown() && base.phase() == RoundPhase.RUNNING) {
+            players.replaceAll((id, p) -> p.online() && p.role() == ParticipantRole.MONSTER_LOBBY
+                    ? p.elapseMonsterCooldown(elapsed) : p);
         }
         long remaining = base.remainingPhaseNanos();
         if (!base.cleanShutdown() && (base.phase() == RoundPhase.COUNTDOWN && readyOnline(players) > 0

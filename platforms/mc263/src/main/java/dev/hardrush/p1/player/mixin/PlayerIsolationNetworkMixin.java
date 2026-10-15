@@ -24,8 +24,8 @@ public abstract class PlayerIsolationNetworkMixin {
     // Off-thread invocations proceed to vanilla's PacketUtils scheduling. The replay on the server thread is cancelled here.
     @Inject(method = {"handleMovePlayer", "handleMoveVehicle", "handlePlayerInput", "handlePlayerAction",
             "handleUseItemOn", "handleAttack", "handleInteract", "handlePunch",
-            "handlePlayerCommand", "handlePaddleBoat", "handleContainerClose",
-            "handleContainerClick", "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
+            "handlePlayerCommand", "handlePaddleBoat",
+            "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
             "handlePlayerAbilities", "handleSpectatorAction", "handleTeleportToEntityPacket",
             "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
             "handlePickItemFromBlock", "handlePickItemFromEntity", "handleBundleItemSelectedPacket",
@@ -37,9 +37,31 @@ public abstract class PlayerIsolationNetworkMixin {
         if (player.level().getServer().isSameThread() && P1PlayerProfiles.isLocked(player)) ci.cancel();
     }
 
+    @Inject(method = "handleContainerClick", at = @At("HEAD"), cancellable = true)
+    private void hardrush$lobbyMenuClick(CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && !dev.hardrush.p2.lobby.P2LobbyUi.isMenu(player)
+                && (P1PlayerProfiles.isLocked(player) || P1CombatRuntime.competitionFrozen(player.level()))) ci.cancel();
+    }
+
+    @Inject(method = "handleContainerClose", at = @At("HEAD"), cancellable = true)
+    private void hardrush$lobbyMenuClose(CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && P1PlayerProfiles.isLocked(player)
+                && !dev.hardrush.p2.lobby.P2LobbyUi.isMenu(player)) ci.cancel();
+    }
+
+    @Inject(method = "handleSetCreativeModeSlot", at = @At("HEAD"), cancellable = true)
+    private void hardrush$immutableMenu(CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && dev.hardrush.p2.lobby.P2LobbyUi.isMenu(player)) ci.cancel();
+    }
+
+    @Inject(method = {"handleAttack", "handlePunch", "handleInteract", "handleUseItem", "handleUseItemOn"}, at = @At("HEAD"))
+    private void hardrush$cancelReturn(CallbackInfo ci) {
+        if (player.level().getServer().isSameThread()) dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
+    }
+
     // Celebration allows movement and closing a menu, while sealing all new competitive actions.
     @Inject(method = {"handlePlayerAction", "handleUseItemOn", "handleAttack", "handleInteract", "handlePunch",
-            "handleContainerClick", "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
+            "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
             "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
             "handlePickItemFromBlock", "handlePickItemFromEntity", "handleBundleItemSelectedPacket",
             "handleContainerSlotStateChanged", "handleSetCommandBlock", "handleSetCommandMinecart",

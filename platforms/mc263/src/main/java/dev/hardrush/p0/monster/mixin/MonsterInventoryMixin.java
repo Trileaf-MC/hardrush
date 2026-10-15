@@ -31,7 +31,10 @@ public abstract class MonsterInventoryMixin {
         callback.cancel(); return true;
     }
     @Inject(method="handleContainerClick", at=@At("HEAD"), cancellable=true)
-    private void lockClick(ServerboundContainerClickPacket packet, CallbackInfo callback) { serverThread(packet); lockInventory(callback); }
+    private void lockClick(ServerboundContainerClickPacket packet, CallbackInfo callback) {
+        serverThread(packet);
+        if (!dev.hardrush.p2.lobby.P2LobbyUi.isMenu(player)) lockInventory(callback);
+    }
     @Inject(method="handleContainerButtonClick", at=@At("HEAD"), cancellable=true)
     private void lockButton(ServerboundContainerButtonClickPacket packet, CallbackInfo callback) { serverThread(packet); lockInventory(callback); }
     @Inject(method="handlePlaceRecipe", at=@At("HEAD"), cancellable=true)

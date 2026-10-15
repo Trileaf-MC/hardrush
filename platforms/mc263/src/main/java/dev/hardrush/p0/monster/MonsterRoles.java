@@ -139,9 +139,11 @@ public final class MonsterRoles {
         requireThread(player);
         Role role = ROLES.remove(player.getUUID());
         if (role == null) return;
+        boolean dead = player.isDeadOrDying();
         role.gear.returnWorldGear(player,false);
         player.stopUsingItem();
         restoreOriginal(player, role);
+        if (dead) player.setHealth(0);
         DisguiseProbe.clear(player);
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player);
     }
@@ -310,6 +312,7 @@ public final class MonsterRoles {
     }
 
     public static boolean attack(ServerPlayer player, Entity target) {
+        dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         Role role = ROLES.get(player.getUUID());
         if (role == null || !player.isAlive() || (role.kind!=Kind.ZOMBIE && (role.kind!=Kind.SKELETON || role.gear.get(EquipmentSlot.MAINHAND).is(Items.BOW))) || !(target instanceof LivingEntity living)
                 || !legalTarget(player.getUUID(), player.level(), target)) return false;
@@ -322,6 +325,7 @@ public final class MonsterRoles {
     }
 
     public static boolean useControl(ServerPlayer player, InteractionHand hand) {
+        dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         Role role = ROLES.get(player.getUUID());
         if (role == null || hand != InteractionHand.MAIN_HAND || !player.isAlive()) return false;
         repairLoadout(player, role);
@@ -349,6 +353,7 @@ public final class MonsterRoles {
     }
 
     public static boolean burst(ServerPlayer player) {
+        dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         Role role = ROLES.get(player.getUUID());
         long now = System.nanoTime();
         if (role == null || !player.isAlive() || role.kind != Kind.SKELETON || !role.gear.get(EquipmentSlot.MAINHAND).is(Items.BOW) || now < role.timers.burstReadyAt || role.burstRemaining > 0) return false;
@@ -359,6 +364,7 @@ public final class MonsterRoles {
     }
 
     public static boolean summon(ServerPlayer player) {
+        dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         Role role = ROLES.get(player.getUUID());
         long now = System.nanoTime();
         if (role == null || !player.isAlive() || role.kind != Kind.ZOMBIE || now < role.timers.summonReadyAt) return false;
@@ -398,6 +404,7 @@ public final class MonsterRoles {
     }
 
     public static boolean ignite(ServerPlayer player) {
+        dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         Role role = ROLES.get(player.getUUID());
         if (role == null || !player.isAlive() || role.kind != Kind.CREEPER || role.igniteAt != 0) return false;
         int fuse = ((NativeCreeperAccessor) role.model).hardrush$maxSwell();
@@ -464,8 +471,14 @@ public final class MonsterRoles {
     }
 
     public static boolean legalTarget(UUID owner, ServerLevel level, Entity target) {
+        if (!dev.hardrush.p2.lobby.P2LobbyRuntime.targetAllowed(owner, level, target)) return false;
         return target instanceof ServerPlayer player && !owner.equals(player.getUUID()) && player.level() == level
             && player.isAlive() && !isMonster(player) && !player.isSpectator() && !player.getAbilities().invulnerable;
+    }
+
+    public static boolean isIgniting(ServerPlayer player) {
+        var role = ROLES.get(player.getUUID());
+        return role != null && role.igniteAt != 0;
     }
 
     private static boolean allowDamage(LivingEntity target, DamageSource source, float amount) {

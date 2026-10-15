@@ -27,6 +27,8 @@ public abstract class ProtectionNetworkMixin {
     @Inject(method="handleMovePlayer", at=@At("HEAD"), cancellable=true)
     private void move(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
         if (!mainThread()) return;
+        if (new Vec3(packet.getX(player.getX()), packet.getY(player.getY()), packet.getZ(player.getZ()))
+                .distanceToSqr(player.position()) > .000001) dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         if (P2ProtectionRuntime.rejectMove(player, player.level(), new Vec3(packet.getX(player.getX()), packet.getY(player.getY()), packet.getZ(player.getZ())))) {
             P2ProtectionRuntime.correct(player); ci.cancel();
         }
@@ -34,6 +36,8 @@ public abstract class ProtectionNetworkMixin {
     @Inject(method="handleMoveVehicle", at=@At("HEAD"), cancellable=true)
     private void vehicle(ServerboundMoveVehiclePacket packet, CallbackInfo ci) {
         if (!mainThread()) return;
+        if (packet.movingTo().position().distanceToSqr(player.getRootVehicle().position()) > .000001)
+            dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         var vehicle = player.getRootVehicle();
         if (P2ProtectionRuntime.rejectMove(vehicle, player.level(), packet.movingTo().position())) {
             P2ProtectionRuntime.correct(player); ci.cancel();
@@ -72,6 +76,7 @@ public abstract class ProtectionNetworkMixin {
     }
     @Inject(method="handleContainerClick", at=@At("HEAD"), cancellable=true)
     private void inventory(ServerboundContainerClickPacket packet, CallbackInfo ci) {
+        if (dev.hardrush.p2.lobby.P2LobbyUi.isMenu(player)) return;
         if (!mainThread() || !P2ProtectionRuntime.protectedEntity(player)) return;
         // Personal inventory sorting is allowed. QUICK_CRAFT uses negative-slot control packets
         // to begin/end a normal drag; only PICKUP/outside and THROW actually discard items.

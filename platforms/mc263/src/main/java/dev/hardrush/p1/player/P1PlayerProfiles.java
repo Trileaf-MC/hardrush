@@ -273,6 +273,38 @@ public final class P1PlayerProfiles implements AutoCloseable {
         } catch (RuntimeException error) { fail(entry, error); moveToLobby(player); return false; }
     }
 
+    /** A committed sortie opens only this monster body; never restore a human inventory. */
+    public boolean deployMonster(ServerPlayer player, RoundSnapshot round, ServerLevel level, Vec3 position) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        var participant = round.participants().get(player.getUUID());
+        if (closed || entry == null || entry.player != player || !entry.monsterLobbyInitialized
+                || !isReady(player.getUUID(), round) || round.phase() != RoundPhase.RUNNING
+                || participant == null || participant.role() != ParticipantRole.MONSTER_DEPLOYED
+                || !dev.hardrush.p1.world.P1RoundWorldBundle.owns(level)) return false;
+        if (entry.admitted && player.level() == level) return true;
+        closeSuspendedContainer(player);
+        clearMonsterLobbyState(player);
+        player.setHealth(player.getMaxHealth());
+        if (!player.teleportTo(level, position.x, position.y, position.z, Set.of(), 0, 0, true)) return false;
+        ((ProfileTagged) player).hardrush$isolated(false);
+        ((ProfileTagged) player).hardrush$respawnPermitted(false);
+        entry.admitted = true;
+        entry.deathHeld = false;
+        player.resetSentInfo();
+        player.onUpdateAbilities();
+        return true;
+    }
+
+    /** Reapply a committed return before exposing any lobby actions. */
+    public void returnMonsterToLobby(ServerPlayer player, RoundSnapshot round) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        if (entry == null || entry.player != player) return;
+        entry.monsterLobbyInitialized = false;
+        if (!enterMonsterLobby(player, round)) throw new IllegalStateException("已提交怪物无法安全返回大厅");
+    }
+
     public void onMonsterRespawn(ServerPlayer previous, ServerPlayer replacement, RoundSnapshot round) {
         requireMainThread();
         var old = players.get(previous.getUUID());

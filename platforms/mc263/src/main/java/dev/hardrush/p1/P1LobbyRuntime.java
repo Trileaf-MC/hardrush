@@ -12,6 +12,7 @@ import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p2.protection.P2ProtectionRuntime;
+import dev.hardrush.p2.lobby.P2LobbyRuntime;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
 import dev.hardrush.p1.combat.P1CombatRuntime;
 import dev.hardrush.p1.record.P1ProgressRuntime;
@@ -102,6 +103,7 @@ public final class P1LobbyRuntime {
                     }), (message, error) -> LOGGER.error(message, error));
             reference[0] = session;
             SESSIONS.put(server, session);
+            P2LobbyRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
             P2ProtectionRuntime.configure(server, new P2ProtectionRuntime.Access() {
                 @Override public Optional<P2ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) {
                     var round = session.snapshot().orElse(null);
@@ -230,8 +232,8 @@ public final class P1LobbyRuntime {
                     if (!profiles.isReady(player.getUUID(), round)) continue;
                     var names = ADMITTED.get(server);
                     var participant = round.participants().get(player.getUUID());
-                    if (participant != null && participant.role() == ParticipantRole.MONSTER_LOBBY) {
-                        profiles.enterMonsterLobby(player, round);
+                    if (participant != null && participant.role().isMonster()) {
+                        if (participant.role() == ParticipantRole.MONSTER_LOBBY) profiles.enterMonsterLobby(player, round);
                         if (!player.getScoreboardName().equals(names.get(player.getUUID()))) {
                             names.put(player.getUUID(), player.getScoreboardName());
                             session.onOnline(player.getUUID(), player.getScoreboardName(), true);
@@ -270,11 +272,13 @@ public final class P1LobbyRuntime {
                 }
                 P1ProgressRuntime.tick(server);
                 P2ProtectionRuntime.tick(server);
+                P2LobbyRuntime.tick(server);
                 automaticBooks(server);
                 session.tick();
             } catch (RuntimeException error) { session.adapterFailure("世界／档案适配失败", error); }
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            P2LobbyRuntime.disconnected(handler.player);
             var session = SESSIONS.get(server);
             if (session != null) session.onOnline(handler.player.getUUID(), handler.player.getScoreboardName(), false);
             var admitted = ADMITTED.get(server);
@@ -293,6 +297,11 @@ public final class P1LobbyRuntime {
                 if (profiles != null) profiles.holdDeath(player);
                 session.humanDeath(player.getUUID(), participant.lifeSequence(),
                         P1CombatRuntime.currentBatch(player.level()).orElse(null));
+            } else if (participant != null && participant.role() == ParticipantRole.MONSTER_DEPLOYED
+                    && P1RoundWorldBundle.owns(player.level())) {
+                var profiles = PROFILES.get(player.level().getServer());
+                if (profiles != null) profiles.holdDeath(player);
+                session.monsterDeath(round.roundId(), player.getUUID(), participant.lifeSequence(), participant.monsterDeploymentSequence());
             }
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
@@ -313,6 +322,7 @@ public final class P1LobbyRuntime {
             var session = SESSIONS.get(server);
             if (session == null) return;
             session.prepareStop();
+            P2LobbyRuntime.prepareStop(server);
             var profiles = PROFILES.get(server);
             if (profiles != null) for (var player : server.getPlayerList().getPlayers()) {
                 if (!profiles.manages(player)) continue;
@@ -348,6 +358,7 @@ public final class P1LobbyRuntime {
             catch (Exception error) { LOGGER.error("P1 stop flush failed; retain database and inspect diagnostics", error); }
             SESSIONS.remove(server);
             P2ProtectionRuntime.unconfigure(server);
+            P2LobbyRuntime.unconfigure(server);
             TABS.remove(server);
             BOOKS.remove(server);
             BOOK_ATTEMPTS.remove(server);
@@ -458,6 +469,7 @@ public final class P1LobbyRuntime {
 
     private static void applyPlayers(MinecraftServer server, RoundSnapshot before, RoundSnapshot after) {
         refreshTab(server, true);
+        P2LobbyRuntime.onCommitted(server, before, after);
         if (!before.roundId().equals(after.roundId())) {
             WORLDS.remove(server);
             RELEASES.remove(server);

@@ -8,6 +8,9 @@ import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.core.round.RoundSnapshotCodec;
 import dev.hardrush.core.round.RoundTransition;
+import dev.hardrush.core.round.MonsterRole;
+import dev.hardrush.core.round.MonsterDimension;
+import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.DragonDeathArbiter;
 import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.combat.CombatEventCodec;
@@ -505,6 +508,47 @@ public final class P1LobbySession implements AutoCloseable {
     public void requestReady(UUID playerId, boolean ready, Consumer<Reply> reply) {
         requestAction(() -> engine.proposeReady(UUID.randomUUID(), playerId, ready), reply,
                 ready ? "已就绪；首位就绪玩家触发本轮开局倒计时。" : "已取消就绪。");
+    }
+
+    public void requestMonsterSelection(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            MonsterRole role, MonsterDimension dimension, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeMonsterSelection(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence, role, dimension), reply, "怪物角色和出场维度已保存。");
+    }
+
+    public void requestMonsterDeploy(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeMonsterDeploy(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence), reply, "怪物出场身份已保存。");
+    }
+
+    public void requestMonsterReturn(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeMonsterReturn(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence), reply, "已返回怪物大厅；再次出场需等待 30 秒。");
+    }
+
+    /** Internal platform compensation; no player command may invoke this cooldown refund. */
+    public void requestMonsterDeployCancelled(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeMonsterDeployCancelled(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence), reply, "出场安全重验未通过，已回到大厅且保留出场机会。");
+    }
+
+    public void monsterDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence) {
+        if (engine == null || stopping || state != State.OPEN || competitionLocked()
+                || !engine.committed().roundId().equals(roundId)) return;
+        enqueue(e -> {
+            var current = e.committed();
+            var player = current.participants().get(playerId);
+            // Queued duplicate deaths or callbacks from an earlier outing cannot reset a new outing.
+            if (!current.roundId().equals(roundId) || current.phase() != RoundPhase.RUNNING
+                    || player == null || player.role() != ParticipantRole.MONSTER_DEPLOYED || !player.online()
+                    || player.lifeSequence() != lifeSequence || player.monsterDeploymentSequence() != deploymentSequence) {
+                return e.proposeCheckpoint(UUID.randomUUID(), false);
+            }
+            return e.proposeMonsterDeath(UUID.randomUUID(), roundId, playerId, lifeSequence, deploymentSequence);
+        });
     }
 
     private void requestAction(java.util.function.Supplier<RoundTransition> action, Consumer<Reply> reply, String success) {
