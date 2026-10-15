@@ -1,0 +1,2 @@
+PASS: --boundary COMMIT still selects the implicit SQLite scenarios
+PASS: explicit incompatible PROFILE/COMMIT is rejected before any launch

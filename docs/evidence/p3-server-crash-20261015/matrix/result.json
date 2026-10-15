@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "runDirectory": "/Users/leifwebber/projects/minecraft/hardrush/.local/p3-server-crash/f4983981-8533-48d3-a4f1-b21b56251aa6",
+  "scenarios": [
+    {
+      "scenario": "AWARD",
+      "boundary": "SNAPSHOT",
+      "status": "PASS",
+      "pids": [
+        78036,
+        78941,
+        79475
+      ],
+      "retainedFileCount": 32
+    },
+    {
+      "scenario": "AWARD",
+      "boundary": "INDEX",
+      "status": "PASS",
+      "pids": [
+        79609,
+        79760,
+        79804
+      ],
+      "retainedFileCount": 33
+    },
+    {
+      "scenario": "AWARD",
+      "boundary": "COMMIT",
+      "status": "PASS",
+      "pids": [
+        79840,
+        80072,
+        80145
+      ],
+      "retainedFileCount": 33
+    },
+    {
+      "scenario": "CONSUME",
+      "boundary": "SNAPSHOT",
+      "status": "PASS",
+      "pids": [
+        80230,
+        80717,
+        81164
+      ],
+      "retainedFileCount": 33
+    },
+    {
+      "scenario": "CONSUME",
+      "boundary": "INDEX",
+      "status": "PASS",
+      "pids": [
+        81450,
+        81603,
+        81676
+      ],
+      "retainedFileCount": 33
+    },
+    {
+      "scenario": "CONSUME",
+      "boundary": "COMMIT",
+      "status": "PASS",
+      "pids": [
+        81796,
+        81889,
+        81923
+      ],
+      "retainedFileCount": 36
+    },
+    {
+      "scenario": "TERMINAL",
+      "boundary": "SNAPSHOT",
+      "status": "PASS",
+      "pids": [
+        82296,
+        82760,
+        82814
+      ],
+      "retainedFileCount": 37
+    },
+    {
+      "scenario": "TERMINAL",
+      "boundary": "INDEX",
+      "status": "PASS",
+      "pids": [
+        82879,
+        82961,
+        83010
+      ],
+      "retainedFileCount": 34
+    },
+    {
+      "scenario": "TERMINAL",
+      "boundary": "COMMIT",
+      "status": "PASS",
+      "pids": [
+        83175,
+        83545,
+        83591
+      ],
+      "retainedFileCount": 36
+    }
+  ],
+  "verification": "Headless dedicated servers, embedded native connections, actual parent SIGKILL; no real client."
+}

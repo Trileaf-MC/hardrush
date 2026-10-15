@@ -58,3 +58,7 @@ P0b 无图形界面基础依赖复验：`scripts/p0-gradle.sh -p probes/p0b chec
 2026-10-15 P2 第四批继续完成 26.3 开发范围的 P2-09～16，并开放大厅复生按钮／命令：技能持久归属与原版行为专项、原生死亡批次资格发放、空装复生、60 秒救场和完整统计／重复请求防护。实现、自动结果及边界见 [复生与救场记录](docs/p2-revival-rescue.md)，真实客户端完整循环请按 [人工测试清单](docs/人工客户端测试/P2复生救场与完整闭环.md) 验证。P2-17／P2-G 仍未通过，未启动图形客户端。
 
 2026-10-15 按用户指示提前推进 P3：第一批补崩溃隔离、档案恢复与存储故障防护；第二批接通 OP 3 的 `admin recheck-storage` 和 OP 4 的 `admin close-recovery`，均需具体轮次确认与事务审计。数据库重核成功仍留厅隔离；结束恢复轮保留已提交资格／原始终局，安全释放后才创建下轮，已关闭的故障世界只读核验并保留文件。自动入口为 `scripts/p0-gradle.sh checkP3 -PhardrushP1=true --console=plain`，独立恢复整链另加 `:platforms:mc263:runGameTest -PhardrushP3Recovery=true`。尚不支持继续原活动轮次，P3-01／02／G 未完成；当前操作流程和边界见 [P3 第二批记录](docs/p3-recovery-controls.md)。
+
+2026-10-15 P3 第三批新增整服联合强杀复验：`python3 scripts/p3-server-crash.py`，覆盖资格发放／消费／首龙终局在快照、索引和提交后回调前三个边界的9组实际SIGKILL，每组由两个新JVM重连核验，27个服务端JVM全部通过；世界／档案保留、资格与原终局不重放。实现、证据及剩余边界见 [整服强杀记录](docs/p3-server-crash.md)，客户端检查见 [人工清单](docs/人工客户端测试/P3整服强杀恢复.md)。P3-01／02／G仍未完成。
+
+2026-10-15 P3 第四批追加首次入轮档案 PREPARED／SUSPENDED／APPLIED／VERIFIED 四个整服写盘窗口，外部 JDI 命中实际 journal 方法返回后由父进程 SIGKILL；四组及双新 JVM 重开均通过，旧封存／原生物资／目标空档案保持隔离。复验：`python3 scripts/p3-server-crash.py --scenario PROFILE`；新版默认 runner 同时包含原九组 SQLite 场景。详见 [档案强杀记录](docs/p3-profile-crash.md)。跨轮整服档案恢复、不确定资料修复和继续原活动轮仍待后续。

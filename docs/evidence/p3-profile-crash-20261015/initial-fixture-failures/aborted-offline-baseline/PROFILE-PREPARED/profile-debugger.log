@@ -1,0 +1,4 @@
+Exception in thread "main" com.sun.jdi.VMDisconnectedException
+	at jdk.jdi/com.sun.tools.jdi.EventQueueImpl.removeUnfiltered(EventQueueImpl.java:200)
+	at jdk.jdi/com.sun.tools.jdi.EventQueueImpl.remove(EventQueueImpl.java:97)
+	at P3ProfileCrashBarrier.main(P3ProfileCrashBarrier.java:47)

@@ -1,0 +1,18 @@
+test_all_known_schemas_share_the_identity_and_timing_prefix (test_p1_server_restart.SnapshotHeaderTest.test_all_known_schemas_share_the_identity_and_timing_prefix) ... ok
+test_clean_and_uncertain_flags_are_preserved_and_validated (test_p1_server_restart.SnapshotHeaderTest.test_clean_and_uncertain_flags_are_preserved_and_validated) ... ok
+test_text_bounds_and_utf8_remain_strict (test_p1_server_restart.SnapshotHeaderTest.test_text_bounds_and_utf8_remain_strict) ... ok
+test_total_size_matches_java_codec_limit (test_p1_server_restart.SnapshotHeaderTest.test_total_size_matches_java_codec_limit) ... ok
+test_truncated_prefix_never_reads_partial_fields (test_p1_server_restart.SnapshotHeaderTest.test_truncated_prefix_never_reads_partial_fields) ... ok
+test_unknown_schema_and_magic_fail_closed (test_p1_server_restart.SnapshotHeaderTest.test_unknown_schema_and_magic_fail_closed) ... ok
+test_only_the_new_child_pid_receives_sigkill_after_a_matching_marker (test_p3_server_crash.CrashSignalSafetyTest.test_only_the_new_child_pid_receives_sigkill_after_a_matching_marker) ... AWARD/INDEX/write: PASS (JVM 12345, exit -9)
+ok
+test_retained_inventory_checks_profile_content_before_counting_it_as_evidence (test_p3_server_crash.CrashSignalSafetyTest.test_retained_inventory_checks_profile_content_before_counting_it_as_evidence) ... ok
+test_retained_inventory_rejects_links_instead_of_hashing_external_evidence (test_p3_server_crash.CrashSignalSafetyTest.test_retained_inventory_rejects_links_instead_of_hashing_external_evidence) ... ok
+test_stale_marker_prevents_launch_before_any_child_can_be_killed (test_p3_server_crash.CrashSignalSafetyTest.test_stale_marker_prevents_launch_before_any_child_can_be_killed) ... ok
+test_writer_that_exited_by_itself_is_never_counted_as_crash_evidence (test_p3_server_crash.CrashSignalSafetyTest.test_writer_that_exited_by_itself_is_never_counted_as_crash_evidence) ... ok
+test_wrong_pid_or_scenario_cannot_authorize_the_test_sigkill (test_p3_server_crash.CrashSignalSafetyTest.test_wrong_pid_or_scenario_cannot_authorize_the_test_sigkill) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.013s
+
+OK

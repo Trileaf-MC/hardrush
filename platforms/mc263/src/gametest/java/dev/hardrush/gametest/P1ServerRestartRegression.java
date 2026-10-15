@@ -69,7 +69,9 @@ public final class P1ServerRestartRegression implements ModInitializer {
     public static long observationTime() { return CLOCK.get(); }
 
     @Override public void onInitialize() {
-        if (System.getProperty("hardrush.p1.restart.operation") == null) return;
+        if (System.getProperty("hardrush.p1.restart.operation") == null
+                || System.getProperty("hardrush.p3.crash.scenario") != null
+                || System.getProperty("hardrush.p3.profile.boundary") != null) return;
         // Register the production listeners before this observer, independent of mod iteration order.
         P1LobbyRuntime.initialize();
         var current = new Fixture[1];
@@ -79,7 +81,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
     }
 
     private record Step(String name, BooleanSupplier work) {}
-    private static final class Fixture {
+    static class Fixture {
         final MinecraftServer server;
         final RoundPhase target = RoundPhase.valueOf(System.getProperty("hardrush.p1.restart.phase"));
         final String operation = System.getProperty("hardrush.p1.restart.operation");
@@ -103,7 +105,9 @@ public final class P1ServerRestartRegression implements ModInitializer {
         boolean stopping;
         BlockPos marker;
 
-        Fixture(MinecraftServer server) {
+        Fixture(MinecraftServer server) { this(server, true); }
+
+        Fixture(MinecraftServer server, boolean normalScenario) {
             this.server = server;
             root = server.getWorldPath(LevelResource.ROOT);
             details.addProperty("operation", operation); details.addProperty("phase", target.name());
@@ -127,7 +131,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
                 set(session, "clock", (MonotonicClock) CLOCK::get);
                 set(session, "lastCheckpointNanos", CLOCK.get());
                 Object engine = get(session, "engine"); set(engine, "boundary", CLOCK.get());
-                if (operation.equals("recover")) {
+                if (normalScenario && operation.equals("recover")) {
                     try {
                         var data = JsonParser.parseString(Files.readString(directory.resolve("write-result.json"))).getAsJsonObject();
                         require(data.get("status").getAsString().equals("PASS"), "writer must pass");
@@ -149,6 +153,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
                     } catch (Exception error) { throw new IllegalStateException(error); }
                 }
             });
+            if (!normalScenario) return;
             if (operation.equals("write")) writeScenario();
             else if (operation.equals("recover")) recoverScenario();
             else throw new IllegalArgumentException("Only write/recover allowed");
@@ -493,16 +498,16 @@ public final class P1ServerRestartRegression implements ModInitializer {
 
     private static void sameIdentity(RoundSnapshot before, RoundSnapshot after) { require(before.roundId().equals(after.roundId()) && before.sequence() == after.sequence() && before.seed() == after.seed() && before.rules().equals(after.rules()), "round UUID/sequence/seed/rules remain exact"); }
     private static ResourceKey<Level> key(UUID round, String name) { return ResourceKey.create(Registries.DIMENSION, Identifier.parse(P1WorldPaths.identifier(round, name))); }
-    private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
-    private static Object getStatic(Class<?> type, String name) { try { var field = type.getDeclaredField(name); field.setAccessible(true); return field.get(null); } catch (Exception error) { throw new IllegalStateException(error); } }
-    private static Object get(Object owner, String name) { try { var field = owner.getClass().getDeclaredField(name); field.setAccessible(true); return field.get(owner); } catch (Exception error) { throw new IllegalStateException(error); } }
-    private static void set(Object owner, String name, Object value) { try { var field = owner.getClass().getDeclaredField(name); field.setAccessible(true); field.set(owner, value); } catch (Exception error) { throw new IllegalStateException(error); } }
-    private static final class Actor {
+    static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
+    static Object getStatic(Class<?> type, String name) { try { var field = type.getDeclaredField(name); field.setAccessible(true); return field.get(null); } catch (Exception error) { throw new IllegalStateException(error); } }
+    static Object get(Object owner, String name) { try { var field = owner.getClass().getDeclaredField(name); field.setAccessible(true); return field.get(owner); } catch (Exception error) { throw new IllegalStateException(error); } }
+    static void set(Object owner, String name, Object value) { try { var field = owner.getClass().getDeclaredField(name); field.setAccessible(true); field.set(owner, value); } catch (Exception error) { throw new IllegalStateException(error); } }
+    static final class Actor {
         final GameProfile profile;
         ServerPlayer player; PrepareSpawnTask prepare; RecordingConnection connection; EmbeddedChannel channel;
         Actor(String name) { profile = new GameProfile(UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes(java.nio.charset.StandardCharsets.UTF_8)), name); }
     }
-    private static final class RecordingConnection extends Connection {
+    static final class RecordingConnection extends Connection {
         final ArrayList<Packet<?>> packets = new ArrayList<>();
         RecordingConnection() { super(PacketFlow.SERVERBOUND); }
         private void record(Packet<?> packet) { if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record); else packets.add(packet); }

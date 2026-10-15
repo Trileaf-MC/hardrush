@@ -1,0 +1,10 @@
+{
+  "operation": "recover",
+  "phase": "RUNNING",
+  "pid": 99292,
+  "scenario": "PROFILE",
+  "boundary": "APPLIED",
+  "suspensionId": "fddf5617-6f0f-43d6-9d48-2f19a0264d92",
+  "roundId": "9bc69bda-c584-4700-9fcd-c552d86451aa",
+  "status": "PASS"
+}

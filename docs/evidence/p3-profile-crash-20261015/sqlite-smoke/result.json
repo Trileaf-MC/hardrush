@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "runDirectory": "/Users/leifwebber/projects/minecraft/hardrush/.local/p3-server-crash/6ca1c466-5624-4d22-8e53-f5a855b8cbf4",
+  "scenarios": [
+    {
+      "scenario": "AWARD",
+      "boundary": "COMMIT",
+      "status": "PASS",
+      "pids": [
+        97038,
+        97299,
+        97626
+      ],
+      "retainedFileCount": 34
+    }
+  ],
+  "verification": "Headless dedicated servers, embedded native connections, actual parent SIGKILL; no real client."
+}

@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "status": "FAIL",
+  "runDirectory": "/Users/leifwebber/projects/minecraft/hardrush/.local/p3-server-crash/67bff20e-3df6-4a9f-989d-8b56f2605ede",
+  "scenarios": [],
+  "verification": "Headless dedicated servers, embedded native connections, actual parent SIGKILL; no real client.",
+  "failure": "Recovery fixture failed or mismatched: java.lang.AssertionError: only verified recovery stops normally"
+}

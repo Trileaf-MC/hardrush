@@ -7,6 +7,8 @@
   "entrypoints": {
     "main": [
       "dev.hardrush.gametest.P1ServerRestartRegression",
+      "dev.hardrush.gametest.P3ServerCrashRegression",
+      "dev.hardrush.gametest.P3ProfileCrashRegression",
       "dev.hardrush.gametest.P2LegacyFixtures"
     ],
     "fabric-gametest": [

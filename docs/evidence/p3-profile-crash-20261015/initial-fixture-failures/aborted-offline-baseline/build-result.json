@@ -1,0 +1,12 @@
+{
+  "command": [
+    "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+    ":platforms:mc263:writeP1RestartLaunchSpec",
+    "-PhardrushP1RestartLaunchSpec=/Users/leifwebber/projects/minecraft/hardrush/.local/p3-server-crash/e6b02f7e-6474-46e2-a366-69c1c0599d43/launch-spec.json",
+    "--console=plain"
+  ],
+  "log": "build.log",
+  "status": "PASS",
+  "pid": 94364,
+  "exitCode": 0
+}
