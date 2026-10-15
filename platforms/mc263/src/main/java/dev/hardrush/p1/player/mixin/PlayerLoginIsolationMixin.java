@@ -22,6 +22,11 @@ public abstract class PlayerLoginIsolationMixin {
     }
     @Inject(method = "save", at = @At("HEAD"), cancellable = true)
     private void hardrush$preserveUnsafeOriginal(ServerPlayer player, CallbackInfo ci) {
-        if (!P1PlayerProfiles.allowVanillaSave(player)) ci.cancel();
+        if (!P1PlayerProfiles.allowVanillaSave(player)) {
+            // DISCONNECT removes the managed entry before vanilla save(). Isolated monster/lobby
+            // NBT must stay quarantined, while cumulative statistics are independent of round profiles.
+            player.getStats().save();
+            ci.cancel();
+        }
     }
 }

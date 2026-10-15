@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 1;
+    private static final int SCHEMA = 2;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -39,6 +39,7 @@ public final class RoundSnapshotCodec {
                 writeUuid(out, p.id()); writeText(out, p.name()); writeText(out, p.role().name());
                 out.writeBoolean(p.online()); out.writeBoolean(p.ready()); out.writeLong(p.humanNanos());
                 out.writeLong(p.joinedAtChallengeNanos()); out.writeInt(p.lifeSequence()); out.writeBoolean(p.revivalEntitled());
+                out.writeBoolean(p.hasLeftProtection());
             }
             out.writeBoolean(snapshot.result() != null);
             if (snapshot.result() != null) {
@@ -59,7 +60,9 @@ public final class RoundSnapshotCodec {
         if (bytes == null || bytes.length > MAX_BYTES) throw new IllegalArgumentException("Invalid snapshot size");
         try {
             var in = new DataInputStream(new ByteArrayInputStream(bytes));
-            if (in.readInt() != MAGIC || in.readInt() != SCHEMA) throw new IOException("Unsupported snapshot schema");
+            if (in.readInt() != MAGIC) throw new IOException("Unsupported snapshot format");
+            int schema = in.readInt();
+            if (schema < 1 || schema > SCHEMA) throw new IOException("Unsupported snapshot schema");
             UUID id = readUuid(in);
             long sequence = in.readLong(), seed = in.readLong(), version = in.readLong();
             RulesConfig rules = RulesConfig.decode(readText(in, 131_072));
@@ -72,9 +75,17 @@ public final class RoundSnapshotCodec {
             var players = new LinkedHashMap<UUID, Participant>();
             for (int i = 0; i < count; i++) {
                 UUID playerId = readUuid(in);
-                Participant p = new Participant(playerId, readText(in, 256),
-                        ParticipantRole.valueOf(readText(in, 64)), in.readBoolean(), in.readBoolean(),
-                        in.readLong(), in.readLong(), in.readInt(), in.readBoolean());
+                String name = readText(in, 256);
+                ParticipantRole role = ParticipantRole.valueOf(readText(in, 64));
+                boolean online = in.readBoolean(), ready = in.readBoolean();
+                long humanNanos = in.readLong(), joinedAt = in.readLong();
+                int lifeSequence = in.readInt();
+                boolean revivalEntitled = in.readBoolean();
+                // P1 had no formal protection rule or exit record. Its existing lives receive
+                // the initial permission on upgrade; every later exit is durably recorded.
+                boolean hasLeftProtection = schema >= 2 && in.readBoolean();
+                Participant p = new Participant(playerId, name, role, online, ready,
+                        humanNanos, joinedAt, lifeSequence, revivalEntitled, hasLeftProtection);
                 if (players.put(playerId, p) != null) throw new IOException("Duplicate participant UUID");
             }
             RoundResult result = null;

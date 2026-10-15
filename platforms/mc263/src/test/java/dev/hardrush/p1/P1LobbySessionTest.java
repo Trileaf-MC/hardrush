@@ -318,11 +318,13 @@ final class P1LobbySessionTest {
     }
 
     @Test
-    void hardcoreReadyCannotOpenIncompleteP2Gameplay() throws Exception {
+    void hardcoreDeathAndProtectionPersistAcrossNormalStopAndRejoin() throws Exception {
         var callbacks = new LinkedBlockingQueue<Runnable>();
         var reply = new AtomicReference<P1LobbySession.Reply>();
+        var clock = new AtomicLong();
         UUID player = UUID.randomUUID();
-        try (var session = new P1LobbySession(directory.resolve("hardcore-gate.sqlite"), () -> 0, callbacks::add)) {
+        var database = directory.resolve("hardcore-identity.sqlite");
+        try (var session = new P1LobbySession(database, clock::get, callbacks::add)) {
             pumpUntil(callbacks, () -> session.state() == P1LobbySession.State.OPEN);
             session.adaptersReady(session.snapshot().orElseThrow().roundId());
             pumpUntil(callbacks, () -> !session.mutationPending());
@@ -331,9 +333,43 @@ final class P1LobbySessionTest {
             pumpUntil(callbacks, () -> reply.get() != null);
             reply.set(null);
             session.requestReady(player, true, reply::set);
+            pumpUntil(callbacks, () -> reply.get() != null);
+            assertTrue(reply.get().success(), reply.get().message());
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
+            session.tick();
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertEquals(RoundPhase.RUNNING, session.snapshot().orElseThrow().phase());
+            session.onOnline(player, "Human", true);
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertTrue(session.leaveProtection(session.snapshot().orElseThrow().roundId(), player, 1));
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertTrue(session.snapshot().orElseThrow().participants().get(player).hasLeftProtection());
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(7));
+            session.humanDeath(player, 1, null);
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertEquals(ParticipantRole.MONSTER_LOBBY, session.snapshot().orElseThrow().participants().get(player).role());
+            assertEquals(TimeUnit.SECONDS.toNanos(7), session.view().orElseThrow().challengeNanos());
+            assertTrue(session.leaveProtection(session.snapshot().orElseThrow().roundId(), player, 1));
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertEquals(P1LobbySession.State.OPEN, session.state(), "A queued movement from the dead life is harmless");
+            reply.set(null);
+            session.requestJoin(player, "Human", reply::set);
+            pumpUntil(callbacks, () -> reply.get() != null);
             assertFalse(reply.get().success());
-            assertTrue(reply.get().message().contains("P2"));
-            assertEquals(RoundPhase.WAITING, session.snapshot().orElseThrow().phase());
+        }
+        clock.addAndGet(TimeUnit.DAYS.toNanos(3));
+        try (var session = new P1LobbySession(database, clock::get, callbacks::add)) {
+            pumpUntil(callbacks, () -> session.state() == P1LobbySession.State.OPEN);
+            session.adaptersReady(session.snapshot().orElseThrow().roundId());
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            session.onOnline(player, "Renamed", true);
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            var dead = session.snapshot().orElseThrow().participants().get(player);
+            assertEquals(ParticipantRole.MONSTER_LOBBY, dead.role());
+            assertEquals(1, dead.lifeSequence());
+            assertTrue(dead.hasLeftProtection());
+            assertEquals(TimeUnit.SECONDS.toNanos(7), dead.humanNanos());
+            assertEquals(TimeUnit.SECONDS.toNanos(7), session.view().orElseThrow().challengeNanos());
         }
     }
 

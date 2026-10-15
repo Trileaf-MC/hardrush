@@ -12,7 +12,8 @@
     "PlayerAdvancementProfileAccessor",
     "PlayerAdvancementIsolationMixin",
     "PlayerProgressDimensionMixin",
-    "PlayerProfileInputAccessor"
+    "PlayerProfileInputAccessor",
+    "PlayerRespawnConnectionAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -21,17 +21,19 @@ HardRush 是面向原版客户端的 Fabric 多人速通挑战模组。玩家在
 - [P1 管理人工客户端检查](docs/人工客户端测试/P1管理命令与成绩修订.md)
 - [P1 同服十轮与新 JVM 正常恢复记录](docs/p1-ten-round-regression.md)
 - [P1 十轮与正常恢复人工检查](docs/人工客户端测试/P1十轮与正常恢复.md)
+- [P2 正式身份与出生保护](docs/p2-identity-protection.md)
+- [P2 身份与保护人工检查](docs/人工客户端测试/P2身份转换与出生保护.md)
 - [第三方组件](THIRD-PARTY.md)
 
 玩法及首轮数值已经确认。开发首先验证旁人完整怪物外观与本人正常操作、动态三维度与末影龙流程，以及三版本的回放和防作弊组合，再推进完整功能。
 
-本目录已实现 26.3 的 P0 原型：旁人怪物／本人 Steve 外观、单轮持久三维度、真实怪物角色与技能及管理员探针命令。另已接通独立 P1 普通模式、首龙终局与轮换、统计榜单和历史书；极限死亡转角色／大厅复生与完整发布验收仍未完成。P0 验收结果与已知阻塞见验证记录，不能把构建成功视为功能通过。
+本目录已实现 26.3 的 P0 原型：旁人怪物／本人 Steve 外观、单轮持久三维度、真实怪物角色与技能及管理员探针命令。另已接通独立 P1 普通模式、首龙终局与轮换、统计榜单和历史书；P2 第一批已接通正式普通／极限身份和出生／大厅保护；怪物出场、资格复生、救场与完整发布验收仍未完成。P0 验收结果与已知阻塞见验证记录，不能把构建成功视为功能通过。
 
 后续推进以 [开发任务清单](docs/implementation-plan.md) 为入口：按任务编号维护已完成、未完成和阻塞状态，列出依赖、验收条件与已有证据。阶段顺序为 P0 → P0b → P1 → P2 → P3 → P4；原 B01 已因用户调整需求而撤销，新的旁人怪物／本人 Steve 外观已实现，剩余 P0 验收仍待完成。2026-10-14 已提前完成三版基础依赖、SQLite 与 SGui 的独立服务端探针，不代表最终多版本玩法适配通过。
 
 当前 **P0 未通过**：旧原型的自身替身遮挡与选取失败证据继续保留，但不再要求本人显示怪物。新实现仅向旁人发送怪物外观，本人保留原版玩家模型、相机和操作，并优先使用固定 Steve 皮肤；用户已通过外观操作测试并接受轻微尺寸差异。真实角色、自动装备和环境规则已通过 9 项 JUnit 与 35 项服务端 GameTest，合并人工验收由用户暂缓，最终图形生命周期回归仍待补齐。
 
-2026-10-14～15 按用户指示提前推进 P1：已接通三维度预算准备、登录／跨轮档案、普通加入／就绪／死亡计时、首龙唯一终局、庆祝与安全轮换、统计／规则分榜、TAB／原版历史书，以及 OP 分权、确认审计和带书版的成绩修订。第六批修复在线档案悬停的旧世界玩家登记残留，216 项 JUnit、常规 64 项必需 GameTest（含 1 项未启用十轮 gate）和独立十轮运行时整链通过；新增七阶段 Session／SQLite 新 JVM 正常恢复。当前轮不可变，只有下轮规则可改。26.3 入口默认关闭，独立实例用 `-Dhardrush.p1.enabled=true` 启用，首次新库可加 `-Dhardrush.p1.initialMode=normal`；默认极限开赛仍等待 P2。自动验证入口为 `scripts/p0-gradle.sh checkP1 -PhardrushP1=true --console=plain`，不启动图形客户端。同服真实三维度／档案十轮无图形整链已完成，复验另加 `:platforms:mc263:runGameTest -PhardrushP1TenRounds=true`，每次使用新的隔离存档。第七批另完成七阶段整服世界＋档案新进程正常恢复，修复倒计时恢复空窗与停服回调线程边界；最终 219 项 JUnit、64 项必需无图形 GameTest 和 14 个独立服务端 JVM 通过，见 [第七批记录](docs/p1-server-restart-regression.md)。真实客户端十轮及各阶段停服仍未验，P0／P0b／P1 阶段未通过。
+2026-10-14～15 按用户指示提前推进 P1：已接通三维度预算准备、登录／跨轮档案、普通加入／就绪／死亡计时、首龙唯一终局、庆祝与安全轮换、统计／规则分榜、TAB／原版历史书，以及 OP 分权、确认审计和带书版的成绩修订。第六批修复在线档案悬停的旧世界玩家登记残留，216 项 JUnit、常规 64 项必需 GameTest（含 1 项未启用十轮 gate）和独立十轮运行时整链通过；新增七阶段 Session／SQLite 新 JVM 正常恢复。当前轮不可变，只有下轮规则可改。26.3 入口默认关闭，独立实例用 `-Dhardrush.p1.enabled=true` 启用，首次新库可加 `-Dhardrush.p1.initialMode=normal`；P2 第一批现已允许正式极限开赛并接通死亡转怪物大厅，出场／复生闭环仍待后续 P2。自动验证入口为 `scripts/p0-gradle.sh checkP1 -PhardrushP1=true --console=plain`，不启动图形客户端。同服真实三维度／档案十轮无图形整链已完成，复验另加 `:platforms:mc263:runGameTest -PhardrushP1TenRounds=true`，每次使用新的隔离存档。第七批另完成七阶段整服世界＋档案新进程正常恢复，修复倒计时恢复空窗与停服回调线程边界；最终 219 项 JUnit、64 项必需无图形 GameTest 和 14 个独立服务端 JVM 通过，见 [第七批记录](docs/p1-server-restart-regression.md)。真实客户端十轮及各阶段停服仍未验，P0／P0b／P1 阶段未通过。
 
 整服世界＋档案正常恢复的独立入口为 `python3 scripts/p1-server-restart.py`，可用 `--phase COUNTDOWN` 只运行一个场景；默认覆盖 PREPARING、WAITING、COUNTDOWN、RUNNING、SETTLING、CELEBRATING、ROTATING。脚本每次在 `.local/p1-server-restart/<随机UUID>` 建立隔离存档，各场景先启动 writer 专用服务端 JVM，完整正常停止并退出后，再用同一存档启动不同 PID 的 reader。仅复制 `.local/server-p0/eula.txt` 中用户已经接受的 EULA；逐步日志、fixture 结果和 SQLite／档案校验留在运行目录，失败资料保留。2026-10-15 七场景最终统一复跑已通过，结果、源码／制品指纹及完整日志见 [本批证据](docs/evidence/p1-server-restart-20261015/manifest.json)。
 
@@ -44,3 +46,5 @@ HardRush 是面向原版客户端的 Fabric 多人速通挑战模组。玩家在
 26.3 开发调试入口：`python3 scripts/debug-tools.py start --side client` 启动独立服务端和带 MCPFabric/spark 的开发客户端；`python3 scripts/debug-tools.py verify` 复验游戏测试、MCP 控制、源码断点和实际性能采样。工具只存在于开发实例，完整操作与证据见调试文档。
 
 P0b 无图形界面基础依赖复验：`scripts/p0-gradle.sh -p probes/p0b checkP0bDependencies --console=plain`，逐版运行 SQLite／SGui／Fantasy 加载探针。该独立工程不访问 P0 存档，完整结果与边界见 [P0b 记录](docs/p0b-dependency-evidence.md)。
+
+2026-10-15 P2 第一批已提前推进 P2-01／P2-02：极限原版掉落后提交怪物身份、原生重生和 UUID 重连；普通床／锚与新生命保护；默认 32 格圆柱全高度出生保护、全区大厅保护及持久离区限制。验证使用 `scripts/p0-gradle.sh checkP2 -PhardrushP1=true --console=plain`；正式极限整链另运行 `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP2Identity=true --console=plain`，使用新隔离存档。旧 P0／P1 夹具在测试制品中明确隔离保护配置，新保护夹具与专用正式整链分别验证保护挂钩及实际绑定；生产没有测试豁免。当前极限死者留在隔离大厅，完整玩法与客户端验收仍未通过，细节和证据见 [P2 开发记录](docs/p2-identity-protection.md)。

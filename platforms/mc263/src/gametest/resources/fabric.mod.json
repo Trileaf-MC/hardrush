@@ -5,7 +5,7 @@
   "name": "HardRush development GameTests",
   "environment": "*",
   "entrypoints": {
-    "main": ["dev.hardrush.gametest.P1ServerRestartRegression"],
+    "main": ["dev.hardrush.gametest.P1ServerRestartRegression", "dev.hardrush.gametest.P2LegacyFixtures"],
     "fabric-gametest": [
       "dev.hardrush.gametest.HardRushServerGameTest",
       "dev.hardrush.gametest.HardRushWorldBoundaryGameTest",
@@ -19,7 +19,10 @@
       "dev.hardrush.gametest.P1TabGameTest",
       "dev.hardrush.gametest.P1BookGameTest",
       "dev.hardrush.gametest.P1AdminCommandGameTest",
-      "dev.hardrush.gametest.P1TenRoundGameTest"
+      "dev.hardrush.gametest.P1TenRoundGameTest",
+      "dev.hardrush.gametest.P2IdentityGameTest",
+      "dev.hardrush.gametest.P2RuntimeIdentityGameTest",
+      "dev.hardrush.gametest.P2ProtectionGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"

@@ -133,17 +133,45 @@ public final class RoundEngine {
         return normalIdentity(eventId, playerId, expectedLifeSequence, ParticipantRole.HUMAN_RESPAWNING, ParticipantRole.HUMAN_ACTIVE, "NORMAL_RESPAWN", true);
     }
 
+    /** Vanilla owns death drops; the committed server identity owns every later admission. */
+    public RoundTransition proposeHardcoreDeath(UUID eventId, UUID playerId, int expectedLifeSequence) {
+        RoundSnapshot before = capture();
+        requirePhase(before, RoundPhase.RUNNING);
+        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("Hardcore death requires HARDCORE mode");
+        Participant player = requirePlayer(before, playerId);
+        requireLife(player, ParticipantRole.HUMAN_ACTIVE, expectedLifeSequence);
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
+                player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
+                player.lifeSequence(), false, player.hasLeftProtection()));
+        return proposal(eventId, "HARDCORE_DEATH", before, before.phase(), 0, players, before.result(), false);
+    }
+
+    /**
+     * Called before the adapter permits the first exit of this life. Repetition preserves the
+     * existing restriction; a callback from a previous life must not consume a new life's exit.
+     */
+    public RoundTransition proposeLeaveProtection(UUID eventId, UUID playerId, int expectedLifeSequence) {
+        RoundSnapshot before = capture();
+        requirePhase(before, RoundPhase.RUNNING);
+        Participant player = requirePlayer(before, playerId);
+        requireLife(player, ParticipantRole.HUMAN_ACTIVE, expectedLifeSequence);
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.leaveProtection());
+        return proposal(eventId, "LEAVE_PROTECTION", before, before.phase(), 0, players, before.result(), false);
+    }
+
     private RoundTransition normalIdentity(UUID eventId, UUID playerId, int expectedLifeSequence, ParticipantRole expected, ParticipantRole target, String type, boolean admissionPending) {
         RoundSnapshot before = capture();
         requirePhase(before, RoundPhase.RUNNING);
-        if (before.rules().mode() != GameMode.NORMAL) throw new IllegalStateException("Hardcore death requires P2 death-batch rules");
+        if (before.rules().mode() != GameMode.NORMAL) throw new IllegalStateException("Normal identity event requires NORMAL mode");
         Participant player = requirePlayer(before, playerId);
-        if (player.role() != expected || player.lifeSequence() != expectedLifeSequence) throw new IllegalStateException("Stale life event");
+        requireLife(player, expected, expectedLifeSequence);
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         Participant changed = player.withRole(target);
         if (target == ParticipantRole.HUMAN_ACTIVE) {
             changed = new Participant(changed.id(), changed.name(), target, changed.online(), false,
-                    changed.humanNanos(), changed.joinedAtChallengeNanos(), Math.addExact(changed.lifeSequence(), 1), false);
+                    changed.humanNanos(), changed.joinedAtChallengeNanos(), Math.addExact(changed.lifeSequence(), 1), false, false);
         }
         if (admissionPending) changed = changed.withSession(changed.name(), false);
         players.put(playerId, changed);
@@ -331,6 +359,10 @@ public final class RoundEngine {
         Participant player = snapshot.participants().get(id);
         if (player == null) throw new IllegalStateException("Player must join first");
         return player;
+    }
+
+    private static void requireLife(Participant player, ParticipantRole role, int expectedLifeSequence) {
+        if (player.role() != role || player.lifeSequence() != expectedLifeSequence) throw new IllegalStateException("Stale life event");
     }
 
     private static void requirePhase(RoundSnapshot snapshot, RoundPhase... phases) {

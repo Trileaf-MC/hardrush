@@ -78,9 +78,9 @@ final class SqliteRecordIndex {
             if (before.isPresent()) {
                 ParticipantRecord previous = before.orElseThrow();
                 if (previous.finalRole() == ParticipantRole.HUMAN_ACTIVE
-                        && participant.role() == ParticipantRole.HUMAN_RESPAWNING) deaths = Math.addExact(deaths, 1);
+                        && isDeadHuman(participant.role())) deaths = Math.addExact(deaths, 1);
                 if (participant.lifeSequence() > previousLife) revivals = Math.addExact(revivals, participant.lifeSequence() - previousLife);
-            } else if (participant.role() == ParticipantRole.HUMAN_RESPAWNING) deaths = Math.addExact(deaths, 1);
+            } else if (isDeadHuman(participant.role())) deaths = Math.addExact(deaths, 1);
             var record = new ParticipantRecord(participant.id(), before.map(ParticipantRecord::playerName).orElse(participant.name()),
                     before.map(ParticipantRecord::joinedAtChallengeNanos).orElse(participant.joinedAtChallengeNanos()),
                     participant.humanNanos(), deaths, revivals, before.map(ParticipantRecord::advancementCount).orElse(0),
@@ -101,6 +101,10 @@ final class SqliteRecordIndex {
                 statement.setBytes(8, RecordEncoding.historyDigest(write.payload(), trusted)); statement.executeUpdate();
             }
         }
+    }
+
+    private static boolean isDeadHuman(ParticipantRole role) {
+        return role == ParticipantRole.HUMAN_RESPAWNING || role.isMonster();
     }
 
     CommitResult progress(ProgressWrite write, SnapshotData stored) throws SQLException {

@@ -198,7 +198,7 @@ public final class P1ProfileGameTest {
                     test.assertTrue(!player.getAdvancements().getOrStartProgress(progress).hasProgress(), "Cross-round advancement cache cleared");
                     test.assertTrue(player.getRecipeBook().pack().known().isEmpty() && player.getRecipeBook().pack().highlight().isEmpty(), "Recipe and notification caches cleared");
                     test.assertValueEqual(player.getStats().getValue(Stats.CUSTOM.get(Stats.JUMP)), 11, "Cumulative vanilla statistics retained");
-                    test.assertTrue(!profiles.admit(player, round(first.roundId(), 1, player, GameMode.HARDCORE), test.getLevel(), spawnPosition, level -> level == test.getLevel()), "P2 hardcore identity cannot enter P1");
+                    test.assertTrue(!profiles.admit(player, life(first, ParticipantRole.MONSTER_LOBBY, 1, true), test.getLevel(), spawnPosition, level -> level == test.getLevel()), "A monster identity cannot use human admission");
                     test.assertTrue(profiles.admit(player, first, test.getLevel(), spawnPosition, level -> level == test.getLevel()), "Committed normal human enters only after profile verification");
                     test.assertTrue(!P1PlayerProfiles.isLocked(player), "Admitted participant is unlocked");
                     player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));

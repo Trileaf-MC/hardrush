@@ -20,3 +20,9 @@ tasks.register('checkP1') {
     dependsOn ':core:check', ':persistence:check', ':platforms:mc263:check', ':platforms:mc263:jar'
 }
 
+tasks.register('checkP2') {
+    group = 'verification'
+    description = 'Verify P2 identity and protection alongside the existing headless regression suite.'
+    dependsOn 'checkP1'
+}
+

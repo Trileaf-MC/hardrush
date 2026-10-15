@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p1.world.P1WorldManifestTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-15T02:42:48.917Z" hostname="LeifMacBookPro2023.local" time="0.08">
+  <properties/>
+  <testcase name="malformedManifestCannotBeReplacedByANewRound()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.007"/>
+  <testcase name="symlinkInAnyAncestorOrWorldSubdirectoryStopsPreparation()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.003"/>
+  <testcase name="preparedSpawnAndFourExitsRecoverWithoutChangingIdentity()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.045"/>
+  <testcase name="identityGeneratorsRulesAndAllOwnedPathsSurviveRestart()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.005"/>
+  <testcase name="recoveryRejectsDifferentSeedOrRulesWithoutRewritingEvidence()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.006"/>
+  <testcase name="substitutedRoundOrDimensionOwnerCannotAuthorizeClosingTheActiveWorld()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.006"/>
+  <testcase name="cleanupCandidatesCannotNameLobbyRootP0OrAnotherRound()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.001"/>
+  <testcase name="tamperedDimensionAndLobbyPathsAreRejectedWithoutDeletingFiles()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.005"/>
+  <testcase name="symlinkRootAndRegularFileInAWorldPathAreRejectedWithoutTouchingTargets()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

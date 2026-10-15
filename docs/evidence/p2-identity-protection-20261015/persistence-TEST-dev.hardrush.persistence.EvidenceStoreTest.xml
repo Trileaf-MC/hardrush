@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.persistence.EvidenceStoreTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-15T02:21:37.511Z" hostname="LeifMacBookPro2023.local" time="0.024">
+  <properties/>
+  <testcase name="evidenceIsDurableIdempotentBoundedAndDoesNotChangeStateVersion()" classname="dev.hardrush.persistence.EvidenceStoreTest" time="0.007"/>
+  <testcase name="versionOneMigrationPreservesRoundsAndRollsBackOnConflictingEvidenceSchema()" classname="dev.hardrush.persistence.EvidenceStoreTest" time="0.012"/>
+  <testcase name="corruptedEvidenceStopsQueryInsteadOfReturningGuessedAttribution()" classname="dev.hardrush.persistence.EvidenceStoreTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

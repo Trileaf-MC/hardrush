@@ -11,6 +11,7 @@ import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.p1.player.P1PlayerProfiles;
+import dev.hardrush.p2.protection.P2ProtectionRuntime;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
 import dev.hardrush.p1.combat.P1CombatRuntime;
 import dev.hardrush.p1.record.P1ProgressRuntime;
@@ -50,7 +51,7 @@ import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Explicitly enabled P1 normal-mode adapter; competition state stays separate from P0 probes. */
+/** Explicitly enabled formal round adapter; competition state stays separate from P0 probes. */
 public final class P1LobbyRuntime {
     private static final Logger LOGGER = LoggerFactory.getLogger("hardrush-p1");
     private static final Map<MinecraftServer, P1LobbySession> SESSIONS = new IdentityHashMap<>();
@@ -101,6 +102,29 @@ public final class P1LobbyRuntime {
                     }), (message, error) -> LOGGER.error(message, error));
             reference[0] = session;
             SESSIONS.put(server, session);
+            P2ProtectionRuntime.configure(server, new P2ProtectionRuntime.Access() {
+                @Override public Optional<P2ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) {
+                    var round = session.snapshot().orElse(null);
+                    if (round == null) return Optional.empty();
+                    if (level == server.overworld()) return Optional.of(new P2ProtectionRuntime.Zone(round.roundId(),
+                            Vec3.atBottomCenterOf(level.getRespawnData().pos()), round.rules().protectionRadius(), true));
+                    var worlds = WORLDS.get(server);
+                    return worlds != null && worlds.ready() && level == worlds.level(Level.OVERWORLD)
+                            ? Optional.of(new P2ProtectionRuntime.Zone(round.roundId(), Vec3.atBottomCenterOf(worlds.spawn()),
+                                round.rules().protectionRadius(), false)) : Optional.empty();
+                }
+                @Override public Optional<dev.hardrush.core.round.Participant> participant(UUID playerId) {
+                    return session.snapshot().map(round -> round.participants().get(playerId));
+                }
+                @Override public boolean leaveProtection(UUID roundId, UUID playerId, int lifeSequence) {
+                    return session.leaveProtection(roundId, playerId, lifeSequence);
+                }
+                @Override public void quarantine(ServerPlayer player) {
+                    profiles.returnToLobby(player);
+                    session.adapterFailure("保护边界缺少安全站位，已隔离并保留身份",
+                            new IllegalStateException("玩家 " + player.getUUID() + " 无已加载且安全的区外回退位置"));
+                }
+            });
             TABS.put(server, new P1TabRuntime());
             BOOK_ATTEMPTS.put(server, new java.util.HashMap<>());
             BOOKS.put(server, new HistoryBookService(new HistoryBookService.HistorySource() {
@@ -198,7 +222,7 @@ public final class P1LobbyRuntime {
                     session.tick();
                     return;
                 }
-                for (var player : server.getPlayerList().getPlayers()) {
+                for (var player : java.util.List.copyOf(server.getPlayerList().getPlayers())) {
                     var profileFailure = profiles.failure(player.getUUID());
                     if (profileFailure.isPresent()) {
                         throw new IllegalStateException("玩家 " + player.getUUID() + " 档案核验失败：" + profileFailure.orElseThrow());
@@ -206,6 +230,14 @@ public final class P1LobbyRuntime {
                     if (!profiles.isReady(player.getUUID(), round)) continue;
                     var names = ADMITTED.get(server);
                     var participant = round.participants().get(player.getUUID());
+                    if (participant != null && participant.role() == ParticipantRole.MONSTER_LOBBY) {
+                        profiles.enterMonsterLobby(player, round);
+                        if (!player.getScoreboardName().equals(names.get(player.getUUID()))) {
+                            names.put(player.getUUID(), player.getScoreboardName());
+                            session.onOnline(player.getUUID(), player.getScoreboardName(), true);
+                        }
+                        continue;
+                    }
                     if (round.phase() == RoundPhase.SETTLING || round.phase() == RoundPhase.CELEBRATING) {
                         if (participant != null && participant.role() == ParticipantRole.HUMAN_ACTIVE
                                 && worlds != null && worlds.ready() && P1PlayerProfiles.isLocked(player)) {
@@ -237,6 +269,7 @@ public final class P1LobbyRuntime {
                     }
                 }
                 P1ProgressRuntime.tick(server);
+                P2ProtectionRuntime.tick(server);
                 automaticBooks(server);
                 session.tick();
             } catch (RuntimeException error) { session.adapterFailure("世界／档案适配失败", error); }
@@ -255,15 +288,22 @@ public final class P1LobbyRuntime {
             var round = session == null ? null : session.snapshot().orElse(null);
             var participant = round == null ? null : round.participants().get(player.getUUID());
             if (participant != null && participant.role() == ParticipantRole.HUMAN_ACTIVE
-                    && P1RoundWorldBundle.owns(player.level())) session.normalDeath(player.getUUID(), participant.lifeSequence(),
-                            P1CombatRuntime.currentBatch(player.level()).orElse(null));
+                    && P1RoundWorldBundle.owns(player.level())) {
+                var profiles = PROFILES.get(player.level().getServer());
+                if (profiles != null) profiles.holdDeath(player);
+                session.humanDeath(player.getUUID(), participant.lifeSequence(),
+                        P1CombatRuntime.currentBatch(player.level()).orElse(null));
+            }
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
             if (alive) return;
             var session = SESSIONS.get(newPlayer.level().getServer());
             var round = session == null ? null : session.snapshot().orElse(null);
             var participant = round == null ? null : round.participants().get(newPlayer.getUUID());
-            if (participant != null && P1RoundWorldBundle.owns(newPlayer.level())) {
+            if (participant != null && participant.role() == ParticipantRole.MONSTER_LOBBY) {
+                var profiles = PROFILES.get(newPlayer.level().getServer());
+                if (profiles != null) profiles.onMonsterRespawn(oldPlayer, newPlayer, round);
+            } else if (participant != null && P1RoundWorldBundle.owns(newPlayer.level())) {
                 var profiles = PROFILES.get(newPlayer.level().getServer());
                 if (profiles != null) profiles.onRespawn(oldPlayer, newPlayer, round);
                 session.normalRespawn(newPlayer.getUUID(), participant.lifeSequence());
@@ -307,6 +347,7 @@ public final class P1LobbyRuntime {
             try { session.close(); }
             catch (Exception error) { LOGGER.error("P1 stop flush failed; retain database and inspect diagnostics", error); }
             SESSIONS.remove(server);
+            P2ProtectionRuntime.unconfigure(server);
             TABS.remove(server);
             BOOKS.remove(server);
             BOOK_ATTEMPTS.remove(server);

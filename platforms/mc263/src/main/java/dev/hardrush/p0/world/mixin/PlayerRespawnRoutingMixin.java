@@ -1,6 +1,7 @@
 package dev.hardrush.p0.world.mixin;
 
 import dev.hardrush.p1.world.RoundWorldRouting;
+import dev.hardrush.p1.player.P1PlayerProfiles;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.portal.TeleportTransition;
 import org.spongepowered.asm.mixin.Mixin;
@@ -11,6 +12,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ServerPlayer.class)
 public abstract class PlayerRespawnRoutingMixin {
+    @Inject(method = "findRespawnPositionAndUseSpawnBlock", at = @At("HEAD"), cancellable = true)
+    private void hardrush$monsterLobby(boolean consumeSpawnBlock, TeleportTransition.PostTeleportTransition post,
+                                      CallbackInfoReturnable<TeleportTransition> cir) {
+        P1PlayerProfiles.monsterRespawnDestination((ServerPlayer) (Object) this).ifPresent(cir::setReturnValue);
+    }
     @Redirect(method = "findRespawnPositionAndUseSpawnBlock", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/level/ServerPlayer;getRespawnConfig()Lnet/minecraft/server/level/ServerPlayer$RespawnConfig;"))
     private ServerPlayer.RespawnConfig hardrush$ignoreForeignSpawn(ServerPlayer player) {
@@ -26,6 +32,8 @@ public abstract class PlayerRespawnRoutingMixin {
     @Inject(method = "findRespawnPositionAndUseSpawnBlock", at = @At("RETURN"), cancellable = true)
     private void hardrush$boundRespawn(boolean consumeSpawnBlock, TeleportTransition.PostTeleportTransition post,
                                       CallbackInfoReturnable<TeleportTransition> cir) {
-        cir.setReturnValue(RoundWorldRouting.boundRespawn((ServerPlayer) (Object) this, cir.getReturnValue()));
+        var player = (ServerPlayer) (Object) this;
+        cir.setReturnValue(P1PlayerProfiles.monsterRespawnDestination(player)
+                .orElseGet(() -> RoundWorldRouting.boundRespawn(player, cir.getReturnValue())));
     }
 }

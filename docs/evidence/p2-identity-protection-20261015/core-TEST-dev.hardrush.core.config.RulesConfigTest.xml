@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.core.config.RulesConfigTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-15T02:21:36.945Z" hostname="LeifMacBookPro2023.local" time="0.032">
+  <properties/>
+  <testcase name="defaultsFollowCurrentNativeRoleDecisionAndPhaseDurations()" classname="dev.hardrush.core.config.RulesConfigTest" time="0.01"/>
+  <testcase name="fileReloadOnlyAppliesValidatedNextRoundRules()" classname="dev.hardrush.core.config.RulesConfigTest" time="0.005"/>
+  <testcase name="everyLeaderboardRelevantFieldChangesFingerprint()" classname="dev.hardrush.core.config.RulesConfigTest" time="0.004"/>
+  <testcase name="invalidCombatRadiusAndTimersAreRejectedBeforeApplication()" classname="dev.hardrush.core.config.RulesConfigTest" time="0.003"/>
+  <testcase name="callerMapAndInsertionOrderCannotChangeSnapshotOrFingerprint()" classname="dev.hardrush.core.config.RulesConfigTest" time="0.001"/>
+  <testcase name="roundsRetainIndependentImmutableSnapshotsWhenPendingConfigChanges()" classname="dev.hardrush.core.config.RulesConfigTest" time="0.001"/>
+  <testcase name="unsupportedVersionAndSchemaCannotSilentlyUseCurrentRules()" classname="dev.hardrush.core.config.RulesConfigTest" time="0.002"/>
+  <testcase name="canonicalEncodingNormalizesNumberSpellingAndZero()" classname="dev.hardrush.core.config.RulesConfigTest" time="0.002"/>
+  <testcase name="codecRoundTripsEscapedGenerationAndRejectsAmbiguousFields()" classname="dev.hardrush.core.config.RulesConfigTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

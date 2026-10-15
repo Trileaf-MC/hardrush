@@ -190,6 +190,33 @@ tasks.named('runGameTest') {
     }
 }
 
+// The formal P2 listener/SQLite/profile flow needs a fresh runtime, separate from legacy lobby fixtures.
+def p2IdentityRunDir = rootProject.file(".local/p2-identity/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushP2Identity').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true'
+                || providers.gradleProperty('hardrushP1TenRounds').orNull == 'true') {
+            throw new GradleException('P2 identity regression requires -PhardrushP1=true and its own run')
+        }
+        vmArg '-Dhardrush.p2.testIdentity=true'
+        vmArg '-Dhardrush.p1.initialMode=hardcore'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p2runtime_identity_game_test*'
+        runDir p2IdentityRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushP2Identity').orNull == 'true') {
+        doFirst {
+            p2IdentityRunDir.mkdirs()
+            copy {
+                from rootProject.file('.local/server-p0/eula.txt')
+                into p2IdentityRunDir
+            }
+            logger.lifecycle("Isolated P2 identity storage: ${p2IdentityRunDir}")
+        }
+    }
+}
+
 tasks.register('prepareDebugTools', Exec) {
     commandLine 'python3', rootProject.file('scripts/debug-tools.py'), 'prepare'
 }

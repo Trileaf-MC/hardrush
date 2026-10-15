@@ -393,9 +393,6 @@ public final class P1LobbySession implements AutoCloseable {
     }
 
     public void adminStart(String actor, String reason, Consumer<Reply> reply) {
-        if (engine == null || engine.committed().rules().mode() != GameMode.NORMAL) {
-            reply.accept(new Reply(false, "P1 仅允许普通模式开赛，极限闭环待 P2。")); return;
-        }
         requestAdminTransition(actor, reason, false, () -> engine.proposeAdmissionAdminStart(UUID.randomUUID()), reply,
                 "管理员开赛已持久化；本轮计时标记待核验，不自动进入正常榜。");
     }
@@ -506,10 +503,6 @@ public final class P1LobbySession implements AutoCloseable {
     }
 
     public void requestReady(UUID playerId, boolean ready, Consumer<Reply> reply) {
-        if (ready && engine != null && engine.committed().rules().mode() == GameMode.HARDCORE) {
-            reply.accept(new Reply(false, "极限模式死亡／怪物／复生闭环将在 P2 接通，本批禁止极限开赛。"));
-            return;
-        }
         requestAction(() -> engine.proposeReady(UUID.randomUUID(), playerId, ready), reply,
                 ready ? "已就绪；首位就绪玩家触发本轮开局倒计时。" : "已取消就绪。");
     }
@@ -556,11 +549,36 @@ public final class P1LobbySession implements AutoCloseable {
     }
 
     public void normalDeath(UUID playerId, int lifeSequence, UUID batchId) {
+        humanDeath(playerId, lifeSequence, batchId);
+    }
+
+    public void humanDeath(UUID playerId, int lifeSequence, UUID batchId) {
         if (engine == null || engine.committed().phase() != RoundPhase.RUNNING) return;
+        Function<RoundEngine, RoundTransition> proposal = e -> e.committed().rules().mode() == GameMode.NORMAL
+                ? e.proposeNormalDeath(UUID.randomUUID(), playerId, lifeSequence)
+                : e.proposeHardcoreDeath(UUID.randomUUID(), playerId, lifeSequence);
         if (terminalCandidate != null) {
             if (terminalQueued || !terminalCandidate.batchId().equals(batchId)) return;
-            enqueueAt(terminalCandidate.observedNanoTime(), e -> e.proposeNormalDeath(UUID.randomUUID(), playerId, lifeSequence));
-        } else enqueue(e -> e.proposeNormalDeath(UUID.randomUUID(), playerId, lifeSequence));
+            enqueueAt(terminalCandidate.observedNanoTime(), proposal);
+        } else enqueue(proposal);
+    }
+
+    public boolean leaveProtection(UUID roundId, UUID playerId, int lifeSequence) {
+        if (engine == null || stopping || state != State.OPEN || competitionLocked()
+                || !engine.committed().roundId().equals(roundId)) return false;
+        enqueue(e -> {
+            var current = e.committed();
+            var player = current.participants().get(playerId);
+            // Native movement can race an earlier accepted death or round close while SQLite is pending.
+            // A stale movement callback cannot consume the replacement life's exit or fail the round.
+            if (!current.roundId().equals(roundId) || current.phase() != RoundPhase.RUNNING
+                    || player == null || player.role() != dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE
+                    || player.lifeSequence() != lifeSequence || player.hasLeftProtection()) {
+                return e.proposeCheckpoint(UUID.randomUUID(), false);
+            }
+            return e.proposeLeaveProtection(UUID.randomUUID(), playerId, lifeSequence);
+        });
+        return true;
     }
 
     public void normalRespawn(UUID playerId, int lifeSequence) {
