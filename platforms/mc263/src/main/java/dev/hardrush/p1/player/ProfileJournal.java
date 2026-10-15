@@ -25,6 +25,10 @@ public final class ProfileJournal {
         public Generation { if (roundId == null || sequence < 1) throw new IllegalArgumentException("Invalid generation"); }
     }
     public record Transition(Generation target, Phase phase) {}
+    public record Recovery(Transition transition, byte[] snapshot) {
+        public Recovery { snapshot = snapshot.clone(); }
+        @Override public byte[] snapshot() { return snapshot.clone(); }
+    }
     private static final int FORMAT = 1;
     private static final int MAX_SNAPSHOT = 16 * 1024 * 1024;
     private final Path root;
@@ -87,6 +91,15 @@ public final class ProfileJournal {
     public Optional<byte[]> suspended(UUID player, Generation generation) throws IOException {
         Path path = playerDirectory(player).resolve("suspended-" + generation.roundId() + ".bin");
         return Files.exists(path, LinkOption.NOFOLLOW_LINKS) ? Optional.of(readSnapshot(path)) : Optional.empty();
+    }
+
+    /** A restarted conversion may reuse only the durable target snapshot, never reset an uncertain player again. */
+    public Recovery recovery(UUID player, Generation target) throws IOException {
+        var current = transition(player).orElseThrow(() -> new IOException("Missing profile transition"));
+        if (!current.target().equals(target)) throw new IOException("Stale profile recovery generation");
+        var snapshot = suspended(player, target).orElseThrow(() ->
+                new IOException("Profile transition " + current.phase() + " has no durable target snapshot; retain quarantine"));
+        return new Recovery(current, snapshot);
     }
 
     public byte[] archived(UUID player, Optional<Generation> generation) throws IOException {

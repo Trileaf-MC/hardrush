@@ -33,6 +33,108 @@ import net.minecraft.world.phys.Vec3;
 
 /** Server-only fixtures; no graphical clients, screenshots or computer-use interaction. */
 public final class P1ProfileGameTest {
+    @GameTest(maxTicks = 1000)
+    public void preparedResetSnapshotRecoversWithoutResettingAgain(GameTestHelper test) {
+        recoverPersistedReset(test, ProfileJournal.Phase.PREPARED);
+    }
+
+    @GameTest(maxTicks = 1000)
+    public void appliedResetSnapshotRecoversWithoutResettingAgain(GameTestHelper test) {
+        recoverPersistedReset(test, ProfileJournal.Phase.APPLIED);
+    }
+
+    @GameTest(maxTicks = 1000)
+    public void verifiedResetSnapshotRecoversAnOlderVanillaMarkerWithoutResettingAgain(GameTestHelper test) {
+        recoverPersistedReset(test, ProfileJournal.Phase.VERIFIED);
+    }
+
+    private static void recoverPersistedReset(GameTestHelper test, ProfileJournal.Phase phase) {
+        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        var server = test.getLevel().getServer();
+        var player = test.makeMockServerPlayerInLevel();
+        var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
+        var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        var generation = new ProfileJournal.Generation(round.roundId(), round.sequence());
+        String suspension = UUID.randomUUID().toString();
+        player.getInventory().setItem(0, new ItemStack(Items.EMERALD, 11));
+        var originalOutput = net.minecraft.world.level.storage.TagValueOutput.createWithContext(net.minecraft.util.ProblemReporter.DISCARDING, player.registryAccess());
+        player.saveWithoutId(originalOutput);
+        var original = originalOutput.buildResult().copy();
+        P1PlayerProfiles.resetForNewRound(player, generation);
+        ((ProfileTagged) player).hardrush$suspensionId(suspension);
+        var resetOutput = net.minecraft.world.level.storage.TagValueOutput.createWithContext(net.minecraft.util.ProblemReporter.DISCARDING, player.registryAccess());
+        player.saveWithoutId(resetOutput);
+        var reset = resetOutput.buildResult().copy();
+        reset.putBoolean("hardrush_fresh_profile", true);
+        // Models a native player file older than the conversion's already durable target snapshot.
+        player.load(net.minecraft.world.level.storage.TagValueInput.create(net.minecraft.util.ProblemReporter.DISCARDING, player.registryAccess(), original));
+        ((ProfileTagged) player).hardrush$clearLoadedProfile();
+        var seed = java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                var journal = new ProfileJournal(root);
+                var oldBytes = new java.io.ByteArrayOutputStream();
+                net.minecraft.nbt.NbtIo.writeCompressed(original, oldBytes);
+                journal.prepare(player.getUUID(), java.util.Optional.empty(), generation, oldBytes.toByteArray());
+                var resetBytes = new java.io.ByteArrayOutputStream();
+                net.minecraft.nbt.NbtIo.writeCompressed(reset, resetBytes);
+                journal.suspend(player.getUUID(), generation, resetBytes.toByteArray());
+                if (phase != ProfileJournal.Phase.PREPARED) journal.advance(player.getUUID(), generation, ProfileJournal.Phase.PREPARED, ProfileJournal.Phase.APPLIED);
+                if (phase == ProfileJournal.Phase.VERIFIED) journal.advance(player.getUUID(), generation, ProfileJournal.Phase.APPLIED, ProfileJournal.Phase.VERIFIED);
+            } catch (Exception error) { throw new java.util.concurrent.CompletionException(error); }
+        });
+        var profiles = new P1PlayerProfiles(server, root, test::getLevel, () -> position);
+        test.startSequence()
+                .thenWaitUntil(() -> test.assertTrue(seed.isDone(), "Previous writer's target snapshot is durable"))
+                .thenExecute(() -> { seed.join(); profiles.onLogin(player); profiles.tick(round); })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), round), "Existing reset snapshot recovered and verified"))
+                .thenExecute(() -> {
+                    test.assertValueEqual(((ProfileTagged) player).hardrush$suspensionId(), suspension, "Recovery reuses the exact reset identity instead of resetting again");
+                    test.assertTrue(player.getInventory().isEmpty(), "Older vanilla inventory cannot leak into recovered fresh life");
+                    test.assertTrue(P1PlayerProfiles.isLocked(player), "Profile verification alone does not admit gameplay");
+                    test.assertTrue(profiles.admit(player, round, test.getLevel(), position, level -> level == test.getLevel()), "Committed participant may enter the recovered fresh life");
+                    test.assertTrue(player.getInventory().isEmpty(), "Fresh admission keeps the recovered empty inventory");
+                    try {
+                        test.assertValueEqual(new ProfileJournal(root).transition(player.getUUID()).orElseThrow().phase(), ProfileJournal.Phase.VERIFIED, "Recovery completes the same generation");
+                        profiles.close();
+                    } catch (Exception error) { throw new IllegalStateException(error); }
+                    server.getPlayerList().remove(player);
+                }).thenSucceed();
+    }
+
+    @GameTest(maxTicks = 1000)
+    public void preparedConversionWithoutTargetSnapshotRetainsQuarantineAndOldInventory(GameTestHelper test) {
+        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        var server = test.getLevel().getServer();
+        var player = test.makeMockServerPlayerInLevel();
+        var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
+        var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 13));
+        var generation = new ProfileJournal.Generation(round.roundId(), round.sequence());
+        var seed = java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try { new ProfileJournal(root).prepare(player.getUUID(), java.util.Optional.empty(), generation, new byte[]{7}); }
+            catch (Exception error) { throw new java.util.concurrent.CompletionException(error); }
+        });
+        var profiles = new P1PlayerProfiles(server, root, test::getLevel, () -> position);
+        test.startSequence()
+                .thenWaitUntil(() -> test.assertTrue(seed.isDone(), "Interrupted PREPARED boundary is durable"))
+                .thenExecute(() -> { seed.join(); profiles.onLogin(player); profiles.tick(round); })
+                .thenWaitUntil(() -> test.assertTrue(profiles.failure(player.getUUID()).isPresent(), "Uncertain conversion fails closed"))
+                .thenExecute(() -> {
+                    test.assertTrue(!profiles.isReady(player.getUUID(), round) && P1PlayerProfiles.isLocked(player), "Uncertain player stays locked in the lobby");
+                    test.assertTrue(!profiles.admit(player, round, test.getLevel(), position, level -> level == test.getLevel()), "An already committed participant cannot bypass quarantine");
+                    test.assertTrue(player.getInventory().getItem(0).is(Items.DIAMOND) && player.getInventory().getItem(0).getCount() == 13, "Recovery does not repeat a destructive reset");
+                    try {
+                        test.assertValueEqual(new ProfileJournal(root).transition(player.getUUID()).orElseThrow().phase(), ProfileJournal.Phase.PREPARED, "Uncertainty never advances to APPLIED");
+                        try { profiles.close(); }
+                        catch (java.io.IOException expected) { test.assertTrue(expected.getMessage().contains("后台写入失败"), "Failed conversion prevents a clean stop marker"); }
+                    } catch (Exception error) { throw new IllegalStateException(error); }
+                    ((ProfileTagged) player).hardrush$isolated(false);
+                    server.getPlayerList().remove(player);
+                }).thenSucceed();
+    }
+
     @GameTest(maxTicks = 100)
     public void connectedSuspensionMovesNativePlayerMembershipBeforeWorldRelease(GameTestHelper test) {
         if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }

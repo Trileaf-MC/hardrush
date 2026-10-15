@@ -74,6 +74,39 @@ class ProfileJournalTest {
         assertTrue(reopened.suspended(player, generation(3)).isEmpty());
     }
 
+    @Test void recoveryRequiresTheExactGenerationAndACompleteTargetSnapshot() throws Exception {
+        var player = UUID.randomUUID();
+        var target = generation(1);
+        var journal = new ProfileJournal(directory);
+        journal.prepare(player, Optional.empty(), target, bytes("sealed original"));
+        assertThrows(IOException.class, () -> journal.recovery(player, target));
+        assertEquals(ProfileJournal.Phase.PREPARED, journal.transition(player).orElseThrow().phase());
+        journal.suspend(player, target, bytes("durable reset"));
+        assertThrows(IOException.class, () -> journal.recovery(player, generation(1)));
+        var recovery = journal.recovery(player, target);
+        assertEquals(ProfileJournal.Phase.PREPARED, recovery.transition().phase());
+        assertArrayEquals(bytes("durable reset"), recovery.snapshot());
+        recovery.snapshot()[0] ^= 1;
+        assertArrayEquals(bytes("durable reset"), recovery.snapshot(), "Recovery payload cannot be changed by a caller");
+    }
+
+    @Test void corruptedAppliedSuspensionCannotRecoverOrAdvance() throws Exception {
+        var player = UUID.randomUUID();
+        var target = generation(1);
+        var journal = new ProfileJournal(directory);
+        journal.prepare(player, Optional.empty(), target, bytes("sealed original"));
+        journal.suspend(player, target, bytes("durable reset"));
+        journal.advance(player, target, ProfileJournal.Phase.PREPARED, ProfileJournal.Phase.APPLIED);
+        var path = directory.resolve(player.toString()).resolve("suspended-" + target.roundId() + ".bin");
+        var damaged = Files.readAllBytes(path);
+        damaged[damaged.length - 1] ^= 1;
+        Files.write(path, damaged);
+        assertThrows(IOException.class, () -> new ProfileJournal(directory).recovery(player, target));
+        assertEquals(ProfileJournal.Phase.APPLIED, journal.transition(player).orElseThrow().phase());
+        assertArrayEquals(damaged, Files.readAllBytes(path));
+        assertArrayEquals(bytes("sealed original"), journal.archived(player, Optional.empty()));
+    }
+
     @Test void damagedArchiveFailsClosedAndNeverAdvancesOrReplacesOriginal() throws Exception {
         var player = UUID.randomUUID();
         var first = generation(1);

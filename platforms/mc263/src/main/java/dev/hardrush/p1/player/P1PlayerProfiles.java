@@ -661,21 +661,26 @@ public final class P1PlayerProfiles implements AutoCloseable {
             var store = journal.join();
             boolean same = entry.source.map(target::equals).orElse(false);
             var transition = store.transition(playerId);
-            // A clean stop while suspended may retain an older vanilla marker because saves were held.
-            // The verified current-generation suspension is authoritative, and must not become an empty reset.
-            if (!same && transition.isPresent() && transition.get().target().equals(target)
-                    && transition.get().phase() == ProfileJournal.Phase.VERIFIED) {
-                var suspended = store.suspended(playerId, target);
-                if (suspended.isPresent()) {
-                    var restored = decode(suspended.get());
-                    if (!restored.getBooleanOr(FRESH, false)) return new Plan(true, restored, transition.get());
+            boolean recordedTarget = transition.isPresent() && transition.get().target().equals(target);
+            // PREPARED/APPLIED from another login or JVM is not permission to reset again.
+            // A complete target suspension proves what the old reset produced; without it the
+            // old vanilla checkpoint and partially applied entity cannot be distinguished.
+            if (recordedTarget && (!same || transition.get().phase() != ProfileJournal.Phase.VERIFIED)) {
+                var recovery = store.recovery(playerId, target);
+                var restored = decode(recovery.snapshot());
+                requireSnapshotGeneration(restored, target);
+                if (recovery.transition().phase() != ProfileJournal.Phase.VERIFIED && !restored.getBooleanOr(FRESH, false)) {
+                    throw new IOException("未核验的档案转换缺少新轮空档案，保留隔离等待核验");
                 }
+                return new Plan(true, restored, recovery.transition());
             }
-            if (same && transition.isPresent() && transition.get().target().equals(target)
-                    && transition.get().phase() == ProfileJournal.Phase.VERIFIED) {
+            // Within a verified generation, a native active checkpoint can be newer than its
+            // last lobby suspension; an isolated checkpoint must use the sealed suspension.
+            if (same && recordedTarget) {
                 byte[] resume;
                 var storedSuspension = store.suspended(playerId, target);
                 var storedSnapshot = storedSuspension.isPresent() ? decode(storedSuspension.get()) : null;
+                if (storedSnapshot != null) requireSnapshotGeneration(storedSnapshot, target);
                 boolean newerSuspension = storedSnapshot != null && !storedSnapshot.getBooleanOr(FRESH, false)
                         && !storedSnapshot.getStringOr(SUSPENSION_ID, "").equals(entry.original.getStringOr(SUSPENSION_ID, ""));
                 if (entry.wasIsolated || newerSuspension) resume = storedSuspension
@@ -688,9 +693,15 @@ public final class P1PlayerProfiles implements AutoCloseable {
                 }
                 return new Plan(true, decode(resume), transition.get());
             }
-            if (same && transition.isEmpty()) throw new IOException("玩家代数存在，但持久化转换记录缺失");
+            if (same) throw new IOException("玩家代数存在，但匹配的持久化转换记录缺失");
+            if (entry.source.isPresent() && entry.source.get().sequence() >= target.sequence()) {
+                throw new IOException("玩家档案代数倒退或轮次 UUID 不一致，保留隔离等待核验");
+            }
+            if (entry.wasIsolated && entry.source.isEmpty()) {
+                throw new IOException("隔离中的玩家缺少有效档案代数，禁止重置不确定的旧档案");
+            }
             byte[] oldSnapshot = entry.wasIsolated && entry.source.isPresent()
-                    ? store.suspended(playerId, entry.source.get()).orElseGet(() -> uncheckedEncode(entry.original))
+                    ? store.suspended(playerId, entry.source.get()).orElseThrow(() -> new IOException("隔离中的旧轮恢复档案缺失，禁止以大厅数据替代旧档案"))
                     : encode(entry.original);
             var prepared = store.prepare(playerId, entry.source, target, oldSnapshot);
             return new Plan(false, null, prepared);
@@ -698,13 +709,30 @@ public final class P1PlayerProfiles implements AutoCloseable {
             if (!current(entry, target)) return;
             if (error != null) { fail(entry, error); return; }
             if (plan.same()) {
-                entry.resume = plan.snapshot();
-                entry.fresh = entry.resume.getBooleanOr(FRESH, false);
-                ((ProfileTagged) entry.player).hardrush$generation(target);
-                ((ProfileTagged) entry.player).hardrush$suspensionId(entry.resume.getStringOr(SUSPENSION_ID, ""));
-                closeSuspendedContainer(entry.player);
-                entry.diskSafe = true;
-                entry.ready = true;
+                try {
+                    entry.resume = plan.snapshot();
+                    entry.fresh = entry.resume.getBooleanOr(FRESH, false);
+                    if (entry.fresh) {
+                        // Load the already sealed reset output. Re-running resetForNewRound would
+                        // revoke advancements/recipes again and replace its suspension identity.
+                        entry.player.load(TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), entry.resume.copy()));
+                        ((ProfileTagged) entry.player).hardrush$clearLoadedProfile();
+                        restoreAdvancements(entry.player, entry.resume);
+                        moveToLobby(entry.player);
+                        entry.player.resetSentInfo();
+                        entry.player.onUpdateAbilities();
+                        entry.player.inventoryMenu.sendAllDataToRemote();
+                    }
+                    ((ProfileTagged) entry.player).hardrush$generation(target);
+                    ((ProfileTagged) entry.player).hardrush$suspensionId(entry.resume.getStringOr(SUSPENSION_ID, ""));
+                    ((ProfileTagged) entry.player).hardrush$isolated(true);
+                    ((ProfileTagged) entry.player).hardrush$respawnPermitted(false);
+                    closeSuspendedContainer(entry.player);
+                    if (plan.transition().phase() == ProfileJournal.Phase.VERIFIED) {
+                        entry.diskSafe = true;
+                        entry.ready = true;
+                    } else finishTransition(entry, target, plan.transition());
+                } catch (RuntimeException restoreError) { fail(entry, restoreError); moveToLobby(entry.player); }
                 return;
             }
             try {
@@ -728,6 +756,30 @@ public final class P1PlayerProfiles implements AutoCloseable {
                 }));
             } catch (RuntimeException resetError) { fail(entry, resetError); }
         }));
+    }
+
+    private void finishTransition(Entry entry, ProfileJournal.Generation target, ProfileJournal.Transition transition) {
+        var playerId = entry.player.getUUID();
+        supply(() -> {
+            var store = journal.join();
+            if (transition.phase() == ProfileJournal.Phase.PREPARED) {
+                store.advance(playerId, target, ProfileJournal.Phase.PREPARED, ProfileJournal.Phase.APPLIED);
+            }
+            store.advance(playerId, target, ProfileJournal.Phase.APPLIED, ProfileJournal.Phase.VERIFIED);
+            return null;
+        }).whenComplete((ignored, error) -> callbacks.execute(() -> {
+            if (!current(entry, target)) return;
+            if (error != null) fail(entry, error);
+            else { entry.diskSafe = true; entry.ready = true; }
+        }));
+    }
+
+    private static void requireSnapshotGeneration(CompoundTag snapshot, ProfileJournal.Generation target) throws IOException {
+        if (!snapshot.getStringOr("hardrush_round_id", "").equals(target.roundId().toString())
+                || snapshot.getLongOr("hardrush_generation", 0) != target.sequence()
+                || snapshot.getStringOr(SUSPENSION_ID, "").isBlank()) {
+            throw new IOException("持久悬停档案的轮次／代数／悬停标记不匹配，保留隔离等待核验");
+        }
     }
 
     private boolean current(Entry entry, ProfileJournal.Generation target) {
@@ -916,11 +968,6 @@ public final class P1PlayerProfiles implements AutoCloseable {
         var bytes = new ByteArrayOutputStream();
         NbtIo.writeCompressed(snapshot, bytes);
         return bytes.toByteArray();
-    }
-
-    private static byte[] uncheckedEncode(CompoundTag snapshot) {
-        try { return encode(snapshot); }
-        catch (IOException error) { throw new CompletionException(error); }
     }
 
     private static CompoundTag decode(byte[] bytes) throws IOException {
