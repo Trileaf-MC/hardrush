@@ -190,6 +190,31 @@ tasks.named('runGameTest') {
     }
 }
 
+// Isolate the deliberately impossible disk reserve from all production-runtime regressions.
+def p3StorageRunDir = rootProject.file(".local/p3-storage/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushP3Storage').orNull == 'true') {
+        if (['hardrushP1', 'hardrushP1TenRounds', 'hardrushP2Identity', 'hardrushP2Lobby'].any {
+            providers.gradleProperty(it).orNull == 'true'
+        }) throw new GradleException('P3 storage admission requires its own isolated run without -PhardrushP1=true')
+        vmArg '-Dhardrush.p3.testStorage=true'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p3storage_game_test*'
+        runDir p3StorageRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushP3Storage').orNull == 'true') {
+        doFirst {
+            p3StorageRunDir.mkdirs()
+            copy {
+                from rootProject.file('.local/server-p0/eula.txt')
+                into p3StorageRunDir
+            }
+            logger.lifecycle("Isolated P3 storage admission: ${p3StorageRunDir}")
+        }
+    }
+}
+
 // The formal P2 listener/SQLite/profile flow needs a fresh runtime, separate from legacy lobby fixtures.
 def p2IdentityRunDir = rootProject.file(".local/p2-identity/${UUID.randomUUID()}")
 loom.runs.named('gameTest') {

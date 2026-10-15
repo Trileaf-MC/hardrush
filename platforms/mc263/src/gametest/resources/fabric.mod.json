@@ -17,6 +17,7 @@
       "dev.hardrush.gametest.P1LobbyGameTest",
       "dev.hardrush.gametest.P1CombatGameTest",
       "dev.hardrush.gametest.P1WorldPreparationGameTest",
+      "dev.hardrush.gametest.P3StorageGameTest",
       "dev.hardrush.gametest.P1ProfileGameTest",
       "dev.hardrush.gametest.P1ProgressGameTest",
       "dev.hardrush.gametest.P1TabGameTest",

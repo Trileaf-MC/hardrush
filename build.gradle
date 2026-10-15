@@ -26,3 +26,9 @@ tasks.register('checkP2') {
     dependsOn 'checkP1'
 }
 
+tasks.register('checkP3') {
+    group = 'verification'
+    description = 'Verify P3 crash isolation, durable profile recovery and storage failure safeguards without a client.'
+    dependsOn 'checkP2'
+}
+

@@ -3,6 +3,8 @@ package dev.hardrush.p1.world;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.JsonOps;
 import dev.hardrush.core.round.RoundSnapshot;
+import dev.hardrush.p1.storage.P1StorageGuard;
+import dev.hardrush.p1.storage.P1StorageFailure;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -77,6 +79,8 @@ public final class P1RoundWorldBundle implements AutoCloseable {
     private final ArrayDeque<Edit> edits = new ArrayDeque<>();
     private final List<ChunkPos> searchChunks = new ArrayList<>();
     private CompletableFuture<P1WorldManifest> manifestIo;
+    private CompletableFuture<Void> capacityIo;
+    private long lastCapacityCheck;
     private CompletableFuture<P1WorldManifest> closeValidation;
     private CompletableFuture<Void> closeCompletion;
     private final java.util.Set<ServerLevel> closedNativeLevels = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
@@ -143,6 +147,7 @@ public final class P1RoundWorldBundle implements AutoCloseable {
         var initial = new P1WorldManifest(snapshot.roundId(), snapshot.seed(), snapshot.rules().encode(), generators, null, List.of());
         manifestIo = CompletableFuture.supplyAsync(() -> {
             try {
+                P1StorageGuard.requireWorldPreparation(root);
                 P1WorldPaths.checkAncestors(manifestPath, false);
                 boolean existingManifest = Files.exists(manifestPath, LinkOption.NOFOLLOW_LINKS);
                 if (!existingManifest) {
@@ -173,7 +178,22 @@ public final class P1RoundWorldBundle implements AutoCloseable {
             if (state == State.OPENING_MANIFEST) {
                 if (!manifestIo.isDone()) return;
                 manifest = manifestIo.join();
+                lastCapacityCheck = System.nanoTime();
                 state = State.OPENING_DIMENSIONS;
+                return;
+            }
+            // All filesystem queries stay on IO. Hold further preparation while a check is pending.
+            if (capacityIo != null) {
+                if (!capacityIo.isDone()) return;
+                capacityIo.join();
+                capacityIo = null;
+                lastCapacityCheck = System.nanoTime();
+            }
+            if (System.nanoTime() - lastCapacityCheck >= TimeUnit.SECONDS.toNanos(1)) {
+                capacityIo = CompletableFuture.runAsync(() -> {
+                    try { P1StorageGuard.requireCapacity(root); }
+                    catch (java.io.IOException error) { throw new java.util.concurrent.CompletionException(error); }
+                }, io);
                 return;
             }
             if (state == State.OPENING_DIMENSIONS) { openOneDimension(); return; }
@@ -402,7 +422,7 @@ public final class P1RoundWorldBundle implements AutoCloseable {
         for (BlockPos exit : exits) if (!safeStanding(rawLevel("overworld"), exit)) throw new IllegalStateException("出生出口安全校验失败");
         var prepared = manifest.prepared(candidate, exits);
         manifestIo = CompletableFuture.supplyAsync(() -> {
-            try { prepared.write(root, manifestPath); return prepared; }
+            try { P1StorageGuard.requireCapacity(root); prepared.write(root, manifestPath); return prepared; }
             catch (Exception error) { throw new java.util.concurrent.CompletionException(error); }
         }, io);
         state = State.SAVING_MANIFEST;
@@ -452,6 +472,7 @@ public final class P1RoundWorldBundle implements AutoCloseable {
             if (!handle.asLevel().players().isEmpty()) throw new IllegalStateException("半完成世界仍有玩家；先安全回大厅");
         });
         failure = "";
+        capacityIo = null;
         openedDimensions = 0;
         searchIndex = 0;
         columnIndex = 0;
@@ -616,6 +637,18 @@ public final class P1RoundWorldBundle implements AutoCloseable {
         try {
             if (!io.awaitTermination(10, TimeUnit.SECONDS)) throw new IllegalStateException("世界清单 IO 尚未完成，保留世界等待恢复");
         } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new IllegalStateException(interrupted); }
+        // A worker can fail after its last tick but before SERVER_STOPPING. Draining the
+        // executor is not proof of successful IO; propagate failure so no clean marker is saved.
+        RuntimeException failure = null;
+        for (var task : java.util.Arrays.asList(manifestIo, capacityIo, closeValidation)) {
+            if (task == null) continue;
+            try { task.join(); }
+            catch (RuntimeException error) {
+                if (failure == null) failure = error;
+                else if (failure != error) failure.addSuppressed(error);
+            }
+        }
+        if (failure != null) throw new IllegalStateException("世界存储 IO 失败，不能标记正常停服；保留资料等待恢复", failure);
     }
 
     private void finishClosed() {
@@ -633,8 +666,9 @@ public final class P1RoundWorldBundle implements AutoCloseable {
 
     private void fail(Throwable error) {
         Throwable cause = error;
-        while (cause.getCause() != null) cause = cause.getCause();
-        failure = state + ": " + cause.getMessage();
+        while ((cause instanceof java.util.concurrent.CompletionException
+                || cause instanceof java.util.concurrent.ExecutionException) && cause.getCause() != null) cause = cause.getCause();
+        failure = state + ": " + cause.getMessage() + "。" + P1StorageFailure.advice(error);
         state = State.FAILED;
         releaseTickets(null);
     }

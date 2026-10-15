@@ -20,6 +20,7 @@ import dev.hardrush.persistence.CommitResult;
 import dev.hardrush.persistence.SnapshotWrite;
 import dev.hardrush.persistence.SqliteRoundStore;
 import dev.hardrush.persistence.EvidenceWrite;
+import dev.hardrush.p1.storage.P1StorageFailure;
 import dev.hardrush.core.record.ProgressWrite;
 import dev.hardrush.core.record.RoundHistory;
 import dev.hardrush.core.record.ParticipantRecord;
@@ -523,6 +524,8 @@ public final class P1LobbySession implements AutoCloseable {
                 + "，本轮模式 " + modeName(round.rules().mode()) + "，下轮模式 " + modeName(nextRules.mode())
                 + "，已持久化版本 " + round.version() + "，规则 " + round.rules().fingerprint()
                 + "。" + (mutationPending() ? "正在提交状态。" : "")
+                + (round.phase() == RoundPhase.RECOVERY_REQUIRED
+                    ? "检测到非正常停止；已提交身份、资格和原始记录保留，全员留在大厅。本批尚无解除恢复隔离的管理入口，请保留资料并按故障恢复文档处理。" : "")
                 + (recoveringCountdown ? "正常重启倒计时已暂挂，等待原已就绪玩家完成档案核验。" : "")
                 + (adaptersReady ? "有效挑战 " + engine.view().challengeMillis() + " ms，在线活人 "
                     + engine.view().onlineHumans() + "，暂停原因 " + engine.view().pauseReason() + "。"
@@ -940,7 +943,7 @@ public final class P1LobbySession implements AutoCloseable {
         if (failureBoundary == null) failureBoundary = clock.nanoTime();
         Throwable cause = error;
         while (cause instanceof CompletionException && cause.getCause() != null) cause = cause.getCause();
-        problem = prefix + "：" + (cause == null ? "未知错误" : cause.getMessage());
+        problem = prefix + "：" + (cause == null ? "未知错误" : cause.getMessage()) + "。" + P1StorageFailure.advice(error);
         state = State.FAILED;
         diagnostics.accept(problem, cause);
     }
