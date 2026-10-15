@@ -70,6 +70,9 @@ public final class P1LobbySession implements AutoCloseable {
     private boolean stopping;
     private boolean unsupportedPhase;
     private boolean adaptersReady;
+    // A clean restart makes saved sessions offline without a player choosing to leave.
+    // Hold only that countdown until a saved ready UUID passes the profile/online gate.
+    private boolean recoveringCountdown;
     private long eventTime = Long.MIN_VALUE;
     private final ArrayDeque<QueuedEvent> events = new ArrayDeque<>();
     private BiConsumer<RoundSnapshot, RoundSnapshot> committedListener = (before, after) -> {};
@@ -157,6 +160,9 @@ public final class P1LobbySession implements AutoCloseable {
                 : RoundEngine.restore(stored, this::engineTime);
         nextRules = loaded.nextRules();
         endEntrants = loaded.endEntrants();
+        recoveringCountdown = !loaded.fresh() && stored.cleanShutdown() && stored.phase() == RoundPhase.COUNTDOWN
+                && stored.participants().values().stream().anyMatch(player -> player.ready()
+                        && player.role() == dev.hardrush.core.round.ParticipantRole.LOBBY);
         // An externally restored later phase needs the future world/profile
         // adapters. Keep its durable phase visible without progressing it.
         unsupportedPhase = engine.committed().phase() != RoundPhase.PREPARING;
@@ -250,6 +256,7 @@ public final class P1LobbySession implements AutoCloseable {
         endEntrants = 0;
         adaptersReady = false;
         unsupportedPhase = false;
+        recoveringCountdown = false;
         lastCheckpointNanos = clock.nanoTime();
         if (!stopping) try { committedListener.accept(before, next); }
         catch (RuntimeException failure) { fail("新轮已持久化但适配器应用失败", failure); }
@@ -474,6 +481,7 @@ public final class P1LobbySession implements AutoCloseable {
                 + "，本轮模式 " + modeName(round.rules().mode()) + "，下轮模式 " + modeName(nextRules.mode())
                 + "，已持久化版本 " + round.version() + "，规则 " + round.rules().fingerprint()
                 + "。" + (mutationPending() ? "正在提交状态。" : "")
+                + (recoveringCountdown ? "正常重启倒计时已暂挂，等待原已就绪玩家完成档案核验。" : "")
                 + (adaptersReady ? "有效挑战 " + engine.view().challengeMillis() + " ms，在线活人 "
                     + engine.view().onlineHumans() + "，暂停原因 " + engine.view().pauseReason() + "。"
                     : unsupportedPhase ? "已保留原阶段；正在核对世界与档案。" : ADAPTERS_PENDING)
@@ -509,6 +517,9 @@ public final class P1LobbySession implements AutoCloseable {
     private void requestAction(java.util.function.Supplier<RoundTransition> action, Consumer<Reply> reply, String success) {
         if (terminalCandidate != null || shutdownBoundary != null) { reply.accept(new Reply(false, "本轮已冻结，不能开始新的竞技操作。")); return; }
         if (state != State.OPEN || stopping || !adaptersReady) { reply.accept(blockedParticipation()); return; }
+        if (recoveringCountdown) {
+            reply.accept(new Reply(false, "正常重启倒计时仍在等待原已就绪玩家完成档案核验，请稍后加入或就绪。")); return;
+        }
         if (mutationPending() || !events.isEmpty()) { reply.accept(new Reply(false, "上一项状态仍在提交，请稍后重试。")); return; }
         try { submit(action.get(), reply, success); }
         catch (IllegalStateException | IllegalArgumentException error) { reply.accept(new Reply(false, error.getMessage())); }
@@ -525,10 +536,19 @@ public final class P1LobbySession implements AutoCloseable {
         else online.remove(playerId);
         if (shutdownBoundary != null || adminBoundary != null) return;
         if (terminalCandidate != null && !terminalQueued) return;
+        if (recoveringCountdown && !resumeCountdown(playerId, connected)) return;
         if (adaptersReady && engine != null && (engine.committed().participants().containsKey(playerId)
                 || pendingTransition != null && pendingTransition.after().participants().containsKey(playerId))) {
             enqueue(e -> e.proposeOnline(UUID.randomUUID(), playerId, name, connected));
         }
+    }
+
+    private boolean resumeCountdown(UUID playerId, boolean connected) {
+        if (!connected || !adaptersReady || state != State.OPEN || engine == null) return false;
+        var player = engine.committed().participants().get(playerId);
+        if (player == null || !player.ready() || player.role() != dev.hardrush.core.round.ParticipantRole.LOBBY) return false;
+        recoveringCountdown = false;
+        return true;
     }
 
     public void normalDeath(UUID playerId, int lifeSequence) {
@@ -613,6 +633,20 @@ public final class P1LobbySession implements AutoCloseable {
         if (shutdownBoundary != null || terminalCandidate != null && !terminalQueued) return;
         if (stopping || state != State.OPEN || unsupportedPhase || mutationPending()) return;
         if (!events.isEmpty()) { drainEvent(); return; }
+        if (recoveringCountdown) {
+            for (var connection : online.entrySet()) {
+                if (resumeCountdown(connection.getKey(), true)) {
+                    enqueue(e -> e.proposeOnline(UUID.randomUUID(), connection.getKey(), connection.getValue(), true));
+                    return;
+                }
+            }
+            long now = clock.nanoTime();
+            if (now - lastCheckpointNanos >= CHECKPOINT_NANOS) {
+                lastCheckpointNanos = now;
+                submit(engine.proposeCheckpoint(UUID.randomUUID(), false));
+            }
+            return;
+        }
         var round = engine.committed();
         for (var participant : round.participants().values()) {
             var name = online.get(participant.id());
@@ -674,6 +708,7 @@ public final class P1LobbySession implements AutoCloseable {
         if (error == null && (result == CommitResult.APPLIED || result == CommitResult.DUPLICATE)) {
             if (!engine.accept(transition)) fail("轮次提交回调标签已过期", new IllegalStateException("旧轮次回调被拒绝"));
             else if (!stopping && state != State.FAILED) {
+                if (transition.after().phase() != RoundPhase.COUNTDOWN) recoveringCountdown = false;
                 try { committedListener.accept(transition.before(), transition.after()); }
                 catch (RuntimeException failure) { fail("已持久化状态的玩家应用失败", failure); }
             }

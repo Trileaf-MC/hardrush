@@ -338,6 +338,137 @@ final class P1LobbySessionTest {
     }
 
     @Test
+    void cleanCountdownWaitsForProfilesAcrossCheckpointsAndRepeatedNormalStops() throws Exception {
+        Path database = directory.resolve("countdown-repeat-stop.sqlite");
+        UUID ready = UUID.randomUUID(), unready = UUID.randomUUID();
+        var initial = seedCleanCountdown(database, ready, unready);
+        for (int restart = 0; restart < 2; restart++) {
+            var clock = new AtomicLong(TimeUnit.DAYS.toNanos(10 + restart));
+            var callbacks = new LinkedBlockingQueue<Runnable>();
+            try (var session = new P1LobbySession(database, clock::get, callbacks::add)) {
+                pumpUntil(callbacks, () -> session.state() == P1LobbySession.State.OPEN);
+                session.adaptersReady(initial.roundId());
+                pumpUntil(callbacks, () -> !session.mutationPending());
+                assertFalse(session.snapshot().orElseThrow().cleanShutdown(), "Ready worlds mark the live process dirty");
+                for (int checkpoint = 0; checkpoint < 3; checkpoint++) {
+                    clock.addAndGet(TimeUnit.SECONDS.toNanos(5));
+                    session.tick();
+                    pumpUntil(callbacks, () -> !session.mutationPending());
+                    var held = session.snapshot().orElseThrow();
+                    assertEquals(RoundPhase.COUNTDOWN, held.phase(), "Startup offline sessions are not deliberate disconnects");
+                    assertEquals(initial.remainingPhaseNanos(), held.remainingPhaseNanos());
+                    assertTrue(held.participants().get(ready).ready());
+                    assertFalse(held.participants().get(ready).online());
+                    assertEquals(0, held.challengeNanos());
+                }
+                session.prepareStop();
+                clock.addAndGet(TimeUnit.SECONDS.toNanos(100));
+            }
+            try (var store = new SqliteRoundStore(database)) {
+                var saved = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload());
+                assertTrue(saved.cleanShutdown());
+                assertEquals(initial.roundId(), saved.roundId());
+                assertEquals(RoundPhase.COUNTDOWN, saved.phase());
+                assertEquals(initial.remainingPhaseNanos(), saved.remainingPhaseNanos(), "Repeated normal stop cannot consume the held remainder");
+                assertTrue(saved.participants().get(ready).ready());
+            }
+        }
+    }
+
+    @Test
+    void recoveredCountdownNeedsSavedReadyUuidAndThenUsesOrdinaryCancelRules() throws Exception {
+        Path database = directory.resolve("countdown-resume.sqlite");
+        UUID ready = UUID.randomUUID(), unready = UUID.randomUUID(), newcomer = UUID.randomUUID();
+        var initial = seedCleanCountdown(database, ready, unready);
+        var clock = new AtomicLong(0);
+        var callbacks = new LinkedBlockingQueue<Runnable>();
+        var reply = new AtomicReference<P1LobbySession.Reply>();
+        try (var session = new P1LobbySession(database, clock::get, callbacks::add)) {
+            pumpUntil(callbacks, () -> session.state() == P1LobbySession.State.OPEN);
+            session.adaptersReady(initial.roundId());
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            session.onOnline(unready, "UnreadyReconnected", true);
+            session.onOnline(newcomer, "Newcomer", true);
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(5));
+            session.tick();
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertEquals(RoundPhase.COUNTDOWN, session.snapshot().orElseThrow().phase());
+            assertEquals(initial.remainingPhaseNanos(), session.view().orElseThrow().remainingPhaseNanos());
+            session.requestJoin(newcomer, "Newcomer", reply::set);
+            assertFalse(reply.get().success(), "New join cannot substitute for the saved ready UUID during recovery");
+            session.onOnline(unready, "UnreadyReconnected", false);
+            session.onOnline(newcomer, "Newcomer", false);
+            session.onOnline(ready, "ReadyReconnected", true);
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertTrue(session.snapshot().orElseThrow().participants().get(ready).online());
+            assertEquals(initial.remainingPhaseNanos(), session.view().orElseThrow().remainingPhaseNanos());
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(4));
+            session.tick();
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertEquals(initial.remainingPhaseNanos() - TimeUnit.SECONDS.toNanos(4), session.snapshot().orElseThrow().remainingPhaseNanos());
+            reply.set(null);
+            session.requestReady(ready, false, reply::set);
+            pumpUntil(callbacks, () -> reply.get() != null);
+            assertTrue(reply.get().success());
+            assertEquals(RoundPhase.WAITING, session.snapshot().orElseThrow().phase(), "Explicit unready still cancels after recovery");
+            reply.set(null);
+            session.requestReady(ready, true, reply::set);
+            pumpUntil(callbacks, () -> reply.get() != null);
+            assertTrue(reply.get().success());
+            assertEquals(TimeUnit.SECONDS.toNanos(30), session.snapshot().orElseThrow().remainingPhaseNanos(), "A fresh countdown uses the full rule duration");
+            session.onOnline(ready, "ReadyReconnected", false);
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertEquals(RoundPhase.WAITING, session.snapshot().orElseThrow().phase(), "Last ready disconnect still cancels a live countdown");
+            assertFalse(session.snapshot().orElseThrow().participants().get(ready).ready());
+        }
+    }
+
+    @Test
+    void readyProfileOnlineBeforeWorldGateResumesOnlyAfterWorldVerification() throws Exception {
+        Path database = directory.resolve("countdown-early-profile.sqlite");
+        UUID ready = UUID.randomUUID(), unready = UUID.randomUUID();
+        var initial = seedCleanCountdown(database, ready, unready);
+        var clock = new AtomicLong(0);
+        var callbacks = new LinkedBlockingQueue<Runnable>();
+        try (var session = new P1LobbySession(database, clock::get, callbacks::add)) {
+            pumpUntil(callbacks, () -> session.state() == P1LobbySession.State.OPEN);
+            session.onOnline(ready, "ReadyBeforeWorlds", true);
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(5));
+            session.tick();
+            assertFalse(session.snapshot().orElseThrow().participants().get(ready).online());
+            assertEquals(initial.remainingPhaseNanos(), session.view().orElseThrow().remainingPhaseNanos());
+            session.adaptersReady(initial.roundId());
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(5));
+            session.tick();
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertTrue(session.snapshot().orElseThrow().participants().get(ready).online());
+            assertEquals(initial.remainingPhaseNanos(), session.view().orElseThrow().remainingPhaseNanos(), "Pre-world and held-profile time is excluded");
+            clock.addAndGet(initial.remainingPhaseNanos());
+            session.tick();
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertEquals(RoundPhase.RUNNING, session.snapshot().orElseThrow().phase());
+            assertEquals(0, session.view().orElseThrow().challengeNanos());
+            assertFalse(session.snapshot().orElseThrow().participants().get(ready).online(), "Actual human admission remains separately gated");
+        }
+    }
+
+    private static RoundSnapshot seedCleanCountdown(Path database, UUID ready, UUID unready) throws Exception {
+        var rules = RulesConfig.defaults().withMode(GameMode.NORMAL);
+        var snapshot = new RoundSnapshot(UUID.randomUUID(), 1, 123, 0, rules, RoundPhase.COUNTDOWN,
+                PauseReason.SERVER_STOPPED, 0, TimeUnit.SECONDS.toNanos(17),
+                Map.of(ready, new Participant(ready, "Ready", ParticipantRole.LOBBY, true, true, 0, -1, 0, false),
+                        unready, new Participant(unready, "Unready", ParticipantRole.LOBBY, true, false, 0, -1, 0, false)),
+                true, false, null);
+        try (var store = new SqliteRoundStore(database)) {
+            store.savePendingRules(rules.encode().getBytes(StandardCharsets.UTF_8), UUID.randomUUID(), "countdown-fixture");
+            assertEquals(dev.hardrush.persistence.CommitResult.APPLIED, store.commit(new SnapshotWrite(snapshot.roundId(), -1, 0,
+                    RoundSnapshotCodec.encode(snapshot), UUID.randomUUID(), "INITIAL")));
+        }
+        return snapshot;
+    }
+
+    @Test
     void stopCapturesTimeBeforeDrainingBlockedSqliteWrites() throws Exception {
         Path database = directory.resolve("stop-boundary.sqlite");
         UUID player = UUID.randomUUID();

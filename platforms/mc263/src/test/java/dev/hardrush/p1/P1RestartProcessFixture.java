@@ -188,6 +188,10 @@ public final class P1RestartProcessFixture {
                 }
                 case COUNTDOWN -> {
                     check(snapshot(session).participants().get(PLAYER).ready(), "Saved ready flag survives normal stop");
+                    clock.addAndGet(nanos(5));
+                    tick(session);
+                    equal(RoundPhase.COUNTDOWN, snapshot(session).phase(), "Verified worlds alone cannot cancel the restored countdown");
+                    equal(stopped.remainingPhaseNanos(), snapshot(session).remainingPhaseNanos(), "Waiting for saved ready profile preserves remainder");
                     unlock(session, NEW_NAME);
                     equal(stopped.remainingPhaseNanos(), snapshot(session).remainingPhaseNanos(), "Reconnection preserves countdown remainder");
                     clock.addAndGet(stopped.remainingPhaseNanos());
