@@ -121,7 +121,15 @@ def build_launch(run, timeout):
 
 
 def read_snapshot_header(payload):
-    """Read only the audited schema-1 prefix through its clean-stop marker."""
+    """Read the shared schema-1..4 prefix through its clean-stop marker.
+
+    RoundSnapshotCodec added protection (2), monster deployment (3), and skill
+    cooldowns (4) only after this prefix, inside participant entries. The JVM
+    fixture decodes that complete payload; this independent check reads its
+    bounded identity/timing prefix and compares the exact checkpoint bytes.
+    """
+    if len(payload) > 4 * 1024 * 1024:
+        raise RuntimeError('Round snapshot exceeds size limit')
     offset = 0
 
     def take(size):
@@ -142,9 +150,12 @@ def read_snapshot_header(payload):
             raise RuntimeError('Invalid snapshot text length')
         return take(length).decode('utf-8')
 
-    if number('>I') != 0x48525331 or number('>i') != 1:
+    if number('>I') != 0x48525331:
+        raise RuntimeError('Unsupported round snapshot format')
+    schema = number('>i')
+    if not 1 <= schema <= 4:
         raise RuntimeError('Unsupported round snapshot schema')
-    result = {'roundId': str(uuid.UUID(bytes=take(16))), 'sequence': number('>q'),
+    result = {'schema': schema, 'roundId': str(uuid.UUID(bytes=take(16))), 'sequence': number('>q'),
               'seed': number('>q'), 'version': number('>q'), 'rules': text(131072),
               'phase': text(64), 'pauseReason': text(64), 'challengeNanos': number('>q'),
               'remainingPhaseNanos': number('>q')}
