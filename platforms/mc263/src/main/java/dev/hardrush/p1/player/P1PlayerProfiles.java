@@ -176,8 +176,16 @@ public final class P1PlayerProfiles implements AutoCloseable {
         tagged.hardrush$respawnPermitted(false);
         player.stopRiding();
         player.ejectPassengers();
-        player.setServerLevel(lobby.get());
-        player.setPos(lobbySpawn.get());
+        if (player.connection == null) {
+            // Before login registration there is no native entity membership to move.
+            player.setServerLevel(lobby.get());
+            player.setPos(lobbySpawn.get());
+        } else {
+            // A connected player still belongs to its old ServerLevel's entity/player lists.
+            // Keep that source level until vanilla teleport unregisters it; changing the field
+            // first turns the transfer into a same-level move and strands a player in the old world.
+            moveToLobby(player);
+        }
         player.setDeltaMovement(Vec3.ZERO);
         player.resetFallDistance();
         player.portalProcess = null;

@@ -93,6 +93,33 @@ loom.runs.named('clientGameTest') {
     }
 }
 
+// Run the production P1 lifecycle alone: other GameTests intentionally mutate the shared lobby.
+def p1RegressionRunDir = rootProject.file(".local/p1-regression/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushP1TenRounds').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true') {
+            throw new GradleException('The ten-round regression requires -PhardrushP1=true')
+        }
+        vmArg '-Dhardrush.p1.testTenRounds=true'
+        vmArg '-Dhardrush.p1.initialMode=normal'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1ten_round_game_test*'
+        runDir p1RegressionRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushP1TenRounds').orNull == 'true') {
+        doFirst {
+            // prepareDebugTools has already checked the user's accepted EULA; never accept it here.
+            p1RegressionRunDir.mkdirs()
+            copy {
+                from rootProject.file('.local/server-p0/eula.txt')
+                into p1RegressionRunDir
+            }
+            logger.lifecycle("Isolated P1 ten-round storage: ${p1RegressionRunDir}")
+        }
+    }
+}
+
 tasks.register('prepareDebugTools', Exec) {
     commandLine 'python3', rootProject.file('scripts/debug-tools.py'), 'prepare'
 }

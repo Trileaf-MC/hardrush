@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "minecraft": "26.3",
+  "roundId": "a19a2e9a-281e-48b3-b3d2-aea24b65f5d2",
+  "seed": 8561630017818090289,
+  "rules": "combat.creeper.armor\u003d0.0\ncombat.creeper.explosionStrength\u003d3.0\ncombat.creeper.fuseTicks\u003d30.0\ncombat.creeper.maxHealth\u003d20.0\ncombat.creeper.movementAttribute\u003d0.25\ncombat.monster.deployCooldownMillis\u003d30000.0\ncombat.monster.returnChannelMillis\u003d5000.0\ncombat.round.rescueMillis\u003d60000.0\ncombat.skeleton.armor\u003d0.0\ncombat.skeleton.bowChargeTicks\u003d20.0\ncombat.skeleton.burstCooldownMillis\u003d20000.0\ncombat.skeleton.burstCount\u003d3.0\ncombat.skeleton.burstIntervalMillis\u003d600.0\ncombat.skeleton.maxHealth\u003d20.0\ncombat.skeleton.movementAttribute\u003d0.25\ncombat.zombie.armor\u003d2.0\ncombat.zombie.baseMeleeDamage\u003d3.0\ncombat.zombie.maxHealth\u003d20.0\ncombat.zombie.meleeIntervalTicks\u003d20.0\ncombat.zombie.movementAttribute\u003d0.23\ncombat.zombie.summonCooldownMillis\u003d90000.0\ncombat.zombie.summonCount\u003d2.0\ncombat.zombie.summonMaxDistance\u003d4.0\ncombat.zombie.summonMinDistance\u003d2.0\ndifficulty\u003dHARD\nfailureDisplayMillis\u003d30000\ngenerationRule\u003dnormal\nminecraftVersion\u003d26.3\nmode\u003dNORMAL\nprotectionRadius\u003d32.0\nschemaVersion\u003d1\nstartCountdownMillis\u003d30000\nsuccessCelebrationMillis\u003d600000\n",
+  "dimensions": {
+    "overworld": {
+      "id": "hardrush:p1_a19a2e9a281e48b3b3d2aea24b65f5d2/overworld",
+      "type": "overworld",
+      "ownedPath": "dimensions/hardrush/p1_a19a2e9a281e48b3b3d2aea24b65f5d2/overworld",
+      "generator": {
+        "biome_source": {
+          "preset": "minecraft:overworld",
+          "type": "minecraft:multi_noise"
+        },
+        "settings": "minecraft:overworld",
+        "type": "minecraft:noise"
+      }
+    },
+    "nether": {
+      "id": "hardrush:p1_a19a2e9a281e48b3b3d2aea24b65f5d2/nether",
+      "type": "nether",
+      "ownedPath": "dimensions/hardrush/p1_a19a2e9a281e48b3b3d2aea24b65f5d2/nether",
+      "generator": {
+        "biome_source": {
+          "preset": "minecraft:nether",
+          "type": "minecraft:multi_noise"
+        },
+        "settings": "minecraft:nether",
+        "type": "minecraft:noise"
+      }
+    },
+    "end": {
+      "id": "hardrush:p1_a19a2e9a281e48b3b3d2aea24b65f5d2/end",
+      "type": "end",
+      "ownedPath": "dimensions/hardrush/p1_a19a2e9a281e48b3b3d2aea24b65f5d2/end",
+      "generator": {
+        "biome_source": {
+          "type": "minecraft:the_end"
+        },
+        "settings": "minecraft:end",
+        "type": "minecraft:noise"
+      }
+    }
+  },
+  "spawn": {
+    "x": 82,
+    "y": 71,
+    "z": 370
+  },
+  "exits": [
+    {
+      "x": 122,
+      "y": 71,
+      "z": 370
+    },
+    {
+      "x": 42,
+      "y": 69,
+      "z": 370
+    }
+  ]
+}

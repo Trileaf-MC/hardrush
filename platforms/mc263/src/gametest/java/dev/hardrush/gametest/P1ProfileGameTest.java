@@ -34,6 +34,33 @@ import net.minecraft.world.phys.Vec3;
 /** Server-only fixtures; no graphical clients, screenshots or computer-use interaction. */
 public final class P1ProfileGameTest {
     @GameTest(maxTicks = 100)
+    public void connectedSuspensionMovesNativePlayerMembershipBeforeWorldRelease(GameTestHelper test) {
+        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        var server = test.getLevel().getServer();
+        var player = test.makeMockServerPlayerInLevel();
+        var previous = server.getLevel(net.minecraft.world.level.Level.NETHER);
+        var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        var profiles = new P1PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT)
+                .resolve("hardrush/profile-tests/" + UUID.randomUUID()), test::getLevel, () -> position);
+        try {
+            player.teleportTo(previous, .5, 128, .5, java.util.Set.of(), 0, 0, true);
+            test.assertTrue(previous.players().contains(player), "Native source dimension owns the connected player before suspension");
+            profiles.returnToLobby(player);
+            test.assertTrue(player.level() == test.getLevel(), "Connected suspension moves the player into the lobby");
+            test.assertFalse(previous.players().contains(player), "The native source player list is evacuated before any close gate");
+            test.assertTrue(test.getLevel().players().contains(player), "Vanilla teleport registers the player in the destination list");
+            profiles.returnToLobby(player);
+            test.assertFalse(previous.players().contains(player), "Repeated suspension cannot restore stale source membership");
+            profiles.close();
+        } catch (Exception error) { throw new IllegalStateException(error); }
+        finally {
+            ((ProfileTagged) player).hardrush$isolated(false);
+            server.getPlayerList().remove(player);
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks = 100)
     public void shutdownRejectsAProfileWriteFailureBeforeItsMainThreadCallback(GameTestHelper test) {
         if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
         var server = test.getLevel().getServer();
