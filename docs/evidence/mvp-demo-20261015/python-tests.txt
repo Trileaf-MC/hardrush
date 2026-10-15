@@ -1,0 +1,44 @@
+test_absent_eula_is_not_accepted (test_demo.DemoTests.test_absent_eula_is_not_accepted) ... Demo 实例：/var/folders/r2/z_1kc3ld74x13g0npl0jpdym0000gn/T/tmpi7op53p_/.local/demo/instances/3dd2e64d-972f-4e64-b924-96f94e6a776b
+启动：python3 scripts/demo.py run 3dd2e64d-972f-4e64-b924-96f94e6a776b
+监听：127.0.0.1:25587
+ok
+test_bundle_checksum_is_enforced (test_demo.DemoTests.test_bundle_checksum_is_enforced) ... ok
+test_changed_network_boundary_is_rejected (test_demo.DemoTests.test_changed_network_boundary_is_rejected) ... Demo 实例：/var/folders/r2/z_1kc3ld74x13g0npl0jpdym0000gn/T/tmp3na3lloh/.local/demo/instances/c2b83c31-a215-4e78-be2b-1d16811e9634
+启动：python3 scripts/demo.py run c2b83c31-a215-4e78-be2b-1d16811e9634
+监听：127.0.0.1:25587
+ok
+test_changed_runtime_jar_is_rejected (test_demo.DemoTests.test_changed_runtime_jar_is_rejected) ... Demo 实例：/var/folders/r2/z_1kc3ld74x13g0npl0jpdym0000gn/T/tmpsdg2xq43/.local/demo/instances/1e5067d0-ea5f-42b4-96ea-de2bfc32e8e4
+启动：python3 scripts/demo.py run 1e5067d0-ea5f-42b4-96ea-de2bfc32e8e4
+监听：127.0.0.1:25587
+ok
+test_escape_and_symlink_instances_are_rejected (test_demo.DemoTests.test_escape_and_symlink_instances_are_rejected) ... Demo 实例：/var/folders/r2/z_1kc3ld74x13g0npl0jpdym0000gn/T/tmp1p64q85c/.local/demo/instances/ae2c91a2-21e5-4677-bec7-c8155b9a36b6
+启动：python3 scripts/demo.py run ae2c91a2-21e5-4677-bec7-c8155b9a36b6
+监听：127.0.0.1:25587
+ok
+test_existing_acceptance_and_production_launch (test_demo.DemoTests.test_existing_acceptance_and_production_launch) ... Demo 实例：/var/folders/r2/z_1kc3ld74x13g0npl0jpdym0000gn/T/tmpfse__u93/.local/demo/instances/eabf6394-4c98-423b-ac82-04a49e081453
+启动：python3 scripts/demo.py run eabf6394-4c98-423b-ac82-04a49e081453
+监听：127.0.0.1:25587
+ok
+test_explicit_lan_binding_keeps_online_authentication (test_demo.DemoTests.test_explicit_lan_binding_keeps_online_authentication) ... Demo 实例：/var/folders/r2/z_1kc3ld74x13g0npl0jpdym0000gn/T/tmpd319uh79/.local/demo/instances/10565f55-14d7-408a-927d-6558c20ff738
+启动：python3 scripts/demo.py run 10565f55-14d7-408a-927d-6558c20ff738
+监听：0.0.0.0:25588
+ok
+test_extra_mod_is_rejected (test_demo.DemoTests.test_extra_mod_is_rejected) ... Demo 实例：/var/folders/r2/z_1kc3ld74x13g0npl0jpdym0000gn/T/tmpg22jfzuk/.local/demo/instances/af652193-d0c3-4d21-8a7f-4da157ec38a4
+启动：python3 scripts/demo.py run af652193-d0c3-4d21-8a7f-4da157ec38a4
+监听：127.0.0.1:25587
+ok
+test_nested_development_mod_cannot_hide_behind_filename (test_demo.DemoTests.test_nested_development_mod_cannot_hide_behind_filename) ... ok
+test_nested_development_mod_is_rejected (test_demo.DemoTests.test_nested_development_mod_is_rejected) ... ok
+test_official_api_gametest_module_is_allowed (test_demo.DemoTests.test_official_api_gametest_module_is_allowed) ... ok
+test_preparing_twice_never_reuses_world (test_demo.DemoTests.test_preparing_twice_never_reuses_world) ... Demo 实例：/var/folders/r2/z_1kc3ld74x13g0npl0jpdym0000gn/T/tmpecs7agna/.local/demo/instances/b40e4cf4-0719-4dd5-bee2-0f2e74351b86
+启动：python3 scripts/demo.py run b40e4cf4-0719-4dd5-bee2-0f2e74351b86
+监听：127.0.0.1:25587
+Demo 实例：/var/folders/r2/z_1kc3ld74x13g0npl0jpdym0000gn/T/tmpecs7agna/.local/demo/instances/5e453df1-11ec-4e5c-a39e-0bf104a64512
+启动：python3 scripts/demo.py run 5e453df1-11ec-4e5c-a39e-0bf104a64512
+监听：127.0.0.1:25587
+ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.053s
+
+OK

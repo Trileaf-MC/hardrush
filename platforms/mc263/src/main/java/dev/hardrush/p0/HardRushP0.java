@@ -27,7 +27,8 @@ public final class HardRushP0 implements ModInitializer {
         MonsterRoles.initialize();
         dev.hardrush.p2.lobby.P2LobbyRuntime.initialize();
         P1LobbyRuntime.initialize();
-        LOGGER.info("HardRush P0: operator world/appearance/monster-role probes; formal race/lobby/rewards are not implemented");
+        LOGGER.info("HardRush: server-side race, monster roles and revival; competition enabled={}; operator probes: /hardrushp0",
+                Boolean.getBoolean("hardrush.p1.enabled"));
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             try {
                 WorldProbe.initialize(server);

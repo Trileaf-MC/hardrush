@@ -1,0 +1,9 @@
+{
+  "minecraft": "26.3",
+  "loader": "0.19.5",
+  "installer": "1.1.2",
+  "launcher": {
+    "url": "https://meta.fabricmc.net/v2/versions/loader/26.3/0.19.5/1.1.2/server/jar",
+    "sha256": "0b56ad54d762172e8b8748e467f584f071e4dedecd93dc336cf2c68837e790be"
+  }
+}

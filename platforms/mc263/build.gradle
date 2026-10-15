@@ -308,6 +308,18 @@ tasks.named('jar') {
     from(rootProject.file('licenses')) { into 'META-INF/licenses' }
 }
 
+// Only production artifacts: no Loom classpath, test mod, MCPFabric or debug tools.
+configurations { demoFabricApi { transitive = false } }
+dependencies { demoFabricApi "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}" }
+tasks.register('stageDemoMods', Sync) {
+    group = 'distribution'
+    description = 'Stage the production HardRush and Fabric API JARs for an isolated 26.3 demo.'
+    dependsOn tasks.named('jar')
+    from tasks.named('jar').flatMap { it.archiveFile }
+    from configurations.demoFabricApi
+    into layout.buildDirectory.dir('demo-mods')
+}
+
 
 // Formal P2 lobby/sortie lifecycle, isolated from legacy fixtures and other dedicated matrices.
 def p2LobbyRunDir = rootProject.file(".local/p2-lobby/${UUID.randomUUID()}")
