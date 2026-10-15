@@ -11,6 +11,7 @@ import dev.hardrush.p1.P1LobbySession;
 import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
 import dev.hardrush.p2.lobby.P2LobbyRuntime;
+import dev.hardrush.p2.monster.P2MonsterRuntime;
 import dev.hardrush.p2.protection.P2ProtectionRuntime;
 import dev.hardrush.persistence.SqliteRoundStore;
 import io.netty.channel.ChannelFutureListener;
@@ -21,6 +22,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -45,6 +47,10 @@ import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -52,6 +58,7 @@ import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.AABB;
@@ -59,8 +66,16 @@ import net.minecraft.world.phys.Vec3;
 
 /** Opt-in production runtime chain with two embedded native connections and real SQLite/profile IO. */
 public final class P2RuntimeLobbyGameTest {
+    private static final int ARENA_TICKET_RADIUS = 7;
+    private static final java.util.Set<UUID> FROZEN_SUMMON_OWNERS = new java.util.HashSet<>();
     private static final TicketType LOOT_FIXTURE = new TicketType(TicketType.NO_TIMEOUT,
             TicketType.FLAG_LOADING | TicketType.FLAG_SIMULATION | TicketType.FLAG_KEEP_DIMENSION_ACTIVE);
+    static {
+        // Freeze only this lifecycle fixture's owned native children at world insertion, before their first AI tick.
+        ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+            if (entity instanceof Zombie child && FROZEN_SUMMON_OWNERS.contains(MonsterRoles.summonOwner(child))) child.setNoAi(true);
+        });
+    }
 
     @GameTest(maxTicks = 60000)
     public void formalLobbyOutingsReturnDefeatAndOutsideReconnectKeepDurableIdentity(GameTestHelper test) {
@@ -90,6 +105,7 @@ public final class P2RuntimeLobbyGameTest {
                 .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
                 .thenWaitUntil(() -> f.await(f.humansReady(), "Both native human lives admitted"))
                 .thenExecute(f::prepareArena)
+                .thenWaitUntil(() -> f.await(f.arenaTicking(), "The entire private arena reaches native entity simulation before lifecycle checks"))
                 .thenExecute(() -> f.target.move(f.anchor))
                 .thenWaitUntil(() -> f.await(f.target.participant().hasLeftProtection() && !f.session.mutationPending(), "Target protection exit committed"))
                 .thenExecute(() -> f.target.move(f.anchor))
@@ -110,9 +126,9 @@ public final class P2RuntimeLobbyGameTest {
                     f.monster.player = f.monster.current();
                     f.assertLobby(true);
                     f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "First monster life has a deployment wait");
-                    f.monster.openAndClick(Items.GUNPOWDER);
+                    f.monster.openAndClick(Items.ROTTEN_FLESH);
                 })
-                .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.CREEPER && !f.session.mutationPending(), "Role choice durably saved"))
+                .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.ZOMBIE && !f.session.mutationPending(), "Role choice durably saved"))
                 .thenExecute(() -> f.monster.command("hardrush dimension overworld"))
                 .thenWaitUntil(() -> f.await(!f.session.mutationPending(), "Dimension choice durably saved"))
                 .thenExecute(() -> {
@@ -127,28 +143,83 @@ public final class P2RuntimeLobbyGameTest {
                 .thenExecute(() -> {
                     f.assertDeployment(1);
                     f.assertMenuDoesNotUnlockRoleDrops();
+                    f.equipWorldSword();
+                    f.test.assertTrue(MonsterRoles.summon(f.monster.player), "Safe preflight accepts the formal summon for durable admission");
+                    f.test.assertTrue(P2MonsterRuntime.casting(f.monster.player), "The accepted cast remains pending before the SQLite callback");
+                    f.blockSummonRing();
+                    f.test.assertValueEqual(f.summons(), 0, "A pending cast never creates children before the safe-point recheck");
+                })
+                .thenWaitUntil(() -> f.awaitSkillEffect(!P2MonsterRuntime.casting(f.monster.player) && !f.session.mutationPending()
+                        && !f.monster.participant().monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON),
+                        "Changed safe points refund the committed skill cooldown through real SQLite compensation"))
+                .thenExecute(() -> {
+                    f.test.assertValueEqual(f.summons(), 0, "Failed post-commit safety revalidation never emits a partial summon pair");
+                    f.test.assertFalse(MonsterRoles.summon(f.monster.player), "A fully blocked ring fails preflight immediately");
+                    f.test.assertFalse(P2MonsterRuntime.casting(f.monster.player), "Failed preflight never reserves a cast");
+                    f.test.assertFalse(f.monster.participant().monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON),
+                            "Failed preflight leaves the durable cooldown unused");
+                    f.restoreSummonRing();
+                    f.monster.command("hardrush skill");
+                    f.monster.command("hardrush skill");
+                    f.test.assertValueEqual(f.summons(), 0, "Pending skill requests emit no children before SQLite commits");
+                })
+                .thenWaitUntil(() -> f.awaitSkillEffect(f.summons() == 2 && !f.session.mutationPending(), "Exactly one durable summon produces two native babies"))
+                .thenExecute(() -> {
+                    f.summonReadyAt = f.monster.participant().monsterSkillReadyAtMillis().get(MonsterSkill.ZOMBIE_SUMMON);
+                    f.test.assertTrue(f.summonReadyAt > System.currentTimeMillis(), "The successful summon persists its real epoch cooldown");
+                    f.monster.command("hardrush skill");
+                    f.test.assertValueEqual(f.summons(), 2, "Repeated command while cooling down cannot create another summon pair");
                     f.monster.command("hardrush return");
                     f.test.assertTrue(P2LobbyRuntime.channeling(f.monster.player), "Native return command begins a channel");
                     f.monster.move(f.monster.player.position().add(.2, 0, 0));
                 })
                 .thenWaitUntil(() -> f.await(!P2LobbyRuntime.channeling(f.monster.player), "Actual native movement cancels return"))
                 .thenExecute(() -> {
+                    f.voluntaryReturnBody = f.monster.player;
                     f.monster.command("hardrush return");
                     f.ageReturnChannel();
                 })
                 .thenWaitUntil(() -> f.await(f.monsterReady(false), "Completed return channel durably enters lobby"))
                 .thenExecute(() -> {
                     f.assertLobby(false);
+                    f.test.assertTrue(f.monster.player == f.voluntaryReturnBody,
+                            "Successful voluntary return preserves the same native player body instead of accepting an incidental defeat");
+                    f.test.assertValueEqual(f.worldSwords(), 1, "The picked-up world sword returns exactly once on leaving the body");
+                    f.test.assertValueEqual(f.summons(), 2, "Returning to the lobby keeps both owned summons alive");
+                    f.assertSkillCooldowns();
                     f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Voluntary return starts another 30-second wait");
+                    f.monster.command("hardrush role skeleton");
+                })
+                .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.SKELETON && !f.session.mutationPending(), "Skeleton selection keeps summon cooldown"))
+                .thenExecute(() -> {
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
                     f.monster.command("hardrush deploy");
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(2), "Second formal safe deployment"))
-                .thenExecute(() -> { f.assertDeployment(2); f.killMonsterPeer(true); })
+                .thenExecute(() -> {
+                    f.assertDeployment(2);
+                    f.monster.command("hardrush skill");
+                    f.monster.command("hardrush skill");
+                    f.test.assertTrue(MonsterRoles.status(f.monster.player).contains("arrowsFired=0"), "Pending burst requests do not fire before durable admission");
+                })
+                .thenWaitUntil(() -> f.awaitSkillEffect(MonsterRoles.status(f.monster.player).contains("arrowsFired=3") && !f.session.mutationPending(), "One admitted burst fires exactly three native arrows"))
+                .thenExecute(() -> {
+                    f.burstReadyAt = f.monster.participant().monsterSkillReadyAtMillis().get(MonsterSkill.SKELETON_BURST);
+                    f.test.assertTrue(f.burstReadyAt > System.currentTimeMillis(), "Burst has a persisted epoch deadline");
+                    f.monster.command("hardrush skill");
+                    f.test.assertTrue(MonsterRoles.status(f.monster.player).contains("arrowsFired=3"), "Cooldown rejects another burst after the first finishes");
+                    f.assertSkillCooldowns();
+                    f.killMonsterPeer(true);
+                })
                 .thenWaitUntil(() -> f.await(f.monsterReady(true), "Monster defeat uses native replacement and returns to lobby"))
                 .thenExecute(() -> {
                     f.monster.player = f.monster.current();
                     f.assertLobby(true);
+                    f.assertSkillCooldowns();
+                    f.monster.command("hardrush role creeper");
+                })
+                .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.CREEPER && !f.session.mutationPending(), "Creeper selection keeps both skill deadlines"))
+                .thenExecute(() -> {
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
                     f.monster.command("hardrush deploy");
                 })
@@ -162,9 +233,11 @@ public final class P2RuntimeLobbyGameTest {
                     f.assertLobby(false);
                     f.test.assertValueEqual(f.monster.participant().monsterDeploymentSequence(), 3, "Reconnect preserves outing sequence");
                     f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Outside reconnect retains its 30-second wait");
+                    f.assertSkillCooldowns();
                     f.assertStored();
                     f.monster.disconnect(); f.target.disconnect();
-                    f.level.getChunkSource().removeTicketWithRadius(LOOT_FIXTURE, f.lootChunk, 2);
+                    FROZEN_SUMMON_OWNERS.remove(f.monster.profile.id());
+                    f.level.getChunkSource().removeTicketWithRadius(LOOT_FIXTURE, f.lootChunk, ARENA_TICKET_RADIUS);
                 }).thenSucceed();
     }
 
@@ -178,9 +251,19 @@ public final class P2RuntimeLobbyGameTest {
         ServerLevel level;
         Vec3 anchor;
         ServerPlayer dead;
+        ServerPlayer voluntaryReturnBody;
         AABB humanDrops;
+        final ArrayList<ItemEntity> humanDropEntities = new ArrayList<>();
+        int lootUnavailableSince = -1;
+        AABB worldGearDrops;
+        final Map<BlockPos, BlockState> summonRing = new java.util.LinkedHashMap<>();
+        final Map<String, Integer> skillWaitStarted = new java.util.HashMap<>();
+        long summonReadyAt, burstReadyAt;
         ChunkPos lootChunk;
-        Fixture(GameTestHelper test) { this.test = test; server = test.getLevel().getServer(); }
+        Fixture(GameTestHelper test) {
+            this.test = test; server = test.getLevel().getServer();
+            FROZEN_SUMMON_OWNERS.add(monster.profile.id());
+        }
 
         void installClock() {
             session = service("SESSIONS", P1LobbySession.class);
@@ -198,6 +281,17 @@ public final class P2RuntimeLobbyGameTest {
             java.util.concurrent.locks.LockSupport.parkNanos(2_000_000);
             test.assertTrue(condition, message + ": " + P1LobbyRuntime.status(server));
         }
+        void awaitSkillEffect(boolean condition, String message) {
+            if (condition) { skillWaitStarted.remove(message); return; }
+            int started = skillWaitStarted.computeIfAbsent(message, ignored -> server.getTickCount());
+            if (server.getTickCount() - started >= 1000) {
+                throw new IllegalStateException(message + " exceeded 1000 native ticks: " + P1LobbyRuntime.status(server)
+                        + ", mutationPending=" + session.mutationPending() + ", casting=" + P2MonsterRuntime.casting(monster.player)
+                        + ", arenaTicking=" + arenaTicking() + ", summonCount=" + summons()
+                        + ", body=" + MonsterRoles.status(monster.player));
+            }
+            await(false, message);
+        }
         boolean humansReady() {
             return round().phase() == RoundPhase.RUNNING && !session.mutationPending()
                     && monster.participant().online() && target.participant().online()
@@ -206,10 +300,17 @@ public final class P2RuntimeLobbyGameTest {
         void prepareArena() {
             var worlds = service("WORLDS", P1RoundWorldBundle.class);
             level = worlds.level(Level.OVERWORLD);
+            // This suite measures identity/IO lifecycle; sunlight and autonomous summon combat have their own native tests.
+            level.getGameRules().set(net.minecraft.world.level.gamerules.GameRules.ADVANCE_TIME, false, server);
+            var daylight = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
+                    .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+            level.clockManager().setTotalTicks(daylight, 18000);
+            level.clockManager().setPaused(daylight, true);
             BlockPos center = new BlockPos(worlds.spawn().getX() + 160, 220, worlds.spawn().getZ());
             anchor = Vec3.atBottomCenterOf(center);
-            lootChunk = new ChunkPos((center.getX() + 10) >> 4, center.getZ() >> 4);
-            level.getChunkSource().addTicketWithRadius(LOOT_FIXTURE, lootChunk, 2);
+            lootChunk = new ChunkPos(center.getX() >> 4, center.getZ() >> 4);
+            // Full status radius seven leaves an entity-ticking radius five, covering the 135x135 arena.
+            level.getChunkSource().addTicketWithRadius(LOOT_FIXTURE, lootChunk, ARENA_TICKET_RADIUS);
             // Fixture setup alone loads chunks and creates terrain. The production search cannot do either.
             for (int x = -67; x <= 67; x++) for (int z = -67; z <= 67; z++) {
                 BlockPos feet = center.offset(x, 0, z);
@@ -218,13 +319,24 @@ public final class P2RuntimeLobbyGameTest {
                 level.setBlock(feet.above(3), Blocks.STONE.defaultBlockState(), 2);
             }
         }
+        boolean arenaTicking() {
+            var center = BlockPos.containing(anchor);
+            for (int dx : new int[]{-67, 0, 67}) for (int dz : new int[]{-67, 0, 67}) {
+                if (!level.isPositionEntityTicking(center.offset(dx, 0, dz))) return false;
+            }
+            return true;
+        }
         void killMonsterPeer(boolean alreadyMonster) {
             dead = monster.player;
             if (!alreadyMonster) test.assertTrue(level.isPositionEntityTicking(dead.blockPosition()),
                     "Immediate death-drop assertion requires the native loot arena to remain entity ticking");
             test.assertTrue(dead.hurtServer(level, dead.damageSources().genericKill(), Float.MAX_VALUE), "Native damage outside protection kills this body");
             test.assertTrue(dead.isDeadOrDying() && P1PlayerProfiles.isLocked(dead), "Production death hook immediately holds the dead body");
-            if (!alreadyMonster) test.assertValueEqual(diamonds(), 3, "Native human death drops the original inventory exactly once");
+            if (!alreadyMonster) {
+                humanDropEntities.addAll(level.getEntitiesOfClass(ItemEntity.class, humanDrops).stream()
+                        .filter(item -> item.getItem().is(Items.DIAMOND)).toList());
+                test.assertValueEqual(diamonds(), 3, "Native human death drops the original inventory exactly once");
+            }
             dead.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
             test.assertTrue(monster.current() == dead && dead.connection.player == dead && dead.isDeadOrDying(), "Early native respawn cannot bypass SQLite identity commit");
         }
@@ -232,13 +344,14 @@ public final class P2RuntimeLobbyGameTest {
             var current = monster.current();
             return monster.participant().role() == ParticipantRole.MONSTER_LOBBY && current != null
                     && (!replacementRequired || current != dead) && current.isAlive() && current.level() == server.overworld()
-                    && profiles.isReady(monster.profile.id(), round()) && !session.mutationPending();
+                    && profiles.isReady(monster.profile.id(), round()) && !session.mutationPending() && originalLootVisible();
         }
         boolean deployed(int sequence) {
             var p = monster.participant();
             return p.role() == ParticipantRole.MONSTER_DEPLOYED && p.monsterDeploymentSequence() == sequence
                     && monster.player.level() == level && !P1PlayerProfiles.isLocked(monster.player)
-                    && MonsterRoles.isMonster(monster.player) && !session.mutationPending();
+                    && MonsterRoles.isMonster(monster.player) && !session.mutationPending()
+                    && arenaTicking() && level.isPositionEntityTicking(monster.player.blockPosition()) && originalLootVisible();
         }
         void assertDeployment(int sequence) {
             test.assertValueEqual(monster.participant().monsterDeploymentSequence(), sequence, "Exactly one persisted sortie is admitted");
@@ -246,23 +359,82 @@ public final class P2RuntimeLobbyGameTest {
             test.assertTrue(horizontal >= 32 && horizontal <= 64, "Actual native monster spawns in the target's 32-64 block ring");
             test.assertTrue(monster.player.position().distanceToSqr(target.player.position()) >= 24 * 24, "Actual body respects the human separation");
             test.assertFalse(P2ProtectionRuntime.protectedEntity(monster.player), "Actual monster never enters spawn protection");
-            test.assertValueEqual(MonsterRoles.nativeModel(monster.player).getType(), net.minecraft.world.entity.EntityTypes.CREEPER, "Persisted creeper selection drives the real native role");
-            test.assertTrue(monster.player.getInventory().getItem(0).is(Items.GUNPOWDER), "Only the creeper role control is equipped");
+            var kind = monster.participant().monsterRole();
+            test.assertValueEqual(MonsterRoles.nativeModel(monster.player).getType(), switch (kind) {
+                case ZOMBIE -> EntityTypes.ZOMBIE;
+                case SKELETON -> EntityTypes.SKELETON;
+                case CREEPER -> EntityTypes.CREEPER;
+            }, "Persisted role choice drives the real native body");
+            String key = kind.name().toLowerCase(java.util.Locale.ROOT);
+            var values = round().rules().combatValues();
+            test.assertValueEqual((double)monster.player.getMaxHealth(), values.get(key + ".maxHealth"), "Formal health comes from the immutable round rules");
+            double movement = values.get(key + ".movementAttribute");
+            test.assertTrue(Math.abs(monster.player.getAttributeValue(Attributes.MOVEMENT_SPEED) - movement * movement) < .00001,
+                    "Formal movement translates the saved native attribute to player input");
+            test.assertValueEqual(monster.player.getAttribute(Attributes.ARMOR).getBaseValue(), values.get(key + ".armor"), "Formal intrinsic armor uses the round snapshot");
+            test.assertValueEqual(monster.player.getFoodData().getFoodLevel(), 6, "The role body has no hunger or player sprint input");
+            test.assertTrue(monster.player.getInventory().getItem(kind == MonsterRole.CREEPER ? 0 : 1).is(switch (kind) {
+                case ZOMBIE -> Items.ROTTEN_FLESH;
+                case SKELETON -> Items.BONE;
+                case CREEPER -> Items.GUNPOWDER;
+            }), "Only the selected role's fixed skill control is equipped");
             test.assertValueEqual(diamonds(), 3, "Outings do not duplicate or pick up the old human inventory");
         }
         void assertMenuDoesNotUnlockRoleDrops() {
+            int skillSlot = monster.participant().monsterRole() == MonsterRole.CREEPER ? 0 : 1;
+            monster.player.getInventory().setSelectedSlot(skillSlot);
+            Item control = monster.player.getInventory().getItem(skillSlot).getItem();
             monster.command("hardrush menu");
             test.assertTrue(dev.hardrush.p2.lobby.P2LobbyUi.isMenu(monster.player), "Outside monster can open the return menu");
             var bounds = monster.player.getBoundingBox().inflate(5);
             int before = level.getEntitiesOfClass(ItemEntity.class, bounds).stream().map(ItemEntity::getItem)
-                    .filter(stack -> stack.is(Items.GUNPOWDER)).mapToInt(ItemStack::getCount).sum();
+                    .filter(stack -> stack.is(control)).mapToInt(ItemStack::getCount).sum();
             monster.player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(
                     ServerboundPlayerActionPacket.Action.DROP_ITEM, monster.player.blockPosition().below(), Direction.UP, 0));
             int after = level.getEntitiesOfClass(ItemEntity.class, bounds).stream().map(ItemEntity::getItem)
-                    .filter(stack -> stack.is(Items.GUNPOWDER)).mapToInt(ItemStack::getCount).sum();
+                    .filter(stack -> stack.is(control)).mapToInt(ItemStack::getCount).sum();
             test.assertValueEqual(after, before, "Lobby GUI click exemption never unlocks raw fixed-role drop packets");
-            test.assertTrue(monster.player.getInventory().getItem(0).is(Items.GUNPOWDER), "The fixed creeper control remains equipped while the menu is open");
+            test.assertTrue(monster.player.getInventory().getItem(skillSlot).is(control), "The fixed skill control remains equipped while the menu is open");
             monster.player.closeContainer();
+        }
+        void equipWorldSword() {
+            worldGearDrops = new AABB(monster.player.blockPosition()).inflate(6);
+            var sword = new ItemEntity(level, monster.player.getX(), monster.player.getY(), monster.player.getZ(), new ItemStack(Items.DIAMOND_SWORD));
+            sword.setNoPickUpDelay(); level.addFreshEntity(sword); sword.playerTouch(monster.player);
+            test.assertTrue(sword.isRemoved(), "A formal zombie automatically equips the world weapon through the native pickup hook");
+            test.assertTrue(MonsterRoles.actualEquipment(monster.player, EquipmentSlot.MAINHAND).is(Items.DIAMOND_SWORD), "Actual species gear remains separate from the selected skill slot");
+            test.assertValueEqual(worldSwords(), 0, "Exactly one sword transfers from the world into the monster body");
+        }
+        void blockSummonRing() {
+            var center = monster.player.blockPosition();
+            for (int dx = -4; dx <= 4; dx++) for (int dz = -4; dz <= 4; dz++) {
+                int distanceSquared = dx * dx + dz * dz;
+                if (distanceSquared < 4 || distanceSquared > 16) continue;
+                var feet = center.offset(dx, 0, dz);
+                summonRing.put(feet, level.getBlockState(feet));
+                test.assertTrue(level.setBlock(feet, Blocks.SMOOTH_STONE.defaultBlockState(), 2),
+                        "The fixture blocks every prepared summon foot position before the commit callback");
+            }
+        }
+        void restoreSummonRing() {
+            summonRing.forEach((position, state) -> level.setBlock(position, state, 2));
+            summonRing.clear();
+        }
+        int worldSwords() {
+            return level.getEntitiesOfClass(ItemEntity.class, worldGearDrops).stream().map(ItemEntity::getItem)
+                    .filter(stack -> stack.is(Items.DIAMOND_SWORD)).mapToInt(ItemStack::getCount).sum();
+        }
+        int summons() {
+            return level.getEntitiesOfClass(Zombie.class, new AABB(BlockPos.containing(anchor)).inflate(150)).stream()
+                    .filter(child -> monster.profile.id().equals(MonsterRoles.summonOwner(child))).mapToInt(child -> {
+                        test.assertTrue(child.isBaby(), "Formal summon retains the native baby body");
+                        return 1;
+                    }).sum();
+        }
+        void assertSkillCooldowns() {
+            var cooldowns = monster.participant().monsterSkillReadyAtMillis();
+            if (summonReadyAt != 0) test.assertValueEqual(cooldowns.get(MonsterSkill.ZOMBIE_SUMMON), summonReadyAt, "Summon deadline survives role changes, defeat, lobby and reconnect");
+            if (burstReadyAt != 0) test.assertValueEqual(cooldowns.get(MonsterSkill.SKELETON_BURST), burstReadyAt, "Burst deadline survives role changes, defeat, lobby and reconnect");
         }
         void assertLobby(boolean replaced) {
             monster.player = monster.current();
@@ -301,8 +473,35 @@ public final class P2RuntimeLobbyGameTest {
             } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
         }
         int diamonds() {
-            return level.getEntitiesOfClass(ItemEntity.class, humanDrops).stream().map(ItemEntity::getItem)
+            int count = level.getEntitiesOfClass(ItemEntity.class, humanDrops).stream().map(ItemEntity::getItem)
                     .filter(stack -> stack.is(Items.DIAMOND)).mapToInt(ItemStack::getCount).sum();
+            if (count != 3 && !humanDropEntities.isEmpty()) {
+                System.out.println("P2 loot conservation diagnostics: " + lootDiagnostic());
+            }
+            return count;
+        }
+        /** Entity section reload is asynchronous after a native player changes dimension. Counts are asserted separately. */
+        boolean originalLootVisible() {
+            if (humanDropEntities.isEmpty()) return true;
+            boolean visible = level.isPositionEntityTicking(BlockPos.containing(humanDrops.getCenter()))
+                    && humanDropEntities.stream().allMatch(original -> level.getEntity(original.getUUID()) instanceof ItemEntity);
+            if (visible) { lootUnavailableSince = -1; return true; }
+            if (lootUnavailableSince < 0) {
+                lootUnavailableSince = server.getTickCount();
+                System.out.println("P2 waiting for original loot section visibility: " + lootDiagnostic());
+            }
+            if (server.getTickCount() - lootUnavailableSince >= 200) {
+                throw new IllegalStateException("Original death loot UUIDs must become visible in an entity-ticking chunk within 200 ticks: "
+                        + lootDiagnostic() + ", runtime=" + P1LobbyRuntime.status(server));
+            }
+            return false;
+        }
+        String lootDiagnostic() {
+            return "sortie=" + monster.participant().monsterDeploymentSequence()
+                    + ", bounds=" + humanDrops + ", ticking=" + level.isPositionEntityTicking(BlockPos.containing(humanDrops.getCenter()))
+                    + ", chunk=" + lootChunk + ", entities=" + humanDropEntities.stream().map(item ->
+                        "id=" + item.getUUID() + ",position=" + item.position() + ",removed=" + item.getRemovalReason()
+                                + ",stack=" + item.getItem() + ",lookup=" + level.getEntity(item.getUUID())).toList();
         }
         void assertStored() {
             try (var store = new SqliteRoundStore(server.getWorldPath(LevelResource.ROOT).resolve("hardrush/p1.sqlite"))) {
@@ -312,6 +511,8 @@ public final class P2RuntimeLobbyGameTest {
                 test.assertValueEqual(saved.monsterDimension(), MonsterDimension.OVERWORLD, "Real SQLite retains dimension choice across reconnect");
                 test.assertValueEqual(saved.monsterDeploymentSequence(), 3, "Real SQLite retains sortie label across reconnect");
                 test.assertValueEqual(saved.lifeSequence(), 1, "Real SQLite never revives the human through a monster respawn");
+                test.assertValueEqual(saved.monsterSkillReadyAtMillis().get(MonsterSkill.ZOMBIE_SUMMON), summonReadyAt, "Real SQLite retains the original summon deadline");
+                test.assertValueEqual(saved.monsterSkillReadyAtMillis().get(MonsterSkill.SKELETON_BURST), burstReadyAt, "Real SQLite retains the original burst deadline");
                 var record = store.participantRecord(round().roundId(), monster.profile.id()).orElseThrow();
                 test.assertValueEqual(record.revivalCount(), 0, "Neither defeat nor reconnect consumes/grants a human revival");
             } catch (Exception error) { throw new IllegalStateException(error); }

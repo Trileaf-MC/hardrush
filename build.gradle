@@ -22,7 +22,7 @@ tasks.register('checkP1') {
 
 tasks.register('checkP2') {
     group = 'verification'
-    description = 'Verify implemented P2 identity, protection, lobby and deployment with headless regressions.'
+    description = 'Verify implemented P2 identity, protection, lobby, deployment, monster skills and combat with headless regressions.'
     dependsOn 'checkP1'
 }
 

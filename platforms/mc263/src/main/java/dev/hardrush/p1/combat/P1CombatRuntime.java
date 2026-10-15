@@ -11,6 +11,7 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
@@ -89,7 +90,16 @@ public final class P1CombatRuntime {
     public static void projectileCreated(Projectile projectile, Entity owner) {
         if (!(projectile instanceof AbstractArrow) || !(projectile.level() instanceof ServerLevel level)
                 || !(projectile instanceof CombatOriginHolder holder) || holder.hardrush$combatOriginSealed()) return;
-        holder.hardrush$sealCombatOrigin(created(level, owner, AttackKind.ARROW, Optional.of(projectile.getUUID())));
+        // ProjectileUtil.getMobArrow assigns the native model before MonsterRoles replaces its
+        // collision owner with the real player. Capture that model's frozen actor on the first call.
+        var model = owner instanceof Mob && owner.level() == level && owner.isAlive() && !rejectDamage(level)
+                ? originOf(owner).filter(origin -> origin.actor().identity()
+                        == dev.hardrush.core.round.ParticipantRole.MONSTER_DEPLOYED
+                        && round(level).filter(origin.roundId()::equals).isPresent())
+                : Optional.<CombatOrigin>empty();
+        holder.hardrush$sealCombatOrigin(model.isPresent()
+                ? child(model, AttackKind.ARROW, projectile.getUUID())
+                : created(level, owner, AttackKind.ARROW, Optional.of(projectile.getUUID())));
     }
     public static void tntCreated(PrimedTnt tnt, Entity owner) {
         if (!(tnt.level() instanceof ServerLevel level) || !(tnt instanceof CombatOriginHolder holder)) return;
@@ -144,6 +154,11 @@ public final class P1CombatRuntime {
     }
     private static Optional<CombatOrigin> resolve(ServerLevel level, DamageSource source) {
         Entity direct = source.getDirectEntity();
+        // Native monster templates and summoned mobs carry their owner's immutable creation
+        // identity, rather than reconstructing it from a present-day player with the same UUID.
+        var monster = originOf(direct).filter(origin -> origin.actor().identity()
+                == dev.hardrush.core.round.ParticipantRole.MONSTER_DEPLOYED);
+        if (monster.isPresent()) return monster;
         if (direct instanceof Projectile || direct instanceof PrimedTnt
                 || direct instanceof net.minecraft.world.entity.boss.enderdragon.EndCrystal) return originOf(direct);
         if (source.is(DamageTypeTags.IS_EXPLOSION)) {

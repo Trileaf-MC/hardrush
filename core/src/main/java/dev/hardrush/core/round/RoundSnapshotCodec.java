@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 3;
+    private static final int SCHEMA = 4;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -42,6 +42,11 @@ public final class RoundSnapshotCodec {
                 out.writeBoolean(p.hasLeftProtection());
                 writeText(out, p.monsterRole().name()); writeText(out, p.monsterDimension().name());
                 out.writeLong(p.monsterCooldownNanos()); out.writeInt(p.monsterDeploymentSequence());
+                out.writeInt(p.monsterSkillReadyAtMillis().size());
+                for (var skill : MonsterSkill.values()) {
+                    Long readyAt = p.monsterSkillReadyAtMillis().get(skill);
+                    if (readyAt != null) { writeText(out, skill.id()); out.writeLong(readyAt); }
+                }
             }
             out.writeBoolean(snapshot.result() != null);
             if (snapshot.result() != null) {
@@ -93,9 +98,18 @@ public final class RoundSnapshotCodec {
                         : role == ParticipantRole.MONSTER_LOBBY || role == ParticipantRole.MONSTER_DEPLOYED
                                 ? RoundEngine.MONSTER_COOLDOWN_NANOS : 0;
                 int deploymentSequence = schema >= 3 ? in.readInt() : 0;
+                var skillCooldowns = new LinkedHashMap<MonsterSkill, Long>();
+                if (schema >= 4) {
+                    int skills = in.readInt();
+                    if (skills < 0 || skills > MonsterSkill.values().length) throw new IOException("Invalid skill cooldown count");
+                    for (int skillIndex = 0; skillIndex < skills; skillIndex++) {
+                        var skill = MonsterSkill.fromId(readText(in, 128));
+                        if (skillCooldowns.put(skill, in.readLong()) != null) throw new IOException("Duplicate skill cooldown");
+                    }
+                }
                 Participant p = new Participant(playerId, name, role, online, ready,
                         humanNanos, joinedAt, lifeSequence, revivalEntitled, hasLeftProtection,
-                        monsterRole, monsterDimension, monsterCooldown, deploymentSequence);
+                        monsterRole, monsterDimension, monsterCooldown, deploymentSequence, skillCooldowns);
                 if (players.put(playerId, p) != null) throw new IOException("Duplicate participant UUID");
             }
             RoundResult result = null;

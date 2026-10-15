@@ -4,7 +4,11 @@ import dev.hardrush.p0.disguise.DisguiseProbe;
 import dev.hardrush.p0.monster.mixin.MonsterMobAccessor;
 import dev.hardrush.p0.monster.mixin.MonsterEntityAccessor;
 import dev.hardrush.p0.monster.mixin.MonsterLivingAccessor;
-import dev.hardrush.p0.monster.mixin.NativeCreeperAccessor;
+import dev.hardrush.core.config.RulesConfig;
+import dev.hardrush.core.round.MonsterSkill;
+import dev.hardrush.p2.monster.P2MonsterRuntime;
+import dev.hardrush.p2.combat.P2CombatRuntime;
+import dev.hardrush.p2.protection.P2ProtectionRuntime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,6 +68,7 @@ import net.minecraft.world.phys.Vec3;
  * will bind this service in the formal controller; this class never invents them.
  */
 public final class MonsterRoles {
+    private static final RulesConfig DEFAULT_RULES = RulesConfig.defaults();
     private static final Map<UUID, Role> ROLES = new HashMap<>();
     private static final Map<UUID, SkillTimers> SKILL_TIMERS = new HashMap<>();
     private static final String SUMMON_OWNER = "hardrush.summon-owner=";
@@ -118,8 +123,10 @@ public final class MonsterRoles {
         Kind kind;
         try { kind = Kind.valueOf(requested.toUpperCase(java.util.Locale.ROOT)); }
         catch (IllegalArgumentException error) { return "拒绝：角色只能为 zombie、skeleton、creeper。"; }
+        if (!P2MonsterRuntime.canSelect(player, requested)) return "拒绝：角色必须与正式出场身份一致。";
         if (!player.isAlive() || player.isSpectator()) return "拒绝：请在存活、非旁观时进入怪物角色。";
         Role role = ROLES.get(player.getUUID());
+        if (role != null && role.kind == kind && P2MonsterRuntime.rules(player).isPresent()) return "已是正式出场角色。";
         if (role == null) {
             role = new Role(player);
             ROLES.put(player.getUUID(), role);
@@ -183,7 +190,7 @@ public final class MonsterRoles {
     public static boolean pickUpEquipment(ServerPlayer player,ItemEntity item) {
         requireThread(player);
         Role role=ROLES.get(player.getUUID());
-        if (role==null || role.kind==Kind.CREEPER || role.model==null || !player.isAlive()) return false;
+        if (role==null || role.kind==Kind.CREEPER || role.model==null || !player.isAlive() || !P2MonsterRuntime.canAct(player)) return false;
         syncNativeContext(player,role);
         if (!role.gear.pickUp(player,role.model,item)) return false;
         repairLoadout(player,role);
@@ -264,6 +271,15 @@ public final class MonsterRoles {
             Role role = entry.getValue();
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
             if (player == null || !player.isAlive()) continue;
+            if (!P2MonsterRuntime.canAct(player)) {
+                role.burstRemaining = 0; role.chargeTick = -1;
+                if (role.igniteAt != 0) {
+                    role.igniteAt = 0; DisguiseProbe.setCreeperSwelling(player, false);
+                    double speed = role.model.getAttributeValue(Attributes.MOVEMENT_SPEED);
+                    player.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(speed * speed);
+                }
+                player.stopUsingItem(); continue;
+            }
             if (role.player != player || role.model == null || role.model.level() != player.level()) bind(player, role, false);
             player.setSprinting(false);
             if (player.gameMode.getGameModeForPlayer() != GameType.ADVENTURE) player.setGameMode(GameType.ADVENTURE);
@@ -281,7 +297,7 @@ public final class MonsterRoles {
             long now = System.nanoTime();
             if (role.burstRemaining > 0 && now >= role.nextBurstAt) {
                 shoot(player, role);
-                role.burstRemaining--; role.nextBurstAt = now + 600_000_000L;
+                role.burstRemaining--; role.nextBurstAt = now + role.millis("skeleton.burstIntervalMillis") * 1_000_000L;
             }
             if (role.igniteAt != 0 && server.getTickCount() >= role.igniteAt) explode(player, role);
         }
@@ -314,12 +330,12 @@ public final class MonsterRoles {
     public static boolean attack(ServerPlayer player, Entity target) {
         dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         Role role = ROLES.get(player.getUUID());
-        if (role == null || !player.isAlive() || (role.kind!=Kind.ZOMBIE && (role.kind!=Kind.SKELETON || role.gear.get(EquipmentSlot.MAINHAND).is(Items.BOW))) || !(target instanceof LivingEntity living)
+        if (role == null || !P2MonsterRuntime.canAct(player) || !player.isAlive() || (role.kind!=Kind.ZOMBIE && (role.kind!=Kind.SKELETON || role.gear.get(EquipmentSlot.MAINHAND).is(Items.BOW))) || !(target instanceof LivingEntity living)
                 || !legalTarget(player.getUUID(), player.level(), target)) return false;
         role.model.snapTo(player.position());
         if (!role.model.isWithinMeleeAttackRange(living) || !player.hasLineOfSight(target)
                 || player.level().getServer().getTickCount() < role.nextMeleeTick || role.igniteAt != 0) return false;
-        role.nextMeleeTick = player.level().getServer().getTickCount() + 20;
+        role.nextMeleeTick = player.level().getServer().getTickCount() + (int)role.value("zombie.meleeIntervalTicks");
         syncNativeContext(player,role);
         return role.model.doHurtTarget(player.level(), target);
     }
@@ -327,11 +343,11 @@ public final class MonsterRoles {
     public static boolean useControl(ServerPlayer player, InteractionHand hand) {
         dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         Role role = ROLES.get(player.getUUID());
-        if (role == null || hand != InteractionHand.MAIN_HAND || !player.isAlive()) return false;
+        if (role == null || hand != InteractionHand.MAIN_HAND || !player.isAlive() || !P2MonsterRuntime.canAct(player)) return false;
         repairLoadout(player, role);
         int slot = player.getInventory().getSelectedSlot();
         if (role.kind == Kind.SKELETON && slot == 0 && role.gear.get(EquipmentSlot.MAINHAND).is(Items.BOW)) {
-            if (role.burstRemaining > 0 || role.chargeTick >= 0 || player.level().getServer().getTickCount() < role.nextBowTick) return false;
+            if (P2MonsterRuntime.casting(player) || role.burstRemaining > 0 || role.chargeTick >= 0 || player.level().getServer().getTickCount() < role.nextBowTick) return false;
             role.chargeTick = player.level().getServer().getTickCount();
             player.startUsingItem(hand);
             return true;
@@ -348,44 +364,71 @@ public final class MonsterRoles {
         int started = role.chargeTick; role.chargeTick = -1;
         player.stopUsingItem();
         // Skeleton's native bow goal draws for 20 ticks before shooting.
-        if (role.kind == Kind.SKELETON && role.gear.get(EquipmentSlot.MAINHAND).is(Items.BOW) && started >= 0 && role.burstRemaining == 0
-                && player.level().getServer().getTickCount() - started >= 20) shoot(player, role);
+        if (P2MonsterRuntime.canAct(player) && role.kind == Kind.SKELETON && role.gear.get(EquipmentSlot.MAINHAND).is(Items.BOW) && started >= 0 && role.burstRemaining == 0
+                && player.level().getServer().getTickCount() - started >= role.value("skeleton.bowChargeTicks")) shoot(player, role);
     }
 
     public static boolean burst(ServerPlayer player) {
         dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         Role role = ROLES.get(player.getUUID());
         long now = System.nanoTime();
-        if (role == null || !player.isAlive() || role.kind != Kind.SKELETON || !role.gear.get(EquipmentSlot.MAINHAND).is(Items.BOW) || now < role.timers.burstReadyAt || role.burstRemaining > 0) return false;
-        player.stopUsingItem(); role.chargeTick = -1;
-        role.timers.burstReadyAt = now + 20_000_000_000L;
-        shoot(player, role); role.burstRemaining = 2; role.nextBurstAt = now + 600_000_000L;
+        if (role == null || !P2MonsterRuntime.canAct(player) || !player.isAlive() || role.kind != Kind.SKELETON || !role.gear.get(EquipmentSlot.MAINHAND).is(Items.BOW) || role.burstRemaining > 0) return false;
+        var formal = P2MonsterRuntime.cast(player, MonsterSkill.SKELETON_BURST, () -> {
+            if (ROLES.get(player.getUUID()) != role || !role.gear.get(EquipmentSlot.MAINHAND).is(Items.BOW)) return false;
+            startBurst(player, role); return true;
+        });
+        if (formal.isPresent()) {
+            if (formal.orElseThrow()) { player.stopUsingItem(); role.chargeTick = -1; }
+            return formal.orElseThrow();
+        }
+        if (now < role.timers.burstReadyAt) return false;
+        role.timers.burstReadyAt = now + role.millis("skeleton.burstCooldownMillis") * 1_000_000L;
+        startBurst(player, role);
         return true;
+    }
+
+    private static void startBurst(ServerPlayer player, Role role) {
+        player.stopUsingItem(); role.chargeTick = -1;
+        shoot(player, role); role.burstRemaining = (int)role.value("skeleton.burstCount") - 1;
+        role.nextBurstAt = System.nanoTime() + role.millis("skeleton.burstIntervalMillis") * 1_000_000L;
     }
 
     public static boolean summon(ServerPlayer player) {
         dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         Role role = ROLES.get(player.getUUID());
         long now = System.nanoTime();
-        if (role == null || !player.isAlive() || role.kind != Kind.ZOMBIE || now < role.timers.summonReadyAt) return false;
+        if (role == null || !P2MonsterRuntime.canAct(player) || !player.isAlive() || role.kind != Kind.ZOMBIE) return false;
         var positions = safeSummonPositions(player);
         if (positions.size() != 2) return false;
+        var formal = P2MonsterRuntime.cast(player, MonsterSkill.ZOMBIE_SUMMON, () ->
+                ROLES.get(player.getUUID()) == role && spawnSummons(player, positions));
+        if (formal.isPresent()) return formal.orElseThrow();
+        if (now < role.timers.summonReadyAt || !spawnSummons(player, positions)) return false;
+        role.timers.summonReadyAt = now + role.millis("zombie.summonCooldownMillis") * 1_000_000L;
+        return true;
+    }
+
+    private static boolean spawnSummons(ServerPlayer player, List<Vec3> positions) {
+        if (positions.stream().anyMatch(position -> !safeSummonPoint(player, BlockPos.containing(position)))) return false;
         var children = new ArrayList<Zombie>();
         for (Vec3 position : positions) {
             Zombie child = EntityTypes.ZOMBIE.create(player.level(), EntitySpawnReason.MOB_SUMMONED);
             child.setBaby(true); child.snapTo(position);
             child.entityTags().add(SUMMON_OWNER + player.getUUID());
+            P2CombatRuntime.stampSource(child, player);
             configureSummon(child);
             children.add(child);
         }
-        for (Zombie child : children) {
-            if (!player.level().addFreshEntity(child)) {
-                children.forEach(Entity::discard);
-                return false;
+        boolean added = false;
+        try {
+            for (Zombie child : children) {
+                if (!player.level().addFreshEntity(child)) return false;
             }
+            added = true;
+            return true;
+        } finally {
+            if (!added) children.forEach(Entity::discard);
         }
-        role.timers.summonReadyAt = now + 90_000_000_000L;
-        return true;
     }
 
     private static List<Vec3> safeSummonPositions(ServerPlayer player) {
@@ -395,19 +438,36 @@ public final class MonsterRoles {
                 double distance = Math.sqrt(dx * dx + dz * dz);
                 if (distance < 2 || distance > 4) continue;
                 BlockPos pos = player.blockPosition().offset(dx, 0, dz);
-                AABB box = new AABB(pos.getX() + .2, pos.getY(), pos.getZ() + .2, pos.getX() + .8, pos.getY() + 1, pos.getZ() + .8);
-                if (player.level().getBlockState(pos.below()).isCollisionShapeFullBlock(player.level(), pos.below())
-                        && player.level().getFluidState(pos).isEmpty() && player.level().noCollision(box)) found.add(Vec3.atBottomCenterOf(pos));
+                if (safeSummonPoint(player, pos)) found.add(Vec3.atBottomCenterOf(pos));
             }
         }
         return found;
     }
 
+    private static boolean safeSummonPoint(ServerPlayer player, BlockPos pos) {
+        var level = player.level();
+        var role = ROLES.get(player.getUUID());
+        double distance = Vec3.atBottomCenterOf(pos).subtract(player.position()).horizontalDistanceSqr();
+        double min = role == null ? 2 : role.value("zombie.summonMinDistance");
+        double max = role == null ? 4 : role.value("zombie.summonMaxDistance");
+        if (distance < min * min || distance > max * max) return false;
+        if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null
+                || !level.getWorldBorder().isWithinBounds(pos) || P2ProtectionRuntime.protectedBlock(level, pos)) return false;
+        var floor = level.getBlockState(pos.below());
+        var feet = level.getBlockState(pos);
+        var box = new AABB(pos.getX() + .2, pos.getY(), pos.getZ() + .2, pos.getX() + .8, pos.getY() + 1, pos.getZ() + .8);
+        return floor.isCollisionShapeFullBlock(level, pos.below()) && floor.getFluidState().isEmpty()
+                && !floor.is(net.minecraft.world.level.block.Blocks.MAGMA_BLOCK)
+                && !floor.is(net.minecraft.world.level.block.Blocks.CAMPFIRE)
+                && !floor.is(net.minecraft.world.level.block.Blocks.SOUL_CAMPFIRE)
+                && feet.isAir() && level.getFluidState(pos.above()).isEmpty() && level.noCollision(box);
+    }
+
     public static boolean ignite(ServerPlayer player) {
         dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         Role role = ROLES.get(player.getUUID());
-        if (role == null || !player.isAlive() || role.kind != Kind.CREEPER || role.igniteAt != 0) return false;
-        int fuse = ((NativeCreeperAccessor) role.model).hardrush$maxSwell();
+        if (role == null || !P2MonsterRuntime.canAct(player) || !player.isAlive() || role.kind != Kind.CREEPER || role.igniteAt != 0) return false;
+        int fuse = (int)role.value("creeper.fuseTicks");
         role.igniteAt = player.level().getServer().getTickCount() + fuse;
         player.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
         DisguiseProbe.setCreeperSwelling(player, true);
@@ -423,7 +483,7 @@ public final class MonsterRoles {
             @Override public boolean shouldDamageEntity(Explosion explosion, Entity target) { return legalTarget(owner, level, target); }
             @Override public float getKnockbackMultiplier(Entity target) { return legalTarget(owner, level, target) ? super.getKnockbackMultiplier(target) : 0; }
         };
-        level.explode(creeper, null, calculator, player.position(), ((NativeCreeperAccessor) creeper).hardrush$explosionRadius(), false, Level.ExplosionInteraction.NONE);
+        level.explode(creeper, null, calculator, player.position(), (float)role.value("creeper.explosionStrength"), false, Level.ExplosionInteraction.NONE);
         role.igniteAt = 0;
         DisguiseProbe.setCreeperSwelling(player, false);
         // Prototype ends this body via ordinary death; the formal controller
@@ -439,6 +499,7 @@ public final class MonsterRoles {
         // collision. MonsterArrowMixin supplies the native skeleton damage
         // source independently, preserving difficulty and UUID attribution.
         arrow.setOwner(player);
+        P2CombatRuntime.stampSource(arrow, player);
         arrow.entityTags().add(SHOT_OWNER + player.getUUID());
         arrow.pickup = AbstractArrow.Pickup.DISALLOWED;
         arrow.setCritArrow(false);
@@ -483,6 +544,10 @@ public final class MonsterRoles {
 
     private static boolean allowDamage(LivingEntity target, DamageSource source, float amount) {
         Entity direct = source.getDirectEntity(), causing = source.getEntity();
+        // A human arrow keeps its launch identity even if its native owner now has a monster body.
+        if (direct instanceof Projectile && P2CombatRuntime.source(direct).isEmpty()
+                && dev.hardrush.p1.combat.P1CombatRuntime.originOf(direct)
+                    .filter(origin -> origin.actor().identity().isActiveHuman()).isPresent()) return true;
         UUID owner = taggedOwner(direct, SHOT_OWNER);
         if (owner == null) owner = summonOwner(causing);
         if (owner == null && causing != null && !(causing instanceof Player) && ROLES.containsKey(causing.getUUID())) owner = causing.getUUID();
@@ -500,7 +565,7 @@ public final class MonsterRoles {
         var targets = ((MonsterMobAccessor) child).hardrush$targetSelector();
         targets.removeAllGoals(goal -> true);
         targets.addGoal(2, new NearestAttackableTargetGoal<>(child, ServerPlayer.class, true,
-            (candidate, level) -> legalTarget(owner, level, candidate)));
+            (candidate, level) -> legalTarget(owner, level, candidate) && !P2CombatRuntime.reject(child, candidate)));
     }
 
     private static void bind(ServerPlayer player, Role role, boolean heal) {
@@ -511,6 +576,12 @@ public final class MonsterRoles {
         if (role.model == null) throw new IllegalStateException("Native monster template unavailable");
         role.model.setUUID(player.getUUID());
         role.model.setId(player.getId());
+        String species = role.kind.name().toLowerCase(java.util.Locale.ROOT);
+        role.model.getAttribute(Attributes.MAX_HEALTH).setBaseValue(role.value(species + ".maxHealth"));
+        role.model.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(role.value(species + ".movementAttribute"));
+        role.model.getAttribute(Attributes.ARMOR).setBaseValue(role.value(species + ".armor"));
+        if (role.kind == Kind.ZOMBIE) role.model.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(role.value("zombie.baseMeleeDamage"));
+        P2CombatRuntime.stampSource(role.model, player);
         role.gear.bind(role.model);
         role.nextAmbientTick=player.level().getServer().getTickCount()+80;
         player.closeContainer(); player.stopUsingItem(); player.stopRiding(); player.setSprinting(false);
@@ -549,8 +620,12 @@ public final class MonsterRoles {
             ItemStack wanted = ItemStack.EMPTY;
             if (slot == 0) wanted = role.gear.get(EquipmentSlot.MAINHAND).copy();
             if (slot == 0 && role.kind == Kind.CREEPER) wanted = named(Items.GUNPOWDER, "苦力怕：右键引爆");
-            if (slot == 1 && role.kind == Kind.SKELETON) wanted = named(Items.BONE, "骷髅：三连射");
-            if (slot == 1 && role.kind == Kind.ZOMBIE) wanted = named(Items.ROTTEN_FLESH, "僵尸：召唤 2 只小僵尸");
+            if (slot == 1 && role.kind == Kind.SKELETON) wanted = skillControl(player, role, Items.BONE,
+                    "骷髅：三连射", MonsterSkill.SKELETON_BURST, role.timers.burstReadyAt,
+                    "右键或 /hardrush skill；每 0.6 秒一箭，持续期间不能普通射击");
+            if (slot == 1 && role.kind == Kind.ZOMBIE) wanted = skillControl(player, role, Items.ROTTEN_FLESH,
+                    "僵尸：召唤 2 只小僵尸", MonsterSkill.ZOMBIE_SUMMON, role.timers.summonReadyAt,
+                    "右键或 /hardrush skill；需要附近两处安全位置；冷却跨身份保留");
             if (slot == 8 && role.kind == Kind.SKELETON) wanted = named(Items.ARROW, "角色箭矢（无限，不可转移）");
             EquipmentSlot armorSlot=switch(slot) {
                 case 36 -> EquipmentSlot.FEET;
@@ -581,6 +656,16 @@ public final class MonsterRoles {
         var stack = new ItemStack(item); stack.set(DataComponents.CUSTOM_NAME, Component.literal(name)); return stack;
     }
 
+    private static ItemStack skillControl(ServerPlayer player, Role role, net.minecraft.world.item.Item item,
+                                         String name, MonsterSkill skill, long probeReadyAt, String description) {
+        long remaining = P2MonsterRuntime.remaining(player, skill);
+        if (remaining < 0) remaining = Math.max(0, (probeReadyAt - System.nanoTime()) / 1_000_000L);
+        String state = P2MonsterRuntime.casting(player) ? "施放提交中" : remaining == 0 ? "可用" : "冷却 " + ((remaining + 999) / 1000) + " 秒";
+        var stack = named(item, name + " · " + state);
+        stack.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(Component.literal(description))));
+        return stack;
+    }
+
     private static void requireThread(ServerPlayer player) {
         if (!player.level().getServer().isSameThread()) throw new IllegalStateException("Monster roles require server thread");
     }
@@ -606,10 +691,12 @@ public final class MonsterRoles {
         final float health, saturation;
         float disconnectedHealth=Float.NaN;
         final SkillTimers timers;
+        final RulesConfig rules;
         long nextBurstAt, igniteAt;
         int nextMeleeTick, nextBowTick, chargeTick = -1, burstRemaining, arrowsFired;
         int nextAmbientTick;
         Role(ServerPlayer player) {
+            rules = P2MonsterRuntime.rules(player).orElse(DEFAULT_RULES);
             timers = SKILL_TIMERS.computeIfAbsent(player.getUUID(), uuid -> new SkillTimers());
             for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) inventory.add(player.getInventory().getItem(slot).copy());
             for (var attribute : CONTROLLED) originalAttributes.put(attribute, player.getAttribute(attribute).getBaseValue());
@@ -618,6 +705,8 @@ public final class MonsterRoles {
             gameMode = player.gameMode.getGameModeForPlayer(); selectedSlot = player.getInventory().getSelectedSlot();
             food = player.getFoodData().getFoodLevel(); health = player.getHealth(); saturation = player.getFoodData().getSaturationLevel();
         }
+        double value(String key) { return rules.combatValues().getOrDefault(key, DEFAULT_RULES.combatValues().get(key)); }
+        long millis(String key) { return (long)value(key); }
     }
 
     private static final class SkillTimers { long summonReadyAt, burstReadyAt; }

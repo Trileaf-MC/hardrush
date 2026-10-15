@@ -9,6 +9,8 @@ import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
 import dev.hardrush.p2.hunt.P2SafeDeployment;
 import dev.hardrush.p2.protection.P2ProtectionRuntime;
+import dev.hardrush.p2.monster.P2MonsterRuntime;
+import dev.hardrush.p2.combat.P2CombatRuntime;
 import java.util.*;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -58,7 +60,7 @@ public final class P2LobbyRuntime {
                         if (!P2LobbyUi.open(player)) tell(player, "大厅档案尚未就绪，或当前身份不能打开菜单。");
                         return 1;
                     }));
-            for (String action : List.of("deploy", "return", "revive")) {
+            for (String action : List.of("deploy", "return", "revive", "skill")) {
                 root.then(Commands.literal(action).executes(ctx -> {
                     command(ctx.getSource().getPlayerOrException(), action, ""); return 1;
                 }));
@@ -84,6 +86,12 @@ public final class P2LobbyRuntime {
                                  Supplier<P1RoundWorldBundle> worlds) {
         var binding = new Binding(session, profiles, worlds);
         BINDINGS.put(server, binding);
+        P2MonsterRuntime.configure(server, session, profiles, worlds);
+        P2CombatRuntime.configure(server, new P2CombatRuntime.Access() {
+            @Override public Optional<RoundSnapshot> snapshot() { return session.snapshot(); }
+            @Override public boolean competitionLocked() { return session.competitionLocked(); }
+            @Override public boolean formalLevel(ServerLevel level) { return !dimension(binding, level).equals("lobby"); }
+        });
         P2LobbyUi.configure(server, new P2LobbyUi.Access() {
             @Override public boolean available(ServerPlayer player) {
                 if (lobbyAvailable(player, binding)) return true;
@@ -98,7 +106,10 @@ public final class P2LobbyRuntime {
             }
         });
     }
-    public static void unconfigure(MinecraftServer server) { BINDINGS.remove(server); P2LobbyUi.unconfigure(server); }
+    public static void unconfigure(MinecraftServer server) {
+        BINDINGS.remove(server); P2LobbyUi.unconfigure(server);
+        P2MonsterRuntime.unconfigure(server); P2CombatRuntime.unconfigure(server);
+    }
     public static void prepareStop(MinecraftServer server) {
         var b = BINDINGS.get(server); if (b == null) return;
         b.channels.clear(); b.searches.clear(); b.resumptions.clear();
@@ -141,6 +152,18 @@ public final class P2LobbyRuntime {
         if (participant == null || !participant.role().isMonster() || !participant.online()
                 || round.phase() != RoundPhase.RUNNING || b.session.competitionLocked()) {
             tell(player, "当前身份或轮次不允许怪物操作。"); return;
+        }
+        if (action.equals("skill")) {
+            if (!P2MonsterRuntime.canAct(player) || !MonsterRoles.isMonster(player)) {
+                tell(player, "请在正式出场后使用技能。"); return;
+            }
+            boolean accepted = switch (participant.monsterRole()) {
+                case ZOMBIE -> MonsterRoles.summon(player);
+                case SKELETON -> MonsterRoles.burst(player);
+                case CREEPER -> MonsterRoles.ignite(player);
+            };
+            if (!accepted) tell(player, "技能尚在冷却、正在施放，或安全条件不足。");
+            return;
         }
         if (action.equals("return")) { beginReturn(player, b, participant); return; }
         if (!lobbyAvailable(player, b) || participant.role() != ParticipantRole.MONSTER_LOBBY) {
@@ -411,6 +434,7 @@ public final class P2LobbyRuntime {
         buttons.add(new P2LobbyUi.Button(Items.DYE.pick(net.minecraft.world.item.DyeColor.RED), "取消就绪", "unready", ""));
         buttons.add(new P2LobbyUi.Button(Items.BOOK, "查看历史", "history", ""));
         if (p != null && p.role().isMonster()) {
+            buttons.add(new P2LobbyUi.Button(Items.BLAZE_POWDER, "施放当前角色技能", "skill", ""));
             buttons.add(new P2LobbyUi.Button(Items.OAK_DOOR, "引导返回大厅（5 秒）", "return", ""));
             synchronize(player.level().getServer(), b);
             var tally = b.votes.tally(p.monsterDimension().name().toLowerCase(Locale.ROOT));

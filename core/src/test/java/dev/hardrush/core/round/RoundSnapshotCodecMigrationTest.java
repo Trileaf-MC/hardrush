@@ -29,11 +29,12 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(98_765, active.humanNanos());
         assertEquals(25, active.joinedAtChallengeNanos());
         assertEquals(3, active.lifeSequence());
+        assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
         assertFalse(active.hasLeftProtection(), "P1 had no exit record; upgrading must not force a waiting human out of protection");
         assertFalse(migrated.participants().get(RESPAWNING).hasLeftProtection());
         assertFalse(migrated.participants().get(LOBBY).hasLeftProtection());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(3, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(4, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 
@@ -68,6 +69,29 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(MonsterDimension.OVERWORLD, monster.monsterDimension());
         assertEquals(30_000_000_000L, monster.monsterCooldownNanos());
         assertEquals(0, monster.monsterDeploymentSequence());
+        assertTrue(monster.monsterSkillReadyAtMillis().isEmpty());
+    }
+
+    @Test void schemaThreeMonsterStateUpgradesWithoutInventingSkillCooldowns() throws Exception {
+        var bytes = new ByteArrayOutputStream();
+        var out = new DataOutputStream(bytes);
+        out.writeInt(0x48525331); out.writeInt(3);
+        uuid(out, ROUND); out.writeLong(4); out.writeLong(123); out.writeLong(7);
+        text(out, RulesConfig.defaults().encode()); text(out, "RUNNING"); text(out, "NO_ONLINE_HUMANS");
+        out.writeLong(123_456); out.writeLong(0); out.writeBoolean(true); out.writeBoolean(false);
+        out.writeInt(1);
+        uuid(out, ACTIVE); text(out, "Monster"); text(out, "MONSTER_DEPLOYED");
+        out.writeBoolean(false); out.writeBoolean(false); out.writeLong(98_765); out.writeLong(25);
+        out.writeInt(3); out.writeBoolean(true); out.writeBoolean(true);
+        text(out, "SKELETON"); text(out, "NETHER"); out.writeLong(0); out.writeInt(9);
+        out.writeBoolean(false);
+        var migrated = RoundSnapshotCodec.decode(bytes.toByteArray());
+        Participant monster = migrated.participants().get(ACTIVE);
+        assertEquals(MonsterRole.SKELETON, monster.monsterRole());
+        assertEquals(MonsterDimension.NETHER, monster.monsterDimension());
+        assertEquals(9, monster.monsterDeploymentSequence());
+        assertTrue(monster.monsterSkillReadyAtMillis().isEmpty());
+        assertEquals(migrated, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(migrated)));
     }
 
     /** The exact P1 wire layout, independent of the current encoder's schema and added fields. */

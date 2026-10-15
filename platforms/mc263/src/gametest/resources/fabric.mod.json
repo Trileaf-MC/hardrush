@@ -28,7 +28,8 @@
       "dev.hardrush.gametest.P2ProtectionGameTest",
       "dev.hardrush.gametest.P2SafeDeploymentGameTest",
       "dev.hardrush.gametest.P2LobbyUiGameTest",
-      "dev.hardrush.gametest.P2RuntimeLobbyGameTest"
+      "dev.hardrush.gametest.P2RuntimeLobbyGameTest",
+      "dev.hardrush.gametest.P2CombatWhitelistGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"

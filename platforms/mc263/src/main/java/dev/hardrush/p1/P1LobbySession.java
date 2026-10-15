@@ -9,6 +9,7 @@ import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.core.round.RoundSnapshotCodec;
 import dev.hardrush.core.round.RoundTransition;
 import dev.hardrush.core.round.MonsterRole;
+import dev.hardrush.core.round.MonsterSkill;
 import dev.hardrush.core.round.MonsterDimension;
 import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.DragonDeathArbiter;
@@ -520,6 +521,23 @@ public final class P1LobbySession implements AutoCloseable {
             Consumer<Reply> reply) {
         requestAction(() -> engine.proposeMonsterDeploy(UUID.randomUUID(), roundId, playerId,
                 lifeSequence, deploymentSequence), reply, "怪物出场身份已保存。");
+    }
+
+    /** Reserves cooldown in SQLite before the success callback can create a native skill effect. */
+    public void requestMonsterSkill(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            MonsterSkill skill, long nowEpochMillis, Consumer<Reply> reply) {
+        if (competitionLocked()) { reply.accept(new Reply(false, "本轮已冻结，不能使用怪物技能。")); return; }
+        requestAction(() -> engine.proposeMonsterSkill(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence, skill, nowEpochMillis), reply, "技能冷却已保存。");
+    }
+
+    /** Internal compensation for a reserved native effect that failed to begin. */
+    public void requestMonsterSkillCancelled(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            MonsterSkill skill, long consumedReadyAtMillis, long previousReadyAtMillis, Consumer<Reply> reply) {
+        if (competitionLocked()) { reply.accept(new Reply(false, "本轮已冻结，不能退回技能冷却。")); return; }
+        requestAction(() -> engine.proposeMonsterSkillCancelled(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence, skill, consumedReadyAtMillis, previousReadyAtMillis),
+                reply, "技能未生效，已退回本次冷却。");
     }
 
     public void requestMonsterReturn(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,

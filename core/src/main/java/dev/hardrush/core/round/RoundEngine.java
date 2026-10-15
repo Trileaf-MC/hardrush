@@ -19,6 +19,11 @@ public final class RoundEngine {
     private RoundSnapshot committed;
     private RoundTransition pending;
     private long boundary;
+    // Native effects cannot survive a process restart. Only this process's actual reservations
+    // can be compensated; preserve their last deadline to distinguish same-millisecond retries.
+    private final Map<SkillKey, SkillReservation> skillReservations = new LinkedHashMap<>();
+    private record SkillKey(UUID player, MonsterSkill skill) {}
+    private record SkillReservation(int life, int deployment, long consumedReadyAt, long previousReadyAt) {}
 
     private RoundEngine(RoundSnapshot snapshot, MonotonicClock clock) {
         this.committed = snapshot;
@@ -149,7 +154,7 @@ public final class RoundEngine {
         players.put(playerId, new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
                 player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
                 player.lifeSequence(), false, player.hasLeftProtection(), MonsterRole.ZOMBIE,
-                MonsterDimension.OVERWORLD, MONSTER_COOLDOWN_NANOS, player.monsterDeploymentSequence()));
+                MonsterDimension.OVERWORLD, MONSTER_COOLDOWN_NANOS, player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis()));
         return proposal(eventId, "HARDCORE_DEATH", before, before.phase(), 0, players, before.result(), false);
     }
 
@@ -169,6 +174,54 @@ public final class RoundEngine {
                 ParticipantRole.MONSTER_LOBBY);
         if (player.monsterCooldownNanos() != 0) throw new IllegalStateException("Monster deployment cooldown has not elapsed");
         return monsterProposal(eventId, "MONSTER_DEPLOY", before, player.deployMonster());
+    }
+
+    /** The platform may apply the effect only after this cooldown reservation is durably accepted. */
+    public RoundTransition proposeMonsterSkill(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, MonsterSkill skill, long nowEpochMillis) {
+        Objects.requireNonNull(skill);
+        if (nowEpochMillis < 0) throw new IllegalArgumentException("Invalid epoch millis");
+        RoundSnapshot before = capture();
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence,
+                expectedDeploymentSequence, ParticipantRole.MONSTER_DEPLOYED);
+        if (player.monsterRole() != skill.role()) throw new IllegalStateException("当前怪物角色不能使用此技能。");
+        if (player.monsterSkillRemainingMillis(skill, nowEpochMillis) > 0) {
+            throw new IllegalStateException("技能仍在冷却。");
+        }
+        var key = new SkillKey(playerId, skill);
+        var preceding = skillReservations.get(key);
+        long readyAt;
+        try {
+            readyAt = Math.addExact(nowEpochMillis, skill.cooldownMillis(before.rules()));
+            if (preceding != null) readyAt = Math.max(readyAt, Math.addExact(preceding.consumedReadyAt(), 1));
+        } catch (ArithmeticException overflow) {
+            throw new IllegalArgumentException("Skill cooldown deadline overflow", overflow);
+        }
+        var transition = monsterProposal(eventId, "MONSTER_SKILL_" + skill.name(), before,
+                player.withMonsterSkillReadyAt(skill, readyAt));
+        skillReservations.put(key, new SkillReservation(expectedLifeSequence, expectedDeploymentSequence,
+                readyAt, player.monsterSkillReadyAtMillis().getOrDefault(skill, 0L)));
+        return transition;
+    }
+
+    /** Adapter-only compensation when a reserved effect could not start; never refunds a newer use. */
+    public RoundTransition proposeMonsterSkillCancelled(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, MonsterSkill skill,
+            long consumedReadyAtMillis, long previousReadyAtMillis) {
+        Objects.requireNonNull(skill);
+        RoundSnapshot before = capture();
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence,
+                expectedDeploymentSequence, ParticipantRole.MONSTER_DEPLOYED);
+        var reservation = skillReservations.get(new SkillKey(playerId, skill));
+        if (player.monsterRole() != skill.role() || reservation == null
+                || reservation.life() != expectedLifeSequence || reservation.deployment() != expectedDeploymentSequence
+                || reservation.consumedReadyAt() != consumedReadyAtMillis
+                || reservation.previousReadyAt() != previousReadyAtMillis
+                || !Objects.equals(player.monsterSkillReadyAtMillis().get(skill), consumedReadyAtMillis)) {
+            throw new IllegalStateException("技能退款标签已过期或无效。");
+        }
+        return monsterProposal(eventId, "MONSTER_SKILL_CANCELLED_" + skill.name(), before,
+                player.withMonsterSkillReadyAt(skill, previousReadyAtMillis));
     }
 
     public RoundTransition proposeMonsterReturn(UUID eventId, UUID roundId, UUID playerId,
@@ -241,7 +294,7 @@ public final class RoundEngine {
         if (target == ParticipantRole.HUMAN_ACTIVE) {
             changed = new Participant(changed.id(), changed.name(), target, changed.online(), false,
                     changed.humanNanos(), changed.joinedAtChallengeNanos(), Math.addExact(changed.lifeSequence(), 1), false, false,
-                    changed.monsterRole(), changed.monsterDimension(), changed.monsterCooldownNanos(), changed.monsterDeploymentSequence());
+                    changed.monsterRole(), changed.monsterDimension(), changed.monsterCooldownNanos(), changed.monsterDeploymentSequence(), changed.monsterSkillReadyAtMillis());
         }
         if (admissionPending) changed = changed.withSession(changed.name(), false);
         players.put(playerId, changed);
