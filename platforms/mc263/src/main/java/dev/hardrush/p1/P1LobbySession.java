@@ -20,6 +20,8 @@ import dev.hardrush.core.record.RoundHistory;
 import dev.hardrush.core.record.ParticipantRecord;
 import dev.hardrush.core.record.LeaderboardEntry;
 import dev.hardrush.core.record.BookClaim;
+import dev.hardrush.core.record.AdminAudit;
+import dev.hardrush.core.record.HistoryRevision;
 import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -87,6 +89,9 @@ public final class P1LobbySession implements AutoCloseable {
     private int queriesPending;
     private long endEntrants;
     private Runnable recordsChanged = () -> {};
+    private CompletableFuture<CommitResult> pendingAdminWrite;
+    private Long adminBoundary;
+    private Long failureBoundary;
 
     public P1LobbySession(Path database, MonotonicClock clock, Executor callbacks) {
         this(database, clock, callbacks, (message, error) -> {});
@@ -171,14 +176,14 @@ public final class P1LobbySession implements AutoCloseable {
         return engine == null ? Optional.empty() : Optional.of(engine.committed());
     }
     public Optional<RulesConfig> nextRules() { return Optional.ofNullable(nextRules); }
-    public boolean mutationPending() { return pendingWrite != null || pendingRulesWrite != null || pendingRotationWrite != null; }
+    public boolean mutationPending() { return pendingWrite != null || pendingRulesWrite != null || pendingRotationWrite != null || pendingAdminWrite != null; }
     public Optional<RoundSnapshot> view() { return engine == null ? Optional.empty() : Optional.of(engine.view()); }
     public long endEntrants() { return endEntrants; }
     public void onRecordsChanged(Runnable listener) { recordsChanged = Objects.requireNonNull(listener); }
 
     /** Immediately closes new competitive actions, even while the terminal transaction is queued. */
     public boolean competitionLocked() {
-        return shutdownBoundary != null || state != State.OPEN || terminalCandidate != null || engine == null
+        return shutdownBoundary != null || adminBoundary != null || state != State.OPEN || terminalCandidate != null || engine == null
                 || engine.committed().phase() != RoundPhase.RUNNING;
     }
 
@@ -189,7 +194,7 @@ public final class P1LobbySession implements AutoCloseable {
     /** Called only after the platform verifies the native first dragon and its irreversible death. */
     public void captureDragonDeath(CombatEvent event, UUID dragonId) {
         Objects.requireNonNull(event); Objects.requireNonNull(dragonId);
-        if (stopping || state != State.OPEN || !adaptersReady || terminalCandidate != null
+        if (stopping || adminBoundary != null || shutdownBoundary != null || state != State.OPEN || !adaptersReady || terminalCandidate != null
                 || !event.roundId().equals(engine.committed().roundId())
                 || engine.committed().result() != null || engine.committed().phase() != RoundPhase.RUNNING) return;
         // Validate before locking; source identity is frozen at attack creation, not checked against today's role.
@@ -240,12 +245,14 @@ public final class P1LobbySession implements AutoCloseable {
         terminalCandidate = null;
         firstDragonId = null;
         terminalQueued = false;
+        adminBoundary = null;
         requestedRespawns.clear();
         endEntrants = 0;
         adaptersReady = false;
         unsupportedPhase = false;
         lastCheckpointNanos = clock.nanoTime();
-        if (!stopping) committedListener.accept(before, next);
+        if (!stopping) try { committedListener.accept(before, next); }
+        catch (RuntimeException failure) { fail("新轮已持久化但适配器应用失败", failure); }
     }
 
     public void onCommitted(BiConsumer<RoundSnapshot, RoundSnapshot> listener) {
@@ -327,6 +334,101 @@ public final class P1LobbySession implements AutoCloseable {
         return query(() -> store.participantRecord(roundId, playerId));
     }
     public CompletableFuture<Long> participantCount(UUID roundId) { return query(() -> store.participantCount(roundId)); }
+    public CompletableFuture<List<AdminAudit>> audits(UUID roundId, int limit, int offset) {
+        return query(() -> store.audits(roundId, limit, offset));
+    }
+    public void reviseHistory(HistoryRevision revision, AdminAudit audit, Consumer<Reply> reply) {
+        adminIo(() -> store.reviseHistory(revision, audit), reply,
+                "成绩修订与审计已持久化；旧书保留快照，可重新领取最新版。", () -> recordsChanged.run());
+    }
+
+    /** Persist a retry intent before touching external world tasks; never clears a failed session. */
+    public void auditWorldRetry(AdminAudit audit, Runnable retry, Consumer<Reply> reply) {
+        if (engine == null || !engine.committed().roundId().equals(audit.roundId())
+                || engine.committed().phase() != RoundPhase.PREPARING) {
+            reply.accept(new Reply(false, "仅允许重试当前 PREPARING 轮次的世界准备。")); return;
+        }
+        adminIo(() -> store.recordAdminAudit(audit), reply,
+                "世界重试请求已审计；继续按原轮次、原种子准备，完成后才允许加入。", retry);
+    }
+
+    private void adminIo(IoAction<CommitResult> action, Consumer<Reply> reply, String success, Runnable applied) {
+        if (state != State.OPEN || stopping || shutdownBoundary != null) { reply.accept(new Reply(false, status())); return; }
+        if (mutationPending() || !events.isEmpty()) { reply.accept(new Reply(false, "上一项状态仍在提交，请稍后重试。")); return; }
+        var write = supplyIo(action);
+        pendingAdminWrite = write;
+        write.whenComplete((result, error) -> {
+            boolean invalidRequest = rootCause(error) instanceof IllegalArgumentException;
+            if (error != null && !invalidRequest) evidenceFailure = error;
+            callbacks.execute(() -> {
+                if (stopping || pendingAdminWrite != write) return;
+                pendingAdminWrite = null;
+                if (state != State.OPEN) { reply.accept(new Reply(false, problem)); return; }
+                if (error != null) {
+                    if (invalidRequest) {
+                        reply.accept(new Reply(false, "管理请求不符合原始证据或修订约束：" + rootCause(error).getMessage()));
+                        drainEvent(); return;
+                    }
+                    fail("管理写入失败", error); reply.accept(new Reply(false, problem)); return;
+                }
+                if (result == CommitResult.STALE) {
+                    reply.accept(new Reply(false, "管理目标已改变，请重新查看并申请确认。")); return;
+                }
+                try { applied.run(); reply.accept(new Reply(true, success)); }
+                catch (RuntimeException failed) {
+                    // The durable intent remains available even if the external adapter refuses the retry.
+                    reply.accept(new Reply(false, "请求已审计，但适配器未执行：" + failed.getMessage()));
+                    diagnostics.accept("管理适配器请求失败", failed);
+                }
+                drainEvent();
+            });
+        });
+    }
+
+    public void adminStart(String actor, String reason, Consumer<Reply> reply) {
+        if (engine == null || engine.committed().rules().mode() != GameMode.NORMAL) {
+            reply.accept(new Reply(false, "P1 仅允许普通模式开赛，极限闭环待 P2。")); return;
+        }
+        requestAdminTransition(actor, reason, false, () -> engine.proposeAdmissionAdminStart(UUID.randomUUID()), reply,
+                "管理员开赛已持久化；本轮计时标记待核验，不自动进入正常榜。");
+    }
+
+    public void adminAbort(String actor, String reason, Consumer<Reply> reply) {
+        requestAdminTransition(actor, reason, true, () -> engine.proposeAbort(UUID.randomUUID(), reason), reply,
+                "本轮已中止并保存原因与审计；立即回大厅，安全释放旧世界后轮换。");
+    }
+
+    private void requestAdminTransition(String actor, String reason, boolean abort,
+            java.util.function.Supplier<RoundTransition> proposal, Consumer<Reply> reply, String success) {
+        if (state != State.OPEN || stopping || shutdownBoundary != null || terminalCandidate != null) {
+            reply.accept(new Reply(false, "轮次已冻结或状态不可写，不能执行管理转换。")); return;
+        }
+        if (!adaptersReady) { reply.accept(blockedParticipation()); return; }
+        if (abort && engine.committed().phase() == RoundPhase.PREPARING) {
+            reply.accept(new Reply(false, "世界准备阶段保留原轮重试；本批只中止已就绪的轮次。")); return;
+        }
+        if (mutationPending() || !events.isEmpty()) { reply.accept(new Reply(false, "上一项状态仍在提交，请稍后重试。")); return; }
+        long accepted = clock.nanoTime();
+        eventTime = accepted;
+        try {
+            dev.hardrush.core.admin.AdminText.text(actor, 256);
+            dev.hardrush.core.admin.AdminText.reason(reason);
+            if (actor.length() > 256) throw new IllegalArgumentException("操作者标识超过审计字段长度。");
+            var transition = proposal.get();
+            var audit = new AdminAudit(transition.eventId(), transition.after().roundId(), actor,
+                    abort ? "ABORT" : "START", reason, adminValue(transition.before()), adminValue(transition.after()),
+                    System.currentTimeMillis());
+            if (abort) adminBoundary = accepted;
+            submit(transition, audit, reply, success);
+        } catch (IllegalStateException | IllegalArgumentException error) { reply.accept(new Reply(false, error.getMessage())); }
+        finally { eventTime = Long.MIN_VALUE; }
+    }
+
+    private static String adminValue(RoundSnapshot round) {
+        return "round=" + round.roundId() + ",version=" + round.version() + ",phase=" + round.phase()
+                + ",challengeNanos=" + round.challengeNanos() + ",uncertain=" + round.timingUncertain()
+                + ",result=" + round.result() + ",rules=" + round.rules().fingerprint();
+    }
     public CompletableFuture<BookClaim> ensureBook(UUID player, UUID roundId, int edition, int volume) {
         return durableBook(() -> store.ensureAutomaticBookClaim(player, roundId, edition, volume));
     }
@@ -421,6 +523,7 @@ public final class P1LobbySession implements AutoCloseable {
         if (stopping) return;
         if (connected) online.put(playerId, name);
         else online.remove(playerId);
+        if (shutdownBoundary != null || adminBoundary != null) return;
         if (terminalCandidate != null && !terminalQueued) return;
         if (adaptersReady && engine != null && (engine.committed().participants().containsKey(playerId)
                 || pendingTransition != null && pendingTransition.after().participants().containsKey(playerId))) {
@@ -447,7 +550,13 @@ public final class P1LobbySession implements AutoCloseable {
         enqueue(e -> e.proposeAdmissionRespawn(UUID.randomUUID(), playerId, lifeSequence));
     }
 
-    private long engineTime() { return eventTime == Long.MIN_VALUE ? clock.nanoTime() : eventTime; }
+    private long engineTime() {
+        if (eventTime != Long.MIN_VALUE) return eventTime;
+        if (adminBoundary != null) return adminBoundary;
+        if (failureBoundary != null) return failureBoundary;
+        if (shutdownBoundary != null) return shutdownBoundary;
+        return clock.nanoTime();
+    }
 
     private void enqueue(Function<RoundEngine, RoundTransition> action) {
         enqueueAt(clock.nanoTime(), action);
@@ -455,6 +564,7 @@ public final class P1LobbySession implements AutoCloseable {
 
     private void enqueueAt(long time, Function<RoundEngine, RoundTransition> action) {
         if (stopping || state != State.OPEN || !adaptersReady) return;
+        if (adminBoundary != null || shutdownBoundary != null && time > shutdownBoundary) return;
         if (events.size() >= 256) { fail("关键事件队列超出预算", new IllegalStateException("保留存档并停止比赛")); return; }
         events.add(new QueuedEvent(time, action));
         drainEvent();
@@ -471,12 +581,18 @@ public final class P1LobbySession implements AutoCloseable {
 
     /** Never reports the next mode as changed before SQLite accepts it. */
     public void updateNextMode(GameMode mode, String actor, Consumer<Reply> reply) {
+        updateNextMode(mode, actor, "管理命令设置下一轮模式", reply);
+    }
+
+    public void updateNextMode(GameMode mode, String actor, String reason, Consumer<Reply> reply) {
         Objects.requireNonNull(mode); Objects.requireNonNull(actor); Objects.requireNonNull(reply);
         if (state != State.OPEN || stopping) { reply.accept(new Reply(false, status())); return; }
         if (mutationPending()) { reply.accept(new Reply(false, "上一项状态仍在提交，请稍后重试。")); return; }
         var proposed = nextRules.withMode(mode);
         var eventId = UUID.randomUUID();
-        var write = supplyIo(() -> store.savePendingRules(encodedRules(proposed), eventId, actor));
+        var audit = new AdminAudit(eventId, engine.committed().roundId(), actor, "NEXT_RULES", reason,
+                nextRules.encode(), proposed.encode(), System.currentTimeMillis());
+        var write = supplyIo(() -> store.savePendingRulesAdmin(encodedRules(proposed), eventId, audit));
         pendingRulesWrite = write;
         write.whenComplete((result, error) -> callbacks.execute(() -> {
             if (stopping || pendingRulesWrite != write) return;
@@ -522,9 +638,15 @@ public final class P1LobbySession implements AutoCloseable {
     }
 
     private void submit(RoundTransition transition, Consumer<Reply> reply, String success) {
+        submit(transition, null, reply, success);
+    }
+
+    private void submit(RoundTransition transition, AdminAudit audit, Consumer<Reply> reply, String success) {
         pendingTransition = transition;
         var after = transition.after();
-        var write = supplyIo(() -> commitTransition(transition));
+        var write = supplyIo(() -> audit == null ? commitTransition(transition) : store.commitAdmin(new SnapshotWrite(
+                after.roundId(), transition.before().version(), after.version(), RoundSnapshotCodec.encode(after),
+                transition.eventId(), transition.eventType()), audit));
         pendingWrite = write;
         write.whenComplete((result, error) -> callbacks.execute(() -> {
             if (stopping || pendingWrite != write || pendingTransition != transition) return;
@@ -592,6 +714,13 @@ public final class P1LobbySession implements AutoCloseable {
                 requireCommitted(pendingRulesWrite.get());
                 pendingRulesWrite = null;
             }
+            if (pendingAdminWrite != null) {
+                try { pendingAdminWrite.get(); }
+                catch (java.util.concurrent.ExecutionException failedRequest) {
+                    if (!(rootCause(failedRequest) instanceof IllegalArgumentException)) throw failedRequest;
+                }
+                pendingAdminWrite = null;
+            }
             if (pendingRotationWrite != null) {
                 requireCommitted(pendingRotationWrite.get());
                 eventTime = shutdownTime;
@@ -646,6 +775,7 @@ public final class P1LobbySession implements AutoCloseable {
     }
 
     private void fail(String prefix, Throwable error) {
+        if (failureBoundary == null) failureBoundary = clock.nanoTime();
         Throwable cause = error;
         while (cause instanceof CompletionException && cause.getCause() != null) cause = cause.getCause();
         problem = prefix + "：" + (cause == null ? "未知错误" : cause.getMessage());
@@ -658,6 +788,12 @@ public final class P1LobbySession implements AutoCloseable {
             try { return action.run(); }
             catch (Exception error) { throw new CompletionException(error); }
         }, io);
+    }
+
+    private static Throwable rootCause(Throwable error) {
+        while ((error instanceof CompletionException || error instanceof java.util.concurrent.ExecutionException)
+                && error.getCause() != null) error = error.getCause();
+        return error;
     }
 
     private static byte[] encodedRules(RulesConfig rules) { return rules.encode().getBytes(StandardCharsets.UTF_8); }

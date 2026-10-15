@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p0.world.WorldManifestTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-14T15:58:46.694Z" hostname="Mac" time="0.354">
+  <properties/>
+  <testcase name="foreignDimensionIdentifierIsRejectedWithoutRewritingEvidence()" classname="dev.hardrush.p0.world.WorldManifestTest" time="0.052"/>
+  <testcase name="initialWritePreservesIdentitySeedAndGeneratorConfiguration()" classname="dev.hardrush.p0.world.WorldManifestTest" time="0.006"/>
+  <testcase name="truncatedManifestIsRejectedWithoutRewritingEvidence()" classname="dev.hardrush.p0.world.WorldManifestTest" time="0.005"/>
+  <testcase name="symlinkedManifestDirectoryIsRejectedBeforeReadOrWrite()" classname="dev.hardrush.p0.world.WorldManifestTest" time="0.007"/>
+  <testcase name="readingThroughASymlinkIsRejectedAndTargetIsUnchanged()" classname="dev.hardrush.p0.world.WorldManifestTest" time="0.006"/>
+  <testcase name="unsupportedSchemaCannotBeSilentlyRecreated()" classname="dev.hardrush.p0.world.WorldManifestTest" time="0.005"/>
+  <testcase name="missingDimensionCannotBecomeADifferentRoundOnRecovery()" classname="dev.hardrush.p0.world.WorldManifestTest" time="0.004"/>
+  <testcase name="savingPreparedSpawnPreservesTheExistingRound()" classname="dev.hardrush.p0.world.WorldManifestTest" time="0.256"/>
+  <testcase name="writingThroughASymlinkDoesNotReplaceOrModifyTheTarget()" classname="dev.hardrush.p0.world.WorldManifestTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.persistence.AdminHistoryStoreTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-14T15:55:34.788Z" hostname="Mac" time="0.524">
+  <properties/>
+  <testcase name="auditFailureRollsBackSnapshotPreparedOperationsAndRulesWithRetry()" classname="dev.hardrush.persistence.AdminHistoryStoreTest" time="0.324"/>
+  <testcase name="revisedHistoryTamperingOrMissingRevisionOrCorruptedEvidenceFailsVerification()" classname="dev.hardrush.persistence.AdminHistoryStoreTest" time="0.033"/>
+  <testcase name="migrationFailureRollsBackSchemaVersionAndNewColumnsThenRepairCanRetry()" classname="dev.hardrush.persistence.AdminHistoryStoreTest" time="0.023"/>
+  <testcase name="schemaFourMigrationPreservesHistoriesClaimsAndLegacyTrustWithoutFabrication()" classname="dev.hardrush.persistence.AdminHistoryStoreTest" time="0.023"/>
+  <testcase name="revisionCasRejectsCompetingAdministratorAndChangedRetryWithoutAudit()" classname="dev.hardrush.persistence.AdminHistoryStoreTest" time="0.014"/>
+  <testcase name="standaloneAuditUsesSharedIdentityNamespaceAndReadOnlyBoundedQueries()" classname="dev.hardrush.persistence.AdminHistoryStoreTest" time="0.01"/>
+  <testcase name="snapshotAuditIsAtomicIdempotentAndOperationIdentityIncludesEveryAuditField()" classname="dev.hardrush.persistence.AdminHistoryStoreTest" time="0.012"/>
+  <testcase name="failedHistoryProjectionTransactionLeavesNeitherAuditNorRevisionAndSameRetryApplies()" classname="dev.hardrush.persistence.AdminHistoryStoreTest" time="0.014"/>
+  <testcase name="legacyAndUnknownOriginalWinnerCannotBeInventedOrVerifiedIntoLeaderboard()" classname="dev.hardrush.persistence.AdminHistoryStoreTest" time="0.016"/>
+  <testcase name="correctionAndExplicitVerificationAppendNewEditionsPreservingOriginalEvidenceAndBooks()" classname="dev.hardrush.persistence.AdminHistoryStoreTest" time="0.034"/>
+  <testcase name="verificationCanResolveUncertainTimingButCannotChangeTrustedFirstDragonWinner()" classname="dev.hardrush.persistence.AdminHistoryStoreTest" time="0.01"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

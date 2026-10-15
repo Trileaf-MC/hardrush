@@ -2,7 +2,7 @@
 
 推荐采用 Fabric 服务端模组、独立于 Minecraft API 的 Java 规则核心、SQLite 持久化，以及按 Minecraft 版本隔离的适配层。大厅长期加载，每轮创建并管理三个持久维度。纯原版客户端、旁人完整怪物外观与本人正常操作、模组内部轮换是设计约束；本人普通外观已于 2026-10-14 获得用户明确允许。
 
-本设计定义目标架构。当前已有 26.3 P0 外观、单轮三维度及真实角色原型；用户双原版操作验收已通过并接受轻微尺寸差异，完整 P0 验收仍未放行。2026-10-14 按用户指示提前交付 P1 第一批独立规则、不可变配置、SQLite 幂等基础和轮次／计时核心，见 [实现与验证](p1-foundations.md)。随后交付 [P1 第二批](p1-world-profiles-combat.md) 的实际世界准备、登录／跨轮档案隔离、普通模式加入与死亡计时、攻击因果证据；[第三批](p1-terminal-rotation.md) 已实现普通／开发适配的首龙唯一终局、schema 3 原子记录、庆祝与自动轮换，139 项 JUnit 与 52 项必需无图形服务端 GameTest 通过。榜单、书籍、极限完整玩法、连续 10 轮与其他版本最终适配仍待开发／验收，实验 JAR 不作为正式发布包。依赖证据见 [版本与依赖核查](compatibility.md)，产品规则见 [产品需求](requirements.md)，阶段与任务状态见 [开发任务清单](implementation-plan.md)。
+本设计定义目标架构。当前已有 26.3 P0 外观、单轮三维度及真实角色原型；用户双原版操作验收已通过并接受轻微尺寸差异，完整 P0 验收仍未放行。2026-10-14 按用户指示提前交付 P1 第一批独立规则、不可变配置、SQLite 幂等基础和轮次／计时核心，见 [实现与验证](p1-foundations.md)。随后交付 [P1 第二批](p1-world-profiles-combat.md) 的实际世界准备、登录／跨轮档案隔离、普通模式加入与死亡计时、攻击因果证据；[第三批](p1-terminal-rotation.md) 已实现普通／开发适配的首龙唯一终局、schema 3 原子记录、庆祝与自动轮换，139 项 JUnit 与 52 项必需无图形服务端 GameTest 通过。第四批已接通统计／分榜／TAB／历史书，第五批已完成[基础管理确认、审计与成绩修订](p1-admin-controls.md)，209 项 JUnit 和 62 项必需无图形服务端 GameTest通过。极限完整玩法、连续 10 轮与其他版本最终适配仍待开发／验收，实验 JAR 不作为正式发布包。依赖证据见 [版本与依赖核查](compatibility.md)，产品规则见 [产品需求](requirements.md)，阶段与任务状态见 [开发任务清单](implementation-plan.md)。
 
 ## 工程结构与版本适配
 
@@ -144,7 +144,7 @@ test-support/          当前假时钟、重放、故障注入和契约测试在
 
 数据库中的多表状态可以在单事务提交；Minecraft 世界文件、客户端包和录像文件不在同一事务中。系统只承诺通过幂等操作与恢复取得一致结果，不声称跨这些系统天然“恰好一次”。
 
-当前落地的表名与上述目标模型分别记录：P1 使用 `round_snapshots`、`store_events`、`operations`、`pending_rules` 等基础表，schema 2 增加 `evidence_events`，schema 3 增加 `round_terminals`。`commitTerminal` 将实际致死证据、原始 SETTLING 快照、全局 FINISH 事件及每轮唯一终局行放进同一版本 CAS 事务；任一写入失败全部回滚。原终局快照和因果 payload 保留摘要，后续庆祝／停服检查点只能推进阶段／版本，不能修改胜者、已停止成绩、规则、种子或轮次身份；相同操作可重放，冲突内容拒绝。schema 2→3 的 DDL 与迁移版本一起提交，历史已有结果保留，不为旧数据伪造首龙因果。2026-10-14 第四批已接通 schema 4 的 `history_rounds`、`participant_records`、`progress_events`、`round_advancements`、`advancement_sets` 和 `book_deliveries`：快照事务投影参与者，进度按 UUID／ID 去重并记录集合指纹，首次终局冻结历史；只按完整规则指纹纳入可信、计时确定的通关记录。TAB 和原版成书经独立适配器展示；库存原版保存回读核验后才 ACK 自动书册，满包保留待领。详见 [P1 第四批记录](p1-records-books.md)，完整管理审计与跨系统强制终止窗口仍待后续任务。
+当前落地的表名与上述目标模型分别记录：P1 使用 `round_snapshots`、`store_events`、`operations`、`pending_rules` 等基础表，schema 2 增加 `evidence_events`，schema 3 增加 `round_terminals`。`commitTerminal` 将实际致死证据、原始 SETTLING 快照、全局 FINISH 事件及每轮唯一终局行放进同一版本 CAS 事务；任一写入失败全部回滚。原终局快照和因果 payload 保留摘要，后续庆祝／停服检查点只能推进阶段／版本，不能修改胜者、已停止成绩、规则、种子或轮次身份；相同操作可重放，冲突内容拒绝。schema 2→3 的 DDL 与迁移版本一起提交，历史已有结果保留，不为旧数据伪造首龙因果。2026-10-14 第四批已接通 schema 4 的 `history_rounds`、`participant_records`、`progress_events`、`round_advancements`、`advancement_sets` 和 `book_deliveries`：快照事务投影参与者，进度按 UUID／ID 去重并记录集合指纹，首次终局冻结历史；只按完整规则指纹纳入可信、计时确定的通关记录。TAB 和原版成书经独立适配器展示；库存原版保存回读核验后才 ACK 自动书册，满包保留待领。详见 [P1 第四批记录](p1-records-books.md)，第五批schema 5增加原子管理审计、原历史副本和按书版CAS追加修订；原始终局／因果保留，CORRECT先转待核验，VERIFY仍要求原始可信胜者。详见[P1第五批](p1-admin-controls.md)；跨系统强制终止窗口仍待P3。
 
 ## 防作弊与回放
 

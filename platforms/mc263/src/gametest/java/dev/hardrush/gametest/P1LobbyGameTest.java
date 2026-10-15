@@ -4,10 +4,13 @@ import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.p1.P1LobbyRuntime;
 import dev.hardrush.p1.P1LobbySession;
+import java.util.ArrayList;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.commands.CommandSource;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 
 /** Real server lifecycle and Brigadier wiring, with no game client or world entry. */
@@ -31,6 +34,8 @@ public final class P1LobbyGameTest {
         }
         var identity = new UUID[1];
         var fingerprint = new String[1];
+        var output = new RecordingSource();
+        var adminSource = server.createCommandSourceStack().withSource(output);
         test.startSequence()
                 .thenWaitUntil(() -> test.assertTrue(
                         P1LobbyRuntime.sessionState(server).orElseThrow() == P1LobbySession.State.OPEN,
@@ -56,8 +61,15 @@ public final class P1LobbyGameTest {
                     }
                     test.assertTrue(P1LobbyRuntime.snapshot(server).orElseThrow().participants().isEmpty(),
                             "Rejected commands do not fabricate participants");
-                    test.assertValueEqual(dispatch(server.createCommandSourceStack(), "hardrush config next-mode normal"),
-                            0, "Config command cannot report success synchronously before commit");
+                    var pendingRules = P1LobbyRuntime.nextRules(server).orElseThrow();
+                    test.assertValueEqual(dispatch(adminSource, "hardrush config next-mode normal 大厅生命周期测试设为普通"),
+                            1, "Legacy config entry shows a concrete confirmation preview");
+                    UUID ticket = output.lastTicket();
+                    test.assertValueEqual(P1LobbyRuntime.nextRules(server).orElseThrow(), pendingRules,
+                            "Config preview cannot publish a rule change before confirmation");
+                    test.assertTrue(!P1LobbyRuntime.mutationPending(server), "Config preview starts no durable rule write");
+                    test.assertValueEqual(dispatch(adminSource, "hardrush admin confirm " + ticket),
+                            0, "Confirmed config command cannot report success synchronously before commit");
                 })
                 .thenWaitUntil(() -> test.assertTrue(
                         P1LobbyRuntime.nextRules(server).orElseThrow().mode() == GameMode.NORMAL
@@ -65,7 +77,15 @@ public final class P1LobbyGameTest {
                 .thenExecute(() -> {
                     test.assertValueEqual(P1LobbyRuntime.snapshot(server).orElseThrow().rules().fingerprint(),
                             fingerprint[0], "Mode command preserves the current round's frozen rules");
-                    dispatch(server.createCommandSourceStack(), "hardrush config next-mode hardcore");
+                    var pendingRules = P1LobbyRuntime.nextRules(server).orElseThrow();
+                    test.assertValueEqual(dispatch(adminSource, "hardrush config next-mode hardcore 大厅生命周期测试恢复极限"),
+                            1, "Legacy config restore entry also requires a concrete confirmation preview");
+                    UUID ticket = output.lastTicket();
+                    test.assertValueEqual(P1LobbyRuntime.nextRules(server).orElseThrow(), pendingRules,
+                            "Hardcore restore preview preserves the committed normal next mode");
+                    test.assertTrue(!P1LobbyRuntime.mutationPending(server), "Restore preview starts no durable rule write");
+                    test.assertValueEqual(dispatch(adminSource, "hardrush admin confirm " + ticket),
+                            0, "Confirmed hardcore restore awaits the durable asynchronous acknowledgement");
                 })
                 .thenWaitUntil(() -> test.assertTrue(
                         P1LobbyRuntime.nextRules(server).orElseThrow().mode() == GameMode.HARDCORE
@@ -86,5 +106,19 @@ public final class P1LobbyGameTest {
     private static int dispatch(CommandSourceStack source, String command) {
         try { return source.getServer().getCommands().getDispatcher().execute(command, source); }
         catch (Exception error) { throw new IllegalStateException("GameTest command failed: " + command, error); }
+    }
+
+    private static final class RecordingSource implements CommandSource {
+        private final ArrayList<String> messages = new ArrayList<>();
+        @Override public void sendSystemMessage(Component message) { messages.add(message.getString()); }
+        @Override public boolean acceptsSuccess() { return true; }
+        @Override public boolean acceptsFailure() { return true; }
+        @Override public boolean shouldInformAdmins() { return false; }
+        UUID lastTicket() {
+            var preview = messages.stream().filter(value -> value.contains("/hardrush admin confirm "))
+                    .reduce((first, second) -> second).orElseThrow();
+            return UUID.fromString(preview.substring(preview.lastIndexOf("/hardrush admin confirm ")
+                    + "/hardrush admin confirm ".length()).strip());
+        }
     }
 }

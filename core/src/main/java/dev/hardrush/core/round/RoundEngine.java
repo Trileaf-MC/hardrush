@@ -1,5 +1,6 @@
 package dev.hardrush.core.round;
 
+import dev.hardrush.core.admin.AdminText;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
@@ -177,6 +178,39 @@ public final class RoundEngine {
 
     public RoundTransition proposeAdmissionTick(UUID eventId) { return proposeTick(eventId, true); }
 
+    /**
+     * Starts the already verified waiting round without its remaining countdown. Admission,
+     * integration, and mode gates remain the session adapter's responsibility, as for normal ticks.
+     * An administrator cannot turn an unready or offline lobby participant into a racing human.
+     */
+    public RoundTransition proposeAdminStart(UUID eventId) { return proposeAdminStart(eventId, false); }
+
+    /** The platform must durably isolate admitted profiles before unlocking their online sessions. */
+    public RoundTransition proposeAdmissionAdminStart(UUID eventId) { return proposeAdminStart(eventId, true); }
+
+    private RoundTransition proposeAdminStart(UUID eventId, boolean admissionPending) {
+        RoundSnapshot before = capture();
+        requirePhase(before, RoundPhase.WAITING, RoundPhase.COUNTDOWN);
+        if (readyOnline(before.participants()) == 0) {
+            throw new IllegalStateException("At least one online ready lobby participant is required");
+        }
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        startReady(players, admissionPending);
+        return proposal(eventId, "ADMIN_START", before, RoundPhase.RUNNING, 0,
+                players, null, false, true);
+    }
+
+    /** Captures the stop boundary and skips display time; rotation still owns safe world release. */
+    public RoundTransition proposeAbort(UUID eventId, String reason) {
+        RoundSnapshot before = capture();
+        requirePhase(before, RoundPhase.PREPARING, RoundPhase.WAITING, RoundPhase.COUNTDOWN,
+                RoundPhase.RUNNING, RoundPhase.RESCUE);
+        if (before.result() != null) throw new IllegalStateException("Round already settled");
+        RoundResult result = new RoundResult(RoundResult.Kind.ABORTED, null, AdminText.reason(reason));
+        return proposal(eventId, "ADMIN_ABORT", before, RoundPhase.ROTATING, 0,
+                before.participants(), result, false, true);
+    }
+
     private RoundTransition proposeTick(UUID eventId, boolean admissionPending) {
         RoundSnapshot before = capture();
         RoundPhase phase = before.phase();
@@ -189,9 +223,7 @@ public final class RoundEngine {
                 players.replaceAll((id, p) -> p.withReady(false));
             } else if (remaining == 0) {
                 phase = RoundPhase.RUNNING;
-                players.replaceAll((id, p) -> p.ready() && p.online()
-                        ? admissionPending ? p.start(0).withSession(p.name(), false) : p.start(0)
-                        : p.withReady(false));
+                startReady(players, admissionPending);
             }
         } else if (phase == RoundPhase.SETTLING) {
             phase = remaining == 0 ? RoundPhase.ROTATING : RoundPhase.CELEBRATING;
@@ -240,11 +272,16 @@ public final class RoundEngine {
 
     private RoundTransition proposal(UUID id, String type, RoundSnapshot before, RoundPhase phase, long remaining,
                                      Map<UUID, Participant> players, RoundResult result, boolean clean) {
+        return proposal(id, type, before, phase, remaining, players, result, clean, before.timingUncertain());
+    }
+
+    private RoundTransition proposal(UUID id, String type, RoundSnapshot before, RoundPhase phase, long remaining,
+                                     Map<UUID, Participant> players, RoundResult result, boolean clean, boolean uncertain) {
         // capture() and proposal() share one event timestamp, even if the clock advances between calls.
         long captured = capturedTime;
         RoundSnapshot after = new RoundSnapshot(before.roundId(), before.sequence(), before.seed(),
                 Math.addExact(before.version(), 1), before.rules(), phase, clean ? PauseReason.SERVER_STOPPED : pause(phase, players),
-                before.challengeNanos(), remaining, players, clean, before.timingUncertain(), result);
+                before.challengeNanos(), remaining, players, clean, before.timingUncertain() || uncertain, result);
         pending = new RoundTransition(id, type, before, after, captured);
         return pending;
     }
@@ -282,6 +319,12 @@ public final class RoundEngine {
 
     private static long readyOnline(Map<UUID, Participant> players) {
         return players.values().stream().filter(p -> p.online() && p.ready() && p.role() == ParticipantRole.LOBBY).count();
+    }
+
+    private static void startReady(Map<UUID, Participant> players, boolean admissionPending) {
+        players.replaceAll((id, p) -> p.ready() && p.online() && p.role() == ParticipantRole.LOBBY
+                ? admissionPending ? p.start(0).withSession(p.name(), false) : p.start(0)
+                : p.withReady(false));
     }
 
     private static Participant requirePlayer(RoundSnapshot snapshot, UUID id) {

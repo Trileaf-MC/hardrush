@@ -19,6 +19,7 @@ final class SqliteRecordIndex {
                   round_sequence INTEGER NOT NULL UNIQUE, rules_fingerprint TEXT NOT NULL,
                   challenge_millis INTEGER NOT NULL, eligible INTEGER NOT NULL CHECK(eligible IN (0,1)),
                   trusted_winner INTEGER NOT NULL CHECK(trusted_winner IN (0,1)),
+                  edition INTEGER NOT NULL DEFAULT 1 CHECK(edition BETWEEN 1 AND 1001),
                   payload BLOB NOT NULL, payload_digest BLOB NOT NULL CHECK(length(payload_digest)=32))
                 """);
             sql.execute("CREATE INDEX IF NOT EXISTS history_leaderboard ON history_rounds(rules_fingerprint,eligible,challenge_millis,round_sequence)");
@@ -242,14 +243,15 @@ final class SqliteRecordIndex {
     }
     private RoundHistory history(ResultSet rows) throws SQLException {
         byte[] payload = rows.getBytes("payload"); boolean trusted = rows.getBoolean("trusted_winner");
-        digest(RecordEncoding.historyDigest(payload, trusted), rows.getBytes("payload_digest"), "History");
+        long edition = rows.getLong("edition");
+        digest(RecordEncoding.historyDigest(payload, trusted, edition), rows.getBytes("payload_digest"), "History");
         RoundSnapshot snapshot;
         try { snapshot = RoundSnapshotCodec.decode(payload); } catch (IllegalArgumentException invalid) { throw new SQLException("Invalid history snapshot", invalid); }
         if (snapshot.result() == null || !snapshot.roundId().toString().equals(rows.getString("round_id"))
                 || snapshot.sequence() != rows.getLong("round_sequence") || !snapshot.rules().fingerprint().equals(rows.getString("rules_fingerprint"))
                 || snapshot.challengeMillis() != rows.getLong("challenge_millis")) throw new SQLException("History index tags do not match");
         var value = new RoundHistory(snapshot.roundId(), snapshot.sequence(), snapshot.seed(), snapshot.rules(), snapshot.result(),
-                snapshot.challengeNanos(), snapshot.timingUncertain(), trusted, 1, fingerprints(snapshot.roundId()));
+                snapshot.challengeNanos(), snapshot.timingUncertain(), trusted, edition, fingerprints(snapshot.roundId()));
         if (value.leaderboardEligible() != rows.getBoolean("eligible")) throw new SQLException("History eligibility does not match");
         return value;
     }

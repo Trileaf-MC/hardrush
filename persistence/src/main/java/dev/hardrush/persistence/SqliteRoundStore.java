@@ -21,12 +21,13 @@ import java.util.UUID;
 
 /** Durable, Minecraft-independent storage. Calls serialize on one connection and may block for IO. */
 public final class SqliteRoundStore implements AutoCloseable {
-    public static final int SCHEMA_VERSION = 4;
+    public static final int SCHEMA_VERSION = 5;
     public static final int DEFAULT_BUSY_TIMEOUT_MILLIS = 1_000;
 
     private final Path databasePath;
     private final Connection connection;
     private final SqliteRecordIndex records;
+    private final SqliteAdminIndex admins;
 
     public SqliteRoundStore(Path databasePath) throws IOException, SQLException {
         this(databasePath, DEFAULT_BUSY_TIMEOUT_MILLIS);
@@ -41,6 +42,7 @@ public final class SqliteRoundStore implements AutoCloseable {
         // Connect directly through the bundled driver instead of depending on TCCL/SPI registration order.
         connection = new org.sqlite.JDBC().connect("jdbc:sqlite:" + this.databasePath, config.toProperties());
         records = new SqliteRecordIndex(connection);
+        admins = new SqliteAdminIndex(connection);
         try {
             var version = schemaVersion();
             if (version > SCHEMA_VERSION) throw new SQLException("Database schema is newer than this build: " + version);
@@ -61,6 +63,7 @@ public final class SqliteRoundStore implements AutoCloseable {
                 if (schemaVersion() == 1) migrateEvidenceSchema();
                 if (schemaVersion() == 2) migrateTerminalSchema();
                 if (schemaVersion() == 3) migrateRecordSchema();
+                if (schemaVersion() == 4) admins.migrate();
                 return null;
             });
         } catch (SQLException | RuntimeException | Error failure) {
@@ -73,18 +76,87 @@ public final class SqliteRoundStore implements AutoCloseable {
         Objects.requireNonNull(write, "write");
         checkOpenPath();
         var digest = WriteDigest.snapshot(write);
+        return transaction(() -> commitInternal(write, digest));
+    }
+
+    private CommitResult commitInternal(SnapshotWrite write, byte[] digest) throws SQLException {
+        if (duplicate(write.eventId(), digest)) return CommitResult.DUPLICATE;
+        var current = loadInternal(write.roundId());
+        if (current.map(SnapshotData::version).orElse(-1L) != write.expectedVersion()) return CommitResult.STALE;
+        if (current.isPresent()) preserveRoundIdentity(write, current.orElseThrow());
+        var terminal = terminalInternal(write.roundId());
+        if (terminal.isPresent()) preserveTerminal(write, terminal.orElseThrow());
+        else if (current.isPresent()) preserveLegacyTerminal(write, current.orElseThrow());
+        insertSnapshot(write, digest);
+        records.index(write, false);
+        return CommitResult.APPLIED;
+    }
+
+    /** The administrator snapshot and complete audit either both commit or both roll back. */
+    public synchronized CommitResult commitAdmin(SnapshotWrite write, AdminAudit audit) throws SQLException {
+        Objects.requireNonNull(write); validateAdminOwner(write.eventId(), write.roundId(), audit); checkOpenPath();
+        byte[] digest = WriteDigest.snapshot(write);
         return transaction(() -> {
-            if (duplicate(write.eventId(), digest)) return CommitResult.DUPLICATE;
-            var current = loadInternal(write.roundId());
-            if (current.map(SnapshotData::version).orElse(-1L) != write.expectedVersion()) return CommitResult.STALE;
-            if (current.isPresent()) preserveRoundIdentity(write, current.orElseThrow());
-            var terminal = terminalInternal(write.roundId());
-            if (terminal.isPresent()) preserveTerminal(write, terminal.orElseThrow());
-            else if (current.isPresent()) preserveLegacyTerminal(write, current.orElseThrow());
-            insertSnapshot(write, digest);
-            records.index(write, false);
-            return CommitResult.APPLIED;
+            boolean audited = admins.duplicate(audit, digest);
+            if (audited) {
+                verifyAdminOwnerEvent(write.eventId(), digest, "ROUND");
+                return CommitResult.DUPLICATE;
+            }
+            CommitResult result = commitInternal(write, digest);
+            if (result == CommitResult.DUPLICATE) throw new EventCollisionException(write.eventId());
+            if (result == CommitResult.APPLIED) admins.insert(audit, digest);
+            return result;
         });
+    }
+
+    public synchronized CommitResult recordAdminAudit(AdminAudit audit) throws SQLException {
+        Objects.requireNonNull(audit); checkOpenPath(); byte[] digest = WriteDigest.payload(RecordEncoding.audit(audit));
+        return transaction(() -> {
+            if (admins.duplicate(audit, digest)) return CommitResult.DUPLICATE;
+            if (duplicate(audit.operationId(), digest)) throw new EventCollisionException(audit.operationId());
+            admins.insert(audit, digest); return CommitResult.APPLIED;
+        });
+    }
+
+    /** Null round ID requests the global ledger; the query never creates an audit of itself. */
+    public synchronized List<AdminAudit> audits(UUID roundId, int limit, int offset) throws SQLException {
+        checkOpenPath(); return admins.audits(roundId, limit, offset);
+    }
+
+    public synchronized CommitResult reviseHistory(HistoryRevision request, AdminAudit audit) throws SQLException {
+        Objects.requireNonNull(request); validateAdminOwner(request.operationId(), request.roundId(), audit); checkOpenPath();
+        byte[] digest = WriteDigest.payload(RecordEncoding.revision(request));
+        return transaction(() -> {
+            if (admins.duplicate(audit, digest)) {
+                RoundHistory current = records.history(request.roundId()).orElseThrow(() -> new SQLException("Revised history missing"));
+                verifyHistory(current);
+                if (!admins.revisions(request.roundId(), 1000, 0).contains(request)) throw new SQLException("Audited revision missing");
+                return CommitResult.DUPLICATE;
+            }
+            if (duplicate(request.operationId(), digest)) throw new EventCollisionException(request.operationId());
+            var current = records.history(request.roundId());
+            if (current.isEmpty() || current.orElseThrow().edition() != request.expectedEdition()) return CommitResult.STALE;
+            verifyHistory(current.orElseThrow());
+            SqliteAdminIndex.Original original = admins.original(request.roundId());
+            // Even a coherent legacy history cannot manufacture causal first-dragon evidence.
+            if (request.action() == HistoryRevision.Action.VERIFY && terminalInternal(request.roundId()).isEmpty()) {
+                throw new IllegalArgumentException("Verification requires original first-dragon evidence");
+            }
+            admins.revise(request, audit, current.orElseThrow(), original); return CommitResult.APPLIED;
+        });
+    }
+
+    public synchronized List<HistoryRevision> historyRevisions(UUID roundId, int limit, int offset) throws SQLException {
+        Objects.requireNonNull(roundId); checkOpenPath();
+        var history = records.history(roundId); if (history.isPresent()) verifyHistory(history.orElseThrow());
+        return admins.revisions(roundId, limit, offset);
+    }
+
+    private static void validateAdminOwner(UUID operationId, UUID roundId, AdminAudit audit) {
+        Objects.requireNonNull(audit);
+        if (!operationId.equals(audit.operationId()) || !Objects.equals(roundId, audit.roundId())) {
+            throw new IllegalArgumentException("Administrator audit must match the mutation operation and round");
+        }
     }
 
     /** First-dragon evidence, original SETTLING snapshot and unique terminal row share one CAS transaction. */
@@ -138,7 +210,7 @@ public final class SqliteRoundStore implements AutoCloseable {
         return terminalInternal(roundId);
     }
 
-    /** Immutable settled histories only. Active seeds are never returned by these APIs. */
+    /** Settled, audited history projections only. Active seeds are never returned by these APIs. */
     public synchronized Optional<RoundHistory> roundHistory(UUID roundId) throws SQLException {
         Objects.requireNonNull(roundId); checkOpenPath();
         var value = records.history(roundId); if (value.isPresent()) verifyHistory(value.orElseThrow()); return value;
@@ -201,17 +273,20 @@ public final class SqliteRoundStore implements AutoCloseable {
     }
 
     private void verifyHistory(RoundHistory history) throws SQLException {
+        var source = admins.verifyProjection(history);
         var terminal = terminalInternal(history.roundId());
         if (terminal.isEmpty()) {
-            if (history.trustedWinner()) throw new SQLException("Trusted history has no original terminal evidence");
+            if (source.trusted() || history.trustedWinner()) throw new SQLException("Trusted history has no original terminal evidence");
             return; // Legacy results and explicit failure/abort can legitimately have no dragon-death evidence.
         }
         var original = RoundSnapshotCodec.decode(terminal.orElseThrow().snapshot().payload());
-        if (!Objects.equals(history.result(), original.result()) || history.sequence() != original.sequence()
-                || history.seed() != original.seed() || !history.rules().equals(original.rules())
-                || history.challengeNanos() != original.challengeNanos() || history.timingUncertain() != original.timingUncertain()
-                || history.trustedWinner() != (original.result().winner() != null)) {
-            throw new SQLException("History does not match its original terminal evidence");
+        var indexed = source.snapshot();
+        if (!java.util.Arrays.equals(source.payload(), terminal.orElseThrow().snapshot().payload())
+                || !Objects.equals(indexed.result(), original.result()) || indexed.sequence() != original.sequence()
+                || indexed.seed() != original.seed() || !indexed.rules().equals(original.rules())
+                || indexed.challengeNanos() != original.challengeNanos() || indexed.timingUncertain() != original.timingUncertain()
+                || source.trusted() != (original.result().winner() != null)) {
+            throw new SQLException("History original does not match its terminal evidence");
         }
     }
 
@@ -303,7 +378,27 @@ public final class SqliteRoundStore implements AutoCloseable {
         String auditActor = StoreValues.text(actor, "actor", 256);
         checkOpenPath();
         byte[] digest = WriteDigest.rules(payload, auditActor);
+        return transaction(() -> savePendingRulesInternal(payload, eventId, auditActor, digest));
+    }
+
+    public synchronized CommitResult savePendingRulesAdmin(byte[] canonicalRules, UUID eventId, AdminAudit audit) throws SQLException {
+        byte[] payload = Objects.requireNonNull(canonicalRules).clone();
+        Objects.requireNonNull(eventId); Objects.requireNonNull(audit);
+        // Rules affect a future round; an active round may be supplied as the administrator's context.
+        if (!eventId.equals(audit.operationId())) throw new IllegalArgumentException("Rules audit operation ID mismatch");
+        checkOpenPath(); byte[] digest = WriteDigest.rules(payload, audit.actor());
         return transaction(() -> {
+            if (admins.duplicate(audit, digest)) {
+                verifyAdminOwnerEvent(eventId, digest, "RULES");
+                return CommitResult.DUPLICATE;
+            }
+            CommitResult result = savePendingRulesInternal(payload, eventId, audit.actor(), digest);
+            if (result == CommitResult.DUPLICATE) throw new EventCollisionException(eventId);
+            admins.insert(audit, digest); return result;
+        });
+    }
+
+    private CommitResult savePendingRulesInternal(byte[] payload, UUID eventId, String auditActor, byte[] digest) throws SQLException {
             if (duplicate(eventId, digest)) return CommitResult.DUPLICATE;
             long revision = insertEvent(eventId, "RULES", null, "RULES_CONFIG", auditActor,
                     null, null, digest, WriteDigest.payload(payload));
@@ -325,7 +420,6 @@ public final class SqliteRoundStore implements AutoCloseable {
                 statement.executeUpdate();
             }
             return CommitResult.APPLIED;
-        });
     }
 
     public synchronized Optional<byte[]> loadPendingRules() throws SQLException {
@@ -703,10 +797,12 @@ public final class SqliteRoundStore implements AutoCloseable {
                 SELECT write_digest FROM store_events WHERE event_id=?
                 UNION ALL SELECT write_digest FROM evidence_events WHERE event_id=?
                 UNION ALL SELECT write_digest FROM progress_events WHERE event_id=?
+                UNION ALL SELECT write_digest FROM admin_audits WHERE operation_id=?
                 """)) {
             statement.setString(1, eventId.toString());
             statement.setString(2, eventId.toString());
             statement.setString(3, eventId.toString());
+            statement.setString(4, eventId.toString());
             try (var rows = statement.executeQuery()) {
                 boolean found = false;
                 while (rows.next()) {
@@ -714,6 +810,18 @@ public final class SqliteRoundStore implements AutoCloseable {
                     if (!java.security.MessageDigest.isEqual(rows.getBytes(1), digest)) throw new EventCollisionException(eventId);
                 }
                 return found;
+            }
+        }
+    }
+
+    private void verifyAdminOwnerEvent(UUID eventId, byte[] digest, String scope) throws SQLException {
+        try (var statement = connection.prepareStatement("SELECT scope_type,write_digest FROM store_events WHERE event_id=?")) {
+            statement.setString(1, eventId.toString());
+            try (var rows = statement.executeQuery()) {
+                if (!rows.next() || !scope.equals(rows.getString("scope_type"))
+                        || !java.security.MessageDigest.isEqual(digest, rows.getBytes("write_digest"))) {
+                    throw new SQLException("Administrator audit has no matching owning mutation");
+                }
             }
         }
     }

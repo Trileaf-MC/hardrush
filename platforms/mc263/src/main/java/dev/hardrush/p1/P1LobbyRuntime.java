@@ -16,6 +16,8 @@ import dev.hardrush.p1.combat.P1CombatRuntime;
 import dev.hardrush.p1.record.P1ProgressRuntime;
 import dev.hardrush.p1.record.P1TabRuntime;
 import dev.hardrush.p1.record.P1HistoryCommands;
+import dev.hardrush.p1.admin.P1AdminCommands;
+import dev.hardrush.core.admin.AdminAction;
 import dev.hardrush.core.book.HistoryBookService;
 import dev.hardrush.core.record.*;
 import dev.hardrush.p1.book.P1BookPort;
@@ -28,7 +30,6 @@ import dev.hardrush.persistence.EvidenceWrite;
 import net.minecraft.world.level.Level;
 import java.util.ArrayDeque;
 import java.util.IdentityHashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -63,6 +64,15 @@ public final class P1LobbyRuntime {
     private static final Map<MinecraftServer, HistoryBookService> BOOKS = new IdentityHashMap<>();
     private static final Map<MinecraftServer, Map<UUID, BookAttempt>> BOOK_ATTEMPTS = new IdentityHashMap<>();
     private static boolean initialized;
+    private static final P1AdminCommands ADMIN = new P1AdminCommands(SESSIONS::get,
+            server -> Optional.ofNullable(WORLDS.get(server)).flatMap(P1RoundWorldBundle::failure),
+            (server, expectedFailure) -> {
+                var worlds = WORLDS.get(server);
+                if (worlds == null || !worlds.failure().filter(expectedFailure::equals).isPresent()) {
+                    throw new IllegalStateException("世界准备目标已改变，请重新核对。");
+                }
+                worlds.retry();
+            });
 
     private P1LobbyRuntime() {}
 
@@ -296,6 +306,7 @@ public final class P1LobbyRuntime {
             TABS.remove(server);
             BOOKS.remove(server);
             BOOK_ATTEMPTS.remove(server);
+            ADMIN.forget(server);
             P1ProgressRuntime.unconfigure(server);
             P1CombatRuntime.unconfigure(server);
         });
@@ -315,24 +326,21 @@ public final class P1LobbyRuntime {
                         .then(Commands.literal("ready").executes(context -> ready(context.getSource(), true)))
                         .then(Commands.literal("unready").executes(context -> ready(context.getSource(), false)))
                         .then(Commands.literal("retry-world")
-                                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
-                                .executes(context -> {
-                                    var worlds = WORLDS.get(context.getSource().getServer());
-                                    if (worlds == null || worlds.failure().isEmpty()) {
-                                        context.getSource().sendFailure(Component.literal("当前没有可重试的世界准备失败。"));
-                                        return 0;
-                                    }
-                                    worlds.retry();
-                                    context.getSource().sendSuccess(() -> Component.literal("已重试原轮次世界准备，轮次与种子不变。"), false);
-                                    return 1;
-                                }))
+                                .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                                .then(Commands.argument("reason", StringArgumentType.greedyString())
+                                        .executes(context -> ADMIN.current(context.getSource(), AdminAction.RETRY,
+                                                StringArgumentType.getString(context, "reason")))))
                         .then(Commands.literal("config")
-                                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                                .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
                                 .then(Commands.literal("next-mode")
                                         .then(Commands.argument("mode", StringArgumentType.word())
                                                 .suggests((context, builder) -> builder.suggest("normal").suggest("hardcore").buildFuture())
-                                                .executes(context -> nextMode(context.getSource(),
-                                                        StringArgumentType.getString(context, "mode"))))))));
+                                                .then(Commands.argument("reason", StringArgumentType.greedyString())
+                                                        .executes(context -> ADMIN.nextMode(context.getSource(),
+                                                                StringArgumentType.getString(context, "mode"),
+                                                                StringArgumentType.getString(context, "reason")))))))));
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+                dispatcher.register(ADMIN.attach(Commands.literal("hardrush"))));
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(
                 P1HistoryCommands.attach(Commands.literal("hardrush")
                         .then(Commands.literal("read-book")
@@ -414,6 +422,16 @@ public final class P1LobbyRuntime {
             return;
         }
         if (before.result() == null && after.result() != null) {
+            if (after.result().kind() != dev.hardrush.core.round.RoundResult.Kind.COMPLETED) {
+                var profiles = PROFILES.get(server);
+                if (profiles != null) for (var player : server.getPlayerList().getPlayers()) {
+                    if (profiles.manages(player)) profiles.returnToLobby(player);
+                }
+                server.getPlayerList().broadcastSystemMessage(Component.literal("本轮已中止，原因："
+                        + dev.hardrush.core.book.SafeBookText.literal(after.result().reason(), 512)
+                        + "。已返回大厅，安全释放旧世界后轮换。"), false);
+                return;
+            }
             var winner = after.result().winner() == null ? "胜者待核验"
                     : dev.hardrush.core.book.SafeBookText.literal(after.participants().get(after.result().winner()).name(), 64);
             server.getPlayerList().broadcastSystemMessage(Component.literal("本轮已通关：" + winner
@@ -590,20 +608,6 @@ public final class P1LobbyRuntime {
                 .whenComplete((ignored, error) -> {
                     if (error == null) completion.complete(null); else completion.completeExceptionally(error);
                 });
-    }
-
-    private static int nextMode(CommandSourceStack source, String argument) {
-        var session = SESSIONS.get(source.getServer());
-        if (session == null) return reply(source, disabled());
-        GameMode mode = switch (argument.toLowerCase(Locale.ROOT)) {
-            case "normal" -> GameMode.NORMAL;
-            case "hardcore" -> GameMode.HARDCORE;
-            default -> null;
-        };
-        if (mode == null) return reply(source, new P1LobbySession.Reply(false, "模式只接受 normal 或 hardcore。"));
-        session.updateNextMode(mode, source.getTextName(), result -> reply(source, result));
-        // Do not report synchronous command success while the durable write is pending.
-        return 0;
     }
 
     private static int reply(CommandSourceStack source, P1LobbySession.Reply result) {

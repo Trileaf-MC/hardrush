@@ -2,6 +2,9 @@ package dev.hardrush.persistence;
 
 import dev.hardrush.core.record.ParticipantRecord;
 import dev.hardrush.core.record.ProgressWrite;
+import dev.hardrush.core.record.AdminAudit;
+import dev.hardrush.core.record.HistoryRevision;
+import dev.hardrush.core.round.RoundResult;
 import dev.hardrush.core.round.ParticipantRole;
 import java.io.*;
 import java.util.*;
@@ -40,6 +43,38 @@ final class RecordEncoding {
     }
     static byte[] historyDigest(byte[] snapshot, boolean trusted) {
         return WriteDigest.payload(encode(out -> { out.writeUTF("HR_HISTORY_1"); out.writeBoolean(trusted); out.write(snapshot); }));
+    }
+    static byte[] historyDigest(byte[] snapshot, boolean trusted, long edition) {
+        if (edition == 1) return historyDigest(snapshot, trusted);
+        return WriteDigest.payload(encode(out -> {
+            out.writeUTF("HR_HISTORY_2"); out.writeLong(edition); out.writeBoolean(trusted); out.write(snapshot);
+        }));
+    }
+    static byte[] audit(AdminAudit value) {
+        return encode(out -> {
+            out.writeUTF("HR_ADMIN_AUDIT_1"); uuid(out, value.operationId());
+            out.writeBoolean(value.roundId() != null); if (value.roundId() != null) uuid(out, value.roundId());
+            out.writeUTF(value.actor()); out.writeUTF(value.action()); out.writeUTF(value.reason());
+            out.writeUTF(value.beforeValue()); out.writeUTF(value.afterValue()); out.writeLong(value.occurredAtEpochMillis());
+        });
+    }
+    static byte[] revision(HistoryRevision value) {
+        return encode(out -> {
+            out.writeUTF("HR_HISTORY_REVISION_1"); uuid(out, value.operationId()); uuid(out, value.roundId());
+            out.writeLong(value.expectedEdition()); out.writeUTF(value.result().kind().name());
+            out.writeBoolean(value.result().winner() != null); if (value.result().winner() != null) uuid(out, value.result().winner());
+            out.writeUTF(value.result().reason()); out.writeLong(value.challengeNanos());
+            out.writeBoolean(value.timingUncertain()); out.writeUTF(value.action().name());
+        });
+    }
+    static HistoryRevision revision(byte[] payload) {
+        return decode(payload, in -> {
+            if (!in.readUTF().equals("HR_HISTORY_REVISION_1")) throw new IOException("Invalid revision format");
+            UUID operationId = uuid(in), roundId = uuid(in); long expected = in.readLong();
+            var kind = RoundResult.Kind.valueOf(in.readUTF()); UUID winner = in.readBoolean() ? uuid(in) : null;
+            var result = new RoundResult(kind, winner, in.readUTF());
+            return new HistoryRevision(operationId, roundId, expected, result, in.readLong(), in.readBoolean(), HistoryRevision.Action.valueOf(in.readUTF()));
+        });
     }
     static byte[] participantDigest(UUID round, int lifeSequence, byte[] payload) {
         return WriteDigest.payload(encode(out -> { uuid(out, round); out.writeInt(lifeSequence); out.write(payload); }));

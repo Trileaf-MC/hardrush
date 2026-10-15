@@ -16,7 +16,8 @@
       "dev.hardrush.gametest.P1ProfileGameTest",
       "dev.hardrush.gametest.P1ProgressGameTest",
       "dev.hardrush.gametest.P1TabGameTest",
-      "dev.hardrush.gametest.P1BookGameTest"
+      "dev.hardrush.gametest.P1BookGameTest",
+      "dev.hardrush.gametest.P1AdminCommandGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"

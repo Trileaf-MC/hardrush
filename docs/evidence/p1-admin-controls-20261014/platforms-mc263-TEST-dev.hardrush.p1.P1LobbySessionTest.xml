@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p1.P1LobbySessionTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-14T15:58:47.373Z" hostname="Mac" time="1.239">
+  <properties/>
+  <testcase name="normalStopDrainsPendingConfigWithoutWaitingForItsReplyCallback()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.01"/>
+  <testcase name="hardcoreReadyCannotOpenIncompleteP2Gameplay()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.008"/>
+  <testcase name="closingDuringBootstrapDrainsWithoutNeedingServerCallback()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.007"/>
+  <testcase name="evidenceWriteFailureDuringStopCannotLeaveACleanRecoveryMarker()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.008"/>
+  <testcase name="createsPreparingRoundAndRestoresSameIdAfterCleanStopWithoutDowntime()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.012"/>
+  <testcase name="cleanLaterPhaseKeepsIdAndDurationsIsolatedUntilWorldAdaptersExist()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.008"/>
+  <testcase name="verifiedAdaptersUnlockDurableJoinAndCountdownThenNormalDeathPausesAtCapturedEvent()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.021"/>
+  <testcase name="writeLockFailureDoesNotPublishSuccessfulModeOrChangePendingConfig()" classname="dev.hardrush.p1.P1LobbySessionTest" time="1.117"/>
+  <testcase name="stopCapturesTimeBeforeDrainingBlockedSqliteWrites()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.024"/>
+  <testcase name="openFailureCannotExposeAUsableRound()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.002"/>
+  <testcase name="nextModeAcknowledgementWaitsForSqliteAndDoesNotMutateCurrentRules()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.01"/>
+  <testcase name="dirtySnapshotRestoresRecoveryAndKeepsRawSnapshotWithoutWorldProgression()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.009"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
