@@ -5,6 +5,7 @@
   "name": "HardRush development GameTests",
   "environment": "*",
   "entrypoints": {
+    "main": ["dev.hardrush.gametest.P1ServerRestartRegression"],
     "fabric-gametest": [
       "dev.hardrush.gametest.HardRushServerGameTest",
       "dev.hardrush.gametest.HardRushWorldBoundaryGameTest",

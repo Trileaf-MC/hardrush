@@ -56,6 +56,7 @@ public final class P1TenRoundGameTest {
 
     /** Called only by the separately packaged GameTest mixin; ordinary suites retain the system clock. */
     public static long observationTime() {
+        if (P1ServerRestartRegression.clockInstalled()) return P1ServerRestartRegression.observationTime();
         var clock = accelerated;
         return clock == null ? System.nanoTime() : clock.get();
     }

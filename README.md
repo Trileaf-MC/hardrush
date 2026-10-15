@@ -31,7 +31,11 @@ HardRush 是面向原版客户端的 Fabric 多人速通挑战模组。玩家在
 
 当前 **P0 未通过**：旧原型的自身替身遮挡与选取失败证据继续保留，但不再要求本人显示怪物。新实现仅向旁人发送怪物外观，本人保留原版玩家模型、相机和操作，并优先使用固定 Steve 皮肤；用户已通过外观操作测试并接受轻微尺寸差异。真实角色、自动装备和环境规则已通过 9 项 JUnit 与 35 项服务端 GameTest，合并人工验收由用户暂缓，最终图形生命周期回归仍待补齐。
 
-2026-10-14～15 按用户指示提前推进 P1：已接通三维度预算准备、登录／跨轮档案、普通加入／就绪／死亡计时、首龙唯一终局、庆祝与安全轮换、统计／规则分榜、TAB／原版历史书，以及 OP 分权、确认审计和带书版的成绩修订。第六批修复在线档案悬停的旧世界玩家登记残留，216 项 JUnit、常规 64 项必需 GameTest（含 1 项未启用十轮 gate）和独立十轮运行时整链通过；新增七阶段 Session／SQLite 新 JVM 正常恢复。当前轮不可变，只有下轮规则可改。26.3 入口默认关闭，独立实例用 `-Dhardrush.p1.enabled=true` 启用，首次新库可加 `-Dhardrush.p1.initialMode=normal`；默认极限开赛仍等待 P2。自动验证入口为 `scripts/p0-gradle.sh checkP1 -PhardrushP1=true --console=plain`，不启动图形客户端。同服真实三维度／档案十轮无图形整链已完成，复验另加 `:platforms:mc263:runGameTest -PhardrushP1TenRounds=true`，每次使用新的隔离存档。真实客户端十轮与整服世界＋档案新进程正常恢复尚未完成，P0／P0b／P1 阶段未通过；详见第六批记录的夹具边界。
+2026-10-14～15 按用户指示提前推进 P1：已接通三维度预算准备、登录／跨轮档案、普通加入／就绪／死亡计时、首龙唯一终局、庆祝与安全轮换、统计／规则分榜、TAB／原版历史书，以及 OP 分权、确认审计和带书版的成绩修订。第六批修复在线档案悬停的旧世界玩家登记残留，216 项 JUnit、常规 64 项必需 GameTest（含 1 项未启用十轮 gate）和独立十轮运行时整链通过；新增七阶段 Session／SQLite 新 JVM 正常恢复。当前轮不可变，只有下轮规则可改。26.3 入口默认关闭，独立实例用 `-Dhardrush.p1.enabled=true` 启用，首次新库可加 `-Dhardrush.p1.initialMode=normal`；默认极限开赛仍等待 P2。自动验证入口为 `scripts/p0-gradle.sh checkP1 -PhardrushP1=true --console=plain`，不启动图形客户端。同服真实三维度／档案十轮无图形整链已完成，复验另加 `:platforms:mc263:runGameTest -PhardrushP1TenRounds=true`，每次使用新的隔离存档。第七批另完成七阶段整服世界＋档案新进程正常恢复，修复倒计时恢复空窗与停服回调线程边界；最终 219 项 JUnit、64 项必需无图形 GameTest 和 14 个独立服务端 JVM 通过，见 [第七批记录](docs/p1-server-restart-regression.md)。真实客户端十轮及各阶段停服仍未验，P0／P0b／P1 阶段未通过。
+
+整服世界＋档案正常恢复的独立入口为 `python3 scripts/p1-server-restart.py`，可用 `--phase COUNTDOWN` 只运行一个场景；默认覆盖 PREPARING、WAITING、COUNTDOWN、RUNNING、SETTLING、CELEBRATING、ROTATING。脚本每次在 `.local/p1-server-restart/<随机UUID>` 建立隔离存档，各场景先启动 writer 专用服务端 JVM，完整正常停止并退出后，再用同一存档启动不同 PID 的 reader。仅复制 `.local/server-p0/eula.txt` 中用户已经接受的 EULA；逐步日志、fixture 结果和 SQLite／档案校验留在运行目录，失败资料保留。2026-10-15 七场景最终统一复跑已通过，结果、源码／制品指纹及完整日志见 [本批证据](docs/evidence/p1-server-restart-20261015/manifest.json)。
+
+该入口运行普通无图形 dedicated server，测试辅助代码只在 GameTest 测试制品中加载，不进入发布 JAR。嵌入式网络玩家、同步测试时钟、直接原生传送和低血量固定首龙用于覆盖服务器生命周期与 IO；不代表原版客户端画面、走门操作或满血生存通过。真实客户端十轮与各阶段人工 stop 继续按 [人工清单](docs/人工客户端测试/P1十轮与正常恢复.md) 验收，强杀／dirty 故障恢复留给 P3，不能据此勾选 P1-G。
 
 新外观层已移除 `selfview` 命令、本人替身、伪装隐身、私有队伍与相机实验，允许持物／装备；三种外观绑定唯一真实玩家，并在同一服务端会话内保留死亡重生、重连与跨维度选择。本人 Steve 皮肤通过原版网络刷新，解除恢复原皮肤。实现、验证和边界见 [新外观记录](docs/p0-observer-appearance.md)，[旧研究](docs/p0-self-view-evidence.md)作为历史保留。
 

@@ -90,6 +90,10 @@ public final class P1LobbyRuntime {
             var bootstrapCallbacks = new ArrayDeque<Runnable>();
             var session = new P1LobbySession(server.getWorldPath(LevelResource.ROOT).resolve("hardrush/p1.sqlite"),
                     MonotonicClock.system(), task -> server.execute(() -> {
+                        // After halt(), vanilla execute() may run inline on the submitting IO worker.
+                        // close() drains the accepted futures itself; never mutate the engine or
+                        // apply native player/TAB effects from that worker during normal shutdown.
+                        if (!server.isSameThread()) return;
                         // execute() may run inline on the server thread if
                         // bootstrap IO finished before constructor return.
                         if (reference[0] == null) bootstrapCallbacks.add(task);

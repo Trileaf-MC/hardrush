@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.core.combat.CombatCausalityTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-14T15:49:49.704Z" hostname="Mac" time="0.011">
+  <properties/>
+  <testcase name="unknownAndStaleAttacksNeverBecomeHumanCredit()" classname="dev.hardrush.core.combat.CombatCausalityTest" time="0.002"/>
+  <testcase name="duplicateIdsAreIdempotentButChangedPayloadIsAnError()" classname="dev.hardrush.core.combat.CombatCausalityTest" time="0.003"/>
+  <testcase name="durableEvidenceKeepsUnknownAndStaleProofWithoutInventingAnOwner()" classname="dev.hardrush.core.combat.CombatCausalityTest" time="0.003"/>
+  <testcase name="versionOneEvidenceRemainsReadableWithoutInventingRawEntities()" classname="dev.hardrush.core.combat.CombatCausalityTest" time="0.0"/>
+  <testcase name="allRequestedKindsPersistTheirDirectEntityAndLife()" classname="dev.hardrush.core.combat.CombatCausalityTest" time="0.001"/>
+  <testcase name="humanArrowAndMonsterArrowKeepCreationIdentityThroughTntCrystalChain()" classname="dev.hardrush.core.combat.CombatCausalityTest" time="0.001"/>
+  <testcase name="invalidOrInactiveSnapshotsFailClosed()" classname="dev.hardrush.core.combat.CombatCausalityTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

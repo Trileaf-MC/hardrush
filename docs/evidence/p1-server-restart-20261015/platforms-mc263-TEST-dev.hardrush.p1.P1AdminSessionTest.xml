@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p1.P1AdminSessionTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-15T01:56:25.736Z" hostname="LeifMacBookPro2023.local" time="0.387">
+  <properties/>
+  <testcase name="abortLocksImmediatelyAndStopsAtAcceptanceDespiteIoDelayThenSafelyRotates()" classname="dev.hardrush.p1.P1AdminSessionTest" time="0.292"/>
+  <testcase name="worldRetryPersistsIntentBeforeAdapterAndCannotClearFailedSession()" classname="dev.hardrush.p1.P1AdminSessionTest" time="0.012"/>
+  <testcase name="invalidMetadataDoesNotLeaveAnInvisiblePendingCoreTransition()" classname="dev.hardrush.p1.P1AdminSessionTest" time="0.019"/>
+  <testcase name="stopDrainsAdminAbortWithoutCallbacksAndDoesNotAcceptLaterOnlineEvents()" classname="dev.hardrush.p1.P1AdminSessionTest" time="0.021"/>
+  <testcase name="stopBoundaryRejectsNewConnectionEventsAndFailedViewDoesNotKeepTiming()" classname="dev.hardrush.p1.P1AdminSessionTest" time="0.026"/>
+  <testcase name="startRequiresAdaptersNormalModeAndReadyOnlineHumanThenAwaitsProfileAdmission()" classname="dev.hardrush.p1.P1AdminSessionTest" time="0.015"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

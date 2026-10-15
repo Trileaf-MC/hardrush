@@ -1,3 +1,5 @@
+import groovy.json.JsonOutput
+
 plugins {
     id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
@@ -72,6 +74,74 @@ fabricApi {
         enableClientGameTests = true
         // The helper copies the existing accepted EULA; it never accepts it for the user.
         eula = false
+    }
+}
+
+// A normal, headless dedicated server with the test mod loaded. It deliberately
+// does not inherit gameTest's runner properties: restart evidence needs real JVM exits.
+def p1RestartPhases = ['PREPARING', 'WAITING', 'COUNTDOWN', 'RUNNING', 'SETTLING', 'CELEBRATING', 'ROTATING']
+def p1RestartPhase = providers.gradleProperty('hardrushP1RestartPhase').orElse('WAITING').get()
+def p1RestartOperation = providers.gradleProperty('hardrushP1RestartOperation').orElse('write').get()
+def p1RestartBase = rootProject.file('.local/p1-server-restart').toPath().toAbsolutePath().normalize()
+def p1RestartDirectory = rootProject.file(providers.gradleProperty('hardrushP1RestartDirectory')
+        .orElse('.local/p1-server-restart/launch-template').get()).toPath().toAbsolutePath().normalize()
+if (!p1RestartPhases.contains(p1RestartPhase) || !['write', 'recover'].contains(p1RestartOperation)) {
+    throw new GradleException('Invalid P1 restart phase or operation')
+}
+if (!p1RestartDirectory.startsWith(p1RestartBase) || p1RestartDirectory == p1RestartBase) {
+    throw new GradleException('P1 restart storage must be a scenario below .local/p1-server-restart')
+}
+loom {
+    runs {
+        p1RestartServer {
+            server()
+            source sourceSets.gametest
+            runDir p1RestartDirectory.toString()
+            ideConfigGenerated false
+            vmArg '--enable-native-access=ALL-UNNAMED'
+            vmArg '-Dhardrush.p1.enabled=true'
+            vmArg '-Dhardrush.p1.initialMode=normal'
+            vmArg "-Dhardrush.p1.restart.phase=${p1RestartPhase}"
+            vmArg "-Dhardrush.p1.restart.operation=${p1RestartOperation}"
+            vmArg "-Dhardrush.p1.restart.directory=${p1RestartDirectory}"
+        }
+    }
+}
+
+tasks.named('runP1RestartServer') {
+    doFirst {
+        def eula = p1RestartDirectory.resolve('eula.txt').toFile()
+        if (!eula.isFile() || !eula.readLines().collect { it.trim() }.contains('eula=true')) {
+            throw new GradleException('Use scripts/p1-server-restart.py to copy the existing accepted EULA and prepare isolated storage')
+        }
+    }
+}
+
+// Resolve and build Loom's launch once. The Python runner reuses this specification
+// across the matrix, starts Java directly, and checks each fixture's actual process ID.
+tasks.register('writeP1RestartLaunchSpec') {
+    group = 'verification'
+    description = 'Build a headless P1 restart fixture launch specification without starting a server.'
+    def launchTask = tasks.named('runP1RestartServer')
+    dependsOn { launchTask.get().taskDependencies.getDependencies(launchTask.get()) }
+    dependsOn sourceSets.gametest.runtimeClasspath
+    doLast {
+        def launch = launchTask.get()
+        def run = loom.runs.named('p1RestartServer').get()
+        def target = rootProject.file(providers.gradleProperty('hardrushP1RestartLaunchSpec')
+                .orElse('platforms/mc263/build/p1-restart-launch.json').get())
+        def programArgs = new ArrayList(launch.args ?: [])
+        launch.argumentProviders.each { programArgs.addAll(it.asArguments().toList()) }
+        def spec = [schema: 1,
+                    java: launch.javaLauncher.get().executablePath.asFile.absolutePath,
+                    jvmArgs: launch.allJvmArgs,
+                    classpath: launch.classpath.files.collect { it.absolutePath },
+                    mainClass: launch.mainClass.get(),
+                    programArgs: programArgs,
+                    environment: run.environmentVars.get()]
+        target.parentFile.mkdirs()
+        target.text = JsonOutput.prettyPrint(JsonOutput.toJson(spec)) + '\n'
+        logger.lifecycle("P1 restart launch specification: ${target}")
     }
 }
 
