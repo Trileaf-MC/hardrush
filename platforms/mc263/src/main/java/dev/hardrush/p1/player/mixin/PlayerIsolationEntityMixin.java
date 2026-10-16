@@ -19,12 +19,12 @@ public abstract class PlayerIsolationEntityMixin {
     }
     @Inject(method = "doTick", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdSimulation(CallbackInfo ci) {
-        if (P1PlayerProfiles.isLocked((ServerPlayer) (Object) this)) ci.cancel();
+        if (P1PlayerProfiles.simulationFrozen((ServerPlayer) (Object) this)) ci.cancel();
     }
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdWorldTick(CallbackInfo ci) {
         var player = (ServerPlayer) (Object) this;
-        if (P1PlayerProfiles.isLocked(player)) {
+        if (P1PlayerProfiles.simulationFrozen(player)) {
             if (player.connection != null) player.connection.tickClientLoadTimeout();
             ci.cancel();
         }

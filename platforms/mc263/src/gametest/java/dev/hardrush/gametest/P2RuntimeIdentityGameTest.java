@@ -5,6 +5,7 @@ import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.*;
 import dev.hardrush.p1.P1LobbyRuntime;
+import dev.hardrush.p1.world.P1LobbyWorld;
 import dev.hardrush.p1.P1LobbySession;
 import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
@@ -161,7 +162,7 @@ public final class P2RuntimeIdentityGameTest {
                         acknowledged = Integer.MIN_VALUE;
                         player = prepare.spawnPlayer(connection, CommonListenerCookie.createInitial(profile, false));
                         prepare.close(); acknowledge();
-                        test.assertTrue(player.level() == server.overworld() && P1PlayerProfiles.isLocked(player),
+                        test.assertTrue(player.level() == P1LobbyWorld.open(server).holdingLevel() && P1PlayerProfiles.isLocked(player),
                                 "Production native login remains in the lobby while the profile is verified");
                     }).thenWaitUntil(() -> await(profiles.isReady(profile.id(), round()), "Production profile journal is ready"));
         }
@@ -170,7 +171,7 @@ public final class P2RuntimeIdentityGameTest {
             var worlds = service("WORLDS", P1RoundWorldBundle.class);
             roundLevel = worlds.level(Level.OVERWORLD);
             test.assertTrue(player.level() == roundLevel && !P2ProtectionRuntime.protectedEntity(player), "The native human starts on unprotected natural terrain");
-            test.assertTrue(P2ProtectionRuntime.zone(server.overworld()).filter(P2ProtectionRuntime.Zone::lobby).isPresent(), "The long-lived lobby remains protected");
+            test.assertTrue(P2ProtectionRuntime.zone(P1LobbyWorld.open(server).holdingLevel()).filter(P2ProtectionRuntime.Zone::lobby).isPresent(), "The long-lived lobby remains protected");
             for (var dimension : java.util.List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
                 test.assertTrue(P2ProtectionRuntime.zone(worlds.level(dimension)).isEmpty(), "No formal round dimension registers a spawn protection zone");
             }
@@ -222,7 +223,7 @@ public final class P2RuntimeIdentityGameTest {
         boolean monsterReady() {
             var current = server.getPlayerList().getPlayer(profile.id());
             return participant() != null && participant().role() == ParticipantRole.MONSTER_LOBBY && current != null
-                    && current != dead && current.isAlive() && current.level() == server.overworld()
+                    && current != dead && current.isAlive() && current.level() == P1LobbyWorld.open(server).holdingLevel()
                     && profiles.isReady(profile.id(), round()) && !session.mutationPending();
         }
 
@@ -233,7 +234,10 @@ public final class P2RuntimeIdentityGameTest {
             test.assertValueEqual(participant().role(), ParticipantRole.MONSTER_LOBBY, "The committed UUID remains a monster");
             test.assertValueEqual(participant().lifeSequence(), 1, "Death and reconnect do not create another human life");
             test.assertFalse(participant().hasLeftProtection(), "Death conversion needs no legacy spawn exit marker");
-            test.assertTrue(player.isAlive() && player.level() == server.overworld() && P1PlayerProfiles.isLocked(player), "A living native monster remains isolated in the actual lobby");
+            test.assertTrue(player.isAlive() && player.level() == P1LobbyWorld.open(server).holdingLevel() && P1PlayerProfiles.isLocked(player), "A living native monster remains isolated in the actual lobby");
+            test.assertTrue(P1PlayerProfiles.canMoveInLobby(player), "The verified monster lobby permits native movement");
+            test.assertValueEqual(player.gameMode.getGameModeForPlayer(), net.minecraft.world.level.GameType.ADVENTURE,
+                    "Native monster respawn and reconnect use adventure mode");
             test.assertTrue(player.connection.player == player,
                     "The native connection must bind the replacement monster, not the removed dead human: listed="
                             + identity(player) + ",listener=" + identity(player.connection.player) + ",dead=" + identity(dead));

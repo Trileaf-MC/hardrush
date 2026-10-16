@@ -41,6 +41,8 @@ public final class P1LobbyGameTest {
                         P1LobbyRuntime.sessionState(server).orElseThrow() == P1LobbySession.State.OPEN,
                         "Enabled lifecycle durably opens the initial round: " + P1LobbyRuntime.status(server)))
                 .thenWaitUntil(() -> test.assertTrue(!P1LobbyRuntime.mutationPending(server), "Initial durable writes drained"))
+                .thenWaitUntil(() -> test.assertTrue(!P1LobbyRuntime.snapshot(server).orElseThrow().cleanShutdown(),
+                        "The first runtime tick durably marks the running process dirty"))
                 .thenExecute(() -> {
                     var round = P1LobbyRuntime.snapshot(server).orElseThrow();
                     identity[0] = round.roundId();

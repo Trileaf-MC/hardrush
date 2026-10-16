@@ -17,6 +17,7 @@
       "dev.hardrush.gametest.MonsterAppearanceGameTest",
       "dev.hardrush.gametest.MonsterRoleGameTest",
       "dev.hardrush.gametest.P1LobbyGameTest",
+      "dev.hardrush.gametest.P1LobbyMovementGameTest",
       "dev.hardrush.gametest.P1CombatGameTest",
       "dev.hardrush.gametest.P1WorldPreparationGameTest",
       "dev.hardrush.gametest.P3StorageGameTest",

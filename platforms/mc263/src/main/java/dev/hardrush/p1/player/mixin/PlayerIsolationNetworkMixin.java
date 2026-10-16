@@ -5,6 +5,11 @@ import dev.hardrush.p1.combat.P1CombatRuntime;
 import dev.hardrush.p1.P1LobbyRuntime;
 import dev.hardrush.p1.book.P1BookPort;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
+import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundChatCommandSignedPacket;
 import net.minecraft.network.chat.LastSeenMessages;
@@ -22,9 +27,7 @@ public abstract class PlayerIsolationNetworkMixin {
     @Shadow public ServerPlayer player;
 
     // Off-thread invocations proceed to vanilla's PacketUtils scheduling. The replay on the server thread is cancelled here.
-    @Inject(method = {"handleMovePlayer", "handleMoveVehicle", "handlePlayerInput", "handlePlayerAction",
-            "handleUseItemOn", "handleAttack", "handleInteract", "handlePunch",
-            "handlePlayerCommand", "handlePaddleBoat",
+    @Inject(method = {"handleMoveVehicle", "handleAttack", "handleInteract", "handlePunch", "handlePaddleBoat",
             "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
             "handlePlayerAbilities", "handleSpectatorAction", "handleTeleportToEntityPacket",
             "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
@@ -35,6 +38,53 @@ public abstract class PlayerIsolationNetworkMixin {
             at = @At("HEAD"), cancellable = true)
     private void hardrush$holdGameplay(CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && P1PlayerProfiles.isLocked(player)) ci.cancel();
+    }
+
+    @Inject(method = "handleMovePlayer", at = @At("HEAD"), cancellable = true)
+    private void hardrush$holdMovement(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && P1PlayerProfiles.simulationFrozen(player)) {
+            // Reject the prediction too; otherwise a frozen client appears able to walk locally.
+            player.connection.teleport(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "handlePlayerInput", at = @At("HEAD"), cancellable = true)
+    private void hardrush$holdInput(CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && P1PlayerProfiles.simulationFrozen(player)) ci.cancel();
+    }
+
+    @Inject(method = "handlePlayerCommand", at = @At("HEAD"), cancellable = true)
+    private void hardrush$lobbySprint(ServerboundPlayerCommandPacket packet, CallbackInfo ci) {
+        if (!player.level().getServer().isSameThread() || !P1PlayerProfiles.isLocked(player)) return;
+        boolean sprint = packet.getAction() == ServerboundPlayerCommandPacket.Action.START_SPRINTING
+                || packet.getAction() == ServerboundPlayerCommandPacket.Action.STOP_SPRINTING;
+        if (!sprint || !P1PlayerProfiles.canMoveInLobby(player)) ci.cancel();
+    }
+
+    @Inject(method = "handlePlayerAction", at = @At("HEAD"), cancellable = true)
+    private void hardrush$holdBlockAction(ServerboundPlayerActionPacket packet, CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && P1PlayerProfiles.isLocked(player)) {
+            switch (packet.getAction()) {
+                case START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> {
+                    player.connection.ackBlockChangesUpTo(packet.getSequence());
+                    player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.getPos()));
+                }
+                default -> { }
+            }
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "handleUseItemOn", at = @At("HEAD"), cancellable = true)
+    private void hardrush$holdBlockUse(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && P1PlayerProfiles.isLocked(player)) {
+            player.connection.ackBlockChangesUpTo(packet.sequence());
+            var hit = packet.hitResult();
+            player.connection.send(new ClientboundBlockUpdatePacket(player.level(), hit.getBlockPos()));
+            player.connection.send(new ClientboundBlockUpdatePacket(player.level(), hit.getBlockPos().relative(hit.getDirection())));
+            ci.cancel();
+        }
     }
 
     @Inject(method = "handleContainerClick", at = @At("HEAD"), cancellable = true)

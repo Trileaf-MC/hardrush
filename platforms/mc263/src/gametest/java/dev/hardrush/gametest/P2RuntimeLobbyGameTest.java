@@ -7,6 +7,7 @@ import dev.hardrush.core.hunt.HuntVotingService;
 import dev.hardrush.core.round.*;
 import dev.hardrush.p0.monster.MonsterRoles;
 import dev.hardrush.p1.P1LobbyRuntime;
+import dev.hardrush.p1.world.P1LobbyWorld;
 import dev.hardrush.p1.P1LobbySession;
 import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
@@ -260,7 +261,7 @@ public final class P2RuntimeLobbyGameTest {
                         f.test.assertTrue(prey.player.isDeadOrDying(), "Actual native attack creates the lethal event");
                     })
                     .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RESCUE && hunter.participant().revivalEntitled()
-                            && prey.current() != null && prey.current().isAlive() && prey.current().level() == f.server.overworld()
+                            && prey.current() != null && prey.current().isAlive() && prey.current().level() == P1LobbyWorld.open(f.server).holdingLevel()
                             && f.profiles.isReady(prey.profile.id(), f.round()) && !f.session.mutationPending(), "Cycle all deaths and reward reach rescue atomically " + iteration))
                     .thenExecute(() -> {
                         hunter.command("hardrush return");
@@ -440,7 +441,7 @@ public final class P2RuntimeLobbyGameTest {
         boolean monsterReady(boolean replacementRequired) {
             var current = monster.current();
             return monster.participant().role() == ParticipantRole.MONSTER_LOBBY && current != null
-                    && (!replacementRequired || current != dead) && current.isAlive() && current.level() == server.overworld()
+                    && (!replacementRequired || current != dead) && current.isAlive() && current.level() == P1LobbyWorld.open(server).holdingLevel()
                     && profiles.isReady(monster.profile.id(), round()) && !session.mutationPending() && originalLootVisible();
         }
         boolean deployed(int sequence) {
@@ -451,6 +452,8 @@ public final class P2RuntimeLobbyGameTest {
                     && arenaTicking() && level.isPositionEntityTicking(monster.player.blockPosition()) && originalLootVisible();
         }
         void assertDeployment(int sequence) {
+            test.assertValueEqual(monster.player.gameMode.getGameModeForPlayer(), net.minecraft.world.level.GameType.SURVIVAL,
+                    "A successful monster sortie restores survival mode");
             test.assertValueEqual(monster.participant().monsterDeploymentSequence(), sequence, "Exactly one persisted sortie is admitted");
             double horizontal = monster.player.position().subtract(target.player.position()).horizontalDistance();
             test.assertTrue(horizontal >= 32 && horizontal <= 64, "Actual native monster spawns in the target's 32-64 block ring");
@@ -535,8 +538,11 @@ public final class P2RuntimeLobbyGameTest {
         }
         void assertLobby(boolean replaced) {
             monster.player = monster.current();
-            test.assertTrue(monster.player != null && monster.player.isAlive() && monster.player.level() == server.overworld()
+            test.assertTrue(monster.player != null && monster.player.isAlive() && monster.player.level() == P1LobbyWorld.open(server).holdingLevel()
                     && P1PlayerProfiles.isLocked(monster.player), "The authoritative native body is isolated in the real lobby");
+            test.assertTrue(P1PlayerProfiles.canMoveInLobby(monster.player), "Verified monster standby may move without competition admission");
+            test.assertValueEqual(monster.player.gameMode.getGameModeForPlayer(), net.minecraft.world.level.GameType.ADVENTURE,
+                    "Every returned monster body uses adventure mode");
             if (replaced) test.assertTrue(monster.player != dead, "Defeat must create a native replacement rather than heal the dead object");
             test.assertTrue(monster.player.connection.player == monster.player, "The native connection rebinds to the live lobby body");
             test.assertTrue(monster.player.getInventory().isEmpty(), "No role controls or human death inventory enter the lobby");
@@ -571,7 +577,9 @@ public final class P2RuntimeLobbyGameTest {
             } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
         }
         int diamonds() {
-            int count = level.getEntitiesOfClass(ItemEntity.class, humanDrops).stream().map(ItemEntity::getItem)
+            // Native loot can drift beyond the original five-block death-query box.
+            // Count the whole private arena; UUID visibility separately proves the original drops survive.
+            int count = level.getEntitiesOfClass(ItemEntity.class, humanDrops.inflate(128)).stream().map(ItemEntity::getItem)
                     .filter(stack -> stack.is(Items.DIAMOND)).mapToInt(ItemStack::getCount).sum();
             if (count != 3 && !humanDropEntities.isEmpty()) {
                 System.out.println("P2 loot conservation diagnostics: " + lootDiagnostic());
@@ -638,7 +646,7 @@ public final class P2RuntimeLobbyGameTest {
                         .thenExecute(() -> {
                             connection = new RecordingConnection(); channel = new EmbeddedChannel(connection); acknowledged = Integer.MIN_VALUE;
                             player = prepare.spawnPlayer(connection, CommonListenerCookie.createInitial(profile, false)); prepare.close(); acknowledge();
-                            test.assertTrue(player.level() == server.overworld() && P1PlayerProfiles.isLocked(player), "Native login starts in real profile quarantine");
+                            test.assertTrue(player.level() == P1LobbyWorld.open(server).holdingLevel() && P1PlayerProfiles.isLocked(player), "Native login starts in real profile quarantine");
                         }).thenWaitUntil(() -> await(profiles.isReady(profile.id(), round()), "Real profile journal ready: " + profile.name()));
             }
             void command(String command) {

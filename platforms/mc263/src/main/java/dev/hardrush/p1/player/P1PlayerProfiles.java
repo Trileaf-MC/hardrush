@@ -148,6 +148,19 @@ public final class P1PlayerProfiles implements AutoCloseable {
         return !entry.admitted || entry.deathHeld;
     }
 
+    public static boolean canMoveInLobby(ServerPlayer player) {
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        return entry != null && entry.player == player && !service.closed && !entry.admitted
+                && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit
+                && player.isAlive() && player.gameMode.getGameModeForPlayer() == GameType.ADVENTURE
+                && dev.hardrush.p1.P1LobbyRuntime.lobbyActivityAllowed(player);
+    }
+
+    public static boolean simulationFrozen(ServerPlayer player) {
+        return isLocked(player) && !canMoveInLobby(player);
+    }
+
     /** Before durable suspension exists, retain vanilla player/advancement files rather than saving lobby coordinates. */
     public static boolean allowVanillaSave(ServerPlayer player) {
         if (!Boolean.getBoolean("hardrush.p1.enabled")) return true;
@@ -287,6 +300,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
         clearMonsterLobbyState(player);
         player.setHealth(player.getMaxHealth());
         if (!player.teleportTo(level, position.x, position.y, position.z, Set.of(), 0, 0, true)) return false;
+        player.setGameMode(GameType.SURVIVAL);
         ((ProfileTagged) player).hardrush$isolated(false);
         ((ProfileTagged) player).hardrush$respawnPermitted(false);
         entry.admitted = true;
@@ -371,7 +385,6 @@ public final class P1PlayerProfiles implements AutoCloseable {
             player.setAbsorptionAmount(0);
             ((PlayerProfileResetAccessor) player).hardrush$setFoodData(new FoodData());
             player.getAbilities().apply(new Abilities().pack());
-            player.setGameMode(GameType.SURVIVAL);
             player.setPermanentlyInvulnerable(false);
             player.setNoGravity(false);
             player.setRespawnPosition(null, false);
@@ -384,7 +397,11 @@ public final class P1PlayerProfiles implements AutoCloseable {
             }
             ((ProfileTagged) player).hardrush$lifeSequence(participant.lifeSequence());
             ((ProfileTagged) player).hardrush$respawnPermitted(false);
-            if (!player.teleportTo(spawnLevel, spawn.x, spawn.y, spawn.z, Set.of(), 0, 0, true)) return false;
+            if (!player.teleportTo(spawnLevel, spawn.x, spawn.y, spawn.z, Set.of(), 0, 0, true)) {
+                applyLobbyMode(player);
+                return false;
+            }
+            player.setGameMode(GameType.SURVIVAL);
             entry.monsterLobbyInitialized = false;
             entry.deathHeld = false;
             entry.awaitingRespawn = false;
@@ -536,6 +553,13 @@ public final class P1PlayerProfiles implements AutoCloseable {
                 moveToLobby(entry.player);
             }
             if (entry.target == null && entry.problem.isEmpty()) prepare(entry, target);
+            // A new human life may already be at its round spawn while its journal is saving.
+            // Only a completed profile can be reconciled as a movable lobby body.
+            if (entry.ready && !entry.admitted && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit
+                    && entry.player.isAlive()) {
+                if (entry.player.level() != lobby.get()) moveToLobby(entry.player);
+                applyLobbyMode(entry.player);
+            }
         }
     }
 
@@ -626,6 +650,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
             ((ProfileTagged) player).hardrush$isolated(false);
             ((ProfileTagged) player).hardrush$respawnPermitted(false);
             entry.admitted = true;
+            player.setGameMode(GameType.SURVIVAL);
             if (!entry.fresh) {
                 var input = TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), entry.resume);
                 player.loadAndSpawnParentVehicle(input);
@@ -643,7 +668,8 @@ public final class P1PlayerProfiles implements AutoCloseable {
     public void returnToLobby(ServerPlayer player) {
         var entry = players.get(player.getUUID());
         if (entry != null && entry.player == player && !entry.admitted) {
-            moveToLobby(player);
+            if (player.level() != lobby.get()) moveToLobby(player);
+            else applyLobbyMode(player);
             return;
         }
         onLogin(player);
@@ -804,6 +830,22 @@ public final class P1PlayerProfiles implements AutoCloseable {
         }
         player.setDeltaMovement(Vec3.ZERO);
         player.resetFallDistance();
+        applyLobbyMode(player);
+    }
+
+    private static void applyLobbyMode(ServerPlayer player) {
+        if (player.connection == null) return;
+        if (player.gameMode.getGameModeForPlayer() == GameType.ADVENTURE
+                && !player.getAbilities().flying && !player.getAbilities().mayfly
+                && !player.getAbilities().mayBuild && !player.getAbilities().instabuild && !player.isNoGravity()) return;
+        player.setGameMode(GameType.ADVENTURE);
+        // Loading an old creative/spectator profile must not leave flying/no-gravity abilities in the lobby.
+        player.getAbilities().flying = false;
+        player.getAbilities().mayfly = false;
+        player.getAbilities().mayBuild = false;
+        player.getAbilities().instabuild = false;
+        player.setNoGravity(false);
+        player.onUpdateAbilities();
     }
 
     private static CompoundTag capture(ServerPlayer player, boolean fresh) {

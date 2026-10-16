@@ -6,6 +6,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParser;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.p1.P1LobbyRuntime;
+import dev.hardrush.p1.world.P1LobbyWorld;
 import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p1.player.ProfileJournal;
 import dev.hardrush.core.round.RoundSnapshotCodec;
@@ -138,7 +139,7 @@ public final class P3ProfileCrashRegression implements ModInitializer {
             act("connect quarantined UUID", () -> {
                 actor.connection = new RecordingConnection(); actor.channel = new EmbeddedChannel(actor.connection);
                 actor.player = actor.prepare.spawnPlayer(actor.connection, CommonListenerCookie.createInitial(actor.profile, false)); actor.prepare.close(); acknowledge(actor);
-                require(actor.player.level() == server.overworld() && P1PlayerProfiles.isLocked(actor.player), "native login stays locked in permanent lobby");
+                require(actor.player.level() == P1LobbyWorld.open(server).holdingLevel() && P1PlayerProfiles.isLocked(actor.player), "native login stays locked in permanent lobby");
             });
         }
 

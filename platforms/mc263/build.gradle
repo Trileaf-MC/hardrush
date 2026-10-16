@@ -349,3 +349,27 @@ tasks.named('runGameTest') {
         }
     }
 }
+
+// Shared lobby movement exercises real packets and the production lifecycle in its own storage.
+def lobbyMovementRunDir = rootProject.file(".local/lobby-movement/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushLobbyMovement').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true'
+                || ['hardrushP1TenRounds', 'hardrushP2Identity', 'hardrushP2Lobby', 'hardrushP3Recovery', 'hardrushP3Storage'].any {
+                    providers.gradleProperty(it).orNull == 'true'
+                }) throw new GradleException('Lobby movement requires -PhardrushP1=true and its own isolated run')
+        vmArg '-Dhardrush.lobby.testMovement=true'
+        vmArg '-Dhardrush.p1.initialMode=normal'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1lobby_movement_game_test*'
+        runDir lobbyMovementRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushLobbyMovement').orNull == 'true') {
+        doFirst {
+            lobbyMovementRunDir.mkdirs()
+            copy { from rootProject.file('.local/server-p0/eula.txt'); into lobbyMovementRunDir }
+            logger.lifecycle("Isolated lobby movement storage: ${lobbyMovementRunDir}")
+        }
+    }
+}

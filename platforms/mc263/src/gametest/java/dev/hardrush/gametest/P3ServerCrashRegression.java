@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import dev.hardrush.core.round.*;
 import dev.hardrush.p0.monster.MonsterRoles;
 import dev.hardrush.p1.P1LobbyRuntime;
+import dev.hardrush.p1.world.P1LobbyWorld;
 import dev.hardrush.p1.P1LobbySession;
 import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.persistence.SqliteRoundStore;
@@ -99,7 +100,7 @@ public final class P3ServerCrashRegression implements ModInitializer {
             waitFor("native monster lobby replacement", () -> {
                 a.player = server.getPlayerList().getPlayer(a.profile.id());
                 return idle() && round().participants().get(a.profile.id()).role() == ParticipantRole.MONSTER_LOBBY
-                        && a.player.isAlive() && a.player.level() == server.overworld() && profiles.isReady(a.profile.id(), round());
+                        && a.player.isAlive() && a.player.level() == P1LobbyWorld.open(server).holdingLevel() && profiles.isReady(a.profile.id(), round());
             });
             act("cooldown and formal deployment", () -> { advance(31); command(a, "hardrush deploy"); });
             waitFor("formal deployed zombie", () -> idle() && round().participants().get(a.profile.id()).role() == ParticipantRole.MONSTER_DEPLOYED
@@ -240,7 +241,7 @@ public final class P3ServerCrashRegression implements ModInitializer {
             act("reject repeated consumption and new participation", () -> {
                 command(a, "hardrush revive"); command(a, "hardrush join");
                 require(round().version() == expected.version() && round().challengeNanos() == expected.challengeNanos(), "recovery never consumes or advances time");
-                for (var actor : List.of(a, b)) require(actor.player.level() == server.overworld() && P1PlayerProfiles.isLocked(actor.player), "native reconnect remains in permanent lobby");
+                for (var actor : List.of(a, b)) require(actor.player.level() == P1LobbyWorld.open(server).holdingLevel() && P1PlayerProfiles.isLocked(actor.player), "native reconnect remains in permanent lobby");
                 stopping = true; server.halt(false);
             });
         }
@@ -251,7 +252,7 @@ public final class P3ServerCrashRegression implements ModInitializer {
             act("connect quarantined UUID", () -> {
                 actor.connection = new RecordingConnection(); actor.channel = new EmbeddedChannel(actor.connection);
                 actor.player = actor.prepare.spawnPlayer(actor.connection, CommonListenerCookie.createInitial(actor.profile, false)); actor.prepare.close(); acknowledge(actor);
-                require(actor.player.level() == server.overworld() && P1PlayerProfiles.isLocked(actor.player), "login cannot restore uncertain native effects");
+                require(actor.player.level() == P1LobbyWorld.open(server).holdingLevel() && P1PlayerProfiles.isLocked(actor.player), "login cannot restore uncertain native effects");
             });
         }
 

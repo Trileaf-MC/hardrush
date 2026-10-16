@@ -14,6 +14,7 @@ import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p2.protection.P2ProtectionRuntime;
 import dev.hardrush.p2.lobby.P2LobbyRuntime;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
+import dev.hardrush.p1.world.P1LobbyWorld;
 import dev.hardrush.p1.world.P1ClosedWorlds;
 import dev.hardrush.p1.world.P1WorldPaths;
 import dev.hardrush.p1.combat.P1CombatRuntime;
@@ -85,8 +86,9 @@ public final class P1LobbyRuntime {
         initialized = true;
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             if (!Boolean.getBoolean("hardrush.p1.enabled")) return;
+            var lobby = P1LobbyWorld.open(server);
             var profiles = new P1PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profiles"),
-                    server::overworld, () -> Vec3.atBottomCenterOf(server.overworld().getRespawnData().pos()));
+                    lobby::holdingLevel, lobby::holdingSpawn);
             P1PlayerProfiles.install(server, profiles);
             PROFILES.put(server, profiles);
             ADMITTED.put(server, new java.util.HashMap<>());
@@ -110,8 +112,8 @@ public final class P1LobbyRuntime {
                 @Override public Optional<P2ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) {
                     var round = session.snapshot().orElse(null);
                     if (round == null) return Optional.empty();
-                    if (level == server.overworld()) return Optional.of(new P2ProtectionRuntime.Zone(round.roundId(),
-                            Vec3.atBottomCenterOf(level.getRespawnData().pos()), round.rules().protectionRadius(), true));
+                    if (P1LobbyWorld.isLobby(level) || level == server.overworld()) return Optional.of(new P2ProtectionRuntime.Zone(round.roundId(),
+                            lobby.holdingSpawn(), round.rules().protectionRadius(), true));
                     // Formal round worlds use ordinary survival rules, including their spawn.
                     return Optional.empty();
                 }
@@ -198,6 +200,12 @@ public final class P1LobbyRuntime {
             var session = SESSIONS.get(server);
             if (session == null) return;
             try {
+                var lobby = P1LobbyWorld.open(server);
+                lobby.tick();
+                if (lobby.failure().isPresent() && session.state() != P1LobbySession.State.FAILED
+                        && session.state() != P1LobbySession.State.RECHECKING) {
+                    throw new IllegalStateException(lobby.failure().orElseThrow());
+                }
                 if (session.state() == P1LobbySession.State.FAILED || session.state() == P1LobbySession.State.RECHECKING
                         || session.snapshot().filter(r -> r.phase() == RoundPhase.RECOVERY_REQUIRED).isPresent()) {
                     var round = session.snapshot().orElse(null);
@@ -220,7 +228,7 @@ public final class P1LobbyRuntime {
                 var activeWorlds = worlds;
                 profiles.tick(round);
                 refreshTab(server, false);
-                if (worlds != null && worlds.ready()) session.adaptersReady(round.roundId());
+                if (worlds != null && worlds.ready() && lobby.ready()) session.adaptersReady(round.roundId());
                 if (round.phase() == RoundPhase.ROTATING) {
                     rotate(server, session, round, worlds, profiles);
                     session.tick();
@@ -370,6 +378,7 @@ public final class P1LobbyRuntime {
             ADMIN.forget(server);
             P1ProgressRuntime.unconfigure(server);
             P1CombatRuntime.unconfigure(server);
+            P1LobbyWorld.shutdown(server);
         });
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(Commands.literal("hardrush")
@@ -421,6 +430,7 @@ public final class P1LobbyRuntime {
         var session = SESSIONS.get(server);
         var worlds = WORLDS.get(server);
         return session == null ? disabled().message() : session.status()
+                + " 大厅准备：" + P1LobbyWorld.status(server)
                 + (worlds == null ? "" : " 世界准备：" + (worlds.ready() ? "已完成" : worlds.failure().orElse("进行中")));
     }
 
@@ -570,11 +580,22 @@ public final class P1LobbyRuntime {
         var session = SESSIONS.get(server);
         var round = session == null ? null : session.snapshot().orElse(null);
         if (round == null || session.state() != P1LobbySession.State.OPEN || !profileReady(player)
-                || player.level() != server.overworld()) return false;
+                || !P1LobbyWorld.isLobby(player.level())) return false;
         var participant = round.participants().get(player.getUUID());
         return (round.phase() == RoundPhase.PREPARING || round.phase() == RoundPhase.WAITING
                 || round.phase() == RoundPhase.COUNTDOWN || round.phase() == RoundPhase.RUNNING)
                 && (participant == null || participant.lifeSequence() == 0);
+    }
+
+    /** Movement is separate from competition admission: a healthy, verified lobby body may simulate. */
+    public static boolean lobbyActivityAllowed(ServerPlayer player) {
+        var server = player.level().getServer();
+        var session = SESSIONS.get(server);
+        var profiles = PROFILES.get(server);
+        return session != null && session.state() == P1LobbySession.State.OPEN
+                && profiles != null && profiles.manages(player) && P1LobbyWorld.isLobby(player.level())
+                && session.snapshot().filter(round -> round.phase() != RoundPhase.RECOVERY_REQUIRED
+                    && profiles.isReady(player.getUUID(), round)).isPresent();
     }
 
     private static boolean canReceiveBook(ServerPlayer player) {
@@ -661,9 +682,11 @@ public final class P1LobbyRuntime {
             if (profiles.manages(player)) profiles.returnToLobby(player);
             else if (worlds != null && P1RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), player.level())) {
                 player.stopRiding(); player.ejectPassengers(); player.closeContainer();
-                var spawn = server.overworld().getRespawnData().pos();
-                player.teleportTo(server.overworld(), spawn.getX() + .5, spawn.getY(), spawn.getZ() + .5,
+                var lobby = P1LobbyWorld.open(server);
+                var spawn = lobby.holdingSpawn();
+                player.teleportTo(lobby.holdingLevel(), spawn.x, spawn.y, spawn.z,
                         java.util.Set.of(), 0, 0, true);
+                player.setGameMode(net.minecraft.world.level.GameType.ADVENTURE);
             }
         }
         // Do not replace the old profile generation while its survival suspension is still being written.

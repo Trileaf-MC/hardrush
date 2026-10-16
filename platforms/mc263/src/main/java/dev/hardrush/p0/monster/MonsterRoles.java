@@ -603,7 +603,7 @@ public final class MonsterRoles {
         role.gear.bind(role.model);
         role.nextAmbientTick=player.level().getServer().getTickCount()+80;
         player.closeContainer(); player.stopUsingItem(); player.stopRiding(); player.setSprinting(false);
-        player.setGameMode(GameType.ADVENTURE);
+        player.setGameMode(P2MonsterRuntime.rules(player).isPresent() ? GameType.SURVIVAL : GameType.ADVENTURE);
         for (var attribute : CONTROLLED) {
             var instance = player.getAttribute(attribute);
             if (attribute.equals(Attributes.MOVEMENT_SPEED)) {

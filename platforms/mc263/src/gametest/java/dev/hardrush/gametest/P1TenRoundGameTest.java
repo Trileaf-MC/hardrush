@@ -6,6 +6,7 @@ import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.record.ProgressWrite;
 import dev.hardrush.core.round.*;
 import dev.hardrush.p1.P1LobbyRuntime;
+import dev.hardrush.p1.world.P1LobbyWorld;
 import dev.hardrush.p1.P1LobbySession;
 import dev.hardrush.p1.book.P1BookPort;
 import dev.hardrush.p1.player.P1PlayerProfiles;
@@ -146,7 +147,7 @@ public final class P1TenRoundGameTest {
                         actor.prepare.close();
                         acknowledge(actor.player);
                         test.assertTrue(P1PlayerProfiles.isLocked(actor.player), "Actual login is quarantined before any participation");
-                        test.assertTrue(actor.player.level() == server.overworld(), "Saved competition coordinates cannot enter before verification");
+                        test.assertTrue(actor.player.level() == P1LobbyWorld.open(server).holdingLevel(), "Saved competition coordinates cannot enter before verification");
                     }).thenWaitUntil(() -> await(profiles.isReady(actor.profile.id(), round()), "Durable native profile conversion"));
         }
 
@@ -302,7 +303,7 @@ public final class P1TenRoundGameTest {
                             test.assertTrue(server.getLevel(level.dimension()) == null && !P1RoundWorldBundle.owns(level), "Each old native level is deregistered and no longer owned");
                             releasedKeys.add(level.dimension());
                         }
-                        test.assertTrue(first.player.level() == server.overworld() && P1PlayerProfiles.isLocked(first.player), "Actual runtime suspends the player in the permanent lobby");
+                        test.assertTrue(first.player.level() == P1LobbyWorld.open(server).holdingLevel() && P1PlayerProfiles.isLocked(first.player), "Actual runtime suspends the player in the permanent lobby");
                         test.assertTrue(Files.exists(worlds.manifestPath()), "Rotation retains every old ownership manifest");
                         assertReleased(worlds);
                         session.recordProgress(first.stale);

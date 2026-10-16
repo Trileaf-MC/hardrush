@@ -123,7 +123,7 @@ public final class P2LobbyRuntime {
                 && b.session.snapshot().filter(r -> b.profiles.isReady(player.getUUID(), r)).isPresent();
     }
     private static boolean lobbyAvailable(ServerPlayer player, Binding b) {
-        return current(player, b) && player.level() == player.level().getServer().overworld()
+        return current(player, b) && dev.hardrush.p1.world.P1LobbyWorld.isLobby(player.level())
                 && player.isAlive();
     }
     public static void command(ServerPlayer player, String action, String value) {
@@ -233,9 +233,9 @@ public final class P2LobbyRuntime {
     public static void tick(MinecraftServer server) {
         var b = BINDINGS.get(server);
         if (b == null) return;
-        // Quarantined lobby bodies intentionally skip vanilla doTick(), including menu broadcasts.
+        // Only quarantine skips vanilla doTick(); normal lobby bodies now broadcast their own menus.
         for (var player : List.copyOf(server.getPlayerList().getPlayers())) {
-            if (P1PlayerProfiles.isLocked(player) && P2LobbyUi.isMenu(player)) player.containerMenu.broadcastChanges();
+            if (P1PlayerProfiles.simulationFrozen(player) && P2LobbyUi.isMenu(player)) player.containerMenu.broadcastChanges();
         }
         synchronize(server, b);
         var round = b.session.view().orElse(null);

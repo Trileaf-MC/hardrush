@@ -7,6 +7,7 @@ import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.round.*;
 import dev.hardrush.p1.P1LobbyRuntime;
+import dev.hardrush.p1.world.P1LobbyWorld;
 import dev.hardrush.p1.P1LobbySession;
 import dev.hardrush.p1.book.P1BookPort;
 import dev.hardrush.p1.player.P1PlayerProfiles;
@@ -256,7 +257,10 @@ public final class P1ServerRestartRegression implements ModInitializer {
                     require(round().phase() == target, "restored lobby/countdown phase preserved with returning ready UUID");
                     require(round().challengeNanos() == expected.challengeNanos(), "lobby does not add challenge time");
                     require(round().remainingPhaseNanos() == expected.remainingPhaseNanos(), "saved countdown remainder preserved");
-                    require(P1PlayerProfiles.isLocked(a.player) && a.player.level() == server.overworld(), "lobby participant stays isolated");
+                    require(P1PlayerProfiles.isLocked(a.player) && a.player.level() == P1LobbyWorld.open(server).holdingLevel(), "lobby participant stays isolated");
+                    require(P1PlayerProfiles.canMoveInLobby(a.player)
+                            && a.player.gameMode.getGameModeForPlayer() == net.minecraft.world.level.GameType.ADVENTURE,
+                            "restarted verified lobby participant moves in adventure mode without competition admission");
                     stop();
                 });
                 return;
@@ -345,6 +349,12 @@ public final class P1ServerRestartRegression implements ModInitializer {
             });
         }
         void writeWorlds() {
+            var lobby = P1LobbyWorld.open(server);
+            require(lobby.ready(), "permanent flat lobby ready before normal stop");
+            var lobbyMarker = BlockPos.containing(lobby.holdingSpawn()).offset(6, 3, 6);
+            // Fixture-only marker bypasses the full lobby's player/world protection.
+            lobby.holdingLevel().getChunkAt(lobbyMarker).setBlockState(lobbyMarker, Blocks.LAPIS_BLOCK.defaultBlockState(), 2);
+            details.addProperty("lobbyDimension", lobby.holdingLevel().dimension().identifier().toString());
             marker = worlds.spawn().offset(3, 4, 3);
             int index = 0;
             for (var semantic : List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
@@ -361,6 +371,10 @@ public final class P1ServerRestartRegression implements ModInitializer {
             overworld.getWeatherData().setRaining(true); overworld.getWeatherData().setRainTime(999999);
         }
         void checkWorlds() {
+            var lobby = P1LobbyWorld.open(server);
+            require(lobby.ready() && lobby.holdingLevel().dimension().equals(P1LobbyWorld.KEY), "same permanent lobby dimension reopened");
+            var lobbyMarker = BlockPos.containing(lobby.holdingSpawn()).offset(6, 3, 6);
+            require(lobby.holdingLevel().getBlockState(lobbyMarker).is(Blocks.LAPIS_BLOCK), "actual lobby terrain survives a new JVM");
             int index = 0;
             for (var semantic : List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
                 var level = worlds.level(semantic);
@@ -382,7 +396,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
                 actor.connection = new RecordingConnection(); actor.channel = new EmbeddedChannel(actor.connection);
                 actor.player = actor.prepare.spawnPlayer(actor.connection, CommonListenerCookie.createInitial(actor.profile, false)); actor.prepare.close();
                 acknowledge(actor);
-                require(P1PlayerProfiles.isLocked(actor.player) && actor.player.level() == server.overworld(), "native login quarantined before world/profile verification");
+                require(P1PlayerProfiles.isLocked(actor.player) && actor.player.level() == P1LobbyWorld.open(server).holdingLevel(), "native login quarantined before world/profile verification");
             });
             waitFor("durable native profile " + actor.profile.name(), () -> profiles.isReady(actor.profile.id(), round()));
         }
