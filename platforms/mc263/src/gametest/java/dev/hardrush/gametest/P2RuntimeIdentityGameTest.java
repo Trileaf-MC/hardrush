@@ -50,7 +50,7 @@ import net.minecraft.world.phys.Vec3;
 /** Dedicated opt-in server run: production listeners and storage, with an embedded native peer. */
 public final class P2RuntimeIdentityGameTest {
     @GameTest(maxTicks = 40000)
-    public void nativeRuntimeCommitsProtectionExitAndExtremeDeathBeforeMonsterReconnect(GameTestHelper test) {
+    public void nativeRuntimeAllowsSpawnSurvivalAndExtremeDeathBeforeMonsterReconnect(GameTestHelper test) {
         if (!Boolean.getBoolean("hardrush.p2.testIdentity")) { test.succeed(); return; }
         test.assertTrue(Boolean.getBoolean("hardrush.p1.enabled"), "The dedicated run requires the real enabled runtime");
         var fixture = new Fixture(test);
@@ -89,8 +89,7 @@ public final class P2RuntimeIdentityGameTest {
                 .thenWaitUntil(() -> fixture.await(!offlineHuman.participant().online()
                         && offlineHuman.participant().role() == ParticipantRole.HUMAN_ACTIVE && !fixture.session.mutationPending(),
                         "A genuinely admitted offline human preserves the round during this identity-only regression"))
-                .thenExecute(fixture::testProtectionAndRequestExit)
-                .thenWaitUntil(() -> fixture.await(fixture.participant().hasLeftProtection() && !fixture.session.mutationPending(), "The first exit is committed before movement"))
+                .thenExecute(fixture::testUnprotectedSpawn)
                 .thenExecute(fixture::leaveAndDie)
                 .thenWaitUntil(() -> fixture.await(fixture.monsterReady(), "Production death listener replaces the dead human in the monster lobby"))
                 .thenExecute(() -> {
@@ -167,49 +166,51 @@ public final class P2RuntimeIdentityGameTest {
                     }).thenWaitUntil(() -> await(profiles.isReady(profile.id(), round()), "Production profile journal is ready"));
         }
 
-        void testProtectionAndRequestExit() {
+        void testUnprotectedSpawn() {
             var worlds = service("WORLDS", P1RoundWorldBundle.class);
             roundLevel = worlds.level(Level.OVERWORLD);
-            test.assertTrue(player.level() == roundLevel && P2ProtectionRuntime.protectedEntity(player), "The native human starts inside this round's protection");
-            test.assertFalse(participant().hasLeftProtection(), "A new human life has its first exit permission");
+            test.assertTrue(player.level() == roundLevel && !P2ProtectionRuntime.protectedEntity(player), "The native human starts on unprotected natural terrain");
+            test.assertTrue(P2ProtectionRuntime.zone(server.overworld()).filter(P2ProtectionRuntime.Zone::lobby).isPresent(), "The long-lived lobby remains protected");
+            for (var dimension : java.util.List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
+                test.assertTrue(P2ProtectionRuntime.zone(worlds.level(dimension)).isEmpty(), "No formal round dimension registers a spawn protection zone");
+            }
+            test.assertFalse(P2ProtectionRuntime.rejectInteraction(player, roundLevel, worlds.spawn().below()), "Spawn building and interactions use ordinary survival rules");
             float health = player.getHealth();
-            test.assertFalse(player.hurtServer(roundLevel, player.damageSources().genericKill(), Float.MAX_VALUE), "Native lethal damage is rejected inside protection");
-            test.assertValueEqual(player.getHealth(), health, "Protected lethal damage cannot change health or identity");
-            test.assertValueEqual(participant().role(), ParticipantRole.HUMAN_ACTIVE, "Protected damage cannot create a death transition");
+            test.assertTrue(player.hurtServer(roundLevel, player.damageSources().genericKill(), 1), "Native damage is allowed immediately at spawn");
+            test.assertValueEqual(player.getHealth(), health - 1, "Spawn has no area-based damage immunity");
+            test.assertValueEqual(participant().role(), ParticipantRole.HUMAN_ACTIVE, "Nonlethal spawn damage preserves the human identity");
             player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));
             player.getEnderChestInventory().setItem(0, new ItemStack(Items.EMERALD, 6));
             player.awardStat(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.JUMP), 11);
             var advancement = server.getAdvancements().get(Identifier.parse("minecraft:story/mine_stone"));
             advancement.value().criteria().keySet().forEach(criterion -> player.getAdvancements().award(advancement, criterion));
-            outside = findPreparedExit(worlds);
-            Vec3 before = player.position();
+            outside = findNaturalStanding(worlds);
             move(outside);
-            test.assertTrue(player.position().distanceTo(before) < .01, "The first exit attempt waits for SQLite rather than granting an uncommitted movement");
+            test.assertTrue(player.position().distanceTo(outside) < .01, "Leaving spawn needs no durable exit permission");
         }
 
-        Vec3 findPreparedExit(P1RoundWorldBundle worlds) {
-            int distance = (int) Math.ceil(round().rules().protectionRadius()) + 8;
-            for (var direction : Direction.Plane.HORIZONTAL) {
+        Vec3 findNaturalStanding(P1RoundWorldBundle worlds) {
+            for (int distance = 2; distance <= 12; distance++) for (var direction : Direction.Plane.HORIZONTAL) {
                 var column = worlds.spawn().relative(direction, distance);
-                for (int dy = -distance; dy <= distance; dy++) {
+                for (int dy = -12; dy <= 12; dy++) {
                     BlockPos feet = column.offset(0, dy, 0);
                     if (P1RoundWorldBundle.safeStanding(roundLevel, feet)) return Vec3.atBottomCenterOf(feet);
                 }
             }
-            throw new IllegalStateException("The prepared round has no loaded safe exit");
+            throw new IllegalStateException("The round has no nearby loaded natural standing point");
         }
 
         void leaveAndDie() {
             move(outside);
-            test.assertTrue(player.position().distanceTo(outside) < .01 && !P2ProtectionRuntime.protectedEntity(player), "A committed exit reaches an already prepared safe standing point");
-            Vec3 before = player.position();
+            test.assertTrue(player.position().distanceTo(outside) < .01 && !P2ProtectionRuntime.protectedEntity(player), "Movement reaches a natural standing point");
             var worlds = service("WORLDS", P1RoundWorldBundle.class);
             move(Vec3.atBottomCenterOf(worlds.spawn()));
-            test.assertTrue(player.position().distanceTo(before) < .01, "The same-life native teleport cannot re-enter protection");
+            test.assertTrue(player.position().distanceTo(Vec3.atBottomCenterOf(worlds.spawn())) < .01, "The same human life can freely return to spawn");
+            test.assertFalse(participant().hasLeftProtection(), "Ordinary movement never writes the obsolete exit restriction");
             clock.addAndGet(TimeUnit.SECONDS.toNanos(2));
             drops = new AABB(BlockPos.containing(player.position())).inflate(4);
             dead = player;
-            test.assertTrue(player.hurtServer(roundLevel, player.damageSources().genericKill(), Float.MAX_VALUE), "Native damage outside protection actually kills the human");
+            test.assertTrue(player.hurtServer(roundLevel, player.damageSources().genericKill(), Float.MAX_VALUE), "Native lethal damage at spawn actually kills the human");
             test.assertTrue(dead.isDeadOrDying() && P1PlayerProfiles.isLocked(dead), "Production AFTER_DEATH immediately holds the dead native body");
             test.assertValueEqual(diamonds(), 3, "Vanilla drops all three human diamonds before the committed monster conversion");
             dead.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
@@ -231,7 +232,7 @@ public final class P2RuntimeIdentityGameTest {
             test.assertValueEqual(round().pauseReason(), PauseReason.NO_ONLINE_HUMANS, "Monster-only connections do not keep the human challenge clock running");
             test.assertValueEqual(participant().role(), ParticipantRole.MONSTER_LOBBY, "The committed UUID remains a monster");
             test.assertValueEqual(participant().lifeSequence(), 1, "Death and reconnect do not create another human life");
-            test.assertTrue(participant().hasLeftProtection(), "The committed exit marker survives the identity conversion");
+            test.assertFalse(participant().hasLeftProtection(), "Death conversion needs no legacy spawn exit marker");
             test.assertTrue(player.isAlive() && player.level() == server.overworld() && P1PlayerProfiles.isLocked(player), "A living native monster remains isolated in the actual lobby");
             test.assertTrue(player.connection.player == player,
                     "The native connection must bind the replacement monster, not the removed dead human: listed="
@@ -249,7 +250,7 @@ public final class P2RuntimeIdentityGameTest {
             try (var store = new SqliteRoundStore(server.getWorldPath(LevelResource.ROOT).resolve("hardrush/p1.sqlite"))) {
                 var saved = RoundSnapshotCodec.decode(store.load(round().roundId()).orElseThrow().payload()).participants().get(profile.id());
                 test.assertValueEqual(saved.role(), ParticipantRole.MONSTER_LOBBY, "The real SQLite snapshot stores the monster role");
-                test.assertTrue(saved.hasLeftProtection() && saved.lifeSequence() == 1, "The real SQLite snapshot preserves the same-life exit restriction");
+                test.assertTrue(!saved.hasLeftProtection() && saved.lifeSequence() == 1, "The real SQLite snapshot preserves identity without requiring a spawn exit");
                 var record = store.participantRecord(round().roundId(), profile.id()).orElseThrow();
                 test.assertValueEqual(record.deathCount(), 1, "Actual death listeners produce one persisted death");
                 test.assertValueEqual(record.revivalCount(), 0, "A monster respawn is never a human revival");

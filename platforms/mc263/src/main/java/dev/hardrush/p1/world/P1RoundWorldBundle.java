@@ -56,7 +56,7 @@ import xyz.nucleoid.fantasy.mixin.MinecraftServerAccess;
  * No getChunk/getChunkFuture, worker-thread world edits, deletion, or P0 world reuse.
  */
 public final class P1RoundWorldBundle implements AutoCloseable {
-    public enum State { OPENING_MANIFEST, OPENING_DIMENSIONS, SEARCHING, LOADING_REGION, VALIDATING, BUILDING, SAVING_MANIFEST, READY, FAILED, CLOSING, CLOSE_FAILED, CLOSED }
+    public enum State { OPENING_MANIFEST, OPENING_DIMENSIONS, SEARCHING, LOADING_REGION, BUILDING, SAVING_MANIFEST, READY, FAILED, CLOSING, CLOSE_FAILED, CLOSED }
     public record Metrics(long elapsedMillis, long longestChunkMillis, long maximumTickMicros, int candidates, int changedBlocks) {}
     private static final long TICK_BUDGET_NANOS = 2_000_000;
     private static final int CANDIDATES_PER_TICK = 16;
@@ -90,7 +90,6 @@ public final class P1RoundWorldBundle implements AutoCloseable {
     private State state = State.OPENING_MANIFEST;
     private String failure = "";
     private BlockPos candidate;
-    private List<BlockPos> exits = List.of();
     private int openedDimensions;
     private int searchIndex;
     private int columnIndex;
@@ -100,7 +99,6 @@ public final class P1RoundWorldBundle implements AutoCloseable {
     private long maximumTickNanos;
     private int candidates;
     private int changedBlocks;
-    private int validationIndex;
 
     private P1RoundWorldBundle(MinecraftServer server, RoundSnapshot snapshot) {
         requireMainThread(server);
@@ -113,9 +111,8 @@ public final class P1RoundWorldBundle implements AutoCloseable {
             thread.setDaemon(true);
             return thread;
         });
-        if (!snapshot.rules().minecraftVersion().equals("26.3") || !snapshot.rules().generationRule().equals("normal")
-                || snapshot.rules().protectionRadius() > 128) {
-            fail(new IllegalArgumentException("26.3 世界适配只支持 normal 生成和最多 128 格出生保护半径"));
+        if (!snapshot.rules().minecraftVersion().equals("26.3") || !snapshot.rules().generationRule().equals("normal")) {
+            fail(new IllegalArgumentException("26.3 世界适配只支持 normal 生成"));
             return;
         }
         beginManifest();
@@ -208,7 +205,6 @@ public final class P1RoundWorldBundle implements AutoCloseable {
             pollChunks(tickStart);
             if (state == State.SEARCHING) search(tickStart);
             if (state == State.LOADING_REGION && requested.isEmpty() && inFlight.isEmpty()) prepareCandidate();
-            if (state == State.VALIDATING) validateRecoveredRegion(tickStart);
             if (state == State.BUILDING) build(tickStart);
         } catch (RuntimeException error) { fail(error); }
         finally { maximumTickNanos = Math.max(maximumTickNanos, System.nanoTime() - tickStart); }
@@ -248,7 +244,6 @@ public final class P1RoundWorldBundle implements AutoCloseable {
         }
         if (manifest.spawn != null) {
             candidate = manifest.spawn;
-            exits = manifest.exits;
             queueRegion();
         } else {
             state = State.SEARCHING;
@@ -294,16 +289,15 @@ public final class P1RoundWorldBundle implements AutoCloseable {
             candidates++;
             int y = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, localX, localZ) + 1;
             BlockPos position = new BlockPos(pos.getMinBlockX() + localX, y, pos.getMinBlockZ() + localZ);
-            if (safeStanding(level, position) && y + 4 < level.getMaxY()) {
+            if (safeStanding(level, position)) {
                 candidate = position;
-                exits = List.of();
                 queueRegion();
                 return;
             }
         }
         if (columnIndex == 16) {
             releaseTickets("overworld");
-            if (++searchIndex == searchChunks.size()) throw new IllegalStateException("原版出生区域未找到多条安全出口；保持大厅，可重试");
+            if (++searchIndex == searchChunks.size()) throw new IllegalStateException("原版出生区域未找到安全站位；保持大厅，可重试");
             columnIndex = 0;
             queue("overworld", searchChunks.get(searchIndex));
         }
@@ -311,7 +305,7 @@ public final class P1RoundWorldBundle implements AutoCloseable {
 
     private void queueRegion() {
         state = State.LOADING_REGION;
-        int extent = (int) Math.ceil(snapshot.rules().protectionRadius()) + 11;
+        int extent = 16;
         for (int x = (candidate.getX() - extent) >> 4; x <= (candidate.getX() + extent) >> 4; x++) {
             for (int z = (candidate.getZ() - extent) >> 4; z <= (candidate.getZ() + extent) >> 4; z++) queue("overworld", new ChunkPos(x, z));
         }
@@ -323,46 +317,16 @@ public final class P1RoundWorldBundle implements AutoCloseable {
 
     private void prepareCandidate() {
         var level = rawLevel("overworld");
-        int distance = (int) Math.ceil(snapshot.rules().protectionRadius()) + 8;
         if (manifest.spawn != null) {
             // A ready world can contain player changes. Recovery only validates it; it never repairs
             // blocks, recreates the End platform, clears containers, or regenerates terrain.
             if (!safeStanding(level, manifest.spawn)) throw new IllegalStateException("已准备出生点受损，保持大厅等待人工恢复；未修改世界");
-            validationIndex = 0;
-            state = State.VALIDATING;
+            // Legacy exit coordinates remain readable, but are no longer required or repaired.
+            state = State.READY;
+            finishedNanos = System.nanoTime();
             return;
         }
-        if (exits.isEmpty()) {
-            var checked = new ArrayList<BlockPos>();
-            for (Direction direction : List.of(Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST)) {
-                BlockPos column = candidate.relative(direction, distance);
-                var chunk = level.getChunkSource().getChunkNow(column.getX() >> 4, column.getZ() >> 4);
-                int y = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, column.getX() & 15, column.getZ() & 15) + 1;
-                BlockPos endpoint = new BlockPos(column.getX(), y, column.getZ());
-                if (Math.abs(y - candidate.getY()) <= distance - 4 && safeStanding(level, endpoint)
-                        && safeStanding(level, endpoint.relative(direction))) checked.add(endpoint);
-            }
-            if (checked.size() < 2) { state = State.SEARCHING; candidate = null; return; }
-            exits = List.copyOf(checked);
-        }
-        // Idempotent spawn infrastructure; every world edit runs on the main thread under the budget.
-        for (int x = -4; x <= 4; x++) for (int z = -4; z <= 4; z++) walkway(candidate.offset(x, 0, z));
-        for (BlockPos endpoint : exits) {
-            Direction direction = exitDirection(endpoint);
-            Direction side = direction.getClockWise();
-            for (int step = 5; step <= distance; step++) {
-                int y = candidate.getY() + Math.floorDiv((endpoint.getY() - candidate.getY()) * (step - 4), distance - 4);
-                BlockPos center = candidate.relative(direction, step).atY(y);
-                for (int offset = -1; offset <= 1; offset++) walkway(center.relative(side, offset));
-                if (step < distance) for (int offset : new int[] {-2, 2}) {
-                    BlockPos rail = center.relative(side, offset);
-                    edits.add(new Edit("overworld", rail.below(), Blocks.STONE.defaultBlockState()));
-                    edits.add(new Edit("overworld", rail, Blocks.STONE.defaultBlockState()));
-                    edits.add(new Edit("overworld", rail.above(), Blocks.STONE.defaultBlockState()));
-                    edits.add(new Edit("overworld", rail.above(2), Blocks.AIR.defaultBlockState()));
-                }
-            }
-        }
+        // Only vanilla's End arrival platform is prepared. The Overworld is never edited.
         BlockPos endFeet = ServerLevel.END_SPAWN_POINT;
         for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++) {
             BlockPos column = endFeet.offset(x, 0, z);
@@ -370,38 +334,6 @@ public final class P1RoundWorldBundle implements AutoCloseable {
             for (int y = 0; y <= 2; y++) edits.add(new Edit("end", column.above(y), Blocks.AIR.defaultBlockState()));
         }
         state = State.BUILDING;
-    }
-
-    private void validateRecoveredRegion(long tickStart) {
-        int distance = (int) Math.ceil(snapshot.rules().protectionRadius()) + 8;
-        int total = exits.size() * (distance - 3);
-        for (int count = 0; count < CANDIDATES_PER_TICK && validationIndex < total
-                && System.nanoTime() - tickStart < TICK_BUDGET_NANOS; count++) {
-            int directionIndex = validationIndex / (distance - 3);
-            int step = 4 + validationIndex % (distance - 3);
-            BlockPos endpoint = exits.get(directionIndex);
-            int y = candidate.getY() + Math.floorDiv((endpoint.getY() - candidate.getY()) * (step - 4), distance - 4);
-            BlockPos feet = candidate.relative(exitDirection(endpoint), step).atY(y);
-            if (!safeStanding(rawLevel("overworld"), feet)) {
-                throw new IllegalStateException("已准备出生出口受损，保持大厅等待人工恢复；未修改世界: " + feet);
-            }
-            validationIndex++;
-        }
-        if (validationIndex == total) {
-            state = State.READY;
-            finishedNanos = System.nanoTime();
-        }
-    }
-
-    private void walkway(BlockPos feet) {
-        edits.add(new Edit("overworld", feet.below(), Blocks.STONE.defaultBlockState()));
-        for (int y = 0; y <= 3; y++) edits.add(new Edit("overworld", feet.above(y), Blocks.AIR.defaultBlockState()));
-    }
-
-    private Direction exitDirection(BlockPos endpoint) {
-        if (endpoint.getX() > candidate.getX()) return Direction.EAST;
-        if (endpoint.getX() < candidate.getX()) return Direction.WEST;
-        return endpoint.getZ() > candidate.getZ() ? Direction.SOUTH : Direction.NORTH;
     }
 
     private void build(long tickStart) {
@@ -418,9 +350,8 @@ public final class P1RoundWorldBundle implements AutoCloseable {
             }
         }
         if (!edits.isEmpty()) return;
-        if (!safeStanding(rawLevel("overworld"), candidate)) throw new IllegalStateException("出生区建造后安全校验失败");
-        for (BlockPos exit : exits) if (!safeStanding(rawLevel("overworld"), exit)) throw new IllegalStateException("出生出口安全校验失败");
-        var prepared = manifest.prepared(candidate, exits);
+        if (!safeStanding(rawLevel("overworld"), candidate)) throw new IllegalStateException("自然出生点安全校验失败");
+        var prepared = manifest.prepared(candidate, List.of());
         manifestIo = CompletableFuture.supplyAsync(() -> {
             try { P1StorageGuard.requireCapacity(root); prepared.write(root, manifestPath); return prepared; }
             catch (Exception error) { throw new java.util.concurrent.CompletionException(error); }
@@ -464,8 +395,7 @@ public final class P1RoundWorldBundle implements AutoCloseable {
     public void retry() {
         requireMainThread(server);
         if (state != State.FAILED) throw new IllegalStateException("只有失败准备任务可重试");
-        if (!snapshot.rules().minecraftVersion().equals("26.3") || !snapshot.rules().generationRule().equals("normal")
-                || snapshot.rules().protectionRadius() > 128) {
+        if (!snapshot.rules().minecraftVersion().equals("26.3") || !snapshot.rules().generationRule().equals("normal")) {
             throw new IllegalStateException("本轮规则不受当前世界适配支持，重试不能改变既存规则快照");
         }
         handles.values().forEach(handle -> {
@@ -477,7 +407,6 @@ public final class P1RoundWorldBundle implements AutoCloseable {
         searchIndex = 0;
         columnIndex = 0;
         candidate = null;
-        exits = List.of();
         searchChunks.clear();
         requested.clear();
         inFlight.clear();

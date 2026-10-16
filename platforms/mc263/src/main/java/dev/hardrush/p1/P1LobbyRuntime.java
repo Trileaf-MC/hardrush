@@ -112,10 +112,8 @@ public final class P1LobbyRuntime {
                     if (round == null) return Optional.empty();
                     if (level == server.overworld()) return Optional.of(new P2ProtectionRuntime.Zone(round.roundId(),
                             Vec3.atBottomCenterOf(level.getRespawnData().pos()), round.rules().protectionRadius(), true));
-                    var worlds = WORLDS.get(server);
-                    return worlds != null && worlds.ready() && level == worlds.level(Level.OVERWORLD)
-                            ? Optional.of(new P2ProtectionRuntime.Zone(round.roundId(), Vec3.atBottomCenterOf(worlds.spawn()),
-                                round.rules().protectionRadius(), false)) : Optional.empty();
+                    // Formal round worlds use ordinary survival rules, including their spawn.
+                    return Optional.empty();
                 }
                 @Override public Optional<dev.hardrush.core.round.Participant> participant(UUID playerId) {
                     return session.snapshot().map(round -> round.participants().get(playerId));

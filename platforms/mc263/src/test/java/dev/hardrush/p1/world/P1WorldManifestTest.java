@@ -80,7 +80,22 @@ final class P1WorldManifestTest {
         }
     }
 
-    @Test void preparedSpawnAndFourExitsRecoverWithoutChangingIdentity() throws IOException {
+    @Test void naturalSpawnRecoversWithoutManufacturedExits() throws IOException {
+        Path root = temporary.toRealPath(), file = P1WorldPaths.manifest(root, ROUND);
+        var spawn = new BlockPos(2, 70, 6);
+        manifest().prepared(spawn, List.of()).write(root, file);
+        var recovered = P1WorldManifest.read(root, file);
+        recovered.requireSnapshot(RoundEngine.create(ROUND, 1, 12345, RulesConfig.defaults(), () -> 0).committed());
+        assertEquals(spawn, recovered.spawn);
+        assertTrue(recovered.exits.isEmpty());
+        // The new format also accepts manifests that omit the obsolete field altogether.
+        var json = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+        json.remove("exits");
+        Files.writeString(file, json.toString());
+        assertTrue(P1WorldManifest.read(root, file).exits.isEmpty());
+    }
+
+    @Test void legacySpawnAndFourExitsRecoverWithoutChangingIdentity() throws IOException {
         Path root = temporary.toRealPath();
         Path file = P1WorldPaths.manifest(root, ROUND);
         var spawn = new BlockPos(2, 70, 6);

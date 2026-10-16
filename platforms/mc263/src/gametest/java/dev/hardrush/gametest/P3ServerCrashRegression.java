@@ -94,11 +94,7 @@ public final class P3ServerCrashRegression implements ModInitializer {
                 }
 
             });
-            act("first protection exit request", () -> require(session.leaveProtection(round().roundId(), a.profile.id(), 1), "first native relocation requests durable exit"));
-            waitFor("first durable protection exit", () -> idle() && round().participants().get(a.profile.id()).hasLeftProtection());
-            act("second protection exit request", () -> require(session.leaveProtection(round().roundId(), b.profile.id(), 1), "second native relocation requests durable exit"));
-            waitFor("second durable protection exit", () -> idle() && round().participants().get(b.profile.id()).hasLeftProtection());
-            act("place outside protection", () -> { move(a, worlds.level(Level.OVERWORLD), arena.add(10, 0, 0)); move(b, worlds.level(Level.OVERWORLD), arena); });
+            act("place in private arena", () -> { move(a, worlds.level(Level.OVERWORLD), arena.add(10, 0, 0)); move(b, worlds.level(Level.OVERWORLD), arena); });
             act("native hardcore death", () -> require(a.player.hurtServer(a.player.level(), a.player.damageSources().genericKill(), Float.MAX_VALUE), "native death accepted"));
             waitFor("native monster lobby replacement", () -> {
                 a.player = server.getPlayerList().getPlayer(a.profile.id());

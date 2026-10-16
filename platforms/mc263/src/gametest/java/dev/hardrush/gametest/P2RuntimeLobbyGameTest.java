@@ -107,10 +107,6 @@ public final class P2RuntimeLobbyGameTest {
                 .thenExecute(f::prepareArena)
                 .thenWaitUntil(() -> f.await(f.arenaTicking(), "The entire private arena reaches native entity simulation before lifecycle checks"))
                 .thenExecute(() -> f.target.move(f.anchor))
-                .thenWaitUntil(() -> f.await(f.target.participant().hasLeftProtection() && !f.session.mutationPending(), "Target protection exit committed"))
-                .thenExecute(() -> f.target.move(f.anchor))
-                .thenExecute(() -> f.monster.move(f.anchor.add(10, 0, 0)))
-                .thenWaitUntil(() -> f.await(f.monster.participant().hasLeftProtection() && !f.session.mutationPending(), "Future monster protection exit committed"))
                 .thenExecute(() -> f.monster.move(f.anchor.add(10, 0, 0)))
                 .thenWaitUntil(() -> f.await(f.level.isPositionEntityTicking(f.monster.player.blockPosition()),
                         "Native loot chunk reaches entity ticking before the immediate human death query"))
@@ -246,9 +242,7 @@ public final class P2RuntimeLobbyGameTest {
                         hunter.player = hunter.current(); prey.player = prey.current();
                         prey.move(f.anchor);
                     })
-                    .thenWaitUntil(() -> f.await(prey.participant().hasLeftProtection() && !f.session.mutationPending(), "Cycle human protection exit " + iteration))
                     .thenExecute(() -> {
-                        prey.move(f.anchor);
                         hunter.command("hardrush role zombie");
                     })
                     .thenWaitUntil(() -> f.await(hunter.participant().monsterRole() == MonsterRole.ZOMBIE && !f.session.mutationPending(), "Cycle role selected " + iteration))
@@ -281,9 +275,9 @@ public final class P2RuntimeLobbyGameTest {
                             var floor = worlds.spawn().below();
                             var original = f.level.getBlockState(floor);
                             try {
-                                // Simulate a damaged persisted spawn below the protected Level.setBlock admission path.
+                                // Simulate a damaged natural spawn without changing any surrounding terrain.
                                 f.level.getChunkAt(floor).setBlockState(floor, Blocks.AIR.defaultBlockState(), 2);
-                                f.test.assertFalse(P1RoundWorldBundle.safeStanding(f.level, worlds.spawn()), "The fixture really removed the protected spawn floor");
+                                f.test.assertFalse(P1RoundWorldBundle.safeStanding(f.level, worlds.spawn()), "The fixture really removed the natural spawn floor");
                                 int packetsBefore = hunter.connection.packets.size();
                                 hunter.command("hardrush revive");
                                 f.test.assertTrue(hunter.participant().revivalEntitled()
@@ -306,7 +300,7 @@ public final class P2RuntimeLobbyGameTest {
                         f.test.assertTrue(hunter.player.getInventory().isEmpty(), "Revival never restores old human gear or role controls");
                         f.test.assertValueEqual(hunter.player.getHealth(), 20f, "Human default health is restored");
                         f.test.assertValueEqual(hunter.player.getFoodData().getFoodLevel(), 20, "Human default food is restored");
-                        f.test.assertFalse(hunter.participant().hasLeftProtection(), "Each revived life gets one new protected exit");
+                        f.test.assertFalse(P2ProtectionRuntime.protectedEntity(hunter.player), "Revival returns an unprotected human to the natural spawn");
                         f.test.assertValueEqual(hunter.player.getAttribute(Attributes.ARMOR).getBaseValue(), 0d, "Intrinsic monster armor is removed");
                         if (hunter == f.monster) {
                             f.assertSkillCooldowns();

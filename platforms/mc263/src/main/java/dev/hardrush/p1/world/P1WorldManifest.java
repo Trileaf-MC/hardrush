@@ -41,8 +41,9 @@ final class P1WorldManifest {
         this.generators = Map.copyOf(copy);
         this.spawn = spawn == null ? null : spawn.immutable();
         this.exits = exits.stream().map(BlockPos::immutable).toList();
-        if (spawn == null && !exits.isEmpty() || spawn != null && (exits.size() < 2 || exits.size() > 4)) {
-            throw new IllegalArgumentException("已准备出生点必须同时记录两至四个出口");
+        // Empty exits describe a natural spawn. Keep reading the old two-to-four-exit format.
+        if (spawn == null && !exits.isEmpty() || !exits.isEmpty() && (exits.size() < 2 || exits.size() > 4)) {
+            throw new IllegalArgumentException("旧版出生点出口必须成组记录两至四个");
         }
     }
 

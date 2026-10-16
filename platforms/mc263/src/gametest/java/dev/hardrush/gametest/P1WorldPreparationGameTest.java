@@ -145,7 +145,7 @@ public final class P1WorldPreparationGameTest {
     }
 
     @GameTest(maxTicks = 24000)
-    public void budgetedBundleRemainsClosedUntilThreeDimensionsAndFourExitsAreReady(GameTestHelper test) {
+    public void budgetedBundlePreservesNaturalSpawnAndRecoversWithoutExitCorridors(GameTestHelper test) {
         var server = test.getLevel().getServer();
         var snapshot = RoundEngine.create(UUID.randomUUID(), 1, 12345, RulesConfig.defaults(), () -> 0).committed();
         var bundle = P1RoundWorldBundle.open(server, snapshot);
@@ -156,6 +156,8 @@ public final class P1WorldPreparationGameTest {
         var preservedManifest = new String[1];
         var closed = new java.util.concurrent.CompletableFuture<?>[1];
         var initialLevels = new java.util.ArrayList<ServerLevel>();
+        var naturalSurface = new java.util.HashMap<net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState>();
+        var sampledChunks = new java.util.HashSet<net.minecraft.world.level.ChunkPos>();
         long started = System.nanoTime();
         var lastDiagnostic = new long[1];
         test.assertFalse(bundle.ready(), "Opening an identity cannot announce world readiness");
@@ -167,6 +169,7 @@ public final class P1WorldPreparationGameTest {
         }
         test.startSequence()
                 .thenWaitUntil(() -> {
+                    captureNaturalSurface(server, snapshot.roundId(), naturalSurface, sampledChunks);
                     bundle.tick();
                     paceAndDiagnose(test, bundle, started, lastDiagnostic);
                     if (bundle.failure().isPresent()) throw new IllegalStateException(bundle.failure().orElseThrow());
@@ -187,14 +190,14 @@ public final class P1WorldPreparationGameTest {
                     test.assertTrue(P1RoundWorldBundle.portalDestination(overworld, server.overworld().dimension()) == overworld,
                             "Vanilla overworld semantic key cannot escape to the lobby");
                     test.assertTrue(end.getDragonFight() != null, "Real vanilla EnderDragonFight initialized");
-                    test.assertTrue(bundle.exits().size() >= 2, "Multiple traversable exit corridors were prepared");
+                    test.assertTrue(bundle.exits().isEmpty(), "Natural spawn requires no artificial exit corridors");
                     test.assertTrue(P1RoundWorldBundle.safeStanding(overworld, bundle.spawn()), "Spawn is safe");
-                    for (var exit : bundle.exits()) {
-                        test.assertTrue(P1RoundWorldBundle.safeStanding(overworld, exit), "Each exit stands on dry, solid ground");
-                        long dx = exit.getX() - bundle.spawn().getX(), dz = exit.getZ() - bundle.spawn().getZ();
-                        test.assertTrue(dx * dx + dz * dz > 32 * 32, "Exit reaches beyond protection");
+                    test.assertTrue(naturalSurface.containsKey(bundle.spawn().below()), "Native terrain was observed before spawn preparation");
+                    for (var entry : naturalSurface.entrySet()) {
+                        test.assertValueEqual(overworld.getBlockState(entry.getKey()), entry.getValue(),
+                                "Spawn preparation preserves native surface blocks at " + entry.getKey());
                     }
-                    test.assertTrue(bundle.metrics().changedBlocks() > 0, "Budgeted infrastructure modifications were measured");
+                    test.assertTrue(bundle.metrics().changedBlocks() <= 100, "Only vanilla's 5x5 End arrival platform may be prepared");
                     test.assertTrue(bundle.metrics().candidates() > 0, "Native surface candidates were measured");
                     org.slf4j.LoggerFactory.getLogger("hardrush-p1-world-test").info("P1 initial preparation metrics: {}", bundle.metrics());
                     building[0] = bundle.spawn().offset(3, 0, 3);
@@ -274,7 +277,18 @@ public final class P1WorldPreparationGameTest {
                 .thenWaitUntil(() -> awaitClosed(test, recovered[0], closed[0], started, lastDiagnostic))
                 .thenExecute(() -> {
                     try {
-                        preservedManifest[0] = java.nio.file.Files.readString(recovered[0].manifestPath());
+                        // Reopen a legacy manifest whose former elevated corridors no longer exist.
+                        // Its spawn is still safe, so obsolete exit infrastructure must not gate recovery.
+                        var json = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(recovered[0].manifestPath())).getAsJsonObject();
+                        var legacyExits = new com.google.gson.JsonArray();
+                        for (var direction : java.util.List.of(net.minecraft.core.Direction.NORTH, net.minecraft.core.Direction.SOUTH)) {
+                            var exit = json.getAsJsonObject("spawn").deepCopy();
+                            exit.addProperty("z", exit.get("z").getAsInt() + direction.getStepZ() * 40);
+                            exit.addProperty("y", exit.get("y").getAsInt() + 35);
+                            legacyExits.add(exit);
+                        }
+                        json.add("exits", legacyExits);
+                        preservedManifest[0] = json.toString();
                         java.nio.file.Files.writeString(recovered[0].manifestPath(), "{partial");
                     } catch (java.io.IOException error) { throw new IllegalStateException(error); }
                     readFailure[0] = P1RoundWorldBundle.open(server, snapshot);
@@ -302,6 +316,7 @@ public final class P1WorldPreparationGameTest {
                     var overworld = readFailure[0].level(Level.OVERWORLD);
                     test.assertValueEqual(readFailure[0].roundId(), snapshot.roundId(), "Retry keeps the same round identity");
                     test.assertValueEqual(overworld.getSeed(), snapshot.seed(), "Retry keeps the same seed");
+                    test.assertValueEqual(readFailure[0].exits().size(), 2, "Legacy exit metadata remains readable without rebuilding or validating corridors");
                     test.assertTrue(overworld.getBlockState(building[0]).is(Blocks.CHEST), "Retry preserves player building files");
                     test.assertValueEqual(readFailure[0].metrics().changedBlocks(), 0, "Retry never regenerates ready world terrain");
                     org.slf4j.LoggerFactory.getLogger("hardrush-p1-world-test").info("P1 same-round retry metrics: {}", readFailure[0].metrics());
@@ -318,13 +333,36 @@ public final class P1WorldPreparationGameTest {
                     test.assertTrue(damaged[0].failure().isPresent(), "Unsafe recovered spawn must fail closed");
                 })
                 .thenExecute(() -> {
-                    test.assertFalse(damaged[0].ready(), "Damaged ready-world infrastructure cannot unlock participation");
+                    test.assertFalse(damaged[0].ready(), "An unsafe natural spawn cannot unlock participation");
                     test.assertTrue(damaged[0].failure().orElseThrow().contains("受损"), "Recovery explains damaged spawn and manual action");
                     test.assertValueEqual(damaged[0].metrics().changedBlocks(), 0, "Unsafe recovery never silently repairs player terrain");
                     closed[0] = damaged[0].saveAndClose().toCompletableFuture();
                 })
                 .thenWaitUntil(() -> awaitClosed(test, damaged[0], closed[0], started, lastDiagnostic))
                 .thenSucceed();
+    }
+
+    private static void captureNaturalSurface(net.minecraft.server.MinecraftServer server, UUID roundId,
+            java.util.Map<net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState> surface,
+            java.util.Set<net.minecraft.world.level.ChunkPos> sampled) {
+        var key = ResourceKey.create(Registries.DIMENSION, Identifier.parse(P1WorldPaths.identifier(roundId, "overworld")));
+        var level = server.getLevel(key);
+        if (level == null) return;
+        var origin = level.getChunkSource().getGenerator().getOrigin(level.getChunkSource().randomState());
+        for (int dx = -8; dx <= 8; dx++) for (int dz = -8; dz <= 8; dz++) {
+            var pos = new net.minecraft.world.level.ChunkPos(origin.x() + dx, origin.z() + dz);
+            if (sampled.contains(pos)) continue;
+            var chunk = level.getChunkSource().getChunkNow(pos.x(), pos.z());
+            if (chunk == null) continue;
+            sampled.add(pos);
+            for (int x = 2; x < 16; x += 4) for (int z = 2; z < 16; z += 4) {
+                int y = chunk.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                for (int height = 0; height <= 4; height++) {
+                    var block = new net.minecraft.core.BlockPos(pos.getMinBlockX() + x, y + height, pos.getMinBlockZ() + z);
+                    surface.put(block, level.getBlockState(block));
+                }
+            }
+        }
     }
 
     private static void awaitClosed(GameTestHelper test, P1RoundWorldBundle bundle,
