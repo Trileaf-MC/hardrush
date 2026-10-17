@@ -75,11 +75,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
     private final java.util.concurrent.Executor callbacks;
 
     public P1PlayerProfiles(MinecraftServer server, Path root, Supplier<ServerLevel> lobby, Supplier<Vec3> lobbySpawn) {
-        this(server, root, lobby, lobbySpawn, task -> server.execute(() -> {
-            // A stopped vanilla event loop may execute submissions on the IO caller.
-            // The durable journal is drained by close(); only the server thread may apply it.
-            if (server.isSameThread()) task.run();
-        }));
+        this(server, root, lobby, lobbySpawn, dev.hardrush.p1.P1MainThreadExecutor.forServer(server));
     }
 
     /** Callback executor seam lets a headless fixture hold callbacks while testing the independent IO barrier. */

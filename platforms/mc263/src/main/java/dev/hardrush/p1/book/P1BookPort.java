@@ -72,7 +72,8 @@ public final class P1BookPort implements BookPort {
                 future.complete(OperationResult.failed(tag, OperationResult.Outcome.RETRYABLE_FAILURE, "书册发放未完成，保留待领"));
             }
         };
-        if (server.isSameThread()) action.run(); else server.execute(action);
+        dev.hardrush.p1.P1MainThreadExecutor.forServer(server).execute(action, () -> future.complete(
+                OperationResult.failed(tag, OperationResult.Outcome.RETRYABLE_FAILURE, "服务器正在停止，书册保留待领")));
         return future;
     }
 

@@ -3,6 +3,7 @@
   "package": "dev.hardrush.p1.player.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "StoppedServerTaskMixin",
     "PlayerProfileTagMixin",
     "PlayerProfileResetAccessor",
     "PlayerCooldownAccessor",

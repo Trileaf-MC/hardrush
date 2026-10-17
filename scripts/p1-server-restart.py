@@ -280,6 +280,8 @@ def run_operation(spec, directory, phase, operation, timeout):
         if any(fixture.get(key) != value for key, value in
                (('operation', operation), ('phase', phase), ('pid', process.pid))):
             raise RuntimeError('Fixture operation, phase, or actual JVM PID differs from this attempt')
+        if fixture.get('stoppedNativeCallbacksExecuted') != 16000 or fixture.get('shutdownReentrantCount') != 0:
+            raise RuntimeError('Stopped native callbacks were skipped or left a corrupt owner counter')
         uuid.UUID(fixture['roundId'])
         evidence.update(fixture=fixture, storage=storage_evidence(directory, fixture), status='PASS')
     except (RuntimeError, ValueError, KeyError, OSError, sqlite3.Error) as error:

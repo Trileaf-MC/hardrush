@@ -96,12 +96,9 @@ public final class P1LobbyRuntime {
             var reference = new P1LobbySession[1];
             var bootstrapCallbacks = new ArrayDeque<Runnable>();
             var session = new P1LobbySession(server.getWorldPath(LevelResource.ROOT).resolve("hardrush/p1.sqlite"),
-                    MonotonicClock.system(), task -> server.execute(() -> {
-                        // After halt(), vanilla execute() may run inline on the submitting IO worker.
-                        // close() drains the accepted futures itself; never mutate the engine or
-                        // apply native player/TAB effects from that worker during normal shutdown.
-                        if (!server.isSameThread()) return;
-                        // execute() may run inline on the server thread if
+                    MonotonicClock.system(), task -> P1MainThreadExecutor.forServer(server).execute(() -> {
+                        // The queue never enters vanilla's non-thread-safe reentrant executor on IO.
+                        // close() drains durable futures; the owner thread may apply bootstrap inline if
                         // bootstrap IO finished before constructor return.
                         if (reference[0] == null) bootstrapCallbacks.add(task);
                         else if (SESSIONS.get(server) == reference[0]) task.run();
@@ -751,7 +748,7 @@ public final class P1LobbyRuntime {
         var recordingBarrier = recorder == null ? CompletableFuture.<Void>completedFuture(null)
                 : P1RoundRelease.stopRecordings(recorder, tag).toCompletableFuture();
         REPLAY_FLUSHES.put(server, recordingBarrier);
-        P1RoundRelease.releaseAfterRecordings(recordingBarrier, server::execute,
+        P1RoundRelease.releaseAfterRecordings(recordingBarrier, P1MainThreadExecutor.forServer(server),
                 () -> SESSIONS.get(server) == session && WORLDS.get(server) == worlds
                         && session.state() == P1LobbySession.State.OPEN
                         && session.snapshot().orElseThrow().roundId().equals(round.roundId()),

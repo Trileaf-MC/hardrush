@@ -78,6 +78,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
         var current = new Fixture[1];
         ServerLifecycleEvents.SERVER_STARTED.register(server -> current[0] = new Fixture(server));
         ServerTickEvents.END_SERVER_TICK.register(server -> { if (current[0] != null) current[0].tick(); });
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> { if (current[0] != null) current[0].stoppedNativeCallbacks(); });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> { if (current[0] != null) current[0].stopped(); });
     }
 
@@ -543,6 +544,24 @@ public final class P1ServerRestartRegression implements ModInitializer {
             stopping = true;
             // Same production halt path as the console stop command; do not pre-close any P1 service.
             server.halt(false);
+        }
+        void stoppedNativeCallbacks() {
+            try {
+                require(server.isStopped()&&server.isSameThread(),"stress actual stopped server on its owner");
+                var count=new java.util.concurrent.atomic.AtomicInteger();
+                try(var pool=java.util.concurrent.Executors.newFixedThreadPool(8)){
+                    var start=new java.util.concurrent.CountDownLatch(1);var jobs=new ArrayList<java.util.concurrent.Future<?>>();
+                    for(int n=0;n<8;n++)jobs.add(pool.submit(()->{start.await();for(int i=0;i<2000;i++)server.execute(count::incrementAndGet);return null;}));
+                    start.countDown();
+                    for(int i=0;i<2000;i++)server.execute(()->require(server.isSameThread(),"owner tasks remain on owner"));
+                    for(var job:jobs)job.get(10,TimeUnit.SECONDS);
+                }
+                var field=net.minecraft.util.thread.ReentrantBlockableEventLoop.class.getDeclaredField("reentrantCount");field.setAccessible(true);
+                int remaining=field.getInt(server);
+                require(count.get()==16000,"all native stopped callbacks execute, none skipped");
+                require(remaining==0,"vanilla owner reentrant count must return to zero: "+remaining);
+                details.addProperty("stoppedNativeCallbacksExecuted",count.get());details.addProperty("shutdownReentrantCount",remaining);
+            }catch(Throwable error){failure=error;throw new IllegalStateException(error);}
         }
         void stopped() {
             try {

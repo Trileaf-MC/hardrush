@@ -154,7 +154,7 @@ public final class P1CelebrationRuntime {
 
     private <T> void after(CompletableFuture<T> future, RoundSnapshot round, PlayerState state,
             java.util.function.Consumer<T> complete) {
-        future.whenComplete((value, error) -> server.execute(() -> {
+        future.whenComplete((value, error) -> dev.hardrush.p1.P1MainThreadExecutor.forServer(server).execute(() -> {
             if (!server.isSameThread() || stopping || SERVICES.get(server) != this || !round.roundId().equals(roundId)) return;
             if (error != null) { session.adapterFailure("庆祝档案保存／恢复失败", error); return; }
             if (state != null && players.get(state.player.getUUID()) != state) return;
