@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "directory": "/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-stabilization-matrix/88b73113-58c0-47b7-8102-328752481b2f",
+  "checks": [
+    {
+      "name": "base",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        "checkP3",
+        "-PhardrushP1=true",
+        "--rerun-tasks",
+        "--console=plain"
+      ],
+      "log": "base.log",
+      "status": "PASS",
+      "pid": 82060,
+      "exitCode": 0,
+      "elapsedSeconds": 57.928,
+      "logSha256": "f7c0c77e191240231337057cd21bfe33a4819a9f966634329dd1055d4df4896e"
+    }
+  ],
+  "head": "741f58d5252c1f2f27303717202063ebfb034873",
+  "sourceManifest": "source-files.json",
+  "scope": "Headless native protocol/state only; no graphical or performance acceptance."
+}

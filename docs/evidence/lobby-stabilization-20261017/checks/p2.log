@@ -1,0 +1,448 @@
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :persistence:processResources NO-SOURCE
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :core:compileJava UP-TO-DATE
+> Task :platforms:mc263:processDevelopmentResources NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :platforms:mc263:generateLog4jConfig UP-TO-DATE
+> Task :core:classes UP-TO-DATE
+> Task :platforms:mc263:generateDLIConfig UP-TO-DATE
+> Task :platforms:mc263:configureLaunch UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :platforms:mc263:processGametestResources UP-TO-DATE
+> Task :persistence:compileJava UP-TO-DATE
+> Task :persistence:classes UP-TO-DATE
+> Task :persistence:jar UP-TO-DATE
+> Task :platforms:mc263:compileJava UP-TO-DATE
+> Task :platforms:mc263:classes UP-TO-DATE
+> Task :platforms:mc263:compileDevelopmentJava UP-TO-DATE
+> Task :platforms:mc263:developmentClasses UP-TO-DATE
+> Task :platforms:mc263:compileGametestJava UP-TO-DATE
+> Task :platforms:mc263:gametestClasses UP-TO-DATE
+
+> Task :platforms:mc263:prepareDebugTools
+Debug tools prepared; credentials remain in .local/debug/*/config.
+
+> Task :platforms:mc263:runGameTest
+Isolated P2 lobby storage: /Users/leifwebber/projects/minecraft/hardrush/.local/p2-lobby/fed2711e-5494-4f95-9dc5-d3fbd936ed4c
+Default isolated GameTest storage (special suites may override): /Users/leifwebber/projects/minecraft/hardrush/.local/baseline-check/69a9f40a-dcdb-40b0-becb-884d858bdbdf
+[16:06:41] [main/WARN] (FabricLoader/Knot) Class path entries reference missing files: /Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/build/resources/development - the game may not load properly!
+[16:06:41] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 26.3 with Fabric Loader 0.19.5
+[16:06:41] [main/INFO] (FabricLoader/Mappings) Mappings not present!
+[16:06:41] [main/INFO] (FabricLoader) Loading 46 mods:
+	- fabric-advancement-api-v1 1.0.0+38c7a2d55d
+	- fabric-api 0.162.0+26.3
+	- fabric-api-base 2.0.6+fcdff87f5d
+	- fabric-api-lookup-api-v1 2.0.24+3434d6d95d
+	- fabric-biome-api-v1 20.1.0+c6aa69a85d
+	- fabric-block-api-v1 3.1.0+0ae6f9115d
+	- fabric-block-getter-api-v2 2.0.9+3434d6d95d
+	- fabric-command-api-v2 3.1.2+fcdff87f5d
+	- fabric-content-registries-v0 15.0.4+74ed1ea55d
+	- fabric-convention-tags-v2 4.10.3+6b5b47fd5d
+	- fabric-crash-report-info-v1 1.0.7+fcdff87f5d
+	- fabric-creative-tab-api-v1 5.0.21+fcdff87f5d
+	- fabric-data-attachment-api-v1 2.2.31+b9b88df45d
+	- fabric-data-generation-api-v1 27.3.0+5be2453c5d
+	- fabric-debug-api-v1 1.0.4+3434d6d95d
+	- fabric-dimensions-v1 5.1.19+47f74c985d
+	- fabric-entity-events-v1 6.0.4+3434d6d95d
+	- fabric-events-interaction-v0 5.3.7+b9b88df45d
+	- fabric-game-rule-api-v1 4.0.10+3434d6d95d
+	- fabric-gametest-api-v1 4.0.33+3434d6d95d
+	- fabric-item-api-v1 14.7.0+cf6bc2db5d
+	- fabric-lifecycle-events-v1 4.1.9+ffef5f675d
+	- fabric-loot-api-v3 4.0.8+4068fd645d
+	- fabric-menu-api-v1 2.0.28+ed66f0a35d
+	- fabric-message-api-v1 7.0.10+3434d6d95d
+	- fabric-networking-api-v1 6.3.9+b9b88df45d
+	- fabric-object-builder-api-v1 24.1.10+3434d6d95d
+	- fabric-particles-v1 5.0.25+3434d6d95d
+	- fabric-permission-api-v1 1.0.8+fcdff87f5d
+	- fabric-recipe-api-v1 10.0.9+b9b88df45d
+	- fabric-registry-sync-v0 8.0.2+1ca9f6365d
+	- fabric-rendering-fluids-v1 6.0.6+3434d6d95d
+	- fabric-resource-conditions-api-v1 6.2.0+0d124ae85d
+	- fabric-resource-loader-v0 3.3.26+4fc5413f5d
+	- fabric-resource-loader-v1 3.0.4+fcdff87f5d
+	- fabric-serialization-api-v1 2.0.7+74ed1ea55d
+	- fabric-tag-api-v1 2.1.10+fcdff87f5d
+	- fabric-transfer-api-v1 8.0.25+fcdff87f5d
+	- fabric-transitive-access-wideners-v1 8.1.16+52268a0e5d
+	- fabricloader 0.19.5
+	- fantasy 0.8.4+26.3
+	- hardrush 0.1.0-p0+mc26.3
+	- hardrush-gametest 1.0.0
+	- java 25
+	- minecraft 26.3
+	- mixinextras 0.5.5
+[16:06:41] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/Users/leifwebber/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.17.4+mixin.0.8.7/5f66cc9f59b8efaa942155a3d5a30599bf6640dd/sponge-mixin-0.17.4+mixin.0.8.7.jar Service=Knot/Fabric Env=SERVER
+[16:06:41] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.5).
+[16:06:42] [main/WARN] (MacOperatingSystem) Unable to parse version 27.0 to a codename.
+[16:06:45] [main/INFO] (hardrush) HardRush production runtime; competition enabled=true
+[16:06:45] [main/ERROR] (Minecraft) Failed to load properties from file: server.properties
+
+java.nio.file.NoSuchFileException: server.properties
+	at java.base/sun.nio.fs.UnixException.translateToIOException(UnixException.java:92)
+	at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:106)
+	at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:111)
+	at java.base/sun.nio.fs.UnixFileSystemProvider.newFileChannel(UnixFileSystemProvider.java:213)
+	at java.base/sun.nio.fs.UnixFileSystemProvider.newByteChannel(UnixFileSystemProvider.java:244)
+	at java.base/java.nio.file.Files.newByteChannel(Files.java:357)
+	at java.base/java.nio.file.Files.newByteChannel(Files.java:399)
+	at java.base/java.nio.file.spi.FileSystemProvider.newInputStream(FileSystemProvider.java:371)
+	at java.base/java.nio.file.Files.newInputStream(Files.java:154)
+	at knot//net.minecraft.server.dedicated.Settings.loadFromFile(Settings.java:62)
+	at knot//net.minecraft.server.dedicated.DedicatedServerProperties.fromFile(DedicatedServerProperties.java:156)
+	at knot//net.minecraft.server.dedicated.DedicatedServerSettings.<init>(DedicatedServerSettings.java:12)
+	at knot//net.minecraft.server.Main.main(Main.java:117)
+	at net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider.launch(MinecraftGameProvider.java:517)
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:72)
+	at net.fabricmc.loader.impl.launch.knot.KnotServer.main(KnotServer.java:23)
+	at net.fabricmc.devlaunchinjector.Main.main(Main.java:86)
+[16:06:45] [main/INFO] (Minecraft) Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
+[16:06:45] [main/INFO] (FabricGameTestRunner) Starting test server
+[16:06:46] [Worker-Main-6/INFO] (Minecraft) Loaded 1866 advancements
+[16:06:46] [main/INFO] (BiomeModificationImpl) Applied 0 biome modifications to 0 of 67 new biomes in 590.0 μs
+[16:06:46] [Server thread/INFO] (Minecraft) Selecting global world spawn...
+[16:06:46] [Server thread/INFO] (Minecraft) Loading 0 persistent chunks...
+[16:06:46] [Server thread/INFO] (Minecraft) Preparing spawn area: 100%
+[16:06:46] [Server thread/INFO] (Minecraft) Time elapsed: 287 ms
+[16:06:46] [Server thread/INFO] (Minecraft) Will run tests matching hardrush-gametest:p2runtime_lobby_game_test* (1 tests)
+[16:06:46] [Server thread/INFO] (Minecraft) Started game test server
+[16:06:46] [Server thread/INFO] (hardrush-p1) P1 enabled; independent world preparation and player profile isolation gate participation
+[16:06:46] [Server thread/INFO] (hardrush-p0) HardRush P0 worlds: 尚无 P0 轮次；create 将创建三个持久维度
+[16:06:46] [Server thread/INFO] (Minecraft) 1 tests are now running at position -1400771, 4, -13910682!
+[16:06:47] [Server thread/INFO] (Minecraft) Running test environment 'minecraft:default' batch 0 (1 tests)...
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:47] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [ ]
+[16:06:48] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Runtime bootstrap; tick=1928
+[16:06:48] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: P2LobbyMonster; tick=1928
+[16:06:48] [Server thread/INFO] (Minecraft) [_]
+[16:06:48] [Server thread/INFO] (Minecraft) [_]
+[16:06:48] [Server thread/INFO] (Minecraft) [_]
+[16:06:48] [Server thread/INFO] (Minecraft) [_]
+[16:06:48] [Server thread/INFO] (Minecraft) P2LobbyMonster[embedded] logged in with entity id 1 at (-1400770.5, 4.0, -1.39106815E7)
+[16:06:49] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster joined the game
+[16:06:49] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: P2LobbyMonster; tick=2019
+[16:06:49] [Server thread/INFO] (Minecraft) [_]
+[16:06:49] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: P2LobbyTarget; tick=2021
+[16:06:49] [Server thread/INFO] (Minecraft) P2LobbyTarget[embedded] logged in with entity id 2 at (-1400770.5, 4.0, -1.39106815E7)
+[16:06:49] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget joined the game
+[16:06:49] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: P2LobbyTarget; tick=2021
+[16:06:49] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: World/profile barriers; tick=2024
+[16:06:49] [Server thread/INFO] (Minecraft) [_]
+[16:06:49] [Server thread/INFO] (Minecraft) [_]
+[16:06:49] [Server thread/INFO] (Minecraft) [_]
+[16:06:49] [Server thread/INFO] (Minecraft) [_]
+[16:06:49] [Server thread/INFO] (Minecraft) [_]
+[16:06:49] [Server thread/INFO] (Minecraft) [_]
+[16:06:49] [Server thread/INFO] (Minecraft) [_]
+[16:06:49] [Server thread/INFO] (Minecraft) [_]
+[16:06:49] [Server thread/INFO] (Minecraft) [_]
+[16:06:50] [Server thread/INFO] (Minecraft) [_]
+[16:06:50] [Server thread/INFO] (Minecraft) [_]
+[16:06:50] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: First formal join; tick=2256
+[16:06:50] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Second formal join; tick=2258
+[16:06:50] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Ready countdown; tick=2260
+[16:06:50] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Second ready; tick=2260
+[16:06:50] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Both native human lives admitted; tick=2260
+[16:06:50] [Server thread/INFO] (Minecraft) [_]
+[16:06:51] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: The entire private arena reaches native entity simulation before lifecycle checks; tick=2264
+[16:06:51] [Server thread/INFO] (Minecraft) [_]
+[16:06:51] [Server thread/INFO] (Minecraft) [_]
+[16:06:52] [Server thread/INFO] (Minecraft) [_]
+[16:06:52] [Server thread/INFO] (Minecraft) [_]
+[16:06:52] [Server thread/INFO] (Minecraft) [_]
+[16:06:52] [Server thread/INFO] (Minecraft) [_]
+[16:06:52] [Server thread/INFO] (Minecraft) [_]
+[16:06:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native loot chunk reaches entity ticking before the immediate human death query; tick=2411
+[16:06:52] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was killed
+[16:06:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native hardcore death enters the monster lobby; tick=2411
+[16:06:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Role choice durably saved; tick=2414
+[16:06:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: First formal safe deployment; tick=2415
+[16:06:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Changed safe points refund the committed skill cooldown through real SQLite compensation; tick=2417
+[16:06:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Exactly one durable summon produces two native babies; tick=2418
+[16:06:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Actual native movement cancels return; tick=2420
+[16:06:52] [Server thread/INFO] (Minecraft) [_]
+[16:06:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Completed return channel durably enters lobby; tick=2421
+[16:06:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Skeleton selection keeps summon cooldown; tick=2425
+[16:06:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Second formal safe deployment; tick=2426
+[16:06:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: One admitted burst fires exactly three native arrows; tick=2429
+[16:06:52] [Server thread/INFO] (Minecraft) [_]
+[16:06:52] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:53] [Server thread/INFO] (Minecraft) [_]
+[16:06:54] [Server thread/INFO] (Minecraft) [_]
+[16:06:54] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was killed
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Monster defeat uses native replacement and returns to lobby; tick=2730
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Creeper selection keeps both skill deadlines; tick=2733
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Third formal safe deployment; tick=2734
+[16:06:54] [Server thread/INFO] (Minecraft) P2LobbyMonster lost connection: P2 lobby native reconnect
+[16:06:54] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster left the game
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Outside disconnect commits lobby identity; tick=2736
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: P2LobbyMonster; tick=2737
+[16:06:54] [Server thread/INFO] (Minecraft) P2LobbyMonster[embedded] logged in with entity id 91 at (8.5, -60.0, 8.5)
+[16:06:54] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster joined the game
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: P2LobbyMonster; tick=2737
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Same UUID native reconnect remains a lobby monster; tick=2739
+[16:06:54] [Server thread/INFO] (Minecraft) [_]
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 0; tick=2741
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 0; tick=2742
+[16:06:54] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget was slain by Zombie
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 0; tick=2743
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 0; tick=2746
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 0; tick=2748
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 1; tick=2751
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 1; tick=2752
+[16:06:54] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was slain by Zombie
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 1; tick=2753
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 1; tick=2756
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 1; tick=2758
+[16:06:54] [Server thread/INFO] (Minecraft) [_]
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 2; tick=2762
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 2; tick=2763
+[16:06:54] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget was slain by Zombie
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 2; tick=2765
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 2; tick=2768
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 2; tick=2769
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 3; tick=2773
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 3; tick=2774
+[16:06:54] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was slain by Zombie
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 3; tick=2775
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 3; tick=2777
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 3; tick=2778
+[16:06:54] [Server thread/INFO] (Minecraft) [_]
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 4; tick=2783
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 4; tick=2784
+[16:06:54] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget was slain by Zombie
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 4; tick=2785
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 4; tick=2789
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 4; tick=2791
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 5; tick=2794
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 5; tick=2795
+[16:06:54] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was slain by Zombie
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 5; tick=2796
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 5; tick=2798
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 5; tick=2800
+[16:06:54] [Server thread/INFO] (Minecraft) [_]
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 6; tick=2802
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 6; tick=2803
+[16:06:54] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget was slain by Zombie
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 6; tick=2804
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 6; tick=2807
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 6; tick=2808
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 7; tick=2811
+[16:06:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 7; tick=2812
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 7; tick=2813
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 7; tick=2817
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 7; tick=2819
+[16:06:55] [Server thread/INFO] (Minecraft) [_]
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 8; tick=2823
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 8; tick=2824
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 8; tick=2825
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 8; tick=2828
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 8; tick=2829
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 9; tick=2834
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 9; tick=2835
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 9; tick=2836
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 9; tick=2839
+[16:06:55] [Server thread/INFO] (Minecraft) [_]
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 9; tick=2841
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 10; tick=2844
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 10; tick=2845
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 10; tick=2846
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 10; tick=2850
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 10; tick=2853
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 11; tick=2856
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 11; tick=2857
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 11; tick=2858
+[16:06:55] [Server thread/INFO] (Minecraft) [_]
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 11; tick=2861
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 11; tick=2862
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 12; tick=2865
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 12; tick=2866
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 12; tick=2867
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 12; tick=2870
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 12; tick=2871
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 13; tick=2876
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 13; tick=2877
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 13; tick=2878
+[16:06:55] [Server thread/INFO] (Minecraft) [_]
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 13; tick=2881
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 13; tick=2882
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 14; tick=2886
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 14; tick=2887
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 14; tick=2888
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 14; tick=2890
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 14; tick=2891
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 15; tick=2895
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 15; tick=2896
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 15; tick=2897
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 15; tick=2900
+[16:06:55] [Server thread/INFO] (Minecraft) [_]
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 15; tick=2901
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 16; tick=2903
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 16; tick=2904
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 16; tick=2905
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 16; tick=2908
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 16; tick=2909
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 17; tick=2911
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 17; tick=2912
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 17; tick=2913
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 17; tick=2916
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 17; tick=2917
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 18; tick=2920
+[16:06:55] [Server thread/INFO] (Minecraft) [_]
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 18; tick=2921
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 18; tick=2922
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 18; tick=2924
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 18; tick=2926
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle role selected 19; tick=2929
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle formal deployment 19; tick=2930
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was slain by Zombie
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle all deaths and reward reach rescue atomically 19; tick=2931
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle return remains usable during rescue 19; tick=2935
+[16:06:55] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Cycle exactly one revival unlocks an empty human 19; tick=2937
+[16:06:55] [Server thread/INFO] (Minecraft) P2LobbyMonster lost connection: P2 lobby native reconnect
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster left the game
+[16:06:55] [Server thread/INFO] (Minecraft) P2LobbyTarget lost connection: P2 lobby native reconnect
+[16:06:55] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget left the game
+[16:06:55] [Server thread/INFO] (Minecraft) [+]
+[16:06:55] [Server thread/INFO] (Minecraft) ========= 1 GAME TESTS COMPLETE IN 9.025 s ======================
+[16:06:55] [Server thread/INFO] (Minecraft) All 1 required tests passed :)
+[16:06:55] [Server thread/INFO] (Minecraft) ====================================================
+[16:06:56] [Server thread/INFO] (WorldProbe) P0 世界已保存；未删除或替换任何世界文件
+[16:06:56] [Server thread/INFO] (Minecraft) Stopping server
+[16:06:56] [Server thread/INFO] (Minecraft) Saving players
+[16:06:56] [Server thread/INFO] (Minecraft) Saving worlds
+[16:06:56] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:overworld
+[16:06:56] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:the_nether
+[16:06:56] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:the_end
+[16:06:56] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:lobby
+[16:06:56] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_26d0146699c04bd788dcfc49b3d309bd/overworld
+[16:06:56] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_26d0146699c04bd788dcfc49b3d309bd/nether
+[16:06:56] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_26d0146699c04bd788dcfc49b3d309bd/end
+[16:06:56] [Server thread/INFO] (Minecraft) Game test server shutting down
+
+BUILD SUCCESSFUL in 16s
+13 actionable tasks: 2 executed, 11 up-to-date

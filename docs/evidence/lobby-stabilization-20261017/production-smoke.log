@@ -1,0 +1,30 @@
+Starting a Gradle Daemon, 1 busy and 1 stopped Daemons could not be reused, use --status for details
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :persistence:processResources NO-SOURCE
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :core:compileJava UP-TO-DATE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :persistence:compileJava UP-TO-DATE
+> Task :persistence:classes UP-TO-DATE
+> Task :persistence:jar UP-TO-DATE
+> Task :platforms:mc263:compileJava UP-TO-DATE
+> Task :platforms:mc263:classes UP-TO-DATE
+> Task :platforms:mc263:processIncludeJars UP-TO-DATE
+> Task :platforms:mc263:jar UP-TO-DATE
+> Task :platforms:mc263:stageDemoMods
+
+BUILD SUCCESSFUL in 4s
+9 actionable tasks: 1 executed, 8 up-to-date
+Demo 制品：/Users/leifwebber/projects/minecraft/hardrush/.local/demo/bundles/5b8ae0d1-74e7-48bd-ae77-9630435decd6
+Demo 实例：/Users/leifwebber/projects/minecraft/hardrush/.local/demo/instances/c7d7ef5f-7d4f-45f8-a145-cfa2c80ce2bd
+启动：python3 scripts/demo.py run c7d7ef5f-7d4f-45f8-a145-cfa2c80ce2bd
+监听：127.0.0.1:0
+Demo 实例：/Users/leifwebber/projects/minecraft/hardrush/.local/demo/instances/8fb07ea0-fe9a-41be-88fe-3fbf4586ab6a
+启动：python3 scripts/demo.py run 8fb07ea0-fe9a-41be-88fe-3fbf4586ab6a
+监听：127.0.0.1:0
+两种模式、4 个独立服务端 JVM 验证通过：/Users/leifwebber/projects/minecraft/hardrush/.local/demo/bundles/5b8ae0d1-74e7-48bd-ae77-9630435decd6/smoke-result.json

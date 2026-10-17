@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p1.P2DeathBatchSessionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-17T08:04:00.267Z" hostname="LeifMacBookPro2023.local" time="0.029">
+  <properties/>
+  <testcase name="lethalEvidenceAndSelfDeathCommitBeforeRescueAndDuplicateRevivalCannotConsumeAgain()" classname="dev.hardrush.p1.P2DeathBatchSessionTest" time="0.013"/>
+  <testcase name="rescueDeadlineSurvivesNormalReopenAndRejectsLateAdmission()" classname="dev.hardrush.p1.P2DeathBatchSessionTest" time="0.016"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.core.book.HistoryBookTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-17T08:03:14.005Z" hostname="LeifMacBookPro2023.local" time="0.075">
+  <properties/>
+  <testcase name="staleAdapterCallbackCannotAcknowledgeClaim()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.031"/>
+  <testcase name="concurrentRequestWaitsAndIoFailureReleasesFlightWithoutInventingDelivery()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.009"/>
+  <testcase name="libraryPendingVolumePersistsBeforeInventoryAndRetriesOneOperationThenAllowsAnotherCopy()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.008"/>
+  <testcase name="noTerminalHistoryCreatesNoClaimAndWrongRulesCannotProduceRankedBook()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.002"/>
+  <testcase name="failedAckRetriesSameDeliveryOperationWithoutClaimConsumption()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.004"/>
+  <testcase name="literalSanitizesNamesWithoutInterpretingPlayerText()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.0"/>
+  <testcase name="volumesContainResultCurrentRulesLeaderboardAndCompleteRosterSlices()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.006"/>
+  <testcase name="automaticDeduplicatesOnlyNewestClaimAndNeverReplaysOlderOfflineRounds()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.002"/>
+  <testcase name="manualRepeatIsRateLimitedButNeverConsumesAutomaticClaim()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.002"/>
+  <testcase name="fullAndOfflineLeaveAutomaticClaimPending()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.004"/>
+  <testcase name="hostileMaximumNamesAndCountersStillFitOneBoundedVolume()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.003"/>
+  <testcase name="paginationWrapsCjkAndKeepsUnicodePairsAndBounds()" classname="dev.hardrush.core.book.HistoryBookTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,4 @@
+Stabilization evidence: /Users/leifwebber/projects/minecraft/hardrush/.local/lobby-stabilization-matrix/d5207e85-215e-429a-a4f2-9f260e95ec94
+RUN python
+PASS python (0.204s)
+PASS matrix: /Users/leifwebber/projects/minecraft/hardrush/.local/lobby-stabilization-matrix/d5207e85-215e-429a-a4f2-9f260e95ec94/result.json

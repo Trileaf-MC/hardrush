@@ -1,0 +1,66 @@
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :persistence:processResources NO-SOURCE
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :core:compileJava UP-TO-DATE
+> Task :platforms:mc263:processDevelopmentResources NO-SOURCE
+> Task :platforms:mc263:processTestResources NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :persistence:compileJava UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :persistence:classes UP-TO-DATE
+> Task :persistence:jar UP-TO-DATE
+> Task :platforms:mc263:compileJava
+> Task :platforms:mc263:classes
+> Task :platforms:mc263:compileDevelopmentJava
+> Task :platforms:mc263:developmentClasses
+
+> Task :platforms:mc263:compileTestJava FAILED
+/Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/test/java/dev/hardrush/p1/P1MainThreadExecutorTest.java:16: 错误: Loop中的wrapRunnable(Runnable)无法实现TaskScheduler中的wrapRunnable(Runnable)
+        @Override protected Runnable wrapRunnable(Runnable task){return task;}
+                                     ^
+  正在尝试分配更低的访问权限; 以前为public
+  其中, R是类型变量:
+    R扩展已在接口 TaskScheduler中声明的Runnable
+/Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/test/java/dev/hardrush/p1/P1MainThreadExecutorTest.java:15: 错误: 无法将类 ReentrantBlockableEventLoop<R>中的构造器 ReentrantBlockableEventLoop应用到给定类型;
+        Loop(){super("callback-regression");}
+               ^
+  需要: String,boolean
+  找到:    String
+  原因: 实际参数列表和形式参数列表长度不同
+  其中, R是类型变量:
+    R扩展已在类 ReentrantBlockableEventLoop中声明的Runnable
+2 个错误
+
+[Incubating] Problems report is available at: file:///Users/leifwebber/projects/minecraft/hardrush/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':platforms:mc263:compileTestJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/test/java/dev/hardrush/p1/P1MainThreadExecutorTest.java:15: 错误: 无法将类 ReentrantBlockableEventLoop<R>中的构造器 ReentrantBlockableEventLoop应用到给定类型;
+          Loop(){super("callback-regression");}
+                 ^
+    需要: String,boolean
+    找到:    String
+    原因: 实际参数列表和形式参数列表长度不同
+    其中, R是类型变量:
+      R扩展已在类 ReentrantBlockableEventLoop中声明的Runnable
+  /Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/test/java/dev/hardrush/p1/P1MainThreadExecutorTest.java:16: 错误: Loop中的wrapRunnable(Runnable)无法实现TaskScheduler中的wrapRunnable(Runnable)
+          @Override protected Runnable wrapRunnable(Runnable task){return task;}
+                                       ^
+    正在尝试分配更低的访问权限; 以前为public
+    其中, R是类型变量:
+      R扩展已在接口 TaskScheduler中声明的Runnable
+  2 个错误
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 2s
+8 actionable tasks: 3 executed, 5 up-to-date

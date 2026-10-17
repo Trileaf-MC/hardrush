@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.core.lobby.AssemblyTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-17T07:47:08.063Z" hostname="LeifMacBookPro2023.local" time="0.006">
+  <properties/>
+  <testcase name="registrationAndReadyAreOneCommitAndOtherPlayersNeverResetClock()" classname="dev.hardrush.core.lobby.AssemblyTest" time="0.001"/>
+  <testcase name="allFacilitiesAndLandingsFitTheClaimedCampAndSpawnCannotAutoPrepare()" classname="dev.hardrush.core.lobby.AssemblyTest" time="0.001"/>
+  <testcase name="finalPositionProofCanCancelEvenAtZeroAndSingleValidHumanStarts()" classname="dev.hardrush.core.lobby.AssemblyTest" time="0.0"/>
+  <testcase name="unsafeOriginalDoesNotDiscardOtherAbsentOriginalAndOneProofPreservesRemainder()" classname="dev.hardrush.core.lobby.AssemblyTest" time="0.001"/>
+  <testcase name="ordinaryDisconnectClearsOnlyItsReadinessAndDeadIdentityNeverRejoins()" classname="dev.hardrush.core.lobby.AssemblyTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

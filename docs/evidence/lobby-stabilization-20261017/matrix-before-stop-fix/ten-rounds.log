@@ -1,0 +1,594 @@
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :persistence:processResources NO-SOURCE
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :platforms:mc263:processDevelopmentResources NO-SOURCE
+> Task :core:compileJava UP-TO-DATE
+> Task :platforms:mc263:generateLog4jConfig UP-TO-DATE
+> Task :platforms:mc263:generateDLIConfig UP-TO-DATE
+> Task :platforms:mc263:configureLaunch UP-TO-DATE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :platforms:mc263:processGametestResources UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :persistence:compileJava UP-TO-DATE
+> Task :persistence:classes UP-TO-DATE
+> Task :persistence:jar UP-TO-DATE
+
+> Task :platforms:mc263:prepareDebugTools
+Debug tools prepared; credentials remain in .local/debug/*/config.
+
+> Task :platforms:mc263:compileJava UP-TO-DATE
+> Task :platforms:mc263:classes UP-TO-DATE
+> Task :platforms:mc263:compileDevelopmentJava UP-TO-DATE
+> Task :platforms:mc263:developmentClasses UP-TO-DATE
+> Task :platforms:mc263:compileGametestJava UP-TO-DATE
+> Task :platforms:mc263:gametestClasses UP-TO-DATE
+
+> Task :platforms:mc263:runGameTest
+Isolated P1 ten-round storage: /Users/leifwebber/projects/minecraft/hardrush/.local/p1-regression/0b1a63b6-5c72-4515-9176-85613ced7c46
+Default isolated GameTest storage (special suites may override): /Users/leifwebber/projects/minecraft/hardrush/.local/baseline-check/8b81dd52-78c8-46a7-94cf-efdbc4acb4b5
+[15:33:50] [main/WARN] (FabricLoader/Knot) Class path entries reference missing files: /Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/build/resources/development - the game may not load properly!
+[15:33:50] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 26.3 with Fabric Loader 0.19.5
+[15:33:50] [main/INFO] (FabricLoader/Mappings) Mappings not present!
+[15:33:50] [main/INFO] (FabricLoader) Loading 46 mods:
+	- fabric-advancement-api-v1 1.0.0+38c7a2d55d
+	- fabric-api 0.162.0+26.3
+	- fabric-api-base 2.0.6+fcdff87f5d
+	- fabric-api-lookup-api-v1 2.0.24+3434d6d95d
+	- fabric-biome-api-v1 20.1.0+c6aa69a85d
+	- fabric-block-api-v1 3.1.0+0ae6f9115d
+	- fabric-block-getter-api-v2 2.0.9+3434d6d95d
+	- fabric-command-api-v2 3.1.2+fcdff87f5d
+	- fabric-content-registries-v0 15.0.4+74ed1ea55d
+	- fabric-convention-tags-v2 4.10.3+6b5b47fd5d
+	- fabric-crash-report-info-v1 1.0.7+fcdff87f5d
+	- fabric-creative-tab-api-v1 5.0.21+fcdff87f5d
+	- fabric-data-attachment-api-v1 2.2.31+b9b88df45d
+	- fabric-data-generation-api-v1 27.3.0+5be2453c5d
+	- fabric-debug-api-v1 1.0.4+3434d6d95d
+	- fabric-dimensions-v1 5.1.19+47f74c985d
+	- fabric-entity-events-v1 6.0.4+3434d6d95d
+	- fabric-events-interaction-v0 5.3.7+b9b88df45d
+	- fabric-game-rule-api-v1 4.0.10+3434d6d95d
+	- fabric-gametest-api-v1 4.0.33+3434d6d95d
+	- fabric-item-api-v1 14.7.0+cf6bc2db5d
+	- fabric-lifecycle-events-v1 4.1.9+ffef5f675d
+	- fabric-loot-api-v3 4.0.8+4068fd645d
+	- fabric-menu-api-v1 2.0.28+ed66f0a35d
+	- fabric-message-api-v1 7.0.10+3434d6d95d
+	- fabric-networking-api-v1 6.3.9+b9b88df45d
+	- fabric-object-builder-api-v1 24.1.10+3434d6d95d
+	- fabric-particles-v1 5.0.25+3434d6d95d
+	- fabric-permission-api-v1 1.0.8+fcdff87f5d
+	- fabric-recipe-api-v1 10.0.9+b9b88df45d
+	- fabric-registry-sync-v0 8.0.2+1ca9f6365d
+	- fabric-rendering-fluids-v1 6.0.6+3434d6d95d
+	- fabric-resource-conditions-api-v1 6.2.0+0d124ae85d
+	- fabric-resource-loader-v0 3.3.26+4fc5413f5d
+	- fabric-resource-loader-v1 3.0.4+fcdff87f5d
+	- fabric-serialization-api-v1 2.0.7+74ed1ea55d
+	- fabric-tag-api-v1 2.1.10+fcdff87f5d
+	- fabric-transfer-api-v1 8.0.25+fcdff87f5d
+	- fabric-transitive-access-wideners-v1 8.1.16+52268a0e5d
+	- fabricloader 0.19.5
+	- fantasy 0.8.4+26.3
+	- hardrush 0.1.0-p0+mc26.3
+	- hardrush-gametest 1.0.0
+	- java 25
+	- minecraft 26.3
+	- mixinextras 0.5.5
+[15:33:50] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/Users/leifwebber/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.17.4+mixin.0.8.7/5f66cc9f59b8efaa942155a3d5a30599bf6640dd/sponge-mixin-0.17.4+mixin.0.8.7.jar Service=Knot/Fabric Env=SERVER
+[15:33:51] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.5).
+[15:33:52] [main/WARN] (MacOperatingSystem) Unable to parse version 27.0 to a codename.
+[15:33:54] [main/INFO] (hardrush) HardRush production runtime; competition enabled=true
+[15:33:54] [main/ERROR] (Minecraft) Failed to load properties from file: server.properties
+
+java.nio.file.NoSuchFileException: server.properties
+	at java.base/sun.nio.fs.UnixException.translateToIOException(UnixException.java:92)
+	at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:106)
+	at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:111)
+	at java.base/sun.nio.fs.UnixFileSystemProvider.newFileChannel(UnixFileSystemProvider.java:213)
+	at java.base/sun.nio.fs.UnixFileSystemProvider.newByteChannel(UnixFileSystemProvider.java:244)
+	at java.base/java.nio.file.Files.newByteChannel(Files.java:357)
+	at java.base/java.nio.file.Files.newByteChannel(Files.java:399)
+	at java.base/java.nio.file.spi.FileSystemProvider.newInputStream(FileSystemProvider.java:371)
+	at java.base/java.nio.file.Files.newInputStream(Files.java:154)
+	at knot//net.minecraft.server.dedicated.Settings.loadFromFile(Settings.java:62)
+	at knot//net.minecraft.server.dedicated.DedicatedServerProperties.fromFile(DedicatedServerProperties.java:156)
+	at knot//net.minecraft.server.dedicated.DedicatedServerSettings.<init>(DedicatedServerSettings.java:12)
+	at knot//net.minecraft.server.Main.main(Main.java:117)
+	at net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider.launch(MinecraftGameProvider.java:517)
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:72)
+	at net.fabricmc.loader.impl.launch.knot.KnotServer.main(KnotServer.java:23)
+	at net.fabricmc.devlaunchinjector.Main.main(Main.java:86)
+[15:33:55] [main/INFO] (Minecraft) Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
+[15:33:55] [main/INFO] (FabricGameTestRunner) Starting test server
+[15:33:55] [Worker-Main-8/INFO] (Minecraft) Loaded 1866 advancements
+[15:33:56] [main/INFO] (BiomeModificationImpl) Applied 0 biome modifications to 0 of 67 new biomes in 633.1 μs
+[15:33:56] [Server thread/INFO] (Minecraft) Selecting global world spawn...
+[15:33:56] [Server thread/INFO] (Minecraft) Loading 0 persistent chunks...
+[15:33:56] [Server thread/INFO] (Minecraft) Preparing spawn area: 100%
+[15:33:56] [Server thread/INFO] (Minecraft) Time elapsed: 342 ms
+[15:33:56] [Server thread/INFO] (Minecraft) Will run tests matching hardrush-gametest:p1ten_round_game_test* (2 tests)
+[15:33:56] [Server thread/INFO] (Minecraft) Started game test server
+[15:33:56] [Server thread/INFO] (hardrush-p1) P1 enabled; independent world preparation and player profile isolation gate participation
+[15:33:56] [Server thread/INFO] (hardrush-p0) HardRush P0 worlds: 尚无 P0 轮次；create 将创建三个持久维度
+[15:33:56] [Server thread/INFO] (Minecraft) 2 tests are now running at position -4847754, 4, -8099099!
+[15:33:57] [Server thread/INFO] (Minecraft) Running test environment 'minecraft:default' batch 0 (2 tests)...
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:57] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [  ]
+[15:33:58] [Server thread/INFO] (Minecraft) [_+]
+[15:33:58] [Server thread/INFO] (Minecraft) [_+]
+[15:33:59] [Server thread/INFO] (Minecraft) [_+]
+[15:33:59] [Server thread/INFO] (Minecraft) [_+]
+[15:33:59] [Server thread/INFO] (Minecraft) P1TenA[embedded] logged in with entity id 1 at (-4847753.5, 4.0, -8099098.5)
+[15:33:59] [Server thread/INFO] (Minecraft) System chat: P1TenA joined the game
+[15:33:59] [Server thread/INFO] (Minecraft) [_+]
+[15:33:59] [Server thread/INFO] (Minecraft) P1TenB[embedded] logged in with entity id 2 at (8.5, -60.0, 8.5)
+[15:33:59] [Server thread/INFO] (Minecraft) System chat: P1TenB joined the game
+[15:34:00] [Server thread/INFO] (Minecraft) [_+]
+[15:34:00] [Server thread/INFO] (Minecraft) [_+]
+[15:34:00] [Server thread/INFO] (Minecraft) [_+]
+[15:34:00] [Server thread/INFO] (Minecraft) [_+]
+[15:34:00] [Server thread/INFO] (Minecraft) [_+]
+[15:34:00] [Server thread/INFO] (Minecraft) [_+]
+[15:34:00] [Server thread/INFO] (Minecraft) [_+]
+[15:34:00] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Stone Age]
+[15:34:00] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [We Need to Go Deeper]
+[15:34:01] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Diamonds!]
+[15:34:01] [Server thread/INFO] (Minecraft) System chat: P1TenB has made the advancement [We Need to Go Deeper]
+[15:34:01] [Server thread/INFO] (Minecraft) P1TenB lost connection: P1 headless reconnect fixture
+[15:34:01] [Server thread/INFO] (Minecraft) System chat: P1TenB left the game
+[15:34:01] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [The End?]
+[15:34:01] [Server thread/INFO] (Minecraft) [_+]
+[15:34:01] [Server thread/INFO] (Minecraft) [_+]
+[15:34:01] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Monster Hunter]
+[15:34:01] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Free the End]
+[15:34:01] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P1TenA，有效挑战 1000 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:34:02] [Server thread/INFO] (Minecraft) System chat: P1TenA has reached the goal [Sky's the Limit]
+[15:34:02] [Server thread/INFO] (hardrush-p1) P1 round cbe60464-1b0e-4f83-b4b8-a531c49de20c: replay integration is disabled; no recording is claimed
+[15:34:02] [Server thread/INFO] (Minecraft) [_+]
+[15:34:03] [Server thread/INFO] (hardrush-p1-ten-rounds) P1 native round 1 released: id=cbe60464-1b0e-4f83-b4b8-a531c49de20c, seed=-1030456199550737974, resultMillis=1000, removedDimensions=3, retainedManifests=1
+[15:34:03] [Server thread/INFO] (Minecraft) [_+]
+[15:34:03] [Server thread/INFO] (Minecraft) [_+]
+[15:34:03] [Server thread/INFO] (Minecraft) [_+]
+[15:34:03] [Server thread/INFO] (Minecraft) [_+]
+[15:34:03] [Server thread/INFO] (Minecraft) [_+]
+[15:34:03] [Server thread/INFO] (Minecraft) [_+]
+[15:34:03] [Server thread/INFO] (Minecraft) [_+]
+[15:34:04] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Stone Age]
+[15:34:04] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [We Need to Go Deeper]
+[15:34:04] [Server thread/INFO] (Minecraft) System chat: P1TenA was killed
+[15:34:04] [Server thread/INFO] (Minecraft) [_+]
+[15:34:04] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [The End?]
+[15:34:04] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Monster Hunter]
+[15:34:04] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Free the End]
+[15:34:04] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P1TenA，有效挑战 2000 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:34:04] [Server thread/INFO] (hardrush-p1) P1 round 911d8a99-129e-4df2-8bbe-501cccaf19d2: replay integration is disabled; no recording is claimed
+[15:34:04] [Server thread/INFO] (Minecraft) [_+]
+[15:34:05] [Server thread/INFO] (hardrush-p1-ten-rounds) P1 native round 2 released: id=911d8a99-129e-4df2-8bbe-501cccaf19d2, seed=222767784811421148, resultMillis=2000, removedDimensions=6, retainedManifests=2
+[15:34:05] [Server thread/INFO] (Minecraft) [_+]
+[15:34:05] [Server thread/INFO] (Minecraft) [_+]
+[15:34:05] [Server thread/INFO] (Minecraft) [_+]
+[15:34:05] [Server thread/INFO] (Minecraft) [_+]
+[15:34:06] [Server thread/INFO] (Minecraft) [_+]
+[15:34:06] [Server thread/INFO] (Minecraft) [_+]
+[15:34:06] [Server thread/INFO] (Minecraft) [_+]
+[15:34:06] [Server thread/INFO] (Minecraft) [_+]
+[15:34:06] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Stone Age]
+[15:34:06] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [We Need to Go Deeper]
+[15:34:06] [Server thread/INFO] (Minecraft) P1TenA lost connection: P1 headless reconnect fixture
+[15:34:06] [Server thread/INFO] (Minecraft) System chat: P1TenA left the game
+[15:34:06] [Server thread/INFO] (Minecraft) [_+]
+[15:34:06] [Server thread/INFO] (Minecraft) [_+]
+[15:34:06] [Server thread/INFO] (Minecraft) [_+]
+[15:34:06] [Server thread/INFO] (Minecraft) [_+]
+[15:34:06] [Server thread/INFO] (Minecraft) P1TenA[embedded] logged in with entity id 282 at (8.5, -60.0, 8.5)
+[15:34:06] [Server thread/INFO] (Minecraft) System chat: P1TenA joined the game
+[15:34:06] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [The End?]
+[15:34:07] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Monster Hunter]
+[15:34:07] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Free the End]
+[15:34:07] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P1TenA，有效挑战 3000 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:34:07] [Server thread/INFO] (Minecraft) System chat: P1TenA has reached the goal [Sky's the Limit]
+[15:34:07] [Server thread/INFO] (hardrush-p1) P1 round 33f95b72-8a27-42a2-a5df-afae8843f7e8: replay integration is disabled; no recording is claimed
+[15:34:07] [Server thread/INFO] (Minecraft) [_+]
+[15:34:07] [Server thread/INFO] (hardrush-p1-ten-rounds) P1 native round 3 released: id=33f95b72-8a27-42a2-a5df-afae8843f7e8, seed=-6149571252029989472, resultMillis=3000, removedDimensions=9, retainedManifests=3
+[15:34:08] [Server thread/INFO] (Minecraft) [_+]
+[15:34:08] [Server thread/INFO] (Minecraft) [_+]
+[15:34:08] [Server thread/INFO] (Minecraft) [_+]
+[15:34:08] [Server thread/INFO] (Minecraft) [_+]
+[15:34:08] [Server thread/INFO] (Minecraft) [_+]
+[15:34:08] [Server thread/INFO] (Minecraft) [_+]
+[15:34:08] [Server thread/INFO] (Minecraft) [_+]
+[15:34:08] [Server thread/INFO] (Minecraft) [_+]
+[15:34:08] [Server thread/INFO] (Minecraft) [_+]
+[15:34:08] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Stone Age]
+[15:34:08] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [We Need to Go Deeper]
+[15:34:08] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [The End?]
+[15:34:09] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Diamonds!]
+[15:34:09] [Server thread/INFO] (Minecraft) [_+]
+[15:34:09] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Monster Hunter]
+[15:34:09] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Free the End]
+[15:34:09] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P1TenA，有效挑战 4000 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:34:09] [Server thread/INFO] (Minecraft) System chat: P1TenA has reached the goal [Sky's the Limit]
+[15:34:09] [Server thread/INFO] (hardrush-p1) P1 round 29f49ca3-0627-4f6c-bba7-4cd91bb5dcc0: replay integration is disabled; no recording is claimed
+[15:34:09] [Server thread/INFO] (Minecraft) [_+]
+[15:34:10] [Server thread/INFO] (Minecraft) [_+]
+[15:34:10] [Server thread/INFO] (hardrush-p1-ten-rounds) P1 native round 4 released: id=29f49ca3-0627-4f6c-bba7-4cd91bb5dcc0, seed=-8535597532526168898, resultMillis=4000, removedDimensions=12, retainedManifests=4
+[15:34:10] [Server thread/INFO] (Minecraft) [_+]
+[15:34:10] [Server thread/INFO] (Minecraft) [_+]
+[15:34:10] [Server thread/INFO] (Minecraft) [_+]
+[15:34:10] [Server thread/INFO] (Minecraft) [_+]
+[15:34:10] [Server thread/INFO] (Minecraft) P1TenB[embedded] logged in with entity id 394 at (8.5, -60.0, 8.5)
+[15:34:10] [Server thread/INFO] (Minecraft) System chat: P1TenB joined the game
+[15:34:10] [Server thread/INFO] (Minecraft) [_+]
+[15:34:10] [Server thread/INFO] (Minecraft) [_+]
+[15:34:10] [Server thread/INFO] (Minecraft) [_+]
+[15:34:11] [Server thread/INFO] (Minecraft) [_+]
+[15:34:11] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Stone Age]
+[15:34:11] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [We Need to Go Deeper]
+[15:34:11] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Diamonds!]
+[15:34:11] [Server thread/INFO] (Minecraft) System chat: P1TenB has made the advancement [We Need to Go Deeper]
+[15:34:11] [Server thread/INFO] (Minecraft) P1TenB lost connection: P1 headless reconnect fixture
+[15:34:11] [Server thread/INFO] (Minecraft) System chat: P1TenB left the game
+[15:34:11] [Server thread/INFO] (Minecraft) [_+]
+[15:34:11] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [The End?]
+[15:34:11] [Server thread/INFO] (Minecraft) [_+]
+[15:34:11] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Monster Hunter]
+[15:34:11] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Free the End]
+[15:34:11] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P1TenA，有效挑战 5000 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:34:11] [Server thread/INFO] (Minecraft) System chat: P1TenA has reached the goal [Sky's the Limit]
+[15:34:11] [Server thread/INFO] (Minecraft) [_+]
+[15:34:11] [Server thread/INFO] (hardrush-p1) P1 round 1231cd30-bea4-4def-b583-d61b2b13216c: replay integration is disabled; no recording is claimed
+[15:34:12] [Server thread/INFO] (hardrush-p1-ten-rounds) P1 native round 5 released: id=1231cd30-bea4-4def-b583-d61b2b13216c, seed=5174516842714235703, resultMillis=5000, removedDimensions=15, retainedManifests=5
+[15:34:12] [Server thread/INFO] (Minecraft) [_+]
+[15:34:12] [Server thread/INFO] (Minecraft) [_+]
+[15:34:12] [Server thread/INFO] (Minecraft) [_+]
+[15:34:12] [Server thread/INFO] (Minecraft) [_+]
+[15:34:12] [Server thread/INFO] (Minecraft) [_+]
+[15:34:12] [Server thread/INFO] (Minecraft) [_+]
+[15:34:13] [Server thread/INFO] (Minecraft) [_+]
+[15:34:13] [Server thread/INFO] (Minecraft) [_+]
+[15:34:13] [Server thread/INFO] (Minecraft) [_+]
+[15:34:13] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Stone Age]
+[15:34:13] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [We Need to Go Deeper]
+[15:34:13] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [The End?]
+[15:34:13] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Diamonds!]
+[15:34:13] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Monster Hunter]
+[15:34:13] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Free the End]
+[15:34:13] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P1TenA，有效挑战 6000 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:34:13] [Server thread/INFO] (Minecraft) System chat: P1TenA has reached the goal [Sky's the Limit]
+[15:34:13] [Server thread/INFO] (Minecraft) [_+]
+[15:34:13] [Server thread/INFO] (hardrush-p1) P1 round 6a3af331-cee6-4f4f-b112-9b2bd0446d2c: replay integration is disabled; no recording is claimed
+[15:34:14] [Server thread/INFO] (hardrush-p1-ten-rounds) P1 native round 6 released: id=6a3af331-cee6-4f4f-b112-9b2bd0446d2c, seed=-5509602233700655682, resultMillis=6000, removedDimensions=18, retainedManifests=6
+[15:34:14] [Server thread/INFO] (Minecraft) [_+]
+[15:34:14] [Server thread/INFO] (Minecraft) [_+]
+[15:34:14] [Server thread/INFO] (Minecraft) [_+]
+[15:34:14] [Server thread/INFO] (Minecraft) [_+]
+[15:34:14] [Server thread/INFO] (Minecraft) [_+]
+[15:34:14] [Server thread/INFO] (Minecraft) [_+]
+[15:34:15] [Server thread/INFO] (Minecraft) [_+]
+[15:34:15] [Server thread/INFO] (Minecraft) [_+]
+[15:34:15] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Stone Age]
+[15:34:15] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [We Need to Go Deeper]
+[15:34:15] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [The End?]
+[15:34:15] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Diamonds!]
+[15:34:15] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Monster Hunter]
+[15:34:15] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Free the End]
+[15:34:15] [Server thread/INFO] (Minecraft) [_+]
+[15:34:15] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P1TenA，有效挑战 7000 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:34:15] [Server thread/INFO] (Minecraft) System chat: P1TenA has reached the goal [Sky's the Limit]
+[15:34:15] [Server thread/INFO] (hardrush-p1) P1 round a77a7127-d299-42ca-85d0-3130fd2e84df: replay integration is disabled; no recording is claimed
+[15:34:15] [Server thread/INFO] (Minecraft) [_+]
+[15:34:16] [Server thread/INFO] (hardrush-p1-ten-rounds) P1 native round 7 released: id=a77a7127-d299-42ca-85d0-3130fd2e84df, seed=-7701022009366247151, resultMillis=7000, removedDimensions=21, retainedManifests=7
+[15:34:16] [Server thread/INFO] (Minecraft) [_+]
+[15:34:16] [Server thread/INFO] (Minecraft) [_+]
+[15:34:16] [Server thread/INFO] (Minecraft) [_+]
+[15:34:16] [Server thread/INFO] (Minecraft) [_+]
+[15:34:16] [Server thread/INFO] (Minecraft) [_+]
+[15:34:16] [Server thread/INFO] (Minecraft) [_+]
+[15:34:16] [Server thread/INFO] (Minecraft) [_+]
+[15:34:17] [Server thread/INFO] (Minecraft) [_+]
+[15:34:17] [Server thread/INFO] (Minecraft) [_+]
+[15:34:17] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Stone Age]
+[15:34:17] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [We Need to Go Deeper]
+[15:34:17] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [The End?]
+[15:34:17] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Diamonds!]
+[15:34:17] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Monster Hunter]
+[15:34:17] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Free the End]
+[15:34:17] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P1TenA，有效挑战 8000 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:34:17] [Server thread/INFO] (Minecraft) [_+]
+[15:34:17] [Server thread/INFO] (hardrush-p1) P1 round cd8409e9-0d59-4ca2-830b-ecff57084281: replay integration is disabled; no recording is claimed
+[15:34:18] [Server thread/INFO] (hardrush-p1-ten-rounds) P1 native round 8 released: id=cd8409e9-0d59-4ca2-830b-ecff57084281, seed=-682542026429546816, resultMillis=8000, removedDimensions=24, retainedManifests=8
+[15:34:18] [Server thread/INFO] (Minecraft) [_+]
+[15:34:18] [Server thread/INFO] (Minecraft) [_+]
+[15:34:18] [Server thread/INFO] (Minecraft) [_+]
+[15:34:18] [Server thread/INFO] (Minecraft) [_+]
+[15:34:18] [Server thread/INFO] (Minecraft) [_+]
+[15:34:18] [Server thread/INFO] (Minecraft) [_+]
+[15:34:18] [Server thread/INFO] (Minecraft) [_+]
+[15:34:18] [Server thread/INFO] (Minecraft) [_+]
+[15:34:18] [Server thread/INFO] (Minecraft) [_+]
+[15:34:19] [Server thread/INFO] (Minecraft) [_+]
+[15:34:19] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Stone Age]
+[15:34:19] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [We Need to Go Deeper]
+[15:34:19] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [The End?]
+[15:34:19] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Diamonds!]
+[15:34:19] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Monster Hunter]
+[15:34:19] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Free the End]
+[15:34:19] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P1TenA，有效挑战 9000 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:34:19] [Server thread/INFO] (Minecraft) System chat: P1TenA has reached the goal [Sky's the Limit]
+[15:34:19] [Server thread/INFO] (hardrush-p1) P1 round ec47e88e-b867-464f-9fee-0b1dba3cd2b6: replay integration is disabled; no recording is claimed
+[15:34:19] [Server thread/INFO] (Minecraft) [_+]
+[15:34:20] [Server thread/INFO] (hardrush-p1-ten-rounds) P1 native round 9 released: id=ec47e88e-b867-464f-9fee-0b1dba3cd2b6, seed=-3459295364959441830, resultMillis=9000, removedDimensions=27, retainedManifests=9
+[15:34:20] [Server thread/INFO] (Minecraft) [_+]
+[15:34:20] [Server thread/INFO] (Minecraft) [_+]
+[15:34:20] [Server thread/INFO] (Minecraft) [_+]
+[15:34:20] [Server thread/INFO] (Minecraft) [_+]
+[15:34:20] [Server thread/INFO] (Minecraft) [_+]
+[15:34:20] [Server thread/INFO] (Minecraft) [_+]
+[15:34:20] [Server thread/INFO] (Minecraft) [_+]
+[15:34:20] [Server thread/INFO] (Minecraft) [_+]
+[15:34:21] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Stone Age]
+[15:34:21] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [We Need to Go Deeper]
+[15:34:21] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [The End?]
+[15:34:21] [Server thread/INFO] (Minecraft) [_+]
+[15:34:21] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Diamonds!]
+[15:34:21] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Monster Hunter]
+[15:34:21] [Server thread/INFO] (Minecraft) System chat: P1TenA has made the advancement [Free the End]
+[15:34:21] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P1TenA，有效挑战 10000 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:34:21] [Server thread/INFO] (Minecraft) System chat: P1TenA has reached the goal [Sky's the Limit]
+[15:34:21] [Server thread/INFO] (hardrush-p1) P1 round a7aac41f-b6a5-4749-8cef-5bf1988e678f: replay integration is disabled; no recording is claimed
+[15:34:21] [Server thread/INFO] (Minecraft) [_+]
+[15:34:21] [Server thread/INFO] (hardrush-p1-ten-rounds) P1 native round 10 released: id=a7aac41f-b6a5-4749-8cef-5bf1988e678f, seed=-8988380162213623084, resultMillis=10000, removedDimensions=30, retainedManifests=10
+[15:34:22] [Server thread/INFO] (Minecraft) [_+]
+[15:34:22] [Server thread/INFO] (Minecraft) [_+]
+[15:34:22] [Server thread/INFO] (Minecraft) [_+]
+[15:34:22] [Server thread/INFO] (Minecraft) [_+]
+[15:34:22] [Server thread/INFO] (Minecraft) [_+]
+[15:34:22] [Server thread/INFO] (Minecraft) [_+]
+[15:34:22] [Server thread/INFO] (Minecraft) [_+]
+[15:34:22] [Server thread/INFO] (Minecraft) [_+]
+[15:34:22] [Server thread/INFO] (Minecraft) P1TenA lost connection: P1 headless reconnect fixture
+[15:34:22] [Server thread/INFO] (Minecraft) System chat: P1TenA left the game
+[15:34:22] [Server thread/INFO] (Minecraft) [++]
+[15:34:22] [Server thread/INFO] (Minecraft) ========= 2 GAME TESTS COMPLETE IN 26.32 s ======================
+[15:34:22] [Server thread/INFO] (Minecraft) All 2 required tests passed :)
+[15:34:22] [Server thread/INFO] (Minecraft) ====================================================
+[15:34:23] [Server thread/INFO] (WorldProbe) P0 世界已保存；未删除或替换任何世界文件
+[15:34:23] [Server thread/INFO] (Minecraft) Stopping server
+[15:34:23] [Server thread/INFO] (Minecraft) Saving players
+[15:34:23] [Server thread/INFO] (Minecraft) Saving worlds
+[15:34:23] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:overworld
+[15:34:23] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:the_end
+[15:34:23] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:the_nether
+[15:34:23] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:lobby
+[15:34:23] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_21d901ca1233489eb76ea87d355604f2/overworld
+[15:34:23] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_21d901ca1233489eb76ea87d355604f2/nether
+[15:34:23] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_21d901ca1233489eb76ea87d355604f2/end
+[15:34:23] [Server thread/INFO] (Minecraft) Game test server shutting down
+
+BUILD SUCCESSFUL in 34s
+13 actionable tasks: 2 executed, 11 up-to-date

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.core.api.AdapterContractTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-17T07:29:09.153Z" hostname="LeifMacBookPro2023.local" time="0.013">
+  <properties/>
+  <testcase name="unavailableOrFailedAdapterDoesNotClaimAnAppliedResult()" classname="dev.hardrush.core.api.AdapterContractTest" time="0.006"/>
+  <testcase name="worldBookAndCausalChainValuesDoNotShareMutableCollectionsWithAdapters()" classname="dev.hardrush.core.api.AdapterContractTest" time="0.004"/>
+  <testcase name="delayedCompletionRetainsItsOriginalRoundAndVersionForArbitration()" classname="dev.hardrush.core.api.AdapterContractTest" time="0.001"/>
+  <testcase name="damageEvidenceRejectsCrossRoundOriginAndMissingPlayerOwner()" classname="dev.hardrush.core.api.AdapterContractTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

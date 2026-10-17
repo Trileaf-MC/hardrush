@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.persistence.TerminalTransactionTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-17T08:03:26.417Z" hostname="LeifMacBookPro2023.local" time="0.313">
+  <properties/>
+  <testcase name="schemaTwoMigratesWithoutChangingExistingSnapshotAndFailedMigrationPreservesVersion()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.016"/>
+  <testcase name="migratedLegacyResultCannotBeReplacedOrAssignedInventedCausalEvidence()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.096"/>
+  <testcase name="previouslyRecordedIdenticalEvidenceIsReusableButCollisionRejectsWithoutPartialTerminal()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.015"/>
+  <testcase name="terminalEventCollidesWithOrdinarySnapshotReplayAndEveryChangedTerminalField()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.011"/>
+  <testcase name="competingTerminalCannotReplaceResultAndDoesNotLeaveLosingEvidence()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.011"/>
+  <testcase name="laterGenericCasCannotReplaceWinnerOrRestartChallengeTime()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.012"/>
+  <testcase name="terminalSnapshotOrCausalPayloadTamperingFailsReadsAndReplay()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.017"/>
+  <testcase name="mismatchedWinnerAndWrongEvidenceTagsAreRejectedBeforeAnyWrite()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.016"/>
+  <testcase name="terminalInsertFailureRollsBackEvidenceSnapshotAndEventAndAllowsIdenticalRetry()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.019"/>
+  <testcase name="nativeWriteLockFailureDoesNotExposeTerminalAndCanRetry()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.054"/>
+  <testcase name="unknownActualDeathHasDurableCompletionWithPendingWinner()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.014"/>
+  <testcase name="actualDeathAndStoppedSnapshotCommitTogetherThenReplayAcrossLaterCheckpointAndReopen()" classname="dev.hardrush.persistence.TerminalTransactionTest" time="0.027"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

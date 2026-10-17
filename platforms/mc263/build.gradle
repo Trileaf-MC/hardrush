@@ -94,7 +94,7 @@ dependencies { gametestImplementation 'org.xerial:sqlite-jdbc:3.53.4.0' }
 
 // A normal, headless dedicated server with the test mod loaded. It deliberately
 // does not inherit gameTest's runner properties: restart evidence needs real JVM exits.
-def p1RestartPhases = ['PREPARING', 'WAITING', 'COUNTDOWN', 'RUNNING', 'SETTLING', 'CELEBRATING', 'ROTATING']
+def p1RestartPhases = ['PREPARING', 'WAITING', 'COUNTDOWN', 'RUNNING', 'RESCUE', 'SETTLING', 'CELEBRATING', 'ROTATING']
 def p1RestartPhase = providers.gradleProperty('hardrushP1RestartPhase').orElse('WAITING').get()
 def p1RestartOperation = providers.gradleProperty('hardrushP1RestartOperation').orElse('write').get()
 def p1RestartBase = rootProject.file('.local/p1-server-restart').toPath().toAbsolutePath().normalize()
@@ -470,7 +470,7 @@ tasks.named('runGameTest') {
 
 // A single production runtime suite owns each JVM; every launch receives a new directory.
 def lobbyRuntimeSuites = ['hardrushP1TenRounds', 'hardrushCelebration', 'hardrushP3Storage', 'hardrushP3Recovery',
-    'hardrushP2Identity', 'hardrushP2Lobby', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt', 'hardrushFullFlow']
+    'hardrushP2Identity', 'hardrushP2Lobby', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt', 'hardrushFullFlow', 'hardrushStabilization']
 if (lobbyRuntimeSuites.count { providers.gradleProperty(it).orNull == 'true' } > 1)
     throw new GradleException('Production runtime suites must use separate isolated JVMs')
 def personalHuntRunDir = rootProject.file(".local/personal-hunt/${UUID.randomUUID()}")
@@ -513,5 +513,24 @@ tasks.named('runGameTest') {
         fullFlowRunDir.mkdirs()
         copy { from rootProject.file('.local/server-p0/eula.txt'); into fullFlowRunDir }
         logger.lifecycle("Isolated full flow storage: ${fullFlowRunDir}")
+    }
+}
+
+// Round 5 owns the production camp, twenty native connections and sequential worlds.
+def stabilizationRunDir = rootProject.file(".local/lobby-stabilization/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushStabilization').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true') throw new GradleException('Stabilization requires P1')
+        vmArg '-Dhardrush.lobby.testStabilization=true'
+        vmArg '-Dhardrush.p1.initialMode=hardcore'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1stabilization_game_test*'
+        runDir stabilizationRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushStabilization').orNull == 'true') doFirst {
+        stabilizationRunDir.mkdirs()
+        copy { from rootProject.file('.local/server-p0/eula.txt'); into stabilizationRunDir }
+        logger.lifecycle("Isolated stabilization storage: ${stabilizationRunDir}")
     }
 }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.persistence.P2RevivalStoreTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-17T08:03:14.953Z" hostname="LeifMacBookPro2023.local" time="0.256">
+  <properties/>
+  <testcase name="twentyRewardAndRevivalCyclesKeepExactCountsProgressAndCooldownsAcrossSqliteReopen()" classname="dev.hardrush.persistence.P2RevivalStoreTest" time="0.232"/>
+  <testcase name="oneExplosionBatchCommitsAllDeathsAndOneEntitlementBeforeRescueWithoutDoubleCountingReplay()" classname="dev.hardrush.persistence.P2RevivalStoreTest" time="0.024"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

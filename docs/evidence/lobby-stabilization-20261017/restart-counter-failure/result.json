@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "status": "FAIL",
+  "runDirectory": "/Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/7bdb09af-6f7c-4f74-bb9c-f3a6d70c4c6a",
+  "phases": [
+    "COUNTDOWN",
+    "RUNNING",
+    "RESCUE",
+    "CELEBRATING"
+  ],
+  "scenarios": [],
+  "verification": "Independent headless dedicated-server JVMs; no real clients.",
+  "failure": "COUNTDOWN/recover-again interrupted or timed out; cleanup is not recovery proof"
+}

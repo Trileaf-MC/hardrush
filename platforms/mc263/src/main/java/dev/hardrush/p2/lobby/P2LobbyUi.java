@@ -77,6 +77,17 @@ public final class P2LobbyUi {
     /** Also identifies stale menus so the network adapter keeps creative-slot packets sealed. */
     public static boolean isMenu(ServerPlayer player) { return player.containerMenu instanceof LobbyMenu; }
 
+    /** Preserve the short reconnect throttle, then release expired UUID/action entries. */
+    public static void tick(MinecraftServer server) {
+        requireServerThread(server);
+        var binding = BINDINGS.get(server); if (binding == null) return;
+        long now = System.nanoTime();
+        binding.clickTimes.values().removeIf(times -> {
+            times.values().removeIf(when -> now - when >= BUTTON_COOLDOWN_NANOS);
+            return times.isEmpty();
+        });
+    }
+
     private static void requireServerThread(MinecraftServer server) {
         Objects.requireNonNull(server);
         if (!server.isSameThread()) throw new IllegalStateException("Lobby GUI requires the server thread");

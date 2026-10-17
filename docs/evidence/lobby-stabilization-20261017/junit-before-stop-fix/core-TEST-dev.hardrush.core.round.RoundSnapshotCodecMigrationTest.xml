@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.core.round.RoundSnapshotCodecMigrationTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-17T07:29:09.511Z" hostname="LeifMacBookPro2023.local" time="0.021">
+  <properties/>
+  <testcase name="schemaThreeMonsterStateUpgradesWithoutInventingSkillCooldowns()" classname="dev.hardrush.core.round.RoundSnapshotCodecMigrationTest" time="0.002"/>
+  <testcase name="schemaTwoMonsterUpgradeRetainsEligibilityAndRequiresItsInitialWait()" classname="dev.hardrush.core.round.RoundSnapshotCodecMigrationTest" time="0.001"/>
+  <testcase name="legacyTimerMigrationCannotTurnCorruptNegativeTimeIntoAValidSnapshot()" classname="dev.hardrush.core.round.RoundSnapshotCodecMigrationTest" time="0.004"/>
+  <testcase name="oldSuccessTimersKeepElapsedTimeAndAreMigratedOnlyOnce()" classname="dev.hardrush.core.round.RoundSnapshotCodecMigrationTest" time="0.008"/>
+  <testcase name="schemaOnePreservesIdentityCountersAndGrantsAnInitialProtectionPermission()" classname="dev.hardrush.core.round.RoundSnapshotCodecMigrationTest" time="0.003"/>
+  <testcase name="schemaTwoRetainsDifferentExitPermissionsInTheSameSnapshot()" classname="dev.hardrush.core.round.RoundSnapshotCodecMigrationTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

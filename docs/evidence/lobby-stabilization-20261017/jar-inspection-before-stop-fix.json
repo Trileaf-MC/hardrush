@@ -1,0 +1,199 @@
+{
+  "status": "PASS",
+  "productionJar": "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar",
+  "sha256": "d8eb633c6a5b59a724e51076df7d64f126221d5aa27bc2c0c2afa6a5467106b3",
+  "metadata": {
+    "schemaVersion": 1,
+    "id": "hardrush",
+    "version": "0.1.0-p0+mc26.3",
+    "name": "HardRush",
+    "license": "MIT",
+    "description": "Server-only race rounds, command-free camp, monster hunts and revival.",
+    "environment": "server",
+    "entrypoints": {
+      "main": [
+        "dev.hardrush.HardRush"
+      ]
+    },
+    "mixins": [
+      "hardrush.p0.disguise.mixins.json",
+      "hardrush.p0.world.mixins.json",
+      "hardrush.p0.monster.mixins.json",
+      "hardrush.p1.combat.mixins.json",
+      "hardrush.p1.player.mixins.json",
+      "hardrush.p1.book.mixins.json",
+      "hardrush.p2.protection.mixins.json",
+      "hardrush.p2.combat.mixins.json"
+    ],
+    "depends": {
+      "fabricloader": ">=0.19.5",
+      "minecraft": "26.3",
+      "java": ">=25",
+      "fabric-api": "*",
+      "fantasy": "0.8.4+26.3"
+    },
+    "jars": [
+      {
+        "file": "META-INF/jars/core-0.1.0-p0.jar"
+      },
+      {
+        "file": "META-INF/jars/fantasy-0.8.4+26.3.jar"
+      },
+      {
+        "file": "META-INF/jars/persistence-0.1.0-p0.jar"
+      },
+      {
+        "file": "META-INF/jars/sqlite-jdbc-3.53.4.0.jar"
+      }
+    ]
+  },
+  "nestedJars": [
+    {
+      "jar": "hardrush-0.1.0-p0+mc26.3.jar",
+      "sha256": "d8eb633c6a5b59a724e51076df7d64f126221d5aa27bc2c0c2afa6a5467106b3",
+      "classes": 216,
+      "metadata": {
+        "schemaVersion": 1,
+        "id": "hardrush",
+        "version": "0.1.0-p0+mc26.3",
+        "name": "HardRush",
+        "license": "MIT",
+        "description": "Server-only race rounds, command-free camp, monster hunts and revival.",
+        "environment": "server",
+        "entrypoints": {
+          "main": [
+            "dev.hardrush.HardRush"
+          ]
+        },
+        "mixins": [
+          "hardrush.p0.disguise.mixins.json",
+          "hardrush.p0.world.mixins.json",
+          "hardrush.p0.monster.mixins.json",
+          "hardrush.p1.combat.mixins.json",
+          "hardrush.p1.player.mixins.json",
+          "hardrush.p1.book.mixins.json",
+          "hardrush.p2.protection.mixins.json",
+          "hardrush.p2.combat.mixins.json"
+        ],
+        "depends": {
+          "fabricloader": ">=0.19.5",
+          "minecraft": "26.3",
+          "java": ">=25",
+          "fabric-api": "*",
+          "fantasy": "0.8.4+26.3"
+        },
+        "jars": [
+          {
+            "file": "META-INF/jars/core-0.1.0-p0.jar"
+          },
+          {
+            "file": "META-INF/jars/fantasy-0.8.4+26.3.jar"
+          },
+          {
+            "file": "META-INF/jars/persistence-0.1.0-p0.jar"
+          },
+          {
+            "file": "META-INF/jars/sqlite-jdbc-3.53.4.0.jar"
+          }
+        ]
+      }
+    },
+    {
+      "jar": "hardrush-0.1.0-p0+mc26.3.jar!META-INF/jars/core-0.1.0-p0.jar",
+      "sha256": "b6954042534db06d929832fa454ce5df9e627fd1ed2fe4f911f8b4ec1f67139f",
+      "classes": 99,
+      "metadata": {
+        "schemaVersion": 1,
+        "id": "dev_hardrush_core",
+        "version": "0.1.0-p0",
+        "name": "core",
+        "custom": {
+          "fabric-loom:generated": true
+        }
+      }
+    },
+    {
+      "jar": "hardrush-0.1.0-p0+mc26.3.jar!META-INF/jars/fantasy-0.8.4+26.3.jar",
+      "sha256": "579a8f061b4d8339c900972e11b0cc3713844cdb183f48dce2c63d330220834a",
+      "classes": 36,
+      "metadata": {
+        "schemaVersion": 1,
+        "id": "fantasy",
+        "version": "0.8.4+26.3",
+        "name": "Fantasy",
+        "description": "Fantasy is a library that allows for dimensions to be created and destroyed at runtime on the server.",
+        "authors": [
+          "Nucleoid Contributors"
+        ],
+        "license": "LGPLv3",
+        "environment": "*",
+        "entrypoints": {
+          "main": [
+            "xyz.nucleoid.fantasy.FantasyInitializer"
+          ]
+        },
+        "mixins": [
+          "fantasy.mixins.json"
+        ],
+        "accessWidener": "fantasy.accesswidener",
+        "icon": "icon.png",
+        "custom": {
+          "modmenu": {
+            "badges": [
+              "library"
+            ]
+          }
+        },
+        "depends": {
+          "fabricloader": ">=0.15.10",
+          "minecraft": ">=26.3-",
+          "fabric-api": "*",
+          "java": ">=25"
+        }
+      }
+    },
+    {
+      "jar": "hardrush-0.1.0-p0+mc26.3.jar!META-INF/jars/persistence-0.1.0-p0.jar",
+      "sha256": "ac5d66e0505fbe47f8e87e8a21df9c75b7d0de9c23b3fb607f5d264d16f195eb",
+      "classes": 25,
+      "metadata": {
+        "schemaVersion": 1,
+        "id": "dev_hardrush_persistence",
+        "version": "0.1.0-p0",
+        "name": "persistence",
+        "custom": {
+          "fabric-loom:generated": true
+        }
+      }
+    },
+    {
+      "jar": "hardrush-0.1.0-p0+mc26.3.jar!META-INF/jars/sqlite-jdbc-3.53.4.0.jar",
+      "sha256": "57525d07ce37e7922371553dfb784a311431b1c08ec293711048c27dbaf6093f",
+      "classes": 130,
+      "metadata": {
+        "schemaVersion": 1,
+        "id": "org_xerial_sqlite-jdbc",
+        "version": "3.53.4.0",
+        "name": "sqlite-jdbc",
+        "custom": {
+          "fabric-loom:generated": true
+        }
+      }
+    }
+  ],
+  "forbidden": [
+    "mcpfabric",
+    "spark",
+    "hardrush-gametest",
+    "hardrush-debug-tools",
+    "dev/hardrush/gametest/",
+    "dev/hardrush/debug/",
+    "dev/hardrush/p0/hardrushp0",
+    "dev/hardrush/p0/world/worldprobe",
+    "dev/hardrush/p0/world/roundruntimelevel",
+    "dev/hardrush/p0/world/worldmanifest"
+  ],
+  "commandStringScan": "No hardrushp0 string in production/nested classes",
+  "java": "openjdk version \"25.0.4.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS, mixed mode, sharing)\n",
+  "scope": "DisguiseProbe is the production observer appearance engine; actual operator/world probes removed."
+}

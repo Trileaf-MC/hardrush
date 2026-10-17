@@ -1,0 +1,5 @@
+P1 isolated restart evidence: /Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/7bdb09af-6f7c-4f74-bb9c-f3a6d70c4c6a
+COUNTDOWN/write: PASS (JVM 91951, exit 0, clean SQLite)
+COUNTDOWN/recover: PASS (JVM 92181, exit 0, clean SQLite)
+FAIL: COUNTDOWN/recover-again interrupted or timed out; cleanup is not recovery proof
+Evidence retained at /Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/7bdb09af-6f7c-4f74-bb9c-f3a6d70c4c6a

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "directory": "/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-stabilization-matrix/d5207e85-215e-429a-a4f2-9f260e95ec94",
+  "checks": [
+    {
+      "name": "python",
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      "log": "python.log",
+      "status": "PASS",
+      "pid": 3591,
+      "exitCode": 0,
+      "elapsedSeconds": 0.204,
+      "logSha256": "54863da20d36ddf2a1626cecab244b5722b95b2f75c40599b37b78e2a2e13fe9"
+    }
+  ],
+  "head": "741f58d5252c1f2f27303717202063ebfb034873",
+  "sourceManifest": "source-files.json",
+  "scope": "Headless native protocol/state only; no graphical or performance acceptance."
+}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p1.P3CrashProcessTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-17T08:04:00.367Z" hostname="LeifMacBookPro2023.local" time="2.487">
+  <properties/>
+  <testcase name="forced process termination after durable AWARD, before callback" classname="dev.hardrush.p1.P3CrashProcessTest" time="0.856"/>
+  <testcase name="forced process termination after durable CONSUME, before callback" classname="dev.hardrush.p1.P3CrashProcessTest" time="0.802"/>
+  <testcase name="forced process termination after durable TERMINAL, before callback" classname="dev.hardrush.p1.P3CrashProcessTest" time="0.826"/>
+  <system-out><![CDATA[P3 forced recovery AWARD: writerPid=99053, forcedExit=137, readerPid=99054, recovery=PASS
+P3 forced recovery CONSUME: writerPid=99059, forcedExit=137, readerPid=99060, recovery=PASS
+P3 forced recovery TERMINAL: writerPid=99064, forcedExit=137, readerPid=99066, recovery=PASS
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

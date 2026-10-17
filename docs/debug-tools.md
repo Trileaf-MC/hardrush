@@ -169,3 +169,6 @@ python3 scripts/debug-tools.py verify
 - [Fabric 自动化测试](https://docs.fabricmc.net/develop/automatic-testing)：GameTest 源集和运行任务；具体 26.3 API 已按本机下载的对应源码 JAR 编译运行确认。
 - [spark 命令](https://spark.lucko.me/docs/Command-Usage)：客户端／服务端命令和本地保存采样。
 - [OpenAI 官方 MCP 配置说明](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)：stdio、配置文件与 CLI 注册。
+
+
+2026-10-17 生产制品隔离：`/hardrushp0` 与 P0 测试世界代码已移到 `src/development`，由 `hardrush-debug-tools` JAR 和 GameTest 专用 classpath／入口加载，生产 `runServer`／候选包不再注册探针。原诊断入口继续通过本页的 debug-tools 脚本使用；不要把开发 JAR 复制进候选实例。正式怪物外观与世界路由仍在生产实现，完整自动与制品记录见[大厅第 5 轮](lobby-delivery-status.md#第-5-轮交接)。

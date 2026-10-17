@@ -1,18 +1,18 @@
 # HardRush 26.3 无指令大厅交接状态
 
-初始化日期：2026-10-16。当前阶段：第 1～4 轮开发与自动验证完成，第 5 轮未开始。对应[五轮计划](lobby-delivery-plan.md)、[产品设计](lobby-interaction-design.md)和[启动词索引](lobby-delivery-prompts/README.md)。
+初始化日期：2026-10-16。当前阶段：第 1～5 轮开发与自动验证完成，26.3 候选包已准备；人工验收与发布未放行。对应[五轮计划](lobby-delivery-plan.md)、[产品设计](lobby-interaction-design.md)和[启动词索引](lobby-delivery-prompts/README.md)。
 
 ## 总体状态
 
 | 项目 | 当前状态 |
 | --- | --- |
 | 交付范围 | 26.3；26.1.2／26.2 正式适配另排 |
-| 当前开发轮次 | 第 4 轮开发与自动验证完成；停在本轮，第 5 轮须另行启动 |
+| 当前开发轮次 | 第 5 轮开发与自动验证完成；五轮交付结束 |
 | 新交互开发 | 底座、人类流程、角色、皮肤庭院及个人追猎已交付；完整无指令闭环已接通 |
-| 本计划的自动产品验证 | 第 4 轮 368 JUnit、109 默认 GameTest、9 项独立原生专项及庆祝两 JVM 正常重启通过；完整证据见第 4 轮 |
+| 本计划的自动产品验证 | 第 5 轮 371 JUnit、110 默认 GameTest、13 独立专项、11 正常恢复 JVM、PROFILE/PREPARED 双恢复、4 生产 JVM、31 Python 通过；见第 5 轮 |
 | 真实客户端人工验收 | 未执行；本轮皮肤、选取与游玩按人工清单待验 |
-| Git 提交 推送 部署 | 第 1～3 轮已提交；第 4 轮按明确授权本地提交，见文末。未推送或部署；验证基线保持历史含义 |
-| 文档准备检查 | 11 份 Markdown 的结构与 171 个本地链接检查通过；5 份独立启动词和 5 轮未开始状态校验通过，只读复审通过 |
+| Git 提交 推送 部署 | 本地提交按用户明确授权，状态见文末；未推送或部署，验证基线保持历史含义 |
+| 文档准备检查 | 本轮 14 份修改文档、272 个本地链接存在性及源码／交付文档 diff 检查通过；6 份原始证据的空白原样保留，见文档检查记录；初始准备记录保留在文末 |
 
 ## 初始化基线
 
@@ -30,7 +30,7 @@
 | 2 营地与人类入场 | 开发与自动验证完成 | 前轮 24 个源码及 3 份成功日志摘要、接口已复核 | [基线](evidence/lobby-human-entry-20261017/baseline.json)／[验证汇总](evidence/lobby-human-entry-20261017/validation.json) | 停止本轮；第 3 轮另行启动并先复核 |
 | 3 皮肤庭院与定向追猎 | 开发与自动验证完成 | 已核对前两轮主能力与证据，最终自动门槛通过 | [基线](evidence/lobby-direct-hunt-20261017/baseline.json)／[验证汇总](evidence/lobby-direct-hunt-20261017/validation.json) | 停止本轮；第 4 轮另行启动并先复核 |
 | 4 全流程无指令接通 | 开发与自动验证完成 | 第 1～3 轮最新源码、日志及主能力已核验；本轮门槛通过 | [基线](evidence/lobby-full-flow-20261017/baseline.json)／[验证汇总](evidence/lobby-full-flow-20261017/validation.json) | 停止；第 5 轮另行启动 |
-| 5 稳定化与候选包 | 未开始 | 第 1～4 轮业务与自动门槛已通过 | 无 | 等待用户另行启动 |
+| 5 稳定化与候选包 | 开发与自动验证完成 | 前四轮源码与证据复核通过；最终门槛通过 | [验证汇总](evidence/lobby-stabilization-20261017/validation.json)／[候选说明](lobby-candidate.md) | 用户按人工路线验收；五轮结束，不自动发布 |
 
 后轮未开始不等于技术失败。第 1～3 轮执行发现的失败与修复见下文；三轮必需自动门槛已通过，人工画面与后轮业务仍未验收。
 
@@ -352,16 +352,67 @@ AWARD/COMMIT 的实际 PID 为 19714（SIGKILL）→19888→20000，PROFILE/PREP
 
 ## 第 5 轮交接
 
-- 状态：未开始。
-- 执行会话及日期：尚无。
-- 前四轮门槛复核：未执行。
-- 普通 极限 多人 连续多轮与恢复矩阵：未执行。
-- 最终问题清单与修复：尚无本轮执行记录。
-- 源码与发布 JAR SHA-256：未生成。
-- 依赖 安装 演示 升级与回退说明：未形成新交付记录。
-- 隔离演示实例及准确命令：尚无本计划候选实例。
-- 人工验收：未执行，不得标为真实客户端通过。
-- 最终结论：尚不能判断开发完成或可发布。
+- 状态：**开发与自动验证完成**；候选包和人工演示准备完成。真实客户端未验收，未发布或部署，P0～P4 与另外两版不放行。
+- 会话及日期：01a148ba-89e8-7070-be75-73d7998ad8e0，2026-10-17。
+- 启动基线：main，HEAD `741f58d5252c1f2f27303717202063ebfb034873`，工作树干净；仅根 AGENTS.md 适用。前四轮合并的 67 个最新源码及 29 份成功日志摘要一致，主能力和入口已复读，无前置整轮缺口。详见[基线](evidence/lobby-stabilization-20261017/baseline.json)。未发现已记录的人工实测反馈。
+- 最终源码：348 个源码／资源／构建／脚本文件见[完整清单](evidence/lobby-stabilization-20261017/source-files.json)，聚合 SHA-256 `c19cb880be5e169ac6105dc157fd2da193697558986a32daed0a994efeaef417`。Git 基线和 `committed:false` 是验证时状态；本轮提交在文末另记。
+- 全部结果、准确 argv、日志摘要、隔离路径与边界见[validation.json](evidence/lobby-stabilization-20261017/validation.json)。Java／GameTest／驱动／依赖在所有最终运行时检查间一致；最后只修 `scripts/test_p3_server_crash.py` 的过期数据夹具并重跑 Python，差异逐项核对仅此文件。完整入口原始失败保留在[runtime-matrix.json](evidence/lobby-stabilization-20261017/runtime-matrix.json)，最终 Python 成功另见[python-matrix.json](evidence/lobby-stabilization-20261017/python-matrix.json)，不把原始失败改写成一次性全绿。
+
+### 修复与归属
+
+1. 第 4 轮书屋的关闭／跨轮视图原先仍持有玩家和历史引用；现在绑定实际容器，关闭或连接／轮次失效后释放，迟到查询不能更新关闭页。第 1 轮菜单节流按原 250 ms 过期回收 UUID／action，保留重连限速。
+2. 复现正常停止卡住时，时间截止值已经过去但原版 `runningTask` 仍为 true。`P1MainThreadExecutor` 让本项目 IO 只排主线程 `TickTask`，停服丢弃异步原生应用；`StoppedServerTaskMixin` 还保护原生停止回调的 owner 重入计数，保留父类任务执行／错误处理。没有跳过任务或更改区块排空条件。每个正常重启 JVM 实际并发执行 **16000 个停止回调＋2000 个 owner 任务**，回调全部完成且计数归零，父进程核对标记。新增三项原版 event-loop JUnit 含旧写法负对照。
+3. 生产初始化改为 `dev.hardrush.HardRush`；`/hardrushp0`、P0 测试世界和清单仅在 development 源码集，由独立 debug-tools／GameTest 加载。正式路由和种子／天气通过接口保留。历史命名 `DisguiseProbe` 是实际怪物外观服务，继续留在生产。
+4. mock 登录豁免和四套临时绑定／恢复方法从主产物移至 GameTest 专属辅助类／Mixin。真实身份门槛不放宽；夹具仍恢复原有绑定，不修改断言冒充通过。递归制品审计新增类与方法标记，禁止它们重新混入。
+5. 原 Python 旧夹具只准备区块和档案，没有 Round 3 新增的大厅 COMPLETE 清单。补真实格式清单，保留原两个冻结文件及损坏拒绝断言，另断言清单精确摘要及缺失／PREPARED 状态拒绝；未削弱生产 retention 校验。
+
+### 最终自动验证
+
+所有服务端均新建隔离目录，专场串行、独占 JVM；没有操作日常数据库／存档。完整环境和 actual argv 由 JSON 保留，以下 `python3` 为当时记录的 Python 3.14 别名。
+
+| 场景 | 命令 | 结果 | 日志／隔离路径 |
+| --- | --- | --- | --- |
+| 基础 JUnit／默认 GameTest | `scripts/p0-gradle.sh checkP3 -PhardrushP1=true --rerun-tasks --console=plain` | 371 JUnit（164＋94＋113）、110 默认 GameTest 通过 | [base.log](evidence/lobby-stabilization-20261017/checks/base.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/baseline-check/c95331bd-639e-406e-b824-8468d7e88749` |
+| 20 连接三轮 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushStabilization=true --console=plain` | 1 个过滤结果通过 | [stabilization.log](evidence/lobby-stabilization-20261017/checks/stabilization.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-stabilization/c2d47194-e091-4c6e-aa88-a98b00134bca` |
+| 完整无指令闭环 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushFullFlow=true --console=plain` | 1 个过滤结果通过 | [full-flow.log](evidence/lobby-stabilization-20261017/checks/full-flow.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-full-flow/3f8218de-5517-4338-b0f0-77639dfaa7d4` |
+| 祭坛 SQLite 失败 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushFullFlow=true -PhardrushFullFlowFault=revival --console=plain` | 1 个过滤结果通过 | [revival-fault.log](evidence/lobby-stabilization-20261017/checks/revival-fault.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-full-flow/693e7da5-e468-4738-99f6-95591fc61ab5` |
+| 定向追猎／适配器失败 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushPersonalHunt=true --console=plain` | 1 个过滤结果通过 | [personal.log](evidence/lobby-stabilization-20261017/checks/personal.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/personal-hunt/c53b4dba-0ede-4030-a874-169650f7ead9` |
+| 追猎 SQLite 失败 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushPersonalHunt=true -PhardrushPersonalFault=storage --console=plain` | 1 个过滤结果通过 | [personal-storage.log](evidence/lobby-stabilization-20261017/checks/personal-storage.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/personal-hunt/d342e826-dfa8-45b7-85d5-2344ef7f0ff6` |
+| 双观察者底座协议 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushLobbyFoundation=true --console=plain` | 1 个过滤结果通过 | [foundation.log](evidence/lobby-stabilization-20261017/checks/foundation.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-foundation/5aee1715-b0d8-4ccf-80bf-8336f29ea402` |
+| 人类入场／重生 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushHumanEntry=true --console=plain` | 1 个过滤结果通过 | [human.log](evidence/lobby-stabilization-20261017/checks/human.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-human-entry/f7eca56d-6f7e-4411-968f-277ea9278138` |
+| 大厅移动／重连 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushLobbyMovement=true --console=plain` | 1 个过滤结果通过 | [movement.log](evidence/lobby-stabilization-20261017/checks/movement.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-movement/8ab42c38-4b37-43f4-a252-ba054e1e0cec` |
+| 20 次资格循环 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP2Lobby=true --console=plain` | 1 个过滤结果通过 | [p2.log](evidence/lobby-stabilization-20261017/checks/p2.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/p2-lobby/fed2711e-5494-4f95-9dc5-d3fbd936ed4c` |
+| 庆祝／临时物资 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushCelebration=true --console=plain` | 2 个过滤结果通过 | [celebration.log](evidence/lobby-stabilization-20261017/checks/celebration.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/celebration-regression/6ba7c15a-99f5-4d45-85d8-d5d8cac903fc` |
+| 连续十轮 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP1TenRounds=true --console=plain` | 2 个过滤结果通过 | [ten-rounds.log](evidence/lobby-stabilization-20261017/checks/ten-rounds.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/p1-regression/acfd3ab9-26ad-420a-9b14-a7ff8cfd1b63` |
+| 存储重核／隔离处置 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP3Recovery=true --console=plain` | 1 个过滤结果通过 | [recovery.log](evidence/lobby-stabilization-20261017/checks/recovery.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/p3-recovery/f6c6d9ae-c543-4096-b8ef-e1f80ae20843` |
+| 空间／存储准入 | `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP3Storage=true --console=plain` | 1 个过滤结果通过 | [storage.log](evidence/lobby-stabilization-20261017/checks/storage.log)；`/Users/leifwebber/projects/minecraft/hardrush/.local/p3-storage/3276c97c-e298-476e-a3ea-a0c887104363` |
+| 五阶段新 JVM 正常恢复 | `python3 scripts/p1-server-restart.py --phase COUNTDOWN --phase RUNNING --phase RESCUE --phase CELEBRATING --phase ROTATING` | 5 阶段、11 个不同 PID，exit 0／SERVER_STOPPED／SQLite／封套全部通过 | [restart.log](evidence/lobby-stabilization-20261017/checks/restart.log)；`详见专场结果` |
+| PROFILE/PREPARED 强杀恢复 | `python3 scripts/p3-server-crash.py --scenario PROFILE --boundary PREPARED` | 父进程杀 1 个 writer，2 个新 JVM 恢复并保持隔离，通过 | [profile-crash.log](evidence/lobby-stabilization-20261017/checks/profile-crash.log)；`详见专场结果` |
+| 31 项 Python 安全／制品检查 | `python3 -m unittest discover -s scripts -p 'test_*.py' -v` | 31/31 通过；仅测试夹具补 COMPLETE 清单后复跑 | [python.log](evidence/lobby-stabilization-20261017/checks/python.log)；`详见专场结果` |
+
+110 默认结果包含未启用专项占位；13 个独立 GameTest 启动共 15 个过滤结果，其中庆祝／十轮各含另一个未启用方法，不能叠加当作额外实战。JUnit 报告见[汇总](evidence/lobby-stabilization-20261017/junit-summary.json)及 `evidence/lobby-stabilization-20261017/junit/`。
+
+五阶段重启的 writer／recover PID：COUNTDOWN 1870／1939／1989，RUNNING 2049／2125，RESCUE 2171／2262，CELEBRATING 2319／2402，ROTATING 2500／2585。均为实际正常 stop／exit 0；原准备者／晚归／不安全恢复、13 秒活动状态、救场 50 秒及一次祭坛消费、庆祝 60 秒／returned、唯一下一轮和原生世界释放通过。[重启结果](evidence/lobby-stabilization-20261017/restart/result.json)保存精确快照、规则与档案封套。新规则旧活动轮隔离和旧编码／固定指纹仍由基础 JUnit／Session 回归验证，没有改历史成绩或指纹、恢复投票或手动维度。
+
+PROFILE/PREPARED 的 PID 为 2701（父进程 SIGKILL）→2789→2840，两个新 JVM exit 0 且仍恢复隔离；原世界／档案／拥有权与 SQLite 核验通过。[强杀结果](evidence/lobby-stabilization-20261017/profile-crash/result.json)保留实际边界。本轮因夹具迁移选择这一组，没有机械重跑全部强杀矩阵；物理介质故障仍未测试。
+
+规模专场是 **20 条实际原生嵌入连接**，8 轮个人页面／菜单循环与连续 3 个挑战（极限／普通／极限），另一个玩家离线跨 3 轮回归。41 个合成 profile 只作分页压力数据，不是额外参赛者。断线、关闭和换轮后检查视图、映射、模型 wire removal、提示与状态条的 owner 数量，旧实体包拒绝；无控制物、庆祝物资或旧物资串轮。普通死亡按钮、首龙、龙池和重新集结由真实原生入口触发；场景预置地形、低血量和测试时钟如实限定，不冒充满血自然生存、真实皮肤下载或 20 人画面／性能验收。
+
+### 生产候选、安装与演示
+
+- 生产 JAR：`platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar`，SHA-256 **`c01563b52d414ba6be5fd3be1c5c41053eb7fcc2339ab2a62b23508aab088dc6`**。递归审计含嵌入依赖，无本项目 GameTest、MCPFabric、debug-tools、管理／测试世界探针、mock 登录和临时配置辅助入口；官方 Fabric API 自带 GameTest API 是运行依赖，不是本项目测试模组。[审计](evidence/lobby-stabilization-20261017/jar-inspection.json)含精确元数据／依赖及逐嵌入 JAR 校验。
+- 可安装归档：`/Users/leifwebber/projects/minecraft/hardrush/.local/demo/candidates/hardrush-lobby-26.3-c01563b52d41.tar.gz`，SHA-256 `0defd8abde722252fefa215bb980c0f36bf7c052ff38ba5e4283a42dab638e63`；目录制品 `/Users/leifwebber/projects/minecraft/hardrush/.local/demo/bundles/5b8ae0d1-74e7-48bd-ae77-9630435decd6`，内含启动器、两个顶层模组、许可证和 manifest，归档另附中文安装说明。均未上传、发布或部署。[候选清单](evidence/lobby-stabilization-20261017/candidate.json)区分构建时完整源摘要和最后单个 Python 测试夹具修正后的摘要，运行代码一致。
+- 生产 smoke：普通／极限各新建存档，由 4 个独立 JVM 完成三维度就绪、正常停服、同轮重开，SQLite 完整性／外键、clean 标记及模式核对通过。[结果](evidence/lobby-stabilization-20261017/production-smoke-result.json)及[执行日志](evidence/lobby-stabilization-20261017/production-smoke.log)；无玩家，不证明游玩。
+- 极限人工实例：`/Users/leifwebber/projects/minecraft/hardrush/.local/demo/instances/22a4936d-7adc-4db4-9b4d-dad8855d8b02`，准备后未启动。仓库根运行 `python3 scripts/demo.py run 22a4936d-7adc-4db4-9b4d-dad8855d8b02`，原版 26.3 连接 `127.0.0.1:25587`。
+- 普通人工实例：`/Users/leifwebber/projects/minecraft/hardrush/.local/demo/instances/bbd7b735-a59e-4c53-a1fd-df568214581b`，准备后未启动。运行 `python3 scripts/demo.py run bbd7b735-a59e-4c53-a1fd-df568214581b`，连接 `127.0.0.1:25588`。
+- 安装、精确依赖、升级、旧活动轮、完整一致性备份及回退见[候选包说明](lobby-candidate.md)。对应旧构建备份必须同时包含 SQLite／WAL、档案、世界及清单、配置和依赖；不能承诺只回退 JAR。没有在日常实例做升级／回退，也没有改旧成绩或规则指纹。
+- `debugToolsJar` 编译通过；新增互斥组合被配置阶段正确拒绝，未启动混合服务端。日志分别见[开发包构建](evidence/lobby-stabilization-20261017/debug-tools-build.log)与[互斥拒绝](evidence/lobby-stabilization-20261017/mutex-rejection.log)。
+
+### 失败保留与最终边界
+
+[执行与失败索引](evidence/lobby-stabilization-20261017/progress-history.md)及 evidence 中 first／second／third／fourth、before-stop-fix／before-native-counter-fix／before-fixture-isolation 日志保留 API 编译、真实节流时间和登记顺序等失败。停服卡住的 PID 84732、92259 及其诊断、清理和被弃作正常恢复证据的结果分别保留在 `restart-first-failure/`、`restart-counter-failure/`；临时诊断 helper 的 Fabric 类加载错误没有算产品通过，第二次由原 runner 清理自己的 child，SIGKILL 不算正常停服。最终保护后的 11 个 JVM 与上述失败分开记录，没有通过降低期望、跳过回调或缩短排空放行。
+
+最终没有未处理的错误目标、重复资格消费、串轮物资、错误传送或恢复放行问题。**仅本计划 26.3 开发与必需自动验证完成**；真实皮肤／渲染、准星、布局／音效、完整游玩、20 人 30 分钟性能、物理存储故障、录像与 AntiXray／Grim 完整集成、另外两版和整个 P0～P4 发布验收仍未放行。[第 5 轮人工路线](人工客户端测试/大厅无指令交互与定向追猎.md)和[庆祝清单](人工客户端测试/屠龙庆祝与提前返回大厅.md)全部未勾选。本轮交付后停止，不增加第六轮。
 
 ## 每轮更新格式
 
@@ -404,3 +455,9 @@ AWARD/COMMIT 的实际 PID 为 19714（SIGKILL）→19888→20000，PROFILE/PREP
 按用户“完成后提交”的明确授权，将剩余玩家入口、共享历史／展示、原生攻击入口的直接修复、所需专项与夹具迁移、全部成功／失败证据及交接共同整理为本记录所属的 `feat(lobby)` 提交。各部分共同完成第 4 轮玩家闭环，不拆成不能单独验收的中间状态。
 
 提交整理只补文档和证据；最终 26 个源码／测试／构建摘要与通过时一致，所有最终日志摘要已核对。验证 JSON 中基线 HEAD、dirty 与 committed=false 是验证时的历史事实。没有推送、部署、真实客户端或日常实例操作，第 5 轮仍未开始。
+
+## 2026-10-17 第 5 轮提交
+
+按用户“完成后提交”的明确授权，按独立意图整理为三项：`f04868f`（`fix(runtime): 修复停服回调导致的重入计数竞态`）、`bf3098e`（`build(release)!: 将开发探针与夹具入口隔离出生产制品`），以及本记录所属的 `fix(lobby)`（页面回收、规模／救场集成、完整证据和候选交接）。制品隔离提交明确标记了开发命令及夹具 Java API 移出的兼容边界。
+
+全部验证针对三项提交的最终组合源码；中间拆分提交没有单独复跑服务端。提交前逐项核对 348 个源码／资源／构建／脚本摘要及候选 JAR、归档摘要一致。证据中的 HEAD、dirty、committed=false 是验证／构建时的历史事实，保持原样；最后仅 Python 测试数据夹具改动的范围见本轮源码一致性说明。没有推送、发布、部署、真实客户端或日常数据库／存档操作。人工项目全部保持待验，五轮交付结束。

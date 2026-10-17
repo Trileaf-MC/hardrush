@@ -130,6 +130,8 @@ public final class LobbyInteractions {
     public static void tick(MinecraftServer server) {
         var service = SERVICES.get(server); if (service == null) return;
         service.synchronizeRound(); service.projections.tick();
+        dev.hardrush.p2.lobby.P2LobbyUi.tick(server);
+        dev.hardrush.p1.record.P1Library.tick(server);
         // Quarantine skips vanilla player doTick, including container invalidation. Still enforce contexts.
         for (var player : List.copyOf(server.getPlayerList().getPlayers())) {
             if (dev.hardrush.p1.player.P1PlayerProfiles.simulationFrozen(player)

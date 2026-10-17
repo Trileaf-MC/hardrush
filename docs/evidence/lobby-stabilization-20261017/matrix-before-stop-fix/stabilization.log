@@ -1,0 +1,542 @@
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :persistence:processResources NO-SOURCE
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :platforms:mc263:processDevelopmentResources NO-SOURCE
+> Task :platforms:mc263:generateLog4jConfig UP-TO-DATE
+> Task :core:compileJava UP-TO-DATE
+> Task :platforms:mc263:generateDLIConfig UP-TO-DATE
+> Task :platforms:mc263:configureLaunch UP-TO-DATE
+> Task :core:processResources NO-SOURCE
+> Task :platforms:mc263:processGametestResources UP-TO-DATE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :persistence:compileJava UP-TO-DATE
+> Task :persistence:classes UP-TO-DATE
+> Task :persistence:jar UP-TO-DATE
+
+> Task :platforms:mc263:prepareDebugTools
+Debug tools prepared; credentials remain in .local/debug/*/config.
+
+> Task :platforms:mc263:compileJava UP-TO-DATE
+> Task :platforms:mc263:classes UP-TO-DATE
+> Task :platforms:mc263:compileDevelopmentJava UP-TO-DATE
+> Task :platforms:mc263:developmentClasses UP-TO-DATE
+> Task :platforms:mc263:compileGametestJava UP-TO-DATE
+> Task :platforms:mc263:gametestClasses UP-TO-DATE
+
+> Task :platforms:mc263:runGameTest
+Isolated stabilization storage: /Users/leifwebber/projects/minecraft/hardrush/.local/lobby-stabilization/7d8f9a12-a636-4cb1-aebb-45c4bb56f4f7
+Default isolated GameTest storage (special suites may override): /Users/leifwebber/projects/minecraft/hardrush/.local/baseline-check/7abdcbce-a00f-4ba8-a265-51bd1264c257
+[15:30:43] [main/WARN] (FabricLoader/Knot) Class path entries reference missing files: /Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/build/resources/development - the game may not load properly!
+[15:30:43] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 26.3 with Fabric Loader 0.19.5
+[15:30:43] [main/INFO] (FabricLoader/Mappings) Mappings not present!
+[15:30:43] [main/INFO] (FabricLoader) Loading 46 mods:
+	- fabric-advancement-api-v1 1.0.0+38c7a2d55d
+	- fabric-api 0.162.0+26.3
+	- fabric-api-base 2.0.6+fcdff87f5d
+	- fabric-api-lookup-api-v1 2.0.24+3434d6d95d
+	- fabric-biome-api-v1 20.1.0+c6aa69a85d
+	- fabric-block-api-v1 3.1.0+0ae6f9115d
+	- fabric-block-getter-api-v2 2.0.9+3434d6d95d
+	- fabric-command-api-v2 3.1.2+fcdff87f5d
+	- fabric-content-registries-v0 15.0.4+74ed1ea55d
+	- fabric-convention-tags-v2 4.10.3+6b5b47fd5d
+	- fabric-crash-report-info-v1 1.0.7+fcdff87f5d
+	- fabric-creative-tab-api-v1 5.0.21+fcdff87f5d
+	- fabric-data-attachment-api-v1 2.2.31+b9b88df45d
+	- fabric-data-generation-api-v1 27.3.0+5be2453c5d
+	- fabric-debug-api-v1 1.0.4+3434d6d95d
+	- fabric-dimensions-v1 5.1.19+47f74c985d
+	- fabric-entity-events-v1 6.0.4+3434d6d95d
+	- fabric-events-interaction-v0 5.3.7+b9b88df45d
+	- fabric-game-rule-api-v1 4.0.10+3434d6d95d
+	- fabric-gametest-api-v1 4.0.33+3434d6d95d
+	- fabric-item-api-v1 14.7.0+cf6bc2db5d
+	- fabric-lifecycle-events-v1 4.1.9+ffef5f675d
+	- fabric-loot-api-v3 4.0.8+4068fd645d
+	- fabric-menu-api-v1 2.0.28+ed66f0a35d
+	- fabric-message-api-v1 7.0.10+3434d6d95d
+	- fabric-networking-api-v1 6.3.9+b9b88df45d
+	- fabric-object-builder-api-v1 24.1.10+3434d6d95d
+	- fabric-particles-v1 5.0.25+3434d6d95d
+	- fabric-permission-api-v1 1.0.8+fcdff87f5d
+	- fabric-recipe-api-v1 10.0.9+b9b88df45d
+	- fabric-registry-sync-v0 8.0.2+1ca9f6365d
+	- fabric-rendering-fluids-v1 6.0.6+3434d6d95d
+	- fabric-resource-conditions-api-v1 6.2.0+0d124ae85d
+	- fabric-resource-loader-v0 3.3.26+4fc5413f5d
+	- fabric-resource-loader-v1 3.0.4+fcdff87f5d
+	- fabric-serialization-api-v1 2.0.7+74ed1ea55d
+	- fabric-tag-api-v1 2.1.10+fcdff87f5d
+	- fabric-transfer-api-v1 8.0.25+fcdff87f5d
+	- fabric-transitive-access-wideners-v1 8.1.16+52268a0e5d
+	- fabricloader 0.19.5
+	- fantasy 0.8.4+26.3
+	- hardrush 0.1.0-p0+mc26.3
+	- hardrush-gametest 1.0.0
+	- java 25
+	- minecraft 26.3
+	- mixinextras 0.5.5
+[15:30:43] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/Users/leifwebber/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.17.4+mixin.0.8.7/5f66cc9f59b8efaa942155a3d5a30599bf6640dd/sponge-mixin-0.17.4+mixin.0.8.7.jar Service=Knot/Fabric Env=SERVER
+[15:30:44] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.5).
+[15:30:45] [main/WARN] (MacOperatingSystem) Unable to parse version 27.0 to a codename.
+[15:30:48] [main/INFO] (hardrush) HardRush production runtime; competition enabled=true
+[15:30:48] [main/ERROR] (Minecraft) Failed to load properties from file: server.properties
+
+java.nio.file.NoSuchFileException: server.properties
+	at java.base/sun.nio.fs.UnixException.translateToIOException(UnixException.java:92)
+	at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:106)
+	at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:111)
+	at java.base/sun.nio.fs.UnixFileSystemProvider.newFileChannel(UnixFileSystemProvider.java:213)
+	at java.base/sun.nio.fs.UnixFileSystemProvider.newByteChannel(UnixFileSystemProvider.java:244)
+	at java.base/java.nio.file.Files.newByteChannel(Files.java:357)
+	at java.base/java.nio.file.Files.newByteChannel(Files.java:399)
+	at java.base/java.nio.file.spi.FileSystemProvider.newInputStream(FileSystemProvider.java:371)
+	at java.base/java.nio.file.Files.newInputStream(Files.java:154)
+	at knot//net.minecraft.server.dedicated.Settings.loadFromFile(Settings.java:62)
+	at knot//net.minecraft.server.dedicated.DedicatedServerProperties.fromFile(DedicatedServerProperties.java:156)
+	at knot//net.minecraft.server.dedicated.DedicatedServerSettings.<init>(DedicatedServerSettings.java:12)
+	at knot//net.minecraft.server.Main.main(Main.java:117)
+	at net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider.launch(MinecraftGameProvider.java:517)
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:72)
+	at net.fabricmc.loader.impl.launch.knot.KnotServer.main(KnotServer.java:23)
+	at net.fabricmc.devlaunchinjector.Main.main(Main.java:86)
+[15:30:48] [main/INFO] (Minecraft) Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
+[15:30:48] [main/INFO] (FabricGameTestRunner) Starting test server
+[15:30:49] [Worker-Main-2/INFO] (Minecraft) Loaded 1866 advancements
+[15:30:49] [main/INFO] (BiomeModificationImpl) Applied 0 biome modifications to 0 of 67 new biomes in 915.8 μs
+[15:30:49] [Server thread/INFO] (Minecraft) Selecting global world spawn...
+[15:30:49] [Server thread/INFO] (Minecraft) Loading 0 persistent chunks...
+[15:30:49] [Server thread/INFO] (Minecraft) Preparing spawn area: 100%
+[15:30:49] [Server thread/INFO] (Minecraft) Time elapsed: 296 ms
+[15:30:49] [Server thread/INFO] (Minecraft) Will run tests matching hardrush-gametest:p1stabilization_game_test* (1 tests)
+[15:30:49] [Server thread/INFO] (Minecraft) Started game test server
+[15:30:49] [Server thread/INFO] (hardrush-p1) P1 enabled; independent world preparation and player profile isolation gate participation
+[15:30:49] [Server thread/INFO] (hardrush-p0) HardRush P0 worlds: 尚无 P0 轮次；create 将创建三个持久维度
+[15:30:49] [Server thread/INFO] (Minecraft) 1 tests are now running at position 8256724, 4, 7424762!
+[15:30:50] [Server thread/INFO] (Minecraft) Running test environment 'minecraft:default' batch 0 (1 tests)...
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:50] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:51] [Server thread/INFO] (Minecraft) [ ]
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Stabilization bootstrap; tick=2834
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: P2LobbyMonster; tick=2834
+[15:30:52] [Server thread/INFO] (Minecraft) [_]
+[15:30:52] [Server thread/INFO] (Minecraft) P2LobbyMonster[embedded] logged in with entity id 1 at (8.5, -60.0, 8.5)
+[15:30:52] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster joined the game
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: P2LobbyMonster; tick=2857
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: P2LobbyTarget; tick=2860
+[15:30:52] [Server thread/INFO] (Minecraft) P2LobbyTarget[embedded] logged in with entity id 2 at (8.5, -60.0, 8.5)
+[15:30:52] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget joined the game
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: P2LobbyTarget; tick=2860
+[15:30:52] [Server thread/INFO] (Minecraft) [_]
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize2; tick=2865
+[15:30:52] [Server thread/INFO] (Minecraft) Stabilize2[embedded] logged in with entity id 3 at (8.5, -60.0, 8.5)
+[15:30:52] [Server thread/INFO] (Minecraft) System chat: Stabilize2 joined the game
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize2; tick=2876
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize3; tick=2880
+[15:30:52] [Server thread/INFO] (Minecraft) Stabilize3[embedded] logged in with entity id 4 at (8.5, -60.0, 8.5)
+[15:30:52] [Server thread/INFO] (Minecraft) System chat: Stabilize3 joined the game
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize3; tick=2880
+[15:30:52] [Server thread/INFO] (Minecraft) [_]
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize4; tick=2886
+[15:30:52] [Server thread/INFO] (Minecraft) Stabilize4[embedded] logged in with entity id 5 at (8.5, -60.0, 8.5)
+[15:30:52] [Server thread/INFO] (Minecraft) System chat: Stabilize4 joined the game
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize4; tick=2886
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize5; tick=2891
+[15:30:52] [Server thread/INFO] (Minecraft) Stabilize5[embedded] logged in with entity id 6 at (8.5, -60.0, 8.5)
+[15:30:52] [Server thread/INFO] (Minecraft) System chat: Stabilize5 joined the game
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize5; tick=2891
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize6; tick=2896
+[15:30:52] [Server thread/INFO] (Minecraft) Stabilize6[embedded] logged in with entity id 7 at (8.5, -60.0, 8.5)
+[15:30:52] [Server thread/INFO] (Minecraft) System chat: Stabilize6 joined the game
+[15:30:52] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize6; tick=2896
+[15:30:53] [Server thread/INFO] (Minecraft) [_]
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize7; tick=2901
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize7[embedded] logged in with entity id 8 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize7 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize7; tick=2912
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize8; tick=2915
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize8[embedded] logged in with entity id 9 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize8 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize8; tick=2915
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize9; tick=2920
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize9[embedded] logged in with entity id 10 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize9 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize9; tick=2920
+[15:30:53] [Server thread/INFO] (Minecraft) [_]
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize10; tick=2924
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize10[embedded] logged in with entity id 11 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize10 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize10; tick=2924
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize11; tick=2927
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize11[embedded] logged in with entity id 12 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize11 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize11; tick=2927
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize12; tick=2931
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize12[embedded] logged in with entity id 13 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize12 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize12; tick=2931
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize13; tick=2936
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize13[embedded] logged in with entity id 14 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize13 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize13; tick=2936
+[15:30:53] [Server thread/INFO] (Minecraft) [_]
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize14; tick=2942
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize14[embedded] logged in with entity id 15 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize14 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize14; tick=2942
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize15; tick=2946
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize15[embedded] logged in with entity id 16 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize15 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize15; tick=2946
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize16; tick=2952
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize16[embedded] logged in with entity id 17 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize16 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize16; tick=2952
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize17; tick=2956
+[15:30:53] [Server thread/INFO] (Minecraft) [_]
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize17[embedded] logged in with entity id 18 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize17 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize17; tick=2962
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize18; tick=2966
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize18[embedded] logged in with entity id 19 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize18 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize18; tick=2966
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize19; tick=2973
+[15:30:53] [Server thread/INFO] (Minecraft) Stabilize19[embedded] logged in with entity id 20 at (8.5, -60.0, 8.5)
+[15:30:53] [Server thread/INFO] (Minecraft) System chat: Stabilize19 joined the game
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize19; tick=2973
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Twenty profiles ready; tick=2977
+[15:30:53] [Server thread/INFO] (Minecraft) [_]
+[15:30:53] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Closed-page IO drained; tick=2988
+[15:30:53] [Server thread/INFO] (Minecraft) [_]
+[15:30:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real throttle expiry; tick=3008
+[15:30:54] [Server thread/INFO] (Minecraft) [_]
+[15:30:54] [Server thread/INFO] (Minecraft) [_]
+[15:30:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: All spatial intentions committed for round 0; tick=3049
+[15:30:54] [Server thread/INFO] (Minecraft) [_]
+[15:30:54] [Server thread/INFO] (Minecraft) [_]
+[15:30:54] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: All connected humans admitted 0; tick=3089
+[15:30:54] [Server thread/INFO] (Minecraft) [_]
+[15:30:54] [Server thread/INFO] (Minecraft) [_]
+[15:30:55] [Server thread/INFO] (Minecraft) [_]
+[15:30:55] [Server thread/INFO] (Minecraft) [_]
+[15:30:55] [Server thread/INFO] (Minecraft) [_]
+[15:30:55] [Server thread/INFO] (Minecraft) [_]
+[15:30:55] [Server thread/INFO] (Minecraft) [_]
+[15:30:56] [Server thread/INFO] (Minecraft) [_]
+[15:30:56] [Server thread/INFO] (Minecraft) [_]
+[15:30:56] [Server thread/INFO] (Minecraft) [_]
+[15:30:56] [Server thread/INFO] (Minecraft) [_]
+[15:30:56] [Server thread/INFO] (Minecraft) Stabilize19 lost connection: P2 lobby native reconnect
+[15:30:56] [Server thread/INFO] (Minecraft) System chat: Stabilize19 left the game
+[15:30:56] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Offline checkpoint drained 0; tick=3311
+[15:30:56] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Operator next-mode setting persisted 0; tick=3312
+[15:30:56] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has made the advancement [The End?]
+[15:30:56] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster has made the advancement [The End?]
+[15:30:56] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native first dragon fixture 0; tick=3313
+[15:30:56] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has made the advancement [Monster Hunter]
+[15:30:56] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has made the advancement [Free the End]
+[15:30:56] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Durable celebration roster 0; tick=3319
+[15:30:56] [Server thread/INFO] (Minecraft) [_]
+[15:30:56] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P2LobbyTarget，有效挑战 0 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:30:57] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has reached the goal [Sky's the Limit]
+[15:30:57] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster has reached the goal [Sky's the Limit]
+[15:30:57] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Safe next round 0; tick=3327
+[15:30:57] [Server thread/INFO] (hardrush-p1) P1 round dbd980bc-2185-4459-ac04-85560b73a025: replay integration is disabled; no recording is claimed
+[15:30:57] [Server thread/INFO] (Minecraft) [_]
+[15:30:58] [Server thread/INFO] (Minecraft) [_]
+[15:30:58] [Server thread/INFO] (Minecraft) [_]
+[15:30:58] [Server thread/INFO] (Minecraft) [_]
+[15:30:58] [Server thread/INFO] (Minecraft) [_]
+[15:30:58] [Server thread/INFO] (Minecraft) [_]
+[15:30:58] [Server thread/INFO] (Minecraft) [_]
+[15:30:58] [Server thread/INFO] (Minecraft) [_]
+[15:30:59] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: All spatial intentions committed for round 1; tick=3498
+[15:30:59] [Server thread/INFO] (Minecraft) [_]
+[15:30:59] [Server thread/INFO] (Minecraft) [_]
+[15:30:59] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: All connected humans admitted 1; tick=3535
+[15:30:59] [Server thread/INFO] (Minecraft) [_]
+[15:30:59] [Server thread/INFO] (Minecraft) [_]
+[15:30:59] [Server thread/INFO] (Minecraft) [_]
+[15:31:00] [Server thread/INFO] (Minecraft) [_]
+[15:31:00] [Server thread/INFO] (Minecraft) [_]
+[15:31:00] [Server thread/INFO] (Minecraft) [_]
+[15:31:00] [Server thread/INFO] (Minecraft) [_]
+[15:31:00] [Server thread/INFO] (Minecraft) [_]
+[15:31:00] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Offline checkpoint drained 1; tick=3687
+[15:31:00] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Operator next-mode setting persisted 1; tick=3687
+[15:31:00] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster was killed
+[15:31:00] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Normal native death; tick=3688
+[15:31:00] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Normal button creates one life; tick=3689
+[15:31:00] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has made the advancement [The End?]
+[15:31:00] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster has made the advancement [The End?]
+[15:31:00] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native first dragon fixture 1; tick=3691
+[15:31:00] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has made the advancement [Monster Hunter]
+[15:31:00] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has made the advancement [Free the End]
+[15:31:00] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Durable celebration roster 1; tick=3692
+[15:31:00] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P2LobbyTarget，有效挑战 0 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:31:01] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has reached the goal [Sky's the Limit]
+[15:31:01] [Server thread/INFO] (Minecraft) [_]
+[15:31:01] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster has reached the goal [Sky's the Limit]
+[15:31:01] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Safe next round 1; tick=3703
+[15:31:01] [Server thread/INFO] (hardrush-p1) P1 round ee1858ec-fe0c-4d1b-afcf-dd982c930eb2: replay integration is disabled; no recording is claimed
+[15:31:01] [Server thread/INFO] (Minecraft) [_]
+[15:31:02] [Server thread/INFO] (Minecraft) [_]
+[15:31:02] [Server thread/INFO] (Minecraft) [_]
+[15:31:02] [Server thread/INFO] (Minecraft) [_]
+[15:31:02] [Server thread/INFO] (Minecraft) [_]
+[15:31:02] [Server thread/INFO] (Minecraft) [_]
+[15:31:02] [Server thread/INFO] (Minecraft) [_]
+[15:31:02] [Server thread/INFO] (Minecraft) [_]
+[15:31:02] [Server thread/INFO] (Minecraft) [_]
+[15:31:02] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: All spatial intentions committed for round 2; tick=3884
+[15:31:02] [Server thread/INFO] (Minecraft) [_]
+[15:31:03] [Server thread/INFO] (Minecraft) [_]
+[15:31:03] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: All connected humans admitted 2; tick=3922
+[15:31:03] [Server thread/INFO] (Minecraft) [_]
+[15:31:03] [Server thread/INFO] (Minecraft) [_]
+[15:31:03] [Server thread/INFO] (Minecraft) [_]
+[15:31:03] [Server thread/INFO] (Minecraft) [_]
+[15:31:04] [Server thread/INFO] (Minecraft) [_]
+[15:31:04] [Server thread/INFO] (Minecraft) [_]
+[15:31:04] [Server thread/INFO] (Minecraft) [_]
+[15:31:04] [Server thread/INFO] (Minecraft) [_]
+[15:31:04] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Offline checkpoint drained 2; tick=4097
+[15:31:04] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Operator next-mode setting persisted 2; tick=4097
+[15:31:04] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has made the advancement [The End?]
+[15:31:04] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster has made the advancement [The End?]
+[15:31:04] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native first dragon fixture 2; tick=4098
+[15:31:04] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has made the advancement [Monster Hunter]
+[15:31:04] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has made the advancement [Free the End]
+[15:31:04] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Durable celebration roster 2; tick=4099
+[15:31:04] [Server thread/INFO] (Minecraft) [_]
+[15:31:04] [Server thread/INFO] (Minecraft) System chat: 本轮已通关：P2LobbyTarget，有效挑战 0 ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。
+[15:31:04] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget has reached the goal [Sky's the Limit]
+[15:31:04] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster has reached the goal [Sky's the Limit]
+[15:31:04] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Safe next round 2; tick=4111
+[15:31:04] [Server thread/INFO] (hardrush-p1) P1 round 904b227d-98a6-4471-8ccb-85854e5d8b09: replay integration is disabled; no recording is claimed
+[15:31:05] [Server thread/INFO] (Minecraft) [_]
+[15:31:05] [Server thread/INFO] (Minecraft) [_]
+[15:31:05] [Server thread/INFO] (Minecraft) [_]
+[15:31:05] [Server thread/INFO] (Minecraft) [_]
+[15:31:06] [Server thread/INFO] (Minecraft) [_]
+[15:31:06] [Server thread/INFO] (Minecraft) [_]
+[15:31:06] [Server thread/INFO] (Minecraft) [_]
+[15:31:06] [Server thread/INFO] (Minecraft) [_]
+[15:31:06] [Server thread/INFO] (Minecraft) [_]
+[15:31:06] [Server thread/INFO] (Minecraft) [_]
+[15:31:06] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Native UUID player-data load: Stabilize19; tick=4305
+[15:31:06] [Server thread/INFO] (Minecraft) [_]
+[15:31:06] [Server thread/INFO] (Minecraft) [_]
+[15:31:06] [Server thread/INFO] (Minecraft) [_]
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize19[embedded] logged in with entity id 6920 at (8.5, -60.0, 8.5)
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize19 joined the game
+[15:31:06] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Real profile journal ready: Stabilize19; tick=4367
+[15:31:06] [Server thread/INFO] (Minecraft) P2LobbyMonster lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: P2LobbyMonster left the game
+[15:31:06] [Server thread/INFO] (Minecraft) P2LobbyTarget lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: P2LobbyTarget left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize2 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize2 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize3 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize3 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize4 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize4 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize5 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize5 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize6 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize6 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize7 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize7 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize8 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize8 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize9 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize9 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize10 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize10 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize11 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize11 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize12 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize12 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize13 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize13 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize14 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize14 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize15 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize15 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize16 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize16 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize17 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize17 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize18 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize18 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) Stabilize19 lost connection: P2 lobby native reconnect
+[15:31:06] [Server thread/INFO] (Minecraft) System chat: Stabilize19 left the game
+[15:31:06] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Disconnected-page IO drained; tick=4370
+[15:31:06] [Server thread/INFO] (Minecraft) [_]
+[15:31:06] [Server thread/INFO] (Minecraft) [STDOUT]: P2 lobby stage: Disconnected throttle expiry; tick=4381
+[15:31:07] [Server thread/INFO] (Minecraft) [_]
+[15:31:07] [Server thread/INFO] (Minecraft) [_]
+[15:31:07] [Server thread/INFO] (Minecraft) [STDOUT]: STABILIZATION_PASS connections=20 rounds=3 modes=hardcore/normal/hardcore cycles=8 offlineAcross=3; synthetic projection targets=41; low-health dragon/test clock; no graphics or performance claim
+[15:31:07] [Server thread/INFO] (Minecraft) [+]
+[15:31:07] [Server thread/INFO] (Minecraft) [+]
+[15:31:07] [Server thread/INFO] (Minecraft) ========= 1 GAME TESTS COMPLETE IN 17.40 s ======================
+[15:31:07] [Server thread/INFO] (Minecraft) All 1 required tests passed :)
+[15:31:07] [Server thread/INFO] (Minecraft) ====================================================
+[15:31:07] [Server thread/INFO] (WorldProbe) P0 世界已保存；未删除或替换任何世界文件
+[15:31:07] [Server thread/INFO] (Minecraft) Stopping server
+[15:31:07] [Server thread/INFO] (Minecraft) Saving players
+[15:31:07] [Server thread/INFO] (Minecraft) Saving worlds
+[15:31:07] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:overworld
+[15:31:07] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:the_end
+[15:31:07] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:the_nether
+[15:31:07] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:lobby
+[15:31:07] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_1772b561ee804d6393897833833683f1/overworld
+[15:31:07] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_1772b561ee804d6393897833833683f1/nether
+[15:31:07] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_1772b561ee804d6393897833833683f1/end
+[15:31:07] [Server thread/INFO] (Minecraft) Game test server shutting down
+
+BUILD SUCCESSFUL in 25s
+13 actionable tasks: 2 executed, 11 up-to-date

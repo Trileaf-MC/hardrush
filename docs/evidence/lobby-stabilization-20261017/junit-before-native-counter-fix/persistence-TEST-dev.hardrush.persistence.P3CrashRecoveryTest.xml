@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.persistence.P3CrashRecoveryTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-17T07:47:09.241Z" hostname="LeifMacBookPro2023.local" time="10.338">
+  <properties/>
+  <testcase name="GRANT: HALT_AFTER_SNAPSHOT, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="0.758"/>
+  <testcase name="GRANT: HALT_AFTER_INDEX, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="0.805"/>
+  <testcase name="GRANT: HALT_AFTER_COMMIT, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="0.759"/>
+  <testcase name="GRANT: KILL_AFTER_INDEX, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="0.809"/>
+  <testcase name="CONSUME: HALT_AFTER_SNAPSHOT, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="0.768"/>
+  <testcase name="CONSUME: HALT_AFTER_INDEX, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="0.773"/>
+  <testcase name="CONSUME: HALT_AFTER_COMMIT, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="0.852"/>
+  <testcase name="CONSUME: KILL_AFTER_INDEX, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="0.772"/>
+  <testcase name="TERMINAL: HALT_AFTER_SNAPSHOT, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="0.882"/>
+  <testcase name="TERMINAL: HALT_AFTER_INDEX, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="1.003"/>
+  <testcase name="TERMINAL: HALT_AFTER_COMMIT, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="0.976"/>
+  <testcase name="TERMINAL: KILL_AFTER_INDEX, then different JVM recovers and replays" classname="dev.hardrush.persistence.P3CrashRecoveryTest" time="1.153"/>
+  <system-out><![CDATA[P3 SQLite crash GRANT HALT_AFTER_SNAPSHOT: writerPid=89975 writerExit=73 readerPid=89996 readerExit=0; REACHED GRANT HALT_AFTER_SNAPSHOT pid=89975 walBytes=271952
+P3 SQLite crash GRANT HALT_AFTER_INDEX: writerPid=90006 writerExit=73 readerPid=90010 readerExit=0; REACHED GRANT HALT_AFTER_INDEX pid=90006 walBytes=288432
+P3 SQLite crash GRANT HALT_AFTER_COMMIT: writerPid=90015 writerExit=73 readerPid=90022 readerExit=0; REACHED GRANT HALT_AFTER_COMMIT pid=90015 walBytes=37112
+P3 SQLite crash GRANT KILL_AFTER_INDEX: writerPid=90023 writerExit=137 readerPid=90025 readerExit=0; REACHED GRANT KILL_AFTER_INDEX pid=90023 walBytes=288432
+P3 SQLite crash CONSUME HALT_AFTER_SNAPSHOT: writerPid=90029 writerExit=73 readerPid=90031 readerExit=0; REACHED CONSUME HALT_AFTER_SNAPSHOT pid=90029 walBytes=271952
+P3 SQLite crash CONSUME HALT_AFTER_INDEX: writerPid=90035 writerExit=73 readerPid=90036 readerExit=0; REACHED CONSUME HALT_AFTER_INDEX pid=90035 walBytes=296672
+P3 SQLite crash CONSUME HALT_AFTER_COMMIT: writerPid=90038 writerExit=73 readerPid=90042 readerExit=0; REACHED CONSUME HALT_AFTER_COMMIT pid=90038 walBytes=49472
+P3 SQLite crash CONSUME KILL_AFTER_INDEX: writerPid=90044 writerExit=137 readerPid=90051 readerExit=0; REACHED CONSUME KILL_AFTER_INDEX pid=90044 walBytes=296672
+P3 SQLite crash TERMINAL HALT_AFTER_SNAPSHOT: writerPid=90052 writerExit=73 readerPid=90054 readerExit=0; REACHED TERMINAL HALT_AFTER_SNAPSHOT pid=90052 walBytes=284312
+P3 SQLite crash TERMINAL HALT_AFTER_INDEX: writerPid=90058 writerExit=73 readerPid=90060 readerExit=0; REACHED TERMINAL HALT_AFTER_INDEX pid=90058 walBytes=313152
+P3 SQLite crash TERMINAL HALT_AFTER_COMMIT: writerPid=90064 writerExit=73 readerPid=90066 readerExit=0; REACHED TERMINAL HALT_AFTER_COMMIT pid=90064 walBytes=82432
+P3 SQLite crash TERMINAL KILL_AFTER_INDEX: writerPid=90070 writerExit=137 readerPid=90072 readerExit=0; REACHED TERMINAL KILL_AFTER_INDEX pid=90070 walBytes=313152
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

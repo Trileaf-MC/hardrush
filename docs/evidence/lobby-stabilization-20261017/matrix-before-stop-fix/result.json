@@ -1,0 +1,241 @@
+{
+  "schema": 1,
+  "status": "FAIL",
+  "directory": "/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-stabilization-matrix/90e077ef-9030-4fd3-b012-3a65cb2643a4",
+  "checks": [
+    {
+      "name": "stabilization",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushStabilization=true",
+        "--console=plain"
+      ],
+      "log": "stabilization.log",
+      "status": "PASS",
+      "pid": 82732,
+      "exitCode": 0,
+      "elapsedSeconds": 25.62,
+      "logSha256": "8b72a0c6e87d90211a8153839ee50f00e9d81d3e7f5dd9ea9cd91cd208ace741"
+    },
+    {
+      "name": "full-flow",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushFullFlow=true",
+        "--console=plain"
+      ],
+      "log": "full-flow.log",
+      "status": "PASS",
+      "pid": 82907,
+      "exitCode": 0,
+      "elapsedSeconds": 24.309,
+      "logSha256": "17e2b4553e3c045da1db57ea4faad191cd8fdba14475d4f7d777692123bdc5c9"
+    },
+    {
+      "name": "revival-fault",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushFullFlow=true",
+        "-PhardrushFullFlowFault=revival",
+        "--console=plain"
+      ],
+      "log": "revival-fault.log",
+      "status": "PASS",
+      "pid": 83058,
+      "exitCode": 0,
+      "elapsedSeconds": 15.678,
+      "logSha256": "03034406eefd4c2d3ad32065501cbc52472a3b41053357ef048b639e5186eaa2"
+    },
+    {
+      "name": "personal",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushPersonalHunt=true",
+        "--console=plain"
+      ],
+      "log": "personal.log",
+      "status": "PASS",
+      "pid": 83201,
+      "exitCode": 0,
+      "elapsedSeconds": 19.367,
+      "logSha256": "f8461d8d6c950dfb37817dfedc6296c74569762e1fa7c6377cb47eb3ec61eb47"
+    },
+    {
+      "name": "personal-storage",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushPersonalHunt=true",
+        "-PhardrushPersonalFault=storage",
+        "--console=plain"
+      ],
+      "log": "personal-storage.log",
+      "status": "PASS",
+      "pid": 83324,
+      "exitCode": 0,
+      "elapsedSeconds": 19.23,
+      "logSha256": "2df70e54142d03da682040be29bbed93a4e8d9324fd755f3006465698a8541af"
+    },
+    {
+      "name": "foundation",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushLobbyFoundation=true",
+        "--console=plain"
+      ],
+      "log": "foundation.log",
+      "status": "PASS",
+      "pid": 83468,
+      "exitCode": 0,
+      "elapsedSeconds": 13.539,
+      "logSha256": "de45d158dc37a97eb1e98cc9d6aa27346ce36ddd222102269e1c01e3007e2336"
+    },
+    {
+      "name": "human",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushHumanEntry=true",
+        "--console=plain"
+      ],
+      "log": "human.log",
+      "status": "PASS",
+      "pid": 83580,
+      "exitCode": 0,
+      "elapsedSeconds": 16.654,
+      "logSha256": "548162ff44bf2f082e0031089be0921ae2b94ece39b3894bdf9acd3d136d62ff"
+    },
+    {
+      "name": "movement",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushLobbyMovement=true",
+        "--console=plain"
+      ],
+      "log": "movement.log",
+      "status": "PASS",
+      "pid": 83698,
+      "exitCode": 0,
+      "elapsedSeconds": 13.53,
+      "logSha256": "f510607d5c2a76145ee8dc5676f927224aa50190b7fd02905cb8aedf44e3a68e"
+    },
+    {
+      "name": "p2",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushP2Lobby=true",
+        "--console=plain"
+      ],
+      "log": "p2.log",
+      "status": "PASS",
+      "pid": 83821,
+      "exitCode": 0,
+      "elapsedSeconds": 18.464,
+      "logSha256": "0c9099b3a8e6ca75750f5c219dd72267aa3b173d551d925af46559de8f7b0f24"
+    },
+    {
+      "name": "celebration",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushCelebration=true",
+        "--console=plain"
+      ],
+      "log": "celebration.log",
+      "status": "PASS",
+      "pid": 83964,
+      "exitCode": 0,
+      "elapsedSeconds": 19.895,
+      "logSha256": "06d606da0cf7668245210c29f9fd22c737c7d277ff89f5f53d4fb7e097dd41b7"
+    },
+    {
+      "name": "ten-rounds",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushP1TenRounds=true",
+        "--console=plain"
+      ],
+      "log": "ten-rounds.log",
+      "status": "PASS",
+      "pid": 84107,
+      "exitCode": 0,
+      "elapsedSeconds": 34.094,
+      "logSha256": "20ea208d333c2d54911dd2d0f7ad0a40c1115045d41c3cc6bcca6bac1d7a8007"
+    },
+    {
+      "name": "recovery",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP1=true",
+        "-PhardrushP3Recovery=true",
+        "--console=plain"
+      ],
+      "log": "recovery.log",
+      "status": "PASS",
+      "pid": 84321,
+      "exitCode": 0,
+      "elapsedSeconds": 14.759,
+      "logSha256": "0d5522dbeb7aeb24cf67be2ef9be4c0a4eb051bbf534be2f736d742f83c00c84"
+    },
+    {
+      "name": "storage",
+      "command": [
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p0-gradle.sh",
+        ":platforms:mc263:runGameTest",
+        "-PhardrushP3Storage=true",
+        "--console=plain"
+      ],
+      "log": "storage.log",
+      "status": "PASS",
+      "pid": 84428,
+      "exitCode": 0,
+      "elapsedSeconds": 11.404,
+      "logSha256": "afa261d1e7637d8c0044560edd539d5638ec17303790fc8e3f5da1e9ac9db8f3"
+    },
+    {
+      "name": "restart",
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "/Users/leifwebber/projects/minecraft/hardrush/scripts/p1-server-restart.py",
+        "--phase",
+        "COUNTDOWN",
+        "--phase",
+        "RUNNING",
+        "--phase",
+        "RESCUE",
+        "--phase",
+        "CELEBRATING"
+      ],
+      "log": "restart.log",
+      "status": "FAIL",
+      "pid": 84509,
+      "exitCode": 1,
+      "elapsedSeconds": 355.92,
+      "logSha256": "dbdfcba45bff4d7a4a39ea5c3bbef925542091502f000d3c599d20c3ef624832"
+    }
+  ],
+  "head": "741f58d5252c1f2f27303717202063ebfb034873",
+  "sourceManifest": "source-files.json",
+  "scope": "Headless native protocol/state only; no graphical or performance acceptance.",
+  "error": "restart exited 1; see /Users/leifwebber/projects/minecraft/hardrush/.local/lobby-stabilization-matrix/90e077ef-9030-4fd3-b012-3a65cb2643a4/restart.log"
+}

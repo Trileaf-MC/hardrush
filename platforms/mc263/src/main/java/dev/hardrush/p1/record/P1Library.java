@@ -24,6 +24,7 @@ public final class P1Library {
         final ServerPlayer owner;
         final net.minecraft.server.network.ServerGamePacketListenerImpl connection;
         final UUID scope;
+        net.minecraft.world.inventory.AbstractContainerMenu menu;
         List<P2LobbyUi.Button> buttons = List.of(info("正在查询历史"));
         RoundHistory selected;
         int request;
@@ -33,10 +34,14 @@ public final class P1Library {
     public static void configure(MinecraftServer server, P1LobbySession session) { SERVICES.put(server,new P1Library(server,session)); }
     public static void close(MinecraftServer server) { SERVICES.remove(server); }
     public static void disconnected(ServerPlayer p) { var s=SERVICES.get(p.level().getServer()); if(s!=null)s.views.remove(p.getUUID()); }
+    public static void tick(MinecraftServer server) {
+        var s=SERVICES.get(server); if(s!=null)s.views.values().removeIf(v->!s.current(v));
+    }
     public static boolean open(ServerPlayer p) {
         var s=SERVICES.get(p.level().getServer()); if(s==null)return false;
         var view=new View(p,s.session.snapshot().orElseThrow().roundId()); s.views.put(p.getUUID(),view);
         if(!P2LobbyUi.open(p,LobbyContext.HISTORY)) { s.views.remove(p.getUUID(),view); return false; }
+        view.menu=p.containerMenu;
         s.recent(view,1); return true;
     }
     public static List<P2LobbyUi.Button> buttons(ServerPlayer p) {
@@ -64,6 +69,7 @@ public final class P1Library {
     private boolean current(View v) {
         return SERVICES.get(server)==this && views.get(v.owner.getUUID())==v && server.getPlayerList().getPlayer(v.owner.getUUID())==v.owner
                 && v.owner.connection==v.connection && session.state()==P1LobbySession.State.OPEN
+                && v.owner.containerMenu==v.menu && P2LobbyUi.isMenu(v.owner)
                 && session.snapshot().filter(r->r.roundId().equals(v.scope)).isPresent();
     }
     private <T> void load(View v,CompletableFuture<T> future,java.util.function.Function<T,List<P2LobbyUi.Button>> show) {

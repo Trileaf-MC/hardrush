@@ -23,7 +23,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / '.local/p1-server-restart'
-PHASES = ('PREPARING', 'WAITING', 'COUNTDOWN', 'RUNNING', 'SETTLING', 'CELEBRATING', 'ROTATING')
+PHASES = ('PREPARING', 'WAITING', 'COUNTDOWN', 'RUNNING', 'RESCUE', 'SETTLING', 'CELEBRATING', 'ROTATING')
 RESTART_PROPERTIES = ('phase', 'operation', 'directory')
 SAVE_FAILURE = re.compile(
     r'Exception closing the level|Failed to unlock level|Failed to save|Could not save|'
@@ -235,7 +235,8 @@ def run_operation(spec, directory, phase, operation, timeout):
     if result_path.exists():
         raise RuntimeError(f'Refusing stale fixture result: {result_path}')
     prefixes = tuple(f'-Dhardrush.p1.restart.{name}=' for name in RESTART_PROPERTIES)
-    jvm_args = [arg for arg in spec['jvmArgs'] if not arg.startswith(prefixes)]
+    jvm_args = [arg for arg in spec['jvmArgs'] if not arg.startswith(prefixes) and not arg.startswith('-Dhardrush.p1.initialMode=')]
+    jvm_args.append('-Dhardrush.p1.initialMode=' + ('hardcore' if phase == 'RESCUE' else 'normal'))
     jvm_args.extend((f'-Dhardrush.p1.restart.phase={phase}',
                      f'-Dhardrush.p1.restart.operation={operation}',
                      f'-Dhardrush.p1.restart.directory={directory}'))
@@ -295,7 +296,7 @@ def run_operation(spec, directory, phase, operation, timeout):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--phase', choices=PHASES, action='append', help='Run only selected phase(s); default: all seven')
+    parser.add_argument('--phase', choices=PHASES, action='append', help='Run only selected phase(s); default: all eight')
     parser.add_argument('--timeout', type=int, default=600, help='Maximum seconds per JVM and launch build (default: 600)')
     arguments = parser.parse_args()
     if arguments.timeout < 1:

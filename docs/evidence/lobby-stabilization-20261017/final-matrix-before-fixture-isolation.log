@@ -1,0 +1,26 @@
+Stabilization evidence: /Users/leifwebber/projects/minecraft/hardrush/.local/lobby-stabilization-matrix/3e601198-06ac-4383-bdd7-edf6768092d4
+RUN base
+PASS base (51.393s)
+RUN stabilization
+PASS stabilization (23.628s)
+RUN full-flow
+PASS full-flow (23.736s)
+RUN revival-fault
+PASS revival-fault (16.81s)
+RUN personal
+PASS personal (22.844s)
+RUN personal-storage
+PASS personal-storage (22.607s)
+RUN foundation
+PASS foundation (17.079s)
+RUN human
+PASS human (15.248s)
+RUN movement
+PASS movement (13.566s)
+RUN p2
+PASS p2 (17.599s)
+RUN celebration
+PASS celebration (18.644s)
+RUN ten-rounds
+PASS ten-rounds (37.621s)
+Source files changed during validation; rerun against one frozen source tree.

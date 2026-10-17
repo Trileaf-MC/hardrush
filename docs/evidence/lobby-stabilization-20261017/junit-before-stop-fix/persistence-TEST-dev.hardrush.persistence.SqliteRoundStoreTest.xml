@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.persistence.SqliteRoundStoreTest" tests="21" skipped="0" failures="0" errors="0" timestamp="2026-10-17T07:29:22.488Z" hostname="LeifMacBookPro2023.local" time="0.264">
+  <properties/>
+  <testcase name="createsMissingDirectoriesButRejectsDirectoryAsDatabaseAndJdbcQueryPaths()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.01"/>
+  <testcase name="identicalEventsReplayAfterLaterCommitsButEventCollisionsRejectEveryChangedField()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.007"/>
+  <testcase name="refusesSidecarSymlinkIntroducedAfterOpening()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.006"/>
+  <testcase name="configuresWalAndEnforcesForeignKeys()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.008"/>
+  <testcase name="twoStoreConnectionsSerializeCasSoOnlyOneCompetingWriteCommits()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.013"/>
+  <testcase name="rejectsSymbolicLinkDatabaseParentsAndSQLiteSidecars()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.002"/>
+  <testcase name="failedConfigAuditRollsBackConfigAndEventRegistration()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.008"/>
+  <testcase name="missingConfigAuditOrOwningEventIsAnErrorRatherThanDefaultRules()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.013"/>
+  <testcase name="snapshotCommitUsesVersionsAndLatestTracksCreationRatherThanLateOldCheckpoints()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.011"/>
+  <testcase name="schemaFailureRollsBackEarlierDdlAndUserVersion()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.006"/>
+  <testcase name="duplicateDigestIncludesPreparedOperationPayloadAndIgnoresListOrdering()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.006"/>
+  <testcase name="rejectsNewerSchemasWithoutChangingTheirVersionOrJournalMode()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.003"/>
+  <testcase name="operationCollisionRollsBackSnapshotEventAndOtherPreparedOperations()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.008"/>
+  <testcase name="validBytePendingRuleTamperingFailsEvenWhenTheChangedConfigWouldDecode()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.009"/>
+  <testcase name="operationsRecoverAcrossReopenWithMonotonicStageAndIndependentVersionCas()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.013"/>
+  <testcase name="nativeWriteLockFailureLeavesNoPartialCommitAndStoreCanRetry()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.103"/>
+  <testcase name="validByteSnapshotTamperingFailsLoadsAndCasInsteadOfSilentlyChangingState()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.006"/>
+  <testcase name="valueObjectsOwnTheirByteArraysAndValidateVersions()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.002"/>
+  <testcase name="missingOwningRoundEventIsAnErrorRatherThanAnEmptyOrOlderRound()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.006"/>
+  <testcase name="pendingRulesPersistWithAuditedIdempotencyAndGlobalEventCollisionChecks()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.009"/>
+  <testcase name="currentConfigAuditPayloadMustMatchItsDigestAsWellAsPendingRules()" classname="dev.hardrush.persistence.SqliteRoundStoreTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

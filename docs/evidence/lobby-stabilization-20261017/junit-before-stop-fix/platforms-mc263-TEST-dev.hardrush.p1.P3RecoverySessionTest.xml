@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p1.P3RecoverySessionTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-17T07:30:02.754Z" hostname="LeifMacBookPro2023.local" time="0.131">
+  <properties/>
+  <testcase name="closingCommittedCompletionKeepsOriginalTerminalHistoryAndLeaderboardByteForByte()" classname="dev.hardrush.p1.P3RecoverySessionTest" time="0.02"/>
+  <testcase name="activeRoundsAndInvalidMetadataNeverStartRecoveryWrites()" classname="dev.hardrush.p1.P3RecoverySessionTest" time="0.006"/>
+  <testcase name="normalStopDrainsRepairWithoutMainThreadCallbackAndRestartStaysQuarantined()" classname="dev.hardrush.p1.P3RecoverySessionTest" time="0.011"/>
+  <testcase name="integrityFailureCannotBeClearedByAWriteableDatabaseOrProduceAnAudit()" classname="dev.hardrush.p1.P3RecoverySessionTest" time="0.012"/>
+  <testcase name="foreignOrRolledBackLatestRoundCannotReplaceTheFailedTarget()" classname="dev.hardrush.p1.P3RecoverySessionTest" time="0.008"/>
+  <testcase name="repairUsesLatestDurableStateRatherThanStaleEngineAfterWithheldCallback()" classname="dev.hardrush.p1.P3RecoverySessionTest" time="0.027"/>
+  <testcase name="[1] false" classname="dev.hardrush.p1.P3RecoverySessionTest" time="0.012"/>
+  <testcase name="[2] true" classname="dev.hardrush.p1.P3RecoverySessionTest" time="0.011"/>
+  <testcase name="recoveryDecisionAndAuditRollBackTogetherOnRealSqliteWriteFailureThenRepairWorks()" classname="dev.hardrush.p1.P3RecoverySessionTest" time="0.016"/>
+  <testcase name="missingDatabaseCannotBeSilentlyRecreatedByRepair()" classname="dev.hardrush.p1.P3RecoverySessionTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

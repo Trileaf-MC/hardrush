@@ -257,7 +257,7 @@ public final class P1FullFlowGameTest {
                 }).thenSucceed();
     }
 
-    private static final class State {
+    static final class State {
         final P2RuntimeLobbyGameTest.Fixture f; final GameTestHelper test;
         int attacks; boolean expectedFailure; java.util.concurrent.CompletableFuture<Void> io;
         EnderDragonFight fight; UUID oldRound; P1RoundWorldBundle oldWorlds;

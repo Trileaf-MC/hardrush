@@ -1,0 +1,30 @@
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :persistence:processResources NO-SOURCE
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :core:compileJava UP-TO-DATE
+> Task :platforms:mc263:processDevelopmentResources NO-SOURCE
+> Task :platforms:mc263:generateLog4jConfig UP-TO-DATE
+> Task :platforms:mc263:generateDLIConfig UP-TO-DATE
+> Task :platforms:mc263:configureLaunch UP-TO-DATE
+> Task :platforms:mc263:processGametestResources UP-TO-DATE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :persistence:compileJava UP-TO-DATE
+> Task :persistence:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :persistence:jar UP-TO-DATE
+> Task :platforms:mc263:compileJava UP-TO-DATE
+> Task :platforms:mc263:classes UP-TO-DATE
+> Task :platforms:mc263:compileDevelopmentJava UP-TO-DATE
+> Task :platforms:mc263:developmentClasses UP-TO-DATE
+> Task :platforms:mc263:compileGametestJava UP-TO-DATE
+> Task :platforms:mc263:gametestClasses UP-TO-DATE
+
+> Task :platforms:mc263:writeP1RestartLaunchSpec
+P1 restart launch specification: /Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/9061da03-3835-48c4-903f-5d6251d772de/launch-spec.json
+
+BUILD SUCCESSFUL in 585ms
+12 actionable tasks: 1 executed, 11 up-to-date

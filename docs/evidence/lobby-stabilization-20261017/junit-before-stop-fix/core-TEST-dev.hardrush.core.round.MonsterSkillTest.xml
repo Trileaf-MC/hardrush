@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.core.round.MonsterSkillTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-17T07:29:09.430Z" hostname="LeifMacBookPro2023.local" time="0.017">
+  <properties/>
+  <testcase name="eachSkillUsesRoundConfigAndKeepsItsOwnDeadlineAcrossOutingsRolesAndDeath()" classname="dev.hardrush.core.round.MonsterSkillTest" time="0.001"/>
+  <testcase name="codecAndRestartKeepWallDeadlineWhileOfflineAndDowntimeAdvanceRemaining()" classname="dev.hardrush.core.round.MonsterSkillTest" time="0.001"/>
+  <testcase name="failedEffectCompensationRestoresOldDeadlineAndRejectsStaleNonceOrInvalidRefund()" classname="dev.hardrush.core.round.MonsterSkillTest" time="0.001"/>
+  <testcase name="invalidWallTimesAndOverflowFailWithoutPendingMutation()" classname="dev.hardrush.core.round.MonsterSkillTest" time="0.0"/>
+  <testcase name="roleRoundLifeDeploymentOnlineAndRunningPhaseAreAllRequired()" classname="dev.hardrush.core.round.MonsterSkillTest" time="0.001"/>
+  <testcase name="reservationRemainsInvisibleUntilAcceptAndPendingOrRepeatedUsesCannotResetIt()" classname="dev.hardrush.core.round.MonsterSkillTest" time="0.004"/>
+  <testcase name="normalNewHumanLifeAndHardcoreDeathKeepTheSameUuidSkillDeadlines()" classname="dev.hardrush.core.round.MonsterSkillTest" time="0.001"/>
+  <testcase name="rejectedReservationCannotExposeDeadlineOrBeCompensatedAndReopenUsesStoredState()" classname="dev.hardrush.core.round.MonsterSkillTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

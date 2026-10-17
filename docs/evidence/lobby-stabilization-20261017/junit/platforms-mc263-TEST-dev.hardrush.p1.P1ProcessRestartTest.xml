@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p1.P1ProcessRestartTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-17T08:03:53.090Z" hostname="LeifMacBookPro2023.local" time="5.827">
+  <properties/>
+  <testcase name="normal stop and new JVM recovery: PREPARING" classname="dev.hardrush.p1.P1ProcessRestartTest" time="0.836"/>
+  <testcase name="normal stop and new JVM recovery: WAITING" classname="dev.hardrush.p1.P1ProcessRestartTest" time="0.822"/>
+  <testcase name="normal stop and new JVM recovery: COUNTDOWN" classname="dev.hardrush.p1.P1ProcessRestartTest" time="0.816"/>
+  <testcase name="normal stop and new JVM recovery: RUNNING" classname="dev.hardrush.p1.P1ProcessRestartTest" time="0.816"/>
+  <testcase name="normal stop and new JVM recovery: SETTLING" classname="dev.hardrush.p1.P1ProcessRestartTest" time="0.83"/>
+  <testcase name="normal stop and new JVM recovery: CELEBRATING" classname="dev.hardrush.p1.P1ProcessRestartTest" time="0.851"/>
+  <testcase name="normal stop and new JVM recovery: ROTATING" classname="dev.hardrush.p1.P1ProcessRestartTest" time="0.841"/>
+  <system-out><![CDATA[Restart matrix PREPARING: writerPid=99008, readerPid=99009, both exited with explicit PASS and exit=0
+Restart matrix WAITING: writerPid=99013, readerPid=99015, both exited with explicit PASS and exit=0
+Restart matrix COUNTDOWN: writerPid=99016, readerPid=99021, both exited with explicit PASS and exit=0
+Restart matrix RUNNING: writerPid=99025, readerPid=99029, both exited with explicit PASS and exit=0
+Restart matrix SETTLING: writerPid=99031, readerPid=99032, both exited with explicit PASS and exit=0
+Restart matrix CELEBRATING: writerPid=99037, readerPid=99038, both exited with explicit PASS and exit=0
+Restart matrix ROTATING: writerPid=99043, readerPid=99044, both exited with explicit PASS and exit=0
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

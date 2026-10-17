@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p1.world.P1WorldManifestTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-17T07:47:56.807Z" hostname="LeifMacBookPro2023.local" time="0.064">
+  <properties/>
+  <testcase name="legacySpawnAndFourExitsRecoverWithoutChangingIdentity()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.011"/>
+  <testcase name="naturalSpawnRecoversWithoutManufacturedExits()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.005"/>
+  <testcase name="preManifestCrashNeedsNoWorldCreationButAnUnownedExistingWorldCannotBeSkipped()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.003"/>
+  <testcase name="closedRecoveryVerificationRetainsEveryFileWithoutCreatingMissingDimensions()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.009"/>
+  <testcase name="closedRecoveryRejectsTamperedManifestAndNestedSymlinksWithoutTouchingTargets()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.008"/>
+  <testcase name="malformedManifestCannotBeReplacedByANewRound()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.006"/>
+  <testcase name="symlinkInAnyAncestorOrWorldSubdirectoryStopsPreparation()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.002"/>
+  <testcase name="identityGeneratorsRulesAndAllOwnedPathsSurviveRestart()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.004"/>
+  <testcase name="recoveryRejectsDifferentSeedOrRulesWithoutRewritingEvidence()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.004"/>
+  <testcase name="substitutedRoundOrDimensionOwnerCannotAuthorizeClosingTheActiveWorld()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.004"/>
+  <testcase name="cleanupCandidatesCannotNameLobbyRootP0OrAnotherRound()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.001"/>
+  <testcase name="tamperedDimensionAndLobbyPathsAreRejectedWithoutDeletingFiles()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.005"/>
+  <testcase name="symlinkRootAndRegularFileInAWorldPathAreRejectedWithoutTouchingTargets()" classname="dev.hardrush.p1.world.P1WorldManifestTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

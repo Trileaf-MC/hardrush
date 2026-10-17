@@ -68,3 +68,14 @@ Gradle 的 `writeP1RestartLaunchSpec` 一次编译并生成 Java 启动配置；
 | Python 语法、源码 diff 与生产 JAR 测试代码排除 | 全部通过；生产 JAR 不含 GameTest／debug 辅助代码 |
 
 真实客户端十轮、TAB／书页、满血战斗、原版输入及各阶段人工 stop 继续按 [P1 十轮与正常恢复](人工客户端测试/P1十轮与正常恢复.md) 执行。本批只补齐 P1-11／P1-17 的普通模式自动进展，不勾选 P1-G，也不把 P2 救场或 P3 故障矩阵当作完成。
+
+
+## 2026-10-17 无指令大厅稳定化补验
+
+当前 runner 默认增加第八阶段 RESCUE，原七阶段历史证据保持原意。第 5 轮选择 COUNTDOWN／RUNNING／RESCUE／CELEBRATING 复跑，准确日志及新 JVM 结果见[大厅交接](lobby-delivery-status.md#第-5-轮交接)。RESCUE 使用极限模式，经原生死亡、庭院模型出场和原生怪物击杀产生资格，正常停服保存 60 减 10 的 50 秒；新 JVM 复核同轮、外出怪物回营地与原资格，通过祭坛原生确认包及重复请求验证仅一条空装新生命恢复挑战。地形、低血量人类与测试时钟是夹具；不是图形游玩或物理故障证据。COUNTDOWN 仍用三个 JVM 检查晚归原准备者与不安全恢复。
+
+
+同轮稳定化还修正了此前线程保护的位置：原先在 `server.execute` 的任务内部检查当前线程，但 stopped 时原版 `execute` 已先在 IO 调用方进入非线程安全的 `ReentrantBlockableEventLoop.doRunTask`，即使空任务也会竞争共享重入计数。`P1MainThreadExecutor` 现在从 worker 直接排 `TickTask`，停止后不再进入该执行器；owner 线程仍可处理 bootstrap／close 排空。档案、Session、书册、庆祝和释放回调共用，原版区块排空条件保持不变。实际原版 event loop 的负对照和 16000 次并发停止提交回归，以及正常 JVM 复验见第 5 轮；首次卡住、诊断失败及中间重试均保留。
+
+
+实际复现进一步确认：原生停止回调也会在 worker 调用 `MinecraftServer.execute`，因此仅修复本项目提交点仍不足。`StoppedServerTaskMixin` 对 off-owner 的服务器任务保留原版父类任务执行／错误处理，避开 owner 的共享重入计数；不跳过任务、不改变区块排空谓词。每个正常重启 JVM 在真实 stopped 状态并发执行 16000 次原生回调和 2000 次 owner 任务，要求回调全部执行、共享计数为零，父进程核对这些标记。该诊断和最终验证仍只作用于 runner 自己创建的新实例。

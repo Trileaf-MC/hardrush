@@ -194,6 +194,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
             act("finish default countdown", () -> advance(24));
             waitFor("native ordinary admission", () -> round().phase() == RoundPhase.RUNNING && idle()
                     && !P1PlayerProfiles.isLocked(a.player) && !P1PlayerProfiles.isLocked(b.player));
+            if (target == RoundPhase.RESCUE) { writeRescue(); return; }
             act("ordinary native death", () -> a.player.hurtServer(a.player.level(), a.player.damageSources().genericKill(), Float.MAX_VALUE));
             waitFor("durable death", () -> idle() && round().participants().get(a.profile.id()).role() == ParticipantRole.HUMAN_RESPAWNING);
             act("native respawn packet", () -> {
@@ -276,6 +277,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
                 });
                 return;
             }
+            if (target == RoundPhase.RESCUE) { recoverRescue(); return; }
             recoverActive();
         }
 
@@ -383,6 +385,62 @@ public final class P1ServerRestartRegression implements ModInitializer {
             act("check unique history", () -> query = session.history(10, 0).thenAccept(history -> require(history.size() == 1 && history.getFirst().roundId().equals(oldRound), "exactly one original terminal")));
             waitFor("history read", () -> query.isDone());
             act("finish actual restarted rotation", () -> { query.join(); stop(); });
+        }
+
+        void writeRescue() {
+            act("private rescue arena", () -> {
+                var level=worlds.level(Level.OVERWORLD);
+                var center=worlds.spawn().offset(160,160-worlds.spawn().getY(),0);
+                for(int x=-70;x<=70;x++)for(int z=-70;z<=70;z++){
+                    var feet=center.offset(x,0,z);level.getChunk(feet);
+                    level.setBlockAndUpdate(feet.below(),Blocks.SMOOTH_STONE.defaultBlockState());
+                    for(int y=0;y<3;y++)level.setBlockAndUpdate(feet.above(y),Blocks.AIR.defaultBlockState());
+                    level.setBlockAndUpdate(feet.above(3),Blocks.SMOOTH_STONE.defaultBlockState());
+                }
+                level.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL,new ChunkPos(center.getX()>>4,center.getZ()>>4),6);
+                move(a,level,Vec3.atBottomCenterOf(center).add(10,0,0));move(b,level,Vec3.atBottomCenterOf(center));
+                a.player.hurtServer(level,a.player.damageSources().genericKill(),Float.MAX_VALUE);
+            });
+            waitFor("hardcore native replacement", () -> {
+                a.player=server.getPlayerList().getPlayer(a.profile.id());
+                return idle()&&a.player.isAlive()&&round().participants().get(a.profile.id()).role()==ParticipantRole.MONSTER_LOBBY&&profiles.isReady(a.profile.id(),round());
+            });
+            act("model-directed sortie", () -> {advance(31);P2HuntFixtures.hunt(a.player,b.profile.id(),a.connection.packets);});
+            waitFor("persisted deployed role", () -> idle()&&round().participants().get(a.profile.id()).role()==ParticipantRole.MONSTER_DEPLOYED&&!P1PlayerProfiles.isLocked(a.player));
+            act("native last-human attack", () -> {
+                move(a,b.player.level(),b.player.position().add(1,0,0));b.player.setHealth(1);b.player.setInvulnerableTime(0);
+                require(dev.hardrush.p0.monster.MonsterRoles.attack(a.player,b.player),"native monster attack accepted");
+            });
+            waitFor("rescue and award persist together", () -> idle()&&round().phase()==RoundPhase.RESCUE&&round().participants().get(a.profile.id()).revivalEntitled());
+            act("preserve ten elapsed rescue seconds", () -> advance(10));
+            waitFor("rescue fifty-second checkpoint", () -> idle()&&session.view().orElseThrow().remainingPhaseMillis()==50000);
+            act("stop deployed entitled monster in rescue",this::stop);
+        }
+        void recoverRescue() {
+            waitFor("returned monster profiles verified", () -> idle()&&profiles.isReady(a.profile.id(),round())&&profiles.isReady(b.profile.id(),round())
+                    &&P1LobbyWorld.isLobby(a.player.level())&&round().participants().get(a.profile.id()).role()==ParticipantRole.MONSTER_LOBBY);
+            act("saved rescue and qualification", () -> {
+                require(round().phase()==RoundPhase.RESCUE&&session.view().orElseThrow().remainingPhaseMillis()==50000,"downtime preserves fifty seconds of rescue");
+                require(round().participants().get(a.profile.id()).revivalEntitled()&&!round().participants().get(b.profile.id()).revivalEntitled(),"exactly original owner keeps qualification");
+                var lobby=P1LobbyWorld.open(server);var point=dev.hardrush.core.lobby.LobbyLayout.facility(dev.hardrush.core.lobby.LobbyLayout.Facility.ALTAR);
+                var pos=BlockPos.containing(lobby.layoutPosition(point));move(a,lobby.holdingLevel(),Vec3.atBottomCenterOf(pos.south(2)));
+                a.player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(net.minecraft.world.InteractionHand.MAIN_HAND,
+                        new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos),net.minecraft.core.Direction.UP,pos,false),2));
+                require(dev.hardrush.p2.lobby.P2LobbyUi.isMenu(a.player),"physical altar opens after restart");
+                var menu=a.player.containerMenu;
+                for(short n=0;n<45;n++)if(menu.getSlot(n).getItem().getHoverName().getString().contains("确认复生")){
+                    var click=new ServerboundContainerClickPacket(menu.containerId,menu.getStateId(),n,(byte)0,net.minecraft.world.inventory.ContainerInput.PICKUP,
+                            new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(),net.minecraft.network.HashedStack.EMPTY);
+                    a.player.connection.handleContainerClick(click);a.player.connection.handleContainerClick(click);return;
+                }
+                throw new AssertionError("recovered altar confirmation missing");
+            });
+            waitFor("one recovered revival restores challenge", () -> idle()&&round().phase()==RoundPhase.RUNNING
+                    &&round().participants().get(a.profile.id()).lifeSequence()==2&&!P1PlayerProfiles.isLocked(a.player));
+            act("no repeated qualification consumption", () -> {
+                require(!round().participants().get(a.profile.id()).revivalEntitled()&&a.player.getInventory().isEmpty(),"one empty new human life");
+                details.addProperty("rescueRemainderPreserved",true);details.addProperty("singleRevivalAfterRestart",true);stop();
+            });
         }
 
         void recoverActive() {
@@ -574,6 +632,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
                     if (operation.equals("write")) {
                         require(saved.phase() == target, "writer stopped at requested durable phase: " + saved.phase());
                         if (target == RoundPhase.COUNTDOWN) require(saved.remainingPhaseNanos() == TimeUnit.SECONDS.toNanos(23), "writer saves 30 minus 7 countdown seconds");
+                        if (target == RoundPhase.RESCUE) require(saved.remainingPhaseNanos() == TimeUnit.SECONDS.toNanos(50), "writer saves sixty minus ten rescue seconds");
                         if (target == RoundPhase.CELEBRATING) require(saved.remainingPhaseNanos() == TimeUnit.SECONDS.toNanos(60), "writer saves 180 minus 120 celebration seconds");
                         if (target == RoundPhase.RUNNING || saved.result() != null) {
                             require(saved.challengeNanos() == TimeUnit.SECONDS.toNanos(13), "writer saves known thirteen active seconds");

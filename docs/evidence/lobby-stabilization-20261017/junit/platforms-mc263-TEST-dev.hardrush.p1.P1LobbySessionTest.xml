@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p1.P1LobbySessionTest" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-10-17T08:03:51.730Z" hostname="LeifMacBookPro2023.local" time="1.319">
+  <properties/>
+  <testcase name="normalStopDrainsPendingConfigWithoutWaitingForItsReplyCallback()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.009"/>
+  <testcase name="closingDuringBootstrapDrainsWithoutNeedingServerCallback()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.008"/>
+  <testcase name="lateAssemblyCommitIsCancelledBeforeStartAndOldRoundFailsWithoutIsolation()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.02"/>
+  <testcase name="evidenceWriteFailureDuringStopCannotLeaveACleanRecoveryMarker()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.008"/>
+  <testcase name="createsPreparingRoundAndRestoresSameIdAfterCleanStopWithoutDowntime()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.012"/>
+  <testcase name="readyProfileOnlineBeforeWorldGateResumesOnlyAfterWorldVerification()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.013"/>
+  <testcase name="hardcoreDeathAndProtectionPersistAcrossNormalStopAndRejoin()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.019"/>
+  <testcase name="cleanLaterPhaseKeepsIdAndDurationsIsolatedUntilWorldAdaptersExist()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.009"/>
+  <testcase name="verifiedAdaptersUnlockDurableJoinAndCountdownThenNormalDeathPausesAtCapturedEvent()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.019"/>
+  <testcase name="recoveredCountdownNeedsSavedReadyUuidAndThenUsesOrdinaryCancelRules()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.013"/>
+  <testcase name="writeLockFailureDoesNotPublishSuccessfulModeOrChangePendingConfig()" classname="dev.hardrush.p1.P1LobbySessionTest" time="1.127"/>
+  <testcase name="stopCapturesTimeBeforeDrainingBlockedSqliteWrites()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.013"/>
+  <testcase name="openFailureCannotExposeAUsableRound()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.001"/>
+  <testcase name="lateOriginalNeedsItsOwnStandingProofAfterFirstOriginalAlreadyResumed()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.014"/>
+  <testcase name="cleanCountdownWaitsForProfilesAcrossCheckpointsAndRepeatedNormalStops()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.017"/>
+  <testcase name="nextModeAcknowledgementWaitsForSqliteAndDoesNotMutateCurrentRules()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.008"/>
+  <testcase name="dirtySnapshotRestoresRecoveryAndKeepsRawSnapshotWithoutWorldProgression()" classname="dev.hardrush.p1.P1LobbySessionTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

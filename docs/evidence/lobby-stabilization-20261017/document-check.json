@@ -1,0 +1,33 @@
+{
+  "files": [
+    "README.md",
+    "docs/acceptance.md",
+    "docs/debug-tools.md",
+    "docs/decisions.md",
+    "docs/evidence/lobby-stabilization-20261017/progress-history.md",
+    "docs/lobby-candidate.md",
+    "docs/lobby-delivery-status.md",
+    "docs/lobby-interaction-design.md",
+    "docs/mvp-demo.md",
+    "docs/p1-server-restart-regression.md",
+    "docs/requirements.md",
+    "docs/technical-design.md",
+    "docs/人工客户端测试/MVP演示.md",
+    "docs/人工客户端测试/大厅无指令交互与定向追猎.md"
+  ],
+  "localLinksChecked": 272,
+  "missing": [],
+  "diffCheck": "PASS",
+  "diffCheckScope": "Source and handoff prose; raw captured evidence retained byte-for-byte.",
+  "rawEvidenceWhitespace": {
+    "reason": "Original JVM thread dump and generated launch-spec formatting retained verbatim; full staged diff check reports whitespace only in these six evidence files.",
+    "files": [
+      "profile-crash/launch-spec.json",
+      "restart-counter-failure/launch-spec.json",
+      "restart-counter-probe/launch-spec.json",
+      "restart-first-failure/launch-spec.json",
+      "restart/launch-spec.json",
+      "running-stop-thread-dump.txt"
+    ]
+  }
+}

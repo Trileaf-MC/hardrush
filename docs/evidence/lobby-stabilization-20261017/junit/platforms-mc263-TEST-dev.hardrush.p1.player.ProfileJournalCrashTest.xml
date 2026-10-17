@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.p1.player.ProfileJournalCrashTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-17T08:04:02.975Z" hostname="LeifMacBookPro2023.local" time="0.597">
+  <properties/>
+  <testcase name="force-killed profile writer at PREPARED, then new JVM recovery" classname="dev.hardrush.p1.player.ProfileJournalCrashTest" time="0.128"/>
+  <testcase name="force-killed profile writer at SUSPENDED, then new JVM recovery" classname="dev.hardrush.p1.player.ProfileJournalCrashTest" time="0.154"/>
+  <testcase name="force-killed profile writer at APPLIED, then new JVM recovery" classname="dev.hardrush.p1.player.ProfileJournalCrashTest" time="0.151"/>
+  <testcase name="force-killed profile writer at VERIFIED, then new JVM recovery" classname="dev.hardrush.p1.player.ProfileJournalCrashTest" time="0.161"/>
+  <system-out><![CDATA[Profile crash PREPARED: killedPid=99068, recoveryPid=99072
+Profile crash SUSPENDED: killedPid=99073, recoveryPid=99075
+Profile crash APPLIED: killedPid=99076, recoveryPid=99077
+Profile crash VERIFIED: killedPid=99078, recoveryPid=99079
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

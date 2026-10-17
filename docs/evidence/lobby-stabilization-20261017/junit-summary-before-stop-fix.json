@@ -1,0 +1,20 @@
+{
+  "core": {
+    "tests": 164,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "persistence": {
+    "tests": 94,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "platforms/mc263": {
+    "tests": 110,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+}

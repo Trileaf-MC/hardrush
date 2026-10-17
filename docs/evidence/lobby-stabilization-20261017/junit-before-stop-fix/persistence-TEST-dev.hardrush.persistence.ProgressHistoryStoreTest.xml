@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.hardrush.persistence.ProgressHistoryStoreTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-17T07:29:22.175Z" hostname="LeifMacBookPro2023.local" time="0.312">
+  <properties/>
+  <testcase name="terminalFactsFreezeDespiteLaterCheckpointRenameAndProgressIsRejected()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.013"/>
+  <testcase name="historyParticipantProgressAndClaimIntegrityCorruptionFailsReadOrReplay()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.014"/>
+  <testcase name="everyListQueryKeepsAdvancementFingerprintChangesBoundedWithoutDroppingEvidence()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.044"/>
+  <testcase name="explicitDriverConnectWorksWhenNoDriverIsRegisteredWithDriverManager()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.009"/>
+  <testcase name="collisionAcrossProgressSnapshotAndEvidenceNeverLeavesPartialRows()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.008"/>
+  <testcase name="activeRoundsNeverExposeSeedAndAllListQueriesEnforceBounds()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.006"/>
+  <testcase name="progressUnionsIdsAndRetainsFirstEndAndEverySetAcrossReopenAndRoundIsolation()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.015"/>
+  <testcase name="bookClaimsPersistLatestOnlyAndDeliveredClaimNeverBecomesPendingAgain()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.012"/>
+  <testcase name="currentRoundRulesSeedAndSequenceCannotChangeInLiveOrLegacyFailedAbortedResults()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.013"/>
+  <testcase name="schemaThreeBackfillsExistingSnapshotsAndFailureRollsBackSchemaFourDdl()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.02"/>
+  <testcase name="admissionNameAndTimeAreFrozenAndNormalDeathRespawnAreCountedOnce()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.008"/>
+  <testcase name="uncertainUnknownFailedAbortedAndLegacyCompletionRemainHistoryButNeverMixIntoBoard()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.019"/>
+  <testcase name="leaderboardUsesFullRulesFingerprintAndMillisecondCompetitionRanks()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.058"/>
+  <testcase name="progressFailureRollsBackAllFactsAndIdenticalRetrySucceeds()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.014"/>
+  <testcase name="unknownWinnerHistoryStillValidatesItsOriginalTerminalCausalEvidence()" classname="dev.hardrush.persistence.ProgressHistoryStoreTest" time="0.013"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
