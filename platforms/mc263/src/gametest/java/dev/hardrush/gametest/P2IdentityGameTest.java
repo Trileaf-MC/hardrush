@@ -315,6 +315,7 @@ public final class P2IdentityGameTest {
             this.mode = mode;
             this.spawnLevel = spawnLevel;
             this.spawn = spawn;
+            spawnLevel.getChunkSource().addTicketWithRadius(LOOT_FIXTURE, new ChunkPos(BlockPos.containing(spawn).getX() >> 4, BlockPos.containing(spawn).getZ() >> 4), 1);
             lobby = Vec3.atBottomCenterOf(test.absolutePos(new BlockPos(1, 2, 1)));
             player = test.makeMockServerPlayerInLevel();
             profileRoot = test.getLevel().getServer().getWorldPath(LevelResource.ROOT)
@@ -330,6 +331,7 @@ public final class P2IdentityGameTest {
         }
 
         void ready(RoundSnapshot round) {
+            test.assertTrue(dev.hardrush.p1.world.P1RoundWorldBundle.safeStanding(spawnLevel, BlockPos.containing(spawn)), "Fixture spawn is actually loaded and safe");
             test.assertTrue(profiles.isReady(player.getUUID(), round), "Identity snapshot is durably ready: " + profiles.failure(player.getUUID()));
         }
 
@@ -412,6 +414,7 @@ public final class P2IdentityGameTest {
         }
 
         void close() {
+            spawnLevel.getChunkSource().removeTicketWithRadius(LOOT_FIXTURE, new ChunkPos(BlockPos.containing(spawn).getX() >> 4, BlockPos.containing(spawn).getZ() >> 4), 1);
             try { profiles.close(); }
             catch (Exception error) { throw new IllegalStateException(error); }
             ((ProfileTagged) player).hardrush$isolated(false);

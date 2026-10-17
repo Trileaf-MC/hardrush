@@ -431,3 +431,27 @@ tasks.named('runGameTest') {
         }
     }
 }
+
+// Round-2 spatial human entry owns the production lobby and must run alone.
+def humanEntryRunDir = rootProject.file(".local/lobby-human-entry/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushHumanEntry').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true' || ['hardrushP1TenRounds', 'hardrushP2Identity',
+                'hardrushP2Lobby', 'hardrushP3Recovery', 'hardrushP3Storage', 'hardrushLobbyMovement', 'hardrushCelebration',
+                'hardrushLobbyFoundation'].any { providers.gradleProperty(it).orNull == 'true' })
+            throw new GradleException('Human entry requires P1 and its own isolated run')
+        vmArg '-Dhardrush.lobby.testHumanEntry=true'
+        vmArg '-Dhardrush.p1.initialMode=normal'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1human_entry_game_test*'
+        runDir humanEntryRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushHumanEntry').orNull == 'true') {
+        doFirst {
+            humanEntryRunDir.mkdirs()
+            copy { from rootProject.file('.local/server-p0/eula.txt'); into humanEntryRunDir }
+            logger.lifecycle("Isolated human entry storage: ${humanEntryRunDir}")
+        }
+    }
+}

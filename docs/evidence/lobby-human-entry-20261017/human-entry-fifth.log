@@ -1,0 +1,57 @@
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :persistence:processResources NO-SOURCE
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :core:compileJava UP-TO-DATE
+> Task :platforms:mc263:processTestResources NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :platforms:mc263:generateLog4jConfig UP-TO-DATE
+> Task :platforms:mc263:generateDLIConfig UP-TO-DATE
+> Task :platforms:mc263:configureLaunch UP-TO-DATE
+> Task :platforms:mc263:processGametestResources UP-TO-DATE
+> Task :persistence:compileJava UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :persistence:classes UP-TO-DATE
+> Task :persistence:jar UP-TO-DATE
+> Task :core:compileTestJava UP-TO-DATE
+> Task :core:processTestResources UP-TO-DATE
+> Task :core:testClasses UP-TO-DATE
+
+> Task :platforms:mc263:prepareDebugTools
+Debug tools prepared; credentials remain in .local/debug/*/config.
+
+> Task :core:test
+
+> Task :platforms:mc263:compileJava FAILED
+/Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/main/java/dev/hardrush/p1/lobby/P1HumanEntry.java:30: 错误: 无法将类 ServerBossEvent中的构造器 ServerBossEvent应用到给定类型;
+    private final net.minecraft.server.level.ServerBossEvent countdownBar = new net.minecraft.server.level.ServerBossEvent(
+                                                                            ^
+  需要: UUID,Component,BossBarColor,BossBarOverlay
+  找到:    MutableComponent,BossBarColor,BossBarOverlay
+  原因: 实际参数列表和形式参数列表长度不同
+1 个错误
+
+[Incubating] Problems report is available at: file:///Users/leifwebber/projects/minecraft/hardrush/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':platforms:mc263:compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/main/java/dev/hardrush/p1/lobby/P1HumanEntry.java:30: 错误: 无法将类 ServerBossEvent中的构造器 ServerBossEvent应用到给定类型;
+      private final net.minecraft.server.level.ServerBossEvent countdownBar = new net.minecraft.server.level.ServerBossEvent(
+                                                                              ^
+    需要: UUID,Component,BossBarColor,BossBarOverlay
+    找到:    MutableComponent,BossBarColor,BossBarOverlay
+    原因: 实际参数列表和形式参数列表长度不同
+  1 个错误
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 2s
+13 actionable tasks: 3 executed, 10 up-to-date

@@ -268,6 +268,7 @@ public final class P2RuntimeIdentityGameTest {
                     .filter(stack -> stack.is(Items.DIAMOND)).mapToInt(ItemStack::getCount).sum();
         }
         void command(String text) {
+            if (P1SpatialFixtures.handle(player, text)) return;
             try { server.getCommands().getDispatcher().execute(text, player.createCommandSourceStack()); }
             catch (Exception error) { throw new IllegalStateException(text, error); }
         }

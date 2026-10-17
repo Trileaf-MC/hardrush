@@ -109,6 +109,7 @@ public final class P1LobbyRuntime {
             reference[0] = session;
             SESSIONS.put(server, session);
             P2LobbyRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
+            dev.hardrush.p1.lobby.P1HumanEntry.configure(server, session, profiles, () -> WORLDS.get(server));
             P1CelebrationRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
             P2ProtectionRuntime.configure(server, new P2ProtectionRuntime.Access() {
                 @Override public Optional<P2ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) {
@@ -216,6 +217,7 @@ public final class P1LobbyRuntime {
                         var profiles = PROFILES.get(server);
                         if (profiles.manages(player)) profiles.returnToLobby(player);
                     }
+                    dev.hardrush.p1.lobby.P1HumanEntry.pause(server);
                     refreshTab(server, false);
                     return;
                 }
@@ -245,10 +247,11 @@ public final class P1LobbyRuntime {
                     session.tick();
                     return;
                 }
+                dev.hardrush.p1.lobby.P1HumanEntry.tick(server);
                 for (var player : java.util.List.copyOf(server.getPlayerList().getPlayers())) {
                     var profileFailure = profiles.failure(player.getUUID());
                     if (profileFailure.isPresent()) {
-                        throw new IllegalStateException("玩家 " + player.getUUID() + " 档案核验失败：" + profileFailure.orElseThrow());
+                        continue; // This UUID remains quarantined; healthy players may still assemble.
                     }
                     if (!profiles.isReady(player.getUUID(), round)) continue;
                     var names = ADMITTED.get(server);
@@ -303,6 +306,7 @@ public final class P1LobbyRuntime {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             P1CelebrationRuntime.disconnected(handler.player);
             P2LobbyRuntime.disconnected(handler.player);
+            dev.hardrush.p1.lobby.P1HumanEntry.disconnected(handler.player);
             var session = SESSIONS.get(server);
             if (session != null) session.onOnline(handler.player.getUUID(), handler.player.getScoreboardName(), false);
             var admitted = ADMITTED.get(server);
@@ -392,6 +396,7 @@ public final class P1LobbyRuntime {
             ADMIN.forget(server);
             P1ProgressRuntime.unconfigure(server);
             P1CombatRuntime.unconfigure(server);
+            dev.hardrush.p1.lobby.P1HumanEntry.close(server);
             P1LobbyWorld.shutdown(server);
         });
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
@@ -404,7 +409,7 @@ public final class P1LobbyRuntime {
                             var session = SESSIONS.get(source.getServer());
                             if (session == null) return reply(source, disabled());
                             if (!profileReady(player)) return reply(source, new P1LobbySession.Reply(false, "玩家档案仍在隔离／转换，请稍后重试。"));
-                            session.requestJoin(player.getUUID(), player.getScoreboardName(), result -> reply(source, result));
+                            source.sendFailure(Component.literal("开局请站入集结区；挑战中请到中途入场门确认。"));
                             return 0;
                         }))
                         .then(Commands.literal("ready").executes(context -> ready(context.getSource(), true)))
@@ -485,7 +490,7 @@ public final class P1LobbyRuntime {
         var session = SESSIONS.get(source.getServer());
         if (session == null) return reply(source, disabled());
         if (!profileReady(player)) return reply(source, new P1LobbySession.Reply(false, "玩家档案仍在隔离／转换，请稍后重试。"));
-        session.requestReady(player.getUUID(), ready, result -> reply(source, result));
+        source.sendFailure(Component.literal("请站入集结区准备，离开取消准备。"));
         return 0;
     }
 
@@ -609,6 +614,7 @@ public final class P1LobbyRuntime {
         var session = SESSIONS.get(server);
         var profiles = PROFILES.get(server);
         return session != null && session.state() == P1LobbySession.State.OPEN
+                && !session.admissionReserved(player.getUUID())
                 && profiles != null && profiles.manages(player) && P1LobbyWorld.isLobby(player.level())
                 && session.snapshot().filter(round -> round.phase() != RoundPhase.RECOVERY_REQUIRED
                     && profiles.isReady(player.getUUID(), round)).isPresent();

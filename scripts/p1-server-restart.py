@@ -326,10 +326,23 @@ def main():
                     raise RuntimeError('Recovered rotation must advance exactly one round')
             elif after['roundId'] != before['roundId'] or after['sequence'] != before['sequence']:
                 raise RuntimeError('Recovery must retain the persisted round identity')
+            repeated = None
+            if phase == 'COUNTDOWN':
+                if recover['fixture'].get('lateOriginalRestoresInsideWithoutReset') is not True:
+                    raise RuntimeError('Late original UUID did not restore inside the resumed countdown')
+                repeated = run_operation(spec, directory, phase, 'recover-again', arguments.timeout)
+                if repeated['pid'] in (write['pid'], recover['pid']):
+                    raise RuntimeError('Repeated COUNTDOWN recovery needs a third distinct JVM')
+                if repeated['fixture'].get('recoveredRoundId') != before['roundId']:
+                    raise RuntimeError('Repeated recovery must retain the original round UUID')
+                for key in ('unrelatedUuidRejected', 'onlyOneOriginalResumesInside', 'staleRestoreRejected', 'unsafeRestoreOutside'):
+                    if repeated['fixture'].get(key) is not True:
+                        raise RuntimeError('Missing repeated spatial COUNTDOWN proof: ' + key)
             summary['scenarios'].append({'phase': phase, 'status': 'PASS',
                                          'writePid': write['pid'], 'recoverPid': recover['pid'],
                                          'recoveredRoundId': before['roundId'],
-                                         'finalRoundId': after['roundId'], 'finalSequence': after['sequence']})
+                                         'finalRoundId': after['roundId'], 'finalSequence': after['sequence'],
+                                         'repeatedRecoveryPid': repeated['pid'] if repeated else None})
             write_json(summary_path, summary)
         summary['status'] = 'PASS'
         write_json(summary_path, summary)

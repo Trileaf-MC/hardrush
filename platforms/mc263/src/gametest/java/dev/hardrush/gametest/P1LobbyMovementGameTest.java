@@ -66,7 +66,7 @@ public final class P1LobbyMovementGameTest {
                     f.assertLobby();
                     test.assertTrue(f.a.player.level() != f.server.overworld(), "The original overworld is preserved separately");
                     test.assertTrue(f.a.player.level().getChunkSource().getGenerator() instanceof FlatLevelSource, "Actual native flat generator");
-                    test.assertTrue(f.a.player.level().getBlockState(BlockPos.containing(f.a.player.position()).below()).is(Blocks.GRASS_BLOCK), "Flat grass spawn floor");
+                    test.assertTrue(f.a.player.level().getBlockState(BlockPos.containing(f.a.player.position()).below()).is(Blocks.STONE_BRICKS), "Built camp central floor");
                     f.b.observedFrom = f.b.connection.packets.size();
                     f.a.move(.6, 0, 45, 15, true);
                     test.assertValueEqual(f.a.player.getYRot(), 45f, "The native move packet updates yaw");
@@ -103,7 +103,7 @@ public final class P1LobbyMovementGameTest {
                 .thenWaitUntil(() -> f.await(!f.session.mutationPending() && P1LobbyRuntime.snapshot(f.server).orElseThrow()
                         .participants().get(f.a.profile.id()).ready(), "Reconnected peer readied"))
                 .thenExecute(() -> f.b.command("hardrush join"))
-                .thenWaitUntil(() -> f.await(!f.session.mutationPending(), "Second join committed"))
+                .thenWaitUntil(() -> f.await(!f.session.mutationPending() && P1LobbyRuntime.snapshot(f.server).orElseThrow().participants().containsKey(f.b.profile.id()), "Second join committed"))
                 .thenExecute(() -> f.b.command("hardrush ready"))
                 .thenWaitUntil(() -> f.await(!f.session.mutationPending() && P1LobbyRuntime.snapshot(f.server).orElseThrow()
                         .participants().get(f.b.profile.id()).ready(), "Second ready committed"))
@@ -239,6 +239,7 @@ public final class P1LobbyMovementGameTest {
                             && (!position || sync.hasPosition()) && (!rotation || sync.hasRotation()));
             }
             void command(String command) {
+                if (P1SpatialFixtures.handle(player, command)) return;
                 try { server.getCommands().getDispatcher().execute(command, player.createCommandSourceStack()); }
                 catch (Exception error) { throw new IllegalStateException(error); }
             }

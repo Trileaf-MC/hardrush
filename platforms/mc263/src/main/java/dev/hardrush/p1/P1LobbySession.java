@@ -176,6 +176,9 @@ public final class P1LobbySession implements AutoCloseable {
         recoveringCountdown = !RoundEngine.requiresLegacyClosure(stored) && !loaded.fresh() && stored.cleanShutdown() && stored.phase() == RoundPhase.COUNTDOWN
                 && stored.participants().values().stream().anyMatch(player -> player.ready()
                         && player.role() == dev.hardrush.core.round.ParticipantRole.LOBBY);
+        restoredReady.clear();
+        if (recoveringCountdown) stored.participants().values().stream()
+                .filter(p -> p.ready() && p.role() == ParticipantRole.LOBBY).forEach(p -> restoredReady.add(p.id()));
         // An externally restored later phase needs the future world/profile
         // adapters. Keep its durable phase visible without progressing it.
         unsupportedPhase = engine.committed().phase() != RoundPhase.PREPARING;
@@ -638,6 +641,54 @@ public final class P1LobbySession implements AutoCloseable {
                     + "，阶段剩余 " + engine.view().remainingPhaseMillis() + " ms。");
     }
 
+    private java.util.function.Predicate<UUID> assemblyGuard;
+    private java.util.Set<UUID> stopAssemblyEligible;
+    private final java.util.Set<UUID> restoredReady = new java.util.HashSet<>();
+    public void assemblyGuard(java.util.function.Predicate<UUID> guard) { assemblyGuard = Objects.requireNonNull(guard); }
+    /** Per-player reservation begins only after the final native position proof has been accepted. */
+    public boolean admissionReserved(UUID id) {
+        if (pendingTransition == null) return false;
+        var after = pendingTransition.after().participants().get(id);
+        var before = pendingTransition.before().participants().get(id);
+        return after != null && after.role() == ParticipantRole.HUMAN_ACTIVE && (before == null || before.role() == ParticipantRole.LOBBY);
+    }
+    public boolean recoveringCountdown() { return recoveringCountdown; }
+    public boolean originalReady(UUID roundId, UUID id) {
+        var round = snapshot().orElse(null);
+        return restoredReady.contains(id) && round != null && round.phase() == RoundPhase.COUNTDOWN && round.roundId().equals(roundId)
+                && round.participants().containsKey(id) && round.participants().get(id).ready()
+                && round.participants().get(id).role() == ParticipantRole.LOBBY;
+    }
+    /** Guard and round tag are checked at acceptance; late completion is reconciled before any start. */
+    public void requestAssembly(UUID roundId, UUID playerId, String name, boolean ready, Consumer<Reply> reply) {
+        if (ready && assemblyGuard != null && !assemblyGuard.test(playerId)) {
+            reply.accept(new Reply(false, "请在档案核验完成后主动站入集结区。")); return;
+        }
+        requestAction(() -> engine.proposeAssembly(UUID.randomUUID(), roundId, playerId, name, ready), result ->
+                reply.accept(result.success() && ready && assemblyGuard != null && !assemblyGuard.test(playerId)
+                        ? new Reply(false, "登记期间已离开集结区，本次准备已失效。") : result),
+                ready ? "已准备，离开集结区可取消。" : "已取消准备。");
+    }
+    /** Only the native adapter can prove a saved UUID has verified and safely regained its circle position. */
+    public void restoreReady(UUID roundId, UUID playerId, String name, boolean safe, Consumer<Reply> reply) {
+        if (!originalReady(roundId, playerId) || state != State.OPEN || stopping || !adaptersReady
+                || shutdownBoundary != null || mutationPending() || !events.isEmpty()) {
+            reply.accept(new Reply(false, "上次集结仍在恢复。")); return;
+        }
+        if (safe && assemblyGuard != null && !assemblyGuard.test(playerId)) {
+            reply.accept(new Reply(false, "恢复站位尚未核验。")); return;
+        }
+        online.put(playerId, name);
+        var transition = engine.proposeRestoredReady(UUID.randomUUID(), roundId, playerId, name, safe);
+        submit(transition, result -> {
+            if (result.success() && engine.committed().roundId().equals(roundId)) {
+                restoredReady.remove(playerId);
+                if (safe) recoveringCountdown = false;
+            }
+            reply.accept(result);
+        }, safe ? "恢复上次准备，离区取消。" : "原集结落点不安全，已取消准备并放到圈外。");
+    }
+
     public Reply requestJoin(UUID playerId, String name) {
         Objects.requireNonNull(playerId); Objects.requireNonNull(name);
         return blockedParticipation();
@@ -743,19 +794,23 @@ public final class P1LobbySession implements AutoCloseable {
         else online.remove(playerId);
         if (shutdownBoundary != null || adminBoundary != null) return;
         if (terminalCandidate != null && !terminalQueued) return;
-        if (recoveringCountdown && !resumeCountdown(playerId, connected)) return;
+        boolean awaitingProof = restoredReady.contains(playerId);
+        if (awaitingProof && !connected) {
+            restoredReady.remove(playerId);
+            UUID recoveredRound = engine.committed().roundId();
+            enqueue(e -> {
+                var current = e.committed(); var saved = current.participants().get(playerId);
+                return current.roundId().equals(recoveredRound) && current.phase() == RoundPhase.COUNTDOWN && saved != null && saved.ready()
+                        ? e.proposeRestoredReady(UUID.randomUUID(), recoveredRound, playerId, name, false)
+                        : e.proposeCheckpoint(UUID.randomUUID(), false);
+            });
+            return;
+        }
+        if (recoveringCountdown || awaitingProof) return;
         if (adaptersReady && engine != null && (engine.committed().participants().containsKey(playerId)
                 || pendingTransition != null && pendingTransition.after().participants().containsKey(playerId))) {
             enqueue(e -> e.proposeOnline(UUID.randomUUID(), playerId, name, connected));
         }
-    }
-
-    private boolean resumeCountdown(UUID playerId, boolean connected) {
-        if (!connected || !adaptersReady || state != State.OPEN || engine == null) return false;
-        var player = engine.committed().participants().get(playerId);
-        if (player == null || !player.ready() || player.role() != dev.hardrush.core.round.ParticipantRole.LOBBY) return false;
-        recoveringCountdown = false;
-        return true;
     }
 
     public void normalDeath(UUID playerId, int lifeSequence) {
@@ -876,12 +931,6 @@ public final class P1LobbySession implements AutoCloseable {
         if (stopping || state != State.OPEN || unsupportedPhase || mutationPending()) return;
         if (!events.isEmpty()) { drainEvent(); return; }
         if (recoveringCountdown) {
-            for (var connection : online.entrySet()) {
-                if (resumeCountdown(connection.getKey(), true)) {
-                    enqueue(e -> e.proposeOnline(UUID.randomUUID(), connection.getKey(), connection.getValue(), true));
-                    return;
-                }
-            }
             long now = clock.nanoTime();
             if (now - lastCheckpointNanos >= CHECKPOINT_NANOS) {
                 lastCheckpointNanos = now;
@@ -889,12 +938,20 @@ public final class P1LobbySession implements AutoCloseable {
             }
             return;
         }
+        if (assemblyGuard != null && engine.committed().phase() == RoundPhase.COUNTDOWN) {
+            for (var player : engine.committed().participants().values()) {
+                if (player.ready() && player.online() && !assemblyGuard.test(player.id())) {
+                    submit(engine.proposeAssembly(UUID.randomUUID(), engine.committed().roundId(), player.id(), player.name(), false)); return;
+                }
+            }
+        }
         var round = engine.committed();
         for (var participant : round.participants().values()) {
             var name = online.get(participant.id());
             boolean connected = name != null;
             // A newly admitted life deliberately remains offline until the profile adapter unlocks it.
             if (participant.role() == dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE && !participant.online() && connected) continue;
+            if (restoredReady.contains(participant.id()) && !participant.online() && connected) continue;
             if (participant.online() != connected || connected && !participant.name().equals(name)) {
                 submit(engine.proposeOnline(UUID.randomUUID(), participant.id(),
                         connected ? name : participant.name(), connected));
@@ -904,7 +961,11 @@ public final class P1LobbySession implements AutoCloseable {
         long now = clock.nanoTime();
         if (now - lastCheckpointNanos >= CHECKPOINT_NANOS) {
             lastCheckpointNanos = now;
-            if (adaptersReady) submit(engine.proposeAdmissionTick(UUID.randomUUID()));
+            if (adaptersReady) {
+                var eligible = assemblyGuard == null ? null : engine.committed().participants().keySet().stream()
+                        .filter(assemblyGuard).collect(java.util.stream.Collectors.toSet());
+                submit(eligible == null ? engine.proposeAdmissionTick(UUID.randomUUID()) : engine.proposeAdmissionTick(UUID.randomUUID(), eligible));
+            }
             else submit(engine.proposeCheckpoint(UUID.randomUUID(), false));
         }
     }
@@ -950,7 +1011,7 @@ public final class P1LobbySession implements AutoCloseable {
         if (error == null && (result == CommitResult.APPLIED || result == CommitResult.DUPLICATE)) {
             if (!engine.accept(transition)) fail("轮次提交回调标签已过期", new IllegalStateException("旧轮次回调被拒绝"));
             else if (!stopping && state != State.FAILED) {
-                if (transition.after().phase() != RoundPhase.COUNTDOWN) recoveringCountdown = false;
+                if (transition.after().phase() != RoundPhase.COUNTDOWN) { recoveringCountdown = false; restoredReady.clear(); }
                 try { committedListener.accept(transition.before(), transition.after()); }
                 catch (RuntimeException failure) { fail("已持久化状态的玩家应用失败", failure); }
             }
@@ -1023,6 +1084,17 @@ public final class P1LobbySession implements AutoCloseable {
             // A failed evidence write must never be followed by a clean-stop marker.
             supplyIo(() -> null).get();
             if (evidenceFailure != null) throw new IllegalStateException("战斗证据保存未完成", evidenceFailure);
+            if (state == State.OPEN && !recoveringCountdown && assemblyGuard != null && engine.committed().phase() == RoundPhase.COUNTDOWN) {
+                for (var player : java.util.List.copyOf(engine.committed().participants().values())) {
+                    if (engine.committed().phase() != RoundPhase.COUNTDOWN) break;
+                    if (player.ready() && player.online() && !(stopAssemblyEligible == null ? assemblyGuard.test(player.id()) : stopAssemblyEligible.contains(player.id()))) {
+                        eventTime = shutdownTime;
+                        var cancelled = engine.proposeAssembly(UUID.randomUUID(), engine.committed().roundId(), player.id(), player.name(), false);
+                        eventTime = Long.MIN_VALUE;
+                        var result = supplyIo(() -> commitTransition(cancelled)).get(); requireCommitted(result); complete(cancelled, result, null);
+                    }
+                }
+            }
             if (state == State.OPEN && !unsupportedPhase) {
                 eventTime = shutdownTime;
                 var transition = engine.proposeCheckpoint(UUID.randomUUID(), true);
@@ -1051,7 +1123,10 @@ public final class P1LobbySession implements AutoCloseable {
 
     /** Capture the stop time before the platform drains profile, recording and world IO. */
     public void prepareStop() {
-        if (shutdownBoundary == null) shutdownBoundary = clock.nanoTime();
+        if (shutdownBoundary == null) {
+            shutdownBoundary = clock.nanoTime();
+            if (assemblyGuard != null) stopAssemblyEligible = online.keySet().stream().filter(assemblyGuard).collect(java.util.stream.Collectors.toSet());
+        }
         if (terminalCandidate != null && !terminalQueued) finishDamageBatch(terminalCandidate.roundId(), terminalCandidate.batchId());
     }
 

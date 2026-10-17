@@ -477,6 +477,7 @@ public final class P1TenRoundGameTest {
         }
 
         void command(Actor actor, String command) {
+            if (P1SpatialFixtures.handle(actor.player, command)) return;
             try { server.getCommands().getDispatcher().execute(command, actor.player.createCommandSourceStack()); }
             catch (Exception error) { throw new IllegalStateException(command, error); }
         }

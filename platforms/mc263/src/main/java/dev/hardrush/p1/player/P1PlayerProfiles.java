@@ -345,7 +345,9 @@ public final class P1PlayerProfiles implements AutoCloseable {
         ((ProfileTagged) replacement).hardrush$isolated(true);
         ((ProfileTagged) replacement).hardrush$respawnPermitted(false);
         ((ProfileTagged) replacement).hardrush$suspensionId(UUID.randomUUID().toString());
-        moveToLobby(replacement);
+        var camp = dev.hardrush.p1.world.P1LobbyWorld.open(server);
+        if (camp.ready() && lobby.get() == camp.holdingLevel()) placeInLobby(replacement, dev.hardrush.core.lobby.LobbyLayout.Landing.MONSTER);
+        else moveToLobby(replacement);
         var rebound = new Entry(replacement, Optional.of(old.target), false, capture(replacement, false));
         rebound.target = old.target;
         rebound.monsterLobbyInitialized = true;
@@ -809,7 +811,8 @@ public final class P1PlayerProfiles implements AutoCloseable {
                     throw new IllegalStateException("本轮人类档案恢复传送被拒绝");
                 }
             } else {
-                if (!belongsToRound.test(spawnLevel)) throw new IllegalStateException("本轮出生点维度未就绪");
+                if (!belongsToRound.test(spawnLevel) || !dev.hardrush.p1.world.P1RoundWorldBundle.safeStanding(spawnLevel, net.minecraft.core.BlockPos.containing(spawn)))
+                    throw new IllegalStateException("本轮自然出生点未就绪或不安全，保留档案并留厅核验");
                 if (!player.teleportTo(spawnLevel, spawn.x, spawn.y, spawn.z, Set.of(), 0, 0, true)) {
                     throw new IllegalStateException("本轮新生命入场传送被拒绝");
                 }
@@ -1000,9 +1003,20 @@ public final class P1PlayerProfiles implements AutoCloseable {
         if (entry.connected && entry.player.connection != null) entry.player.sendSystemMessage(Component.literal(entry.problem));
     }
 
+    /** Purpose-specific native relocation; ordinary lobby reconciliation never calls this every tick. */
+    public void placeInLobby(ServerPlayer player, dev.hardrush.core.lobby.LobbyLayout.Landing purpose) {
+        requireMainThread();
+        var camp = dev.hardrush.p1.world.P1LobbyWorld.open(server);
+        if (!camp.ready() || !camp.safeLanding(purpose)) throw new IllegalStateException("大厅落点未就绪：" + purpose);
+        var pos = camp.landing(purpose);
+        if (!player.teleportTo(camp.holdingLevel(), pos.x, pos.y, pos.z, Set.of(), dev.hardrush.core.lobby.LobbyLayout.landing(purpose).yaw(), 0, true))
+            throw new IllegalStateException("大厅落点传送失败");
+        player.setDeltaMovement(Vec3.ZERO); player.resetFallDistance(); applyLobbyMode(player);
+    }
+
     private void moveToLobby(ServerPlayer player) {
         var position = lobbySpawn.get();
-        if (!player.teleportTo(lobby.get(), position.x, position.y, position.z, Set.of(), 0, 0, true)) {
+        if (!player.teleportTo(lobby.get(), position.x, position.y, position.z, Set.of(), 180, 0, true)) {
             throw new IllegalStateException("档案隔离到大厅的传送被拒绝");
         }
         player.setDeltaMovement(Vec3.ZERO);

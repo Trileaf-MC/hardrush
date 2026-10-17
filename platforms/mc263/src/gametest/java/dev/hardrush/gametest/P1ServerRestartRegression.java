@@ -89,7 +89,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
         final Path directory = Path.of(System.getProperty("hardrush.p1.restart.directory"));
         final Path root;
         final ArrayDeque<Step> steps = new ArrayDeque<>();
-        final Actor a = new Actor("P1RestartA"), b = new Actor("P1RestartB");
+        final Actor a = new Actor("P1RestartA"), b = new Actor("P1RestartB"), visitor = new Actor("P1RestartVisitor");
         final JsonObject details = new JsonObject();
         final java.util.concurrent.atomic.AtomicBoolean escapedCallbacks = new java.util.concurrent.atomic.AtomicBoolean();
         final long started = System.nanoTime();
@@ -132,9 +132,9 @@ public final class P1ServerRestartRegression implements ModInitializer {
                 set(session, "clock", (MonotonicClock) CLOCK::get);
                 set(session, "lastCheckpointNanos", CLOCK.get());
                 Object engine = get(session, "engine"); set(engine, "boundary", CLOCK.get());
-                if (normalScenario && operation.equals("recover")) {
+                if (normalScenario && operation.startsWith("recover")) {
                     try {
-                        var data = JsonParser.parseString(Files.readString(directory.resolve("write-result.json"))).getAsJsonObject();
+                        var data = JsonParser.parseString(Files.readString(directory.resolve(operation.equals("recover-again") ? "recover-result.json" : "write-result.json"))).getAsJsonObject();
                         require(data.get("status").getAsString().equals("PASS"), "writer must pass");
                         require(data.get("pid").getAsLong() != ProcessHandle.current().pid(), "must use a distinct JVM");
                         expected = RoundSnapshotCodec.decode(Base64.getDecoder().decode(data.get("checkpoint").getAsString()));
@@ -156,7 +156,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
             });
             if (!normalScenario) return;
             if (operation.equals("write")) writeScenario();
-            else if (operation.equals("recover")) recoverScenario();
+            else if (operation.startsWith("recover")) recoverScenario();
             else throw new IllegalArgumentException("Only write/recover allowed");
         }
 
@@ -178,14 +178,17 @@ public final class P1ServerRestartRegression implements ModInitializer {
             readyWorlds();
             act("write native world sentinels", this::writeWorlds);
             login(a); login(b);
-            join(a); join(b);
+            if (target == RoundPhase.WAITING) {
+                act("stop with verified outside visitors", this::stop); return;
+            }
+            assemble(a); assemble(b);
             if (target == RoundPhase.WAITING) { act("stop with joined lobby identities", this::stop); return; }
-            act("native ready command", () -> command(a, "hardrush ready"));
+            act("both UUIDs are spatially prepared", () -> require(round().participants().get(a.profile.id()).ready() && round().participants().get(b.profile.id()).ready(), "two original circle identities"));
             waitFor("countdown committed", () -> round().phase() == RoundPhase.COUNTDOWN && idle());
             act("elapsed countdown", () -> advance(7));
             if (target == RoundPhase.COUNTDOWN) { act("stop countdown", this::stop); return; }
             waitFor("elapsed countdown checkpoint committed", this::idle);
-            act("second human ready", () -> command(b, "hardrush ready"));
+            act("second human remains inside circle", () -> require(P1LobbyWorld.open(server).inAssembly(b.player, true), "second human inside"));
             waitFor("both ready identities committed", () -> idle() && round().participants().get(b.profile.id()).ready());
             act("finish default countdown", () -> advance(24));
             waitFor("native ordinary admission", () -> round().phase() == RoundPhase.RUNNING && idle()
@@ -257,14 +260,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
                 } else checkWorlds();
             });
             if (target == RoundPhase.PREPARING) { act("stop recovered preparation", this::stop); return; }
-            if (target == RoundPhase.COUNTDOWN) {
-                act("wait without any returning UUID", () -> advance(5));
-                waitFor("recovered countdown remains suspended", this::idle);
-                act("check saved countdown before any login", () -> {
-                    require(round().phase() == RoundPhase.COUNTDOWN && round().remainingPhaseNanos() == expected.remainingPhaseNanos(), "READY without logged-in players preserves countdown remainder");
-                });
-                login(a); login(b);
-            }
+            if (target == RoundPhase.COUNTDOWN) { recoverSpatialCountdown(); return; }
             if (target == RoundPhase.WAITING || target == RoundPhase.COUNTDOWN) {
                 waitFor("lobby identity online commits", () -> idle() && round().participants().values().stream().allMatch(Participant::online));
                 act("check lobby profiles", () -> {
@@ -280,6 +276,75 @@ public final class P1ServerRestartRegression implements ModInitializer {
                 return;
             }
             recoverActive();
+        }
+
+        void assemble(Actor actor) {
+            act("stand in real assembly circle " + actor.profile.name(), () -> {
+                profiles.placeInLobby(actor.player, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY); acknowledge(actor);
+            });
+            waitFor("spatial preparation committed " + actor.profile.name(), () -> idle() && round().participants().containsKey(actor.profile.id())
+                    && round().participants().get(actor.profile.id()).ready());
+        }
+        void recoverSpatialCountdown() {
+            act("advance while all original UUIDs are absent", () -> advance(5));
+            waitFor("held checkpoint", this::idle);
+            act("prove held original remainder", () -> require(round().remainingPhaseNanos() == expected.remainingPhaseNanos() && session.recoveringCountdown(), "no original UUID cannot release countdown"));
+            login(visitor);
+            act("unrelated UUID online", () -> advance(3));
+            waitFor("unrelated UUID checkpoint", this::idle);
+            act("unrelated UUID cannot release", () -> {
+                require(session.recoveringCountdown() && round().remainingPhaseNanos() == expected.remainingPhaseNanos(), "unrelated UUID never releases original timer");
+                require(!round().participants().containsKey(visitor.profile.id()), "outside visitor not registered");
+                details.addProperty("unrelatedUuidRejected", true);
+            });
+            if (operation.equals("recover-again")) {
+                act("make original circle restoration unsafe", () -> {
+                    require(round().participants().get(b.profile.id()).ready(), "second absent original readiness survives the second clean stop");
+                    var lobby = P1LobbyWorld.open(server); var pos = BlockPos.containing(lobby.landing(dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY));
+                    lobby.holdingLevel().getChunkAt(pos).setBlockState(pos, Blocks.OBSIDIAN.defaultBlockState(), 2);
+                });
+                login(b);
+                waitFor("unsafe original readiness cancelled", () -> idle() && !round().participants().get(b.profile.id()).ready());
+                act("unsafe original waits outside and does not discard absent original", () -> {
+                    require(b.player.position().distanceTo(P1LobbyWorld.open(server).landing(dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE)) < .1, "unsafe restore uses exact outside landing");
+                    require(round().participants().get(a.profile.id()).ready() && session.recoveringCountdown(), "other original remains recoverable");
+                    var lobby = P1LobbyWorld.open(server); var pos = BlockPos.containing(lobby.landing(dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY));
+                    lobby.holdingLevel().getChunkAt(pos).setBlockState(pos, Blocks.AIR.defaultBlockState(), 2);
+                    details.addProperty("unsafeRestoreOutside", true);
+                });
+            }
+            login(a);
+            waitFor("only one original resumes from safe circle", () -> idle() && !session.recoveringCountdown() && round().participants().get(a.profile.id()).online());
+            act("verify restored original and stale proof", () -> {
+                var lobby = P1LobbyWorld.open(server);
+                require(lobby.inAssembly(a.player, true) && P1PlayerProfiles.canMoveInLobby(a.player), "actual verified original safely restored inside");
+                require(!round().participants().get(b.profile.id()).online() || operation.equals("recover-again"), "does not wait for second original");
+                require(round().remainingPhaseNanos() == expected.remainingPhaseNanos(), "original saved remainder exact");
+                var stale = new java.util.concurrent.atomic.AtomicReference<P1LobbySession.Reply>();
+                session.restoreReady(UUID.randomUUID(), a.profile.id(), a.profile.name(), true, stale::set);
+                require(stale.get() != null && !stale.get().success(), "stale restoration result rejected");
+                details.addProperty("onlyOneOriginalResumesInside", true); details.addProperty("staleRestoreRejected", true);
+                advance(operation.equals("recover-again") ? expected.remainingPhaseNanos() / 1_000_000_000L : 4);
+            });
+            if (operation.equals("recover-again")) {
+                waitFor("only valid original starts", () -> idle() && round().phase() == RoundPhase.RUNNING && !P1PlayerProfiles.isLocked(a.player));
+                act("final entry roster", () -> {
+                    require(round().participants().get(a.profile.id()).lifeSequence() == 1, "original enters one first human life");
+                    require(round().participants().get(b.profile.id()).lifeSequence() == 0, "absent or unsafe original not admitted");
+                    require(P1PlayerProfiles.isLocked(visitor.player) && P1PlayerProfiles.isLocked(b.player), "unrelated and unsafe peers stay in lobby");
+                    stop();
+                });
+            } else {
+                waitFor("resumed four seconds committed", () -> idle() && round().remainingPhaseNanos() == expected.remainingPhaseNanos() - TimeUnit.SECONDS.toNanos(4));
+                login(b);
+                waitFor("late second original safely restored without resetting timer", () -> idle() && round().participants().get(b.profile.id()).online()
+                        && P1LobbyWorld.open(server).inAssembly(b.player, true));
+                act("late original preserves the resumed nineteen seconds", () -> {
+                    require(round().remainingPhaseNanos() == expected.remainingPhaseNanos() - TimeUnit.SECONDS.toNanos(4), "late original never resets countdown");
+                    details.addProperty("lateOriginalRestoresInsideWithoutReset", true);
+                    stop();
+                });
+            }
         }
 
         void recoverRotation() {
@@ -415,6 +480,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
         void checkWorlds() {
             var lobby = P1LobbyWorld.open(server);
             require(lobby.ready() && lobby.holdingLevel().dimension().equals(P1LobbyWorld.KEY), "same permanent lobby dimension reopened");
+            require(lobby.builtBlocks() == 0 && lobby.loadedChunks() > 9, "versioned camp reopens without rewriting terrain and covers full footprint");
             var lobbyMarker = BlockPos.containing(lobby.holdingSpawn()).offset(6, 3, 6);
             require(lobby.holdingLevel().getBlockState(lobbyMarker).is(Blocks.LAPIS_BLOCK), "actual lobby terrain survives a new JVM");
             int index = 0;
@@ -541,7 +607,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
         void act(String name, Runnable work) { steps.add(new Step(name, () -> { work.run(); return true; })); }
         void waitFor(String name, BooleanSupplier work) { steps.add(new Step(name, work)); }
         void advance(long seconds) { CLOCK.addAndGet(TimeUnit.SECONDS.toNanos(seconds)); }
-        void command(Actor actor, String text) { try { server.getCommands().getDispatcher().execute(text, actor.player.createCommandSourceStack()); } catch (Exception error) { throw new IllegalStateException(error); } }
+        void command(Actor actor, String text) { if (P1SpatialFixtures.handle(actor.player, text)) return; try { server.getCommands().getDispatcher().execute(text, actor.player.createCommandSourceStack()); } catch (Exception error) { throw new IllegalStateException(error); } }
         void move(Actor actor, ServerLevel level, Vec3 pos) { actor.player.teleport(new TeleportTransition(level, pos, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING)); acknowledge(actor); }
         void acknowledge(Actor actor) {
             if (actor.player == null || actor.player.connection == null) return;

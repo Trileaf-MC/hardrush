@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "runDirectory": "/Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/a276072f-1d06-4143-a42a-233b38badd00",
+  "phases": [
+    "COUNTDOWN"
+  ],
+  "scenarios": [
+    {
+      "phase": "COUNTDOWN",
+      "status": "PASS",
+      "writePid": 55829,
+      "recoverPid": 55977,
+      "recoveredRoundId": "c6e0e069-7912-43b1-a73e-59c62d031bd8",
+      "finalRoundId": "c6e0e069-7912-43b1-a73e-59c62d031bd8",
+      "finalSequence": 1,
+      "repeatedRecoveryPid": 56095
+    }
+  ],
+  "verification": "Independent headless dedicated-server JVMs; no real clients."
+}

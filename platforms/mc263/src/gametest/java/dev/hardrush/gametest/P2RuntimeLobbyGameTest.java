@@ -650,6 +650,7 @@ public final class P2RuntimeLobbyGameTest {
                         }).thenWaitUntil(() -> await(profiles.isReady(profile.id(), round()), "Real profile journal ready: " + profile.name()));
             }
             void command(String command) {
+                if (P1SpatialFixtures.handle(player, command)) return;
                 try { server.getCommands().getDispatcher().execute(command, player.createCommandSourceStack()); }
                 catch (Exception error) { throw new IllegalStateException(command, error); }
             }

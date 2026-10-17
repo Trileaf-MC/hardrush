@@ -135,12 +135,42 @@ public final class RoundEngine {
         return proposal(eventId, "JOIN", before, phase, remaining, players, before.result(), false);
     }
 
+    /** One spatial intention: registration and readiness share a single durable transition. */
+    public RoundTransition proposeAssembly(UUID eventId, UUID roundId, UUID playerId, String name, boolean ready) {
+        RoundSnapshot before = capture();
+        if (!before.roundId().equals(roundId)) throw new IllegalStateException("Stale assembly round");
+        requirePhase(before, RoundPhase.WAITING, RoundPhase.COUNTDOWN);
+        var players = new LinkedHashMap<>(before.participants());
+        var player = players.get(playerId);
+        if (player != null && player.role() != ParticipantRole.LOBBY) throw new IllegalStateException("Dead or participating UUID cannot assemble");
+        if (player == null) player = new Participant(playerId, name, ParticipantRole.LOBBY, true, false, 0, -1, 0, false);
+        players.put(playerId, (ready ? player.withSession(name, true) : player).withReady(ready));
+        var phase = before.phase(); long remaining = before.remainingPhaseNanos();
+        if (readyOnline(players) == 0) { phase = RoundPhase.WAITING; remaining = 0; }
+        else if (phase == RoundPhase.WAITING) { phase = RoundPhase.COUNTDOWN; remaining = millisToNanos(before.rules().startCountdownMillis()); }
+        return proposal(eventId, ready ? "ASSEMBLE" : "LEAVE_ASSEMBLY", before, phase, remaining, players, before.result(), false);
+    }
+
+    /** Cancel or prove one restored readiness without discarding other absent original UUIDs. */
+    public RoundTransition proposeRestoredReady(UUID eventId, UUID roundId, UUID id, String name, boolean safe) {
+        var before = capture(); requirePhase(before, RoundPhase.COUNTDOWN);
+        var p = requirePlayer(before, id);
+        if (!before.roundId().equals(roundId) || !p.ready() || p.role() != ParticipantRole.LOBBY)
+            throw new IllegalStateException("Stale restored readiness");
+        var players = new LinkedHashMap<>(before.participants());
+        players.put(id, p.withSession(name, safe).withReady(safe));
+        boolean any = players.values().stream().anyMatch(v -> v.ready() && v.role() == ParticipantRole.LOBBY);
+        return proposal(eventId, "RESTORE_ASSEMBLY", before, any ? RoundPhase.COUNTDOWN : RoundPhase.WAITING,
+                any ? before.remainingPhaseNanos() : 0, players, before.result(), false);
+    }
+
     public RoundTransition proposeOnline(UUID eventId, UUID playerId, String name, boolean online) {
         RoundSnapshot before = capture();
         if (before.phase() == RoundPhase.RECOVERY_REQUIRED) throw new IllegalStateException("Recovery required");
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         Participant player = requirePlayer(before, playerId);
         Participant connected = player.withSession(name, online);
+        if (!online && player.role() == ParticipantRole.LOBBY) connected = connected.withReady(false);
         if (player.role() == ParticipantRole.MONSTER_DEPLOYED && player.online() != online) {
             connected = connected.monsterLobby(MONSTER_COOLDOWN_NANOS);
         }
@@ -537,12 +567,20 @@ public final class RoundEngine {
                 before.participants(), result, false, true);
     }
 
+    /** The server supplies current verified positions immediately before countdown arbitration. */
+    public RoundTransition proposeAdmissionTick(UUID eventId, java.util.Set<UUID> eligible) {
+        return proposeTick(eventId, true, eligible);
+    }
     private RoundTransition proposeTick(UUID eventId, boolean admissionPending) {
+        return proposeTick(eventId, admissionPending, null);
+    }
+    private RoundTransition proposeTick(UUID eventId, boolean admissionPending, java.util.Set<UUID> eligible) {
         RoundSnapshot before = capture();
         RoundPhase phase = before.phase();
         long remaining = before.remainingPhaseNanos();
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         if (phase == RoundPhase.COUNTDOWN) {
+            if (eligible != null) players.replaceAll((id, p) -> p.ready() && p.online() && !eligible.contains(id) ? p.withReady(false) : p);
             if (readyOnline(players) == 0) {
                 phase = RoundPhase.WAITING;
                 remaining = 0;

@@ -1,0 +1,675 @@
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :persistence:processResources NO-SOURCE
+> Task :persistence:processTestResources NO-SOURCE
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :core:compileJava UP-TO-DATE
+> Task :platforms:mc263:generateLog4jConfig UP-TO-DATE
+> Task :platforms:mc263:generateDLIConfig UP-TO-DATE
+> Task :platforms:mc263:configureLaunch UP-TO-DATE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :platforms:mc263:processGametestResources UP-TO-DATE
+> Task :persistence:compileJava UP-TO-DATE
+> Task :persistence:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :persistence:jar UP-TO-DATE
+> Task :persistence:compileTestJava UP-TO-DATE
+> Task :persistence:testClasses UP-TO-DATE
+> Task :core:compileTestJava UP-TO-DATE
+> Task :core:processTestResources UP-TO-DATE
+> Task :core:testClasses UP-TO-DATE
+> Task :persistence:test UP-TO-DATE
+> Task :persistence:check UP-TO-DATE
+> Task :core:test UP-TO-DATE
+> Task :core:check UP-TO-DATE
+
+> Task :platforms:mc263:prepareDebugTools
+Debug tools prepared; credentials remain in .local/debug/*/config.
+
+> Task :platforms:mc263:compileJava UP-TO-DATE
+> Task :platforms:mc263:classes UP-TO-DATE
+> Task :platforms:mc263:compileGametestJava UP-TO-DATE
+> Task :platforms:mc263:gametestClasses UP-TO-DATE
+
+> Task :platforms:mc263:runGameTest
+Default isolated GameTest storage (special suites may override): /Users/leifwebber/projects/minecraft/hardrush/.local/baseline-check/948b9805-6a9e-4721-85bb-c30fd2c9e351
+[11:38:07] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 26.3 with Fabric Loader 0.19.5
+[11:38:07] [main/INFO] (FabricLoader/Mappings) Mappings not present!
+[11:38:07] [main/INFO] (FabricLoader) Loading 46 mods:
+	- fabric-advancement-api-v1 1.0.0+38c7a2d55d
+	- fabric-api 0.162.0+26.3
+	- fabric-api-base 2.0.6+fcdff87f5d
+	- fabric-api-lookup-api-v1 2.0.24+3434d6d95d
+	- fabric-biome-api-v1 20.1.0+c6aa69a85d
+	- fabric-block-api-v1 3.1.0+0ae6f9115d
+	- fabric-block-getter-api-v2 2.0.9+3434d6d95d
+	- fabric-command-api-v2 3.1.2+fcdff87f5d
+	- fabric-content-registries-v0 15.0.4+74ed1ea55d
+	- fabric-convention-tags-v2 4.10.3+6b5b47fd5d
+	- fabric-crash-report-info-v1 1.0.7+fcdff87f5d
+	- fabric-creative-tab-api-v1 5.0.21+fcdff87f5d
+	- fabric-data-attachment-api-v1 2.2.31+b9b88df45d
+	- fabric-data-generation-api-v1 27.3.0+5be2453c5d
+	- fabric-debug-api-v1 1.0.4+3434d6d95d
+	- fabric-dimensions-v1 5.1.19+47f74c985d
+	- fabric-entity-events-v1 6.0.4+3434d6d95d
+	- fabric-events-interaction-v0 5.3.7+b9b88df45d
+	- fabric-game-rule-api-v1 4.0.10+3434d6d95d
+	- fabric-gametest-api-v1 4.0.33+3434d6d95d
+	- fabric-item-api-v1 14.7.0+cf6bc2db5d
+	- fabric-lifecycle-events-v1 4.1.9+ffef5f675d
+	- fabric-loot-api-v3 4.0.8+4068fd645d
+	- fabric-menu-api-v1 2.0.28+ed66f0a35d
+	- fabric-message-api-v1 7.0.10+3434d6d95d
+	- fabric-networking-api-v1 6.3.9+b9b88df45d
+	- fabric-object-builder-api-v1 24.1.10+3434d6d95d
+	- fabric-particles-v1 5.0.25+3434d6d95d
+	- fabric-permission-api-v1 1.0.8+fcdff87f5d
+	- fabric-recipe-api-v1 10.0.9+b9b88df45d
+	- fabric-registry-sync-v0 8.0.2+1ca9f6365d
+	- fabric-rendering-fluids-v1 6.0.6+3434d6d95d
+	- fabric-resource-conditions-api-v1 6.2.0+0d124ae85d
+	- fabric-resource-loader-v0 3.3.26+4fc5413f5d
+	- fabric-resource-loader-v1 3.0.4+fcdff87f5d
+	- fabric-serialization-api-v1 2.0.7+74ed1ea55d
+	- fabric-tag-api-v1 2.1.10+fcdff87f5d
+	- fabric-transfer-api-v1 8.0.25+fcdff87f5d
+	- fabric-transitive-access-wideners-v1 8.1.16+52268a0e5d
+	- fabricloader 0.19.5
+	- fantasy 0.8.4+26.3
+	- hardrush 0.1.0-p0+mc26.3
+	- hardrush-gametest 1.0.0
+	- java 25
+	- minecraft 26.3
+	- mixinextras 0.5.5
+[11:38:07] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/Users/leifwebber/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.17.4+mixin.0.8.7/5f66cc9f59b8efaa942155a3d5a30599bf6640dd/sponge-mixin-0.17.4+mixin.0.8.7.jar Service=Knot/Fabric Env=SERVER
+[11:38:08] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.5).
+[11:38:08] [main/WARN] (MacOperatingSystem) Unable to parse version 27.0 to a codename.
+[11:38:11] [main/INFO] (hardrush-p0) HardRush: server-side race, monster roles and revival; competition enabled=true; operator probes: /hardrushp0
+[11:38:11] [main/ERROR] (Minecraft) Failed to load properties from file: server.properties
+
+java.nio.file.NoSuchFileException: server.properties
+	at java.base/sun.nio.fs.UnixException.translateToIOException(UnixException.java:92)
+	at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:106)
+	at java.base/sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:111)
+	at java.base/sun.nio.fs.UnixFileSystemProvider.newFileChannel(UnixFileSystemProvider.java:213)
+	at java.base/sun.nio.fs.UnixFileSystemProvider.newByteChannel(UnixFileSystemProvider.java:244)
+	at java.base/java.nio.file.Files.newByteChannel(Files.java:357)
+	at java.base/java.nio.file.Files.newByteChannel(Files.java:399)
+	at java.base/java.nio.file.spi.FileSystemProvider.newInputStream(FileSystemProvider.java:371)
+	at java.base/java.nio.file.Files.newInputStream(Files.java:154)
+	at knot//net.minecraft.server.dedicated.Settings.loadFromFile(Settings.java:62)
+	at knot//net.minecraft.server.dedicated.DedicatedServerProperties.fromFile(DedicatedServerProperties.java:156)
+	at knot//net.minecraft.server.dedicated.DedicatedServerSettings.<init>(DedicatedServerSettings.java:12)
+	at knot//net.minecraft.server.Main.main(Main.java:117)
+	at net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider.launch(MinecraftGameProvider.java:517)
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:72)
+	at net.fabricmc.loader.impl.launch.knot.KnotServer.main(KnotServer.java:23)
+	at net.fabricmc.devlaunchinjector.Main.main(Main.java:86)
+[11:38:11] [main/INFO] (Minecraft) Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
+[11:38:11] [main/INFO] (FabricGameTestRunner) Starting test server
+[11:38:12] [Worker-Main-6/INFO] (Minecraft) Loaded 1866 advancements
+[11:38:12] [main/INFO] (BiomeModificationImpl) Applied 0 biome modifications to 0 of 67 new biomes in 670.7 μs
+[11:38:13] [Server thread/INFO] (Minecraft) Selecting global world spawn...
+[11:38:13] [Server thread/INFO] (Minecraft) Loading 0 persistent chunks...
+[11:38:13] [Server thread/INFO] (Minecraft) Preparing spawn area: 100%
+[11:38:13] [Server thread/INFO] (Minecraft) Time elapsed: 275 ms
+[11:38:13] [Server thread/INFO] (Minecraft) Started game test server
+[11:38:13] [Server thread/INFO] (hardrush-p1) P1 enabled; independent world preparation and player profile isolation gate participation
+[11:38:13] [Server thread/INFO] (hardrush-p0) HardRush P0 worlds: 尚无 P0 轮次；create 将创建三个持久维度
+[11:38:13] [Server thread/INFO] (Minecraft) 107 tests are now running at position -6677559, 4, -7923536!
+[11:38:14] [Server thread/INFO] (Minecraft) Running test environment 'minecraft:default' batch 0 (50 tests)...
+[11:38:15] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:15] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:15] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:16] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 3 at (0.0, 0.0, 0.0)
+[11:38:16] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:16] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:16] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:16] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:16] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 8 at (0.0, 0.0, 0.0)
+[11:38:16] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:16] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:17] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:17] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [We Need to Go Deeper]
+[11:38:17] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:17] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [The End?]
+[11:38:17] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 16 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [We Need to Go Deeper]
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 17 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 29 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [We Need to Go Deeper]
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player has completed the challenge [Subspace Bubble]
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [The End?]
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 30 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [We Need to Go Deeper]
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [The End?]
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 42 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 44 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 45 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 47 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 48 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 52 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 53 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:18] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 58 at (0.0, 0.0, 0.0)
+[11:38:18] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 61 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 62 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) [STDOUT]: HardRush appearance lifecycle: apply/clear=60 (20 per kind); no server entity/attribute/team/permission/invisibility leak
+[11:38:19] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 123 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 124 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:19] [Server thread/INFO] (Minecraft) [STDOUT]: HardRush appearance lifecycle: death/native respawn=20; old entity IDs unbound
+[11:38:19] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:19] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 185 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 186 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [We Need to Go Deeper]
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [The End?]
+[11:38:19] [Server thread/INFO] (Minecraft) [STDOUT]: HardRush appearance lifecycle: round dimension cycles=20; native transfers=60
+[11:38:19] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 267 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) [STDOUT]: HardRush appearance dimensions: entity.minecraft.player=0.6x1.8
+[11:38:19] [Server thread/INFO] (Minecraft) [STDOUT]: HardRush appearance dimensions: entity.minecraft.zombie=0.6x1.95
+[11:38:19] [Server thread/INFO] (Minecraft) [STDOUT]: HardRush appearance dimensions: entity.minecraft.skeleton=0.6x1.99
+[11:38:19] [Server thread/INFO] (Minecraft) [STDOUT]: HardRush appearance dimensions: entity.minecraft.creeper=0.6x1.7
+[11:38:19] [Server thread/INFO] (Minecraft) HRRole1000[embedded] logged in with entity id 271 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: HRRole1000 joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) HRRole1024[embedded] logged in with entity id 275 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: HRRole1024 joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) HRRole1048[embedded] logged in with entity id 276 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: HRRole1048 joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) HRRole1072[embedded] logged in with entity id 277 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: HRRole1072 joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) HRRole1096[embedded] logged in with entity id 281 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: HRRole1096 joined the game
+[11:38:19] [Server thread/INFO] (Minecraft) HRRole1120[embedded] logged in with entity id 282 at (0.0, 0.0, 0.0)
+[11:38:19] [Server thread/INFO] (Minecraft) System chat: HRRole1120 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1144[embedded] logged in with entity id 285 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1144 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1168[embedded] logged in with entity id 292 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1168 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1192[embedded] logged in with entity id 295 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1192 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1216[embedded] logged in with entity id 296 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1216 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1240[embedded] logged in with entity id 300 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1240 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1264[embedded] logged in with entity id 301 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1264 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1288[embedded] logged in with entity id 302 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1288 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1312[embedded] logged in with entity id 305 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1312 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1336[embedded] logged in with entity id 306 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1336 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1360[embedded] logged in with entity id 309 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1360 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1384[embedded] logged in with entity id 317 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1384 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1408[embedded] logged in with entity id 321 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1408 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1432[embedded] logged in with entity id 324 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1432 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) HRRole1456[embedded] logged in with entity id 325 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: HRRole1456 joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: P1 轮次 1（a5bd9743-290b-4afd-a287-a4a67f6235b8），阶段 PREPARING，本轮模式 极限，下轮模式 极限，已持久化版本 0，规则 49b6b9661cc6c123590a0ecfab8e9fe723d6cbac690dba3da7efb3a058520e6b。世界准备与玩家档案适配器尚未接通，暂不能加入或就绪。 大厅准备：进行中 世界准备：进行中
+[11:38:20] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 332 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 333 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 334 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Diamonds!]
+[11:38:20] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 349 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:20] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 360 at (0.0, 0.0, 0.0)
+[11:38:20] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Take Aim]
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Monster Hunter]
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Free the End]
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 433 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: OPENING_MANIFEST, queued=0, held=0, requests=[], metrics=Metrics[elapsedMillis=2, longestChunkMillis=0, maximumTickMicros=0, candidates=0, changedBlocks=0]
+[11:38:21] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: OPENING_MANIFEST, queued=0, held=0, requests=[], metrics=Metrics[elapsedMillis=2, longestChunkMillis=0, maximumTickMicros=0, candidates=0, changedBlocks=0]
+[11:38:21] [Server thread/WARN] (Minecraft) Can't keep up! Is the server overloaded? Running 8047ms or 160 ticks behind
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 464 at (96.5, 100.0, 96.5)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Diamonds!]
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 465 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 469 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 473 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 477 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 481 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 485 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 489 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 493 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 497 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 501 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 505 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 509 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 513 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 517 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 521 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 525 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 529 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 533 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 537 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 541 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) [STDOUT]: HardRush appearance lifecycle: same UUID native save/login loads=20; disconnected bindings removed
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: P1 轮次 1（a5bd9743-290b-4afd-a287-a4a67f6235b8），阶段 PREPARING，本轮模式 极限，下轮模式 极限，已持久化版本 0，规则 49b6b9661cc6c123590a0ecfab8e9fe723d6cbac690dba3da7efb3a058520e6b。世界准备与玩家档案适配器尚未接通，暂不能加入或就绪。 大厅准备：进行中 世界准备：进行中
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 544 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 545 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 546 at (0.0, 0.0, 0.0)
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:21] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Diamonds!]
+[11:38:21] [Server thread/INFO] (hardrush-p1-world-test) P1 W05 single-dimension open failure: FAILED, queued=0, held=0, requests=[], metrics=Metrics[elapsedMillis=448, longestChunkMillis=0, maximumTickMicros=9057, candidates=0, changedBlocks=0]
+[11:38:21] [Server thread/ERROR] (hardrush-p1-profiles) 档案转换失败，已保留旧档案并禁止参赛：Profile transition PREPARED has no durable target snapshot; retain quarantine UUID=da826b74-2844-44ed-8c72-3d5e8605f38a
+
+java.io.IOException: Profile transition PREPARED has no durable target snapshot; retain quarantine
+	at knot//dev.hardrush.p1.player.ProfileJournal.lambda$recovery$1(ProfileJournal.java:121)
+	at java.base/java.util.Optional.orElseThrow(Optional.java:403)
+	at knot//dev.hardrush.p1.player.ProfileJournal.recovery(ProfileJournal.java:120)
+	at knot//dev.hardrush.p1.player.P1PlayerProfiles.lambda$prepare$0(P1PlayerProfiles.java:867)
+	at knot//dev.hardrush.p1.player.P1PlayerProfiles.lambda$supply$0(P1PlayerProfiles.java:1195)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1789)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1090)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:614)
+	at java.base/java.lang.Thread.run(Thread.java:1474)
+[11:38:22] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: FAILED, queued=0, held=0, requests=[], metrics=Metrics[elapsedMillis=1109, longestChunkMillis=0, maximumTickMicros=9057, candidates=0, changedBlocks=0]
+[11:38:22] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: SEARCHING, queued=1, held=0, requests=[], metrics=Metrics[elapsedMillis=1125, longestChunkMillis=0, maximumTickMicros=8648, candidates=0, changedBlocks=0]
+[11:38:22] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=73aa2979-b012-48cb-b159-7964690cefc9；previouslyKilled=false
+[11:38:22] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [We Need to Go Deeper]
+[11:38:22] [Server thread/INFO] (Minecraft) System chat: test-mock-player has reached the goal [Sky's the Limit]
+[11:38:22] [Server thread/INFO] (Minecraft) [STDOUT]: HardRush low-health fixture head=(-1.4065203666687012, 67.0, -5.713928699493408); body=(0.5, 68.0, 0.5)
+[11:38:22] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Monster Hunter]
+[11:38:22] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Free the End]
+[11:38:23] [Server thread/INFO] (Minecraft) System chat: HRRole1240 has made the advancement [Suit Up]
+[11:38:23] [Server thread/INFO] (Minecraft) System chat: HRRole1288 has made the advancement [Suit Up]
+[11:38:23] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: SEARCHING, queued=0, held=1, requests=[Request[dimension=overworld, chunk=[6, -2]]:future=pending,accessible=false,status=minecraft:terrain,millis=664], metrics=Metrics[elapsedMillis=1022, longestChunkMillis=0, maximumTickMicros=30526, candidates=0, changedBlocks=0]
+[11:38:23] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: SEARCHING, queued=0, held=1, requests=[Request[dimension=overworld, chunk=[6, -2]]:future=pending,accessible=false,status=minecraft:spawn,millis=810], metrics=Metrics[elapsedMillis=2142, longestChunkMillis=0, maximumTickMicros=8648, candidates=0, changedBlocks=0]
+[11:38:23] [Server thread/INFO] (Minecraft) [+++++++_+++++++++++++++_++__++_+++++++_++++__+++++                                                         ]
+[11:38:24] [Server thread/INFO] (Minecraft) [+++++++_+++++++++++++++_+++_++_+++++++_++++__+++++                                                         ]
+[11:38:24] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: LOADING_REGION, queued=9, held=10, requests=[Request[dimension=overworld, chunk=[7, -1]]:future=pending,accessible=false,status=minecraft:spawn,millis=184, Request[dimension=end, chunk=[5, -1]]:future=pending,accessible=false,status=null,millis=0], metrics=Metrics[elapsedMillis=2056, longestChunkMillis=886, maximumTickMicros=30526, candidates=1, changedBlocks=0]
+[11:38:24] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: LOADING_REGION, queued=8, held=11, requests=[Request[dimension=end, chunk=[5, -1]]:future=pending,accessible=false,status=minecraft:structure_references,millis=161, Request[dimension=end, chunk=[5, 0]]:future=pending,accessible=false,status=minecraft:structure_references,millis=131], metrics=Metrics[elapsedMillis=3174, longestChunkMillis=858, maximumTickMicros=8648, candidates=1, changedBlocks=0]
+[11:38:25] [Server thread/INFO] (Minecraft) [+++++++_+++++++++++++++_+++_++_+++++++_++++__+++++                                                         ]
+[11:38:25] [Server thread/INFO] (hardrush-p1-world-test) P1 initial preparation metrics: Metrics[elapsedMillis=4027, longestChunkMillis=858, maximumTickMicros=8648, candidates=1, changedBlocks=25]
+[11:38:25] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 653 at (0.0, 0.0, 0.0)
+[11:38:25] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:25] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [We Need to Go Deeper]
+[11:38:25] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [The End?]
+[11:38:25] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: CLOSING, queued=0, held=0, requests=[], metrics=Metrics[elapsedMillis=4027, longestChunkMillis=858, maximumTickMicros=8648, candidates=1, changedBlocks=25]
+[11:38:26] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: LOADING_REGION, queued=0, held=19, requests=[Request[dimension=nether, chunk=[0, 0]]:future=pending,accessible=false,status=minecraft:spawn,millis=934], metrics=Metrics[elapsedMillis=3569, longestChunkMillis=886, maximumTickMicros=30526, candidates=1, changedBlocks=0]
+[11:38:26] [Server thread/INFO] (Minecraft) [+++++++_+++++++++++++++_+++_++_+++++++_++++__+++++                                                         ]
+[11:38:26] [Server thread/INFO] (Minecraft) [STDOUT]: Monster melee diagnostic legal=true owner=(1024.5, 150.0, 0.5) target=(1024.5, 150.0, 1.5) reach=true los=true loaded=true invul=false
+[11:38:26] [Server thread/INFO] (Minecraft) System chat: HRRole1312 has made the advancement [Suit Up]
+[11:38:26] [Server thread/INFO] (hardrush-p1-world-test) P1 W05 single-dimension retry metrics: Metrics[elapsedMillis=3702, longestChunkMillis=997, maximumTickMicros=30526, candidates=1, changedBlocks=25]
+[11:38:26] [Server thread/INFO] (Minecraft) System chat: HRRole1312 has reached the goal [Sky's the Limit]
+[11:38:27] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: LOADING_REGION, queued=17, held=2, requests=[Request[dimension=overworld, chunk=[5, -3]]:future=pending,accessible=false,status=minecraft:empty,millis=0, Request[dimension=overworld, chunk=[5, -2]]:future=pending,accessible=false,status=minecraft:empty,millis=0], metrics=Metrics[elapsedMillis=881, longestChunkMillis=0, maximumTickMicros=7588, candidates=0, changedBlocks=0]
+[11:38:27] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Monster Hunter]
+[11:38:27] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Free the End]
+[11:38:28] [Server thread/INFO] (Minecraft) [+++++++_+++++++++++++++++++_++++++++++_+++++_+++++                                                         ]
+[11:38:28] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: LOADING_REGION, queued=4, held=15, requests=[Request[dimension=end, chunk=[6, 0]]:future=pending,accessible=false,status=minecraft:spawn,millis=52, Request[dimension=end, chunk=[6, 1]]:future=pending,accessible=false,status=minecraft:spawn,millis=52], metrics=Metrics[elapsedMillis=1898, longestChunkMillis=791, maximumTickMicros=7588, candidates=0, changedBlocks=0]
+[11:38:28] [Server thread/INFO] (Minecraft) System chat: HRRole1216 was blown up by Creeper
+[11:38:28] [Server thread/INFO] (Minecraft) System chat: HRRole1192 was killed
+[11:38:28] [Server thread/INFO] (hardrush-p1-world-test) P1 ready-world recovery metrics: Metrics[elapsedMillis=2068, longestChunkMillis=791, maximumTickMicros=7588, candidates=0, changedBlocks=0]
+[11:38:28] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++_+++++_+++++                                                         ]
+[11:38:28] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++_+++++_+++++                                                         ]
+[11:38:29] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: LOADING_REGION, queued=2, held=17, requests=[Request[dimension=end, chunk=[7, -1]]:future=pending,accessible=false,status=minecraft:initialize_light,millis=138, Request[dimension=end, chunk=[7, 0]]:future=pending,accessible=false,status=minecraft:initialize_light,millis=97], metrics=Metrics[elapsedMillis=616, longestChunkMillis=131, maximumTickMicros=39261, candidates=0, changedBlocks=0]
+[11:38:29] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++_+++++_+++++                                                         ]
+[11:38:29] [Server thread/INFO] (hardrush-p1-world-test) P1 same-round retry metrics: Metrics[elapsedMillis=942, longestChunkMillis=271, maximumTickMicros=39261, candidates=0, changedBlocks=0]
+[11:38:29] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++_+++++                                                         ]
+[11:38:30] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: LOADING_REGION, queued=17, held=2, requests=[Request[dimension=overworld, chunk=[5, -3]]:future=pending,accessible=false,status=null,millis=191, Request[dimension=overworld, chunk=[5, -2]]:future=pending,accessible=false,status=null,millis=191], metrics=Metrics[elapsedMillis=339, longestChunkMillis=0, maximumTickMicros=21876, candidates=0, changedBlocks=0]
+[11:38:30] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++_+++++                                                         ]
+[11:38:30] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=73aa2979-b012-48cb-b159-7964690cefc9；previouslyKilled=true
+[11:38:30] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=73aa2979-b012-48cb-b159-7964690cefc9；previouslyKilled=true
+[11:38:30] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [The End?]
+[11:38:30] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++_+++++                                                         ]
+[11:38:31] [Server thread/INFO] (hardrush-p1-world-test) P1 preparation progress: CLOSED, queued=0, held=0, requests=[], metrics=Metrics[elapsedMillis=1354, longestChunkMillis=580, maximumTickMicros=21876, candidates=0, changedBlocks=0]
+[11:38:31] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:31] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:31] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:31] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:31] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:31] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:31] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:31] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:31] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:32] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:33] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:33] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:33] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:33] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:33] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:33] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:33] [Server thread/INFO] (Minecraft) [+++++++_++++++++++++++++++++++++++++++++++++++++++                                                         ]
+[11:38:33] [Server thread/INFO] (Minecraft) System chat: test-mock-player has reached the goal [The End... Again...]
+[11:38:33] [Server thread/INFO] (Minecraft) Running test environment 'minecraft:default' batch 1 (50 tests)...
+[11:38:33] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 855 at (0.0, 0.0, 0.0)
+[11:38:33] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:33] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 856 at (0.0, 0.0, 0.0)
+[11:38:33] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [We Need to Go Deeper]
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 857 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 858 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 860 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 861 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 862 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 863 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 865 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 866 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 867 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Stone Age]
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 868 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player has completed the challenge [Adventuring Time]
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 869 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Stone Age]
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Getting an Upgrade]
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 870 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 871 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 872 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 873 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 874 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 875 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:34] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 876 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:34] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:34] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 877 at (0.0, 0.0, 0.0)
+[11:38:34] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:35] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 878 at (0.0, 0.0, 0.0)
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:35] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 879 at (0.0, 0.0, 0.0)
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Diamonds!]
+[11:38:35] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 881 at (0.0, 0.0, 0.0)
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:35] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 882 at (0.0, 0.0, 0.0)
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:35] [Server thread/INFO] (Minecraft) profile-pending-world[embedded] logged in with entity id 864 at (-6677511.5, 8.0, -7923413.5)
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: profile-pending-world joined the game
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: profile-pending-world has made the advancement [Diamonds!]
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Stone Age]
+[11:38:35] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 889 at (0.0, 0.0, 0.0)
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [The End?]
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:35] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 891 at (0.0, 0.0, 0.0)
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Stone Age]
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Stone Age]
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Stone Age]
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:35] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 894 at (-6677466.5, 8.0, -7923379.5)
+[11:38:35] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:35] [Server thread/INFO] (WorldProbe) P0 世界就绪；round=77c73303-d3b5-4012-a359-4d9110c87d82；seed=12345；spawn=96, 135, -28；overworld=hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld；nether=hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether；end=hardrush:p0_77c73303d3b54012a3594d9110c87d82/end；dragonFight=true；dragonUUID=null；previouslyKilled=false
+[11:38:36] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 895 at (0.0, 0.0, 0.0)
+[11:38:36] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:36] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 896 at (0.0, 0.0, 0.0)
+[11:38:36] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:36] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 898 at (0.0, 0.0, 0.0)
+[11:38:36] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 899 at (0.0, 0.0, 0.0)
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 900 at (0.0, 0.0, 0.0)
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 901 at (0.0, 0.0, 0.0)
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 902 at (0.0, 0.0, 0.0)
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 903 at (0.0, 0.0, 0.0)
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 904 at (0.0, 0.0, 0.0)
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player was slain by Zombie
+[11:38:38] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 908 at (0.0, 0.0, 0.0)
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 909 at (0.0, 0.0, 0.0)
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 916 at (0.0, 0.0, 0.0)
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 917 at (0.0, 0.0, 0.0)
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 920 at (0.0, 0.0, 0.0)
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Take Aim]
+[11:38:38] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++_++_+____+___+++++++++++++____++++++++++++++++++++       ]
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Cover Me with Diamonds]
+[11:38:38] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Diamonds!]
+[11:38:39] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:39] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:39] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Stone Age]
+[11:38:39] [Server thread/INFO] (Minecraft) System chat: test-mock-player died
+[11:38:39] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 934 at (-6677451.5, 8.0, -7923379.5)
+[11:38:39] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:39] [Server thread/INFO] (Minecraft) System chat: test-mock-player has made the advancement [Diamonds!]
+[11:38:39] [Server thread/INFO] (Minecraft) System chat: test-mock-player has reached the goal [Sky's the Limit]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++_+++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) Running test environment 'minecraft:default' batch 2 (7 tests)...
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) [++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++       ]
+[11:38:39] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 939 at (0.0, 0.0, 0.0)
+[11:38:39] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:39] [Server thread/INFO] (Minecraft) test-mock-player[embedded] logged in with entity id 940 at (0.0, 0.0, 0.0)
+[11:38:39] [Server thread/INFO] (Minecraft) System chat: test-mock-player joined the game
+[11:38:40] [Server thread/INFO] (Minecraft) HRP2Skill10[embedded] logged in with entity id 953 at (0.0, 0.0, 0.0)
+[11:38:40] [Server thread/INFO] (Minecraft) System chat: HRP2Skill10 joined the game
+[11:38:40] [Server thread/INFO] (Minecraft) HRP2Skill11[embedded] logged in with entity id 954 at (0.0, 0.0, 0.0)
+[11:38:40] [Server thread/INFO] (Minecraft) System chat: HRP2Skill11 joined the game
+[11:38:40] [Server thread/INFO] (Minecraft) HRP2Skill20[embedded] logged in with entity id 961 at (0.0, 0.0, 0.0)
+[11:38:40] [Server thread/INFO] (Minecraft) System chat: HRP2Skill20 joined the game
+[11:38:40] [Server thread/INFO] (Minecraft) HRP2Skill21[embedded] logged in with entity id 962 at (0.0, 0.0, 0.0)
+[11:38:40] [Server thread/INFO] (Minecraft) System chat: HRP2Skill21 joined the game
+[11:38:41] [Server thread/INFO] (Minecraft) HRP2Skill30[embedded] logged in with entity id 963 at (0.0, 0.0, 0.0)
+[11:38:41] [Server thread/INFO] (Minecraft) System chat: HRP2Skill30 joined the game
+[11:38:41] [Server thread/INFO] (Minecraft) HRP2Skill31[embedded] logged in with entity id 964 at (0.0, 0.0, 0.0)
+[11:38:41] [Server thread/INFO] (Minecraft) System chat: HRP2Skill31 joined the game
+[11:38:41] [Server thread/INFO] (Minecraft) HRP2Skill40[embedded] logged in with entity id 965 at (0.0, 0.0, 0.0)
+[11:38:41] [Server thread/INFO] (Minecraft) System chat: HRP2Skill40 joined the game
+[11:38:41] [Server thread/INFO] (Minecraft) HRP2Skill41[embedded] logged in with entity id 966 at (0.0, 0.0, 0.0)
+[11:38:41] [Server thread/INFO] (Minecraft) System chat: HRP2Skill41 joined the game
+[11:38:41] [Server thread/INFO] (Minecraft) HRP2Skill50[embedded] logged in with entity id 967 at (0.0, 0.0, 0.0)
+[11:38:41] [Server thread/INFO] (Minecraft) System chat: HRP2Skill50 joined the game
+[11:38:41] [Server thread/INFO] (Minecraft) HRP2Skill51[embedded] logged in with entity id 968 at (0.0, 0.0, 0.0)
+[11:38:41] [Server thread/INFO] (Minecraft) System chat: HRP2Skill51 joined the game
+[11:38:41] [Server thread/INFO] (Minecraft) HRP2Skill52[embedded] logged in with entity id 969 at (0.0, 0.0, 0.0)
+[11:38:41] [Server thread/INFO] (Minecraft) System chat: HRP2Skill52 joined the game
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_____+]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_____+]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_____+]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_____+]
+[11:38:42] [Server thread/INFO] (Minecraft) System chat: HRP2Skill31 has made the advancement [Monster Hunter]
+[11:38:42] [Server thread/INFO] (Minecraft) System chat: HRP2Skill51 was killed
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_++__+]
+[11:38:42] [Server thread/INFO] (Minecraft) System chat: HRP2Skill50 was killed
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_+++++]
+[11:38:42] [Server thread/INFO] (Minecraft) [+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++]
+[11:38:42] [Server thread/INFO] (Minecraft) ========= 107 GAME TESTS COMPLETE IN 29.19 s ======================
+[11:38:42] [Server thread/INFO] (Minecraft) All 107 required tests passed :)
+[11:38:42] [Server thread/INFO] (Minecraft) ====================================================
+[11:38:42] [Server thread/INFO] (WorldProbe) P0 世界已保存；未删除或替换任何世界文件
+[11:38:42] [Server thread/INFO] (Minecraft) Stopping server
+[11:38:42] [Server thread/INFO] (Minecraft) Saving players
+[11:38:42] [Server thread/INFO] (Minecraft) Saving worlds
+[11:38:43] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:overworld
+[11:38:43] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:the_end
+[11:38:43] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/minecraft:the_nether
+[11:38:43] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:lobby
+[11:38:43] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p0_77c73303d3b54012a3594d9110c87d82/overworld
+[11:38:43] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p0_77c73303d3b54012a3594d9110c87d82/nether
+[11:38:43] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p0_77c73303d3b54012a3594d9110c87d82/end
+[11:38:43] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_a5bd9743290b4afda287a4a67f6235b8/overworld
+[11:38:43] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_a5bd9743290b4afda287a4a67f6235b8/nether
+[11:38:43] [Server thread/INFO] (Minecraft) Saving chunks for level 'ServerLevel[Test Level]'/hardrush:p1_a5bd9743290b4afda287a4a67f6235b8/end
+[11:38:43] [Server thread/INFO] (Minecraft) Game test server shutting down
+
+> Task :platforms:mc263:processIncludeJars UP-TO-DATE
+> Task :platforms:mc263:compileTestJava
+> Task :platforms:mc263:processTestResources NO-SOURCE
+> Task :platforms:mc263:testClasses
+> Task :platforms:mc263:jar
+> Task :platforms:mc263:test
+> Task :platforms:mc263:validateAccessWidener NO-SOURCE
+> Task :platforms:mc263:check
+> Task :checkP1
+> Task :checkP2
+> Task :checkP3
+
+BUILD SUCCESSFUL in 50s
+21 actionable tasks: 5 executed, 16 up-to-date

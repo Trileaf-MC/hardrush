@@ -374,6 +374,61 @@ final class P1LobbySessionTest {
     }
 
     @Test
+    void lateOriginalNeedsItsOwnStandingProofAfterFirstOriginalAlreadyResumed() throws Exception {
+        var db = directory.resolve("late-original.sqlite"); UUID a = UUID.randomUUID(), b = UUID.randomUUID(), round = UUID.randomUUID();
+        var rules = RulesConfig.defaults().withMode(GameMode.NORMAL);
+        var participants = Map.of(a, new Participant(a, "A", ParticipantRole.LOBBY, true, true, 0, -1, 0, false),
+                b, new Participant(b, "B", ParticipantRole.LOBBY, true, true, 0, -1, 0, false));
+        var saved = new RoundSnapshot(round, 1, 8, 0, rules, RoundPhase.COUNTDOWN, PauseReason.SERVER_STOPPED,
+                0, TimeUnit.SECONDS.toNanos(23), participants, true, false, null);
+        try(var store = new SqliteRoundStore(db)) { store.commit(new SnapshotWrite(round,-1,0,RoundSnapshotCodec.encode(saved),UUID.randomUUID(),"fixture")); }
+        var callbacks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
+        var valid = new java.util.HashSet<UUID>(); var reply = new AtomicReference<P1LobbySession.Reply>();
+        try(var session = new P1LobbySession(db, clock::get, callbacks::add)) {
+            pumpUntil(callbacks, () -> session.state() == P1LobbySession.State.OPEN);
+            session.assemblyGuard(valid::contains); session.adaptersReady(round); pumpUntil(callbacks, () -> !session.mutationPending());
+            valid.add(a); session.onOnline(a,"A",true); session.restoreReady(round,a,"A",true,reply::set); pumpUntil(callbacks, () -> reply.get()!=null);
+            assertFalse(session.recoveringCountdown()); assertTrue(session.originalReady(round,b));
+            session.onOnline(b,"B",true); clock.addAndGet(TimeUnit.SECONDS.toNanos(4)); session.tick(); pumpUntil(callbacks, () -> !session.mutationPending());
+            assertFalse(session.snapshot().orElseThrow().participants().get(b).online(), "Late original online is not a standing proof");
+            assertEquals(19000, session.view().orElseThrow().remainingPhaseMillis());
+            reply.set(null); session.restoreReady(round,b,"B",true,reply::set); assertFalse(reply.get().success());
+            valid.add(b); reply.set(null); session.restoreReady(round,b,"B",true,reply::set); pumpUntil(callbacks, () -> reply.get()!=null);
+            assertTrue(reply.get().success()); assertTrue(session.snapshot().orElseThrow().participants().get(b).online());
+            assertEquals(19000,session.view().orElseThrow().remainingPhaseMillis()); assertFalse(session.originalReady(round,b));
+        }
+    }
+
+    @Test
+    void lateAssemblyCommitIsCancelledBeforeStartAndOldRoundFailsWithoutIsolation() throws Exception {
+        var callbacks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
+        var inside = new java.util.concurrent.atomic.AtomicBoolean(true); UUID id = UUID.randomUUID();
+        var reply = new AtomicReference<P1LobbySession.Reply>();
+        try (var session = new P1LobbySession(directory.resolve("assembly.sqlite"), clock::get, callbacks::add)) {
+            pumpUntil(callbacks, () -> session.state() == P1LobbySession.State.OPEN);
+            var round = session.snapshot().orElseThrow().roundId(); session.adaptersReady(round);
+            pumpUntil(callbacks, () -> !session.mutationPending()); session.assemblyGuard(p -> inside.get());
+            session.onOnline(id, "A", true);
+            session.requestAssembly(round, id, "A", true, reply::set);
+            assertTrue(session.snapshot().orElseThrow().participants().isEmpty()); assertNull(reply.get());
+            inside.set(false); clock.addAndGet(TimeUnit.SECONDS.toNanos(31));
+            pumpUntil(callbacks, () -> reply.get() != null);
+            session.tick(); pumpUntil(callbacks, () -> !session.mutationPending());
+            assertEquals(RoundPhase.WAITING, session.snapshot().orElseThrow().phase());
+            assertEquals(0, session.snapshot().orElseThrow().participants().get(id).lifeSequence());
+            inside.set(true); reply.set(null); session.requestAssembly(UUID.randomUUID(), id, "A", true, reply::set);
+            assertFalse(reply.get().success()); assertEquals(P1LobbySession.State.OPEN, session.state());
+            reply.set(null); session.requestAssembly(round, id, "A", true, reply::set); pumpUntil(callbacks, () -> reply.get() != null);
+            assertEquals(30_000, session.snapshot().orElseThrow().remainingPhaseMillis());
+            inside.set(false); session.prepareStop();
+        }
+        try (var store = new SqliteRoundStore(directory.resolve("assembly.sqlite"))) {
+            var saved = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload());
+            assertEquals(RoundPhase.WAITING, saved.phase()); assertFalse(saved.participants().get(id).ready());
+        }
+    }
+
+    @Test
     void cleanCountdownWaitsForProfilesAcrossCheckpointsAndRepeatedNormalStops() throws Exception {
         Path database = directory.resolve("countdown-repeat-stop.sqlite");
         UUID ready = UUID.randomUUID(), unready = UUID.randomUUID();
@@ -435,6 +490,8 @@ final class P1LobbySessionTest {
             session.onOnline(unready, "UnreadyReconnected", false);
             session.onOnline(newcomer, "Newcomer", false);
             session.onOnline(ready, "ReadyReconnected", true);
+            assertTrue(session.recoveringCountdown(), "Online alone proves no safe circle position");
+            session.restoreReady(initial.roundId(), ready, "ReadyReconnected", true, reply::set);
             pumpUntil(callbacks, () -> !session.mutationPending());
             assertTrue(session.snapshot().orElseThrow().participants().get(ready).online());
             assertEquals(initial.remainingPhaseNanos(), session.view().orElseThrow().remainingPhaseNanos());
@@ -478,6 +535,10 @@ final class P1LobbySessionTest {
             clock.addAndGet(TimeUnit.SECONDS.toNanos(5));
             session.tick();
             pumpUntil(callbacks, () -> !session.mutationPending());
+            assertFalse(session.snapshot().orElseThrow().participants().get(ready).online(), "World readiness cannot prove native standing");
+            var restored = new AtomicReference<P1LobbySession.Reply>();
+            session.restoreReady(initial.roundId(), ready, "ReadyBeforeWorlds", true, restored::set);
+            pumpUntil(callbacks, () -> restored.get() != null);
             assertTrue(session.snapshot().orElseThrow().participants().get(ready).online());
             assertEquals(initial.remainingPhaseNanos(), session.view().orElseThrow().remainingPhaseNanos(), "Pre-world and held-profile time is excluded");
             clock.addAndGet(initial.remainingPhaseNanos());

@@ -325,6 +325,7 @@ public final class P1RestartProcessFixture {
 
     private void enterRunning(P1LobbySession session, String name) throws Exception {
         session.onOnline(PLAYER, name, true);
+        if (session.recoveringCountdown()) session.restoreReady(snapshot(session).roundId(), PLAYER, name, true, reply -> check(reply.success(), reply.message()));
         session.requestJoin(PLAYER, name, reply -> check(reply.success(), reply.message()));
         idle(session);
         session.requestReady(PLAYER, true, reply -> check(reply.success(), reply.message()));
@@ -337,6 +338,7 @@ public final class P1RestartProcessFixture {
 
     private void unlock(P1LobbySession session, String name) throws Exception {
         session.onOnline(PLAYER, name, true);
+        if (session.recoveringCountdown()) session.restoreReady(snapshot(session).roundId(), PLAYER, name, true, reply -> check(reply.success(), reply.message()));
         idle(session);
         check(snapshot(session).participants().get(PLAYER).online(), "Profile adapter confirms online session");
     }

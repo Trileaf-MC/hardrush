@@ -113,10 +113,15 @@ public final class P2LobbyRuntime {
             }
             @Override public List<P2LobbyUi.Button> buttons(ServerPlayer player, LobbyContext context) {
                 if (context == LobbyContext.COMPETITION) return buttons(player);
+                if (context == LobbyContext.ENTRY) return dev.hardrush.p1.lobby.P1HumanEntry.gateButtons(player);
                 var round = session.snapshot().orElseThrow();
                 return List.of(new P2LobbyUi.Button(Items.BOOK, "站入集结区参加，离开取消准备", "info", ""),
                         new P2LobbyUi.Button(Items.PAPER, "追猎规则：" + (round.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET ? "个人定向追猎（尚未开放）" : "旧版投票（升级恢复隔离）"), "info", ""),
                         new P2LobbyUi.Button(Items.CLOCK, "阶段：" + phaseName(round.phase()) + " · 历史查询入口尚未接通", "info", ""));
+            }
+            @Override public void act(ServerPlayer player, UUID round, LobbyContext context, String action, String value) {
+                if (context == LobbyContext.ENTRY && action.equals("enter")) dev.hardrush.p1.lobby.P1HumanEntry.confirm(player, round);
+                else if (context == LobbyContext.COMPETITION) request(player, round, action, value);
             }
             @Override public UUID round(ServerPlayer player) { return session.snapshot().orElseThrow().roundId(); }
             @Override public List<P2LobbyUi.Button> buttons(ServerPlayer player) { return menuButtons(player, binding); }
@@ -141,6 +146,7 @@ public final class P2LobbyRuntime {
         boolean verified = current(player, b) && P1PlayerProfiles.verifiedLobbyBody(player);
         return switch (context) {
             case RULES -> verified;
+            case ENTRY -> dev.hardrush.p1.lobby.P1HumanEntry.gateAvailable(player);
             case HISTORY -> false; // shared history query UI is connected in round 4, never fake an empty result
             case DISPLAY -> verified && dev.hardrush.p1.P1LobbyRuntime.lobbyActivityAllowed(player);
             case COMPETITION -> verified && dev.hardrush.p1.P1LobbyRuntime.lobbyActivityAllowed(player)
@@ -179,10 +185,7 @@ public final class P2LobbyRuntime {
             tell(player, "本轮采用个人追猎规则；目标追猎尚未接通。请等待后续版本。"); return;
         }
         if (action.equals("join") || action.equals("ready") || action.equals("unready")) {
-            if (!lobbyAvailable(player, b)) { tell(player, "请先回大厅。"); return; }
-            if (action.equals("join")) b.session.requestJoin(player.getUUID(), player.getScoreboardName(), reply -> tell(player, reply.message()));
-            else b.session.requestReady(player.getUUID(), action.equals("ready"), reply -> tell(player, reply.message()));
-            return;
+            tell(player, "开局请站入集结区，离开取消准备；挑战中请到中途入场门确认。"); return;
         }
         if (action.equals("history")) {
             player.level().getServer().getCommands().performPrefixedCommand(player.createCommandSourceStack(), "hardrush history"); return;
@@ -491,9 +494,7 @@ public final class P2LobbyRuntime {
         var buttons = new ArrayList<P2LobbyUi.Button>();
         buttons.add(new P2LobbyUi.Button(Items.PAPER, "轮次 " + round.sequence() + " · " + phaseName(round.phase())
                 + (p == null ? " · 未加入" : " · " + identityName(p.role())), "info", ""));
-        buttons.add(new P2LobbyUi.Button(Items.DYE.pick(net.minecraft.world.item.DyeColor.LIME), "加入本轮", "join", ""));
-        buttons.add(new P2LobbyUi.Button(Items.EMERALD, "就绪", "ready", ""));
-        buttons.add(new P2LobbyUi.Button(Items.DYE.pick(net.minecraft.world.item.DyeColor.RED), "取消就绪", "unready", ""));
+        buttons.add(new P2LobbyUi.Button(Items.EMERALD, "开局请站入集结区；中途加入请使用侧门", "info", ""));
         buttons.add(new P2LobbyUi.Button(Items.BOOK, "查看历史", "history", ""));
         if (p != null && p.role().isMonster()) {
             buttons.add(new P2LobbyUi.Button(Items.BLAZE_POWDER, "施放当前角色技能", "skill", ""));

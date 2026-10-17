@@ -33,6 +33,13 @@ import net.minecraft.world.phys.Vec3;
 
 /** Server-only fixtures; no graphical clients, screenshots or computer-use interaction. */
 public final class P1ProfileGameTest {
+    /** Only fixture terrain: fresh admission now requires a real loaded safe standing volume. */
+    private static void fixtureStanding(GameTestHelper test, Vec3 position) {
+        var pos = net.minecraft.core.BlockPos.containing(position); var level = test.getLevel();
+        level.getChunkAt(pos).setBlockState(pos.below(), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 2);
+        level.getChunkAt(pos).setBlockState(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+        level.getChunkAt(pos).setBlockState(pos.above(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+    }
     @GameTest(maxTicks = 2000)
     public void monsterCelebrationRemovesControlsAndPreservesOriginalArchive(GameTestHelper test) {
         temporaryCelebration(test, true, false);
@@ -49,6 +56,7 @@ public final class P1ProfileGameTest {
         var player = test.makeMockServerPlayerInLevel();
         var body = new ServerPlayer[]{player};
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 3, 2)));
+        fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var profiles = new P1PlayerProfiles(server, root, test::getLevel, () -> position);
         var initial = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
@@ -130,6 +138,7 @@ public final class P1ProfileGameTest {
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
         var generation = new ProfileJournal.Generation(round.roundId(), round.sequence());
@@ -185,6 +194,7 @@ public final class P1ProfileGameTest {
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
         player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 13));
@@ -219,6 +229,7 @@ public final class P1ProfileGameTest {
         var player = test.makeMockServerPlayerInLevel();
         var previous = server.getLevel(net.minecraft.world.level.Level.NETHER);
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        fixtureStanding(test, position);
         var profiles = new P1PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT)
                 .resolve("hardrush/profile-tests/" + UUID.randomUUID()), test::getLevel, () -> position);
         try {
@@ -245,6 +256,7 @@ public final class P1ProfileGameTest {
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var blockedPlayerDirectory = root.resolve(player.getUUID().toString());
         try {
@@ -279,6 +291,7 @@ public final class P1ProfileGameTest {
         var player = test.makeMockServerPlayerInLevel();
         var lobby = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(4, 2, 4)));
+        fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var profiles = new P1PlayerProfiles(server, root, test::getLevel, () -> lobby);
         var initial = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
@@ -335,7 +348,9 @@ public final class P1ProfileGameTest {
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var lobbyPosition = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        fixtureStanding(test, lobbyPosition);
         var spawnPosition = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(4, 2, 4)));
+        fixtureStanding(test, spawnPosition);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var profiles = new P1PlayerProfiles(server, root, test::getLevel, () -> lobbyPosition);
         var first = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
@@ -435,6 +450,7 @@ public final class P1ProfileGameTest {
         var server = test.getLevel().getServer();
         var player = new ServerPlayer(server, test.getLevel(), new GameProfile(UUID.randomUUID(), "profile-login-test"), ClientInformation.createDefault());
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        fixtureStanding(test, position);
         var profiles = new P1PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT)
                 .resolve("hardrush/profile-tests/" + UUID.randomUUID()), test::getLevel, () -> position);
         try {
@@ -457,6 +473,7 @@ public final class P1ProfileGameTest {
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
+        fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var service = new P1PlayerProfiles[]{new P1PlayerProfiles(server, root, test::getLevel, () -> position)};
         var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
@@ -499,6 +516,7 @@ public final class P1ProfileGameTest {
         var server = test.getLevel().getServer();
         var player = new ServerPlayer[]{test.makeMockServerPlayerInLevel()};
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
+        fixtureStanding(test, position);
         var profiles = new P1PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT)
                 .resolve("hardrush/profile-tests/" + UUID.randomUUID()), test::getLevel, () -> position);
         var initial = round(UUID.randomUUID(), 1, player[0], GameMode.NORMAL);
@@ -547,6 +565,7 @@ public final class P1ProfileGameTest {
         var server = test.getLevel().getServer();
         var player = new ServerPlayer[]{test.makeMockServerPlayerInLevel()};
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
+        fixtureStanding(test, position);
         var profiles = new P1PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT)
                 .resolve("hardrush/profile-tests/" + UUID.randomUUID()), test::getLevel, () -> position);
         var initial = round(UUID.randomUUID(), 1, player[0], GameMode.NORMAL);
@@ -596,6 +615,7 @@ public final class P1ProfileGameTest {
         var server = test.getLevel().getServer();
         var player = new ServerPlayer[]{test.makeMockServerPlayerInLevel()};
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
+        fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var profiles = new P1PlayerProfiles[]{new P1PlayerProfiles(server, root, test::getLevel, () -> position)};
         var initial = round(UUID.randomUUID(), 1, player[0], GameMode.NORMAL);
@@ -644,6 +664,7 @@ public final class P1ProfileGameTest {
         var suspensionId = UUID.randomUUID().toString();
         var savedPosition = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(4, 3, 4)));
         var lobbyPosition = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
+        fixtureStanding(test, lobbyPosition);
         player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));
         ((ProfileTagged) player).hardrush$generation(generation);
         ((ProfileTagged) player).hardrush$lifeSequence(1);

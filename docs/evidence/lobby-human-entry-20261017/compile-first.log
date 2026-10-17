@@ -1,0 +1,62 @@
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :core:compileJava
+> Task :core:processResources NO-SOURCE
+> Task :core:classes
+> Task :persistence:compileJava UP-TO-DATE
+> Task :core:compileTestJava
+> Task :core:processTestResources UP-TO-DATE
+> Task :core:testClasses
+> Task :core:test
+
+> Task :platforms:mc263:compileJava FAILED
+/Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/main/java/dev/hardrush/p1/lobby/P1HumanEntry.java:133: 错误: 找不到符号
+            hints.current(now).ifPresent(text -> player.displayClientMessage(Component.literal(text), true));
+                                                       ^
+  符号:   方法 displayClientMessage(MutableComponent,boolean)
+  位置: 类型为ServerPlayer的变量 player
+/Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/main/java/dev/hardrush/p1/world/P1CampBlueprint.java:18: 错误: 找不到符号
+                var floor = border ? Blocks.STONE_BRICKS : distance <= 7 ? distance >= 6 ? Blocks.YELLOW_WOOL : Blocks.LIME_WOOL
+                                                                                                 ^
+  符号:   变量 YELLOW_WOOL
+  位置: 类 Blocks
+/Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/main/java/dev/hardrush/p1/world/P1CampBlueprint.java:18: 错误: 找不到符号
+                var floor = border ? Blocks.STONE_BRICKS : distance <= 7 ? distance >= 6 ? Blocks.YELLOW_WOOL : Blocks.LIME_WOOL
+                                                                                                                      ^
+  符号:   变量 LIME_WOOL
+  位置: 类 Blocks
+3 个错误
+
+[Incubating] Problems report is available at: file:///Users/leifwebber/projects/minecraft/hardrush/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':platforms:mc263:compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/main/java/dev/hardrush/p1/world/P1CampBlueprint.java:18: 错误: 找不到符号
+                  var floor = border ? Blocks.STONE_BRICKS : distance <= 7 ? distance >= 6 ? Blocks.YELLOW_WOOL : Blocks.LIME_WOOL
+                                                                                                   ^
+    符号:   变量 YELLOW_WOOL
+    位置: 类 Blocks
+  /Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/main/java/dev/hardrush/p1/world/P1CampBlueprint.java:18: 错误: 找不到符号
+                  var floor = border ? Blocks.STONE_BRICKS : distance <= 7 ? distance >= 6 ? Blocks.YELLOW_WOOL : Blocks.LIME_WOOL
+                                                                                                                        ^
+    符号:   变量 LIME_WOOL
+    位置: 类 Blocks
+  /Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/main/java/dev/hardrush/p1/lobby/P1HumanEntry.java:133: 错误: 找不到符号
+              hints.current(now).ifPresent(text -> player.displayClientMessage(Component.literal(text), true));
+                                                         ^
+    符号:   方法 displayClientMessage(MutableComponent,boolean)
+    位置: 类型为ServerPlayer的变量 player
+  3 个错误
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 3s
+7 actionable tasks: 4 executed, 3 up-to-date
