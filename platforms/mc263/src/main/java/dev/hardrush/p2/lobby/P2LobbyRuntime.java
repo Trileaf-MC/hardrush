@@ -363,6 +363,9 @@ public final class P2LobbyRuntime {
             for (var player : server.getPlayerList().getPlayers()) if (MonsterRoles.isMonster(player)) MonsterRoles.clear(player);
             b.searches.clear(); b.resumptions.clear(); b.channels.clear(); b.committing.clear(); b.retryAt.clear(); return;
         }
+        if (dev.hardrush.p1.celebration.P1CelebrationRuntime.successful(after)) {
+            b.searches.clear(); b.resumptions.clear(); b.channels.clear(); return;
+        }
         for (var p : after.participants().values()) {
             var old = before.participants().get(p.id());
             if (old != null && old.role().isMonster() && p.role() == ParticipantRole.HUMAN_ACTIVE) {

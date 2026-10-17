@@ -15,6 +15,7 @@ import dev.hardrush.p2.protection.P2ProtectionRuntime;
 import dev.hardrush.p2.lobby.P2LobbyRuntime;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
 import dev.hardrush.p1.world.P1LobbyWorld;
+import dev.hardrush.p1.celebration.P1CelebrationRuntime;
 import dev.hardrush.p1.world.P1ClosedWorlds;
 import dev.hardrush.p1.world.P1WorldPaths;
 import dev.hardrush.p1.combat.P1CombatRuntime;
@@ -108,6 +109,7 @@ public final class P1LobbyRuntime {
             reference[0] = session;
             SESSIONS.put(server, session);
             P2LobbyRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
+            P1CelebrationRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
             P2ProtectionRuntime.configure(server, new P2ProtectionRuntime.Access() {
                 @Override public Optional<P2ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) {
                     var round = session.snapshot().orElse(null);
@@ -230,7 +232,15 @@ public final class P1LobbyRuntime {
                 refreshTab(server, false);
                 if (worlds != null && worlds.ready() && lobby.ready()) session.adaptersReady(round.roundId());
                 if (round.phase() == RoundPhase.ROTATING) {
+                    if (!P1CelebrationRuntime.tick(server, round, true)) { session.tick(); return; }
                     rotate(server, session, round, worlds, profiles);
+                    session.tick();
+                    return;
+                }
+                if (P1CelebrationRuntime.successful(round)) {
+                    if (P1CelebrationRuntime.tick(server, round, false)) session.celebrationComplete(round.roundId());
+                    P2ProtectionRuntime.tick(server);
+                    P2LobbyRuntime.tick(server);
                     session.tick();
                     return;
                 }
@@ -290,6 +300,7 @@ public final class P1LobbyRuntime {
             } catch (RuntimeException error) { session.adapterFailure("世界／档案适配失败", error); }
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            P1CelebrationRuntime.disconnected(handler.player);
             P2LobbyRuntime.disconnected(handler.player);
             var session = SESSIONS.get(server);
             if (session != null) session.onOnline(handler.player.getUUID(), handler.player.getScoreboardName(), false);
@@ -318,7 +329,7 @@ public final class P1LobbyRuntime {
             }
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
-            if (alive) return;
+            if (alive || P1PlayerProfiles.celebrationRespawnInProgress()) return;
             var session = SESSIONS.get(newPlayer.level().getServer());
             var round = session == null ? null : session.snapshot().orElse(null);
             var participant = round == null ? null : round.participants().get(newPlayer.getUUID());
@@ -335,6 +346,7 @@ public final class P1LobbyRuntime {
             var session = SESSIONS.get(server);
             if (session == null) return;
             session.prepareStop();
+            P1CelebrationRuntime.prepareStop(server);
             P2LobbyRuntime.prepareStop(server);
             var profiles = PROFILES.get(server);
             if (profiles != null) for (var player : server.getPlayerList().getPlayers()) {
@@ -372,6 +384,7 @@ public final class P1LobbyRuntime {
             SESSIONS.remove(server);
             P2ProtectionRuntime.unconfigure(server);
             P2LobbyRuntime.unconfigure(server);
+            P1CelebrationRuntime.unconfigure(server);
             TABS.remove(server);
             BOOKS.remove(server);
             BOOK_ATTEMPTS.remove(server);
@@ -484,8 +497,10 @@ public final class P1LobbyRuntime {
 
     private static void applyPlayers(MinecraftServer server, RoundSnapshot before, RoundSnapshot after) {
         refreshTab(server, true);
+        if (before.result() == null && P1CelebrationRuntime.successful(after)) P1CelebrationRuntime.start(server, after);
         P2LobbyRuntime.onCommitted(server, before, after);
         if (!before.roundId().equals(after.roundId())) {
+            P1CelebrationRuntime.nextRound(server);
             WORLDS.remove(server);
             RELEASES.remove(server);
             REPLAY_FLUSHES.remove(server);
@@ -507,7 +522,7 @@ public final class P1LobbyRuntime {
             var winner = after.result().winner() == null ? "胜者待核验"
                     : dev.hardrush.core.book.SafeBookText.literal(after.participants().get(after.result().winner()).name(), 64);
             server.getPlayerList().broadcastSystemMessage(Component.literal("本轮已通关：" + winner
-                    + "，有效挑战 " + after.challengeMillis() + " ms。庆祝结束后返回大厅并轮换。"), false);
+                    + "，有效挑战 " + after.challengeMillis() + " ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。"), false);
         }
         if (after.phase() != RoundPhase.RUNNING && after.phase() != RoundPhase.RESCUE) return;
         var worlds = WORLDS.get(server);

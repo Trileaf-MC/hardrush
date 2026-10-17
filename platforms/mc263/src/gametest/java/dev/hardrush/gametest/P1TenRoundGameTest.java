@@ -55,6 +55,87 @@ import net.minecraft.world.phys.Vec3;
 public final class P1TenRoundGameTest {
     private static volatile AtomicLong accelerated;
 
+    @GameTest(maxTicks = 100000)
+    public void celebrationKitsReconnectPortalEarlyReturnAndThreeMinuteTimeout(GameTestHelper test) {
+        if (!Boolean.getBoolean("hardrush.p1.testCelebration")) { test.succeed(); return; }
+        var f = new Fixture(test);
+        test.onEachTick(() -> {
+            test.assertFalse(P1LobbyRuntime.sessionState(f.server).filter(s -> s == P1LobbySession.State.FAILED).isPresent(),
+                    "Celebration runtime failed: " + P1LobbyRuntime.status(f.server));
+            for (var actor : List.of(f.first, f.offline)) if (actor.player != null) f.acknowledge(actor.player);
+        });
+        var sequence = test.startSequence().thenWaitUntil(() -> f.await(P1LobbyRuntime.sessionState(f.server)
+                .filter(s -> s == P1LobbySession.State.OPEN).isPresent(), "Runtime bootstrap"))
+                .thenExecute(f::installClock);
+        f.login(sequence, f.first); f.login(sequence, f.offline);
+        f.celebrationRound(sequence, true);
+        sequence.thenExecute(() -> {
+            f.assertKit(f.first.player); f.assertKit(f.offline.player);
+            f.first.player.setOnGround(false);
+            test.assertTrue(f.first.player.tryToStartFallFlying(), "Human can begin native elytra gliding");
+            f.first.player.connection.handleUseItem(new ServerboundUseItemPacket(net.minecraft.world.InteractionHand.MAIN_HAND, 1, 0, 0));
+            test.assertValueEqual(f.first.player.getInventory().getItem(0).getCount(), 15, "Actual use-item packet consumes one boost rocket");
+            f.first.player.stopFallFlying();
+            var chest = BlockPos.containing(f.first.player.position()).below();
+            f.first.player.level().setBlockAndUpdate(chest, net.minecraft.world.level.block.Blocks.CHEST.defaultBlockState());
+            f.first.player.getInventory().setSelectedSlot(1);
+            f.first.player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(net.minecraft.world.InteractionHand.MAIN_HAND,
+                    new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(chest), net.minecraft.core.Direction.UP, chest, false), 2));
+            test.assertValueEqual(f.first.player.getInventory().getItem(1).getCount(), 15, "Native block-use packet launches a colored rocket");
+            test.assertTrue(f.first.player.containerMenu == f.first.player.inventoryMenu, "Rocket use on a chest never opens its external container");
+            f.first.player.getInventory().setSelectedSlot(0);
+            f.disconnect(f.first);
+        });
+        f.login(sequence, f.first);
+        sequence.thenWaitUntil(() -> f.await(dev.hardrush.p1.celebration.P1CelebrationRuntime.active(f.first.player), "Active ceremony reconnect restored"))
+                .thenExecute(() -> {
+                    test.assertValueEqual(f.first.player.getInventory().getItem(0).getCount(), 15, "Reconnect does not refill consumed rockets");
+                    f.portal(f.offline.player);
+                })
+                .thenWaitUntil(() -> f.await(P1LobbyWorld.isLobby(f.offline.player.level()) && f.profiles.isReady(f.offline.profile.id(), f.round()), "First player durably returned"))
+                .thenExecute(() -> {
+                    test.assertTrue(f.round().phase() != RoundPhase.ROTATING, "One remaining online End player prevents early rotation");
+                    test.assertFalse(f.offline.player.getInventory().contains(stack -> stack.is(Items.ELYTRA) || stack.is(Items.FIREWORK_ROCKET)), "Returned player has no temporary kit");
+                    f.disconnect(f.offline);
+                });
+        f.login(sequence, f.offline);
+        sequence.thenWaitUntil(() -> f.await(P1LobbyWorld.isLobby(f.offline.player.level()) && f.profiles.isReady(f.offline.profile.id(), f.round()), "Returned reconnect stays in lobby"))
+                .thenExecute(() -> { f.frozenTime = f.round().challengeNanos(); f.portal(f.first.player); })
+                .thenWaitUntil(() -> f.await(f.round().sequence() == 2 && f.round().phase() == RoundPhase.WAITING
+                        && f.profiles.isReady(f.first.profile.id(), f.round()) && f.profiles.isReady(f.offline.profile.id(), f.round()), "All returned creates exactly one next round"))
+                .thenExecute(() -> {
+                    test.assertValueEqual(f.worlds.state(), P1RoundWorldBundle.State.CLOSED, "Early return still closes native world IO");
+                    test.assertTrue(f.first.player.getItemBySlot(EquipmentSlot.CHEST).isEmpty(), "No elytra crosses into next round");
+                });
+        f.celebrationRound(sequence, false);
+        sequence.thenWaitUntil(() -> f.await(P1LobbyWorld.isLobby(f.offline.player.level()) && f.profiles.isReady(f.offline.profile.id(), f.round()), "Non-End human automatically returns"))
+                .thenExecute(() -> {
+                    f.assertKit(f.first.player);
+                    test.assertFalse(f.offline.player.getInventory().contains(stack -> stack.is(Items.FIREWORK_ROCKET)), "Nether player is not issued a kit");
+                    f.advance(179);
+                })
+                .thenWaitUntil(() -> f.await(f.session.view().orElseThrow().remainingPhaseMillis() == 1_000 && !f.session.mutationPending(), "179 seconds leaves one second"))
+                .thenExecute(() -> {
+                    test.assertTrue(dev.hardrush.p1.celebration.P1CelebrationRuntime.active(f.first.player), "Celebration remains usable before deadline");
+                    f.disconnect(f.offline); // Offline lobby player cannot block timeout or release.
+                    f.advance(1);
+                })
+                .thenWaitUntil(() -> f.await(f.round().sequence() == 3 && f.round().phase() == RoundPhase.WAITING
+                        && f.profiles.isReady(f.first.profile.id(), f.round()), "180-second timeout evacuates and rotates"))
+                .thenExecute(() -> {
+                    test.assertTrue(P1LobbyWorld.isLobby(f.first.player.level()), "Timeout returns remaining celebrant to permanent lobby");
+                    test.assertValueEqual(f.worlds.state(), P1RoundWorldBundle.State.CLOSED, "Timeout closes old native IO");
+                });
+        f.login(sequence, f.offline);
+        f.celebrationRound(sequence, true);
+        sequence.thenExecute(() -> f.portal(f.first.player))
+                .thenWaitUntil(() -> f.await(P1LobbyWorld.isLobby(f.first.player.level()) && f.profiles.isReady(f.first.profile.id(), f.round()), "Third ceremony first return"))
+                .thenExecute(() -> f.disconnect(f.offline))
+                .thenWaitUntil(() -> f.await(f.round().sequence() == 4 && f.round().phase() == RoundPhase.WAITING
+                        && f.profiles.isReady(f.first.profile.id(), f.round()), "Disconnected End celebrant does not block early finish"))
+                .thenExecute(() -> { f.disconnect(f.first); accelerated = null; }).thenSucceed();
+    }
+
     /** Called only by the separately packaged GameTest mixin; ordinary suites retain the system clock. */
     public static long observationTime() {
         if (P1ServerRestartRegression.clockInstalled()) return P1ServerRestartRegression.observationTime();
@@ -126,6 +207,58 @@ public final class P1TenRoundGameTest {
                 field.setAccessible(true);
                 field.set(session, (MonotonicClock) accelerated::get);
             } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
+        }
+
+        void celebrationRound(GameTestSequence sequence, boolean secondInEnd) {
+            sequence.thenWaitUntil(() -> await(round().phase() == RoundPhase.WAITING && !session.mutationPending(), "Waiting round"))
+                    .thenExecute(() -> { worlds = service("WORLDS", P1RoundWorldBundle.class); command(first, "hardrush join"); })
+                    .thenWaitUntil(() -> await(!session.mutationPending() && round().participants().containsKey(first.profile.id()), "First join"))
+                    .thenExecute(() -> command(first, "hardrush ready"))
+                    .thenWaitUntil(() -> await(round().phase() == RoundPhase.COUNTDOWN && !session.mutationPending(), "Ready countdown"))
+                    .thenExecute(() -> advance(30))
+                    .thenWaitUntil(() -> await(round().phase() == RoundPhase.RUNNING && !P1PlayerProfiles.isLocked(first.player) && !session.mutationPending(), "First admitted"))
+                    .thenExecute(() -> command(offline, "hardrush join"))
+                    .thenWaitUntil(() -> await(!P1PlayerProfiles.isLocked(offline.player) && !session.mutationPending(), "Second admitted"))
+                    .thenExecute(() -> {
+                        for (var actor : List.of(first, offline)) {
+                            for (int slot = 0; slot < 36; slot++) actor.player.getInventory().setItem(slot, new ItemStack(Items.DIAMOND, 64));
+                            actor.player.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.DIAMOND_CHESTPLATE));
+                        }
+                        move(first.player, worlds.level(Level.END), new Vec3(.5, 128, .5));
+                        move(offline.player, worlds.level(secondInEnd ? Level.END : Level.NETHER), new Vec3(2.5, 128, .5));
+                        fight = new EnderDragonFight(false, false, false, Optional.empty(), 0, Optional.empty(),
+                                Optional.of(new BlockPos(0, 64, 0)), List.of(), List.of());
+                        var end = worlds.level(Level.END);
+                        fight.init(end, end.getSeed(), BlockPos.ZERO); fight.skipArenaLoadedCheck(); end.setDragonFight(fight);
+                        end.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL, new ChunkPos(0, 0), 3);
+                    })
+                    .thenWaitUntil(() -> await(fight.dragonUUID() != null && worlds.level(Level.END).getEntity(fight.dragonUUID()) instanceof EnderDragon, "Native first dragon"))
+                    .thenExecute(() -> {
+                        var dragon = (EnderDragon) worlds.level(Level.END).getEntity(fight.dragonUUID());
+                        dragon.snapTo(.5, 68, .5, 0, 0); dragon.setNoAi(true);
+                        dragon.getPhaseManager().setPhase(EnderDragonPhase.SITTING_SCANNING); dragon.setHealth(.1f);
+                        first.player.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_SWORD)); first.player.attack(dragon.head);
+                    })
+                    .thenWaitUntil(() -> await(round().result() != null && dev.hardrush.p1.celebration.P1CelebrationRuntime.active(first.player)
+                            && (!secondInEnd || dev.hardrush.p1.celebration.P1CelebrationRuntime.active(offline.player)) && !session.mutationPending(), "Durable kit applied"));
+        }
+
+        void assertKit(ServerPlayer player) {
+            test.assertTrue(player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA)
+                    && player.getItemBySlot(EquipmentSlot.CHEST).has(DataComponents.UNBREAKABLE), "Native unbreakable elytra equipped despite full original inventory");
+            var colors = new HashSet<Integer>();
+            for (int slot = 0; slot < 16; slot++) {
+                var stack = player.getInventory().getItem(slot);
+                test.assertTrue(dev.hardrush.p1.celebration.CelebrationKit.isRocket(stack) && stack.getCount() == 16, "Sixteen temporary rockets per color");
+                colors.add(stack.get(DataComponents.FIREWORKS).explosions().getFirst().colors().getInt(0));
+            }
+            test.assertValueEqual(colors.size(), 16, "Sixteen distinct native firework colors");
+        }
+
+        void portal(ServerPlayer player) {
+            var destination = ((net.minecraft.world.level.block.EndPortalBlock) net.minecraft.world.level.block.Blocks.END_PORTAL)
+                    .getPortalDestination(player.level(), player, BlockPos.containing(player.position()));
+            test.assertTrue(destination == null, "Native exit portal is intercepted before bed/anchor lookup");
         }
 
         RoundSnapshot round() { return P1LobbyRuntime.snapshot(server).orElseThrow(); }

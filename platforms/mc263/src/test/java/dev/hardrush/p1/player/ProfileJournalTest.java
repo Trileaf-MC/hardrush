@@ -14,6 +14,26 @@ import org.junit.jupiter.api.io.TempDir;
 class ProfileJournalTest {
     @TempDir Path directory;
 
+    @Test void celebrationRosterIsImmutableAndPlayerStateSurvivesReopeningPerRound() throws Exception {
+        var player = UUID.randomUUID();
+        var first = generation(1);
+        var second = generation(2);
+        var journal = new ProfileJournal(directory);
+        assertArrayEquals(bytes("A,B in End"), journal.celebrationRoster(first.roundId(), bytes("A,B in End")));
+        assertArrayEquals(bytes("A,B in End"), journal.celebrationRoster(first.roundId(), bytes("late C")));
+        journal.celebration(player, first, bytes("original + rockets=15 + returned=false"));
+        var reopened = new ProfileJournal(directory);
+        assertArrayEquals(bytes("original + rockets=15 + returned=false"), reopened.celebration(player, first).orElseThrow());
+        assertTrue(reopened.celebration(player, second).isEmpty());
+        reopened.celebration(player, first, bytes("original + returned=true"));
+        assertArrayEquals(bytes("original + returned=true"), new ProfileJournal(directory).celebration(player, first).orElseThrow());
+        var path = directory.resolve(player.toString()).resolve("celebration-" + first.roundId() + ".bin");
+        var damaged = Files.readAllBytes(path);
+        damaged[damaged.length - 1] ^= 1;
+        Files.write(path, damaged);
+        assertThrows(IOException.class, () -> reopened.celebration(player, first));
+    }
+
     @Test void offlinePlayerSkipsThreeRoundsWithoutReusingOrOverwritingOldState() throws Exception {
         var player = UUID.randomUUID();
         var first = generation(1);

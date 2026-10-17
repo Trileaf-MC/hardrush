@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 4;
+    private static final int SCHEMA = 5;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -119,6 +119,14 @@ public final class RoundSnapshotCodec {
                 result = new RoundResult(kind, winner, readText(in, 4096));
             }
             if (in.available() != 0) throw new IOException("Trailing snapshot data");
+            if (remaining < 0) throw new IOException("Invalid remaining phase time");
+            // Schemas 1–4 stored the configured (formerly ten-minute) success timer.
+            // Keep elapsed server time and immutable rules; v5 already stores the capped timer.
+            if (schema < 5 && result != null && result.kind() == RoundResult.Kind.COMPLETED
+                    && (phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING)) {
+                long removedMillis = Math.max(0, rules.successCelebrationMillis() - RoundEngine.MAX_SUCCESS_CELEBRATION_MILLIS);
+                remaining = Math.max(0, remaining - removedMillis * 1_000_000L);
+            }
             return new RoundSnapshot(id, sequence, seed, version, rules, phase, pause, challenge, remaining,
                     players, clean, uncertain, result);
         } catch (IOException | IllegalArgumentException invalid) {

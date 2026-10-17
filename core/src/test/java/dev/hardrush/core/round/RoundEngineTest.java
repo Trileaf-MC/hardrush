@@ -212,11 +212,53 @@ class RoundEngineTest {
         assertEquals(8_765, engine.view().challengeMillis());
         apply(engine, finish);
         assertEquals(8_765, engine.view().challengeMillis());
-        assertEquals(588_000, engine.view().remainingPhaseMillis());
+        assertEquals(168_000, engine.view().remainingPhaseMillis());
         apply(engine, engine.proposeTick(UUID.randomUUID()));
         assertEquals(RoundPhase.CELEBRATING, engine.view().phase());
         assertThrows(IllegalStateException.class, () -> engine.proposeFinish(UUID.randomUUID(), new RoundResult(RoundResult.Kind.COMPLETED, A, "duplicate")));
-        clock.millis(588_000);
+        clock.millis(168_000);
+        apply(engine, engine.proposeTick(UUID.randomUUID()));
+        assertEquals(RoundPhase.ROTATING, engine.view().phase());
+    }
+
+    @Test void allReturnedEventPreservesResultAndFrozenTimeAndCannotBeReplayed() {
+        RoundEngine engine = running();
+        clock.millis(12_345);
+        var result = new RoundResult(RoundResult.Kind.COMPLETED, A, "verified hook");
+        apply(engine, engine.proposeFinish(UUID.randomUUID(), result));
+        clock.millis(2_000);
+        apply(engine, engine.proposeCelebrationComplete(UUID.randomUUID()));
+        assertEquals(RoundPhase.ROTATING, engine.view().phase());
+        assertEquals(0, engine.view().remainingPhaseMillis());
+        assertEquals(12_345, engine.view().challengeMillis());
+        assertEquals(result, engine.view().result());
+        assertThrows(IllegalStateException.class, () -> engine.proposeCelebrationComplete(UUID.randomUUID()));
+    }
+
+    @Test void celebrationCompleteCannotFinishAnActiveOrFailedRound() {
+        RoundEngine engine = running();
+        assertThrows(IllegalStateException.class, () -> engine.proposeCelebrationComplete(UUID.randomUUID()));
+        apply(engine, engine.proposeFinish(UUID.randomUUID(), new RoundResult(RoundResult.Kind.FAILED, null, "failed")));
+        assertThrows(IllegalStateException.class, () -> engine.proposeCelebrationComplete(UUID.randomUUID()));
+        assertEquals(30_000, engine.view().remainingPhaseMillis());
+    }
+
+    @Test void oldPendingTenMinuteRulesAreCappedWithoutChangingTheirFingerprint() {
+        var defaults = RulesConfig.defaults();
+        var legacy = RulesConfig.decode(defaults.encode().replace("successCelebrationMillis=180000", "successCelebrationMillis=600000"));
+        RoundEngine engine = RoundEngine.create(UUID.randomUUID(), 1, 1, legacy, clock);
+        apply(engine, engine.proposeWorldReady(UUID.randomUUID()));
+        apply(engine, engine.proposeJoin(UUID.randomUUID(), A, "Alice"));
+        apply(engine, engine.proposeReady(UUID.randomUUID(), A, true));
+        clock.millis(30_000);
+        apply(engine, engine.proposeTick(UUID.randomUUID()));
+        apply(engine, engine.proposeFinish(UUID.randomUUID(), new RoundResult(RoundResult.Kind.COMPLETED, A, "verified hook")));
+        assertEquals(180_000, engine.view().remainingPhaseMillis());
+        assertEquals(legacy.fingerprint(), engine.view().rules().fingerprint());
+        clock.millis(179_999);
+        apply(engine, engine.proposeTick(UUID.randomUUID()));
+        assertEquals(RoundPhase.CELEBRATING, engine.view().phase());
+        clock.millis(1);
         apply(engine, engine.proposeTick(UUID.randomUUID()));
         assertEquals(RoundPhase.ROTATING, engine.view().phase());
     }
@@ -257,10 +299,10 @@ class RoundEngineTest {
         apply(engine, engine.proposeCheckpoint(UUID.randomUUID(), true));
         clock.millis(10_000_000);
         RoundEngine restored = RoundEngine.restore(engine.committed(), clock);
-        assertEquals(590_000, restored.view().remainingPhaseMillis());
+        assertEquals(170_000, restored.view().remainingPhaseMillis());
         apply(restored, restored.proposeCheckpoint(UUID.randomUUID(), false));
         clock.millis(20_000);
-        assertEquals(570_000, restored.view().remainingPhaseMillis());
+        assertEquals(150_000, restored.view().remainingPhaseMillis());
         assertEquals(0, restored.view().challengeMillis());
     }
 

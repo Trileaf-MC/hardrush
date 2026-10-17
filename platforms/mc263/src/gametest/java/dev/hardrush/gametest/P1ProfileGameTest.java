@@ -33,6 +33,83 @@ import net.minecraft.world.phys.Vec3;
 
 /** Server-only fixtures; no graphical clients, screenshots or computer-use interaction. */
 public final class P1ProfileGameTest {
+    @GameTest(maxTicks = 2000)
+    public void monsterCelebrationRemovesControlsAndPreservesOriginalArchive(GameTestHelper test) {
+        temporaryCelebration(test, true, false);
+    }
+
+    @GameTest(maxTicks = 2000)
+    public void settledDeathUsesNativeCelebrationBodyWithoutCompetitiveRevival(GameTestHelper test) {
+        temporaryCelebration(test, false, true);
+    }
+
+    private static void temporaryCelebration(GameTestHelper test, boolean monster, boolean dead) {
+        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        var server = test.getLevel().getServer();
+        var player = test.makeMockServerPlayerInLevel();
+        var body = new ServerPlayer[]{player};
+        var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 3, 2)));
+        var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
+        var profiles = new P1PlayerProfiles(server, root, test::getLevel, () -> position);
+        var initial = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        var celebrating = new RoundSnapshot(initial.roundId(), initial.sequence(), initial.seed(), initial.version(), initial.rules(),
+                RoundPhase.CELEBRATING, PauseReason.SETTLED, 123, 180_000_000_000L, initial.participants(), false, false,
+                new dev.hardrush.core.round.RoundResult(dev.hardrush.core.round.RoundResult.Kind.COMPLETED, player.getUUID(), "verified fixture"));
+        var next = round(UUID.randomUUID(), 2, player, GameMode.NORMAL);
+        var state = new net.minecraft.nbt.CompoundTag();
+        var pending = new java.util.concurrent.atomic.AtomicReference<java.util.concurrent.CompletableFuture<Void>>();
+        profiles.onLogin(player); profiles.tick(initial);
+        test.startSequence()
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), initial), "Source profile verified"))
+                .thenExecute(() -> {
+                    test.assertTrue(profiles.admit(player, initial, test.getLevel(), position, l -> l == test.getLevel()), "Committed initial admission");
+                    player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 23));
+                    player.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.DIAMOND_CHESTPLATE));
+                    if (monster) dev.hardrush.p0.monster.MonsterRoles.select(player, "skeleton");
+                    if (dead) player.setHealth(0);
+                    state.put("original", profiles.celebrationSnapshot(player, true));
+                    state.putBoolean("returned", false);
+                    pending.set(profiles.celebrationState(player.getUUID(), celebrating, state));
+                })
+                .thenWaitUntil(() -> test.assertTrue(pending.get().isDone(), "Original archived before kit application"))
+                .thenExecute(() -> {
+                    pending.get().join();
+                    body[0] = profiles.prepareCelebrationBody(player, celebrating, state.getCompoundOrEmpty("original"), test.getLevel(), true);
+                    test.assertTrue(!dev.hardrush.p0.monster.MonsterRoles.isMonster(body[0]), "Monster controls and disguise suspended without drops");
+                    test.assertTrue(body[0].isAlive(), "Celebration has a living native body");
+                    test.assertTrue(!dead || body[0] != player, "Dead participant gets an actual native replacement");
+                    test.assertTrue(body[0].getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA), "Kit replaces the old chestplate");
+                    state.put("current", profiles.celebrationSnapshot(body[0], false));
+                    pending.set(profiles.celebrationState(player.getUUID(), celebrating, state));
+                })
+                .thenWaitUntil(() -> test.assertTrue(pending.get().isDone(), "Temporary kit checkpoint is durable"))
+                .thenExecute(() -> {
+                    pending.get().join(); profiles.unlockCelebration(body[0], celebrating);
+                    body[0].setOnGround(false);
+                    test.assertTrue(body[0].tryToStartFallFlying(), "Former monster/dead body can use native elytra");
+                    test.assertValueEqual(celebrating.participants(), initial.participants(), "Ceremony has no competitive identity/life transition");
+                    state.putBoolean("returned", true);
+                    pending.set(profiles.celebrationState(player.getUUID(), celebrating, state));
+                })
+                .thenWaitUntil(() -> test.assertTrue(pending.get().isDone(), "Returned marker durable"))
+                .thenExecute(() -> { pending.get().join(); body[0] = profiles.finishCelebration(body[0], celebrating); profiles.tick(celebrating); })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), celebrating), "Lobby suspension verified"))
+                .thenExecute(() -> {
+                    test.assertTrue(body[0].getItemBySlot(EquipmentSlot.CHEST).isEmpty() && body[0].getInventory().isEmpty(), "Lobby has no temporary gear");
+                    profiles.tick(next);
+                })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), next), "Next generation verified"))
+                .thenExecute(() -> {
+                    try {
+                        var bytes = new ProfileJournal(root).archived(player.getUUID(), java.util.Optional.of(new ProfileJournal.Generation(initial.roundId(), 1)));
+                        var original = net.minecraft.nbt.NbtIo.readCompressed(new java.io.ByteArrayInputStream(bytes), net.minecraft.nbt.NbtAccounter.create(16 * 1024 * 1024));
+                        test.assertValueEqual(original, state.getCompoundOrEmpty("original"), "Cross-round archive contains exact original, never ceremony gear");
+                        profiles.close();
+                    } catch (Exception error) { throw new IllegalStateException(error); }
+                    ((ProfileTagged) body[0]).hardrush$isolated(false);
+                    server.getPlayerList().remove(body[0]);
+                }).thenSucceed();
+    }
     @GameTest(maxTicks = 1000)
     public void preparedResetSnapshotRecoversWithoutResettingAgain(GameTestHelper test) {
         recoverPersistedReset(test, ProfileJournal.Phase.PREPARED);

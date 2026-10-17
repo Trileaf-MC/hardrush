@@ -112,7 +112,7 @@ public record RulesConfig(
                 Map.entry("monster.deployCooldownMillis", 30_000.0),
                 Map.entry("monster.returnChannelMillis", 5_000.0),
                 Map.entry("round.rescueMillis", 60_000.0)),
-                32.0, 30_000, 600_000, 30_000);
+                32.0, 30_000, 180_000, 30_000);
     }
 
     public RulesConfig withMode(GameMode nextMode) {

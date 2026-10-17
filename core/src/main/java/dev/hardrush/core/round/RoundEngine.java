@@ -16,6 +16,7 @@ import java.util.UUID;
  * While a write is in flight conflicting mutations are rejected, not queued against old state.
  */
 public final class RoundEngine {
+    public static final long MAX_SUCCESS_CELEBRATION_MILLIS = 180_000;
     public static final long MONSTER_COOLDOWN_NANOS = 30_000_000_000L;
     private final MonotonicClock clock;
     private RoundSnapshot committed;
@@ -460,7 +461,7 @@ public final class RoundEngine {
             }
         }
         long duration = switch (result.kind()) {
-            case COMPLETED -> before.rules().successCelebrationMillis();
+            case COMPLETED -> Math.min(before.rules().successCelebrationMillis(), MAX_SUCCESS_CELEBRATION_MILLIS);
             case FAILED -> before.rules().failureDisplayMillis();
             case ABORTED -> 0;
         };
@@ -470,6 +471,17 @@ public final class RoundEngine {
 
     public RoundTransition proposeTick(UUID eventId) {
         return proposeTick(eventId, false);
+    }
+
+    /** The world adapter has verified every currently connected player is durably back in the lobby. */
+    public RoundTransition proposeCelebrationComplete(UUID eventId) {
+        RoundSnapshot before = capture();
+        requirePhase(before, RoundPhase.SETTLING, RoundPhase.CELEBRATING);
+        if (before.result() == null || before.result().kind() != RoundResult.Kind.COMPLETED) {
+            throw new IllegalStateException("Only a successful celebration can finish early");
+        }
+        return proposal(eventId, "CELEBRATION_COMPLETE", before, RoundPhase.ROTATING, 0,
+                before.participants(), before.result(), false);
     }
 
     public RoundTransition proposeAdmissionTick(UUID eventId) { return proposeTick(eventId, true); }

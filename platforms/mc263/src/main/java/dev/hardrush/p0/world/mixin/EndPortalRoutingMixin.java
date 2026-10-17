@@ -11,9 +11,19 @@ import net.minecraft.world.level.block.EndPortalBlock;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.portal.TeleportTransition;
+import dev.hardrush.p1.celebration.P1CelebrationRuntime;
 
 @Mixin(EndPortalBlock.class)
 public abstract class EndPortalRoutingMixin {
+    @Inject(method = "getPortalDestination", at = @At("HEAD"), cancellable = true)
+    private void hardrush$celebrationReturn(ServerLevel source, Entity entity, BlockPos entry,
+            CallbackInfoReturnable<TeleportTransition> ci) {
+        if (entity instanceof ServerPlayer player && P1CelebrationRuntime.returnThroughPortal(player)) ci.setReturnValue(null);
+    }
     @Redirect(method = "getPortalDestination", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/level/ServerLevel;dimension()Lnet/minecraft/resources/ResourceKey;"))
     private ResourceKey<Level> hardrush$semanticDimension(ServerLevel level) {

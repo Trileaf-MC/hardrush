@@ -10,6 +10,7 @@ import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
+import dev.hardrush.p1.celebration.P1CelebrationRuntime;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundChatCommandSignedPacket;
 import net.minecraft.network.chat.LastSeenMessages;
@@ -88,7 +89,16 @@ public abstract class PlayerIsolationNetworkMixin {
     }
 
     @Inject(method = "handleContainerClick", at = @At("HEAD"), cancellable = true)
-    private void hardrush$lobbyMenuClick(CallbackInfo ci) {
+    private void hardrush$lobbyMenuClick(net.minecraft.network.protocol.game.ServerboundContainerClickPacket packet, CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && P1CelebrationRuntime.active(player)
+                && player.containerMenu == player.inventoryMenu) {
+            if (packet.slotNum() < 0 || packet.containerInput() == net.minecraft.world.inventory.ContainerInput.THROW
+                    || packet.containerInput() == net.minecraft.world.inventory.ContainerInput.CLONE) {
+                player.containerMenu.sendAllDataToRemote();
+                ci.cancel();
+            }
+            return;
+        }
         if (player.level().getServer().isSameThread() && !dev.hardrush.p2.lobby.P2LobbyUi.isMenu(player)
                 && (P1PlayerProfiles.isLocked(player) || P1CombatRuntime.competitionFrozen(player.level()))) ci.cancel();
     }
@@ -110,7 +120,7 @@ public abstract class PlayerIsolationNetworkMixin {
     }
 
     // Celebration allows movement and closing a menu, while sealing all new competitive actions.
-    @Inject(method = {"handlePlayerAction", "handleUseItemOn", "handleAttack", "handleInteract", "handlePunch",
+    @Inject(method = {"handlePlayerAction", "handleAttack", "handleInteract", "handlePunch",
             "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
             "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
             "handlePickItemFromBlock", "handlePickItemFromEntity", "handleBundleItemSelectedPacket",
@@ -120,6 +130,21 @@ public abstract class PlayerIsolationNetworkMixin {
             at = @At("HEAD"), cancellable = true)
     private void hardrush$holdCompetition(CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && P1CombatRuntime.competitionFrozen(player.level())) ci.cancel();
+    }
+
+    @Inject(method = "handleUseItemOn", at = @At("HEAD"), cancellable = true)
+    private void hardrush$celebrationFirework(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
+        if (!player.level().getServer().isSameThread() || !P1CombatRuntime.competitionFrozen(player.level())) return;
+        if (P1CelebrationRuntime.allowsRocket(player, packet.hand())) {
+            // Use only the rocket item: a chest/bed/button beneath it must never receive block interaction.
+            var pos = packet.hitResult().getBlockPos();
+            if (player.level().getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) != null
+                    && player.isWithinBlockInteractionRange(pos, 1)) {
+                player.getItemInHand(packet.hand()).useOn(new net.minecraft.world.item.context.UseOnContext(player, packet.hand(), packet.hitResult()));
+            }
+            player.connection.ackBlockChangesUpTo(packet.sequence());
+        }
+        ci.cancel();
     }
 
     @Inject(method = "handleSetCarriedItem", at = @At("HEAD"), cancellable = true)
@@ -133,6 +158,7 @@ public abstract class PlayerIsolationNetworkMixin {
         if (!player.level().getServer().isSameThread()) return;
         boolean locked = P1PlayerProfiles.isLocked(player);
         if (!locked && !P1CombatRuntime.competitionFrozen(player.level())) return;
+        if (!locked && P1CelebrationRuntime.allowsRocket(player, packet.hand())) return;
         // Only a generated written book can be used while other item/gameplay input stays sealed.
         if (!P1BookPort.isHistoryBook(player.getItemInHand(packet.hand()))
                 || locked && !P1LobbyRuntime.lobbyBookReady(player)) ci.cancel();

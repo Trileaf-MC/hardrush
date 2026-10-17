@@ -168,6 +168,28 @@ loom.runs.named('clientGameTest') {
 
 // Run the production P1 lifecycle alone: other GameTests intentionally mutate the shared lobby.
 def p1RegressionRunDir = rootProject.file(".local/p1-regression/${UUID.randomUUID()}")
+def celebrationRunDir = rootProject.file(".local/celebration-regression/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushCelebration').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true'
+                || ['hardrushP1TenRounds', 'hardrushP2Identity', 'hardrushP2Lobby', 'hardrushLobbyMovement', 'hardrushP3Recovery', 'hardrushP3Storage'].any {
+                    providers.gradleProperty(it).orNull == 'true'
+                }) throw new GradleException('Celebration regression requires -PhardrushP1=true and its own isolated run')
+        vmArg '-Dhardrush.p1.testCelebration=true'
+        vmArg '-Dhardrush.p1.initialMode=normal'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1ten_round_game_test*'
+        runDir celebrationRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushCelebration').orNull == 'true') {
+        doFirst {
+            celebrationRunDir.mkdirs()
+            copy { from rootProject.file('.local/server-p0/eula.txt'); into celebrationRunDir }
+            logger.lifecycle("Isolated celebration storage: ${celebrationRunDir}")
+        }
+    }
+}
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushP1TenRounds').orNull == 'true') {
         if (providers.gradleProperty('hardrushP1').orNull != 'true') {

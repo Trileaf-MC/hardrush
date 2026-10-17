@@ -121,10 +121,11 @@ def build_launch(run, timeout):
 
 
 def read_snapshot_header(payload):
-    """Read the shared schema-1..4 prefix through its clean-stop marker.
+    """Read the shared schema-1..5 prefix through its clean-stop marker.
 
     RoundSnapshotCodec added protection (2), monster deployment (3), and skill
-    cooldowns (4) only after this prefix, inside participant entries. The JVM
+    cooldowns (4) only after this prefix, inside participant entries. Schema 5
+    changes legacy terminal migration without changing the wire prefix. The JVM
     fixture decodes that complete payload; this independent check reads its
     bounded identity/timing prefix and compares the exact checkpoint bytes.
     """
@@ -153,7 +154,7 @@ def read_snapshot_header(payload):
     if number('>I') != 0x48525331:
         raise RuntimeError('Unsupported round snapshot format')
     schema = number('>i')
-    if not 1 <= schema <= 4:
+    if not 1 <= schema <= 5:
         raise RuntimeError('Unsupported round snapshot schema')
     result = {'schema': schema, 'roundId': str(uuid.UUID(bytes=take(16))), 'sequence': number('>q'),
               'seed': number('>q'), 'version': number('>q'), 'rules': text(131072),

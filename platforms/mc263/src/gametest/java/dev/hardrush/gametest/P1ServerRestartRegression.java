@@ -224,6 +224,20 @@ public final class P1ServerRestartRegression implements ModInitializer {
             act("first celebration checkpoint interval", () -> advance(1));
             waitFor("celebration committed", () -> round().phase() == RoundPhase.CELEBRATING && idle());
             if (target == RoundPhase.CELEBRATING) {
+                waitFor("both native celebration kits durable", () -> dev.hardrush.p1.celebration.P1CelebrationRuntime.active(a.player)
+                        && dev.hardrush.p1.celebration.P1CelebrationRuntime.active(b.player));
+                act("consume a native celebration rocket", () -> {
+                    a.player.setOnGround(false); require(a.player.tryToStartFallFlying(), "native elytra glide");
+                    a.player.connection.handleUseItem(new net.minecraft.network.protocol.game.ServerboundUseItemPacket(net.minecraft.world.InteractionHand.MAIN_HAND, 1, 0, 0));
+                    require(a.player.getInventory().getItem(0).getCount() == 15, "native boost consumes rocket");
+                    a.player.stopFallFlying();
+                });
+                act("native portal returns second celebrant", () -> {
+                    var portal = (net.minecraft.world.level.block.EndPortalBlock) Blocks.END_PORTAL;
+                    require(portal.getPortalDestination(b.player.level(), b.player, BlockPos.containing(b.player.position())) == null,
+                            "exit portal bypasses old respawn binding");
+                });
+                waitFor("returned second profile durable before stop", () -> P1LobbyWorld.isLobby(b.player.level()) && profiles.isReady(b.profile.id(), round()));
                 act("elapsed celebration", () -> advance(119)); act("stop celebration", this::stop); return;
             }
             act("expire celebration", () -> advance(601));
@@ -306,7 +320,17 @@ public final class P1ServerRestartRegression implements ModInitializer {
         }
 
         void recoverActive() {
-            waitFor("same-round profile admission", () -> idle() && !P1PlayerProfiles.isLocked(a.player) && !P1PlayerProfiles.isLocked(b.player));
+            waitFor("same-round profile admission", () -> idle() && !P1PlayerProfiles.isLocked(a.player)
+                    && (target == RoundPhase.CELEBRATING ? P1LobbyWorld.isLobby(b.player.level()) && profiles.isReady(b.profile.id(), round())
+                            : !P1PlayerProfiles.isLocked(b.player)));
+            if (target != RoundPhase.RUNNING) {
+                waitFor("restored native celebration kits", () -> dev.hardrush.p1.celebration.P1CelebrationRuntime.active(a.player)
+                        && (target == RoundPhase.CELEBRATING ? P1LobbyWorld.isLobby(b.player.level())
+                            : dev.hardrush.p1.celebration.P1CelebrationRuntime.active(b.player)));
+                act("read immutable pre-celebration archives", () -> query = profiles.celebrationState(a.profile.id(), round())
+                        .thenCombine(profiles.celebrationState(b.profile.id(), round()), (first, second) -> List.of(first.orElseThrow(), second.orElseThrow())));
+                waitFor("pre-celebration archives read", () -> query.isDone());
+            }
             if (target != RoundPhase.RUNNING) {
                 act("load original dying dragon chunk", () -> {
                     var end = worlds.level(Level.END);
@@ -320,7 +344,25 @@ public final class P1ServerRestartRegression implements ModInitializer {
                         || worlds.level(Level.END).getEntity(nativeDragonId) instanceof EnderDragon);
             }
             act("check original human profiles", () -> {
-                checkState(a, 0); checkState(b, 1);
+                if (target == RoundPhase.RUNNING) { checkState(a, 0); checkState(b, 1); }
+                else {
+                    @SuppressWarnings("unchecked") var archived = (List<net.minecraft.nbt.CompoundTag>) query.join();
+                    for (int index = 0; index < 2; index++) {
+                        var input = net.minecraft.world.level.storage.TagValueInput.create(net.minecraft.util.ProblemReporter.DISCARDING,
+                                server.registryAccess(), archived.get(index).getCompoundOrEmpty("original"));
+                        boolean diamond = false;
+                        for (var item : input.listOrEmpty("Inventory", net.minecraft.world.ItemStackWithSlot.CODEC)) {
+                            if (item.slot() == 4 && item.stack().is(Items.DIAMOND) && item.stack().getCount() == 7 + index) diamond = true;
+                        }
+                        require(diamond, "original pre-kit inventory preserved in immutable archive");
+                    }
+                    require(a.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA), "active temporary elytra restored");
+                    if (target == RoundPhase.CELEBRATING) require(P1LobbyWorld.isLobby(b.player.level())
+                            && !b.player.getInventory().contains(stack -> stack.is(Items.ELYTRA) || stack.is(Items.FIREWORK_ROCKET))
+                            && archived.get(1).getBooleanOr("returned", false), "returned marker survives new JVM without restoring old kit or End position");
+                    else require(b.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA), "second temporary elytra restored");
+                    require(a.player.getInventory().getItem(0).getCount() == (target == RoundPhase.CELEBRATING ? 15 : 16), "saved rocket quantity restored without refill");
+                }
                 require(round().participants().get(a.profile.id()).lifeSequence() == 2, "ordinary second life persists");
                 require(round().challengeNanos() == expected.challengeNanos(), "no stop/drain/downtime counted");
                 if (target == RoundPhase.RUNNING) {
@@ -447,7 +489,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
                     if (operation.equals("write")) {
                         require(saved.phase() == target, "writer stopped at requested durable phase: " + saved.phase());
                         if (target == RoundPhase.COUNTDOWN) require(saved.remainingPhaseNanos() == TimeUnit.SECONDS.toNanos(23), "writer saves 30 minus 7 countdown seconds");
-                        if (target == RoundPhase.CELEBRATING) require(saved.remainingPhaseNanos() == TimeUnit.SECONDS.toNanos(480), "writer saves 600 minus 120 celebration seconds");
+                        if (target == RoundPhase.CELEBRATING) require(saved.remainingPhaseNanos() == TimeUnit.SECONDS.toNanos(60), "writer saves 180 minus 120 celebration seconds");
                         if (target == RoundPhase.RUNNING || saved.result() != null) {
                             require(saved.challengeNanos() == TimeUnit.SECONDS.toNanos(13), "writer saves known thirteen active seconds");
                             require(saved.participants().get(a.profile.id()).humanNanos() == TimeUnit.SECONDS.toNanos(13)

@@ -61,6 +61,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
     private static final Map<MinecraftServer, P1PlayerProfiles> SERVICES = new IdentityHashMap<>();
     private static final ThreadLocal<Integer> UNMANAGED_FIXTURE_DEPTH = ThreadLocal.withInitial(() -> 0);
     private static final ThreadLocal<P1PlayerProfiles> MONSTER_RESPAWN = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> CELEBRATION_RESPAWN = ThreadLocal.withInitial(() -> false);
     private static final String FRESH = "hardrush_fresh_profile";
     private static final String SUSPENSION_ID = "hardrush_suspension_id";
     private final MinecraftServer server;
@@ -579,6 +580,164 @@ public final class P1PlayerProfiles implements AutoCloseable {
         return entry != null && entry.player == player;
     }
 
+    public static boolean celebrationRespawnInProgress() { return CELEBRATION_RESPAWN.get(); }
+
+    public boolean savedInCelebrationEnd(ServerPlayer player, RoundSnapshot round, ServerLevel end) {
+        var entry = players.get(player.getUUID());
+        if (entry == null || entry.source.filter(generation(round)::equals).isEmpty()) return false;
+        var saved = entry.resume != null ? entry.resume : entry.original;
+        return saved.getStringOr("Dimension", "").equals(end.dimension().identifier().toString());
+    }
+
+    public CompletableFuture<Set<UUID>> celebrationRoster(RoundSnapshot round, Set<UUID> initial) {
+        var tag = new CompoundTag();
+        var ids = new ListTag();
+        initial.stream().sorted().forEach(id -> ids.add(StringTag.valueOf(id.toString())));
+        tag.put("players", ids);
+        return supply(() -> {
+            var saved = decode(journal.join().celebrationRoster(round.roundId(), encode(tag)));
+            var result = new java.util.HashSet<UUID>();
+            for (var id : saved.getListOrEmpty("players")) result.add(UUID.fromString(id.asString().orElseThrow()));
+            return Set.copyOf(result);
+        });
+    }
+
+    public CompletableFuture<Optional<CompoundTag>> celebrationState(UUID player, RoundSnapshot round) {
+        return supply(() -> {
+            var saved = journal.join().celebration(player, generation(round));
+            if (saved.isEmpty()) return Optional.empty();
+            var state = decode(saved.orElseThrow());
+            requireSnapshotGeneration(state.getCompoundOrEmpty("original"), generation(round));
+            if (state.contains("current")) requireSnapshotGeneration(state.getCompoundOrEmpty("current"), generation(round));
+            return Optional.of(state);
+        });
+    }
+
+    public CompletableFuture<Void> celebrationState(UUID player, RoundSnapshot round, CompoundTag state) {
+        var copy = state.copy();
+        return supply(() -> {
+            requireSnapshotGeneration(copy.getCompoundOrEmpty("original"), generation(round));
+            var store = journal.join();
+            var previous = store.celebration(player, generation(round));
+            if (previous.isPresent()) {
+                var sealed = decode(previous.orElseThrow());
+                if (!sealed.getCompoundOrEmpty("original").equals(copy.getCompoundOrEmpty("original"))) {
+                    throw new IOException("庆祝不能覆盖已经封存的原物资");
+                }
+                if (sealed.getBooleanOr("returned", false) && !copy.getBooleanOr("returned", false)) {
+                    throw new IOException("已返回大厅的庆祝状态不能回退");
+                }
+            }
+            store.celebration(player, generation(round), encode(copy));
+            return null;
+        });
+    }
+
+    /** A quarantined login still owns the sealed competition position, not its temporary lobby coordinates. */
+    public CompoundTag celebrationSnapshot(ServerPlayer player, boolean original) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        var snapshot = original && entry != null && !entry.admitted && entry.resume != null
+                ? entry.resume.copy() : capture(player, false);
+        if (original && dev.hardrush.p0.monster.MonsterRoles.isMonster(player)) {
+            var output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
+            for (var slot : EquipmentSlot.values()) output.store(slot.getName(), ItemStack.OPTIONAL_CODEC,
+                    dev.hardrush.p0.monster.MonsterRoles.actualEquipment(player, slot));
+            snapshot.put("hardrush_monster_equipment", output.buildResult());
+        }
+        return snapshot;
+    }
+
+    /** Applied while movement remains locked; the coordinator unlocks only after the kit checkpoint is durable. */
+    public ServerPlayer prepareCelebrationBody(ServerPlayer player, RoundSnapshot round, CompoundTag snapshot,
+            ServerLevel end, boolean freshKit) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        if (entry == null || !isReady(player.getUUID(), round)) throw new IllegalStateException("庆祝档案尚未核验");
+        entry.deathHeld = true;
+        dev.hardrush.p0.monster.MonsterRoles.suspendForCelebration(player);
+        closeSuspendedContainer(player);
+        boolean dead = player.isDeadOrDying();
+        if (dead) {
+            CELEBRATION_RESPAWN.set(true);
+            MONSTER_RESPAWN.set(this);
+            try {
+                var replacement = server.getPlayerList().respawn(player, false, net.minecraft.world.entity.Entity.RemovalReason.KILLED);
+                replacement.connection.player = replacement;
+                replacement.connection.resetPosition();
+                ((PlayerRespawnConnectionAccessor) replacement.connection).hardrush$restartClientLoadTimerAfterRespawn();
+                player = replacement;
+            } finally { MONSTER_RESPAWN.remove(); CELEBRATION_RESPAWN.remove(); }
+        }
+        var target = generation(round);
+        var rebound = new Entry(player, Optional.of(target), false, snapshot.copy());
+        rebound.target = target;
+        rebound.resume = snapshot.copy();
+        rebound.ready = true;
+        rebound.diskSafe = true;
+        rebound.admitted = true;
+        rebound.deathHeld = true;
+        players.put(player.getUUID(), rebound);
+        player.load(TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), snapshot.copy()));
+        ((ProfileTagged) player).hardrush$clearLoadedProfile();
+        restoreAdvancements(player, snapshot);
+        closeSuspendedContainer(player);
+        resetHumanAttributes(player);
+        player.setHealth(player.getMaxHealth());
+        player.deathTime = 0;
+        ((PlayerProfileResetAccessor) player).hardrush$setFoodData(new FoodData());
+        player.removeAllEffects();
+        player.setGameMode(GameType.SURVIVAL);
+        if (freshKit) dev.hardrush.p1.celebration.CelebrationKit.equip(player);
+        else restoreCarriedAndCrafting(player, snapshot);
+        ((ProfileTagged) player).hardrush$generation(target);
+        ((ProfileTagged) player).hardrush$isolated(true);
+        ((ProfileTagged) player).hardrush$respawnPermitted(false);
+        Vec3 position = dead ? Vec3.atBottomCenterOf(ServerLevel.END_SPAWN_POINT).subtract(0, 1, 0) : player.position();
+        if (!player.teleportTo(end, position.x, position.y, position.z, Set.of(), player.getYRot(), player.getXRot(), true)) {
+            throw new IllegalStateException("庆祝入场传送失败");
+        }
+        player.portalProcess = null;
+        player.setDeltaMovement(Vec3.ZERO);
+        player.resetFallDistance();
+        player.inventoryMenu.sendAllDataToRemote();
+        return player;
+    }
+
+    public void unlockCelebration(ServerPlayer player, RoundSnapshot round) {
+        var entry = players.get(player.getUUID());
+        if (entry == null || entry.player != player || !isReady(player.getUUID(), round)) return;
+        entry.deathHeld = false;
+        ((ProfileTagged) player).hardrush$isolated(false);
+    }
+
+    public void freezeCelebration(ServerPlayer player) {
+        var entry = players.get(player.getUUID());
+        if (entry != null && entry.player == player) entry.deathHeld = true;
+    }
+
+    /** The immutable original lives in the celebration journal; never expose the temporary kit in the lobby. */
+    public ServerPlayer finishCelebration(ServerPlayer player, RoundSnapshot round) {
+        requireMainThread();
+        if (player.isDeadOrDying()) {
+            // Use a native replacement even for settled HUMAN_RESPAWNING, without a competitive life event.
+            player = prepareCelebrationBody(player, round, celebrationSnapshot(player, true), lobby.get(), false);
+        }
+        dev.hardrush.p0.monster.MonsterRoles.suspendForCelebration(player);
+        returnToLobby(player);
+        var entry = players.get(player.getUUID());
+        entry.deathHeld = false;
+        entry.awaitingRespawn = false;
+        entry.deathScreenPermit = false;
+        clearMonsterLobbyState(player);
+        moveToLobby(player);
+        player.stopFallFlying();
+        player.setKnownMovement(Vec3.ZERO);
+        player.portalProcess = null;
+        player.inventoryMenu.sendAllDataToRemote();
+        return player;
+    }
+
     public String diagnostic(UUID playerId) {
         var entry = players.get(playerId);
         if (entry == null) return "unmanaged";
@@ -729,6 +888,14 @@ public final class P1PlayerProfiles implements AutoCloseable {
             byte[] oldSnapshot = entry.wasIsolated && entry.source.isPresent()
                     ? store.suspended(playerId, entry.source.get()).orElseThrow(() -> new IOException("隔离中的旧轮恢复档案缺失，禁止以大厅数据替代旧档案"))
                     : encode(entry.original);
+            if (entry.source.isPresent()) {
+                var celebration = store.celebration(playerId, entry.source.orElseThrow());
+                if (celebration.isPresent()) {
+                    var original = decode(celebration.orElseThrow()).getCompoundOrEmpty("original");
+                    requireSnapshotGeneration(original, entry.source.orElseThrow());
+                    oldSnapshot = encode(original);
+                }
+            }
             var prepared = store.prepare(playerId, entry.source, target, oldSnapshot);
             return new Plan(false, null, prepared);
         }).whenComplete((plan, error) -> callbacks.execute(() -> {

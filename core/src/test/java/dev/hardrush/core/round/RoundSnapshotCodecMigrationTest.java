@@ -19,6 +19,34 @@ class RoundSnapshotCodecMigrationTest {
     private static final UUID RESPAWNING = UUID.fromString("00000000-0000-0000-0000-000000000002");
     private static final UUID LOBBY = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
+    @Test void oldSuccessTimersKeepElapsedTimeAndAreMigratedOnlyOnce() {
+        var rules = RulesConfig.decode(RulesConfig.defaults().encode().replace("successCelebrationMillis=180000", "successCelebrationMillis=600000"));
+        for (var phase : List.of(RoundPhase.SETTLING, RoundPhase.CELEBRATING)) {
+            for (long remaining : new long[]{600_000, 480_000, 420_000, 10_000}) {
+                var snapshot = new RoundSnapshot(ROUND, 1, 1, 7, rules, phase, PauseReason.SETTLED, 123, remaining * 1_000_000,
+                        Map.of(), true, false, new RoundResult(RoundResult.Kind.COMPLETED, null, "verified old finish"));
+                var bytes = RoundSnapshotCodec.encode(snapshot);
+                ByteBuffer.wrap(bytes).putInt(4, 4); // v4 has the same layout, but the old timer semantics.
+                var migrated = RoundSnapshotCodec.decode(bytes);
+                assertEquals(Math.max(0, remaining - 420_000), migrated.remainingPhaseMillis());
+                assertEquals(123, migrated.challengeNanos());
+                assertEquals(rules, migrated.rules());
+                assertEquals(migrated, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(migrated)));
+            }
+        }
+    }
+
+    @Test void legacyTimerMigrationCannotTurnCorruptNegativeTimeIntoAValidSnapshot() throws Exception {
+        var bytes = new ByteArrayOutputStream();
+        var out = new DataOutputStream(bytes);
+        out.writeInt(0x48525331); out.writeInt(4);
+        uuid(out, ROUND); out.writeLong(1); out.writeLong(1); out.writeLong(7);
+        text(out, RulesConfig.defaults().encode()); text(out, "CELEBRATING"); text(out, "SETTLED");
+        out.writeLong(123); out.writeLong(-1); out.writeBoolean(true); out.writeBoolean(false);
+        out.writeInt(0); out.writeBoolean(true); text(out, "COMPLETED"); out.writeBoolean(false); text(out, "old finish");
+        assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(bytes.toByteArray()));
+    }
+
     @Test void schemaOnePreservesIdentityCountersAndGrantsAnInitialProtectionPermission() throws Exception {
         RoundSnapshot migrated = RoundSnapshotCodec.decode(schemaOneFixture());
         assertEquals(ROUND, migrated.roundId());
@@ -34,7 +62,7 @@ class RoundSnapshotCodecMigrationTest {
         assertFalse(migrated.participants().get(RESPAWNING).hasLeftProtection());
         assertFalse(migrated.participants().get(LOBBY).hasLeftProtection());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(4, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(5, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 

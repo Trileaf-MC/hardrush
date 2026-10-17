@@ -156,6 +156,19 @@ public final class MonsterRoles {
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player);
     }
 
+    /** The caller seals actual gear first. Celebration must not spawn gear drops into the settled world. */
+    public static void suspendForCelebration(ServerPlayer player) {
+        requireThread(player);
+        Role role = ROLES.remove(player.getUUID());
+        if (role == null) return;
+        boolean dead = player.isDeadOrDying();
+        player.stopUsingItem();
+        restoreOriginal(player, role);
+        if (dead) player.setHealth(0);
+        DisguiseProbe.clear(player);
+        player.level().getServer().getPlayerList().sendAllPlayerInfo(player);
+    }
+
     private static void restoreOriginal(ServerPlayer player, Role role) {
         for (var entry : role.originalAttributes.entrySet()) player.getAttribute(entry.getKey()).setBaseValue(entry.getValue());
         for (int slot = 0; slot < role.inventory.size(); slot++) player.getInventory().setItem(slot, role.inventory.get(slot).copy());

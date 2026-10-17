@@ -40,7 +40,7 @@ python3 scripts/demo.py prepare --mode normal --port 25588
 2. 人类从自然出生点开始正常生存、PvP、三维度速通，出生点不设保护圈或人工石台，离开后可自由返回。按 TAB 查看有效计时和人数，最后一击末影龙决定胜者。
 3. 极限模式至少两名玩家：一名人类死亡后重生到怪物大厅，通过菜单或 `/hardrush role zombie|skeleton|creeper` 选角，选择维度、投票，等待 30 秒出场冷却后 `/hardrush deploy`。目标人类可以仍在出生点附近，安全搜索失败会留厅重试。
 4. `/hardrush skill` 或角色技能物品触发技能；`/hardrush return` 引导 5 秒返厅，移动、攻击、受伤或使用技能会取消。怪物直接击杀合法人类获得一份复生资格，返厅后 `/hardrush revive` 空装复生；最后一名人类死亡且有资格时有 60 秒救场窗口。
-5. 通关后有 600 秒庆祝，随后安全释放旧轮并准备新轮。历史通过 `/hardrush history`、`/hardrush leaderboard` 和历史书查看。演示中如需提前结束已就绪轮次，使用 `/hardrush admin abort <原因>`，核对预览后 `/hardrush admin confirm <票据>`；这会形成真实中止记录，不等同于首龙胜利。
+5. 通关后有 180 秒庆祝，随后安全释放旧轮并准备新轮。历史通过 `/hardrush history`、`/hardrush leaderboard` 和历史书查看。演示中如需提前结束已就绪轮次，使用 `/hardrush admin abort <原因>`，核对预览后 `/hardrush admin confirm <票据>`；这会形成真实中止记录，不等同于首龙胜利。
 
 默认赛制、大厅保护、物品限制、出场距离和技能冷却沿用正式配置，没有为 Demo 缩短时间或绕过资格提交。完整通过条件仍见既有 P1／P2 人工清单，当前出生地形检查见 [自然出生点](人工客户端测试/正式世界自然出生点.md)。
 
@@ -62,3 +62,5 @@ scripts/p0-gradle.sh checkP3 -PhardrushP1=true --console=plain
 本批证据见 [E29 清单](evidence/mvp-demo-20261015/manifest.json)。回放、AntiXray、Grim 完整集成、故障恢复剩余项、20 人性能和多版本发布仍在 P3／P4；本入口没有据此放行任何阶段。
 
 2026-10-15 验证结果：342 项 JUnit、101 项常规必需无图形 GameTest、12 项 Demo 制品／隔离入口测试通过。最终生产制品在普通／极限两个新存档、4 个不同 PID 的专用服务端 JVM 中完成三维度准备、正常停止与同轮重开；数据库检查点均为 `cleanShutdown=true`、`WAITING`，没有运行客户端。
+
+当前庆祝与返回验收见 [屠龙庆祝与提前返回大厅](人工客户端测试/屠龙庆祝与提前返回大厅.md)，通关最多 180 秒或全员在线玩家回大厅后安全轮换。

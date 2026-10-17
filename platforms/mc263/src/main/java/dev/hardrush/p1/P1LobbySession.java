@@ -860,6 +860,16 @@ public final class P1LobbySession implements AutoCloseable {
         }));
     }
 
+    public void celebrationComplete(UUID roundId) {
+        if (stopping || state != State.OPEN || !adaptersReady || mutationPending() || !events.isEmpty()
+                || engine == null || !engine.committed().roundId().equals(roundId)) return;
+        var round = engine.committed();
+        if ((round.phase() == RoundPhase.SETTLING || round.phase() == RoundPhase.CELEBRATING)
+                && round.result() != null && round.result().kind() == dev.hardrush.core.round.RoundResult.Kind.COMPLETED) {
+            submit(engine.proposeCelebrationComplete(UUID.randomUUID()));
+        }
+    }
+
     public void tick() {
         if (shutdownBoundary != null || terminalCandidate != null && !terminalQueued) return;
         if (stopping || state != State.OPEN || unsupportedPhase || mutationPending()) return;
