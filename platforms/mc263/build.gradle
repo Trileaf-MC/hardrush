@@ -166,6 +166,17 @@ loom.runs.named('clientGameTest') {
     }
 }
 
+// Every default headless regression uses a new directory; never touch a daily instance.
+def baselineCheckRunDir = rootProject.file(".local/baseline-check/${UUID.randomUUID()}")
+loom.runs.named('gameTest') { runDir baselineCheckRunDir.absolutePath }
+tasks.named('runGameTest') {
+    doFirst {
+        baselineCheckRunDir.mkdirs()
+        copy { from rootProject.file('.local/server-p0/eula.txt'); into baselineCheckRunDir }
+        logger.lifecycle("Default isolated GameTest storage (special suites may override): ${baselineCheckRunDir}")
+    }
+}
+
 // Run the production P1 lifecycle alone: other GameTests intentionally mutate the shared lobby.
 def p1RegressionRunDir = rootProject.file(".local/p1-regression/${UUID.randomUUID()}")
 def celebrationRunDir = rootProject.file(".local/celebration-regression/${UUID.randomUUID()}")
@@ -392,6 +403,31 @@ tasks.named('runGameTest') {
             lobbyMovementRunDir.mkdirs()
             copy { from rootProject.file('.local/server-p0/eula.txt'); into lobbyMovementRunDir }
             logger.lifecycle("Isolated lobby movement storage: ${lobbyMovementRunDir}")
+        }
+    }
+}
+
+// Round-1 native protocol proof: cannot share a server with fixtures that replace production services.
+def lobbyFoundationRunDir = rootProject.file(".local/lobby-foundation/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushLobbyFoundation').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true'
+                || ['hardrushP1TenRounds', 'hardrushP2Identity', 'hardrushP2Lobby', 'hardrushP3Recovery',
+                    'hardrushP3Storage', 'hardrushLobbyMovement', 'hardrushCelebration'].any {
+                    providers.gradleProperty(it).orNull == 'true'
+                }) throw new GradleException('Lobby foundation requires P1 and its own isolated run')
+        vmArg '-Dhardrush.lobby.testFoundation=true'
+        vmArg '-Dhardrush.p1.initialMode=normal'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:lobby_foundation_game_test*'
+        runDir lobbyFoundationRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushLobbyFoundation').orNull == 'true') {
+        doFirst {
+            lobbyFoundationRunDir.mkdirs()
+            copy { from rootProject.file('.local/server-p0/eula.txt'); into lobbyFoundationRunDir }
+            logger.lifecycle("Isolated lobby foundation storage: ${lobbyFoundationRunDir}")
         }
     }
 }

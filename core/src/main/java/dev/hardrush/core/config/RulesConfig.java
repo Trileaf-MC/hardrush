@@ -35,7 +35,7 @@ public record RulesConfig(
         long startCountdownMillis,
         long successCelebrationMillis,
         long failureDisplayMillis) {
-    public static final int CURRENT_SCHEMA_VERSION = 1;
+    public static final int CURRENT_SCHEMA_VERSION = 2;
     private static final Set<String> SUPPORTED_VERSIONS = Set.of("26.1.2", "26.2", "26.3");
     private static final Set<String> FIXED_KEYS = Set.of("schemaVersion", "mode", "minecraftVersion",
             "difficulty", "generationRule", "protectionRadius", "startCountdownMillis",
@@ -43,7 +43,7 @@ public record RulesConfig(
     private static final int MAX_CONFIG_LENGTH = 131_072;
 
     public RulesConfig {
-        if (schemaVersion != CURRENT_SCHEMA_VERSION) {
+        if (schemaVersion < 1 || schemaVersion > CURRENT_SCHEMA_VERSION) {
             throw new IllegalArgumentException("不支持的规则配置版本: " + schemaVersion);
         }
         Objects.requireNonNull(mode, "mode");
@@ -113,6 +113,24 @@ public record RulesConfig(
                 Map.entry("monster.returnChannelMillis", 5_000.0),
                 Map.entry("round.rescueMillis", 60_000.0)),
                 32.0, 30_000, 180_000, 30_000);
+    }
+
+    /** Schema 1 is the byte-for-byte historical voting rule; schema 2 is personal direct hunt. */
+    public enum HuntRule { LEGACY_VOTE, PERSONAL_TARGET }
+
+    public HuntRule huntRule() {
+        return schemaVersion == 1 ? HuntRule.LEGACY_VOTE : HuntRule.PERSONAL_TARGET;
+    }
+
+    /** Only for pending/new rounds. Never apply this to an existing round snapshot. */
+    public RulesConfig forNewRound() {
+        return withHuntRule(HuntRule.PERSONAL_TARGET);
+    }
+
+    public RulesConfig withHuntRule(HuntRule rule) {
+        return new RulesConfig(Objects.requireNonNull(rule) == HuntRule.LEGACY_VOTE ? 1 : 2,
+                mode, minecraftVersion, difficulty, generationRule, combatValues, protectionRadius,
+                startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
 
     public RulesConfig withMode(GameMode nextMode) {

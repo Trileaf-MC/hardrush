@@ -1,6 +1,7 @@
 package dev.hardrush.p2.protection.mixin;
 
 import dev.hardrush.p1.book.P1BookPort;
+import dev.hardrush.p1.lobby.LobbyInteractions;
 import dev.hardrush.p2.protection.P2ProtectionRuntime;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
@@ -59,6 +60,7 @@ public abstract class ProtectionNetworkMixin {
     @Inject(method="handleUseItemOn", at=@At("HEAD"), cancellable=true)
     private void block(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
         if (!mainThread()) return;
+        if (LobbyInteractions.consumed(LobbyInteractions.block(player, packet))) { ci.cancel(); return; }
         if (P2ProtectionRuntime.rejectInteraction(player, player.level(), packet.hitResult().getBlockPos())
                 || P2ProtectionRuntime.protectedBlock(player.level(), packet.hitResult().getBlockPos().relative(packet.hitResult().getDirection()))) {
             player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.hitResult().getBlockPos())); ci.cancel();
@@ -71,6 +73,7 @@ public abstract class ProtectionNetworkMixin {
     }
     @Inject(method="handleInteract", at=@At("HEAD"), cancellable=true)
     private void entity(ServerboundInteractPacket packet, CallbackInfo ci) {
+        if (mainThread() && LobbyInteractions.consumed(LobbyInteractions.entity(player, packet))) { ci.cancel(); return; }
         if (mainThread() && (P2ProtectionRuntime.protectedEntity(player)
                 || P2ProtectionRuntime.protectedEntity(player.level().getEntity(packet.entityId())))) ci.cancel();
     }

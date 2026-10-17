@@ -102,7 +102,7 @@ class RulesConfigTest {
         for (String version : new String[] {"26.1.2", "26.2", "26.3"}) {
             assertDoesNotThrow(() -> rules(version, "normal", Map.of("health", 20.0), 32, 30_000, 600_000, 30_000));
         }
-        assertThrows(IllegalArgumentException.class, () -> RulesConfig.decode(RulesConfig.defaults().encode().replace("schemaVersion=1", "schemaVersion=2")));
+        assertThrows(IllegalArgumentException.class, () -> RulesConfig.decode(RulesConfig.defaults().encode().replace("schemaVersion=2", "schemaVersion=3")));
     }
 
     @Test void invalidCombatRadiusAndTimersAreRejectedBeforeApplication() {

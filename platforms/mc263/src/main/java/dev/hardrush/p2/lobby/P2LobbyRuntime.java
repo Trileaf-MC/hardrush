@@ -2,6 +2,9 @@ package dev.hardrush.p2.lobby;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.hardrush.core.hunt.HuntVotingService;
+import dev.hardrush.core.config.RulesConfig;
+import dev.hardrush.core.lobby.LobbyContext;
+import dev.hardrush.p1.lobby.LobbyInteractions;
 import dev.hardrush.core.round.*;
 import dev.hardrush.p0.monster.MonsterRoles;
 import dev.hardrush.p1.P1LobbySession;
@@ -86,6 +89,12 @@ public final class P2LobbyRuntime {
                                  Supplier<P1RoundWorldBundle> worlds) {
         var binding = new Binding(session, profiles, worlds);
         BINDINGS.put(server, binding);
+        LobbyInteractions.configure(server, new LobbyInteractions.Access() {
+            public UUID round() { return session.snapshot().map(RoundSnapshot::roundId).orElse(null); }
+            public boolean allowed(ServerPlayer player, LobbyContext context) {
+                return contextAvailable(player, binding, context);
+            }
+        });
         P2MonsterRuntime.configure(server, session, profiles, worlds);
         P2CombatRuntime.configure(server, new P2CombatRuntime.Access() {
             @Override public Optional<RoundSnapshot> snapshot() { return session.snapshot(); }
@@ -94,10 +103,20 @@ public final class P2LobbyRuntime {
         });
         P2LobbyUi.configure(server, new P2LobbyUi.Access() {
             @Override public boolean available(ServerPlayer player) {
-                if (lobbyAvailable(player, binding)) return true;
-                return current(player, binding) && player.isAlive() && !P1PlayerProfiles.isLocked(player)
+                if (contextAvailable(player, binding, LobbyContext.COMPETITION)) return true;
+                return !session.competitionLocked() && current(player, binding) && player.isAlive() && !P1PlayerProfiles.isLocked(player)
                         && session.snapshot().map(r -> r.participants().get(player.getUUID()))
                             .filter(p -> p.role() == ParticipantRole.MONSTER_DEPLOYED).isPresent();
+            }
+            @Override public boolean available(ServerPlayer player, LobbyContext context) {
+                return context == LobbyContext.COMPETITION ? available(player) : contextAvailable(player, binding, context);
+            }
+            @Override public List<P2LobbyUi.Button> buttons(ServerPlayer player, LobbyContext context) {
+                if (context == LobbyContext.COMPETITION) return buttons(player);
+                var round = session.snapshot().orElseThrow();
+                return List.of(new P2LobbyUi.Button(Items.BOOK, "站入集结区参加，离开取消准备", "info", ""),
+                        new P2LobbyUi.Button(Items.PAPER, "追猎规则：" + (round.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET ? "个人定向追猎（尚未开放）" : "旧版投票（升级恢复隔离）"), "info", ""),
+                        new P2LobbyUi.Button(Items.CLOCK, "阶段：" + phaseName(round.phase()) + " · 历史查询入口尚未接通", "info", ""));
             }
             @Override public UUID round(ServerPlayer player) { return session.snapshot().orElseThrow().roundId(); }
             @Override public List<P2LobbyUi.Button> buttons(ServerPlayer player) { return menuButtons(player, binding); }
@@ -107,16 +126,32 @@ public final class P2LobbyRuntime {
         });
     }
     public static void unconfigure(MinecraftServer server) {
-        BINDINGS.remove(server); P2LobbyUi.unconfigure(server);
+        BINDINGS.remove(server); LobbyInteractions.close(server); P2LobbyUi.unconfigure(server);
         P2MonsterRuntime.unconfigure(server); P2CombatRuntime.unconfigure(server);
     }
     public static void prepareStop(MinecraftServer server) {
         var b = BINDINGS.get(server); if (b == null) return;
         b.channels.clear(); b.searches.clear(); b.resumptions.clear();
+        LobbyInteractions.get(server).ifPresent(r -> r.projections().clear());
         for (var player : List.copyOf(server.getPlayerList().getPlayers())) {
             if (MonsterRoles.isMonster(player)) MonsterRoles.clear(player);
         }
     }
+    private static boolean contextAvailable(ServerPlayer player, Binding b, LobbyContext context) {
+        boolean verified = current(player, b) && P1PlayerProfiles.verifiedLobbyBody(player);
+        return switch (context) {
+            case RULES -> verified;
+            case HISTORY -> false; // shared history query UI is connected in round 4, never fake an empty result
+            case DISPLAY -> verified && dev.hardrush.p1.P1LobbyRuntime.lobbyActivityAllowed(player);
+            case COMPETITION -> verified && dev.hardrush.p1.P1LobbyRuntime.lobbyActivityAllowed(player)
+                    && b.worlds.get() != null && b.worlds.get().ready()
+                    && b.session.snapshot().filter(r -> switch (r.phase()) {
+                        case WAITING, COUNTDOWN, RUNNING, RESCUE -> true;
+                        default -> false;
+                    }).isPresent();
+        };
+    }
+
     private static boolean current(ServerPlayer player, Binding b) {
         return b != null && player.level().getServer().getPlayerList().getPlayer(player.getUUID()) == player
                 && b.session.state() == P1LobbySession.State.OPEN
@@ -139,6 +174,10 @@ public final class P2LobbyRuntime {
             tell(player, "轮次或档案状态已改变，请重新打开大厅。"); return;
         }
         if (action.equals("info")) return;
+        if (round.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET
+                && List.of("vote", "dimension", "deploy").contains(action)) {
+            tell(player, "本轮采用个人追猎规则；目标追猎尚未接通。请等待后续版本。"); return;
+        }
         if (action.equals("join") || action.equals("ready") || action.equals("unready")) {
             if (!lobbyAvailable(player, b)) { tell(player, "请先回大厅。"); return; }
             if (action.equals("join")) b.session.requestJoin(player.getUUID(), player.getScoreboardName(), reply -> tell(player, reply.message()));
@@ -233,10 +272,6 @@ public final class P2LobbyRuntime {
     public static void tick(MinecraftServer server) {
         var b = BINDINGS.get(server);
         if (b == null) return;
-        // Only quarantine skips vanilla doTick(); normal lobby bodies now broadcast their own menus.
-        for (var player : List.copyOf(server.getPlayerList().getPlayers())) {
-            if (P1PlayerProfiles.simulationFrozen(player) && P2LobbyUi.isMenu(player)) player.containerMenu.broadcastChanges();
-        }
         synchronize(server, b);
         var round = b.session.view().orElse(null);
         if (round == null || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE || b.session.competitionLocked()) {
@@ -382,6 +417,7 @@ public final class P2LobbyRuntime {
         }
     }
     public static void disconnected(ServerPlayer player) {
+        LobbyInteractions.disconnected(player);
         var b = BINDINGS.get(player.level().getServer()); if (b == null) return;
         b.channels.remove(player.getUUID()); b.searches.remove(player.getUUID()); b.resumptions.remove(player.getUUID());
         // Do not rebind a prototype body during the next native JOIN before the durable lobby gate.
@@ -389,6 +425,10 @@ public final class P2LobbyRuntime {
     }
     private static void synchronize(MinecraftServer server, Binding b) {
         var round = b.session.snapshot().orElse(null); if (round == null) return;
+        if (round.rules().huntRule() != RulesConfig.HuntRule.LEGACY_VOTE
+                || round.phase() == RoundPhase.RECOVERY_REQUIRED || b.session.competitionLocked()) {
+            b.votes = null; b.round = null; return;
+        }
         if (!round.roundId().equals(b.round)) {
             b.round = round.roundId(); b.votes = new HuntVotingService(round.roundId(), List.of("overworld", "nether", "end"),
                     System.nanoTime(), new Random(round.seed()));
@@ -459,20 +499,22 @@ public final class P2LobbyRuntime {
             buttons.add(new P2LobbyUi.Button(Items.BLAZE_POWDER, "施放当前角色技能", "skill", ""));
             buttons.add(new P2LobbyUi.Button(Items.OAK_DOOR, "引导返回大厅（5 秒）", "return", ""));
             synchronize(player.level().getServer(), b);
+            if (b.votes != null) {
             var tally = b.votes.tally(p.monsterDimension().name().toLowerCase(Locale.ROOT));
             String targetName = tally.target().map(id -> round.participants().get(id))
                     .map(Participant::name).orElse("暂无有效人类");
             buttons.add(new P2LobbyUi.Button(Items.CLOCK, "本次追猎：" + targetName + " · "
                     + seconds(b.votes.remainingNanos(System.nanoTime())) + " 秒后结算", "info", ""));
+            }
             for (var role : MonsterRole.values()) buttons.add(new P2LobbyUi.Button(switch (role) {
                 case ZOMBIE -> Items.ROTTEN_FLESH; case SKELETON -> Items.BONE; case CREEPER -> Items.GUNPOWDER;
             }, "选择 " + kindName(role) + (p.monsterRole() == role ? " ✓" : ""), "role", role.name()));
-            for (var dimension : MonsterDimension.values()) buttons.add(new P2LobbyUi.Button(switch (dimension) {
+            if (b.votes != null) for (var dimension : MonsterDimension.values()) buttons.add(new P2LobbyUi.Button(switch (dimension) {
                 case OVERWORLD -> Items.GRASS_BLOCK; case NETHER -> Items.NETHERRACK; case END -> Items.END_STONE;
             }, "追猎维度 " + dimensionName(dimension) + (p.monsterDimension() == dimension ? " ✓" : ""), "dimension", dimension.name()));
-            buttons.add(new P2LobbyUi.Button(Items.COMPASS, "安全出场 · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒", "deploy", ""));
+            if (b.votes != null) buttons.add(new P2LobbyUi.Button(Items.COMPASS, "安全出场 · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒", "deploy", ""));
             buttons.add(new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "复生资格：" + (p.revivalEntitled() ? "有" : "无") + "（点击空装复生）", "revive", ""));
-            for (var target : candidates(player)) buttons.add(new P2LobbyUi.Button(Items.PLAYER_HEAD,
+            if (b.votes != null) for (var target : candidates(player)) buttons.add(new P2LobbyUi.Button(Items.PLAYER_HEAD,
                     "投票追猎 " + target.getScoreboardName(), "vote", target.getUUID().toString()));
         }
         return buttons;

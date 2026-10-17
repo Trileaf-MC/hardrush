@@ -100,6 +100,15 @@ public final class P1LobbyWorld {
         } catch (RuntimeException error) { failure = "超平坦大厅准备失败：" + error.getMessage(); }
     }
 
+    /** Contract positions only. The round-2 builder must load/check safety before teleporting here. */
+    public Vec3 layoutPosition(dev.hardrush.core.lobby.LobbyLayout.Point point) {
+        if (!ready) throw new IllegalStateException("大厅尚未就绪");
+        return Vec3.atBottomCenterOf(spawn).add(point.x(), 0, point.z());
+    }
+    public Vec3 landing(dev.hardrush.core.lobby.LobbyLayout.Landing purpose) {
+        return layoutPosition(dev.hardrush.core.lobby.LobbyLayout.landing(purpose));
+    }
+
     public boolean ready() { return ready; }
     public Optional<String> failure() { return Optional.ofNullable(failure); }
     public static String status(MinecraftServer server) {

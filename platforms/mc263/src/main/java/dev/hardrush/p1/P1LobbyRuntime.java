@@ -204,6 +204,7 @@ public final class P1LobbyRuntime {
             try {
                 var lobby = P1LobbyWorld.open(server);
                 lobby.tick();
+                dev.hardrush.p1.lobby.LobbyInteractions.tick(server);
                 if (lobby.failure().isPresent() && session.state() != P1LobbySession.State.FAILED
                         && session.state() != P1LobbySession.State.RECHECKING) {
                     throw new IllegalStateException(lobby.failure().orElseThrow());

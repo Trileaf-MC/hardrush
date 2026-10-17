@@ -135,7 +135,7 @@ public final class P1LobbySession implements AutoCloseable {
         store = new SqliteRoundStore(database);
         var pending = store.loadPendingRules();
         RulesConfig rules = pending.isPresent()
-                ? RulesConfig.decode(new String(pending.get(), StandardCharsets.UTF_8))
+                ? RulesConfig.decode(new String(pending.get(), StandardCharsets.UTF_8)).forNewRound()
                 : RulesConfig.defaults();
         if (pending.isEmpty()) {
             String initialMode = System.getProperty("hardrush.p1.initialMode", "hardcore");
@@ -145,7 +145,7 @@ public final class P1LobbySession implements AutoCloseable {
             if (initialMode.equals("normal")) rules = rules.withMode(GameMode.NORMAL);
         }
         requireVersion(rules);
-        if (pending.isEmpty()) {
+        if (pending.isEmpty() || !java.util.Arrays.equals(pending.get(), encodedRules(rules))) {
             requireCommitted(store.savePendingRules(encodedRules(rules), UUID.randomUUID(), "server-bootstrap"));
         }
         var latest = store.latest();
@@ -171,8 +171,9 @@ public final class P1LobbySession implements AutoCloseable {
                 ? RoundEngine.create(stored.roundId(), stored.sequence(), stored.seed(), stored.rules(), this::engineTime)
                 : RoundEngine.restore(stored, this::engineTime);
         nextRules = loaded.nextRules();
+        if (RoundEngine.requiresLegacyClosure(stored)) problem = "旧投票规则活动轮需在旧构建完成，或经审计结束恢复轮；禁止自动恢复投票或切换个人追猎。";
         endEntrants = loaded.endEntrants();
-        recoveringCountdown = !loaded.fresh() && stored.cleanShutdown() && stored.phase() == RoundPhase.COUNTDOWN
+        recoveringCountdown = !RoundEngine.requiresLegacyClosure(stored) && !loaded.fresh() && stored.cleanShutdown() && stored.phase() == RoundPhase.COUNTDOWN
                 && stored.participants().values().stream().anyMatch(player -> player.ready()
                         && player.role() == dev.hardrush.core.round.ParticipantRole.LOBBY);
         // An externally restored later phase needs the future world/profile

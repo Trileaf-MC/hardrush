@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-17",
+  "sourceManifest": "source-files.json",
+  "sourceAggregateSha256": "5e9a07f1f3f514c32bfd9e9520bf405f8238c698d758de911dd56d3cc68d598e",
+  "junit": {
+    "core": {
+      "tests": 152,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "persistence": {
+      "tests": 94,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "platforms/mc263": {
+      "tests": 108,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "checks": [
+    {
+      "command": "scripts/p0-gradle.sh checkP3 -PhardrushP1=true --console=plain",
+      "log": "checkP3-complete.log",
+      "logSha256": "90d6eb92949850ccf50a1ac8aa4566253e4cc67c7c834ff6005738e6bf21998b",
+      "isolationDirectory": "/Users/leifwebber/projects/minecraft/hardrush/.local/baseline-check/21e53980-c000-464c-adba-a2cd84317a32",
+      "requiredGameTests": 106,
+      "result": "passed",
+      "rounds": [
+        {
+          "round": "db95a5ad-76ff-4d14-b24a-fc49f59801f2",
+          "version": 19,
+          "rulesSha256": "49b6b9661cc6c123590a0ecfab8e9fe723d6cbac690dba3da7efb3a058520e6b",
+          "rulesSchema": "2"
+        },
+        {
+          "round": "40ff55fb-3031-4ae1-84f3-9a0f7e2b813c",
+          "version": 4,
+          "rulesSha256": "f86491cef168814cc21d73e170100f39476f60b74674edbb87271638f83c9c01",
+          "rulesSchema": "2"
+        }
+      ]
+    },
+    {
+      "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushLobbyFoundation=true --console=plain",
+      "log": "protocol-complete.log",
+      "logSha256": "fb45f59a1c6b32d14b3577e60d1ff31e247dc94685e93da2c3ad256bcc65bda7",
+      "isolationDirectory": "/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-foundation/8e3f661a-7eb4-493e-aeee-b5e83a71bc4d",
+      "requiredGameTests": 1,
+      "result": "passed",
+      "rounds": [
+        {
+          "round": "44a355a9-a913-428e-b256-da7eaf79665d",
+          "version": 6,
+          "rulesSha256": "f86491cef168814cc21d73e170100f39476f60b74674edbb87271638f83c9c01",
+          "rulesSchema": "2"
+        },
+        {
+          "round": "cda1534f-f729-45f2-b425-8a553c11e4e7",
+          "version": 3,
+          "rulesSha256": "f86491cef168814cc21d73e170100f39476f60b74674edbb87271638f83c9c01",
+          "rulesSchema": "2"
+        }
+      ]
+    },
+    {
+      "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushLobbyMovement=true --console=plain",
+      "log": "movement.log",
+      "logSha256": "e5efa65be89ff5b178293444c3613145972610a078aa89bcb94367c130c48c7c",
+      "isolationDirectory": "/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-movement/455f12ec-9f3e-4d25-93ce-8faf2eec0b42",
+      "requiredGameTests": 1,
+      "result": "passed",
+      "rounds": [
+        {
+          "round": "bbb2d90b-3191-4c65-b496-b21532a84125",
+          "version": 15,
+          "rulesSha256": "f86491cef168814cc21d73e170100f39476f60b74674edbb87271638f83c9c01",
+          "rulesSchema": "2"
+        },
+        {
+          "round": "083b250b-1f3b-4b4b-9d94-f22d21db7df6",
+          "version": 2,
+          "rulesSha256": "f86491cef168814cc21d73e170100f39476f60b74674edbb87271638f83c9c01",
+          "rulesSchema": "2"
+        }
+      ]
+    }
+  ],
+  "jar": {
+    "path": "platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar",
+    "sha256": "8bd4ab455fbfe8f9878671af297ef2d0e3d5b0fe2609eebf29fa406dd072a96b",
+    "noTestOrMcpFabricClasses": true,
+    "purpose": "round-1 build, not a released full lobby candidate"
+  },
+  "realClient": "not executed",
+  "renderingAndSkinDownload": "not verified",
+  "committed": false,
+  "pushed": false,
+  "deployed": false,
+  "nextRoundStarted": false
+}

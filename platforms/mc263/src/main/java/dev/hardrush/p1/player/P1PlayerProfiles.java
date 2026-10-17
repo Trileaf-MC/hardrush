@@ -158,6 +158,16 @@ public final class P1PlayerProfiles implements AutoCloseable {
                 && dev.hardrush.p1.P1LobbyRuntime.lobbyActivityAllowed(player);
     }
 
+    /** A verified, safe lobby body may read rules even while the competition is quarantined. */
+    public static boolean verifiedLobbyBody(ServerPlayer player) {
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        return entry != null && entry.player == player && !service.closed && !entry.admitted
+                && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit
+                && entry.ready && entry.problem.isEmpty() && entry.diskSafe && player.isAlive()
+                && dev.hardrush.p1.world.P1LobbyWorld.isLobby(player.level());
+    }
+
     public static boolean simulationFrozen(ServerPlayer player) {
         return isLocked(player) && !canMoveInLobby(player);
     }

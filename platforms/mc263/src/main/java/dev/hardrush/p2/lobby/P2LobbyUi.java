@@ -1,5 +1,6 @@
 package dev.hardrush.p2.lobby;
 
+import dev.hardrush.core.lobby.LobbyContext;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -39,6 +40,11 @@ public final class P2LobbyUi {
         UUID round(ServerPlayer player);
         List<Button> buttons(ServerPlayer player);
         void act(ServerPlayer player, UUID expectedRound, String action, String value);
+        default boolean available(ServerPlayer player, LobbyContext context) { return context == LobbyContext.COMPETITION && available(player); }
+        default List<Button> buttons(ServerPlayer player, LobbyContext context) { return buttons(player); }
+        default void act(ServerPlayer player, UUID expectedRound, LobbyContext context, String action, String value) {
+            if (context == LobbyContext.COMPETITION) act(player, expectedRound, action, value);
+        }
     }
 
     private P2LobbyUi() {}
@@ -53,17 +59,19 @@ public final class P2LobbyUi {
         BINDINGS.remove(server);
     }
 
-    public static boolean open(ServerPlayer player) {
+    public static boolean open(ServerPlayer player) { return open(player, LobbyContext.COMPETITION); }
+
+    public static boolean open(ServerPlayer player, LobbyContext context) {
         var server = player.level().getServer();
         requireServerThread(server);
         Binding binding = BINDINGS.get(server);
         if (binding == null || server.getPlayerList().getPlayer(player.getUUID()) != player
-                || !binding.access.available(player)) return false;
+                || !binding.access.available(player, context)) return false;
         UUID round = binding.access.round(player);
         if (round == null) return false;
         return player.openMenu(new SimpleMenuProvider((id, inventory, actor) ->
-                actor == player ? new LobbyMenu(id, player, binding, round) : null,
-                Component.literal("HardRush 大厅"))).isPresent();
+                actor == player ? new LobbyMenu(id, player, binding, round, context) : null,
+                Component.literal(context == LobbyContext.RULES ? "HardRush 规则" : context == LobbyContext.HISTORY ? "HardRush 历史" : "HardRush 大厅"))).isPresent();
     }
 
     /** Also identifies stale menus so the network adapter keeps creative-slot packets sealed. */
@@ -97,6 +105,7 @@ public final class P2LobbyUi {
     private static final class LobbyMenu extends ChestMenu {
         private final ServerPlayer owner;
         private final UUID playerId;
+        private final LobbyContext context;
         private final UUID expectedRound;
         private final MinecraftServer server;
         private final Binding binding;
@@ -105,9 +114,10 @@ public final class P2LobbyUi {
         private int pageCount;
         private int refreshTicks;
 
-        LobbyMenu(int id, ServerPlayer owner, Binding binding, UUID expectedRound) {
+        LobbyMenu(int id, ServerPlayer owner, Binding binding, UUID expectedRound, LobbyContext context) {
             super(MenuType.GENERIC_9x6, id, owner.getInventory(), new SimpleContainer(54), 6);
             this.owner = owner;
+            this.context = context;
             this.playerId = owner.getUUID();
             this.server = owner.level().getServer();
             this.binding = binding;
@@ -125,7 +135,7 @@ public final class P2LobbyUi {
         @Override public boolean stillValid(Player actor) {
             return actor == owner && playerId.equals(actor.getUUID()) && owner.containerMenu == this
                     && BINDINGS.get(server) == binding && server.getPlayerList().getPlayer(playerId) == owner
-                    && binding.access.available(owner) && expectedRound.equals(binding.access.round(owner));
+                    && binding.access.available(owner, context) && expectedRound.equals(binding.access.round(owner));
         }
 
         @Override public void clicked(int slot, int button, ContainerInput input, Player actor) {
@@ -140,10 +150,10 @@ public final class P2LobbyUi {
             Button selected = actions.get(slot);
             if (selected != null) {
                 // A state/permission change can remove a displayed action before the next periodic rebuild.
-                if (!List.copyOf(binding.access.buttons(owner)).contains(selected)) {
+                if (!List.copyOf(binding.access.buttons(owner, context)).contains(selected)) {
                     rebuild();
                 } else if (binding.accept(playerId, new ActionKey(selected.action(), selected.value()))) {
-                    binding.access.act(owner, expectedRound, selected.action(), selected.value());
+                    binding.access.act(owner, expectedRound, context, selected.action(), selected.value());
                     if (owner.containerMenu == this && stillValid(owner)) rebuild();
                 }
             } else if (slot == 51) {
@@ -180,7 +190,7 @@ public final class P2LobbyUi {
         }
 
         private void rebuild() {
-            List<Button> buttons = List.copyOf(binding.access.buttons(owner));
+            List<Button> buttons = List.copyOf(binding.access.buttons(owner, context));
             pageCount = Math.max(1, (buttons.size() + PAGE_SIZE - 1) / PAGE_SIZE);
             page = Math.min(page, pageCount - 1);
             actions.clear();

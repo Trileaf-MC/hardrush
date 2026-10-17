@@ -44,11 +44,18 @@ public final class RoundEngine {
         stored.participants().forEach((id, p) -> players.put(id, p.withSession(p.name(), false)));
         boolean uncertain = stored.timingUncertain() || !stored.cleanShutdown();
         // A dirty shutdown is never silently presented as a complete timing interval.
-        RoundPhase phase = stored.cleanShutdown() ? stored.phase() : RoundPhase.RECOVERY_REQUIRED;
+        RoundPhase phase = stored.cleanShutdown() && !requiresLegacyClosure(stored)
+                ? stored.phase() : RoundPhase.RECOVERY_REQUIRED;
         RoundSnapshot restored = new RoundSnapshot(stored.roundId(), stored.sequence(), stored.seed(), stored.version(),
                 stored.rules(), phase, pause(phase, players), stored.challengeNanos(), stored.remainingPhaseNanos(),
                 players, stored.cleanShutdown(), uncertain, stored.result());
         return new RoundEngine(restored, clock);
+    }
+
+    /** An old active round must finish on the old build or be closed through audited recovery. */
+    public static boolean requiresLegacyClosure(RoundSnapshot stored) {
+        return stored.rules().huntRule() == RulesConfig.HuntRule.LEGACY_VOTE
+                && stored.result() == null && stored.phase() != RoundPhase.ROTATING;
     }
 
     /** A repaired database proves durable facts, never that native world/profile effects completed. */

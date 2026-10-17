@@ -1,6 +1,8 @@
 package dev.hardrush.p1.player.mixin;
 
 import dev.hardrush.p1.player.P1PlayerProfiles;
+import dev.hardrush.p1.lobby.LobbyInteractions;
+import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import dev.hardrush.p1.combat.P1CombatRuntime;
 import dev.hardrush.p1.P1LobbyRuntime;
 import dev.hardrush.p1.book.P1BookPort;
@@ -28,7 +30,7 @@ public abstract class PlayerIsolationNetworkMixin {
     @Shadow public ServerPlayer player;
 
     // Off-thread invocations proceed to vanilla's PacketUtils scheduling. The replay on the server thread is cancelled here.
-    @Inject(method = {"handleMoveVehicle", "handleAttack", "handleInteract", "handlePunch", "handlePaddleBoat",
+    @Inject(method = {"handleMoveVehicle", "handleAttack", "handlePunch", "handlePaddleBoat",
             "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
             "handlePlayerAbilities", "handleSpectatorAction", "handleTeleportToEntityPacket",
             "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
@@ -39,6 +41,13 @@ public abstract class PlayerIsolationNetworkMixin {
             at = @At("HEAD"), cancellable = true)
     private void hardrush$holdGameplay(CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && P1PlayerProfiles.isLocked(player)) ci.cancel();
+    }
+
+    @Inject(method = "handleInteract", at = @At("HEAD"), cancellable = true)
+    private void hardrush$facilityEntity(ServerboundInteractPacket packet, CallbackInfo ci) {
+        if (!player.level().getServer().isSameThread()) return;
+        if (LobbyInteractions.consumed(LobbyInteractions.entity(player, packet))
+                || P1PlayerProfiles.isLocked(player) || P1CombatRuntime.competitionFrozen(player.level())) ci.cancel();
     }
 
     @Inject(method = "handleMovePlayer", at = @At("HEAD"), cancellable = true)
@@ -79,6 +88,7 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = "handleUseItemOn", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdBlockUse(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && LobbyInteractions.consumed(LobbyInteractions.block(player, packet))) { ci.cancel(); return; }
         if (player.level().getServer().isSameThread() && P1PlayerProfiles.isLocked(player)) {
             player.connection.ackBlockChangesUpTo(packet.sequence());
             var hit = packet.hitResult();
@@ -120,7 +130,7 @@ public abstract class PlayerIsolationNetworkMixin {
     }
 
     // Celebration allows movement and closing a menu, while sealing all new competitive actions.
-    @Inject(method = {"handlePlayerAction", "handleAttack", "handleInteract", "handlePunch",
+    @Inject(method = {"handlePlayerAction", "handleAttack", "handlePunch",
             "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
             "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
             "handlePickItemFromBlock", "handlePickItemFromEntity", "handleBundleItemSelectedPacket",
@@ -134,6 +144,7 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = "handleUseItemOn", at = @At("HEAD"), cancellable = true)
     private void hardrush$celebrationFirework(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && LobbyInteractions.consumed(LobbyInteractions.block(player, packet))) { ci.cancel(); return; }
         if (!player.level().getServer().isSameThread() || !P1CombatRuntime.competitionFrozen(player.level())) return;
         if (P1CelebrationRuntime.allowsRocket(player, packet.hand())) {
             // Use only the rocket item: a chest/bed/button beneath it must never receive block interaction.

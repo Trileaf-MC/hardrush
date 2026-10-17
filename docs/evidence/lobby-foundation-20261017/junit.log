@@ -1,0 +1,47 @@
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :persistence:processResources NO-SOURCE
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :persistence:processTestResources NO-SOURCE
+> Task :core:compileJava UP-TO-DATE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :platforms:mc263:processTestResources NO-SOURCE
+> Task :core:jar UP-TO-DATE
+> Task :persistence:compileJava UP-TO-DATE
+> Task :persistence:classes UP-TO-DATE
+> Task :persistence:jar UP-TO-DATE
+> Task :persistence:compileTestJava UP-TO-DATE
+> Task :core:compileTestJava UP-TO-DATE
+> Task :persistence:testClasses UP-TO-DATE
+> Task :core:processTestResources UP-TO-DATE
+> Task :core:testClasses UP-TO-DATE
+> Task :core:test UP-TO-DATE
+> Task :persistence:test UP-TO-DATE
+> Task :platforms:mc263:compileJava
+> Task :platforms:mc263:classes
+> Task :platforms:mc263:compileTestJava
+> Task :platforms:mc263:testClasses
+
+> Task :platforms:mc263:test
+
+LobbyRuleUpgradeTest > cleanLegacyCountdownCannotResumeOrJoinAndAuditedClosureAloneCreatesNewSemantics() FAILED
+    java.io.IOException at LobbyRuleUpgradeTest.java:31
+
+108 tests completed, 1 failed
+
+> Task :platforms:mc263:test FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':platforms:mc263:test'.
+> There were failing tests. See the report at: file:///Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 15s
+13 actionable tasks: 3 executed, 10 up-to-date
