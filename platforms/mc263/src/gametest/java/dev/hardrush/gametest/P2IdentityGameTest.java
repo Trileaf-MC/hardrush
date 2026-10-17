@@ -214,6 +214,8 @@ public final class P2IdentityGameTest {
         fixture.profiles.tick(first);
         test.startSequence()
                 .thenWaitUntil(() -> fixture.ready(first))
+                .thenWaitUntil(() -> test.assertTrue(overworld.areEntitiesActuallyLoadedAndTicking(lootChunk),
+                        "Native loot chunk is loaded and ticking before death/drop assertions"))
                 .thenExecute(() -> {
                     fixture.admit(first);
                     fixture.seedHistory();
