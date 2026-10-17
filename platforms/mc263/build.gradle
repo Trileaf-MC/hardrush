@@ -458,7 +458,7 @@ tasks.named('runGameTest') {
 
 // A single production runtime suite owns each JVM; every launch receives a new directory.
 def lobbyRuntimeSuites = ['hardrushP1TenRounds', 'hardrushCelebration', 'hardrushP3Storage', 'hardrushP3Recovery',
-    'hardrushP2Identity', 'hardrushP2Lobby', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt']
+    'hardrushP2Identity', 'hardrushP2Lobby', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt', 'hardrushFullFlow']
 if (lobbyRuntimeSuites.count { providers.gradleProperty(it).orNull == 'true' } > 1)
     throw new GradleException('Production runtime suites must use separate isolated JVMs')
 def personalHuntRunDir = rootProject.file(".local/personal-hunt/${UUID.randomUUID()}")
@@ -479,5 +479,27 @@ tasks.named('runGameTest') {
         personalHuntRunDir.mkdirs()
         copy { from rootProject.file('.local/server-p0/eula.txt'); into personalHuntRunDir }
         logger.lifecycle("Isolated personal hunt storage: ${personalHuntRunDir}")
+    }
+}
+
+// Round 4: full player flow, isolated from every other runtime fixture.
+def fullFlowRunDir = rootProject.file(".local/lobby-full-flow/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushFullFlow').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true') throw new GradleException('Full flow requires P1')
+        vmArg '-Dhardrush.lobby.testFullFlow=true'
+        def fault = providers.gradleProperty('hardrushFullFlowFault').orElse('none').get()
+        if (!['none','revival'].contains(fault)) throw new GradleException('Unknown full-flow fault')
+        vmArg "-Dhardrush.lobby.fullFlowFault=${fault}"
+        vmArg '-Dhardrush.p1.initialMode=hardcore'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1full_flow_game_test*'
+        runDir fullFlowRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushFullFlow').orNull == 'true') doFirst {
+        fullFlowRunDir.mkdirs()
+        copy { from rootProject.file('.local/server-p0/eula.txt'); into fullFlowRunDir }
+        logger.lifecycle("Isolated full flow storage: ${fullFlowRunDir}")
     }
 }

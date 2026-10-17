@@ -107,6 +107,33 @@ public final class HistoryBookService {
         }));
     }
 
+    /** Explicit library claim: persist the existing ledger key before touching inventory.
+     * Pending copies reuse its operation ID, so a failed inventory save/ACK can be retried safely.
+     * A previously delivered copy may be requested again with a fresh operation, still rate limited.
+     */
+    public CompletionStage<Result> claim(UUID playerId, UUID sourceRound, int volume, String fingerprint, OperationTag scope) {
+        Objects.requireNonNull(playerId); Objects.requireNonNull(sourceRound); Objects.requireNonNull(scope);
+        if (volume < 1 || volume > HistoryBookComposer.MAX_VOLUMES) return completed(Status.INVALID_VOLUME);
+        return start(playerId, true, () -> source.roundHistory(sourceRound).thenCompose(history -> {
+            if (history.isEmpty()) return completed(Status.NO_HISTORY);
+            var round = history.orElseThrow();
+            if (!round.roundId().equals(sourceRound)) return completed(Status.STALE_SCOPE);
+            return source.participantCount(sourceRound).thenCompose(count -> {
+                if (volume > HistoryBookComposer.volumeCount(count)) return completed(Status.INVALID_VOLUME);
+                return claims.ensureAutomaticBookClaim(playerId, sourceRound, Math.toIntExact(round.edition()), volume).thenCompose(claim -> {
+                    if (!claim.playerId().equals(playerId) || !claim.roundId().equals(sourceRound)
+                            || claim.edition() != round.edition() || claim.volume() != volume) return completed(Status.STALE_SCOPE);
+                    var tag = new OperationTag(scope.roundId(), claim.delivered() ? UUID.randomUUID() : automaticOperationId(claim), scope.stateVersion());
+                    return loadBook(round, volume, fingerprint, count).thenCompose(book -> delivery.deliver(tag, playerId, book).thenCompose(delivered -> {
+                        var result = interpret(tag, book, delivered);
+                        if (result.status() != Status.DELIVERED) return CompletableFuture.completedFuture(result);
+                        return claims.markBookDelivered(claim).thenApply(ack -> ack ? result : Result.of(Status.RETRYABLE_FAILURE));
+                    }));
+                });
+            });
+        }));
+    }
+
     public static UUID automaticOperationId(BookClaim claim) {
         return UUID.nameUUIDFromBytes(("hardrush-auto-book/" + claim.playerId() + "/" + claim.roundId()
                 + "/" + claim.edition() + "/" + claim.volume()).getBytes(StandardCharsets.UTF_8));

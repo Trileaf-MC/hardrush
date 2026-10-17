@@ -1,0 +1,33 @@
+{
+  "head": "8b0c42fba323ad341d39a301366c1cc7b0ce242d",
+  "branch": "main",
+  "dirty": true,
+  "algorithm": "SHA-256 of sorted path + NUL + file SHA-256 + LF, UTF-8",
+  "aggregateSha256": "b994c441cfb4b2c84d2521e4fa2286a909d49890182518ab0c4612b74cc9e885",
+  "files": {
+    "core/src/main/java/dev/hardrush/core/book/HistoryBookComposer.java": "1c2550cc40b154c6f725937fbe54520d4198c97ffb451467f879f7df94d87fa3",
+    "core/src/main/java/dev/hardrush/core/book/HistoryBookService.java": "31ca7b6b0dd21e3bc4861eea40e69d1482c3a382c6735c81b208be0ae903d427",
+    "core/src/main/java/dev/hardrush/core/lobby/LobbyContext.java": "ae4f10a7a06c1cde625d1a5f13b917334531465d44c963b6e799f7bb840a6ba5",
+    "core/src/test/java/dev/hardrush/core/book/HistoryBookTest.java": "91f3fcdce4af083e3f75d12ce42d50ba7c515002ecf05a70a30bee10a5e03c0e",
+    "platforms/mc263/build.gradle": "4ca333b970a1771a5833594044d740b9f3f4734743af64b3b9dddf95e28810f7",
+    "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P1FullFlowGameTest.java": "33692d9cf61e60831c6d924714514f2d7df16ea13f0ff12a7bf5e57b5850a0c3",
+    "platforms/mc263/src/gametest/java/dev/hardrush/gametest/P2RuntimeLobbyGameTest.java": "391a0e957b59eb40723fb1e5658197a43aac4d6c41ee4af37c8fa69638f2adbc",
+    "platforms/mc263/src/gametest/resources/fabric.mod.json": "12f8feb13fe43d51c542ee191aa05a88b6d4db376e3a2a061e293f659b124581",
+    "platforms/mc263/src/main/java/dev/hardrush/p0/monster/MonsterRoles.java": "f23e38d477a668b6828a76129fac3af5b8a637e9b9ab07486992143c23fc981c",
+    "platforms/mc263/src/main/java/dev/hardrush/p0/monster/mixin/MonsterInventoryMixin.java": "ca345edad53d4ee1e44af2dbcae31731007a58ea7fc5af5046482b37b43b6242",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbyRuntime.java": "7513f71eb62a48a019e9b8c70b6f7c73b64963a701e4dad00d5d334b6f422d6c",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/celebration/P1CelebrationRuntime.java": "18596a27da5ff3af48e1a5a42d1551d99b3738d60c87bb1d1128c5636ab3b133",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/lobby/P1HumanEntry.java": "2c70f1caf35fd42e4f3279ba3eb3abc334c58b22f758d4fe1172e0721cd3a98b",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/lobby/P1PlayerFeedback.java": "826944a4de279d8c5d87786244810e0688593574e118044d556e3df28e89a123",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/player/mixin/PlayerIsolationNetworkMixin.java": "37e817ef522ed8bbd5fd370b39295fe37130f6e0a70020dff0bd7e84ab55cc33",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/record/P1HistoryCommands.java": "0e7c7f8e3606d5eb7c74a8da6683d32ed1f19ecb4bbbdb28855d4ea7bbf429b7",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/record/P1HistoryQueries.java": "e240eeed411b3eafc56c30b0e86f17e6f336a22d7e35af9a8272fc7c5ee8de46",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/record/P1Library.java": "0c4b9c7ae2ac082f36448d9a2afa3ee990cbafa52f512a18e8dabaf8111369ef",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/record/P1TabRuntime.java": "5be162010092edf0df1db4f4fea0a808085adf26fd7ac1ead77ce501c9bfa969",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/world/P1CampBlueprint.java": "f5639feac20413030ad433a0a460760c35d9ef7718e531cac1df28dcb1da43a1",
+    "platforms/mc263/src/main/java/dev/hardrush/p1/world/P1LobbyWorld.java": "1891060e769bc7fa4e9a7fe6f077437a200777c44e4d5deba95647f3a86cf1d6",
+    "platforms/mc263/src/main/java/dev/hardrush/p2/lobby/P2LobbyRuntime.java": "107059b1c667bdd0211cef2b335d304d0b154caad4384b39dd802f2a4aee6e34",
+    "platforms/mc263/src/main/java/dev/hardrush/p2/lobby/P2LobbyUi.java": "acabe0331780775ea6acd65d0165f82a4cd2d7be9bb5f5c16f99c3bd05205ab0",
+    "platforms/mc263/src/main/java/dev/hardrush/p2/protection/mixin/ProtectionNetworkMixin.java": "89dca8d8c0de21a5d2e04e3a30d1f9800a0229a79b64836ee4c6a1e744bfc07a"
+  }
+}

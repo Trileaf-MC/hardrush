@@ -56,7 +56,8 @@ class HistoryBookTest {
         String text = text(main);
         assertTrue(text.contains("上一轮结果")); assertTrue(text.contains("当前规则榜前 10"));
         assertTrue(text.replace("\n", "").contains("胜者：player40"));
-        assertTrue(text.contains("/hardrush history"));
+        assertTrue(text.contains("战绩书屋"));
+        assertFalse(text.contains("/hardrush"));
         assertTrue(main.pages().size() <= SafeBookText.MAX_PAGES);
         var second = HistoryBookComposer.compose(fake.latest, fake.fingerprint, 2, 41,
                 fake.roster.subList(40, 41), List.of());
@@ -127,6 +128,24 @@ class HistoryBookTest {
         assertEquals(2, fake.deliveries);
     }
 
+    @Test void libraryPendingVolumePersistsBeforeInventoryAndRetriesOneOperationThenAllowsAnotherCopy() {
+        var fake = new Fake(); fake.delivery = BookPort.Delivery.INVENTORY_FULL;
+        assertEquals(HistoryBookService.Status.INVENTORY_FULL, fake.claim(2).status());
+        UUID pendingOperation = fake.lastTag.operationId();
+        assertFalse(fake.claims.values().iterator().next().delivered());
+        fake.now += HistoryBookService.MANUAL_COOLDOWN_NANOS;
+        fake.delivery = BookPort.Delivery.DELIVERED; fake.ack = false;
+        assertEquals(HistoryBookService.Status.RETRYABLE_FAILURE, fake.claim(2).status());
+        assertEquals(pendingOperation, fake.lastTag.operationId());
+        fake.now += HistoryBookService.MANUAL_COOLDOWN_NANOS; fake.ack = true;
+        assertEquals(HistoryBookService.Status.DELIVERED, fake.claim(2).status());
+        assertEquals(pendingOperation, fake.lastTag.operationId());
+        assertTrue(fake.claims.values().iterator().next().delivered());
+        fake.now += HistoryBookService.MANUAL_COOLDOWN_NANOS;
+        assertEquals(HistoryBookService.Status.DELIVERED, fake.claim(2).status());
+        assertNotEquals(pendingOperation, fake.lastTag.operationId());
+    }
+
     @Test void staleAdapterCallbackCannotAcknowledgeClaim() {
         var fake = new Fake(); fake.wrongTag = true;
         assertEquals(HistoryBookService.Status.STALE_SCOPE, fake.auto().status());
@@ -190,6 +209,7 @@ class HistoryBookTest {
             service = new HistoryBookService(this, this, this, () -> now);
         }
         HistoryBookService.Result auto() { return service.automatic(player, 3, fingerprint, scope).toCompletableFuture().join(); }
+        HistoryBookService.Result claim(int volume) { return service.claim(player, latest.roundId(), volume, fingerprint, scope).toCompletableFuture().join(); }
         HistoryBookService.Result manual(int volume) { return service.manual(player, latest.roundId(), volume, fingerprint, scope).toCompletableFuture().join(); }
         @Override public CompletionStage<Optional<RoundHistory>> latestHistoryBefore(long sequence) {
             return pendingLatest != null ? pendingLatest : CompletableFuture.completedFuture(sequence > 2 ? Optional.of(latest) : Optional.empty());

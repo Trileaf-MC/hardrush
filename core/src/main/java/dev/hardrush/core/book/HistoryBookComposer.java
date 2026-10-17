@@ -87,10 +87,8 @@ public final class HistoryBookComposer {
                     + "\n进度 " + player.advancementCount() + " · 死亡 " + player.deathCount() + " · 复生 " + player.revivalCount()
                     + "\n末地：" + (player.firstEndNanos() == null ? "未进入" : duration(player.firstEndNanos() / 1_000_000)));
         }
-        paragraphs.add("历史查询入口\n/hardrush history\n/hardrush leaderboard\n本轮查询：\n/hardrush history " + history.roundId()
-                + "\n补领本卷：\n/hardrush book " + history.roundId() + " " + volume
-                + (volume < volumes ? "\n下一卷：\n/hardrush book " + history.roundId() + " " + (volume + 1) : "")
-                + "\n已发书册为历史快照，成绩修正后请重新领取。");
+        paragraphs.add("战绩书屋\n回到营地，右键书屋讲台。\n选择轮次可查结果、参赛名单与规则分榜；领取主册或分卷。\n本轮序号：" + history.sequence()
+                + "\n本卷 " + volume + "/" + volumes + "\n背包满时保留所选卷待领；自动主册会重试，历史分卷可空出格位后到书屋重试。\n已发书册为历史快照，成绩修正后请重新领取。");
         String title = SafeBookText.literal("HardRush 第" + history.sequence() + "轮 卷" + volume, 32);
         // The native title limit is UTF-16 length, not code points.
         if (title.length() > 32) title = title.substring(0, 32);

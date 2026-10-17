@@ -104,7 +104,7 @@ public final class P2LobbyRuntime {
             dispatcher.register(root);
         });
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
-            if (entity instanceof ServerPlayer player && taken > 0) interruptReturn(player);
+            if (entity instanceof ServerPlayer player && taken > 0) interruptReturn(player, "受伤");
         });
     }
 
@@ -137,13 +137,24 @@ public final class P2LobbyRuntime {
             @Override public List<P2LobbyUi.Button> buttons(ServerPlayer player, LobbyContext context) {
                 if (context == LobbyContext.COMPETITION) return buttons(player);
                 if (context == LobbyContext.ENTRY) return dev.hardrush.p1.lobby.P1HumanEntry.gateButtons(player);
+                if (context == LobbyContext.REVIVAL) return altarButtons(player, binding);
+                if (context == LobbyContext.HISTORY) return dev.hardrush.p1.record.P1Library.buttons(player);
                 var round = session.snapshot().orElseThrow();
                 return List.of(new P2LobbyUi.Button(Items.BOOK, "站入集结区参加，离开取消准备", "info", ""),
                         new P2LobbyUi.Button(Items.PAPER, "追猎规则：" + (round.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET ? "右键庭院模型，个人定向追猎" : "旧版投票（升级恢复隔离）"), "info", ""),
-                        new P2LobbyUi.Button(Items.CLOCK, "阶段：" + phaseName(round.phase()) + " · 历史查询入口尚未接通", "info", ""));
+                        new P2LobbyUi.Button(Items.CLOCK, "右键快捷栏技能；回响碎片归返营地，移动、攻击、用物或受伤中断", "info", ""),
+                        new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "极限击杀获一份资格；营地祭坛确认空装复生，冷却中可用", "info", ""),
+                        new P2LobbyUi.Button(Items.GRASS_BLOCK, "中途门确认空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),
+                        new P2LobbyUi.Button(Items.DRAGON_EGG, "人类尾刀首龙通关；末地庆祝最多180秒，龙池回厅；书屋查战绩领书", "info", ""),
+                        new P2LobbyUi.Button(Items.PAPER, "离线人类保留资格并暂停计时；无人类有资格时60秒救场", "info", ""));
             }
             @Override public void act(ServerPlayer player, UUID round, LobbyContext context, String action, String value) {
                 if (context == LobbyContext.ENTRY && action.equals("enter")) dev.hardrush.p1.lobby.P1HumanEntry.confirm(player, round);
+                else if (context == LobbyContext.REVIVAL && action.equals("revive")) {
+                    var p = session.snapshot().orElseThrow().participants().get(player.getUUID());
+                    if (p != null && value.equals(p.lifeSequence() + ":" + p.monsterDeploymentSequence())) request(player, round, action, value);
+                }
+                else if (context == LobbyContext.HISTORY) dev.hardrush.p1.record.P1Library.act(player, action, value);
                 else if (context == LobbyContext.COMPETITION) request(player, round, action, value);
             }
             @Override public UUID round(ServerPlayer player) { return session.snapshot().orElseThrow().roundId(); }
@@ -171,7 +182,8 @@ public final class P2LobbyRuntime {
         return switch (context) {
             case RULES -> verified;
             case ENTRY -> dev.hardrush.p1.lobby.P1HumanEntry.gateAvailable(player);
-            case HISTORY -> false; // shared history query UI is connected in round 4, never fake an empty result
+            case HISTORY -> verified;
+            case REVIVAL -> verified && revivalAvailable(player, b);
             case DISPLAY -> verified && dev.hardrush.p1.P1LobbyRuntime.lobbyActivityAllowed(player);
             case COMPETITION -> verified && dev.hardrush.p1.P1LobbyRuntime.lobbyActivityAllowed(player)
                     && b.worlds.get() != null && b.worlds.get().ready()
@@ -212,7 +224,7 @@ public final class P2LobbyRuntime {
             tell(player, "开局请站入集结区，离开取消准备；挑战中请到中途入场门确认。"); return;
         }
         if (action.equals("history")) {
-            player.level().getServer().getCommands().performPrefixedCommand(player.createCommandSourceStack(), "hardrush history"); return;
+            dev.hardrush.p1.record.P1Library.open(player); return;
         }
         var participant = round.participants().get(player.getUUID());
         if (participant == null || !participant.role().isMonster() || !participant.online()
@@ -220,6 +232,7 @@ public final class P2LobbyRuntime {
             tell(player, "当前身份或轮次不允许怪物操作。"); return;
         }
         if (action.equals("skill")) {
+            interruptReturn(player, "施放技能");
             if (!P2MonsterRuntime.canAct(player) || !MonsterRoles.isMonster(player)) {
                 tell(player, "请在正式出场后使用技能。"); return;
             }
@@ -311,7 +324,8 @@ public final class P2LobbyRuntime {
         if (round == null || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE || b.session.competitionLocked()) {
             for (var d : List.copyOf(b.searches.values())) searchFailed(b, d, "轮次已冻结，追猎已取消。");
             for (var d : b.pending.values()) d.cancelled = true;
-            b.channels.clear(); b.resumptions.clear(); return;
+            for (var channel : List.copyOf(b.channels.values())) interruptReturn(channel.player, "阶段变化／恢复隔离");
+            b.resumptions.clear(); return;
         }
         for (var refund : List.copyOf(b.refunds.values())) compensate(b, refund);
         for (var d : List.copyOf(b.resumptions.values())) {
@@ -332,12 +346,15 @@ public final class P2LobbyRuntime {
             if (!current(ch.player, b) || p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED
                     || p.lifeSequence() != ch.life || p.monsterDeploymentSequence() != ch.sortie
                     || ch.player.level() != ch.level || ch.player.position().distanceToSqr(ch.origin) > .000001
-                    || MonsterRoles.isIgniting(ch.player)) { b.channels.remove(entry.getKey()); continue; }
+                    || MonsterRoles.isIgniting(ch.player)) { interruptReturn(ch.player, "移动或身份／阶段变化"); continue; }
             long duration = round.rules().combatValues().get("monster.returnChannelMillis").longValue() * 1_000_000L;
-            if (System.nanoTime() - ch.started >= duration && !b.session.mutationPending()) {
+            long elapsed = System.nanoTime() - ch.started;
+            hint(ch.player, "return", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS,
+                    "正在返回营地 · 还需 " + Math.max(0, (duration - elapsed + 999_999_999L) / 1_000_000_000L) + " 秒");
+            if (elapsed >= duration && !b.session.mutationPending()) {
                 b.channels.remove(entry.getKey());
                 b.session.requestMonsterReturn(round.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
-                        reply -> tell(ch.player, reply.message()));
+                        reply -> { tell(ch.player, reply.message()); sound(ch.player, reply.success()); });
             }
         }
         for (var d : List.copyOf(b.searches.values())) {
@@ -439,18 +456,33 @@ public final class P2LobbyRuntime {
                 b.searchRandom, b.searchClock, P2SafeDeployment.MAX_CANDIDATES - d.spentCandidates, d.started);
         b.searches.put(d.identity.hunter(), d);
     }
+    public static boolean useReturn(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        var r = b == null ? null : b.session.view().orElse(null);
+        var p = r == null ? null : r.participants().get(player.getUUID());
+        if (p == null || !current(player, b) || !player.isAlive() || P1PlayerProfiles.isLocked(player)
+                || b.session.competitionLocked() || r.phase() != RoundPhase.RUNNING && r.phase() != RoundPhase.RESCUE) return false;
+        beginReturn(player, b, p);
+        return channeling(player);
+    }
     private static void beginReturn(ServerPlayer player, Binding b, Participant p) {
-        if (p.role() != ParticipantRole.MONSTER_DEPLOYED || MonsterRoles.isIgniting(player)) {
-            tell(player, "只有已出场且未引爆的怪物可以引导回大厅。"); return;
+        if (p.role() != ParticipantRole.MONSTER_DEPLOYED || MonsterRoles.isIgniting(player) || MonsterRoles.performingSkill(player)) {
+            tell(player, "只有已出场、未引爆且未在施放技能的怪物可以引导回大厅。"); return;
         }
         if (b.channels.containsKey(p.id())) { tell(player, "正在引导；移动、攻击、技能或受伤会取消。"); return; }
         b.channels.put(p.id(), new Channel(player, player.level(), player.position(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence()));
-        tell(player, "开始 5 秒回大厅引导；移动、攻击、技能或受伤会取消。");
+        tell(player, "开始 5 秒回大厅引导；移动、攻击、使用物品／技能或受伤会取消。");
     }
-    public static void interruptReturn(ServerPlayer player) {
+    public static void interruptReturn(ServerPlayer player) { interruptReturn(player, "施放技能／攻击"); }
+    public static void interruptReturn(ServerPlayer player, String reason) {
         var b = BINDINGS.get(player.level().getServer());
-        if (b != null && b.channels.remove(player.getUUID()) != null) tell(player, "回大厅引导已取消。");
+        if (b != null && b.channels.remove(player.getUUID()) != null) {
+            tell(player, "归返已中断：" + reason + "。");
+            LobbyInteractions.get(player.level().getServer()).ifPresent(router -> router.hints(player).clear("return"));
+            hint(player, "return-result", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "归返已中断：" + reason);
+            sound(player, false);
+        }
     }
     public static boolean channeling(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer()); return b != null && b.channels.containsKey(player.getUUID());
@@ -475,6 +507,8 @@ public final class P2LobbyRuntime {
         if (dev.hardrush.p1.celebration.P1CelebrationRuntime.successful(after)) {
             b.searches.clear(); b.resumptions.clear(); b.channels.clear(); return;
         }
+        if (before.phase() != after.phase() && after.phase() != RoundPhase.RUNNING && after.phase() != RoundPhase.RESCUE)
+            for (var ch : List.copyOf(b.channels.values())) interruptReturn(ch.player, "阶段变化");
         for (var p : after.participants().values()) {
             var old = before.participants().get(p.id());
             if (old != null && old.role().isMonster() && p.role() == ParticipantRole.HUMAN_ACTIVE) {
@@ -482,6 +516,10 @@ public final class P2LobbyRuntime {
                 var revived = server.getPlayerList().getPlayer(p.id());
                 if (revived != null && MonsterRoles.isMonster(revived)) MonsterRoles.clear(revived);
                 b.channels.remove(p.id()); b.searches.remove(p.id()); b.resumptions.remove(p.id());
+            }
+            if (old != null && !old.revivalEntitled() && p.revivalEntitled()) {
+                var owner = server.getPlayerList().getPlayer(p.id());
+                if (owner != null) { tell(owner, "已获得一份复生资格；归返营地后可在祭坛确认空装复生。"); sound(owner, true); }
             }
             if (p.role() != ParticipantRole.MONSTER_LOBBY || old == null || old.role() != ParticipantRole.MONSTER_DEPLOYED) continue;
             var player = server.getPlayerList().getPlayer(p.id());
@@ -571,7 +609,9 @@ public final class P2LobbyRuntime {
                         : !p.online() ? LobbyProjections.State.AWAY
                         : validTarget(b, player, player.level()) && !dimension(b, player.level()).equals("lobby")
                         ? LobbyProjections.State.AVAILABLE : LobbyProjections.State.CLOSED;
-                if (state == LobbyProjections.State.AVAILABLE) b.reviving.remove(p.id());
+                if (state == LobbyProjections.State.AVAILABLE && b.reviving.remove(p.id()) && player != null) {
+                    tell(player, "复生完成：已空装恢复人类，位于本轮自然出生点，无出生保护。"); sound(player, true);
+                }
             }
             targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state));
         }
@@ -597,11 +637,10 @@ public final class P2LobbyRuntime {
                     long now = System.nanoTime() / 1_000_000;
                     var attempt = b.searches.get(p.id());
                     if (attempt != null || b.committing.contains(p.id()) || b.resumptions.containsKey(p.id()))
-                        hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "正在搜索／提交个人追猎", now + 300);
+                        hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "正在搜索／提交个人操作", now + 300);
                     else projections.aimed(observer).ifPresent(selected -> hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
                             "目标：" + r.participants().get(selected.target()).name() + " · 当前角色：" + kindName(p.monsterRole())
                                     + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒" : " · 右键追猎"), now + 300));
-                    hints.current(now).ifPresent(text -> observer.connection.send(new net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket(Component.literal(text))));
                 }
             }
         }
@@ -642,10 +681,35 @@ public final class P2LobbyRuntime {
             buttons.add(new P2LobbyUi.Button(Items.OAK_DOOR, "引导返回大厅（5 秒）", "return", ""));
             buttons.add(new P2LobbyUi.Button(Items.PLAYER_HEAD, "右键庭院模型直接追猎 · 当前 " + kindName(p.monsterRole())
                     + " · 出场冷却 " + seconds(p.monsterCooldownNanos()) + " 秒", "info", ""));
-            buttons.add(new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "复生资格：" + (p.revivalEntitled() ? "有" : "无") + "（点击空装复生）", "revive", ""));
+            buttons.add(new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "复生资格：" + (p.revivalEntitled() ? "有" : "无") + " · 请到祭坛确认空装复生", "info", ""));
 
         }
         return buttons;
+    }
+    private static boolean revivalAvailable(ServerPlayer player, Binding b) {
+        var r = b.session.snapshot().orElse(null);
+        var p = r == null ? null : r.participants().get(player.getUUID());
+        return r != null && !b.session.competitionLocked() && (r.phase() == RoundPhase.RUNNING || r.phase() == RoundPhase.RESCUE)
+                && p != null && p.online() && p.role() == ParticipantRole.MONSTER_LOBBY
+                && player.position().distanceToSqr(dev.hardrush.p1.world.P1LobbyWorld.open(player.level().getServer())
+                    .layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.ALTAR))) <= 25;
+    }
+    public static void altar(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        if (b == null || !contextAvailable(player, b, LobbyContext.REVIVAL)) { tell(player, "祭坛仅供极限挑战／救场中的大厅怪物使用。"); return; }
+        P2LobbyUi.open(player, LobbyContext.REVIVAL);
+    }
+    private static List<P2LobbyUi.Button> altarButtons(ServerPlayer player, Binding b) {
+        var p = b.session.snapshot().orElseThrow().participants().get(player.getUUID());
+        var buttons = new ArrayList<P2LobbyUi.Button>();
+        buttons.add(new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, p.revivalEntitled() ? "已有一份复生资格" : "尚无复生资格 · 击杀在赛人类后获得", "info", ""));
+        buttons.add(new P2LobbyUi.Button(Items.GRASS_BLOCK, "消耗资格，空装恢复人类 · 主世界自然出生点，无出生保护", "info", ""));
+        buttons.add(new P2LobbyUi.Button(Items.PAPER, "保留本轮进度战绩；旧掉落不找回；出场冷却期间也可复生", "info", ""));
+        if (p.revivalEntitled()) buttons.add(new P2LobbyUi.Button(Items.EMERALD, b.committing.contains(p.id()) ? "正在复生" : "确认复生", b.committing.contains(p.id()) ? "info" : "revive", p.lifeSequence() + ":" + p.monsterDeploymentSequence()));
+        return buttons;
+    }
+    private static void hint(ServerPlayer player, String source, dev.hardrush.core.lobby.LobbyHints.Priority priority, String text) {
+        LobbyInteractions.get(player.level().getServer()).ifPresent(router -> router.hints(player).offer(source, priority, text, System.nanoTime() / 1_000_000 + 300));
     }
     private static String kindName(MonsterRole role) {
         return switch (role) { case ZOMBIE -> "僵尸"; case SKELETON -> "骷髅"; case CREEPER -> "苦力怕"; };

@@ -93,10 +93,23 @@ public final class LobbyFoundationGameTest {
                     scenario.useBlock(f.a.player, scenario.rules, 78, InteractionHand.MAIN_HAND);
                     test.assertTrue(P2LobbyUi.isMenu(f.a.player), "Verified body can read rules after storage recheck in recovery");
                     f.a.player.closeContainer();
-                    test.assertFalse(P2LobbyUi.open(f.a.player, LobbyContext.HISTORY), "Unconnected history service stays unavailable");
+                    var camp = P1LobbyWorld.open(f.server);
+                    var history = BlockPos.containing(camp.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(dev.hardrush.core.lobby.LobbyLayout.Facility.HISTORY)));
+                    scenario.teleport(f.a.player, Vec3.atBottomCenterOf(history.south(2)));
+                    scenario.useBlock(f.a.player, history, 781, InteractionHand.MAIN_HAND);
+                    test.assertTrue(P2LobbyUi.isMenu(f.a.player), "Rechecked healthy history service opens through the real library lectern during recovery");
+                    f.a.player.closeContainer();
+                    scenario.teleport(f.a.player, camp.holdingSpawn());
                     test.assertFalse(P2LobbyUi.open(f.a.player, LobbyContext.COMPETITION), "Recovery competition menu is sealed");
+                    f.historyDrain = f.session.history(1, 0);
+                })
+                .thenWaitUntil(() -> f.await(f.historyDrain.isDone(), "Read-only history IO drained before audited recovery close"))
+                .thenExecute(() -> {
+                    f.historyDrain.join();
+                    test.assertFalse(P2LobbyUi.isMenu(f.a.player), "Late history query never reopens the closed menu");
                     f.reply.set(null); f.session.closeRecovery("fixture", "第1轮轮换清理验证", f.reply::set);
                 })
+                .thenWaitUntil(() -> f.await(f.reply.get()!=null && f.reply.get().success(), "Recovery close committed after read-only IO"))
                 .thenWaitUntil(() -> f.await(f.session.snapshot().orElseThrow().sequence() == 2
                         && f.session.snapshot().orElseThrow().phase() == RoundPhase.WAITING
                         && P1PlayerProfiles.canMoveInLobby(f.a.player) && P1PlayerProfiles.canMoveInLobby(f.b.player), "New round ready"))
@@ -281,6 +294,7 @@ public final class LobbyFoundationGameTest {
         final AtomicReference<P1LobbySession.Reply> reply = new AtomicReference<>();
         final Peer a = new Peer("LobbyMovingA"), b = new Peer("LobbyMovingB");
         P1LobbySession session;
+        java.util.concurrent.CompletableFuture<?> historyDrain;
         P1PlayerProfiles profiles;
         BlockPos rules;
         String lastStage;

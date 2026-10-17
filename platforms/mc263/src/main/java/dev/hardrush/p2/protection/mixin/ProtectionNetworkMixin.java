@@ -29,7 +29,7 @@ public abstract class ProtectionNetworkMixin {
     private void move(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
         if (!mainThread()) return;
         if (new Vec3(packet.getX(player.getX()), packet.getY(player.getY()), packet.getZ(player.getZ()))
-                .distanceToSqr(player.position()) > .000001) dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
+                .distanceToSqr(player.position()) > .000001) dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player, "移动");
         if (P2ProtectionRuntime.rejectMove(player, player.level(), new Vec3(packet.getX(player.getX()), packet.getY(player.getY()), packet.getZ(player.getZ())))) {
             P2ProtectionRuntime.correct(player); ci.cancel();
         }
@@ -38,7 +38,7 @@ public abstract class ProtectionNetworkMixin {
     private void vehicle(ServerboundMoveVehiclePacket packet, CallbackInfo ci) {
         if (!mainThread()) return;
         if (packet.movingTo().position().distanceToSqr(player.getRootVehicle().position()) > .000001)
-            dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
+            dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player, "移动");
         var vehicle = player.getRootVehicle();
         if (P2ProtectionRuntime.rejectMove(vehicle, player.level(), packet.movingTo().position())) {
             P2ProtectionRuntime.correct(player); ci.cancel();
@@ -49,6 +49,7 @@ public abstract class ProtectionNetworkMixin {
         if (!mainThread()) return;
         switch (packet.getAction()) {
             case START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> {
+                dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player, "攻击方块");
                 if (P2ProtectionRuntime.rejectInteraction(player, player.level(), packet.getPos())) {
                     player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.getPos())); ci.cancel();
                 }

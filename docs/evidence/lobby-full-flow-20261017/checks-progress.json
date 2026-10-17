@@ -1,0 +1,78 @@
+[
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushFullFlow=true --console=plain",
+    "log": "full-flow-complete.log",
+    "status": "passed",
+    "sourceAggregateSha256": "1a30cc853675de43201334c81f55522b6dee75a0e30f702283d3adbb61147677",
+    "exitCode": 0,
+    "logSha256": "857bcc7c2c383d08d89cbc310785aeffb3711c174060201707cc5ca8364fbeb2",
+    "sourceConsistency": "Final product and selected-suite files unchanged; afterward only the gated foundation fixture was migrated from the retired unconnected-history expectation to physical recovery-library admission."
+  },
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushFullFlow=true -PhardrushFullFlowFault=revival --console=plain",
+    "log": "full-flow-revival-fault-complete.log",
+    "status": "passed",
+    "sourceAggregateSha256": "1a30cc853675de43201334c81f55522b6dee75a0e30f702283d3adbb61147677",
+    "exitCode": 0,
+    "logSha256": "f3180822866d110ef1cbe59cdcc4b1558ab3e6075c84bdb85a6392adbd73bbc1",
+    "sourceConsistency": "Final product and selected-suite files unchanged; afterward only the gated foundation fixture was migrated from the retired unconnected-history expectation to physical recovery-library admission."
+  },
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP2Lobby=true --console=plain",
+    "log": "p2-complete.log",
+    "status": "passed",
+    "sourceAggregateSha256": "1a30cc853675de43201334c81f55522b6dee75a0e30f702283d3adbb61147677",
+    "exitCode": 0,
+    "logSha256": "05328a67e520a7aabb5d7382c2e36c3d13dcf4e09a876503e74be9d164db556b",
+    "sourceConsistency": "Final product and selected-suite files unchanged; afterward only the gated foundation fixture was migrated from the retired unconnected-history expectation to physical recovery-library admission."
+  },
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushCelebration=true --console=plain",
+    "log": "celebration-complete.log",
+    "status": "passed",
+    "sourceAggregateSha256": "1a30cc853675de43201334c81f55522b6dee75a0e30f702283d3adbb61147677",
+    "exitCode": 0,
+    "logSha256": "aa52b66e61a28dea8215eff2bc440722fcd938d58ed6c6be199690a708536ebe",
+    "sourceConsistency": "Final product and selected-suite files unchanged; afterward only the gated foundation fixture was migrated from the retired unconnected-history expectation to physical recovery-library admission."
+  },
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushLobbyFoundation=true --console=plain",
+    "log": "foundation-complete.log",
+    "status": "passed",
+    "sourceAggregateSha256": "7626fa34c746c4d193aa1b36202958367a410bdf1c076b33f1f0b9f54ef461b9",
+    "exitCode": 0,
+    "logSha256": "45a8722309ed0ea9e0a4a1f45d0c6117db95f9eeac389d1a1b82871eaef217d2"
+  },
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushHumanEntry=true --console=plain",
+    "log": "human-complete.log",
+    "status": "passed",
+    "sourceAggregateSha256": "7626fa34c746c4d193aa1b36202958367a410bdf1c076b33f1f0b9f54ef461b9",
+    "exitCode": 0,
+    "logSha256": "cae3ed75600058a97ab1112a52bb9af94b137d70566b4a011cb2bd3517408053"
+  },
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushLobbyMovement=true --console=plain",
+    "log": "movement-complete.log",
+    "status": "passed",
+    "sourceAggregateSha256": "7626fa34c746c4d193aa1b36202958367a410bdf1c076b33f1f0b9f54ef461b9",
+    "exitCode": 0,
+    "logSha256": "1ffdfb6f30c91d8594408a2e46c4b158380980beee4d9c85d487adbaa363db74"
+  },
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushPersonalHunt=true --console=plain",
+    "log": "personal-complete.log",
+    "status": "passed",
+    "sourceAggregateSha256": "7626fa34c746c4d193aa1b36202958367a410bdf1c076b33f1f0b9f54ef461b9",
+    "exitCode": 0,
+    "logSha256": "fe36e1feb35be548707dc5cac4473bc36c5e531be3994258fa24c000c02f4c0f"
+  },
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushPersonalHunt=true -PhardrushPersonalFault=storage --console=plain",
+    "log": "personal-storage-complete.log",
+    "status": "passed",
+    "sourceAggregateSha256": "7626fa34c746c4d193aa1b36202958367a410bdf1c076b33f1f0b9f54ef461b9",
+    "exitCode": 0,
+    "logSha256": "872c04d0cb9c2c49f9196a892bd4a0c684b911cc21a7a1d82c475eabb8fb6842"
+  }
+]

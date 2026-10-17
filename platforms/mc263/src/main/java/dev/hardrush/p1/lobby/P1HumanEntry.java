@@ -69,6 +69,14 @@ public final class P1HumanEntry {
         var participant = round.participants().get(p.getUUID());
         return participant == null || participant.role() == ParticipantRole.LOBBY;
     }
+    /** Read-only registration also runs during recovery, before competitive tick short-circuits. */
+    public static void readOnlyTick(MinecraftServer server) {
+        var s=SERVICES.get(server); var lobby=P1LobbyWorld.open(server);
+        if(s==null||!lobby.ready()||s.session.snapshot().isEmpty())return;
+        var router=LobbyInteractions.get(server).orElse(null); if(router==null)return;
+        router.registerBlock(BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.RULES))), Blocks.LECTERN, LobbyContext.RULES, p->P2LobbyUi.open(p,LobbyContext.RULES));
+        router.registerBlock(BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.HISTORY))), Blocks.LECTERN, LobbyContext.HISTORY, dev.hardrush.p1.record.P1Library::open);
+    }
     public static void tick(MinecraftServer server) { var s = SERVICES.get(server); if (s != null) s.tick(); }
     private void tick() {
         var round = session.snapshot().orElse(null); if (round == null) return;
@@ -83,7 +91,8 @@ public final class P1HumanEntry {
                     else if (facility == LobbyLayout.Facility.MIDROUND) openGate(player);
                     else if (switch (facility) { case ZOMBIE, SKELETON, CREEPER, PREVIOUS, NEXT -> true; default -> false; })
                         dev.hardrush.p2.lobby.P2LobbyRuntime.facility(player, facility);
-                    else tell(player, "此设施尚未开放。开局请前往集结区，挑战或救场期间可使用中途入场门。");
+                    else if (facility == LobbyLayout.Facility.ALTAR) P2LobbyRuntime.altar(player);
+                    else if (facility == LobbyLayout.Facility.HISTORY) dev.hardrush.p1.record.P1Library.open(player);
                 });
             }
             registeredRound = round.roundId();
@@ -98,7 +107,7 @@ public final class P1HumanEntry {
                 case PREPARING -> "世界准备中 · 入口关闭"; case SETTLING -> "本轮结算 · 入口关闭";
                 case CELEBRATING -> "通关庆祝 · 入口关闭"; case ROTATING -> "正在换轮 · 入口关闭";
                 case RECOVERY_REQUIRED -> "恢复核验中 · 入口关闭";
-            }, round.rules().mode() == dev.hardrush.core.config.GameMode.NORMAL ? "普通模式 · 怪物区关闭" : "极限模式 · 怪物设施待开放"); lastLabel = label;
+            }, round.rules().mode() == dev.hardrush.core.config.GameMode.NORMAL ? "普通模式 · 怪物区关闭" : "极限模式 · 角色／追猎／祭坛"); lastLabel = label;
         }
         var view = session.view().orElse(round);
         countdownBar.setVisible(round.phase() == RoundPhase.COUNTDOWN);
@@ -172,8 +181,10 @@ public final class P1HumanEntry {
         long now = System.nanoTime() / 1_000_000;
         LobbyInteractions.get(server).ifPresent(router -> {
             var hints = router.hints(player);
-            hints.offer("assembly", LobbyHints.Priority.READY, message, now + 150);
-            hints.current(now).ifPresent(text -> player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket(Component.literal(text))));
+            if (message.startsWith("站入") && player.position().distanceToSqr(P1LobbyWorld.open(server).landing(LobbyLayout.Landing.RESTORE_READY)) > 144) {
+                hints.clear("assembly"); return;
+            }
+            hints.offer("assembly", message.startsWith("站入") ? LobbyHints.Priority.FACILITY : LobbyHints.Priority.READY, message, now + 150);
         });
     }
     private boolean gateDistance(ServerPlayer player, double range) {

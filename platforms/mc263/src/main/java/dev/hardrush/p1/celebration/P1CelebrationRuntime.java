@@ -117,7 +117,7 @@ public final class P1CelebrationRuntime {
                 if (!state.lobbyApplied) {
                     state.player = profiles.finishCelebration(player, round);
                     state.lobbyApplied = true;
-                    state.player.sendSystemMessage(net.minecraft.network.chat.Component.literal("已返回下一轮大厅；全员返回或庆祝到期后准备下一轮。"));
+                    state.player.sendSystemMessage(net.minecraft.network.chat.Component.literal("已返回独立大厅；全员返回或庆祝到期后安全换轮。下一轮需重新主动进入集结区。"));
                 }
                 if (!profiles.isReady(state.player.getUUID(), round) || !P1LobbyWorld.isLobby(state.player.level())) allReturned = false;
                 continue;

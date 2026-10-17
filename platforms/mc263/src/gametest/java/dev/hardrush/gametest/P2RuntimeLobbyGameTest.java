@@ -320,7 +320,7 @@ public final class P2RuntimeLobbyGameTest {
                 }).thenSucceed();
     }
 
-    private static final class Fixture {
+    static final class Fixture {
         final GameTestHelper test;
         final MinecraftServer server;
         final Peer monster = new Peer("P2LobbyMonster"), target = new Peer("P2LobbyTarget");
@@ -673,7 +673,7 @@ public final class P2RuntimeLobbyGameTest {
         }
     }
 
-    private static final class RecordingConnection extends Connection {
+    static final class RecordingConnection extends Connection {
         final ArrayList<Packet<?>> packets = new ArrayList<>();
         RecordingConnection() { super(PacketFlow.SERVERBOUND); }
         private void record(Packet<?> packet) {

@@ -1,17 +1,17 @@
 # HardRush 26.3 无指令大厅交接状态
 
-初始化日期：2026-10-16。当前阶段：第 1～3 轮开发与自动验证完成，第 4～5 轮未开始。对应[五轮计划](lobby-delivery-plan.md)、[产品设计](lobby-interaction-design.md)和[启动词索引](lobby-delivery-prompts/README.md)。
+初始化日期：2026-10-16。当前阶段：第 1～4 轮开发与自动验证完成，第 5 轮未开始。对应[五轮计划](lobby-delivery-plan.md)、[产品设计](lobby-interaction-design.md)和[启动词索引](lobby-delivery-prompts/README.md)。
 
 ## 总体状态
 
 | 项目 | 当前状态 |
 | --- | --- |
 | 交付范围 | 26.3；26.1.2／26.2 正式适配另排 |
-| 当前开发轮次 | 第 3 轮开发与自动验证完成；停在本轮，第 4 轮须另行启动 |
-| 新交互开发 | 底座、人类流程、角色、皮肤庭院及个人追猎已交付；外围闭环等待第 4 轮 |
-| 本计划的自动产品验证 | 第 3 轮最终源码 367 项 JUnit、108 项默认 GameTest；P2、个人追猎双故障、底座、人类、移动及受影响恢复专项通过；占位不代替专项，前轮证据保留 |
+| 当前开发轮次 | 第 4 轮开发与自动验证完成；停在本轮，第 5 轮须另行启动 |
+| 新交互开发 | 底座、人类流程、角色、皮肤庭院及个人追猎已交付；完整无指令闭环已接通 |
+| 本计划的自动产品验证 | 第 4 轮 368 JUnit、109 默认 GameTest、9 项独立原生专项及庆祝两 JVM 正常重启通过；完整证据见第 4 轮 |
 | 真实客户端人工验收 | 未执行；本轮皮肤、选取与游玩按人工清单待验 |
-| Git 提交 推送 部署 | 第 1～2 轮已提交；第 3 轮按本次授权本地提交，记录见文末。未推送或部署；各轮验证基线保持原记录 |
+| Git 提交 推送 部署 | 第 1～3 轮已提交；第 4 轮按明确授权本地提交，见文末。未推送或部署；验证基线保持历史含义 |
 | 文档准备检查 | 11 份 Markdown 的结构与 171 个本地链接检查通过；5 份独立启动词和 5 轮未开始状态校验通过，只读复审通过 |
 
 ## 初始化基线
@@ -29,8 +29,8 @@
 | 1 交互底座与关键风险 | 开发与自动验证完成 | 已核对干净基线并实跑当前门槛 | [验证汇总](evidence/lobby-foundation-20261017/validation.json)／[接口说明](lobby-foundation.md) | 停止本轮；第 2 轮另行启动并先复核 |
 | 2 营地与人类入场 | 开发与自动验证完成 | 前轮 24 个源码及 3 份成功日志摘要、接口已复核 | [基线](evidence/lobby-human-entry-20261017/baseline.json)／[验证汇总](evidence/lobby-human-entry-20261017/validation.json) | 停止本轮；第 3 轮另行启动并先复核 |
 | 3 皮肤庭院与定向追猎 | 开发与自动验证完成 | 已核对前两轮主能力与证据，最终自动门槛通过 | [基线](evidence/lobby-direct-hunt-20261017/baseline.json)／[验证汇总](evidence/lobby-direct-hunt-20261017/validation.json) | 停止本轮；第 4 轮另行启动并先复核 |
-| 4 全流程无指令接通 | 未开始 | 第 1～3 轮已通过，待第 4 轮会话复核 | 无 | 按第 4 轮启动词先复核第 1～3 轮 |
-| 5 稳定化与候选包 | 未开始 | 第 1～3 轮已通过，第 4 轮未执行 | 无 | 等待全部玩家业务实现 |
+| 4 全流程无指令接通 | 开发与自动验证完成 | 第 1～3 轮最新源码、日志及主能力已核验；本轮门槛通过 | [基线](evidence/lobby-full-flow-20261017/baseline.json)／[验证汇总](evidence/lobby-full-flow-20261017/validation.json) | 停止；第 5 轮另行启动 |
+| 5 稳定化与候选包 | 未开始 | 第 1～4 轮业务与自动门槛已通过 | 无 | 等待用户另行启动 |
 
 后轮未开始不等于技术失败。第 1～3 轮执行发现的失败与修复见下文；三轮必需自动门槛已通过，人工画面与后轮业务仍未验收。
 
@@ -248,15 +248,107 @@ AWARD/COMMIT 的实际 PID 为 19714（SIGKILL）→19888→20000，PROFILE/PREP
 
 ## 第 4 轮交接
 
-- 状态：未开始。
-- 执行会话及日期：尚无。
-- 前轮复核结论与本轮基线：尚无。
-- 无指令入口覆盖表：尚未建立。
-- 物品返厅 复生 救场 书屋与状态反馈：尚未接通。
-- 庆祝 轮换及原物资边界回归：未执行。
-- 自动验证命令 结果与证据：未执行，无证据。
-- 人工反馈与待验：尚无反馈，全部待验。
-- 留给下一轮：全部主流程实现后列出稳定化矩阵、已知问题和候选包准备项；不得把首次实现主功能留给第 5 轮。
+- 状态：开发与自动验证完成。仅执行第 4 轮；第 5 轮、真实客户端、推送及部署未启动。
+- 执行会话及日期：01a1487c-247a-79d3-9924-63a39e2ba57c，2026-10-17。
+- 前轮复核结论与本轮基线：main，HEAD `8b0c42fba323ad341d39a301366c1cc7b0ce242d`，工作树干净；仅根 AGENTS.md 适用。前 3 轮合并后的 54 个最新源码及 17 份验证日志摘要一致，已复读双保护、菜单上下文／提示、空间集结、角色与个人追猎接口，前置主能力已交付。完整文件基线见 [baseline.json](evidence/lobby-full-flow-20261017/baseline.json)。没有重建状态文件、覆盖已有改动或依赖聊天历史。
+
+### 玩家动作覆盖表
+
+下表均为已接通实现；最终自动通过状态以下方冻结源码验证表为准，不代替人工客户端验收。
+
+| 玩家动作 | 场景／物品／界面 | 权威接口与约束 |
+| --- | --- | --- |
+| 首次入服与查看可用动作 | 中央广场、状态牌、行动栏、TAB | 原档案核验；不自动集结 |
+| 报名、准备、取消 | 集结圈入圈／离圈 | `P1HumanEntry`／`requestAssembly`；归零终验、普通断线取消 |
+| 挑战中参赛／救场新人入场 | 中途门讲台／前厅确认 | `ENTRY`／`requestJoin`；确认前关闭不加入，受理后关闭不撤销 |
+| 普通死亡与重生 | 原版死亡按钮、床／锚 | 原生重生＋档案生命周期；不进极限怪物流程 |
+| 极限死亡、怪物败退 | 原生死亡／替换身体、怪物落点 | 原死亡批次、掉落、档案转换与 30 秒冷却 |
+| 选角 | 三角色展位讲台 | `facility`／`requestMonsterRole`；角色冷却不重置 |
+| 选人、翻页、出场 | 个人皮肤庭院模型、上一／下一页讲台 | 原 `PersonalHuntRequest`；同一生命、共享预算与补偿 |
+| 获知无人可追猎 | 暂离模型、行动栏、TAB | 依据核心人类资格；离线保留，只暂停挑战计时 |
+| 使用僵尸／骷髅／苦力怕技能 | 原固定快捷栏物品 | `MonsterRoles.useControl`／正式持久技能冷却；说明与冷却名称 |
+| 主动归返 | **快捷栏第 8 格回响碎片** | 唯一 `repairLoadout` 来源，`useReturn`→原 Channel→`requestMonsterReturn` |
+| 理解归返进度／取消 | 5 秒行动栏、聊天及短音效 | 移动、攻击／空挥／方块攻击、物品／技能、受伤均中断；引爆、连射／蓄弓／技能提交期间拒绝启动 |
+| 查看本人资格 | 复生祭坛讲台、个人确认页 | `REVIVAL` 上下文；只读资格，不自动消费 |
+| 空装复生 | 祭坛“确认复生／继续作为怪物” | 轮次＋生命＋出场值、身体／连接与距离重验；原 `requestRevival`／档案转换；冷却不拦截 |
+| 救场恢复 | 60 秒顶部条、祭坛和中途门 | 原死亡批次先发资格／处理自爆再裁决；祭坛与新人入口分别可恢复 |
+| 阅读规则 | 规则讲台与只读菜单 | 模式、集结、追猎、技能、复生、胜负；准备／健康恢复期间按服务门槛开放 |
+| 找轮次、看成绩／名单 | 书屋→轮次分页→详情／名单分页 | `P1Library`＋共享 `P1HistoryQueries`；每页有界，未结算种子不公开 |
+| 查看分模式／规则榜 | 书屋普通／极限按钮、历史轮自身规则榜 | 仍按完整规则指纹查询；异常／未核验成绩不入正常榜 |
+| 领取主册／分卷、满包重试 | 书屋详情／分卷目录 | `HistoryBookService.claim` 复用 `book_deliveries`；先写待领，库存保存后 ACK；待领重试同 operation ID，已交付后新副本仍限速 |
+| 阅读成书与补发最新主册 | 手持成书右键、书屋“阅读已领取书册”、原自动待领机制 | 原 `P1BookPort`／库存持久化核验；成书与失败文案指向书屋，无必须输入命令 |
+| 首龙通关与庆祝 | 原生有效攻击、末地固定名单与临时物品 | 复用 `P1CelebrationRuntime`／档案 journal；名单包含人类及怪物，最多 180 秒 |
+| 提前返厅与重连 | 原生龙池出口 | 原物资封存、returned 持久标记；已返回者重连留独立大厅 |
+| 安全换轮、开始下一轮 | 全员在线返回／到期，圈外落点 | 仍等待档案／回放／原生世界关闭；新轮需主动重新入圈 |
+
+### 本轮接口与实现边界
+
+- `LobbyContext.REVIVAL` 接入原 `P2LobbyUi` 的轮次、当前身体／连接、按钮来源和 250 ms 防连点；祭坛按钮另绑定生命／出场序号，出生不安全保留资格，真实事务／档案错误保持隔离。竞技菜单旧复生按钮改为祭坛指引；旧 vote／dimension／无目标 deploy 路径继续停用。
+- `MonsterRoles.isReturnControl` 只认服务端角色与主手固定槽，不凭客户端名字授权；先分流归返，再中断普通物品／技能。物品不能由另一个 tick 维护器注入，角色装备与控制物仍不可丢弃、换装或转赠。
+- `P1PlayerFeedback` 在所有意图生产者及异常／庆祝短路之后统一渲染，明确清理已失效的核验／追猎提示租约。优先级继续是恢复 > 执行进度 > 准备 > 目标 > 设施。顶部救场／庆祝条有独立生命周期；`P1TabRuntime` 保持只发原生页头页脚，不改真实在线玩家条目。
+- `P1HistoryQueries` 将有界查询与安全文字展示提取给命令和书屋共用；`P1Library` 视图绑定身体、连接、当前轮次及查询代次，迟到 IO 不重开界面或更新新连接。每批轮次／名单 20 条加 1 条翻页探针，分卷目录也有界。不执行玩家命令再解析聊天。
+- 书屋显式领取使用新增 `HistoryBookService.claim`，复用原 `Claims`、`book_deliveries`、`P1BookPort` 和库存回读核验。没有新增存储系统或重写资格／档案架构。原 `manual` API 的历史兼容语义及其测试保留。
+- `P1HumanEntry.readOnlyTick` 在 Runtime 异常短路前登记规则／历史，只读能力与竞技门槛分开；数据库 FAILED／RECHECKING 或个人真实隔离不开放。读不到历史明确失败，不伪造空记录。
+- 庆祝主机制已由独立工作交付，本轮复用并验证怪物名单、临时物资、原生龙池和下一轮边界，只补无指令引导与统一展示；未建立第二套庆祝记录。
+
+- 物品返厅 复生 救场 书屋与状态反馈：已实现，最终自动门槛通过。回响碎片固定第 8 格并由 MonsterRoles 维护；祭坛绑定轮次／生命／出场并确认消费；书屋共用有界查询与文本服务，不执行命令。顶部救场／庆祝条和个人行动栏仲裁已接通，保留既有事务及档案架构。
+- 执行中证据：`full-flow-fourth.log`／`full-flow-fifth.log` 已走过真实集结、极限死亡、模型追猎、物品中断与归返、重复祭坛确认、救场恢复和苦力怕最后一击资格／回厅顺序；这些是中间结果，不能计为最终通过。首次编译修正测试端 Level 类型；进度断言暴露旧核验／追猎提示租约未语义清理，已在统一渲染时清理失效来源（前轮局部提示缺陷，本轮整合归属）；另修夹具死亡替换未等待及终局观测时钟未同步，失败隔离目录与完整日志保留。
+- 庆祝 轮换及原物资边界回归：完整闭环、独立庆祝专项及 CELEBRATING 正常重启补验全部通过，见下表。
+- 前轮局部直接缺陷归属：既有 `MonsterCombatPlayerMixin` 在 `Player.attack` HEAD 直接封锁正式怪物，可能抢在 Fabric 同位置的攻击回调前取消，真实左键无法到达怪物模型。旧 P2／第 3 轮循环调用 `MonsterRoles.attack`，未覆盖该包路径。本轮改为两条 HEAD 路径都转交同一受控怪物服务且各自终止 vanilla，先执行者完成唯一操作；仍受既有身份、距离、冷却及来源白名单限制。原生包专项的真实失败保留为 `full-flow-owned-reader-melee-failure.log`；此修补不替代整轮前置。
+- 底座夹具迁移：旧“历史未接通”断言已改为重核后实际书屋讲台可读，竞技菜单仍拒绝；新增等待只读查询排空后再审计结束恢复轮，并断言迟到查询不重开已关闭菜单。原两次失败分别保留 `foundation-history-expectation-failure.log` 与 `foundation-history-drain-failure.log`，没有放宽管理 IO 门槛。此后仅该 gated 夹具改变，前四项最终产品／专项代码摘要逐项保持。
+- 收尾复核（历史保留）：新增待领分卷探针曾错误使用只返回 volume=1 的 `latestAutomaticBookClaim`，现用只读精确 SQL 核对 volume=2 的持久 pending／ACK，原失败保存为 `full-flow-ledger-probe-failure.log`。随后发现深背包的成书在大厅库存封锁下缺少阅读动作，已接书屋“阅读已领取书册”→原 `P1BookReader` 并补原生 OpenBook 包断言；旧版本四项通过日志和摘要保留为 `*-before-owned-reader.log`／`checks-before-owned-reader.json`，不冒充最终源码门槛。
+- 自动验证命令 结果与证据：最终 368 JUnit、109 默认 GameTest、九项原生专项与庆祝两 JVM 正常重启全部通过；完整命令、隔离目录及日志摘要见[验证汇总](evidence/lobby-full-flow-20261017/validation.json)和下表。
+- 夹具修正：第 7～9 次中间运行部分由本会话对确认属于自身 `.local/lobby-full-flow` 目录的子进程发送 SIGTERM 停止，完整日志保留，不能计成功。界面输入遵守原 250 ms 节流；重连后的原生监听器必须随嵌入连接 tick，避免原版登录保护／物品时钟永远停住。最新夹具走实际原生监听器，未放宽保护或改玩家核心身份。
+- 人工反馈与待验：本会话未收到新反馈；[人工清单](人工客户端测试/大厅无指令交互与定向追猎.md) 已补固定第 8 格、各种中断、冷却中确认、读书／分卷、待领、健康异常只读、庆祝与下轮步骤，全部未勾选。没有启动真实客户端、浏览器、computer use、游玩 MCP 或日常实例。
+
+### 最终自动验证
+
+全部本轮门槛已通过。完整闭环 SQLite 复核见 [full-flow-sqlite-audit.json](evidence/lobby-full-flow-20261017/full-flow-sqlite-audit.json)，成功／失败日志与中间版本摘要全部保留。
+
+| 准确命令 | 结果 | 隔离目录／证据 |
+| --- | --- | --- |
+| `scripts/p0-gradle.sh checkP3 -PhardrushP1=true --console=plain` | 通过；368 JUnit（164 core＋94 persistence＋110 adapter）、109 默认 GameTest | `.local/baseline-check/65d668d7-e551-4d98-882a-08ee2431d9b2`；[checkP3-verified.log](evidence/lobby-full-flow-20261017/checkP3-verified.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushFullFlow=true --console=plain` | 通过；1/1 过滤结果 | `.local/lobby-full-flow/cdbaf83f-91c0-4a04-9fd4-368417609e97`；[full-flow-complete.log](evidence/lobby-full-flow-20261017/full-flow-complete.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushFullFlow=true -PhardrushFullFlowFault=revival --console=plain` | 通过；1/1 过滤结果 | `.local/lobby-full-flow/aec64771-1d83-4bbc-afbf-fee61a2881a3`；[full-flow-revival-fault-complete.log](evidence/lobby-full-flow-20261017/full-flow-revival-fault-complete.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP2Lobby=true --console=plain` | 通过；1/1 过滤结果 | `.local/p2-lobby/73a9f701-a07b-465e-bd5e-1186bd1f3522`；[p2-complete.log](evidence/lobby-full-flow-20261017/p2-complete.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushCelebration=true --console=plain` | 通过；2/2 过滤结果 | `.local/celebration-regression/81695922-1f7b-4aa8-99e5-84f11e998085`；[celebration-complete.log](evidence/lobby-full-flow-20261017/celebration-complete.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushLobbyFoundation=true --console=plain` | 通过；1/1 过滤结果 | `.local/lobby-foundation/64724dc4-6bca-40cb-8f38-66736dc36d5e`；[foundation-complete.log](evidence/lobby-full-flow-20261017/foundation-complete.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushHumanEntry=true --console=plain` | 通过；1/1 过滤结果 | `.local/lobby-human-entry/a0c9f3eb-1dca-46a2-8175-caa9496132c4`；[human-complete.log](evidence/lobby-full-flow-20261017/human-complete.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushLobbyMovement=true --console=plain` | 通过；1/1 过滤结果 | `.local/lobby-movement/1452b7b0-d5f5-43b1-a40a-c3c207ab4ed8`；[movement-complete.log](evidence/lobby-full-flow-20261017/movement-complete.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushPersonalHunt=true --console=plain` | 通过；1/1 过滤结果 | `.local/personal-hunt/47d183c8-45ac-4636-a131-ca5f12b0f717`；[personal-complete.log](evidence/lobby-full-flow-20261017/personal-complete.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushPersonalHunt=true -PhardrushPersonalFault=storage --console=plain` | 通过；1/1 过滤结果 | `.local/personal-hunt/38f6d02e-4396-441d-9dae-eccb9c25ec96`；[personal-storage-complete.log](evidence/lobby-full-flow-20261017/personal-storage-complete.log) |
+| `python3 scripts/p1-server-restart.py --phase CELEBRATING` | 通过；writer／recover 两个独立 JVM 正常停止，exit 0；SQLite／封套核验通过 | `.local/p1-server-restart/e7df8f58-1228-4857-9a6b-cad25818ed93`；[celebration-restart.log](evidence/lobby-full-flow-20261017/celebration-restart.log) |
+
+所有命令从仓库根目录执行，每次均为新隔离目录，没有清空日常存档。109 默认结果包含未启用专场的占位；庆祝过滤 2 项中十轮方法未启用，不因此宣称本轮重新完成十轮。九个独立专项分别证明实际相应入口，不能将默认占位叠加成完整闭环证据。
+
+本轮 26 个源码／测试／构建文件 SHA-256 与[最终清单](evidence/lobby-full-flow-20261017/source-files.json)一致，聚合 `7626fa34c746c4d193aa1b36202958367a410bdf1c076b33f1f0b9f54ef461b9`。前四个原生专项后只迁移 gated 的底座历史／只读排空夹具；产品、对应专项与共享夹具逐项保持，最终基础及底座专项已在最终源码重跑。验证时仍是基线 HEAD 上的未提交工作树；不能单用该 HEAD 当实现版本。
+
+完整无指令专场由三条原生嵌入连接通过位置、讲台、实体右键、快捷栏物品、容器确认和原生攻击包串起全部业务：资格与救场先后、主动返厅、两次祭坛复生、苦力怕最后人类击杀／自爆、两条救场恢复路径、末地人类＋怪物庆祝、龙池返厅、原生世界关闭和下一轮主动集结、历史与读书。没有执行旧玩家命令或调用核心改身份。另以 22 条合成 ABORTED 历史、每轮 42 条参赛记录验证分页／分卷；它们不是游玩或通关成绩。卷 2 的满包待领和后续 ACK 已核对真实 SQLite 行；实际首轮正常榜资格、完整性和外键检查通过。
+
+夹具范围：预置有界暗棚竞技场、原生致死前置、低血量人类与首龙、受控挑战／伤害单调时钟、归返引导年龄及领书重试限速时钟；界面输入遵守原 250 ms 节流。归返移动、攻击、普通物品／技能和受伤中断均由正式输入验证，物品每 tick 修复仍存在；5 秒成熟由测试时钟加速，不冒充实际五秒客户端手感。SQLite 触发器故障是受控拒写，不是物理磁盘验收。
+
+庆祝独立专场另外验证重连余量、returned 留厅、其他维度回厅、全员返回、离线不阻塞、180 秒受控到期和临时物品清理。CELEBRATING 正常重启 PID 为 64668→64813，两次均正常 stop／exit 0；同轮 UUID、已冻结 13 秒成绩和剩余 60 秒保持，档案封套、SQLite 精确快照与完整性通过，见[重启结果](evidence/lobby-full-flow-20261017/celebration-restart/result.json)。没有扩大为所有阶段／强杀矩阵或恢复可玩宣告。
+
+生产 JAR 仅作为构建验证，SHA-256 `dde5a4d2374448a93aaa3d6b133abfa64b93cd848dc0fc512b29530ef47d8873`；[制品检查](evidence/lobby-full-flow-20261017/jar-inspection.json)确认无 GameTest、MCPFabric 或 debug 类。未生成部署候选包、发布、推送或部署；回放 disabled 不算录像验收。人工画面、皮肤、声音与完整游玩仍全部待验。
+
+
+### 交给第 5 轮的矩阵与候选包准备项
+
+第 5 轮尚未开始；仅在本轮全部自动门槛通过后另行启动[第 5 轮启动词](lobby-delivery-prompts/05-stabilization.md)。所有玩家主业务本轮首次实现，不将返厅、祭坛、历史分页或庆祝接线留给后轮。
+
+| 第 5 轮回归矩阵 | 本轮可复用入口／证据 | 重点 |
+| --- | --- | --- |
+| 普通／极限、多玩家、连续轮换 | FullFlow、P2、Celebration、人类专项 | 不串生命、资格、背包或自动准备 |
+| 归返和技能 | 物品、空挥、方块、实体及容器包 | 重连、正常停服、换维度、冻结与旧回调清理 |
+| 资格与救场 | 祭坛、真实 SQLite 拒写、死亡批次 | 到期受理顺序、离线召唤物、出生变化与恢复隔离 |
+| 书屋与大历史 | 20 条翻页探针、分卷、待领 ACK | 多观察者、修订书版、重连／关闭 IO、库存保存故障 |
+| 庆祝与释放 | 原固定名单、龙池、独立正常重启 | 临时余量、returned、原物资、回放保存和旧世界 IO |
+| 旧规则／过期请求与约 20 连接 | 原协议／个人追猎专项 | 代次、轮次、连接清理；不是图形客户端体验验收 |
+
+已知限制：真实原版画面、皮肤、准星／物品手感、音效与完整游玩仍待人工；没有新人工通过结果。约 20 连接规模、长期连续稳定性、物理存储故障和本计划候选包均未在本轮执行，不因此宣称全项目发布通过。回放未安装时只记录 disabled，不伪造录像验收。
+
+候选包准备项：第 5 轮核对最终源码与生产 JAR 摘要、无 GameTest／MCPFabric／调试辅助类、精确依赖、安装／升级／旧活动轮处置、备份／回退、全新演示目录与安装清单。本轮只构建验证，没有准备部署实例、发布候选包、推送或部署。
+
 
 ## 第 5 轮交接
 
@@ -306,3 +398,9 @@ AWARD/COMMIT 的实际 PID 为 19714（SIGKILL）→19888→20000，PROFILE/PREP
 按用户“完成后提交”的明确授权，本次提交包含第 3 轮角色展位、UUID 皮肤庭院、冻结生命的个人定向追猎、受保护实体入口、搜索／补偿与故障隔离，以及所需夹具迁移、受影响恢复夹具修正、成功／失败证据和交接。它们共同组成此记录所属的 `feat(lobby)!` 提交，未拆成不能单独运行的中间状态。
 
 提交整理只更新交接与证据，没有在通过后修改产品源码。28 个源码／测试／构建／脚本文件摘要和 9 项最终检查日志摘要已逐项核对；P3 收尾仅调整恢复夹具的共享大厅证据范围，产品与各原生专项代码保持已验证版本，最终基础及两种强杀边界另已重跑。验证 JSON 的基线 HEAD、dirty 与 committed=false 保留其验证时含义。人工项目全部待验，未启动第 4 轮、真实客户端、浏览器或日常实例，未推送或部署。
+
+## 2026-10-17 第 4 轮提交
+
+按用户“完成后提交”的明确授权，将剩余玩家入口、共享历史／展示、原生攻击入口的直接修复、所需专项与夹具迁移、全部成功／失败证据及交接共同整理为本记录所属的 `feat(lobby)` 提交。各部分共同完成第 4 轮玩家闭环，不拆成不能单独验收的中间状态。
+
+提交整理只补文档和证据；最终 26 个源码／测试／构建摘要与通过时一致，所有最终日志摘要已核对。验证 JSON 中基线 HEAD、dirty 与 committed=false 是验证时的历史事实。没有推送、部署、真实客户端或日常实例操作，第 5 轮仍未开始。

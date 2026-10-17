@@ -1,0 +1,31 @@
+Starting a Gradle Daemon, 1 busy Daemon could not be reused, use --status for details
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :persistence:processResources NO-SOURCE
+> Task :persistence:processTestResources NO-SOURCE
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :platforms:mc263:processTestResources NO-SOURCE
+> Task :core:compileJava UP-TO-DATE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :persistence:compileJava UP-TO-DATE
+> Task :persistence:classes UP-TO-DATE
+> Task :persistence:jar UP-TO-DATE
+> Task :platforms:mc263:compileJava UP-TO-DATE
+> Task :platforms:mc263:classes UP-TO-DATE
+> Task :core:compileTestJava
+> Task :core:processTestResources UP-TO-DATE
+> Task :core:testClasses
+> Task :persistence:compileTestJava
+> Task :persistence:testClasses
+> Task :platforms:mc263:compileTestJava
+> Task :platforms:mc263:testClasses
+> Task :core:test
+> Task :persistence:test
+> Task :platforms:mc263:test
+
+BUILD SUCCESSFUL in 25s
+13 actionable tasks: 6 executed, 7 up-to-date

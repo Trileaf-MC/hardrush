@@ -1,0 +1,10 @@
+[
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushFullFlow=true --console=plain",
+    "log": "full-flow-complete.log",
+    "status": "failed",
+    "sourceAggregateSha256": "19ac3cc3e1d73154fcc6d55187c1c237f6176f8c255467d7034b0a8c43a2e869",
+    "exitCode": 1,
+    "logSha256": "331d42f6cdd3044e084acc81ae5e015cb09b4934a0d31ea240bb51a083cd59df"
+  }
+]

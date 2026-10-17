@@ -1,0 +1,79 @@
+package dev.hardrush.p1.lobby;
+
+import dev.hardrush.core.lobby.*;
+import dev.hardrush.core.round.*;
+import dev.hardrush.p1.P1LobbySession;
+import dev.hardrush.p1.player.P1PlayerProfiles;
+import dev.hardrush.p1.world.P1LobbyWorld;
+import dev.hardrush.p0.monster.MonsterRoles;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
+import net.minecraft.server.MinecraftServer;
+
+/** Render after all intent producers, including early-return recovery/celebration ticks. */
+public final class P1PlayerFeedback {
+    private static final java.util.Map<MinecraftServer, net.minecraft.server.level.ServerBossEvent> BARS = new java.util.IdentityHashMap<>();
+    private P1PlayerFeedback() {}
+    public static void close(MinecraftServer server) { var bar=BARS.remove(server); if(bar!=null)bar.removeAllPlayers(); }
+    private static void stage(MinecraftServer server, RoundSnapshot round) {
+        var stageBar=BARS.computeIfAbsent(server, ignored->new net.minecraft.server.level.ServerBossEvent(java.util.UUID.randomUUID(), Component.literal("HardRush"),
+                net.minecraft.world.BossEvent.BossBarColor.YELLOW, net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS));
+        boolean rescue=round.phase()==dev.hardrush.core.round.RoundPhase.RESCUE;
+        boolean celebrating=round.phase()==dev.hardrush.core.round.RoundPhase.CELEBRATING;
+        boolean settling=round.phase()==dev.hardrush.core.round.RoundPhase.SETTLING;
+        boolean recovery = round.phase()==RoundPhase.RECOVERY_REQUIRED || dev.hardrush.p1.P1LobbyRuntime.sessionState(server)
+                .filter(state->state!=P1LobbySession.State.OPEN).isPresent();
+        stageBar.setVisible(recovery||rescue||celebrating||settling);
+        stageBar.setName(Component.literal(recovery ? "恢复隔离 · 竞技入口关闭，请联系管理员" : (rescue?"救场 · 祭坛复生／中途门加入":celebrating?"通关庆祝 · 龙池回厅，全员返回提前结束":"结算展示")
+                + " · 剩余 " + (round.remainingPhaseMillis()+999)/1000 + " 秒"));
+        long total=rescue?round.rules().combatValues().get("round.rescueMillis").longValue():celebrating?180000:round.rules().failureDisplayMillis();
+        stageBar.setProgress(recovery ? 0 : Math.max(0,Math.min(1,(float)round.remainingPhaseMillis()/Math.max(1,total))));
+        for(var old:java.util.List.copyOf(stageBar.getPlayers()))if(server.getPlayerList().getPlayer(old.getUUID())!=old)stageBar.removePlayer(old);
+        for(var player:server.getPlayerList().getPlayers())stageBar.addPlayer(player);
+    }
+
+    public static void tick(MinecraftServer server, RoundSnapshot r, P1LobbySession session) {
+        var router=LobbyInteractions.get(server).orElse(null); if(router==null)return;
+        if(server.getTickCount()%5==0)stage(server,r);
+        long now=System.nanoTime()/1_000_000;
+        boolean frozen=session.competitionLocked();
+        long humans=r.participants().values().stream().filter(p->p.role().isActiveHuman()).count();
+        for(var player:server.getPlayerList().getPlayers()) {
+            var hints=router.hints(player); var p=r.participants().get(player.getUUID());
+            for(var source:java.util.List.of("recovery","profile","rescue","away","celebration","skill","facility"))hints.clear(source);
+            if(!P1LobbyWorld.isLobby(player.level()))hints.clear("assembly");
+            if(p==null||p.role()!=ParticipantRole.MONSTER_LOBBY){hints.clear("hunt");hints.clear("hunt-target");}
+            if(!dev.hardrush.p2.lobby.P2LobbyRuntime.channeling(player))hints.clear("return");
+            if(frozen) dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player,"阶段变化／恢复隔离");
+            if(session.state()!=P1LobbySession.State.OPEN||r.phase()==RoundPhase.RECOVERY_REQUIRED)
+                hints.offer("recovery",LobbyHints.Priority.RECOVERY,"恢复隔离 · 竞技入口关闭；可用的规则与历史仍可阅读",now+300);
+            else if(P1PlayerProfiles.simulationFrozen(player) && !dev.hardrush.p1.celebration.P1CelebrationRuntime.active(player))
+                hints.offer("profile",LobbyHints.Priority.RECOVERY,"正在核验／应用个人档案，请稍候",now+300);
+            if(r.phase()==RoundPhase.RESCUE)
+                hints.offer("rescue",LobbyHints.Priority.FACILITY,"救场剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · 祭坛复生或中途门参赛恢复挑战",now+300);
+            else if(r.phase()==RoundPhase.RUNNING && humans>0 && r.onlineHumans()==0)
+                hints.offer("away",LobbyHints.Priority.FACILITY,"人类暂离，挑战计时暂停；资格保留，暂无可追猎目标",now+300);
+            if(dev.hardrush.p1.celebration.P1CelebrationRuntime.active(player))
+                hints.offer("celebration",LobbyHints.Priority.FACILITY,"庆祝剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · 跳入龙池返回独立大厅，全员返回提前换轮",now+300);
+            if(MonsterRoles.isMonster(player) && !dev.hardrush.p2.lobby.P2LobbyRuntime.channeling(player)) {
+                var name=player.getMainHandItem().get(net.minecraft.core.component.DataComponents.CUSTOM_NAME);
+                if(name!=null)hints.offer("skill",LobbyHints.Priority.FACILITY,name.getString(),now+300);
+            }
+            var lobby=P1LobbyWorld.open(server);
+            if(lobby.ready()&&P1LobbyWorld.isLobby(player.level())&&P1PlayerProfiles.verifiedLobbyBody(player)) {
+                for(var facility:LobbyLayout.Facility.values()) {
+                    if(player.position().distanceToSqr(lobby.layoutPosition(LobbyLayout.facility(facility)))>16)continue;
+                    String text=switch(facility) {
+                        case RULES -> "右键规则讲台阅读玩法"; case HISTORY -> "右键书屋 · 轮次／名单／分榜／主册与分卷";
+                        case ALTAR -> p!=null&&p.revivalEntitled()?"已有复生资格 · 右键祭坛确认空装复生，冷却期间可用":"尚无复生资格 · 击杀在赛人类后获得";
+                        case MIDROUND -> "中途门 · 挑战／救场中确认空装加入";
+                        case ZOMBIE, SKELETON, CREEPER -> "右键角色展位选择怪物，之后右键目标模型追猎";
+                        case PREVIOUS, NEXT -> "右键翻阅本人的追猎庭院";
+                    };
+                    hints.offer("facility",LobbyHints.Priority.FACILITY,text,now+300); break;
+                }
+            }
+            if(server.getTickCount()%5==0)hints.current(now).ifPresent(text->player.connection.send(new ClientboundSetActionBarTextPacket(Component.literal(text))));
+        }
+    }
+}

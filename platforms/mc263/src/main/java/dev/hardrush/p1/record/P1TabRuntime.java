@@ -12,6 +12,7 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 /** Only the native header/footer packet is sent; vanilla player entries remain intact. */
 public final class P1TabRuntime {
     private final Map<ServerGamePacketListenerImpl, RoundTab> displayed = new IdentityHashMap<>();
+    public void close() { displayed.clear(); }
     private long lastRefresh = Long.MIN_VALUE;
 
     public void refresh(MinecraftServer server, RoundSnapshot round, long endEntrants, String problem, boolean immediate) {

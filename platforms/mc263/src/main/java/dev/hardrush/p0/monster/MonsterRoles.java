@@ -356,8 +356,9 @@ public final class MonsterRoles {
     }
 
     public static boolean useControl(ServerPlayer player, InteractionHand hand) {
-        dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
         Role role = ROLES.get(player.getUUID());
+        if (isReturnControl(player, hand)) return dev.hardrush.p2.lobby.P2LobbyRuntime.useReturn(player);
+        dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player, "使用物品／技能");
         if (role == null || hand != InteractionHand.MAIN_HAND || !player.isAlive() || !P2MonsterRuntime.canAct(player)) return false;
         repairLoadout(player, role);
         int slot = player.getInventory().getSelectedSlot();
@@ -371,6 +372,15 @@ public final class MonsterRoles {
         if (role.kind == Kind.SKELETON && slot == 1) return burst(player);
         if (role.kind == Kind.CREEPER && slot == 0) return ignite(player);
         return false;
+    }
+
+    /** Authorization is the server-owned slot and admitted role, never the displayed item name. */
+    public static boolean performingSkill(ServerPlayer player) {
+        var role=ROLES.get(player.getUUID());
+        return role!=null && (role.burstRemaining>0 || role.chargeTick>=0 || P2MonsterRuntime.casting(player));
+    }
+    public static boolean isReturnControl(ServerPlayer player, InteractionHand hand) {
+        return hand == InteractionHand.MAIN_HAND && isMonster(player) && player.getInventory().getSelectedSlot() == 7;
     }
 
     public static void releaseBow(ServerPlayer player) {
@@ -650,13 +660,23 @@ public final class MonsterRoles {
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
             ItemStack wanted = ItemStack.EMPTY;
             if (slot == 0) wanted = role.gear.get(EquipmentSlot.MAINHAND).copy();
-            if (slot == 0 && role.kind == Kind.CREEPER) wanted = named(Items.GUNPOWDER, "苦力怕：右键引爆");
+            if (slot == 0 && role.kind == Kind.CREEPER) {
+                wanted = named(Items.GUNPOWDER, role.igniteAt != 0 ? "苦力怕：正在引爆" : "苦力怕：右键引爆");
+                wanted.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+                        Component.literal("普通苦力怕自爆，不破坏方块；开始引爆后不能归返取消"))));
+            }
+            if (slot == 7) {
+                wanted = named(Items.ECHO_SHARD, "归返营地 · 右键引导 5 秒");
+                wanted.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+                        Component.literal("移动、攻击、使用物品／技能或受伤会中断"),
+                        Component.literal("成功后出场冷却 30 秒；持有资格可直接到祭坛复生"))));
+            }
             if (slot == 1 && role.kind == Kind.SKELETON) wanted = skillControl(player, role, Items.BONE,
                     "骷髅：三连射", MonsterSkill.SKELETON_BURST, role.timers.burstReadyAt,
-                    "右键或 /hardrush skill；每 0.6 秒一箭，持续期间不能普通射击");
+                    "右键使用；每 0.6 秒一箭，持续期间不能普通射击");
             if (slot == 1 && role.kind == Kind.ZOMBIE) wanted = skillControl(player, role, Items.ROTTEN_FLESH,
                     "僵尸：召唤 2 只小僵尸", MonsterSkill.ZOMBIE_SUMMON, role.timers.summonReadyAt,
-                    "右键或 /hardrush skill；需要附近两处安全位置；冷却跨身份保留");
+                    "右键使用；需要附近两处安全位置；冷却跨身份保留");
             if (slot == 8 && role.kind == Kind.SKELETON) wanted = named(Items.ARROW, "角色箭矢（无限，不可转移）");
             EquipmentSlot armorSlot=switch(slot) {
                 case 36 -> EquipmentSlot.FEET;

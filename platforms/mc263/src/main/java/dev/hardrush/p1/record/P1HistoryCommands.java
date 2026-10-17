@@ -59,23 +59,19 @@ public final class P1HistoryCommands {
     private static int recent(CommandSourceStack source, Function<MinecraftServer, P1LobbySession> sessions, int page) {
         var session = session(source, sessions);
         if (session == null) return 0;
-        session.history(PAGE_SIZE, (page - 1) * PAGE_SIZE).whenComplete((rows, error) -> {
+        new P1HistoryQueries(session).recent(page).whenComplete((rows, error) -> {
             if (error != null) { failed(source); return; }
             say(source, "已结算历史 · 第 " + page + " 页（每页最多 " + PAGE_SIZE + " 轮）");
             if (rows.isEmpty()) say(source, "暂无记录。");
-            for (var row : rows) say(source, line(row));
-            say(source, "详情 /hardrush history <轮次序号或UUID>；后页 /hardrush history page " + (page + 1));
+            for (var row : rows.stream().limit(PAGE_SIZE).toList()) say(source, P1HistoryQueries.line(row));
+            say(source, "也可在书屋选择轮次；命令后页 /hardrush history page " + (page + 1));
         });
         return 0;
     }
     private static CompletableFuture<Optional<RoundHistory>> resolve(P1LobbySession session, String input) {
-        try {
-            if (input.matches("[1-9][0-9]{0,18}")) return session.historyBySequence(Long.parseLong(input));
-            return session.history(UUID.fromString(input));
-        } catch (IllegalArgumentException error) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException("轮次必须为正整数序号或UUID。"));
-        }
+        return new P1HistoryQueries(session).resolve(input);
     }
+
     private static int detail(CommandSourceStack source, Function<MinecraftServer, P1LobbySession> sessions, String round, boolean verify) {
         var session = session(source, sessions);
         if (session == null) return 0;
@@ -83,14 +79,7 @@ public final class P1HistoryCommands {
             if (error != null) { failed(source); return; }
             if (found.isEmpty()) { missing(source); return; }
             var row = found.orElseThrow();
-            say(source, line(row));
-            say(source, "轮次 " + row.roundId() + "；种子 " + row.seed() + "；规则指纹 " + row.rulesFingerprint());
-            say(source, "Minecraft " + row.rules().minecraftVersion() + "；难度 " + row.rules().difficulty()
-                    + "；胜者UUID " + (row.result().winner() == null ? "待核验" : row.result().winner()));
-            say(source, "结果原因 " + safe(row.result().reason()) + "；计时待核验 " + row.timingUncertain()
-                    + "；首龙归因已核验 " + row.trustedWinner() + "；正常榜资格 " + row.leaderboardEligible());
-            say(source, "进度集合指纹 " + (row.advancementSetFingerprints().isEmpty() ? "旧记录未采集"
-                    : String.join(",", row.advancementSetFingerprints().stream().sorted().toList())));
+            P1HistoryQueries.details(row).forEach(text -> say(source, text));
             if (verify) say(source, "已核对历史快照与进度集合摘要；可信首龙归因 " + row.trustedWinner()
                     + "；本查询不修正成绩。旧记录可能缺少首龙证据。书版 " + row.edition());
         });
@@ -101,12 +90,11 @@ public final class P1HistoryCommands {
         if (session == null || session.snapshot().isEmpty()) return 0;
         String fingerprint = input == null ? session.snapshot().orElseThrow().rules().fingerprint() : input;
         if (!fingerprint.matches("[0-9a-f]{64}")) { source.sendFailure(Component.literal("请输入完整64位规则指纹。")); return 0; }
-        session.leaderboard(fingerprint, 10).whenComplete((rows, error) -> {
+        new P1HistoryQueries(session).leaders(fingerprint).whenComplete((rows, error) -> {
             if (error != null) { failed(source); return; }
             say(source, "规则榜（最多10条）" + fingerprint);
             if (rows.isEmpty()) say(source, "暂无已核验通关成绩。");
-            for (var row : rows) say(source, "第 " + row.rank() + " 名 · " + safe(row.winnerName()) + " · "
-                    + row.round().challengeMillis() + " ms · 第 " + row.round().sequence() + " 轮");
+            for (var row : rows) say(source, P1HistoryQueries.leader(row));
         });
         return 0;
     }
@@ -115,15 +103,11 @@ public final class P1HistoryCommands {
         if (session == null) return 0;
         resolve(session, round).thenCompose(found -> found.isEmpty()
                 ? CompletableFuture.failedFuture(new IllegalArgumentException("历史轮次不存在"))
-                : session.participants(found.orElseThrow().roundId(), PAGE_SIZE, (page - 1) * PAGE_SIZE))
+                : new P1HistoryQueries(session).participants(found.orElseThrow().roundId(), page))
                 .whenComplete((rows, error) -> {
                     if (error != null) { failed(source); return; }
                     say(source, "参赛记录 · 第 " + page + " 页");
-                    for (var row : rows) say(source, safe(row.playerName()) + "（" + row.playerId() + "）· 人类参与 "
-                            + row.humanMillis() + " ms · 死亡 " + row.deathCount() + " / 复生 " + row.revivalCount()
-                            + " · 进度 " + row.advancementCount() + " · 首次末地 "
-                            + (row.firstEndNanos() == null ? "未进入" : row.firstEndNanos() / 1_000_000 + " ms")
-                            + " · 最终 " + row.finalRole());
+                    for (var row : rows.stream().limit(PAGE_SIZE).toList()) say(source, P1HistoryQueries.participant(row));
                     if (rows.isEmpty()) say(source, "暂无记录。");
                 });
         return 0;
@@ -139,10 +123,6 @@ public final class P1HistoryCommands {
             books.receive(source, found.orElseThrow().roundId(), volume);
         });
         return 0;
-    }
-    private static String line(RoundHistory row) {
-        return "第 " + row.sequence() + " 轮 · " + row.result().kind() + " · " + RoundTab.duration(row.challengeMillis())
-                + "（" + row.challengeMillis() + " ms）· " + (row.leaderboardEligible() ? "正常榜" : "保留／待核验");
     }
     private static String safe(String text) { return SafeBookText.literal(text, 1024); }
     private static void say(CommandSourceStack source, String text) { source.sendSuccess(() -> Component.literal(text), false); }

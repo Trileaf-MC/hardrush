@@ -183,6 +183,12 @@ public final class P1LobbyWorld {
     /** Refresh only owned facility text, never rebuild terrain in a completed camp. */
     public void huntLabels(boolean enabled) {
         if (!ready) return;
+        for (var facility : new LobbyLayout.Facility[]{LobbyLayout.Facility.HISTORY, LobbyLayout.Facility.ALTAR}) {
+            var point = LobbyLayout.facility(facility);
+            var pos = spawn.offset((int)point.x(), 0, (int)point.z()+2);
+            label(pos, new String[]{facility == LobbyLayout.Facility.HISTORY ? "战绩书屋" : "复生祭坛",
+                    facility == LobbyLayout.Facility.HISTORY ? "右键查战绩领书" : "右键查看本人资格", "", ""});
+        }
         for (var facility : new LobbyLayout.Facility[]{LobbyLayout.Facility.ZOMBIE, LobbyLayout.Facility.SKELETON,
                 LobbyLayout.Facility.CREEPER, LobbyLayout.Facility.PREVIOUS, LobbyLayout.Facility.NEXT}) {
             var point = LobbyLayout.facility(facility);

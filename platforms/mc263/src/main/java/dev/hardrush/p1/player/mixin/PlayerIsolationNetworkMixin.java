@@ -124,9 +124,22 @@ public abstract class PlayerIsolationNetworkMixin {
         if (player.level().getServer().isSameThread() && dev.hardrush.p2.lobby.P2LobbyUi.isMenu(player)) ci.cancel();
     }
 
-    @Inject(method = {"handleAttack", "handlePunch", "handleInteract", "handleUseItem", "handleUseItemOn"}, at = @At("HEAD"))
+    @Inject(method = {"handleAttack", "handlePunch", "handleInteract"}, at = @At("HEAD"))
     private void hardrush$cancelReturn(CallbackInfo ci) {
-        if (player.level().getServer().isSameThread()) dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
+        if (player.level().getServer().isSameThread()) dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player, "攻击／实体交互");
+    }
+
+    @Inject(method = "handleUseItem", at = @At("HEAD"))
+    private void hardrush$returnItem(ServerboundUseItemPacket packet, CallbackInfo ci) {
+        if (player.level().getServer().isSameThread()
+                && !dev.hardrush.p0.monster.MonsterRoles.isReturnControl(player, packet.hand()))
+            dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player, "使用物品／技能");
+    }
+    @Inject(method = "handleUseItemOn", at = @At("HEAD"))
+    private void hardrush$returnBlockItem(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
+        if (player.level().getServer().isSameThread()
+                && !dev.hardrush.p0.monster.MonsterRoles.isReturnControl(player, packet.hand()))
+            dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player, "使用物品／技能");
     }
 
     // Celebration allows movement and closing a menu, while sealing all new competitive actions.

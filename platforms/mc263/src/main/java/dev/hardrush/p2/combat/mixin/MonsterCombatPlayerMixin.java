@@ -12,6 +12,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MonsterCombatPlayerMixin {
     @Inject(method="attack", at=@At("HEAD"), cancellable=true)
     private void attack(Entity target, CallbackInfo ci) {
-        if (P2CombatRuntime.formalMonsterPlayer((Entity)(Object)this)) ci.cancel();
+        if (P2CombatRuntime.formalMonsterPlayer((Entity)(Object)this)) {
+            // Fabric's AttackEntityCallback is another HEAD injection. Whichever guard runs
+            // first owns the same native-role path and cancels vanilla; never depend on order.
+            dev.hardrush.p0.monster.MonsterRoles.attack((net.minecraft.server.level.ServerPlayer)(Object)this, target);
+            ci.cancel();
+        }
     }
 }

@@ -46,6 +46,10 @@ public abstract class MonsterInventoryMixin {
         serverThread(packet);
         if (!MonsterRoles.isMonster(player)) return;
         switch (packet.getAction()) {
+            case START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player, "攻击方块");
+            default -> {}
+        }
+        switch (packet.getAction()) {
             case DROP_ITEM, DROP_ALL_ITEMS, SWAP_ITEM_WITH_OFFHAND, START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> {
                 player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.getPos()));
                 lockInventory(callback);

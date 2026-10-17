@@ -1,0 +1,34 @@
+[
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushFullFlow=true --console=plain",
+    "log": "full-flow-complete-before-owned-reader.log",
+    "status": "passed",
+    "sourceAggregateSha256": "247d573b2fbaa0d6e9e87fb1ad20e2e43819a4b2b5d21dbac684e7450ecf629b",
+    "exitCode": 0,
+    "logSha256": "d8f84cc9dc985a89faa73662ae792d3c4eb282ba9c015feb0e648f232dab8e4c"
+  },
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushFullFlow=true -PhardrushFullFlowFault=revival --console=plain",
+    "log": "full-flow-revival-fault-complete-before-owned-reader.log",
+    "status": "passed",
+    "sourceAggregateSha256": "247d573b2fbaa0d6e9e87fb1ad20e2e43819a4b2b5d21dbac684e7450ecf629b",
+    "exitCode": 0,
+    "logSha256": "dc92f0d1fd4d6eb0d87498cd8218b1f7853954078b4a1cd57377cbf63536332d"
+  },
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP2Lobby=true --console=plain",
+    "log": "p2-complete-before-owned-reader.log",
+    "status": "passed",
+    "sourceAggregateSha256": "247d573b2fbaa0d6e9e87fb1ad20e2e43819a4b2b5d21dbac684e7450ecf629b",
+    "exitCode": 0,
+    "logSha256": "0ffcdc3ff7940101e096084f867fe10ab66b18f656474d4909bb16f6744d6fc1"
+  },
+  {
+    "command": "scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushCelebration=true --console=plain",
+    "log": "celebration-complete-before-owned-reader.log",
+    "status": "passed",
+    "sourceAggregateSha256": "247d573b2fbaa0d6e9e87fb1ad20e2e43819a4b2b5d21dbac684e7450ecf629b",
+    "exitCode": 0,
+    "logSha256": "96ca5c5ec38b2e06b85c3c25d4cfbe5fc3ce21bbf105706ef5edbadbca1b3f69"
+  }
+]

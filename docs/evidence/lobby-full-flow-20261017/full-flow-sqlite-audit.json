@@ -1,0 +1,104 @@
+{
+  "database": "/Users/leifwebber/projects/minecraft/hardrush/.local/lobby-full-flow/cdbaf83f-91c0-4a04-9fd4-368417609e97/world/hardrush/p1.sqlite",
+  "readOnly": true,
+  "firstPlayedRound": [
+    {
+      "round_id": "f3e79ab0-bf36-4913-9663-0f9ed66e91ce",
+      "round_sequence": 1,
+      "eligible": 1,
+      "trusted_winner": 1,
+      "rules_fingerprint": "49b6b9661cc6c123590a0ecfab8e9fe723d6cbac690dba3da7efb3a058520e6b",
+      "challenge_millis": 90000
+    }
+  ],
+  "selectedVolume2AfterRetry": [
+    {
+      "player_id": "19e71644-fb37-472d-a912-7bdfd9e768a5",
+      "round_id": "80a1e7ac-c15d-4b11-8f12-0f771cf07e0c",
+      "volume": 2,
+      "edition": 1,
+      "delivered": 1
+    }
+  ],
+  "events": [
+    {
+      "event_type": "ASSEMBLE",
+      "count": 2
+    },
+    {
+      "event_type": "CELEBRATION_COMPLETE",
+      "count": 1
+    },
+    {
+      "event_type": "CHECKPOINT",
+      "count": 2
+    },
+    {
+      "event_type": "DEATH_BATCH",
+      "count": 4
+    },
+    {
+      "event_type": "FINISH",
+      "count": 22
+    },
+    {
+      "event_type": "JOIN",
+      "count": 1
+    },
+    {
+      "event_type": "MONSTER_DEPLOY",
+      "count": 3
+    },
+    {
+      "event_type": "MONSTER_RETURN",
+      "count": 1
+    },
+    {
+      "event_type": "MONSTER_SELECTION",
+      "count": 2
+    },
+    {
+      "event_type": "MONSTER_SKILL_ZOMBIE_SUMMON",
+      "count": 1
+    },
+    {
+      "event_type": "OFFLINE",
+      "count": 1
+    },
+    {
+      "event_type": "ONLINE",
+      "count": 10
+    },
+    {
+      "event_type": "REVIVAL",
+      "count": 2
+    },
+    {
+      "event_type": "ROUND_CREATED",
+      "count": 22
+    },
+    {
+      "event_type": "ROUND_PREPARING",
+      "count": 2
+    },
+    {
+      "event_type": "RULES_CONFIG",
+      "count": 1
+    },
+    {
+      "event_type": "STOP",
+      "count": 1
+    },
+    {
+      "event_type": "TICK",
+      "count": 4
+    },
+    {
+      "event_type": "WORLD_READY",
+      "count": 2
+    }
+  ],
+  "integrity": "ok",
+  "foreignKeyViolations": 0,
+  "syntheticHistoryNote": "Sequences100-121 are test-only ABORTED pagination fixtures, not played rounds or ranked scores"
+}

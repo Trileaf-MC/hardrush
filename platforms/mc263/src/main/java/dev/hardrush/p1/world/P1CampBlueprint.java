@@ -49,7 +49,7 @@ public final class P1CampBlueprint {
                 case PREVIOUS -> "庭院上一页"; case NEXT -> "庭院下一页"; case ALTAR -> "复生祭坛";
             };
             labels.put(anchor.offset((int)p.x(), 0, (int)p.z() + 2), new String[]{name,
-                    facility == LobbyLayout.Facility.RULES ? "右键阅读" : facility == LobbyLayout.Facility.MIDROUND ? "右键确认加入" : "尚未开放",
+                    facility == LobbyLayout.Facility.RULES ? "右键阅读" : facility == LobbyLayout.Facility.MIDROUND ? "右键确认加入" : facility == LobbyLayout.Facility.HISTORY ? "右键查战绩领书" : facility == LobbyLayout.Facility.ALTAR ? "右键查看复生资格" : "极限挑战时开放",
                     facility == LobbyLayout.Facility.MIDROUND ? "挑战／救场时开放" : "", ""});
         }
         return labels;

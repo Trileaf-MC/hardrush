@@ -109,6 +109,7 @@ public final class P1LobbyRuntime {
             reference[0] = session;
             SESSIONS.put(server, session);
             P2LobbyRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
+            dev.hardrush.p1.record.P1Library.configure(server, session);
             dev.hardrush.p1.lobby.P1HumanEntry.configure(server, session, profiles, () -> WORLDS.get(server));
             P1CelebrationRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
             P2ProtectionRuntime.configure(server, new P2ProtectionRuntime.Access() {
@@ -206,6 +207,7 @@ public final class P1LobbyRuntime {
                 var lobby = P1LobbyWorld.open(server);
                 lobby.tick();
                 dev.hardrush.p1.lobby.LobbyInteractions.tick(server);
+                dev.hardrush.p1.lobby.P1HumanEntry.readOnlyTick(server);
                 if (lobby.failure().isPresent() && session.state() != P1LobbySession.State.FAILED
                         && session.state() != P1LobbySession.State.RECHECKING) {
                     throw new IllegalStateException(lobby.failure().orElseThrow());
@@ -302,10 +304,14 @@ public final class P1LobbyRuntime {
                 automaticBooks(server);
                 session.tick();
             } catch (RuntimeException error) { session.adapterFailure("世界／档案适配失败", error); }
+            finally {
+                session.view().ifPresent(round -> dev.hardrush.p1.lobby.P1PlayerFeedback.tick(server, round, session));
+            }
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             P1CelebrationRuntime.disconnected(handler.player);
             P2LobbyRuntime.disconnected(handler.player);
+            dev.hardrush.p1.record.P1Library.disconnected(handler.player);
             dev.hardrush.p1.lobby.P1HumanEntry.disconnected(handler.player);
             var session = SESSIONS.get(server);
             if (session != null) session.onOnline(handler.player.getUUID(), handler.player.getScoreboardName(), false);
@@ -389,6 +395,9 @@ public final class P1LobbyRuntime {
             SESSIONS.remove(server);
             P2ProtectionRuntime.unconfigure(server);
             P2LobbyRuntime.unconfigure(server);
+            dev.hardrush.p1.record.P1Library.close(server);
+            var tab = TABS.get(server); if (tab != null) tab.close();
+            dev.hardrush.p1.lobby.P1PlayerFeedback.close(server);
             P1CelebrationRuntime.unconfigure(server);
             TABS.remove(server);
             BOOKS.remove(server);
@@ -572,26 +581,35 @@ public final class P1LobbyRuntime {
 
     private static void manualBook(CommandSourceStack source, UUID roundId, int volume) {
         var player = source.getPlayer();
-        var service = BOOKS.get(source.getServer());
-        var session = SESSIONS.get(source.getServer());
-        if (player == null || service == null || session == null || !canReceiveBook(player)) {
-            source.sendFailure(Component.literal("档案核验完成后可在大厅或本轮人类比赛中领书。")); return;
+        if (player != null) manualBook(player, roundId, volume);
+    }
+    public static void manualBook(ServerPlayer player, UUID roundId, int volume) {
+        var server = player.level().getServer();
+        var service = BOOKS.get(server);
+        var session = SESSIONS.get(server);
+        if (service == null || session == null || !canReceiveBook(player)) {
+            player.sendSystemMessage(Component.literal("档案核验完成后可在大厅或本轮人类比赛中领书。")); return;
         }
         var round = session.snapshot().orElseThrow();
-        service.manual(player.getUUID(), roundId, volume, round.rules().fingerprint(),
+        service.claim(player.getUUID(), roundId, volume, round.rules().fingerprint(),
                 new OperationTag(round.roundId(), UUID.randomUUID(), round.version())).whenComplete((result, error) -> {
-            if (SESSIONS.get(source.getServer()) != session || source.getServer().getPlayerList().getPlayer(player.getUUID()) != player) return;
+            if (SESSIONS.get(server) != session || server.getPlayerList().getPlayer(player.getUUID()) != player) return;
             player.sendSystemMessage(Component.literal(error == null ? bookMessage(result.status()) : "历史书暂未领到，请稍后重试。"));
         });
     }
 
+    public static void readOwnedBook(ServerPlayer player) {
+        if (!canReceiveBook(player)) { player.sendSystemMessage(Component.literal("档案核验完成后可在书屋阅读已领取书册。")); return; }
+        player.closeContainer();
+        if (!P1BookReader.open(player, -1)) player.sendSystemMessage(Component.literal("背包中暂无历史书，请在书屋选择轮次领取。"));
+    }
     private static int readBook(CommandSourceStack source, int slot) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         var player = source.getPlayerOrException();
         if (!canReceiveBook(player)) {
             source.sendFailure(Component.literal("档案核验完成后可读取历史书。")); return 0;
         }
         if (!P1BookReader.open(player, slot)) {
-            source.sendFailure(Component.literal("指定格位没有历史书。可用 /hardrush book <轮次> 领取。")); return 0;
+            source.sendFailure(Component.literal("指定格位没有历史书。请到书屋选择轮次领取。")); return 0;
         }
         return 1;
     }
@@ -602,10 +620,11 @@ public final class P1LobbyRuntime {
         var round = session == null ? null : session.snapshot().orElse(null);
         if (round == null || session.state() != P1LobbySession.State.OPEN || !profileReady(player)
                 || !P1LobbyWorld.isLobby(player.level())) return false;
-        var participant = round.participants().get(player.getUUID());
         return (round.phase() == RoundPhase.PREPARING || round.phase() == RoundPhase.WAITING
-                || round.phase() == RoundPhase.COUNTDOWN || round.phase() == RoundPhase.RUNNING)
-                && (participant == null || participant.lifeSequence() == 0);
+                || round.phase() == RoundPhase.COUNTDOWN || round.phase() == RoundPhase.RUNNING
+                || round.phase() == RoundPhase.RESCUE || round.phase() == RoundPhase.SETTLING || round.phase() == RoundPhase.CELEBRATING
+                || round.phase() == RoundPhase.RECOVERY_REQUIRED)
+                && P1PlayerProfiles.verifiedLobbyBody(player);
     }
 
     /** Movement is separate from competition admission: a healthy, verified lobby body may simulate. */
@@ -662,9 +681,9 @@ public final class P1LobbyRuntime {
 
     private static String bookMessage(HistoryBookService.Status status) {
         return switch (status) {
-            case DELIVERED -> "历史成书已放入背包；/hardrush read-book 可读取，主册含历史查询与分卷入口。";
-            case ALREADY_DELIVERED -> "本版主册已自动发放。可用 /hardrush book <轮次> 手工补领。";
-            case INVENTORY_FULL -> "背包已满，历史主册保留待领；空出格位后自动重试。";
+            case DELIVERED -> "历史成书已放入背包；手持右键阅读，或到书屋选择“阅读已领取书册”；书屋也可领取分卷。";
+            case ALREADY_DELIVERED -> "本版主册已自动发放。书屋可选择轮次手工补领。";
+            case INVENTORY_FULL -> "背包已满，自动主册保留待领并重试；所选历史卷也已保留待领，请空出格位后在书屋再次领取。";
             case RATE_LIMITED -> "手工领书间隔为5秒，请稍后重试。";
             case INVALID_VOLUME -> "该卷不存在，请查看主册列出的卷数。";
             case NO_HISTORY -> "暂无该轮已结算历史。";

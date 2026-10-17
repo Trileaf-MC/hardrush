@@ -71,7 +71,7 @@ public final class P2LobbyUi {
         if (round == null) return false;
         return player.openMenu(new SimpleMenuProvider((id, inventory, actor) ->
                 actor == player ? new LobbyMenu(id, player, binding, round, context) : null,
-                Component.literal(context == LobbyContext.RULES ? "HardRush 规则" : context == LobbyContext.HISTORY ? "HardRush 历史" : "HardRush 大厅"))).isPresent();
+                Component.literal(context == LobbyContext.RULES ? "HardRush 规则" : context == LobbyContext.HISTORY ? "HardRush 历史" : context == LobbyContext.REVIVAL ? "复生祭坛确认" : "HardRush 大厅"))).isPresent();
     }
 
     /** Also identifies stale menus so the network adapter keeps creative-slot packets sealed. */
@@ -160,6 +160,9 @@ public final class P2LobbyUi {
                     if (owner.containerMenu == this && stillValid(owner)) rebuild();
                 }
             } else if (slot == 51) {
+                owner.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                        net.minecraft.sounds.SoundEvents.NOTE_BLOCK_HAT, net.minecraft.sounds.SoundSource.PLAYERS,
+                        owner.getX(), owner.getY(), owner.getZ(), .3f, 1f, 0));
                 owner.closeContainer();
                 return;
             } else if (slot == 45 && page > 0 && binding.accept(playerId, new ActionKey("ui:previous", ""))) {
@@ -208,7 +211,7 @@ public final class P2LobbyUi {
             if (page > 0) getContainer().setItem(45, icon(Items.ARROW, "上一页"));
             getContainer().setItem(49, icon(Items.COMPASS, "刷新"));
             getContainer().setItem(50, icon(Items.PAPER, "第 " + (page + 1) + " / " + pageCount + " 页"));
-            getContainer().setItem(51, icon(Items.BARRIER, "关闭"));
+            getContainer().setItem(51, icon(Items.BARRIER, context == LobbyContext.REVIVAL ? "继续作为怪物（不消费资格）" : "关闭"));
             if (page + 1 < pageCount) getContainer().setItem(53, icon(Items.ARROW, "下一页"));
         }
 
