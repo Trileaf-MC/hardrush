@@ -6,6 +6,8 @@ HardRush 是面向原版客户端的 Fabric 多人速通挑战模组。玩家在
 
 屠龙后最多庆祝三分钟：末地在线玩家自动装备临时鞘翅并领取 16 色烟花，其他维度玩家先回大厅；龙池出口直接返回独立大厅，当前在线玩家全员返回后提前准备下一轮。原物资封存，重连保持庆祝余量与已返回状态。详见[人工检查](docs/人工客户端测试/屠龙庆祝与提前返回大厅.md)。
 
+2026-10-16 已确认[大厅与全流程无指令交互设计](docs/lobby-interaction-design.md)：站入集结区准备、离开取消；怪物右键活人皮肤模型直接追猎，取消投票和手动选维度。设计、[26.3 五轮计划](docs/lobby-delivery-plan.md)、[会话启动词](docs/lobby-delivery-prompts/README.md)与[人工验收草案](docs/人工客户端测试/大厅无指令交互与定向追猎.md)已准备，五轮开发尚未开始，实际进展见[交接状态](docs/lobby-delivery-status.md)。
+
 **26.3 MVP 演示入口：** `python3 scripts/demo.py prepare` 创建独立极限实例，再用 `python3 scripts/demo.py run <实例UUID>` 启动；原版客户端连接 `127.0.0.1:25587`。普通模式、局域网双人、正常重开及自动检查见 [演示说明](docs/mvp-demo.md)，试玩项目见 [人工清单](docs/人工客户端测试/MVP演示.md)。这是生产 JAR 的开发演示入口，各阶段正式验收仍待完成。
 
 2026-10-16 起，普通／极限正式世界取消出生保护、离区后禁止返回的限制，以及人工石台、台阶、护栏和出口通道，直接使用自然地形安全站位；大厅保护和原版末地到达平台保留。旧世界不自动拆除已经生成的建筑。下文旧批次的出生保护记录作为历史保留，当前规则及待人工检查项见 [自然出生点检查](docs/人工客户端测试/正式世界自然出生点.md)。
@@ -14,6 +16,11 @@ HardRush 是面向原版客户端的 Fabric 多人速通挑战模组。玩家在
 
 - [已确认的产品决策](docs/decisions.md)
 - [产品需求与赛制](docs/requirements.md)
+- [大厅布局与全流程无指令交互设计](docs/lobby-interaction-design.md)
+- [26.3 无指令大厅五轮交付计划](docs/lobby-delivery-plan.md)
+- [五轮开发交接状态](docs/lobby-delivery-status.md)
+- [各轮完整 Codex 启动提示词](docs/lobby-delivery-prompts/README.md)
+- [大厅无指令交互与定向追猎人工验收草案](docs/人工客户端测试/大厅无指令交互与定向追猎.md)
 - [怪物数值与操作](docs/monster-balance.md)
 - [技术设计](docs/technical-design.md)
 - [版本与依赖核查](docs/compatibility.md)
