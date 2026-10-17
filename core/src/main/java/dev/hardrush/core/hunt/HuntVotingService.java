@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.util.random.RandomGenerator;
 
 /**
+ * Historical LEGACY_VOTE implementation only; PERSONAL_TARGET has no scheduler or runtime instance.
  * Ephemeral ballots for one round. The platform supplies a fresh authoritative participant snapshot
  * before handling commands, periodic settlement, or deployment. No positions enter this service.
  * Persisted monster dimension choices can be restored through {@link #selectDimension} after sync.

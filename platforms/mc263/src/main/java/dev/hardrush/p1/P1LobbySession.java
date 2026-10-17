@@ -720,10 +720,20 @@ public final class P1LobbySession implements AutoCloseable {
                 lifeSequence, deploymentSequence, role, dimension), reply, "怪物角色和出场维度已保存。");
     }
 
+    /** Trusted durability primitive retained for historical/internal fixtures; no player route calls it. */
     public void requestMonsterDeploy(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             Consumer<Reply> reply) {
         requestAction(() -> engine.proposeMonsterDeploy(UUID.randomUUID(), roundId, playerId,
                 lifeSequence, deploymentSequence), reply, "怪物出场身份已保存。");
+    }
+
+    public void requestMonsterRole(UUID round, UUID player, int life, int sortie, MonsterRole role, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeMonsterRole(UUID.randomUUID(), round, player, life, sortie, role),
+                reply, "怪物角色已保存；维度由追猎目标决定。");
+    }
+
+    public void requestPersonalHunt(dev.hardrush.core.hunt.PersonalHuntRequest request, int sortie, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposePersonalHunt(UUID.randomUUID(), request, sortie), reply, "个人追猎出场身份已保存。");
     }
 
     /** Reserves cooldown in SQLite before the success callback can create a native skill effect. */

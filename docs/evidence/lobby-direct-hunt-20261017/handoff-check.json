@@ -1,0 +1,9 @@
+{
+  "localLinks": 66,
+  "sourceFilesVerified": 28,
+  "successfulLogsVerified": 9,
+  "manualCheckboxes": "all unchecked",
+  "fourthDeliveryRound": "not started",
+  "gitBase": "773168490f688416b485cd9e864c094dc7165f98",
+  "rawLogWhitespace": "Three original Minecraft crash-report lines in personal-fourth.log retain trailing spaces; source/docs checked separately, raw evidence unmodified."
+}

@@ -1,0 +1,69 @@
+
+> Configure project :platforms:mc263
+Fabric Loom: 1.17.21
+
+> Task :persistence:processResources NO-SOURCE
+> Task :platforms:mc263:processResources UP-TO-DATE
+> Task :core:compileJava UP-TO-DATE
+> Task :platforms:mc263:processTestResources NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :persistence:compileJava UP-TO-DATE
+> Task :persistence:classes UP-TO-DATE
+> Task :persistence:jar UP-TO-DATE
+> Task :core:jar
+> Task :core:compileTestJava
+> Task :core:processTestResources UP-TO-DATE
+> Task :core:testClasses
+
+> Task :core:test FAILED
+
+DeathBatchRevivalTest > reconnectMoreMonsterDeathsAndRoleSelectionNeverExtendRescue() FAILED
+    java.lang.IllegalStateException at DeathBatchRevivalTest.java:268
+
+MonsterRoundTest > choicesAndQualificationSurviveOutingsReturnsDeathsAndSessionUpdates() FAILED
+    java.lang.IllegalStateException at MonsterRoundTest.java:56
+
+157 tests completed, 2 failed
+
+> Task :platforms:mc263:compileJava FAILED
+/Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/main/java/dev/hardrush/p2/lobby/P2LobbyRuntime.java:565: 错误: 找不到符号
+                    hints.current(now).ifPresent(text -> observer.displayClientMessage(Component.literal(text), true));
+                                                                 ^
+  符号:   方法 displayClientMessage(MutableComponent,boolean)
+  位置: 类型为ServerPlayer的变量 observer
+1 个错误
+
+[Incubating] Problems report is available at: file:///Users/leifwebber/projects/minecraft/hardrush/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':core:test'.
+> There were failing tests. See the report at: file:///Users/leifwebber/projects/minecraft/hardrush/core/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':platforms:mc263:compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /Users/leifwebber/projects/minecraft/hardrush/platforms/mc263/src/main/java/dev/hardrush/p2/lobby/P2LobbyRuntime.java:565: 错误: 找不到符号
+                      hints.current(now).ifPresent(text -> observer.displayClientMessage(Component.literal(text), true));
+                                                                   ^
+    符号:   方法 displayClientMessage(MutableComponent,boolean)
+    位置: 类型为ServerPlayer的变量 observer
+  1 个错误
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+==============================================================================
+
+BUILD FAILED in 1s
+9 actionable tasks: 4 executed, 5 up-to-date

@@ -1,7 +1,10 @@
 package dev.hardrush.p2.lobby;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
-import dev.hardrush.core.hunt.HuntVotingService;
+import dev.hardrush.core.hunt.PersonalHuntRequest;
+import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.p1.lobby.LobbyProjections;
+import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.lobby.LobbyContext;
 import dev.hardrush.p1.lobby.LobbyInteractions;
@@ -30,18 +33,39 @@ import net.minecraft.world.phys.Vec3;
 /** Main-thread lobby requests. Native admission follows the durable sortie transition. */
 public final class P2LobbyRuntime {
     private record Channel(ServerPlayer player, ServerLevel level, Vec3 origin, long started, int life, int sortie) {}
-    private record Deployment(ServerPlayer player, UUID round, int life, int sortie, MonsterRole kind,
-                              MonsterDimension dimension, UUID target, ServerLevel level, P2SafeDeployment.Search search,
-                              long started, int spentCandidates) {}
+    private static final class Deployment {
+        final ServerPlayer player, targetPlayer;
+        final net.minecraft.server.network.ServerGamePacketListenerImpl connection, targetConnection;
+        final PersonalHuntRequest identity;
+        final long started;
+        int sortie, spentCandidates;
+        ServerLevel level;
+        P2SafeDeployment.Search search;
+        boolean cancelled;
+        Deployment(ServerPlayer player, ServerPlayer target, PersonalHuntRequest identity, long started) {
+            this.player = player; targetPlayer = target; connection = player.connection; targetConnection = target == null ? null : target.connection;
+            this.identity = identity; this.started = started; sortie = identity.initialSortie();
+        }
+    }
+    private record Refund(Deployment deployment, boolean resume) {}
+    private record Display(ServerPlayer player, net.minecraft.server.network.ServerGamePacketListenerImpl connection,
+                           List<LobbyProjections.Target> targets) {}
     private static final class Binding {
         final P1LobbySession session;
         final P1PlayerProfiles profiles;
         final Supplier<P1RoundWorldBundle> worlds;
-        HuntVotingService votes;
+        java.util.function.LongSupplier searchClock = System::nanoTime;
         Random searchRandom;
         UUID round;
         final Map<UUID, Deployment> searches = new HashMap<>();
         final Map<UUID, Deployment> resumptions = new HashMap<>();
+        final Map<UUID, Deployment> pending = new HashMap<>();
+        final Map<UUID, Refund> refunds = new HashMap<>();
+        final LinkedHashMap<UUID, GameProfile> slots = new LinkedHashMap<>();
+        final Map<UUID, Integer> deadAt = new HashMap<>();
+        final Map<UUID, Display> displays = new HashMap<>();
+        final Map<UUID, Boolean> cooling = new HashMap<>();
+        final Set<UUID> reviving = new HashSet<>();
         final Map<UUID, Channel> channels = new HashMap<>();
         final Map<UUID, Long> retryAt = new HashMap<>();
         final Set<UUID> committing = new HashSet<>();
@@ -72,8 +96,7 @@ public final class P2LobbyRuntime {
                 root.then(Commands.literal(action).then(Commands.argument("value", StringArgumentType.word())
                         .suggests((ctx, builder) -> {
                             if (action.equals("role")) List.of("zombie", "skeleton", "creeper").forEach(builder::suggest);
-                            if (action.equals("dimension")) List.of("overworld", "nether", "end").forEach(builder::suggest);
-                            if (action.equals("vote")) candidates(ctx.getSource().getPlayer()).forEach(p -> builder.suggest(p.getScoreboardName()));
+
                             return builder.buildFuture();
                         }).executes(ctx -> { command(ctx.getSource().getPlayerOrException(), action,
                                 StringArgumentType.getString(ctx, "value")); return 1; })));
@@ -116,7 +139,7 @@ public final class P2LobbyRuntime {
                 if (context == LobbyContext.ENTRY) return dev.hardrush.p1.lobby.P1HumanEntry.gateButtons(player);
                 var round = session.snapshot().orElseThrow();
                 return List.of(new P2LobbyUi.Button(Items.BOOK, "站入集结区参加，离开取消准备", "info", ""),
-                        new P2LobbyUi.Button(Items.PAPER, "追猎规则：" + (round.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET ? "个人定向追猎（尚未开放）" : "旧版投票（升级恢复隔离）"), "info", ""),
+                        new P2LobbyUi.Button(Items.PAPER, "追猎规则：" + (round.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET ? "右键庭院模型，个人定向追猎" : "旧版投票（升级恢复隔离）"), "info", ""),
                         new P2LobbyUi.Button(Items.CLOCK, "阶段：" + phaseName(round.phase()) + " · 历史查询入口尚未接通", "info", ""));
             }
             @Override public void act(ServerPlayer player, UUID round, LobbyContext context, String action, String value) {
@@ -136,7 +159,8 @@ public final class P2LobbyRuntime {
     }
     public static void prepareStop(MinecraftServer server) {
         var b = BINDINGS.get(server); if (b == null) return;
-        b.channels.clear(); b.searches.clear(); b.resumptions.clear();
+        b.pending.values().forEach(d -> d.cancelled = true);
+        b.channels.clear(); b.searches.clear(); b.resumptions.clear(); b.displays.clear(); b.cooling.clear();
         LobbyInteractions.get(server).ifPresent(r -> r.projections().clear());
         for (var player : List.copyOf(server.getPlayerList().getPlayers())) {
             if (MonsterRoles.isMonster(player)) MonsterRoles.clear(player);
@@ -182,7 +206,7 @@ public final class P2LobbyRuntime {
         if (action.equals("info")) return;
         if (round.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET
                 && List.of("vote", "dimension", "deploy").contains(action)) {
-            tell(player, "本轮采用个人追猎规则；目标追猎尚未接通。请等待后续版本。"); return;
+            tell(player, "本轮采用个人追猎规则；请到追猎庭院右键目标模型，系统自动决定维度。"); return;
         }
         if (action.equals("join") || action.equals("ready") || action.equals("unready")) {
             tell(player, "开局请站入集结区，离开取消准备；挑战中请到中途入场门确认。"); return;
@@ -217,27 +241,7 @@ public final class P2LobbyRuntime {
         }
         try {
             switch (action) {
-                case "role", "dimension" -> {
-                    var kind = action.equals("role") ? MonsterRole.valueOf(value.toUpperCase(Locale.ROOT)) : participant.monsterRole();
-                    var dimension = action.equals("dimension") ? MonsterDimension.valueOf(value.toUpperCase(Locale.ROOT)) : participant.monsterDimension();
-                    b.session.requestMonsterSelection(round.roundId(), participant.id(), participant.lifeSequence(),
-                            participant.monsterDeploymentSequence(), kind, dimension, reply -> {
-                                tell(player, reply.message()); synchronize(player.level().getServer(), b);
-                            });
-                }
-                case "vote" -> {
-                    synchronize(player.level().getServer(), b);
-                    UUID target;
-                    try { target = UUID.fromString(value); }
-                    catch (IllegalArgumentException invalid) {
-                        target = candidates(player).stream().filter(p -> p.getScoreboardName().equals(value))
-                                .map(ServerPlayer::getUUID).findFirst().orElseThrow(() -> new IllegalArgumentException("目标已失效"));
-                    }
-                    var status = b.votes.castVote(player.getUUID(), target);
-                    tell(player, status == HuntVotingService.VoteStatus.ACCEPTED
-                            ? "已登记本维度追猎票；每 15 秒结算，不公开坐标。" : "目标或投票身份已失效，请刷新大厅。");
-                }
-                case "deploy" -> beginDeployment(player, b, round, participant);
+                case "role" -> tell(player, "请右键营地的僵尸、骷髅或苦力怕角色展位。");
                 case "revive" -> {
                     var worlds = b.worlds.get();
                     if (worlds == null || !worlds.ready()
@@ -256,38 +260,72 @@ public final class P2LobbyRuntime {
             }
         } catch (IllegalArgumentException | IllegalStateException invalid) { tell(player, "操作未受理：" + invalid.getMessage()); }
     }
-    private static void beginDeployment(ServerPlayer player, Binding b, RoundSnapshot round, Participant p) {
-        long now = System.nanoTime();
-        if (p.monsterCooldownNanos() > 0) { tell(player, "出场冷却剩余 " + seconds(p.monsterCooldownNanos()) + " 秒。"); return; }
-        if (now < b.retryAt.getOrDefault(p.id(), Long.MIN_VALUE)) { tell(player, "安全搜索失败后请等待 3 秒重试。"); return; }
-        synchronize(player.level().getServer(), b);
-        var targetId = b.votes.deploymentTarget(p.id());
-        if (targetId.isEmpty()) { tell(player, "该维度无人可追猎，请换维度；未消耗冷却。"); return; }
-        var target = player.level().getServer().getPlayerList().getPlayer(targetId.orElseThrow());
-        var level = level(b, p.monsterDimension());
-        if (target == null || level == null || target.level() != level) { tell(player, "目标已失效，请重试。"); return; }
-        var search = new P2SafeDeployment.Search(level, target.position(), humans(b, level),
-                b.searchRandom, System::nanoTime);
-        b.searches.put(p.id(), new Deployment(player, round.roundId(), p.lifeSequence(), p.monsterDeploymentSequence(),
-                p.monsterRole(), p.monsterDimension(), target.getUUID(), level, search, now, 0));
-        tell(player, "正在搜索安全出场点。");
+    /** Only called with a server-owned projection selection after BOTH packet guards. */
+    private static void beginDeployment(ServerPlayer player, Binding b, LobbyProjections.Selection selected) {
+        var round = b.session.view().orElse(null);
+        if (round == null || !selected.round().equals(round.roundId()) || !personalOpen(b, round)
+                || !contextAvailable(player, b, LobbyContext.DISPLAY)) return;
+        var p = round.participants().get(player.getUUID());
+        if (p == null || p.role() != ParticipantRole.MONSTER_LOBBY || !p.online()) {
+            tell(player, "只有大厅怪物可以追猎；极限死亡后前往角色展位。"); return;
+        }
+        if (b.committing.contains(p.id()) || b.searches.containsKey(p.id()) || b.resumptions.containsKey(p.id())) {
+            tell(player, "正在搜索或提交本人的追猎，请稍候。"); return;
+        }
+        long now = b.searchClock.getAsLong();
+        if (p.monsterCooldownNanos() > 0) { tell(player, "出场冷却剩余 " + seconds(p.monsterCooldownNanos()) + " 秒；结束后请再次右键。"); return; }
+        Long retry = b.retryAt.get(p.id());
+        if (retry != null && now - retry < 0) { tell(player, "搜索失败后请等待 3 秒；换目标不能跳过等待。"); return; }
+        var identity = new PersonalHuntRequest(round.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
+                p.monsterRole(), selected.target(), selected.life());
+        var target = player.level().getServer().getPlayerList().getPlayer(identity.target());
+        var d = new Deployment(player, target, identity, now);
+        if (target == null || !requestTarget(b, d)) { searchFailed(b, d, "目标已离线、死亡或生命改变，请重新选择。"); return; }
+        restartSearch(b, d);
+        if (b.searches.containsKey(p.id())) tell(player, "正在寻找 " + target.getScoreboardName() + " 附近的安全落点。");
+    }
+    private static boolean personalOpen(Binding b, RoundSnapshot r) {
+        return r.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE
+                && r.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET
+                && (r.phase() == RoundPhase.RUNNING || r.phase() == RoundPhase.RESCUE)
+                && !b.session.competitionLocked();
+    }
+    private static boolean requestTarget(Binding b, Deployment d) {
+        var r = b.session.snapshot().orElse(null);
+        var target = d.player.level().getServer().getPlayerList().getPlayer(d.identity.target());
+        return !d.cancelled && r != null && personalOpen(b, r) && d.identity.targetMatches(r)
+                && target != null && target == d.targetPlayer && target.connection == d.targetConnection
+                && b.profiles.isReady(target.getUUID(), r) && !dimension(b, target.level()).equals("lobby")
+                && validTarget(b, target, target.level());
+    }
+    private static boolean requestHunter(Binding b, Deployment d, ParticipantRole role, int sortie) {
+        var r = b.session.snapshot().orElse(null);
+        return !d.cancelled && r != null && personalOpen(b, r) && current(d.player, b)
+                && d.player.connection == d.connection && d.identity.hunterMatches(r, role, sortie);
     }
     public static void tick(MinecraftServer server) {
-        var b = BINDINGS.get(server);
-        if (b == null) return;
+        var b = BINDINGS.get(server); if (b == null) return;
         synchronize(server, b);
         var round = b.session.view().orElse(null);
+        updateDisplays(server, b);
         if (round == null || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE || b.session.competitionLocked()) {
-            b.channels.clear(); b.searches.clear(); b.resumptions.clear(); return;
+            for (var d : List.copyOf(b.searches.values())) searchFailed(b, d, "轮次已冻结，追猎已取消。");
+            for (var d : b.pending.values()) d.cancelled = true;
+            b.channels.clear(); b.resumptions.clear(); return;
         }
+        for (var refund : List.copyOf(b.refunds.values())) compensate(b, refund);
         for (var d : List.copyOf(b.resumptions.values())) {
-            var p = round.participants().get(d.player.getUUID());
-            if (p == null || !round.roundId().equals(d.round) || p.role() != ParticipantRole.MONSTER_LOBBY
-                    || p.monsterDeploymentSequence() != d.sortie + 1 || !p.online()) {
-                b.resumptions.remove(d.player.getUUID()); continue;
+            if (!current(d.player, b)) {
+                if (server.getPlayerList().getPlayer(d.player.getUUID()) != d.player || b.profiles.failure(d.player.getUUID()).isPresent()) {
+                    b.resumptions.remove(d.player.getUUID()); searchFailed(b, d, "档案或连接已改变，追猎已取消。");
+                }
+                continue;
             }
-            if (!current(d.player, b)) continue;
-            b.resumptions.remove(p.id()); restartSearch(b, d, p);
+            b.resumptions.remove(d.player.getUUID());
+            if (!requestHunter(b, d, ParticipantRole.MONSTER_LOBBY, d.sortie) || !requestTarget(b, d)) {
+                searchFailed(b, d, "目标或生命已改变，追猎已取消。"); continue;
+            }
+            restartSearch(b, d);
         }
         for (var entry : List.copyOf(b.channels.entrySet())) {
             var ch = entry.getValue(); var p = round.participants().get(entry.getKey());
@@ -297,77 +335,109 @@ public final class P2LobbyRuntime {
                     || MonsterRoles.isIgniting(ch.player)) { b.channels.remove(entry.getKey()); continue; }
             long duration = round.rules().combatValues().get("monster.returnChannelMillis").longValue() * 1_000_000L;
             if (System.nanoTime() - ch.started >= duration && !b.session.mutationPending()) {
-                // A completed channel waits for an existing durable operation; ordinary
-                // checkpoint contention must not consume it with a transient busy reply.
                 b.channels.remove(entry.getKey());
                 b.session.requestMonsterReturn(round.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
                         reply -> tell(ch.player, reply.message()));
             }
         }
         for (var d : List.copyOf(b.searches.values())) {
-            var p = round.participants().get(d.player.getUUID());
-            var target = server.getPlayerList().getPlayer(d.target);
-            if (!current(d.player, b) || p == null || p.role() != ParticipantRole.MONSTER_LOBBY
-                    || p.lifeSequence() != d.life || p.monsterDeploymentSequence() != d.sortie
-                    || p.monsterRole() != d.kind || p.monsterDimension() != d.dimension
-                    || !round.roundId().equals(d.round)) {
-                searchFailed(b, d, "目标或身份已改变，请重试或换维度。"); continue;
+            if (!requestHunter(b, d, ParticipantRole.MONSTER_LOBBY, d.sortie) || !requestTarget(b, d)) {
+                searchFailed(b, d, "目标离线、死亡或身份／生命已改变，本次追猎已取消。"); continue;
             }
-            if (!validTarget(b, target, d.level)) { restartSearch(b, d, p); continue; }
+            var target = d.targetPlayer;
+            if (target.level() != d.level) { restartSearch(b, d); continue; }
             var result = d.search.tick(target.position(), humans(b, d.level));
             if (result.status() == P2SafeDeployment.Status.PENDING) continue;
-            if (result.status() == P2SafeDeployment.Status.FAILED) { searchFailed(b, d, "未找到安全站位；3 秒后可重试，未消耗冷却。"); continue; }
+            if (result.status() == P2SafeDeployment.Status.FAILED) { searchFailed(b, d, "未找到安全站位；3 秒后可重试，保留出场机会。"); continue; }
+            if (!d.search.revalidate(target.position(), humans(b, d.level))) { restartSearch(b, d); continue; }
             if (b.session.mutationPending()) continue;
-            b.searches.remove(p.id()); b.committing.add(p.id());
-            b.session.requestMonsterDeploy(d.round, p.id(), d.life, d.sortie, reply -> {
-                b.committing.remove(p.id());
-                if (!reply.success()) { tell(d.player, reply.message()); return; }
-                var committed = b.session.snapshot().orElseThrow();
-                var latest = committed.participants().get(p.id());
-                if (!current(d.player, b) || latest == null || latest.role() != ParticipantRole.MONSTER_DEPLOYED
-                        || latest.monsterDeploymentSequence() != d.sortie + 1) return;
-                var latestTarget = server.getPlayerList().getPlayer(d.target);
-                if (!validTarget(b, latestTarget, d.level) || !d.search.revalidate(latestTarget.position(), humans(b, d.level))
-                        || !b.profiles.deployMonster(d.player, committed, d.level, result.position())) {
-                    b.session.requestMonsterDeployCancelled(d.round, p.id(), d.life, d.sortie + 1,
-                            refunded -> {
-                                if (!refunded.success() || server.getPlayerList().getPlayer(p.id()) != d.player) return;
-                                var restored = b.session.snapshot().orElseThrow().participants().get(p.id());
-                                if (restored != null && restored.role() == ParticipantRole.MONSTER_LOBBY
-                                        && restored.monsterDeploymentSequence() == d.sortie + 1) {
-                                    b.resumptions.put(p.id(), d);
-                                    tell(d.player, "安全条件已改变，正在剩余预算内重新选择目标和站位。");
-                                }
-                            });
-                    return;
-                }
-                MonsterRoles.select(d.player, d.kind.name().toLowerCase(Locale.ROOT));
-                tell(d.player, "已安全出场；/hardrush return 可开始 5 秒回大厅引导。");
-            });
+            b.searches.remove(d.player.getUUID()); b.committing.add(d.player.getUUID()); b.pending.put(d.player.getUUID(), d);
+            b.session.requestPersonalHunt(d.identity, d.sortie, reply -> completeDeployment(b, d, reply));
         }
+    }
+    private static void completeDeployment(Binding b, Deployment d, P1LobbySession.Reply reply) {
+        UUID id = d.identity.hunter();
+        if (!reply.success()) {
+            b.pending.remove(id, d); b.committing.remove(id); searchFailed(b, d, reply.message()); return;
+        }
+        boolean hunter = requestHunter(b, d, ParticipantRole.MONSTER_DEPLOYED, d.sortie + 1);
+        boolean target = requestTarget(b, d);
+        boolean safe = hunter && target && d.targetPlayer.level() == d.level
+                && d.search.revalidate(d.targetPlayer.position(), humans(b, d.level));
+        if (safe) {
+            try {
+                var committed = b.session.snapshot().orElseThrow();
+                if (b.profiles.deployMonster(d.player, committed, d.level, d.search.result().position())) {
+                    MonsterRoles.select(d.player, d.identity.kind().name().toLowerCase(Locale.ROOT));
+                    if (!MonsterRoles.isMonster(d.player) || MonsterRoles.nativeModel(d.player) == null)
+                        throw new IllegalStateException("已提交出场未能应用原生怪物角色");
+                    b.pending.remove(id, d); b.committing.remove(id);
+                    sound(d.player, true);
+                    tell(d.player, "已安全出场。"); return;
+                }
+                if (b.profiles.failure(id).isPresent()) {
+                    b.session.adapterFailure("追猎档案应用失败", new IllegalStateException(b.profiles.failure(id).orElseThrow()));
+                    b.pending.remove(id, d); b.committing.remove(id); return;
+                }
+            } catch (RuntimeException fault) {
+                b.pending.remove(id, d); b.committing.remove(id); b.session.adapterFailure("追猎世界或档案应用失败", fault); return;
+            }
+        }
+        // Refund only the exact committed sortie. A replacement life/round is never touched.
+        var r = b.session.snapshot().orElse(null);
+        if (r == null || !d.identity.round().equals(r.roundId())) { b.pending.remove(id, d); b.committing.remove(id); return; }
+        var p = r.participants().get(id);
+        if (p == null || p.lifeSequence() != d.identity.hunterLife() || p.role() != ParticipantRole.MONSTER_DEPLOYED
+                || p.monsterDeploymentSequence() != d.sortie + 1) { b.pending.remove(id, d); b.committing.remove(id); return; }
+        b.refunds.put(id, new Refund(d, hunter && target));
+        compensate(b, b.refunds.get(id));
+    }
+    private static void compensate(Binding b, Refund refund) {
+        var d = refund.deployment; var id = d.identity.hunter();
+        if (b.session.mutationPending()) return;
+        var r = b.session.snapshot().orElse(null);
+        var p = r == null ? null : r.participants().get(id);
+        if (r == null || !d.identity.round().equals(r.roundId()) || p == null || p.lifeSequence() != d.identity.hunterLife()
+                || p.role() != ParticipantRole.MONSTER_DEPLOYED || p.monsterDeploymentSequence() != d.sortie + 1) {
+            b.refunds.remove(id, refund); b.pending.remove(id, d); b.committing.remove(id);
+            searchFailed(b, d, "身份已改变，本次追猎已取消。"); return;
+        }
+        b.session.requestMonsterDeployCancelled(d.identity.round(), id, d.identity.hunterLife(), d.sortie + 1, refunded -> {
+            if (!refunded.success()) {
+                if (b.session.state() == P1LobbySession.State.FAILED || b.session.competitionLocked())
+                    tell(d.player, "出场补偿处于恢复隔离：" + refunded.message());
+                return; // Transient queued death/connection write: retain the exact refund and retry after it drains.
+            }
+            b.refunds.remove(id, refund); b.pending.remove(id, d); b.committing.remove(id);
+            d.sortie++;
+            if (refund.resume && requestTarget(b, d)) {
+                b.resumptions.put(id, d);
+                tell(d.player, "安全条件已改变，已退回出场机会，在原预算内重搜同一目标。");
+            } else searchFailed(b, d, "目标或生命已改变，已退回出场机会，3 秒后可重新选择。");
+        });
     }
     private static void searchFailed(Binding b, Deployment d, String message) {
-        b.searches.remove(d.player.getUUID()); b.retryAt.put(d.player.getUUID(), System.nanoTime() + 3_000_000_000L);
-        tell(d.player, message);
+        b.searches.remove(d.identity.hunter(), d); b.resumptions.remove(d.identity.hunter(), d);
+        b.retryAt.put(d.identity.hunter(), b.searchClock.getAsLong() + 3_000_000_000L);
+        if (d.player.level().getServer().getPlayerList().getPlayer(d.player.getUUID()) == d.player) {
+            tell(d.player, message); sound(d.player, false);
+        }
     }
-    /** Retargeting is part of the same request, sharing its original time and candidate budgets. */
-    private static void restartSearch(Binding b, Deployment previous, Participant p) {
-        b.searches.remove(p.id());
-        int spent = previous.spentCandidates + previous.search.result().candidates();
-        if (spent >= P2SafeDeployment.MAX_CANDIDATES
-                || System.nanoTime() - previous.started >= P2SafeDeployment.MAX_SEARCH_NANOS) {
-            searchFailed(b, previous, "安全搜索预算已用完；3 秒后可重试，未消耗冷却。"); return;
+    /** Same target life only; dimension changes and compensation share the original deadline and candidates. */
+    private static void restartSearch(Binding b, Deployment d) {
+        b.searches.remove(d.identity.hunter(), d);
+        if (d.search != null) { d.spentCandidates += d.search.result().candidates(); d.search = null; }
+        if (!requestHunter(b, d, ParticipantRole.MONSTER_LOBBY, d.sortie) || !requestTarget(b, d)) {
+            searchFailed(b, d, "目标离线、死亡或生命已改变，追猎已取消。"); return;
         }
-        synchronize(previous.level.getServer(), b);
-        var targetId = b.votes.deploymentTarget(p.id());
-        var target = targetId.map(id -> previous.level.getServer().getPlayerList().getPlayer(id)).orElse(null);
-        if (!validTarget(b, target, previous.level)) {
-            tell(previous.player, "该维度已无人可追猎，请换维度；未消耗冷却。"); return;
+        if (d.spentCandidates >= P2SafeDeployment.MAX_CANDIDATES
+                || b.searchClock.getAsLong() - d.started >= P2SafeDeployment.MAX_SEARCH_NANOS) {
+            searchFailed(b, d, "安全搜索预算已用完；3 秒后可重试，保留出场机会。"); return;
         }
-        var search = new P2SafeDeployment.Search(previous.level, target.position(), humans(b, previous.level),
-                b.searchRandom, System::nanoTime, P2SafeDeployment.MAX_CANDIDATES - spent, previous.started);
-        b.searches.put(p.id(), new Deployment(previous.player, previous.round, p.lifeSequence(), p.monsterDeploymentSequence(),
-                p.monsterRole(), p.monsterDimension(), target.getUUID(), previous.level, search, previous.started, spent));
+        d.level = d.targetPlayer.level();
+        d.search = new P2SafeDeployment.Search(d.level, d.targetPlayer.position(), humans(b, d.level),
+                b.searchRandom, b.searchClock, P2SafeDeployment.MAX_CANDIDATES - d.spentCandidates, d.started);
+        b.searches.put(d.identity.hunter(), d);
     }
     private static void beginReturn(ServerPlayer player, Binding b, Participant p) {
         if (p.role() != ParticipantRole.MONSTER_DEPLOYED || MonsterRoles.isIgniting(player)) {
@@ -399,7 +469,8 @@ public final class P2LobbyRuntime {
         var b = BINDINGS.get(server); if (b == null) return;
         if (!before.roundId().equals(after.roundId())) {
             for (var player : server.getPlayerList().getPlayers()) if (MonsterRoles.isMonster(player)) MonsterRoles.clear(player);
-            b.searches.clear(); b.resumptions.clear(); b.channels.clear(); b.committing.clear(); b.retryAt.clear(); return;
+            b.pending.values().forEach(d -> d.cancelled = true);
+            b.searches.clear(); b.resumptions.clear(); b.pending.clear(); b.refunds.clear(); b.channels.clear(); b.committing.clear(); b.retryAt.clear(); b.displays.clear(); return;
         }
         if (dev.hardrush.p1.celebration.P1CelebrationRuntime.successful(after)) {
             b.searches.clear(); b.resumptions.clear(); b.channels.clear(); return;
@@ -407,6 +478,7 @@ public final class P2LobbyRuntime {
         for (var p : after.participants().values()) {
             var old = before.participants().get(p.id());
             if (old != null && old.role().isMonster() && p.role() == ParticipantRole.HUMAN_ACTIVE) {
+                b.reviving.add(p.id());
                 var revived = server.getPlayerList().getPlayer(p.id());
                 if (revived != null && MonsterRoles.isMonster(revived)) MonsterRoles.clear(revived);
                 b.channels.remove(p.id()); b.searches.remove(p.id()); b.resumptions.remove(p.id());
@@ -422,42 +494,118 @@ public final class P2LobbyRuntime {
     public static void disconnected(ServerPlayer player) {
         LobbyInteractions.disconnected(player);
         var b = BINDINGS.get(player.level().getServer()); if (b == null) return;
-        b.channels.remove(player.getUUID()); b.searches.remove(player.getUUID()); b.resumptions.remove(player.getUUID());
+        b.channels.remove(player.getUUID()); b.displays.remove(player.getUUID());
+        var attempts = new HashSet<Deployment>(b.searches.values()); attempts.addAll(b.resumptions.values()); attempts.addAll(b.pending.values());
+        for (var d : attempts) if (d.identity.hunter().equals(player.getUUID()) || d.identity.target().equals(player.getUUID())) {
+            d.cancelled = true;
+            if (!b.pending.containsValue(d)) searchFailed(b, d, "连接已断开，本次追猎已取消。");
+        }
         // Do not rebind a prototype body during the next native JOIN before the durable lobby gate.
         if (MonsterRoles.isMonster(player)) MonsterRoles.clear(player);
     }
     private static void synchronize(MinecraftServer server, Binding b) {
         var round = b.session.snapshot().orElse(null); if (round == null) return;
-        if (round.rules().huntRule() != RulesConfig.HuntRule.LEGACY_VOTE
-                || round.phase() == RoundPhase.RECOVERY_REQUIRED || b.session.competitionLocked()) {
-            b.votes = null; b.round = null; return;
-        }
         if (!round.roundId().equals(b.round)) {
-            b.round = round.roundId(); b.votes = new HuntVotingService(round.roundId(), List.of("overworld", "nether", "end"),
-                    System.nanoTime(), new Random(round.seed()));
-            b.searchRandom = new Random(round.seed() ^ 0x4841524452555348L);
+            b.round = round.roundId(); b.searchRandom = new Random(round.seed() ^ 0x4841524452555348L);
+            b.slots.clear(); b.deadAt.clear(); b.displays.clear(); b.cooling.clear(); b.reviving.clear();
         }
-        var views = new ArrayList<HuntVotingService.ParticipantView>();
-        for (var p : round.participants().values()) {
-            var player = server.getPlayerList().getPlayer(p.id());
-            String dimension = player == null ? "lobby" : dimension(b, player.level());
-            views.add(new HuntVotingService.ParticipantView(p.id(), round.roundId(), p.role(),
-                    p.online() && player != null && player.isAlive() && !P1PlayerProfiles.isLocked(player), dimension,
-                    player == null || P2ProtectionRuntime.protectedEntity(player)));
+    }
+    /** Role and paging facilities are registered by round 2, through the same protected block route. */
+    public static void facility(ServerPlayer player, LobbyLayout.Facility facility) {
+        var b = BINDINGS.get(player.level().getServer());
+        var r = b == null ? null : b.session.snapshot().orElse(null);
+        if (r == null || !contextAvailable(player, b, LobbyContext.DISPLAY) || !personalOpen(b, r)) {
+            tell(player, "怪物庭院仅在极限挑战或救场期间开放。"); return;
         }
-        // Isolated lobby monsters are eligible voters after their own profile barrier is ready.
-        views.replaceAll(v -> {
-            var p = round.participants().get(v.playerId()); var player = server.getPlayerList().getPlayer(v.playerId());
-            return p.role().isMonster() && p.online() && player != null && b.profiles.isReady(p.id(), round)
-                    ? new HuntVotingService.ParticipantView(p.id(), round.roundId(), p.role(), true,
-                        p.monsterDimension().name().toLowerCase(Locale.ROOT), true) : v;
+        if (facility == LobbyLayout.Facility.PREVIOUS || facility == LobbyLayout.Facility.NEXT) {
+            var projections = LobbyInteractions.get(player.level().getServer()).orElseThrow().projections();
+            projections.turn(player, facility == LobbyLayout.Facility.NEXT ? 1 : -1);
+            projections.view(player).ifPresent(v -> tell(player, "庭院第 " + (v.page() + 1) + "/" + v.pages() + " 页 · 本轮展位 " + b.slots.size() + " 人"));
+            return;
+        }
+        var p = r.participants().get(player.getUUID());
+        if (p == null || p.role() != ParticipantRole.MONSTER_LOBBY || b.committing.contains(p.id())
+                || b.searches.containsKey(p.id()) || b.resumptions.containsKey(p.id())) {
+            tell(player, "只有未搜索／提交的大厅怪物可以选角。"); return;
+        }
+        MonsterRole role = switch (facility) {
+            case ZOMBIE -> MonsterRole.ZOMBIE; case SKELETON -> MonsterRole.SKELETON; case CREEPER -> MonsterRole.CREEPER;
+            default -> null;
+        };
+        if (role == null) return;
+        b.committing.add(p.id());
+        b.session.requestMonsterRole(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), role, reply -> {
+            b.committing.remove(p.id());
+            if (current(player, b)) tell(player, reply.success() ? "已选择 " + kindName(role) + " ✓ · " + switch (role) {
+                case ZOMBIE -> "技能：召唤两只幼年僵尸"; case SKELETON -> "技能：三连射"; case CREEPER -> "技能：引爆";
+            } : reply.message());
         });
-        b.votes.synchronizeParticipants(views);
-        for (var p : round.participants().values()) if (p.role().isMonster() && p.online()
-                && server.getPlayerList().getPlayer(p.id()) != null && b.profiles.isReady(p.id(), round)) {
-            b.votes.selectDimension(p.id(), p.monsterDimension().name().toLowerCase(Locale.ROOT));
+    }
+    private static void updateDisplays(MinecraftServer server, Binding b) {
+        var r = b.session.snapshot().orElse(null); if (r == null) return;
+        var projections = LobbyInteractions.get(server).orElseThrow().projections();
+        if (!personalOpen(b, r) || !dev.hardrush.p1.world.P1LobbyWorld.open(server).ready()) {
+            if (!b.displays.isEmpty()) projections.clear();
+            b.displays.clear(); return;
         }
-        b.votes.refresh(System.nanoTime());
+        // Append only. Dead/offline slots are never recycled, including after a revival.
+        r.participants().values().stream().filter(p -> p.lifeSequence() > 0).forEach(p -> {
+            var player = server.getPlayerList().getPlayer(p.id());
+            if (player != null) b.slots.put(p.id(), player.getGameProfile());
+            else b.slots.putIfAbsent(p.id(), new GameProfile(p.id(), p.name()));
+        });
+        var targets = new ArrayList<LobbyProjections.Target>();
+        for (var slot : b.slots.entrySet()) {
+            var p = r.participants().get(slot.getKey()); if (p == null) continue;
+            var player = server.getPlayerList().getPlayer(p.id());
+            LobbyProjections.State state;
+            if (p.role() != ParticipantRole.HUMAN_ACTIVE) {
+                int died = b.deadAt.computeIfAbsent(p.id(), ignored -> server.getTickCount());
+                state = server.getTickCount() - died < 40 ? LobbyProjections.State.DEAD : LobbyProjections.State.EMPTY;
+            } else {
+                b.deadAt.remove(p.id());
+                state = player == null ? LobbyProjections.State.AWAY
+                        : b.reviving.contains(p.id()) && (!p.online() || !b.profiles.isReady(p.id(), r) || P1PlayerProfiles.isLocked(player))
+                        ? LobbyProjections.State.RESTORING
+                        : !b.profiles.isReady(p.id(), r) || P1PlayerProfiles.isLocked(player) ? LobbyProjections.State.CLOSED
+                        : !p.online() ? LobbyProjections.State.AWAY
+                        : validTarget(b, player, player.level()) && !dimension(b, player.level()).equals("lobby")
+                        ? LobbyProjections.State.AVAILABLE : LobbyProjections.State.CLOSED;
+                if (state == LobbyProjections.State.AVAILABLE) b.reviving.remove(p.id());
+            }
+            targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state));
+        }
+        for (var observer : server.getPlayerList().getPlayers()) {
+            if (!contextAvailable(observer, b, LobbyContext.DISPLAY)) { b.displays.remove(observer.getUUID()); continue; }
+            var old = b.displays.get(observer.getUUID()); var view = projections.view(observer);
+            var identity = r.participants().get(observer.getUUID());
+            if (identity != null && identity.role() == ParticipantRole.MONSTER_LOBBY) {
+                boolean cooling = identity.monsterCooldownNanos() > 0;
+                if (Boolean.TRUE.equals(b.cooling.put(identity.id(), cooling)) && !cooling) {
+                    tell(observer, "出场冷却结束，右键庭院目标模型发起追猎。"); sound(observer, true);
+                }
+            }
+            if (old == null || old.player != observer || old.connection != observer.connection || !old.targets.equals(targets) || view.isEmpty()) {
+                int page = view.map(LobbyProjections.View::page).orElse(0);
+                projections.show(observer, r.roundId(), targets, page, (actor, selected) -> beginDeployment(actor, b, selected));
+                b.displays.put(observer.getUUID(), new Display(observer, observer.connection, List.copyOf(targets)));
+            }
+            if (server.getTickCount() % 5 == 0) {
+                var p = r.participants().get(observer.getUUID());
+                if (p != null && p.role() == ParticipantRole.MONSTER_LOBBY) {
+                    var hints = LobbyInteractions.get(server).orElseThrow().hints(observer);
+                    long now = System.nanoTime() / 1_000_000;
+                    var attempt = b.searches.get(p.id());
+                    if (attempt != null || b.committing.contains(p.id()) || b.resumptions.containsKey(p.id()))
+                        hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "正在搜索／提交个人追猎", now + 300);
+                    else projections.aimed(observer).ifPresent(selected -> hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
+                            "目标：" + r.participants().get(selected.target()).name() + " · 当前角色：" + kindName(p.monsterRole())
+                                    + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒" : " · 右键追猎"), now + 300));
+                    hints.current(now).ifPresent(text -> observer.connection.send(new net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket(Component.literal(text))));
+                }
+            }
+        }
+        b.displays.entrySet().removeIf(e -> server.getPlayerList().getPlayer(e.getKey()) != e.getValue().player);
     }
     private static ServerLevel level(Binding b, MonsterDimension dimension) {
         var worlds = b.worlds.get();
@@ -482,13 +630,6 @@ public final class P2LobbyRuntime {
                         .filter(identity -> identity.online() && identity.role() == ParticipantRole.HUMAN_ACTIVE).isPresent())
                 .map(ServerPlayer::position).toList();
     }
-    private static List<ServerPlayer> candidates(ServerPlayer player) {
-        if (player == null) return List.of(); var b = BINDINGS.get(player.level().getServer());
-        if (b == null) return List.of();
-        var p = b.session.snapshot().map(r -> r.participants().get(player.getUUID())).orElse(null);
-        var level = p == null ? null : level(b, p.monsterDimension());
-        return level == null ? List.of() : level.getServer().getPlayerList().getPlayers().stream().filter(target -> validTarget(b, target, level)).toList();
-    }
     private static List<P2LobbyUi.Button> menuButtons(ServerPlayer player, Binding b) {
         var round = b.session.view().orElseThrow(); var p = round.participants().get(player.getUUID());
         var buttons = new ArrayList<P2LobbyUi.Button>();
@@ -499,32 +640,15 @@ public final class P2LobbyRuntime {
         if (p != null && p.role().isMonster()) {
             buttons.add(new P2LobbyUi.Button(Items.BLAZE_POWDER, "施放当前角色技能", "skill", ""));
             buttons.add(new P2LobbyUi.Button(Items.OAK_DOOR, "引导返回大厅（5 秒）", "return", ""));
-            synchronize(player.level().getServer(), b);
-            if (b.votes != null) {
-            var tally = b.votes.tally(p.monsterDimension().name().toLowerCase(Locale.ROOT));
-            String targetName = tally.target().map(id -> round.participants().get(id))
-                    .map(Participant::name).orElse("暂无有效人类");
-            buttons.add(new P2LobbyUi.Button(Items.CLOCK, "本次追猎：" + targetName + " · "
-                    + seconds(b.votes.remainingNanos(System.nanoTime())) + " 秒后结算", "info", ""));
-            }
-            for (var role : MonsterRole.values()) buttons.add(new P2LobbyUi.Button(switch (role) {
-                case ZOMBIE -> Items.ROTTEN_FLESH; case SKELETON -> Items.BONE; case CREEPER -> Items.GUNPOWDER;
-            }, "选择 " + kindName(role) + (p.monsterRole() == role ? " ✓" : ""), "role", role.name()));
-            if (b.votes != null) for (var dimension : MonsterDimension.values()) buttons.add(new P2LobbyUi.Button(switch (dimension) {
-                case OVERWORLD -> Items.GRASS_BLOCK; case NETHER -> Items.NETHERRACK; case END -> Items.END_STONE;
-            }, "追猎维度 " + dimensionName(dimension) + (p.monsterDimension() == dimension ? " ✓" : ""), "dimension", dimension.name()));
-            if (b.votes != null) buttons.add(new P2LobbyUi.Button(Items.COMPASS, "安全出场 · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒", "deploy", ""));
+            buttons.add(new P2LobbyUi.Button(Items.PLAYER_HEAD, "右键庭院模型直接追猎 · 当前 " + kindName(p.monsterRole())
+                    + " · 出场冷却 " + seconds(p.monsterCooldownNanos()) + " 秒", "info", ""));
             buttons.add(new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "复生资格：" + (p.revivalEntitled() ? "有" : "无") + "（点击空装复生）", "revive", ""));
-            if (b.votes != null) for (var target : candidates(player)) buttons.add(new P2LobbyUi.Button(Items.PLAYER_HEAD,
-                    "投票追猎 " + target.getScoreboardName(), "vote", target.getUUID().toString()));
+
         }
         return buttons;
     }
     private static String kindName(MonsterRole role) {
         return switch (role) { case ZOMBIE -> "僵尸"; case SKELETON -> "骷髅"; case CREEPER -> "苦力怕"; };
-    }
-    private static String dimensionName(MonsterDimension dimension) {
-        return switch (dimension) { case OVERWORLD -> "主世界"; case NETHER -> "下界"; case END -> "末地"; };
     }
     private static String phaseName(RoundPhase phase) {
         return switch (phase) {
@@ -542,5 +666,13 @@ public final class P2LobbyRuntime {
     private static long seconds(long nanos) { return nanos / 1_000_000_000L + (nanos % 1_000_000_000L == 0 ? 0 : 1); }
     private static void tell(ServerPlayer player, String message) {
         if (player.connection != null) player.sendSystemMessage(Component.literal(message));
+    }
+    private static void sound(ServerPlayer player, boolean success) {
+        if (player.connection != null && player.connection.isAcceptingMessages()) player.connection.send(
+                new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                        success ? net.minecraft.core.Holder.direct(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP)
+                                : net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS,
+                        net.minecraft.sounds.SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(),
+                        .5f, success ? 1.2f : .8f, 0));
     }
 }

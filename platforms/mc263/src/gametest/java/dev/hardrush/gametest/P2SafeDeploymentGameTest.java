@@ -144,13 +144,13 @@ public final class P2SafeDeploymentGameTest {
     }
 
     @GameTest(maxTicks=200)
-    public void reselectedTargetInheritsRemainingCandidatesAndOriginalDeadline(GameTestHelper test) {
+    public void sameTargetDimensionSearchInheritsRemainingCandidatesAndOriginalDeadline(GameTestHelper test) {
         var level = test.getLevel();
         var target = new Vec3(26_200_000.5, 100, 26_200_000.5);
         var clock = new AtomicLong(1_500_000_000L);
         var remaining = new P2SafeDeployment.Search(level, target, List.of(target), fixedRandom(), clock::get, 3, 0);
         var result = complete(remaining);
-        test.assertValueEqual(result.status(), P2SafeDeployment.Status.FAILED, "A re-selected target cannot extend the remaining candidate allowance");
+        test.assertValueEqual(result.status(), P2SafeDeployment.Status.FAILED, "The same target in another dimension cannot extend the remaining candidate allowance");
         test.assertValueEqual(result.candidates(), 3, "Only the three remaining standing points are inspected");
         clock.set(P2SafeDeployment.MAX_SEARCH_NANOS);
         var expired = new P2SafeDeployment.Search(level, target, List.of(target), fixedRandom(), clock::get, 3, 0);

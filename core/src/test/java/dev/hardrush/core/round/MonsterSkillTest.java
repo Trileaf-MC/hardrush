@@ -99,14 +99,14 @@ class MonsterSkillTest {
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, player, 3, 4));
         apply(engine, skill(engine, MonsterSkill.ZOMBIE_SUMMON, NOW));
         apply(engine, engine.proposeMonsterDeath(UUID.randomUUID(), round, player, 3, 5));
-        apply(engine, engine.proposeMonsterSelection(UUID.randomUUID(), round, player, 3, 5, MonsterRole.SKELETON, MonsterDimension.NETHER));
+        apply(engine, engine.proposeMonsterRole(UUID.randomUUID(), round, player, 3, 5, MonsterRole.SKELETON));
         clock.seconds(30);
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, player, 3, 5));
         apply(engine, skill(engine, MonsterSkill.SKELETON_BURST, NOW + 30_000));
         assertEquals(Map.of(MonsterSkill.ZOMBIE_SUMMON, NOW + 123_000,
                 MonsterSkill.SKELETON_BURST, NOW + 37_000), current(engine).monsterSkillReadyAtMillis());
         apply(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, player, 3, 6));
-        apply(engine, engine.proposeMonsterSelection(UUID.randomUUID(), round, player, 3, 6, MonsterRole.ZOMBIE, MonsterDimension.END));
+        apply(engine, engine.proposeMonsterRole(UUID.randomUUID(), round, player, 3, 6, MonsterRole.ZOMBIE));
         clock.seconds(30);
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, player, 3, 6));
         assertThrows(IllegalStateException.class, () -> skill(engine, MonsterSkill.ZOMBIE_SUMMON, NOW + 60_000));

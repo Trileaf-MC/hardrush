@@ -44,7 +44,7 @@ public final class P2SafeDeployment {
         public Search(ServerLevel level, Vec3 target, List<Vec3> humans, RandomGenerator random, LongSupplier clock) {
             this(level, target, humans, random, clock, MAX_CANDIDATES, clock.getAsLong());
         }
-        /** Re-selected targets inherit the original attempt's deadline and remaining candidate allowance. */
+        /** Re-searching the SAME target life inherits the original deadline and remaining candidates. */
         public Search(ServerLevel level, Vec3 target, List<Vec3> humans, RandomGenerator random,
                 LongSupplier clock, int maxCandidates, long startedNanos) {
             if (maxCandidates < 1 || maxCandidates > MAX_CANDIDATES)

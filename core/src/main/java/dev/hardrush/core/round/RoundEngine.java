@@ -344,7 +344,25 @@ public final class RoundEngine {
         RoundSnapshot before = capture();
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_LOBBY);
+        if (before.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET && dimension != player.monsterDimension())
+            throw new IllegalStateException("个人追猎由系统决定维度。");
         return monsterProposal(eventId, "MONSTER_SELECTION", before, player.selectMonster(role, dimension));
+    }
+
+    public RoundTransition proposeMonsterRole(UUID eventId, UUID roundId, UUID playerId,
+            int life, int sortie, MonsterRole role) {
+        RoundSnapshot before = capture();
+        var player = requireMonster(before, roundId, playerId, life, sortie, ParticipantRole.MONSTER_LOBBY);
+        return monsterProposal(eventId, "MONSTER_SELECTION", before, player.selectMonsterRole(Objects.requireNonNull(role)));
+    }
+
+    public RoundTransition proposePersonalHunt(UUID eventId, dev.hardrush.core.hunt.PersonalHuntRequest request, int sortie) {
+        RoundSnapshot before = capture();
+        if (before.rules().huntRule() != RulesConfig.HuntRule.PERSONAL_TARGET
+                || !request.hunterMatches(before, ParticipantRole.MONSTER_LOBBY, sortie)
+                || !request.targetMatches(before) || sortie < request.initialSortie())
+            throw new IllegalStateException("追猎目标、生命或发起身份已改变。");
+        return proposeMonsterDeploy(eventId, request.round(), request.hunter(), request.hunterLife(), sortie);
     }
 
     public RoundTransition proposeMonsterDeploy(UUID eventId, UUID roundId, UUID playerId,

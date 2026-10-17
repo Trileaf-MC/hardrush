@@ -3,7 +3,6 @@ package dev.hardrush.gametest;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.GameMode;
-import dev.hardrush.core.hunt.HuntVotingService;
 import dev.hardrush.core.round.*;
 import dev.hardrush.p0.monster.MonsterRoles;
 import dev.hardrush.p1.P1LobbyRuntime;
@@ -123,18 +122,14 @@ public final class P2RuntimeLobbyGameTest {
                     f.monster.player = f.monster.current();
                     f.assertLobby(true);
                     f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "First monster life has a deployment wait");
-                    f.monster.openAndClick(Items.ROTTEN_FLESH);
+                    P2HuntFixtures.role(f.monster.player, "zombie");
                 })
                 .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.ZOMBIE && !f.session.mutationPending(), "Role choice durably saved"))
-                .thenExecute(() -> f.monster.command("hardrush dimension overworld"))
-                .thenWaitUntil(() -> f.await(!f.session.mutationPending(), "Dimension choice durably saved"))
                 .thenExecute(() -> {
-                    f.monster.command("hardrush deploy");
+                    P2HuntFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
                     f.test.assertValueEqual(f.monster.participant().role(), ParticipantRole.MONSTER_LOBBY, "Early deploy cannot bypass the first 30 seconds");
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
-                    f.monster.openAndClick(Items.PLAYER_HEAD);
-                    f.test.assertValueEqual(f.votes().ballot(f.monster.profile.id()).orElseThrow().targetId(), f.target.profile.id(), "Production vote records the chosen active human");
-                    f.monster.command("hardrush deploy");
+                    P2HuntFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(1), "First formal safe deployment"))
                 .thenExecute(() -> {
@@ -187,12 +182,12 @@ public final class P2RuntimeLobbyGameTest {
                     f.test.assertValueEqual(f.summons(), 2, "Returning to the lobby keeps both owned summons alive");
                     f.assertSkillCooldowns();
                     f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Voluntary return starts another 30-second wait");
-                    f.monster.command("hardrush role skeleton");
+                    P2HuntFixtures.role(f.monster.player, "skeleton");
                 })
                 .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.SKELETON && !f.session.mutationPending(), "Skeleton selection keeps summon cooldown"))
                 .thenExecute(() -> {
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
-                    f.monster.command("hardrush deploy");
+                    P2HuntFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(2), "Second formal safe deployment"))
                 .thenExecute(() -> {
@@ -215,12 +210,12 @@ public final class P2RuntimeLobbyGameTest {
                     f.monster.player = f.monster.current();
                     f.assertLobby(true);
                     f.assertSkillCooldowns();
-                    f.monster.command("hardrush role creeper");
+                    P2HuntFixtures.role(f.monster.player, "creeper");
                 })
                 .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.CREEPER && !f.session.mutationPending(), "Creeper selection keeps both skill deadlines"))
                 .thenExecute(() -> {
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
-                    f.monster.command("hardrush deploy");
+                    P2HuntFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(3), "Third formal safe deployment"))
                 .thenExecute(() -> { f.assertDeployment(3); f.monster.disconnect(); })
@@ -244,12 +239,12 @@ public final class P2RuntimeLobbyGameTest {
                         prey.move(f.anchor);
                     })
                     .thenExecute(() -> {
-                        hunter.command("hardrush role zombie");
+                        P2HuntFixtures.role(hunter.player, "zombie");
                     })
                     .thenWaitUntil(() -> f.await(hunter.participant().monsterRole() == MonsterRole.ZOMBIE && !f.session.mutationPending(), "Cycle role selected " + iteration))
                     .thenExecute(() -> {
                         f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
-                        hunter.command("hardrush deploy");
+                        P2HuntFixtures.hunt(hunter.player, prey.profile.id(), hunter.connection.packets);
                     })
                     .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_DEPLOYED
                             && MonsterRoles.isMonster(hunter.player) && !f.session.mutationPending(), "Cycle formal deployment " + iteration))
@@ -569,13 +564,6 @@ public final class P2RuntimeLobbyGameTest {
             var field = P2LobbyRuntime.class.getDeclaredField("BINDINGS"); field.setAccessible(true);
             return ((Map<?, ?>) field.get(null)).get(server);
         }
-        HuntVotingService votes() {
-            try {
-                Object binding = binding();
-                var field = binding.getClass().getDeclaredField("votes"); field.setAccessible(true);
-                return (HuntVotingService) field.get(binding);
-            } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
-        }
         int diamonds() {
             // Native loot can drift beyond the original five-block death-query box.
             // Count the whole private arena; UUID visibility separately proves the original drops survive.
@@ -614,7 +602,7 @@ public final class P2RuntimeLobbyGameTest {
                 var saved = RoundSnapshotCodec.decode(store.load(round().roundId()).orElseThrow().payload()).participants().get(monster.profile.id());
                 test.assertValueEqual(saved.role(), ParticipantRole.MONSTER_LOBBY, "Real SQLite stores the returned lobby identity");
                 test.assertValueEqual(saved.monsterRole(), MonsterRole.CREEPER, "Real SQLite retains role choice across reconnect");
-                test.assertValueEqual(saved.monsterDimension(), MonsterDimension.OVERWORLD, "Real SQLite retains dimension choice across reconnect");
+                test.assertValueEqual(saved.monsterDimension(), MonsterDimension.OVERWORLD, "Real SQLite retains the historical compatibility field across reconnect");
                 test.assertValueEqual(saved.monsterDeploymentSequence(), 3, "Real SQLite retains sortie label across reconnect");
                 test.assertValueEqual(saved.lifeSequence(), 1, "Real SQLite never revives the human through a monster respawn");
                 test.assertValueEqual(saved.monsterSkillReadyAtMillis().get(MonsterSkill.ZOMBIE_SUMMON), summonReadyAt, "Real SQLite retains the original summon deadline");

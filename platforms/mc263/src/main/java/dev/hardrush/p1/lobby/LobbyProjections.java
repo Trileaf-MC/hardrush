@@ -19,7 +19,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Per-connection, packet-only FULL mannequins. Never added to a world, player list or tracker. */
 public final class LobbyProjections {
-    public enum State { AVAILABLE, AWAY, DEAD, CLOSED }
+    public enum State { AVAILABLE, AWAY, DEAD, EMPTY, RESTORING, CLOSED }
     public record Target(GameProfile originalProfile, int life, State state) {
         public Target { Objects.requireNonNull(originalProfile); Objects.requireNonNull(state); if (life < 1) throw new IllegalArgumentException("life"); }
     }
@@ -53,6 +53,7 @@ public final class LobbyProjections {
         var models = new LinkedHashMap<Integer, Model>();
         for (int index = page * LobbyLayout.DISPLAY_CAPACITY; index < Math.min(targets.size(), (page + 1) * LobbyLayout.DISPLAY_CAPACITY); index++) {
             var target = targets.get(index);
+            if (target.state == State.EMPTY) continue; // Preserve the stable hole without keeping a dead model forever.
             var model = new Mannequin(EntityTypes.MANNEQUIN, observer.level());
             int id = model.getId();
             if (id <= lastNativeId) throw new IllegalStateException("Native entity IDs exhausted; restart required");
@@ -63,7 +64,8 @@ public final class LobbyProjections {
             // Authenticated profile is never taken from OwnerSkin's rewritten player-info packets.
             model.setComponent(DataComponents.PROFILE, ResolvableProfile.createResolved(target.originalProfile));
             model.setCustomName(Component.literal(target.originalProfile.name() + " · " + switch (target.state) {
-                case AVAILABLE -> "右键查看"; case AWAY -> "暂离"; case DEAD -> "已死亡"; case CLOSED -> "未开放";
+                case AVAILABLE -> "右键追猎"; case AWAY -> "暂离，无法追猎"; case DEAD -> "已死亡";
+                case RESTORING -> "复生核验中"; case CLOSED, EMPTY -> "暂不可追猎";
             }));
             model.setCustomNameVisible(true);
             var selection = new Selection(round, target.originalProfile.id(), target.life, next, id);
@@ -96,6 +98,15 @@ public final class LobbyProjections {
         if (page == null || page.owner != observer || page.connection != observer.connection) return Optional.empty();
         return Optional.of(new View(page.generation, page.page, page.pages,
                 page.models.values().stream().map(Model::selection).sorted(Comparator.comparingInt(Selection::entityId)).toList()));
+    }
+    public Optional<Selection> aimed(ServerPlayer observer) {
+        router.requireThread();
+        var page = pages.get(observer.getUUID());
+        if (page == null || page.owner != observer || page.connection != observer.connection) return Optional.empty();
+        var eye = observer.getEyePosition(); var end = eye.add(observer.getViewVector(1).scale(5));
+        return page.models.values().stream().filter(m -> m.target.state == State.AVAILABLE)
+                .filter(m -> m.entity.getBoundingBox().inflate(.15).clip(eye, end).isPresent())
+                .min(Comparator.comparingDouble(m -> m.entity.position().distanceToSqr(eye))).map(Model::selection);
     }
     LobbyInteractions.Result click(ServerPlayer observer, ServerboundInteractPacket packet) {
         var page = pages.get(observer.getUUID());

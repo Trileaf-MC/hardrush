@@ -104,6 +104,7 @@ public final class P2LobbyUi {
 
     private static final class LobbyMenu extends ChestMenu {
         private final ServerPlayer owner;
+        private final net.minecraft.server.network.ServerGamePacketListenerImpl connection;
         private final UUID playerId;
         private final LobbyContext context;
         private final UUID expectedRound;
@@ -117,6 +118,7 @@ public final class P2LobbyUi {
         LobbyMenu(int id, ServerPlayer owner, Binding binding, UUID expectedRound, LobbyContext context) {
             super(MenuType.GENERIC_9x6, id, owner.getInventory(), new SimpleContainer(54), 6);
             this.owner = owner;
+            this.connection = owner.connection;
             this.context = context;
             this.playerId = owner.getUUID();
             this.server = owner.level().getServer();
@@ -134,6 +136,7 @@ public final class P2LobbyUi {
 
         @Override public boolean stillValid(Player actor) {
             return actor == owner && playerId.equals(actor.getUUID()) && owner.containerMenu == this
+                    && owner.connection == connection
                     && BINDINGS.get(server) == binding && server.getPlayerList().getPlayer(playerId) == owner
                     && binding.access.available(owner, context) && expectedRound.equals(binding.access.round(owner));
         }

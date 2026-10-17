@@ -102,7 +102,7 @@ public final class P3ServerCrashRegression implements ModInitializer {
                 return idle() && round().participants().get(a.profile.id()).role() == ParticipantRole.MONSTER_LOBBY
                         && a.player.isAlive() && a.player.level() == P1LobbyWorld.open(server).holdingLevel() && profiles.isReady(a.profile.id(), round());
             });
-            act("cooldown and formal deployment", () -> { advance(31); command(a, "hardrush deploy"); });
+            act("cooldown and formal deployment", () -> { advance(31); P2HuntFixtures.hunt(a.player, b.profile.id(), a.connection.packets); });
             waitFor("formal deployed zombie", () -> idle() && round().participants().get(a.profile.id()).role() == ParticipantRole.MONSTER_DEPLOYED
                     && MonsterRoles.isMonster(a.player) && !P1PlayerProfiles.isLocked(a.player));
             if (scenario.equals("AWARD")) arm();
@@ -239,7 +239,7 @@ public final class P3ServerCrashRegression implements ModInitializer {
             quarantinedLogin(a); quarantinedLogin(b);
             waitFor("repeated quarantine ticks", () -> ++recoveryTicks >= 20);
             act("reject repeated consumption and new participation", () -> {
-                command(a, "hardrush revive"); command(a, "hardrush join");
+                command(a, "hardrush revive"); P1SpatialFixtures.closedGate(a.player);
                 require(round().version() == expected.version() && round().challengeNanos() == expected.challengeNanos(), "recovery never consumes or advances time");
                 for (var actor : List.of(a, b)) require(actor.player.level() == P1LobbyWorld.open(server).holdingLevel() && P1PlayerProfiles.isLocked(actor.player), "native reconnect remains in permanent lobby");
                 stopping = true; server.halt(false);

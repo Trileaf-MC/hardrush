@@ -53,12 +53,12 @@ class MonsterRoundTest {
 
     @Test void choicesAndQualificationSurviveOutingsReturnsDeathsAndSessionUpdates() {
         var engine = monster();
-        apply(engine, engine.proposeMonsterSelection(UUID.randomUUID(), round, player, 1, 0,
-                MonsterRole.SKELETON, MonsterDimension.END));
+        apply(engine, engine.proposeMonsterRole(UUID.randomUUID(), round, player, 1, 0,
+                MonsterRole.SKELETON));
         clock.seconds(30);
         deploy(engine, 0);
-        assertThrows(IllegalStateException.class, () -> engine.proposeMonsterSelection(UUID.randomUUID(), round,
-                player, 1, 1, MonsterRole.CREEPER, MonsterDimension.NETHER));
+        assertThrows(IllegalStateException.class, () -> engine.proposeMonsterRole(UUID.randomUUID(), round,
+                player, 1, 1, MonsterRole.CREEPER));
         apply(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, player, 1, 1));
         assertEquals(30_000_000_000L, player(engine).monsterCooldownNanos());
         clock.seconds(30);
@@ -66,13 +66,13 @@ class MonsterRoundTest {
         apply(engine, engine.proposeMonsterDeath(UUID.randomUUID(), round, player, 1, 2));
         Participant current = player(engine);
         assertEquals(MonsterRole.SKELETON, current.monsterRole());
-        assertEquals(MonsterDimension.END, current.monsterDimension());
+        assertEquals(MonsterDimension.OVERWORLD, current.monsterDimension());
         assertEquals(2, current.monsterDeploymentSequence());
         var entitled = new Participant(player, "Entitled", current.role(), true, false, current.humanNanos(),
                 0, 1, true, true, current.monsterRole(), current.monsterDimension(), current.monsterCooldownNanos(), 2);
         assertTrue(entitled.withSession("Renamed", false).revivalEntitled());
         assertEquals(MonsterRole.SKELETON, entitled.withRole(ParticipantRole.MONSTER_DEPLOYED).monsterRole());
-        assertEquals(MonsterDimension.END, entitled.accrue(1).monsterDimension());
+        assertEquals(MonsterDimension.OVERWORLD, entitled.accrue(1).monsterDimension());
         assertEquals(2, entitled.start(0).monsterDeploymentSequence());
     }
 
@@ -88,8 +88,8 @@ class MonsterRoundTest {
         apply(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, player, 1, 1));
         apply(engine, engine.proposeOnline(UUID.randomUUID(), player, "Offline", false));
         clock.seconds(30);
-        assertThrows(IllegalStateException.class, () -> engine.proposeMonsterSelection(UUID.randomUUID(), round, player, 1, 1,
-                MonsterRole.CREEPER, MonsterDimension.NETHER));
+        assertThrows(IllegalStateException.class, () -> engine.proposeMonsterRole(UUID.randomUUID(), round, player, 1, 1,
+                MonsterRole.CREEPER));
         assertThrows(IllegalStateException.class, () -> deploy(engine, 1));
         apply(engine, engine.proposeFinish(UUID.randomUUID(), new RoundResult(RoundResult.Kind.FAILED, null, "fixture")));
         assertThrows(IllegalStateException.class, () -> engine.proposeMonsterDeploy(UUID.randomUUID(), round, player, 1, 1));

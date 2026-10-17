@@ -29,7 +29,7 @@ class P2MonsterSessionTest {
         Path path = seed();
         try (var session = open(path)) {
             var answer = new AtomicReference<P1LobbySession.Reply>();
-            session.requestMonsterSelection(round, player, 3, 4, MonsterRole.CREEPER, MonsterDimension.NETHER, answer::set);
+            session.requestMonsterRole(round, player, 3, 4, MonsterRole.CREEPER, answer::set);
             assertNull(answer.get());
             assertEquals(MonsterRole.ZOMBIE, session.snapshot().orElseThrow().participants().get(player).monsterRole());
             pump(() -> answer.get() != null);
@@ -51,7 +51,7 @@ class P2MonsterSessionTest {
             request(reply -> session.requestMonsterReturn(round, player, 3, 6, reply));
             var saved = session.snapshot().orElseThrow().participants().get(player);
             assertEquals(MonsterRole.CREEPER, saved.monsterRole());
-            assertEquals(MonsterDimension.NETHER, saved.monsterDimension());
+            assertEquals(MonsterDimension.OVERWORLD, saved.monsterDimension());
             assertTrue(saved.revivalEntitled());
         }
         try (var store = new SqliteRoundStore(path)) {

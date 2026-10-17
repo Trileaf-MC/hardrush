@@ -37,7 +37,8 @@
       "dev.hardrush.gametest.P2RuntimeLobbyGameTest",
       "dev.hardrush.gametest.P2CombatWhitelistGameTest",
       "dev.hardrush.p0.monster.P2MonsterSkillsGameTest",
-      "dev.hardrush.gametest.P1HumanEntryGameTest"
+      "dev.hardrush.gametest.P1HumanEntryGameTest",
+      "dev.hardrush.gametest.P2PersonalHuntGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"

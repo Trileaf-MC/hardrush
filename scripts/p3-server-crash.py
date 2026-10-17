@@ -37,6 +37,12 @@ def retained(directory):
         for path in sorted(candidate.rglob('*')):
             if path.is_symlink():
                 raise RuntimeError(f'Unexpected linked fixture file: {path}')
+            # The persistent shared camp remains loaded/ticking in quarantine. Its native region
+            # timestamps, POI and status signs are mutable; it is NOT an old round-owned world.
+            # Both native recovery fixtures separately require builtBlocks()==0 and the saved
+            # lapis terrain sentinel. All round worlds and profile bytes remain exact below.
+            if path.is_relative_to(world / 'dimensions/hardrush/lobby'):
+                continue
             if path.is_file():
                 if path.suffix == '.bin':
                     if not 36 < path.stat().st_size <= 16 * 1024 * 1024 + 36:
@@ -45,6 +51,10 @@ def retained(directory):
                     if struct.unpack('>i', data[:4])[0] != len(data) - 36 or hashlib.sha256(data[36:]).digest() != data[4:36]:
                         raise RuntimeError(f'Corrupt profile journal envelope: {path}')
                 result[str(path.relative_to(world))] = P1.sha256(path)
+    layout = world / 'hardrush/lobby-layout.txt'
+    if layout.is_symlink() or not layout.is_file() or not layout.read_text().endswith('COMPLETE\n'):
+        raise RuntimeError('Shared camp must retain its complete ownership manifest')
+    result['hardrush/lobby-layout.txt'] = P1.sha256(layout)
     if not any(name.endswith('.mca') for name in result) or not any(name.endswith('.bin') for name in result):
         raise RuntimeError('Missing real native region files or durable player journal')
     return result

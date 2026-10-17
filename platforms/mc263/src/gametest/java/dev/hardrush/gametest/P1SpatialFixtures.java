@@ -16,6 +16,20 @@ import net.minecraft.world.phys.Vec3;
 
 /** Migration of historical fixture commands to actual spatial/menu inputs. Not a production API. */
 final class P1SpatialFixtures {
+    /** Quarantine intentionally rejects this physical entrance; do not require a confirmation menu. */
+    static void closedGate(ServerPlayer player) {
+        var lobby = P1LobbyWorld.open(player.level().getServer());
+        var marker = BlockPos.containing(lobby.holdingSpawn()).offset(6, 3, 6);
+        if (!lobby.ready() || lobby.builtBlocks() != 0
+                || !lobby.holdingLevel().getBlockState(marker).is(net.minecraft.world.level.block.Blocks.LAPIS_BLOCK))
+            throw new AssertionError("Recovered shared camp was rebuilt or lost its native terrain sentinel");
+        var point = LobbyLayout.facility(LobbyLayout.Facility.MIDROUND);
+        var pos = BlockPos.containing(lobby.holdingSpawn().add(point.x(), 0, point.z()));
+        move(player, Vec3.atBottomCenterOf(pos.south(2)));
+        player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,
+                new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false), 91));
+        if (dev.hardrush.p2.lobby.P2LobbyUi.isMenu(player)) throw new AssertionError("Quarantine opened the physical admission gate");
+    }
     static boolean handle(ServerPlayer player, String command) {
         if (!command.equals("hardrush join") && !command.equals("hardrush ready") && !command.equals("hardrush unready")) return false;
         var server = player.level().getServer();

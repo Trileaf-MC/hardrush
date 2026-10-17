@@ -1,0 +1,4 @@
+P3 isolated crash evidence: /Users/leifwebber/projects/minecraft/hardrush/.local/p3-server-crash/42d9e258-94bc-4dce-8c0c-b32ef04f00c2
+AWARD/COMMIT/write: PASS (JVM 17480, exit -9)
+AWARD/COMMIT/recover-1: PASS (JVM 17666, exit 0)
+FAIL: Quarantine changed or deleted retained worlds/profile evidence; evidence retained at /Users/leifwebber/projects/minecraft/hardrush/.local/p3-server-crash/42d9e258-94bc-4dce-8c0c-b32ef04f00c2

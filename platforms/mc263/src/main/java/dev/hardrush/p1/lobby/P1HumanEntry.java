@@ -81,6 +81,8 @@ public final class P1HumanEntry {
                 router.registerBlock(pos, Blocks.LECTERN, LobbyContext.RULES, player -> {
                     if (facility == LobbyLayout.Facility.RULES) P2LobbyUi.open(player, LobbyContext.RULES);
                     else if (facility == LobbyLayout.Facility.MIDROUND) openGate(player);
+                    else if (switch (facility) { case ZOMBIE, SKELETON, CREEPER, PREVIOUS, NEXT -> true; default -> false; })
+                        dev.hardrush.p2.lobby.P2LobbyRuntime.facility(player, facility);
                     else tell(player, "此设施尚未开放。开局请前往集结区，挑战或救场期间可使用中途入场门。");
                 });
             }
@@ -88,6 +90,9 @@ public final class P1HumanEntry {
         }
         String label = round.sequence() + " / " + round.phase() + " / " + session.recoveringCountdown();
         if (lobby.ready() && !label.equals(lastLabel)) {
+            lobby.huntLabels(round.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE
+                    && round.rules().huntRule() == dev.hardrush.core.config.RulesConfig.HuntRule.PERSONAL_TARGET
+                    && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE));
             lobby.statusLabel(session.recoveringCountdown() ? "正在恢复上次集结" : switch(round.phase()) {
                 case WAITING, COUNTDOWN -> "站入集结区参加"; case RUNNING, RESCUE -> "集结关闭 · 中途门开放";
                 case PREPARING -> "世界准备中 · 入口关闭"; case SETTLING -> "本轮结算 · 入口关闭";

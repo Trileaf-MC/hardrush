@@ -100,6 +100,9 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
                 monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis);
     }
 
+    /** PERSONAL_TARGET never changes the historical dimension preference. */
+    Participant selectMonsterRole(MonsterRole selection) { return selectMonster(selection, monsterDimension); }
+
     Participant monsterLobby(long cooldown) {
         return new Participant(id, name, ParticipantRole.MONSTER_LOBBY, online, false, humanNanos,
                 joinedAtChallengeNanos, lifeSequence, revivalEntitled, hasLeftProtection,

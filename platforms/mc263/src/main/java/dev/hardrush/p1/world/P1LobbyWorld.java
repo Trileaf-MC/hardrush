@@ -180,6 +180,19 @@ public final class P1LobbyWorld {
         if (!ready) return;
         label(spawn.offset(4, 0, 1), new String[]{"HardRush 营地", stage, mode, "前方集结／右侧中途门"});
     }
+    /** Refresh only owned facility text, never rebuild terrain in a completed camp. */
+    public void huntLabels(boolean enabled) {
+        if (!ready) return;
+        for (var facility : new LobbyLayout.Facility[]{LobbyLayout.Facility.ZOMBIE, LobbyLayout.Facility.SKELETON,
+                LobbyLayout.Facility.CREEPER, LobbyLayout.Facility.PREVIOUS, LobbyLayout.Facility.NEXT}) {
+            var point = LobbyLayout.facility(facility);
+            var pos = spawn.offset((int)point.x(), 0, (int)point.z() + 2);
+            var original = P1CampBlueprint.labels(spawn).get(pos);
+            label(pos, new String[]{original[0], enabled ? switch (facility) {
+                case PREVIOUS, NEXT -> "右键翻页 · 仅本人"; default -> "右键选择角色";
+            } : "极限挑战时开放", enabled ? "右键活人模型追猎" : "", ""});
+        }
+    }
     private CompletableFuture<Void> writeManifest(String value) {
         return CompletableFuture.runAsync(() -> {
             try {

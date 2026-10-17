@@ -38,7 +38,7 @@ public final class P2LobbyUiGameTest {
             test.assertValueEqual(player.getInventory().getItem(0).getCount(), 17, "All rejected transfers preserve existing inventory");
             test.assertTrue(menu.getCarried().isEmpty(), "No rejected transfer puts a menu item on the cursor");
             menu.clicked(0, 0, ContainerInput.PICKUP, player);
-            test.assertValueEqual(access.actions, List.of("vote:target"), "Primary pickup invokes the server's mapped action");
+            test.assertValueEqual(access.actions, List.of("read:target"), "Primary pickup invokes the server's mapped action");
             test.assertTrue(menu.getCarried().isEmpty() && menu.getSlot(0).getItem().is(Items.EMERALD),
                     "Successful action keeps its icon in the GUI and off the cursor");
             menu.clicked(0, 1, ContainerInput.PICKUP, player);
@@ -74,7 +74,7 @@ public final class P2LobbyUiGameTest {
             test.assertValueEqual(menu.getSlot(0).getItem().getHoverName().getString(), "Target 45", "Next page reaches target 46");
             test.assertTrue(firstIcon != menu.getSlot(0).getItem(), "Pages never share mutable icon stacks");
             menu.clicked(0, 1, ContainerInput.PICKUP, player);
-            test.assertValueEqual(access.actions, List.of("vote:target-45"), "Secondary pickup has command-equivalent dispatch");
+            test.assertValueEqual(access.actions, List.of("read:target-45"), "Secondary pickup has server-owned read dispatch");
             menu.clicked(45, 0, ContainerInput.PICKUP, player);
             test.assertValueEqual(menu.getSlot(0).getItem().getHoverName().getString(), "Target 0", "Previous page restores the first actions");
             test.assertTrue(firstIcon != menu.getSlot(0).getItem(), "Returning to a page rebuilds independent stacks");
@@ -132,13 +132,13 @@ public final class P2LobbyUiGameTest {
     }
 
     private static P2LobbyUi.Button button(String label, String target) {
-        return new P2LobbyUi.Button(Items.EMERALD, label, "vote", target);
+        return new P2LobbyUi.Button(Items.EMERALD, label, "read", target);
     }
 
     private static final class FixtureAccess implements P2LobbyUi.Access {
         UUID round = UUID.randomUUID();
         boolean available = true;
-        final List<P2LobbyUi.Button> buttons = new ArrayList<>(List.of(button("选择目标", "target")));
+        final List<P2LobbyUi.Button> buttons = new ArrayList<>(List.of(button("阅读章节", "target")));
         final List<String> actions = new ArrayList<>();
 
         @Override public boolean available(ServerPlayer player) { return available; }

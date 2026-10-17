@@ -122,7 +122,7 @@ public final class P3ProfileCrashRegression implements ModInitializer {
             quarantinedLogin(a); quarantinedLogin(b);
             waitFor("quarantine remains stable", () -> ++recoveryTicks >= 20);
             act("reconnect cannot repeat reset or enter competition", () -> {
-                command(a, "hardrush join"); command(a, "hardrush revive");
+                P1SpatialFixtures.closedGate(a.player); command(a, "hardrush revive");
                 require(round().version() == expected.version() && round().challengeNanos() == expected.challengeNanos(), "no new reward, identity or time");
                 require(a.player.getInventory().getItem(4).is(Items.DIAMOND)
                         && a.player.getInventory().getItem(4).getCount() == 13, "old native inventory stays quarantined without reset");

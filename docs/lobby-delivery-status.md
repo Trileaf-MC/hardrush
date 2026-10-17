@@ -1,17 +1,17 @@
 # HardRush 26.3 无指令大厅交接状态
 
-初始化日期：2026-10-16。当前阶段：第 1～2 轮开发与自动验证完成，第 3～5 轮未开始。对应[五轮计划](lobby-delivery-plan.md)、[产品设计](lobby-interaction-design.md)和[启动词索引](lobby-delivery-prompts/README.md)。
+初始化日期：2026-10-16。当前阶段：第 1～3 轮开发与自动验证完成，第 4～5 轮未开始。对应[五轮计划](lobby-delivery-plan.md)、[产品设计](lobby-interaction-design.md)和[启动词索引](lobby-delivery-prompts/README.md)。
 
 ## 总体状态
 
 | 项目 | 当前状态 |
 | --- | --- |
 | 交付范围 | 26.3；26.1.2／26.2 正式适配另排 |
-| 当前开发轮次 | 第 2 轮开发与自动验证完成；停在本轮，第 3 轮须另行启动 |
-| 新交互开发 | 底座、营地、集结开赛、中途加入及正常恢复已交付；角色／庭院业务、个人追猎及外围闭环待后轮 |
-| 本计划的自动产品验证 | 最终源码 361 项 JUnit、107 项默认 GameTest；人类入场、底座协议、移动各 1/1，COUNTDOWN 三 JVM 通过；本轮另执行十轮 2/2（范围见下）；占位不代替专项 |
-| 真实客户端人工验收 | 未执行，待实现后按人工清单开展 |
-| Git 提交 推送 部署 | 第 1～2 轮已按用户要求提交，提交说明见文末。未推送或部署；两轮各自验证基线保持原记录 |
+| 当前开发轮次 | 第 3 轮开发与自动验证完成；停在本轮，第 4 轮须另行启动 |
+| 新交互开发 | 底座、人类流程、角色、皮肤庭院及个人追猎已交付；外围闭环等待第 4 轮 |
+| 本计划的自动产品验证 | 第 3 轮最终源码 367 项 JUnit、108 项默认 GameTest；P2、个人追猎双故障、底座、人类、移动及受影响恢复专项通过；占位不代替专项，前轮证据保留 |
+| 真实客户端人工验收 | 未执行；本轮皮肤、选取与游玩按人工清单待验 |
+| Git 提交 推送 部署 | 第 1～2 轮已提交；第 3 轮按本次授权本地提交，记录见文末。未推送或部署；各轮验证基线保持原记录 |
 | 文档准备检查 | 11 份 Markdown 的结构与 171 个本地链接检查通过；5 份独立启动词和 5 轮未开始状态校验通过，只读复审通过 |
 
 ## 初始化基线
@@ -28,11 +28,11 @@
 | --- | --- | --- | --- | --- |
 | 1 交互底座与关键风险 | 开发与自动验证完成 | 已核对干净基线并实跑当前门槛 | [验证汇总](evidence/lobby-foundation-20261017/validation.json)／[接口说明](lobby-foundation.md) | 停止本轮；第 2 轮另行启动并先复核 |
 | 2 营地与人类入场 | 开发与自动验证完成 | 前轮 24 个源码及 3 份成功日志摘要、接口已复核 | [基线](evidence/lobby-human-entry-20261017/baseline.json)／[验证汇总](evidence/lobby-human-entry-20261017/validation.json) | 停止本轮；第 3 轮另行启动并先复核 |
-| 3 皮肤庭院与定向追猎 | 未开始 | 第 1～2 轮自动门槛已通过，待第 3 轮会话复核 | 无 | 按第 3 轮启动词接角色／庭院与请求 |
-| 4 全流程无指令接通 | 未开始 | 第 1～2 轮已通过，第 3 轮未执行 | 无 | 等待第 3 轮通过并交接 |
-| 5 稳定化与候选包 | 未开始 | 第 1～2 轮已通过，第 3～4 轮未执行 | 无 | 等待全部玩家业务实现 |
+| 3 皮肤庭院与定向追猎 | 开发与自动验证完成 | 已核对前两轮主能力与证据，最终自动门槛通过 | [基线](evidence/lobby-direct-hunt-20261017/baseline.json)／[验证汇总](evidence/lobby-direct-hunt-20261017/validation.json) | 停止本轮；第 4 轮另行启动并先复核 |
+| 4 全流程无指令接通 | 未开始 | 第 1～3 轮已通过，待第 4 轮会话复核 | 无 | 按第 4 轮启动词先复核第 1～3 轮 |
+| 5 稳定化与候选包 | 未开始 | 第 1～3 轮已通过，第 4 轮未执行 | 无 | 等待全部玩家业务实现 |
 
-后轮未开始不等于技术失败。第 1～2 轮执行发现的失败与修复见下文；两轮必需自动门槛已通过，人工画面与后轮业务仍未验收。
+后轮未开始不等于技术失败。第 1～3 轮执行发现的失败与修复见下文；三轮必需自动门槛已通过，人工画面与后轮业务仍未验收。
 
 ## 第 1 轮交接
 
@@ -155,15 +155,96 @@ COUNTDOWN 的 writer／recover／recover-again PID 分别为 55829／55977／560
 
 ## 第 3 轮交接
 
-- 状态：未开始。
-- 执行会话及日期：尚无。
-- 前轮复核结论与本轮基线：尚无。
-- 模型 角色与个人追猎接口：尚未实现。
-- 目标生命 校验 搜索预算与补偿：尚未实现。
-- 投票与手动维度路径停用清单：尚无。
-- 自动验证命令 结果与证据：未执行，无证据。
-- 人工验收：未执行。
-- 留给下一轮：完成第 3 轮后填写技能、归返、祭坛和提示可调用的身份与场景接口。
+- 状态：开发与自动验证完成。限 26.3 的角色／皮肤庭院／个人追猎；真实客户端未验收，第 4～5 轮未开始。
+- 会话及日期：01a14833-071b-73b3-9e4e-c5640b63a157，2026-10-17。
+- 基线：main，HEAD `773168490f688416b485cd9e864c094dc7165f98`，启动工作树干净；适用 AGENTS.md 仅仓库根文件。[baseline.json](evidence/lobby-direct-hunt-20261017/baseline.json) 保存启动源码摘要、Git 状态和前置复核。前两轮合并后 38 个最新源码文件及 9 份成功日志逐项核对一致，主能力与接口已复读，没有替代执行整轮前置。
+- 最终源码：本轮 28 个源码／测试／构建文件见 [source-files.json](evidence/lobby-direct-hunt-20261017/source-files.json)，聚合 SHA-256 `34d8209a4252fab9fe2c0dc88451864f6f9a9b1962ede4cd51ddb009515a7e09`。生产源码与各专项对应源码在最终验证间逐项核对一致；P3 夹具收尾范围见 validation.json。验证时仍是上述 HEAD 上的未提交工作树，随后本地提交另记。
+
+### 角色 模型与个人请求接口
+
+`P1HumanEntry` 沿用第 2 轮专用讲台登记和双保护路由，将 ZOMBIE／SKELETON／CREEPER／PREVIOUS／NEXT 交给 `P2LobbyRuntime.facility`。只有当前连接、已核验大厅身体、极限新规则与进行／救场阶段开放；选角还要求在线 MONSTER_LOBBY 且没有搜索或提交。`P1LobbySession.requestMonsterRole` → `RoundEngine.proposeMonsterRole` 只改角色，保留技能、出场冷却、生命／出场序号与历史维度字段。角色成功后给出勾选及技能简述，菜单只指引场景。既有营地仅更新拥有的标牌文字，不升级布局、不重建地形。
+
+庭院复用 `LobbyProjections.show/turn/view/aimed`。本轮展示名册按 UUID 建表后只追加，离线、死亡及复生不回收或重排既有槽；死亡显示 40 tick 后留空，同 UUID 新生命返回原槽。每页 20 个槽，可独立翻页。原 `GameProfile` 直接进入全身 Mannequin，未取得皮肤资料时保留 UUID／名字和默认外观。只复制原 profile、固定展位姿态与受控状态，完全不读取目标装备、血量、背包、坐标、朝向或距离作为展示信息。模型只发给本人连接，从未加入世界实体、PlayerList、参赛或团灭计数。
+
+AVAILABLE／AWAY／DEAD／EMPTY／RESTORING／CLOSED 区分可追猎、暂离、死亡、空位、复生核验及不可用。复生持久提交后的 offline 位不再压过“复生核验中”；必须档案和在线均完成才恢复 AVAILABLE。映射继续绑定观察者对象、连接、轮次、代次、实体 ID、目标 UUID 和生命；更新用全新 ID，旧页面与旧连接不能重绑新目标。旧菜单也绑定连接。瞄准提示使用 TARGET 优先级，搜索／提交使用 PROGRESS；冷却结束只提示一次，绝不登记自动出场。
+
+模型右键经两层保护统一路由进入私有 `beginDeployment`，以 `PersonalHuntRequest(round, hunter, hunterLife, initialSortie, kind, target, targetLife)` 冻结双方身份，另绑定双方原生身体／连接。搜索每 tick、`requestPersonalHunt` 的核心提案、提交回调及传送前都复核。补偿后的当前出场序号单独推进，原始身份和目标生命不变。同 UUID 复生、连接更换、死亡或离线均不能继承旧请求。
+
+### 安全 预算 补偿与旧路径停用
+
+按同一目标当前所在的本轮维度搜索；同一生命换维度和安全点失效均共享原始 `started`、已用候选及剩余额度。每次最多 2 秒／累计 64 候选，既有每 tick 4 候选／2 ms 切片、32～64 格目标水平距离、所有同维度人类至少 24 格及全部地形规则保持。测试竞技地形由夹具预置，生产搜索没有加载区块、制造地形、贴脸兜底或随机换人。失败后 `retryAt` 按发起怪物 UUID 等待 3 秒，换目标／重连不绕过。
+
+只在 SQLite 出场身份提交成功后应用档案、传送和角色，真实角色未应用也不能报成功。目标移动、地形或维度变化导致传送前失效时，对精确生命／出场序号执行内部取消；排队的死亡／断线写入只让补偿等待，不丢失退款。补偿成功恢复出场机会，仍在原预算内才重搜同一目标。真实世界／档案异常继续隔离，SQLite 写入失败不应用出场。出场成功后移除临时目标请求，不自动追随；攻击其他合法人类及按实际致死归属获得资格均保持。
+
+停用清单：
+
+- 生产 Runtime 不再创建、同步或调度 `HuntVotingService`，没有 15 秒结算、票数、共同胜者或随机重选。
+- 新规则的 `vote`、`dimension`、无目标 `deploy` 命令及直接 action 均只给场景指引，不发起搜索；维度补全和对应菜单选项已移除。
+- GUI 旧投票人头、维度、共同目标、出场按钮已移除；选角菜单／命令引导到实体设施，目标只能由服务端模型映射受理。
+- `restartSearch` 只使用冻结 UUID／生命的同一目标，`monsterDimension` 不参与角色保存或追猎路由。原字段、旧编码和规则指纹保留，没有重写历史。
+- 低层 `proposeMonsterDeploy`／`requestMonsterDeploy` 保留为受信任的历史／内部身份事务原语，玩家入口不调用；当前业务必须先经定向提案。历史投票单元测试仍只证明旧服务，不能算新 S03。
+- P2 实战专场和 P3 强杀夹具的出场改为读取实际模型出站包并输入实体右键；通用 GUI 夹具改为只读按钮，不再冒充投票。原生登录、死亡、档案、资格与掉落断言保留。
+
+### 最终自动验证
+
+全部从仓库根目录执行，所有服务端均是新建隔离目录；没有真实客户端、图形、浏览器、computer use、真实游玩 MCP 或日常实例。完整结果和日志摘要见 [validation.json](evidence/lobby-direct-hunt-20261017/validation.json)，JUnit 明细见 [junit-summary.json](evidence/lobby-direct-hunt-20261017/junit-summary.json)。
+
+| 准确命令 | 结果 | 实际隔离目录与日志 |
+| --- | --- | --- |
+| `scripts/p0-gradle.sh checkP3 -PhardrushP1=true --console=plain` | 367 项 JUnit + 108 项默认 GameTest 通过 | `.local/baseline-check/b5ec431a-e55f-4db5-83bf-9c66f147907c`；[checkP3-complete.log](evidence/lobby-direct-hunt-20261017/checkP3-complete.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushP2Lobby=true --console=plain` | 1/1 通过 | `.local/p2-lobby/94626d90-bf55-4315-9547-9580dd06e244`；[verified-p2-final.log](evidence/lobby-direct-hunt-20261017/verified-p2-final.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushPersonalHunt=true --console=plain` | 1/1 通过 | `.local/personal-hunt/aa0486ed-9e69-446b-bc1f-2bd85b412990`；[verified-personal-final.log](evidence/lobby-direct-hunt-20261017/verified-personal-final.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushPersonalHunt=true -PhardrushPersonalFault=storage --console=plain` | 1/1 通过 | `.local/personal-hunt/41de4411-7290-4af7-b674-e019cf23e773`；[verified-personal-storage-final.log](evidence/lobby-direct-hunt-20261017/verified-personal-storage-final.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushLobbyFoundation=true --console=plain` | 1/1 通过 | `.local/lobby-foundation/b1656c2d-1e59-4980-9adb-344482d24256`；[verified-foundation-final.log](evidence/lobby-direct-hunt-20261017/verified-foundation-final.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushHumanEntry=true --console=plain` | 1/1 通过 | `.local/lobby-human-entry/556db877-9eda-4adc-83b7-6e2d963c12ec`；[verified-human-final.log](evidence/lobby-direct-hunt-20261017/verified-human-final.log) |
+| `scripts/p0-gradle.sh :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushLobbyMovement=true --console=plain` | 1/1 通过 | `.local/lobby-movement/cf88f92c-109e-4e76-bfea-6edc11b068fb`；[verified-movement-final.log](evidence/lobby-direct-hunt-20261017/verified-movement-final.log) |
+| `python3 scripts/p3-server-crash.py --scenario AWARD --boundary COMMIT` | 独立 JVM 场景 通过 | `.local/p3-server-crash/b04721a1-5650-435a-a8f2-f6d10a1560df`；[p3-award-commit-verified.log](evidence/lobby-direct-hunt-20261017/p3-award-commit-verified.log) |
+| `python3 scripts/p3-server-crash.py --scenario PROFILE --boundary PREPARED` | 独立 JVM 场景 通过 | `.local/p3-server-crash/d4f2f73b-afa3-4880-98b6-2aee4dd55729`；[p3-profile-prepared-verified.log](evidence/lobby-direct-hunt-20261017/p3-profile-prepared-verified.log) |
+
+专项过滤器在 `platforms/mc263/build.gradle` 明确声明，并用统一互斥检查禁止同 JVM 混跑：
+
+- `-PhardrushP2Lobby=true` → `hardrush-gametest:p2runtime_lobby_game_test*`。
+- `-PhardrushPersonalHunt=true` → `hardrush-gametest:p2personal_hunt_game_test*`。
+- `-PhardrushLobbyFoundation=true` → `hardrush-gametest:lobby_foundation_game_test*`。
+- `-PhardrushHumanEntry=true` → `hardrush-gametest:p1human_entry_game_test*`。
+- `-PhardrushLobbyMovement=true` → `hardrush-gametest:p1lobby_movement_game_test*`。
+
+`hardrushP1=true` 启用正式 Runtime；P2／个人追猎以 hardcore 启动，人类／底座／移动以 normal 启动。`hardrushPersonalFault=storage` 只改变隔离测试的故障注入，默认 adapter。默认 GameTest 没有专项 filter，108 项包含未启用专项的占位成功；专项证据单独计算。367 JUnit 为 core 163、persistence 94、adapter 110，新增 6 项定向请求测试；[定向 XML](evidence/lobby-direct-hunt-20261017/TEST-dev.hardrush.core.hunt.PersonalHuntRequestTest.xml) 和[角色 Session XML](evidence/lobby-direct-hunt-20261017/TEST-dev.hardrush.p1.P2MonsterSessionTest.xml) 可直接复核。
+
+个人专项使用四个原生嵌入连接和真实 SQLite／档案 IO，另预置 18 名离线参与记录，仅验证两页稳定陈列。覆盖极限死亡、设施选角、模型右键、三维度安全出场、败退、同／不同目标、双手和连点、旧页面／连接、共享 2 秒及累计恰好 64 候选、3 秒换人限制、提交后移动／地形取消补偿、离线、实际死亡与复生、两次核验状态，以及击杀非所选人类的资格。既有 P2 专场保留并通过 20 次击杀／返回／复生循环；返回／技能／复生仍是原业务回归，不宣称实现第 4 轮入口。
+
+单调挑战／搜索时钟受控，三维度竞技地形预置，提交回调由夹具挂住后改变条件；SQLite 错误由真实触发器拒写产生，适配器错误为受控注入。这些不是 20 个图形客户端、自然地形满流程游玩、皮肤下载或真实介质故障验收。正常 COUNTDOWN 三 JVM 矩阵及整个 P3 强杀矩阵没有全量重跑，既有证据保持；本轮只运行上表列出的直接受影响场景。
+
+AWARD/COMMIT 的实际 PID 为 19714（SIGKILL）→19888→20000，PROFILE/PREPARED 为 20385（SIGKILL）→20584→20684；四个恢复 JVM 均 exit 0 且仍隔离。分别保留[资格事务结果](evidence/lobby-direct-hunt-20261017/p3-award-commit-result.json)、[档案边界结果](evidence/lobby-direct-hunt-20261017/p3-profile-prepared-result.json)、[资格写入与 WAL 边界](evidence/lobby-direct-hunt-20261017/p3-award-commit/write-evidence.json)和[档案写入边界](evidence/lobby-direct-hunt-20261017/p3-profile-prepared/write-evidence.json)。旧轮三维度／档案与大厅 COMPLETE 清单保持精确摘要；共享大厅保持运行，原生恢复另验证不重建和青金石标记，region／POI 保存字节不被冒充为冻结旧轮文件。
+
+生产 JAR（本轮构建，未发布）`platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar` SHA-256 `9ede3d56ab63dfc12874e421184a21168519bf46d325002bdce8064401e3d88a`；检查不含 GameTest、MCPFabric 或 debug tools。没有部署或推送。
+
+### 人工与第 4 轮交接
+
+[人工清单](人工客户端测试/大厅无指令交互与定向追猎.md) 已更新角色标牌、原皮肤降级、后排／边角选取、死亡空位／复生恢复、独立分页、旧连接、冷却提示与追猎音效，全部未勾选。真实皮肤下载／渲染、鼠标选取与实际游玩继续待人工。
+
+第 4 轮另行使用[完整无指令闭环启动词](lobby-delivery-prompts/04-full-flow.md)。复用 `P2LobbyRuntime.facility` 的登记模式、当前 MONSTER_LOBBY／MONSTER_DEPLOYED 与生命／出场标签；技能继续通过 `MonsterRoles`／`P2MonsterRuntime` 的正式持久冷却，归返物品接 `beginReturn`／`interruptReturn` 的既有引导业务，先解决装备维护与输入中断顺序。祭坛由 ALTAR 现有讲台接确认并调用 `requestRevival`，不能要求出场冷却归零；复生展示标记只供 UI，不能授予资格。提示复用 `router.hints` 的 TARGET／PROGRESS／RECOVERY 仲裁。书屋、祭坛确认、技能与归返物品、救场／庆祝提示整合均尚未接通，不在本轮扩大实施。
+
+### 第 3 轮执行进展（历史保留）
+
+以下是执行时保存的进度、失败与解除记录，以本节最终结论为准。
+
+- 状态：进行中。仅实施第 3 轮；第 4～5 轮未开始。
+- 会话及日期：01a14833-071b-73b3-9e4e-c5640b63a157，2026-10-17。
+- 基线：main，HEAD `773168490f688416b485cd9e864c094dc7165f98`，启动工作树干净；适用 AGENTS.md 仅仓库根文件。未清理或覆盖既有成果。见 [baseline.json](evidence/lobby-direct-hunt-20261017/baseline.json)。
+- 前置核验：前两轮已交付主能力；合并两轮 manifest 后逐项核对当前最新源码，所有成功日志摘要一致。已复读统一双保护路由、原 profile／连接／轮次／代次／生命映射、营地设施登记、权威集结及恢复接口；没有替代执行前轮。
+- 本轮实施：角色设施、UUID 稳定庭院、原皮肤模型、冻结生命的个人请求、跨维度共享预算及精确补偿已接通；P2、菜单及 P3 出场夹具已迁移。源码已冻结，最终自动验证进行中。
+- 自动验证进展：新增 6 项核心定向生命／补偿／角色测试已通过；迁移后的 P2 真实 SQLite／档案／原生输入专场 `p2-second.log` 1/1 通过，包含 20 次既有击杀／资格／返回／复生循环。新增四连接专项正在验证，未达本轮完成门槛。
+- 已保留失败：首次旧 P2 夹具在同一 tick 加速冷却后读取 committed 快照而非实时 view，未能发起出场；改读权威 view 后重跑通过。角色／维度旧夹具迁移、26.3 API 编译差异及新增协议断言只统计 searches 而遗漏 pending 的失败均保留日志，未削减产品约束。
+- 补偿改造：提交后的取消按精确生命／出场序号保留，遇已排队死亡／断线写入等待重试；真实存储／档案失败仍走隔离。
+- 四连接专项已通过三维度、同／不同目标、连点、累计 64 候选／2 秒、目标移动／地形变化后补偿、离线、复生、新生命及非目标人类的真实击杀资格；生产分页另预置 18 名离线记录，旧页面与旧连接拒绝通过。受控适配器故障及 SQLite 触发器真实提交失败均未开放出场。最后补角色应用成功复核和单次冷却结束提示／音效后，正重跑冻结版本的完整门槛。
+- 分页／旧连接补验的中间失败 `personal-fourth.log`：重连夹具在 online 提交前推进冷却时钟，在线计时未流逝；改为等待 online 提交后推进，`personal-fifth.log` 与 `personal-storage.log` 已通过。该超时终止的独立服务端及日志保留，没有改冷却规则或触碰日常实例。
+- 人工：真实皮肤、选取与游玩全部待人工；不启动真实客户端、图形或浏览器。自动场景只用新隔离目录。
+- 最终回归进展：冻结版基础检查（367 JUnit、108 默认 GameTest）及 P2、个人追猎／真实 SQLite 失败、底座协议、人类入场、移动专项均通过；迁移的 AWARD/COMMIT 强杀夹具已到实际 COMMIT 边界，后续独立 JVM 恢复核对中。
+- 收尾复核：复生提交的短暂 offline 位原先会抢先显示“暂离”；已增加仅供展示的复生核验标记，优先显示“复生核验中”，身份／档案／在线门槛通过后才可追猎。新增两次原生复生状态断言，最终源码及全部受影响门槛正在重跑，尚未标完成。
+- 前轮局部直接缺陷（第 2 轮空间夹具归属）：P3 的 AWARD/COMMIT writer 已经从新模型入口到达实际 WAL COMMIT 并被 SIGKILL；首次 recover 在正确的恢复隔离中被旧 `P1SpatialFixtures.handle(join)` 的“菜单必须打开”假设错误终止。新增 `closedGate` 以真实受保护讲台包验证入口保持关闭，P3 普通与 Profile 两个恢复调用点共用；未修改生产恢复规则、资格或存储判断。失败证据见 `p3-award-commit.log` 和 `p3-award-commit-result-before-state-and-gate-fix.json`，独立目录保留。
+- 恢复证据范围复核：第二次 P3 执行中 reader 的精确身份／SQLite 校验已通过，但父进程把运行中共享大厅的原生 region／POI／标牌保存字节误列为冻结旧轮文件，导致摘要比较失败。实际变化只在 `dimensions/hardrush/lobby`，旧轮三维度与档案均未变。现保留旧轮世界／档案全部字节核验，增加大厅 COMPLETE 拥有权清单摘要及恢复原生 `builtBlocks()==0`／青金石地形标记断言。`p3-award-commit-verified.log` 中三个独立 JVM 已通过（19714 被 SIGKILL、19888／20000 正常恢复并保持隔离）；另补 Profile/PREPARED 及最终基础复核，尚未收尾。
+- 提交：用户本次明确授权完成后本地提交；未授权推送、部署，不启动第 4 轮。
 
 ## 第 4 轮交接
 
@@ -219,3 +300,9 @@ COUNTDOWN 的 writer／recover／recover-again PID 分别为 55829／55977／560
 开发与自动验证完成后，用户明确要求提交。营地施工、权威准备、中途入场、正常停服恢复、依赖这些行为的回归夹具及完整成功／失败证据共同服务于第 2 轮人类参赛路径，合为本记录所属的 `feat(lobby)!` 提交。没有提前接通第 3 轮角色／庭院与定向追猎，也没有推送或部署。
 
 提交前重新核对 24 个源码／测试／构建／脚本文件的 SHA-256、五份成功检查日志及最终 COUNTDOWN 执行日志摘要，与已有验证证据完全一致。当前最终版本通过 361 项 JUnit、107 项默认 GameTest、人类／协议／移动专项，以及含晚归原准备者的三 JVM COUNTDOWN 专场；十轮回归的验证范围仍按上文记录。提交整理仅更新本页提交状态，没有修改产品代码或重新运行服务端测试。证据 JSON 的 `head`、`dirty`、`committed: false` 是验证时的历史事实，保持原样；基线与中间失败记录均保留。人工客户端验收仍未执行。
+
+## 2026-10-17 第 3 轮提交
+
+按用户“完成后提交”的明确授权，本次提交包含第 3 轮角色展位、UUID 皮肤庭院、冻结生命的个人定向追猎、受保护实体入口、搜索／补偿与故障隔离，以及所需夹具迁移、受影响恢复夹具修正、成功／失败证据和交接。它们共同组成此记录所属的 `feat(lobby)!` 提交，未拆成不能单独运行的中间状态。
+
+提交整理只更新交接与证据，没有在通过后修改产品源码。28 个源码／测试／构建／脚本文件摘要和 9 项最终检查日志摘要已逐项核对；P3 收尾仅调整恢复夹具的共享大厅证据范围，产品与各原生专项代码保持已验证版本，最终基础及两种强杀边界另已重跑。验证 JSON 的基线 HEAD、dirty 与 committed=false 保留其验证时含义。人工项目全部待验，未启动第 4 轮、真实客户端、浏览器或日常实例，未推送或部署。

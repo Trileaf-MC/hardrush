@@ -455,3 +455,29 @@ tasks.named('runGameTest') {
         }
     }
 }
+
+// A single production runtime suite owns each JVM; every launch receives a new directory.
+def lobbyRuntimeSuites = ['hardrushP1TenRounds', 'hardrushCelebration', 'hardrushP3Storage', 'hardrushP3Recovery',
+    'hardrushP2Identity', 'hardrushP2Lobby', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt']
+if (lobbyRuntimeSuites.count { providers.gradleProperty(it).orNull == 'true' } > 1)
+    throw new GradleException('Production runtime suites must use separate isolated JVMs')
+def personalHuntRunDir = rootProject.file(".local/personal-hunt/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushPersonalHunt').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true') throw new GradleException('Personal hunt requires P1')
+        vmArg '-Dhardrush.p2.testPersonalHunt=true'
+        def fault = providers.gradleProperty('hardrushPersonalFault').orElse('adapter').get()
+        if (!['adapter', 'storage'].contains(fault)) throw new GradleException('Unknown personal hunt fault scenario')
+        vmArg "-Dhardrush.p2.huntFault=${fault}"
+        vmArg '-Dhardrush.p1.initialMode=hardcore'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p2personal_hunt_game_test*'
+        runDir personalHuntRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushPersonalHunt').orNull == 'true') doFirst {
+        personalHuntRunDir.mkdirs()
+        copy { from rootProject.file('.local/server-p0/eula.txt'); into personalHuntRunDir }
+        logger.lifecycle("Isolated personal hunt storage: ${personalHuntRunDir}")
+    }
+}

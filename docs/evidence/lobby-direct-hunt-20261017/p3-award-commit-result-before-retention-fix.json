@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "status": "FAIL",
+  "runDirectory": "/Users/leifwebber/projects/minecraft/hardrush/.local/p3-server-crash/42d9e258-94bc-4dce-8c0c-b32ef04f00c2",
+  "scenarios": [],
+  "verification": "Headless dedicated servers, embedded native connections, actual parent SIGKILL; no real client.",
+  "failure": "Quarantine changed or deleted retained worlds/profile evidence"
+}

@@ -265,8 +265,8 @@ class DeathBatchRevivalTest {
         apply(engine, engine.proposeOnline(UUID.randomUUID(), monster, "Offline", false));
         clock.seconds(10);
         apply(engine, engine.proposeOnline(UUID.randomUUID(), monster, "Online", true));
-        apply(engine, engine.proposeMonsterSelection(UUID.randomUUID(), round, monster, 1, 4,
-                MonsterRole.SKELETON, MonsterDimension.END));
+        apply(engine, engine.proposeMonsterRole(UUID.randomUUID(), round, monster, 1, 4,
+                MonsterRole.SKELETON));
         assertEquals(30_000, engine.view().remainingPhaseMillis());
         assertEquals(30_000_000_000L, engine.view().participants().get(monster).monsterCooldownNanos());
         clock.seconds(5);
