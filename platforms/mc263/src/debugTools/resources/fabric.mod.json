@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "name": "HardRush local debug compatibility",
   "environment": "*",
-  "entrypoints": {"main": ["dev.hardrush.debug.AppearanceTestFixtures"]},
+  "entrypoints": {"main": ["dev.hardrush.p0.HardRushP0", "dev.hardrush.debug.AppearanceTestFixtures"]},
   "mixins": ["hardrush.debug-tools.mixins.json"],
   "depends": {"fabricloader": ">=0.19.5", "minecraft": "26.3", "spark": "1.10.187"}
 }

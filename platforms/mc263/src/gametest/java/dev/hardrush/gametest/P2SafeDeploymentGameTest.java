@@ -231,10 +231,10 @@ public final class P2SafeDeploymentGameTest {
         P2SafeDeployment.Search search(Vec3 target, List<Vec3> humans) {
             return new P2SafeDeployment.Search(level, target, humans, fixedRandom(), () -> 0);
         }
-        P2ProtectionRuntime.Scope empty() { return scope(false); }
-        P2ProtectionRuntime.Scope protectedZone() { return scope(true); }
-        P2ProtectionRuntime.Scope scope(boolean enabled) {
-            return P2ProtectionRuntime.temporaryConfiguration(level.getServer(), new P2ProtectionRuntime.Access() {
+        dev.hardrush.gametest.RuntimeFixtures.Scope empty() { return scope(false); }
+        dev.hardrush.gametest.RuntimeFixtures.Scope protectedZone() { return scope(true); }
+        dev.hardrush.gametest.RuntimeFixtures.Scope scope(boolean enabled) {
+            return dev.hardrush.gametest.RuntimeFixtures.protection(level.getServer(), new P2ProtectionRuntime.Access() {
                 @Override public Optional<P2ProtectionRuntime.Zone> zone(ServerLevel value) {
                     return enabled && value == level ? Optional.of(new P2ProtectionRuntime.Zone(UUID.randomUUID(), target, 32, true)) : Optional.empty();
                 }

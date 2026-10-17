@@ -194,7 +194,7 @@ public final class MonsterAppearanceGameTest {
                 .thenExecute(() -> {
                     var connection = new RecordingConnection();
                     channel[0] = new EmbeddedChannel(connection);
-                    dev.hardrush.p1.player.P1PlayerProfiles.runUnmanagedFixture(() ->
+                    dev.hardrush.gametest.UnmanagedProfileFixtures.run(() ->
                             player[0] = preparation[0].spawnPlayer(connection, CommonListenerCookie.createInitial(profile, false)));
                     preparation[0].close(); preparation[0] = null;
                     DisguiseProbe.onJoin(player[0]);

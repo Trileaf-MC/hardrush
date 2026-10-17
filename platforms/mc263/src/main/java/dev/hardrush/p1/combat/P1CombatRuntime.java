@@ -41,12 +41,7 @@ public final class P1CombatRuntime {
         BINDINGS.put(Objects.requireNonNull(server), new Binding(Objects.requireNonNull(access), Objects.requireNonNull(events)));
     }
     public static void unconfigure(MinecraftServer server) { BINDINGS.remove(server); SEQUENCES.remove(server); }
-    /** Synchronous automation fixture; restoring preserves the production session's binding. */
-    public static Scope temporaryConfiguration(MinecraftServer server, RoundAccess access, Consumer<CombatEvent> events) {
-        var previous = BINDINGS.get(server);
-        configure(server, access, events);
-        return () -> { if (previous == null) BINDINGS.remove(server); else BINDINGS.put(server, previous); };
-    }
+
     public static Optional<CombatOrigin> originOf(Entity entity) {
         if (!(entity instanceof CombatOriginHolder holder)) return Optional.empty();
         return holder.hardrush$combatOrigin().filter(origin -> origin.directEntityId().isPresent()

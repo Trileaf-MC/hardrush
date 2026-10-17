@@ -59,7 +59,6 @@ import org.slf4j.LoggerFactory;
 public final class P1PlayerProfiles implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger("hardrush-p1-profiles");
     private static final Map<MinecraftServer, P1PlayerProfiles> SERVICES = new IdentityHashMap<>();
-    private static final ThreadLocal<Integer> UNMANAGED_FIXTURE_DEPTH = ThreadLocal.withInitial(() -> 0);
     private static final ThreadLocal<P1PlayerProfiles> MONSTER_RESPAWN = new ThreadLocal<>();
     private static final ThreadLocal<Boolean> CELEBRATION_RESPAWN = ThreadLocal.withInitial(() -> false);
     private static final String FRESH = "hardrush_fresh_profile";
@@ -78,7 +77,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
         this(server, root, lobby, lobbySpawn, dev.hardrush.p1.P1MainThreadExecutor.forServer(server));
     }
 
-    /** Callback executor seam lets a headless fixture hold callbacks while testing the independent IO barrier. */
+    /** Explicit callback executor; durable IO is still owned and drained by this profile service. */
     public P1PlayerProfiles(MinecraftServer server, Path root, Supplier<ServerLevel> lobby, Supplier<Vec3> lobbySpawn,
             java.util.concurrent.Executor callbacks) {
         this.server = server;
@@ -99,23 +98,8 @@ public final class P1PlayerProfiles implements AutoCloseable {
 
     public static void uninstall(MinecraftServer server) { SERVICES.remove(server); }
 
-    /** Explicit scope used by the separately packaged GameTest helper; no environment-based production exemption. */
-    public static void runUnmanagedFixture(Runnable fixture) {
-        int previous = UNMANAGED_FIXTURE_DEPTH.get();
-        UNMANAGED_FIXTURE_DEPTH.set(previous + 1);
-        try { fixture.run(); }
-        finally {
-            if (previous == 0) UNMANAGED_FIXTURE_DEPTH.remove();
-            else UNMANAGED_FIXTURE_DEPTH.set(previous);
-        }
-    }
-
     /** HEAD of placeNewPlayer: before the login packet and before player/world tick or gameplay packets. */
     public static void beforeLogin(ServerPlayer player) {
-        if (UNMANAGED_FIXTURE_DEPTH.get() > 0) {
-            ((ProfileTagged) player).hardrush$isolated(false);
-            return;
-        }
         if (!Boolean.getBoolean("hardrush.p1.enabled")) return;
         var service = SERVICES.get(player.level().getServer());
         if (service != null) service.onLogin(player);
@@ -132,7 +116,6 @@ public final class P1PlayerProfiles implements AutoCloseable {
     }
 
     public static void afterLogin(ServerPlayer player) {
-        if (UNMANAGED_FIXTURE_DEPTH.get() > 0) return;
         var service = SERVICES.get(player.level().getServer());
         if (service != null) service.onConnected(player);
     }

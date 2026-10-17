@@ -57,6 +57,17 @@ class DemoTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, '开发工具'):
             demo.audit_jar(bad, 'hardrush.jar')
 
+    def test_operator_probe_code_is_rejected_even_without_a_development_mod_id(self):
+        for path in ('dev/hardrush/p0/HardRushP0.class', 'dev/hardrush/p0/world/WorldProbe.class',
+                     'dev/hardrush/p0/world/WorldManifest.class', 'dev/hardrush/p0/world/RoundRuntimeLevel.class'):
+            with self.subTest(path=path), self.assertRaisesRegex(RuntimeError, '开发工具'):
+                demo.audit_jar(mod_jar('hardrush', {path: b'probe'}), 'hardrush.jar')
+
+    def test_nested_class_cannot_retain_mock_login_or_temporary_binding_entrypoints(self):
+        for marker in demo.FORBIDDEN_CLASS_MARKERS:
+            with self.subTest(marker=marker), self.assertRaisesRegex(RuntimeError, '测试辅助入口'):
+                demo.audit_jar(mod_jar('hardrush', {'innocent/Runtime.class': marker}), 'hardrush.jar')
+
     def test_official_api_gametest_module_is_allowed(self):
         # Fabric API includes its own gametest API, unlike our test-only fixture mod.
         data = mod_jar('fabric-api', {'META-INF/jars/fabric-gametest-api-v1.jar':

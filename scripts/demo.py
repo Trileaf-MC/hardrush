@@ -24,7 +24,10 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / '.local/demo'
 LOCK = json.loads((ROOT / 'scripts/demo.lock.json').read_text())
 FORBIDDEN = ('mcpfabric', 'spark', 'hardrush-gametest', 'hardrush-debug-tools',
-             'dev/hardrush/gametest/', 'dev/hardrush/debug/')
+             'dev/hardrush/gametest/', 'dev/hardrush/debug/',
+             'dev/hardrush/p0/hardrushp0', 'dev/hardrush/p0/world/worldprobe',
+             'dev/hardrush/p0/world/roundruntimelevel', 'dev/hardrush/p0/world/worldmanifest')
+FORBIDDEN_CLASS_MARKERS = (b'runUnmanagedFixture', b'UNMANAGED_FIXTURE_DEPTH', b'temporaryConfiguration')
 
 # Reuse the independently checked snapshot prefix parser; it never starts a fixture.
 snapshot_spec = importlib.util.spec_from_file_location('demo_snapshot', ROOT / 'scripts/p1-server-restart.py')
@@ -62,6 +65,8 @@ def audit_jar(data, label):
         for name in archive.namelist():
             if any(token in name.lower() for token in FORBIDDEN):
                 raise RuntimeError(f'Demo 含开发工具：{label}!{name}')
+            if name.endswith('.class') and any(token in archive.read(name) for token in FORBIDDEN_CLASS_MARKERS):
+                raise RuntimeError(f'Demo 含测试辅助入口：{label}!{name}')
             if name.endswith('.jar'):
                 audit_jar(archive.read(name), label + '!' + name)
         if 'fabric.mod.json' not in archive.namelist():
@@ -112,7 +117,7 @@ def build():
     shutil.copyfile(ROOT / 'THIRD-PARTY.md', bundle / 'THIRD-PARTY.md')
     shutil.copytree(ROOT / 'licenses', bundle / 'licenses')
     source_paths = subprocess.check_output(['git', 'ls-files', '-co', '--exclude-standard', '-z'], cwd=ROOT).decode().split('\0')
-    source = {name: digest(ROOT / name) for name in sorted(set(source_paths)) if name and
+    source = {name: digest(ROOT / name) for name in sorted(set(source_paths)) if name and (ROOT / name).is_file() and
               (name.endswith(('.java', '.gradle', '.properties')) or name in ('scripts/demo.py', 'scripts/demo.lock.json'))}
     files = {str(path.relative_to(bundle)): digest(path) for path in sorted(bundle.rglob('*')) if path.is_file()}
     write_json(bundle / 'manifest.json', dict(schema=1, minecraft=LOCK['minecraft'], loader=LOCK['loader'],

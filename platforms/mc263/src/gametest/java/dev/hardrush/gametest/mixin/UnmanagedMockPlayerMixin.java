@@ -16,6 +16,6 @@ public abstract class UnmanagedMockPlayerMixin {
     @Redirect(method = "makeMockServerPlayerInLevel", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/players/PlayerList;placeNewPlayer(Lnet/minecraft/network/Connection;Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/server/network/CommonListenerCookie;)V"))
     private void hardrush$unmanagedFixture(PlayerList list, Connection connection, ServerPlayer player, CommonListenerCookie cookie) {
-        P1PlayerProfiles.runUnmanagedFixture(() -> list.placeNewPlayer(connection, player, cookie));
+        dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> list.placeNewPlayer(connection, player, cookie));
     }
 }

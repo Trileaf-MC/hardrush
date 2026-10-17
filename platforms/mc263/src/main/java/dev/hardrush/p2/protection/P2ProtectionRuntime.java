@@ -33,7 +33,6 @@ public final class P2ProtectionRuntime {
         /** No safe loaded standing point exists: retain the identity, hold the player in the lobby. */
         default void quarantine(ServerPlayer player) { throw new IllegalStateException("保护边界无安全回退站位，需要大厅隔离"); }
     }
-    public interface Scope extends AutoCloseable { @Override void close(); }
     private record Standing(ServerLevel level, Vec3 position) {}
     private static final class PlayerState {
         ServerPlayer player;
@@ -52,10 +51,7 @@ public final class P2ProtectionRuntime {
         BINDINGS.put(server, new Binding(Objects.requireNonNull(access), new HashMap<>()));
     }
     public static void unconfigure(MinecraftServer server) { BINDINGS.remove(server); }
-    public static Scope temporaryConfiguration(MinecraftServer server, Access access) {
-        var previous = BINDINGS.get(server); configure(server, access);
-        return () -> { if (previous == null) BINDINGS.remove(server); else BINDINGS.put(server, previous); };
-    }
+
     public static Optional<Zone> zone(ServerLevel level) {
         var binding = BINDINGS.get(level.getServer());
         return binding == null ? Optional.empty() : binding.access.zone(level);

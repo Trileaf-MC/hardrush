@@ -83,7 +83,25 @@ class CrashSignalSafetyTest(unittest.TestCase):
         journal.parent.mkdir(parents=True)
         payload = b'profile-transition'
         journal.write_bytes(struct.pack('>i', len(payload)) + hashlib.sha256(payload).digest() + payload)
-        self.assertEqual(2, len(RUNNER.retained(self.directory.resolve())))
+        layout = root / 'hardrush/lobby-layout.txt'
+        layout.write_text('hardrush:lobby\nversion=1\nanchor=2199023292356\nCOMPLETE\n')
+        retained = RUNNER.retained(self.directory.resolve())
+        # Preserve the original two frozen world/profile assertions; shared-camp ownership is extra.
+        frozen = {name: digest for name, digest in retained.items() if name != 'hardrush/lobby-layout.txt'}
+        self.assertEqual(2, len(frozen))
+        self.assertEqual({'dimensions/hardrush/fixture/overworld/region/r.0.0.mca',
+                          'hardrush/profiles/player/transition.bin'}, set(frozen))
+        self.assertEqual(hashlib.sha256(layout.read_bytes()).hexdigest(), retained['hardrush/lobby-layout.txt'])
+        complete = layout.read_text()
+        for invalid in (None, complete.replace('COMPLETE', 'PREPARED')):
+            with self.subTest(layout=invalid):
+                if invalid is None:
+                    layout.unlink()
+                else:
+                    layout.write_text(invalid)
+                with self.assertRaisesRegex(RuntimeError, 'complete ownership manifest'):
+                    RUNNER.retained(self.directory.resolve())
+        layout.write_text(complete)
         journal.write_bytes(journal.read_bytes()[:-1] + b'X')
         with self.assertRaisesRegex(RuntimeError, 'Corrupt profile journal'):
             RUNNER.retained(self.directory.resolve())

@@ -1,26 +1,37 @@
 package dev.hardrush.p1.world;
 
-import dev.hardrush.p0.world.WorldProbe;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.portal.TeleportTransition;
 
-/** Shared native portal hooks; P0 and every P1 round retain distinct ownership. */
+/** Native portal hooks. Optional tooling supplies its own ownership without shipping tool code. */
 public final class RoundWorldRouting {
+    public interface AdditionalWorlds {
+        boolean owns(ServerLevel level);
+        ResourceKey<Level> semanticDimension(ServerLevel level);
+        ServerLevel portalDestination(ServerLevel source, ResourceKey<Level> requested);
+        TeleportTransition boundRespawn(ServerPlayer player, TeleportTransition original);
+    }
+    private static AdditionalWorlds additional;
     private RoundWorldRouting() {}
-    public static boolean owns(ServerLevel level) { return WorldProbe.owns(level) || P1RoundWorldBundle.owns(level); }
+    public static void registerAdditionalWorlds(AdditionalWorlds worlds) {
+        if(additional!=null)throw new IllegalStateException("Additional world routes already registered");
+        additional=java.util.Objects.requireNonNull(worlds);
+    }
+    private static boolean additionalOwns(ServerLevel level) { return additional!=null&&additional.owns(level); }
+    public static boolean owns(ServerLevel level) { return P1RoundWorldBundle.owns(level)||additionalOwns(level); }
     public static boolean sameRound(ServerLevel source, ServerLevel destination) {
-        return WorldProbe.owns(source) && WorldProbe.owns(destination) || P1RoundWorldBundle.sameRound(source, destination);
+        return P1RoundWorldBundle.sameRound(source,destination)||additionalOwns(source)&&additionalOwns(destination);
     }
     public static ResourceKey<Level> semanticDimension(ServerLevel level) {
-        return P1RoundWorldBundle.owns(level) ? P1RoundWorldBundle.semanticDimension(level) : WorldProbe.semanticDimension(level);
+        return additionalOwns(level)?additional.semanticDimension(level):P1RoundWorldBundle.semanticDimension(level);
     }
     public static ServerLevel portalDestination(ServerLevel source, ResourceKey<Level> requested) {
-        return P1RoundWorldBundle.owns(source) ? P1RoundWorldBundle.portalDestination(source, requested) : WorldProbe.portalDestination(source, requested);
+        return additionalOwns(source)?additional.portalDestination(source,requested):P1RoundWorldBundle.portalDestination(source,requested);
     }
     public static TeleportTransition boundRespawn(ServerPlayer player, TeleportTransition original) {
-        return P1RoundWorldBundle.owns(player.level()) ? P1RoundWorldBundle.boundRespawn(player, original) : WorldProbe.boundRespawn(player, original);
+        return additionalOwns(player.level())?additional.boundRespawn(player,original):P1RoundWorldBundle.boundRespawn(player,original);
     }
 }

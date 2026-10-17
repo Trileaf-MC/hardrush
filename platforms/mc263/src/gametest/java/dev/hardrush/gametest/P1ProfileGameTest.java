@@ -703,7 +703,7 @@ public final class P1ProfileGameTest {
                     profiles.onLogin(player);
                     var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
                     new io.netty.channel.embedded.EmbeddedChannel(connection);
-                    P1PlayerProfiles.runUnmanagedFixture(() -> server.getPlayerList().placeNewPlayer(connection, player,
+                    dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player,
                             net.minecraft.server.network.CommonListenerCookie.createInitial(profile, false)));
                     ((ProfileTagged) player).hardrush$isolated(true);
                     profiles.onConnected(player);

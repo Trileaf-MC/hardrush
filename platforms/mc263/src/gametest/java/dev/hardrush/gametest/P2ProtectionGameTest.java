@@ -244,11 +244,11 @@ public final class P2ProtectionGameTest {
             player.connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
             participants.put(player.getUUID(), human(player, exited, life)); return player;
         }
-        P2ProtectionRuntime.Scope empty() {
-            return P2ProtectionRuntime.temporaryConfiguration(level.getServer(), access(false));
+        dev.hardrush.gametest.RuntimeFixtures.Scope empty() {
+            return dev.hardrush.gametest.RuntimeFixtures.protection(level.getServer(), access(false));
         }
-        P2ProtectionRuntime.Scope install() {
-            return P2ProtectionRuntime.temporaryConfiguration(level.getServer(), access(true));
+        dev.hardrush.gametest.RuntimeFixtures.Scope install() {
+            return dev.hardrush.gametest.RuntimeFixtures.protection(level.getServer(), access(true));
         }
         P2ProtectionRuntime.Access access(boolean enabled) {
             return new P2ProtectionRuntime.Access() {

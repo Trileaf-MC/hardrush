@@ -26,7 +26,6 @@ public final class P1ProgressRuntime {
         }
     }
     @FunctionalInterface public interface Eligibility { Optional<Context> activeRound(ServerPlayer player); }
-    public interface Scope extends AutoCloseable { @Override void close(); }
 
     private static final class Binding {
         final Eligibility eligibility;
@@ -56,12 +55,7 @@ public final class P1ProgressRuntime {
         BINDINGS.put(Objects.requireNonNull(server), new Binding(eligibility, writes));
     }
     public static void unconfigure(MinecraftServer server) { BINDINGS.remove(server); }
-    /** Headless fixture scope restores the active production binding when closed. */
-    public static Scope temporaryConfiguration(MinecraftServer server, Eligibility eligibility, Consumer<ProgressWrite> writes) {
-        var previous = BINDINGS.get(server);
-        configure(server, eligibility, writes);
-        return () -> { if (previous == null) BINDINGS.remove(server); else BINDINGS.put(server, previous); };
-    }
+
 
     /** Called at native award RETURN, after the final required criterion and rewards have completed. */
     public static void advancementAwarded(ServerPlayer player, AdvancementHolder holder, boolean changed) {

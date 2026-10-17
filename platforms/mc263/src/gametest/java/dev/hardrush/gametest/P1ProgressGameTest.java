@@ -26,7 +26,7 @@ public final class P1ProgressGameTest {
         var player = test.makeMockServerPlayerInLevel();
         var writes = new ArrayList<ProgressWrite>();
         var context = new P1ProgressRuntime.Context(UUID.randomUUID(), 10);
-        try (var ignored = P1ProgressRuntime.temporaryConfiguration(server,
+        try (var ignored = dev.hardrush.gametest.RuntimeFixtures.progress(server,
                 candidate -> candidate == player ? Optional.of(context) : Optional.empty(), writes::add)) {
             P1ProgressRuntime.tick(server);
             test.assertValueEqual(writes.size(), 1, "Initial UUID/advancement-set observation is recorded once");
@@ -63,7 +63,7 @@ public final class P1ProgressGameTest {
         var writes = new ArrayList<ProgressWrite>();
         var context = new P1ProgressRuntime.Context(UUID.randomUUID(), 20);
         var live = new boolean[]{true};
-        try (var ignored = P1ProgressRuntime.temporaryConfiguration(server,
+        try (var ignored = dev.hardrush.gametest.RuntimeFixtures.progress(server,
                 candidate -> candidate == player && live[0] ? Optional.of(context) : Optional.empty(), writes::add)) {
             var holder = server.getAdvancements().get(Identifier.parse("minecraft:story/mine_stone"));
             var criterion = holder.value().criteria().keySet().iterator().next();
@@ -103,7 +103,7 @@ public final class P1ProgressGameTest {
         var identity = player[0].getUUID();
         var writes = new ArrayList<ProgressWrite>();
         var context = new P1ProgressRuntime.Context(UUID.randomUUID(), 30);
-        try (var ignored = P1ProgressRuntime.temporaryConfiguration(server,
+        try (var ignored = dev.hardrush.gametest.RuntimeFixtures.progress(server,
                 candidate -> candidate.getUUID().equals(identity) ? Optional.of(context) : Optional.empty(), writes::add)) {
             P1ProgressRuntime.tick(server);
             var end = server.getLevel(Level.END);
@@ -127,7 +127,7 @@ public final class P1ProgressGameTest {
             player[0] = new ServerPlayer(server, test.getLevel(), profile, ClientInformation.createDefault());
             var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
             new io.netty.channel.embedded.EmbeddedChannel(connection);
-            P1PlayerProfiles.runUnmanagedFixture(() -> server.getPlayerList().placeNewPlayer(connection, player[0],
+            dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player[0],
                     net.minecraft.server.network.CommonListenerCookie.createInitial(profile, false)));
             P1ProgressRuntime.tick(server);
             test.assertValueEqual(writes.size(), 2, "Same-UUID disconnected/reconnected native player does not recount End entry or completed advancements");

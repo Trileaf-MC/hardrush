@@ -17,7 +17,7 @@ import xyz.nucleoid.fantasy.RuntimeLevelConfig;
 import xyz.nucleoid.fantasy.RuntimeLevelData;
 
 /** A persistent Fantasy level whose default respawn belongs to its own round. */
-public final class RoundRuntimeLevel extends RuntimeLevel {
+public final class RoundRuntimeLevel extends RuntimeLevel implements dev.hardrush.p1.world.IndependentWorldEnvironment {
     private RuntimeClockManager roundClocks;
     private boolean ticksRoundClocks;
 

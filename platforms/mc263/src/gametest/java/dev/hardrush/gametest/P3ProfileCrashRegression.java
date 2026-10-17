@@ -67,7 +67,7 @@ public final class P3ProfileCrashRegression implements ModInitializer {
                 try {
                     a.connection = new RecordingConnection(); a.channel = new EmbeddedChannel(a.connection);
                     // Explicit test-artifact scope prepares a vanilla checkpoint before HardRush manages this UUID.
-                    P1PlayerProfiles.runUnmanagedFixture(() -> a.player = a.prepare.spawnPlayer(a.connection, CommonListenerCookie.createInitial(a.profile, false)));
+                    dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> a.player = a.prepare.spawnPlayer(a.connection, CommonListenerCookie.createInitial(a.profile, false)));
                     a.prepare.close(); acknowledge(a);
                     var player = a.player;
                     player.getInventory().setItem(4, new ItemStack(Items.DIAMOND, 13));

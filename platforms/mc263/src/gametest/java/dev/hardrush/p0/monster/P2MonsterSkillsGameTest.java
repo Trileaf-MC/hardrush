@@ -300,7 +300,7 @@ public final class P2MonsterSkillsGameTest {
                 var profile = new GameProfile(UUID.randomUUID(), "HRP2Skill" + ARENAS.get() + index);
                 var player = new ServerPlayer(level.getServer(), level, profile, ClientInformation.createDefault());
                 var connection = new SinkConnection(); channels.add(new EmbeddedChannel(connection));
-                P1PlayerProfiles.runUnmanagedFixture(() -> level.getServer().getPlayerList().placeNewPlayer(connection, player,
+                dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> level.getServer().getPlayerList().placeNewPlayer(connection, player,
                         CommonListenerCookie.createInitial(profile, false)));
                 player.teleportTo(center.x + index * 24, center.y, center.z);
                 player.setGameMode(GameType.SURVIVAL); player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
@@ -312,13 +312,13 @@ public final class P2MonsterSkillsGameTest {
             owner = players.get(0); target = players.get(1);
         }
         P2CombatRuntime.Scope installCombat() {
-            var combat = P2CombatRuntime.temporaryConfiguration(level.getServer(), new P2CombatRuntime.Access() {
+            var combat = dev.hardrush.gametest.RuntimeFixtures.monsterCombat(level.getServer(), new P2CombatRuntime.Access() {
                 public Optional<RoundSnapshot> snapshot() { return Optional.of(new RoundSnapshot(round, 1, 42, 0, RulesConfig.defaults(),
                         RoundPhase.RUNNING, PauseReason.NONE, 0, 0, participants, false, false, null)); }
                 public boolean competitionLocked() { return false; }
                 public boolean formalLevel(ServerLevel candidate) { return candidate == level; }
             });
-            var evidence = P1CombatRuntime.temporaryConfiguration(level.getServer(), new P1CombatRuntime.RoundAccess() {
+            var evidence = dev.hardrush.gametest.RuntimeFixtures.combat(level.getServer(), new P1CombatRuntime.RoundAccess() {
                 public Optional<UUID> roundOf(ServerLevel candidate) { return candidate == level ? Optional.of(round) : Optional.empty(); }
                 public Optional<CombatActor> actor(UUID roundId, UUID id) { return Optional.ofNullable(participants.get(id))
                         .map(p -> new CombatActor(p.id(), p.role(), p.lifeSequence(), p.monsterDeploymentSequence())); }

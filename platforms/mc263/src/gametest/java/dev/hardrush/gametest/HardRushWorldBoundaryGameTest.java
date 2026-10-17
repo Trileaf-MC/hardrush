@@ -154,7 +154,7 @@ public final class HardRushWorldBoundaryGameTest {
                     var connection = new Connection(PacketFlow.SERVERBOUND);
                     var channel = new EmbeddedChannel(connection);
                     var reconnectFixture = new ServerPlayer[1];
-                    dev.hardrush.p1.player.P1PlayerProfiles.runUnmanagedFixture(() ->
+                    dev.hardrush.gametest.UnmanagedProfileFixtures.run(() ->
                             reconnectFixture[0] = prepare.spawnPlayer(connection, cookie));
                     ServerPlayer reconnected = reconnectFixture[0];
                     try {

@@ -5,12 +5,9 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.hardrush.p0.disguise.DisguiseProbe;
 import dev.hardrush.p0.monster.MonsterRoles;
 import dev.hardrush.p0.world.WorldProbe;
-import dev.hardrush.p1.P1LobbyRuntime;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -24,11 +21,13 @@ public final class HardRushP0 implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        MonsterRoles.initialize();
-        dev.hardrush.p2.lobby.P2LobbyRuntime.initialize();
-        P1LobbyRuntime.initialize();
-        LOGGER.info("HardRush: server-side race, monster roles and revival; competition enabled={}; operator probes: /hardrushp0",
-                Boolean.getBoolean("hardrush.p1.enabled"));
+        dev.hardrush.HardRush.initialize();
+        dev.hardrush.p1.world.RoundWorldRouting.registerAdditionalWorlds(new dev.hardrush.p1.world.RoundWorldRouting.AdditionalWorlds() {
+            public boolean owns(net.minecraft.server.level.ServerLevel level) { return WorldProbe.owns(level); }
+            public net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> semanticDimension(net.minecraft.server.level.ServerLevel level) { return WorldProbe.semanticDimension(level); }
+            public net.minecraft.server.level.ServerLevel portalDestination(net.minecraft.server.level.ServerLevel level, net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> target) { return WorldProbe.portalDestination(level,target); }
+            public net.minecraft.world.level.portal.TeleportTransition boundRespawn(net.minecraft.server.level.ServerPlayer player, net.minecraft.world.level.portal.TeleportTransition original) { return WorldProbe.boundRespawn(player,original); }
+        });
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             try {
                 WorldProbe.initialize(server);
@@ -37,18 +36,7 @@ public final class HardRushP0 implements ModInitializer {
                 LOGGER.error("P0 world recovery failed; inspect the manifest before retrying", error);
             }
         });
-        ServerTickEvents.END_SERVER_TICK.register(server -> { MonsterRoles.tick(server); DisguiseProbe.tick(server); });
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            MonsterRoles.onDisconnect(handler.player); DisguiseProbe.onDisconnect(handler.player);
-        });
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            MonsterRoles.onJoin(handler.player); DisguiseProbe.onJoin(handler.player);
-        });
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
-            MonsterRoles.stop(server);
-            DisguiseProbe.stop(server);
-            WorldProbe.close(server);
-        });
+        ServerLifecycleEvents.SERVER_STOPPING.register(WorldProbe::close);
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(Commands.literal("hardrushp0")

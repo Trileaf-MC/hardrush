@@ -17,7 +17,7 @@ import xyz.nucleoid.fantasy.RuntimeLevelConfig;
 import xyz.nucleoid.fantasy.RuntimeLevelData;
 
 /** P1 storage and clocks are completely separate from the operator P0 probe. */
-public final class P1RoundRuntimeLevel extends RuntimeLevel {
+public final class P1RoundRuntimeLevel extends RuntimeLevel implements dev.hardrush.p1.world.IndependentWorldEnvironment {
     private RuntimeClockManager roundClocks;
     private boolean ticksRoundClocks;
     private P1RoundWorldBundle owner;

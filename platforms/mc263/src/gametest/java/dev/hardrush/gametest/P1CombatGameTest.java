@@ -143,7 +143,7 @@ public final class P1CombatGameTest {
                         }
                         @Override public void batchClosed(UUID round, UUID batch) { session[0].finishDamageBatch(round, batch); }
                     };
-                    try (var fixture = P1CombatRuntime.temporaryConfiguration(server, access, event -> {
+                    try (var fixture = dev.hardrush.gametest.RuntimeFixtures.combat(server, access, event -> {
                         var verified = dev.hardrush.p1.P1LobbyRuntime.verifiedFirstDragon(bundle[0], event);
                         if (verified.isPresent()) {
                             lethal[0] = event;
@@ -218,7 +218,7 @@ public final class P1CombatGameTest {
         var dragon = new EnderDragon(EntityTypes.ENDER_DRAGON, level);
         dragon.getPhaseManager().setPhase(EnderDragonPhase.HOLDING_PATTERN); dragon.setHealth(.1f);
         var zombie = new net.minecraft.world.entity.monster.zombie.Zombie(EntityTypes.ZOMBIE, level);
-        try (var fixture = P1CombatRuntime.temporaryConfiguration(server, access, event -> {
+        try (var fixture = dev.hardrush.gametest.RuntimeFixtures.combat(server, access, event -> {
             events.add(event);
             if (event.victimId().equals(dragon.getUUID()) && event.lethal()) { frozen[0] = true; terminalBatch[0] = event.batchId(); }
         })) {
@@ -307,7 +307,7 @@ public final class P1CombatGameTest {
                 return playerId.equals(player.getUUID()) ? Optional.of(new CombatActor(playerId, ParticipantRole.HUMAN_ACTIVE, 1, 0)) : Optional.empty();
             }
         };
-        try (var fixture = P1CombatRuntime.temporaryConfiguration(server, access, events::add)) {
+        try (var fixture = dev.hardrush.gametest.RuntimeFixtures.combat(server, access, events::add)) {
             var arrow = new Arrow(level, player, new ItemStack(Items.ARROW), new ItemStack(Items.BOW));
             var captured = P1CombatRuntime.originOf(arrow).orElseThrow();
             server.getPlayerList().remove(player);
@@ -337,7 +337,7 @@ public final class P1CombatGameTest {
                 return playerId.equals(player.getUUID()) ? Optional.of(new CombatActor(playerId, identity[0], 3, 2)) : Optional.empty();
             }
         };
-        try (var fixture = P1CombatRuntime.temporaryConfiguration(server, access, events::add)) {
+        try (var fixture = dev.hardrush.gametest.RuntimeFixtures.combat(server, access, events::add)) {
             var arrow = new Arrow(level, player, new ItemStack(Items.ARROW), new ItemStack(Items.BOW));
             var captured = P1CombatRuntime.originOf(arrow).orElseThrow();
             test.assertValueEqual(captured.kind(), AttackKind.ARROW, "Native arrow constructor captures source");
@@ -475,7 +475,7 @@ public final class P1CombatGameTest {
                     }
                 })
                 .thenExecute(() -> {
-                    try (var fixture = P1CombatRuntime.temporaryConfiguration(server, access, events::add)) {
+                    try (var fixture = dev.hardrush.gametest.RuntimeFixtures.combat(server, access, events::add)) {
                         for (var arena : arenas) {
                             boolean bed = arena.bed; var level = arena.level; var pos = arena.pos; var dragon = arena.dragon;
                             for (var old : level.getEntitiesOfClass(EnderDragon.class, new AABB(pos).inflate(15))) if (old != dragon) old.discard();

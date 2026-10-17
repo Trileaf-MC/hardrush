@@ -143,7 +143,7 @@ public final class LobbyFoundationGameTest {
         }
         void place(BlockPos pos, net.minecraft.world.level.block.Block block) {
             // Fixture terrain only; production protection is restored BEFORE any input packet.
-            try (var scope = dev.hardrush.p2.protection.P2ProtectionRuntime.temporaryConfiguration(f.server,
+            try (var scope = dev.hardrush.gametest.RuntimeFixtures.protection(f.server,
                     new dev.hardrush.p2.protection.P2ProtectionRuntime.Access() {
                         public java.util.Optional<dev.hardrush.p2.protection.P2ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) { return java.util.Optional.empty(); }
                         public java.util.Optional<dev.hardrush.core.round.Participant> participant(UUID id) { return java.util.Optional.empty(); }

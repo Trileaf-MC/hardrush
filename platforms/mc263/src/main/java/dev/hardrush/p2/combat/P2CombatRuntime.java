@@ -32,10 +32,7 @@ public final class P2CombatRuntime {
 
     public static void configure(MinecraftServer server, Access access) { BINDINGS.put(server, Objects.requireNonNull(access)); }
     public static void unconfigure(MinecraftServer server) { BINDINGS.remove(server); }
-    public static Scope temporaryConfiguration(MinecraftServer server, Access access) {
-        var prior = BINDINGS.put(server, access);
-        return () -> { if (prior == null) BINDINGS.remove(server); else BINDINGS.put(server, prior); };
-    }
+
     public static Optional<FrozenMonsterSource> source(Entity entity) {
         var stamped = entity instanceof MonsterSourceHolder holder ? holder.hardrush$monsterSource()
                 : Optional.<FrozenMonsterSource>empty();

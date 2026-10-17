@@ -31,7 +31,12 @@ test {
 }
 
 sourceSets {
+    development {
+        compileClasspath += sourceSets.main.compileClasspath
+        compileClasspath += sourceSets.main.output
+    }
     debugTools {
+        compileClasspath += sourceSets.development.output
         compileClasspath += sourceSets.main.compileClasspath
         compileClasspath += sourceSets.main.output
     }
@@ -40,6 +45,7 @@ sourceSets {
 tasks.register('debugToolsJar', Jar) {
     archiveBaseName = 'hardrush-debug-tools'
     from sourceSets.debugTools.output
+    from sourceSets.development.output
 }
 
 loom {
@@ -76,6 +82,12 @@ fabricApi {
         eula = false
     }
 }
+
+// Operator probes are available only to development tooling and the test mod.
+sourceSets.gametest.compileClasspath += sourceSets.development.output
+sourceSets.gametest.runtimeClasspath += sourceSets.development.output
+sourceSets.test.compileClasspath += sourceSets.development.output
+sourceSets.test.runtimeClasspath += sourceSets.development.output
 
 // Crash barriers belong only to the test mod; release code never imports SQLite test hooks.
 dependencies { gametestImplementation 'org.xerial:sqlite-jdbc:3.53.4.0' }

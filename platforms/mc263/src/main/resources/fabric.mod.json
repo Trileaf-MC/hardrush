@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "id": "hardrush",
   "version": "${version}",
-  "name": "HardRush P0",
+  "name": "HardRush",
   "license": "MIT",
-  "description": "Server-only technical prototype for round worlds, observer appearance and native monster roles.",
+  "description": "Server-only race rounds, command-free camp, monster hunts and revival.",
   "environment": "server",
   "entrypoints": {
     "main": [
-      "dev.hardrush.p0.HardRushP0"
+      "dev.hardrush.HardRush"
     ]
   },
   "mixins": [

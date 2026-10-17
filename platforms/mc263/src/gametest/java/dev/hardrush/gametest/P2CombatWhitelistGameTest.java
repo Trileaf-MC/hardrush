@@ -219,19 +219,19 @@ public final class P2CombatWhitelistGameTest {
                     PauseReason.NONE, 0, 0, participants, false, false, null);
         }
         P2CombatRuntime.Scope install() {
-            var combat = P2CombatRuntime.temporaryConfiguration(level.getServer(), new P2CombatRuntime.Access() {
+            var combat = dev.hardrush.gametest.RuntimeFixtures.monsterCombat(level.getServer(), new P2CombatRuntime.Access() {
                 public Optional<RoundSnapshot> snapshot() { return Optional.of(Fixture.this.snapshot()); }
                 public boolean competitionLocked() { return false; }
                 public boolean formalLevel(ServerLevel candidate) { return candidate == level; }
             });
-            var protection = P2ProtectionRuntime.temporaryConfiguration(level.getServer(), new P2ProtectionRuntime.Access() {
+            var protection = dev.hardrush.gametest.RuntimeFixtures.protection(level.getServer(), new P2ProtectionRuntime.Access() {
                 public Optional<P2ProtectionRuntime.Zone> zone(ServerLevel candidate) {
                     return candidate == level && protectedTarget ? Optional.of(new P2ProtectionRuntime.Zone(round, human.position(), 1, false)) : Optional.empty();
                 }
                 public Optional<Participant> participant(UUID id) { return Optional.ofNullable(participants.get(id)); }
                 public boolean leaveProtection(UUID roundId, UUID id, int life) { return false; }
             });
-            var evidence = P1CombatRuntime.temporaryConfiguration(level.getServer(), new P1CombatRuntime.RoundAccess() {
+            var evidence = dev.hardrush.gametest.RuntimeFixtures.combat(level.getServer(), new P1CombatRuntime.RoundAccess() {
                 public Optional<UUID> roundOf(ServerLevel candidate) { return candidate == level ? Optional.of(round) : Optional.empty(); }
                 public Optional<CombatActor> actor(UUID roundId, UUID id) {
                     return Optional.ofNullable(participants.get(id)).map(p -> new CombatActor(p.id(), p.role(), p.lifeSequence(), p.monsterDeploymentSequence()));
