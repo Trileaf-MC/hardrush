@@ -387,7 +387,7 @@ public final class MonsterRoleGameTest {
     }
 
     @GameTest(maxTicks=200)
-    public void nativeHelmetProtectsFromSunlightAndWaterSuppressesBurning(GameTestHelper test) {
+    public void daylightNeverIgnitesPlayerRolesOrWearsTheirHelmets(GameTestHelper test) {
         var player=actor(test);
         var clock=player.level().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
             .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
@@ -396,35 +396,50 @@ public final class MonsterRoleGameTest {
         boolean raining=weather.isRaining(),thundering=weather.isThundering();
         int clearTime=weather.getClearWeatherTime(),rainTime=weather.getRainTime(),thunderTime=weather.getThunderTime();
         weather.setClearWeatherTime(6000);weather.setRaining(false);weather.setThundering(false);
-        MonsterRoles.select(player,"zombie");
         player.level().setBlockAndUpdate(player.blockPosition().above(3),Blocks.AIR.defaultBlockState());
         player.level().clockManager().setTotalTicks(clock,6000);
-        // Allow sky lighting and clock-dependent environment caches to update.
         test.runAfterDelay(10,()->{
           cleanArena(player);
-          ItemEntity helmet=null;
           try {
-            helmet=drop(player,new ItemStack(Items.IRON_HELMET));helmet.playerTouch(player);
-            player.setRemainingFireTicks(0);
-            for(int i=0;i<500;i++)MonsterRoles.updateEnvironment(player);
-            test.assertTrue(player.getRemainingFireTicks()<=0,"Helmet suppresses native sun ignition");
-            test.assertTrue(player.getItemBySlot(EquipmentSlot.HEAD).getDamageValue()>0,"Native exposure wears helmet");
-            var equipped=MonsterRoles.nativeModel(player).getItemBySlot(EquipmentSlot.HEAD);
-            equipped.setDamageValue(equipped.getMaxDamage()-1);
-            for(int i=0;i<1500;i++)MonsterRoles.updateEnvironment(player);
-            test.assertTrue(player.getItemBySlot(EquipmentSlot.HEAD).isEmpty() && player.getRemainingFireTicks()>0,"Broken helmet restores sun vulnerability");
-            player.level().setBlockAndUpdate(player.blockPosition(),Blocks.WATER.defaultBlockState());
-            player.level().setBlockAndUpdate(player.blockPosition().above(),Blocks.WATER.defaultBlockState());
-            player.setRemainingFireTicks(0);
-            for(int i=0;i<200;i++)MonsterRoles.updateEnvironment(player);
-            test.assertTrue(player.getRemainingFireTicks()<=0,"Real water state suppresses sun ignition");
+            test.assertTrue(player.level().canSeeSky(player.blockPosition()), "The daylight control is exposed to the sky");
+            for(String kind:List.of("zombie","skeleton","creeper")) {
+                MonsterRoles.select(player,kind);
+                player.clearFire();
+                for(int i=0;i<500;i++)MonsterRoles.updateEnvironment(player);
+                test.assertTrue(!player.isOnFire(), "Bareheaded player role never ignites in sunlight: "+kind);
+                if(!kind.equals("creeper")) {
+                    var stack=new ItemStack(Items.IRON_HELMET);
+                    stack.setDamageValue(stack.getMaxDamage()-1);
+                    int originalDamage=stack.getDamageValue();
+                    var helmet=drop(player,stack);
+                    try {
+                        helmet.playerTouch(player);
+                        test.assertTrue(player.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET), "Control helmet is equipped");
+                        for(int i=0;i<1500;i++)MonsterRoles.updateEnvironment(player);
+                        var equipped=player.getItemBySlot(EquipmentSlot.HEAD);
+                        test.assertTrue(equipped.is(Items.IRON_HELMET) && equipped.getDamageValue()==originalDamage,
+                                "Sunlight neither wears nor breaks a player monster's helmet: "+kind);
+                    } finally { helmet.discard(); }
+                }
+                player.setRemainingFireTicks(100);
+                MonsterRoles.updateEnvironment(player);
+                test.assertTrue(player.getRemainingFireTicks()==100, "Existing environmental fire is preserved: "+kind);
+                player.setInvulnerableTime(0);
+                player.damageCooldownTime=0;
+                float health=player.getHealth();
+                player.hurtServer(player.level(),player.damageSources().onFire(),1);
+                test.assertTrue(player.getHealth()<health, "Disabling daylight ignition grants no fire-damage immunity: "+kind);
+                player.damageCooldownTime=0;
+                health=player.getHealth();
+                player.hurtServer(player.level(),player.damageSources().lava(),4);
+                test.assertTrue(player.getHealth()<health, "Lava damage still applies to every player role: "+kind);
+                player.clearFire();
+            }
           } finally {
             player.level().clockManager().setTotalTicks(clock,daytime);
             weather.setClearWeatherTime(clearTime);weather.setRainTime(rainTime);weather.setThunderTime(thunderTime);
             weather.setRaining(raining);weather.setThundering(thundering);
-            player.level().setBlockAndUpdate(player.blockPosition(),Blocks.AIR.defaultBlockState());
-            player.level().setBlockAndUpdate(player.blockPosition().above(),Blocks.AIR.defaultBlockState());
-            if(helmet!=null)helmet.discard();remove(player);
+            remove(player);
           }
           test.succeed();
         });

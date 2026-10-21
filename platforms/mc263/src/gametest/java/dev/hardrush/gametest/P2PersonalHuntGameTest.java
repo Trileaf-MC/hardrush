@@ -359,7 +359,7 @@ public final class P2PersonalHuntGameTest {
                         test.assertValueEqual(refunds,baseline[0]+1,"Changed condition triggers one durable compensation");
                         test.assertValueEqual(c.participant().monsterDeploymentSequence(),baseline[1]+2,"Compensated sortie is never reused");
                         double distance=c.player.position().subtract(a.player.position()).horizontalDistance();
-                        test.assertTrue(distance>=32 && distance<=64,"New result respects current target distance");
+                        test.assertTrue(distance>=24 && distance<=40,"New result respects current target distance");
                         if(terrain) levels[0].setBlock(BlockPos.containing(found[0]).below(),Blocks.STONE.defaultBlockState(),2);
                         kill(c);
                     }).thenWaitUntil(() -> await(lobby(c),"race defeat back in camp"))

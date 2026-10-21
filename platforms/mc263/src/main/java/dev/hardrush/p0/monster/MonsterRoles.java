@@ -261,8 +261,8 @@ public final class MonsterRoles {
         Role role=ROLES.get(player.getUUID());
         if (role==null || role.model==null || !player.isAlive()) return;
         syncNativeContext(player,role);
-        if (role.kind!=Kind.CREEPER) ((MonsterMobAccessor)role.model).hardrush$burnUndead();
-        player.setRemainingFireTicks(role.model.getRemainingFireTicks());
+        // Player-controlled monsters keep ordinary fire/lava damage, but never inherit
+        // undead daylight ignition or sunlight helmet wear from their visual model.
         role.gear.capture(role.model);
         repairLoadout(player,role);
     }

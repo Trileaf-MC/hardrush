@@ -14,6 +14,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.SpawnPlacementTypes;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -32,12 +34,18 @@ public final class P2SafeDeploymentGameTest {
             var result = complete(search);
             test.assertValueEqual(result.status(), P2SafeDeployment.Status.FOUND, "Loaded walking corridor finds a safe spawn");
             double distance = result.position().subtract(fixture.target).horizontalDistance();
-            test.assertTrue(distance >= 32 && distance <= 64, "Target distance stays in the 32-64 horizontal annulus");
+            test.assertTrue(distance >= 24 && distance <= 40, "Target distance stays in the closer 24-40 horizontal annulus");
             test.assertTrue(search.revalidate(), "Unchanged loaded terrain passes departure revalidation");
-            var nearbyHuman = fixture.target.add(33, 0, 0);
+            test.assertTrue(search.revalidate(result.position().add(-24, 0, 0), List.of(fixture.target)), "The 24-block target boundary is admitted");
+            test.assertTrue(!search.revalidate(result.position().add(-23.99, 0, 0), List.of(fixture.target)), "A target inside 24 blocks revokes departure");
+            test.assertTrue(search.revalidate(result.position().add(-40, 0, 0), List.of(fixture.target)), "The 40-block target boundary is admitted");
+            test.assertTrue(!search.revalidate(result.position().add(-40.01, 0, 0), List.of(fixture.target)), "A target beyond 40 blocks revokes departure");
+            test.assertTrue(search.revalidate(fixture.target, List.of(result.position().add(16, 0, 0))), "Another human 16 blocks away is permitted");
+            test.assertTrue(!search.revalidate(fixture.target, List.of(result.position().add(15.99, 0, 0))), "Another human closer than 16 blocks revokes departure");
+            var nearbyHuman = fixture.target.add(25, 0, 0);
             var crowded = complete(fixture.search(fixture.target, List.of(fixture.target, nearbyHuman)));
             test.assertValueEqual(crowded.status(), P2SafeDeployment.Status.FOUND, "The search can use another safe patch when a second human blocks the first");
-            test.assertTrue(crowded.position().distanceToSqr(nearbyHuman) >= 24 * 24, "Every active human receives the minimum separation");
+            test.assertTrue(crowded.position().distanceToSqr(nearbyHuman) >= 16 * 16, "Every active human receives the 16-block minimum separation");
             test.assertTrue(!search.revalidate(fixture.target, List.of(result.position())), "Another active human moving to the point revokes admission");
             test.assertTrue(!search.revalidate(result.position(), List.of(fixture.target)), "A moving target cannot produce a face-to-face spawn");
             fixture.level.setBlock(BlockPos.containing(result.position()), Blocks.LAVA.defaultBlockState(), 3);
@@ -47,62 +55,135 @@ public final class P2SafeDeploymentGameTest {
     }
 
     @GameTest(maxTicks=200)
-    public void dangerousTerrainAndNarrowEdgesNeverManufactureASpawn(GameTestHelper test) {
-        var fixture = new Fixture(test, test.getLevel(), 224);
+    public void steppedSlopesAndTwoBlockHighWalledCavesAllowDeployment(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 222);
         try (var ignored = fixture.empty()) {
-            // A single-cell ledge is a valid vanilla standing point, but never a safe deployment patch.
-            fixture.corridor(Blocks.STONE, 0);
-            var before = fixture.level.getBlockState(fixture.feet.offset(33, -1, 0));
-            var ledge = complete(fixture.search(fixture.target, List.of(fixture.target)));
-            test.assertValueEqual(ledge.status(), P2SafeDeployment.Status.FAILED, "A dangerous edge cannot pass the 5x5 standing patch");
-            test.assertValueEqual(fixture.level.getBlockState(fixture.feet.offset(33, -1, 0)), before, "Search preserves the terrain it inspected");
-            for (var block : List.of(Blocks.MAGMA_BLOCK, Blocks.CACTUS, Blocks.CAMPFIRE, Blocks.SOUL_CAMPFIRE)) {
-                fixture.corridor(block);
-                test.assertValueEqual(complete(fixture.search(fixture.target, List.of(fixture.target))).status(),
-                        P2SafeDeployment.Status.FAILED, "Hazardous floor cannot be used: " + block);
-            }
-            fixture.corridor(Blocks.STONE);
-            for (var sample : fixture.samples()) for (int x=-2; x<=2; x++) for (int z=-2; z<=2; z++) {
-                for (int y=0; y<=9; y++) fixture.level.setBlock(sample.offset(x, y, z), Blocks.STONE.defaultBlockState(), 2);
-                // There is no valid alternate standing surface on top of this suffocating volume.
-                fixture.level.setBlock(sample.offset(x, 10, z), Blocks.MAGMA_BLOCK.defaultBlockState(), 2);
-            }
-            test.assertValueEqual(complete(fixture.search(fixture.target, List.of(fixture.target))).status(),
-                    P2SafeDeployment.Status.FAILED, "A solid body-height volume cannot suffocate the deployed player");
+            var landing = fixture.samples().getFirst();
+            fixture.firstLanding((x, z) -> x, 12);
+            var slope = fixture.search(fixture.target, List.of(fixture.target));
+            test.assertValueEqual(complete(slope).position(), Vec3.atBottomCenterOf(landing),
+                    "A normal one-block-per-column slope needs no same-height flat patch");
+            test.assertTrue(slope.revalidate(), "Sloped ground uses the same safety rules before teleport");
+
+            fixture.firstLanding((x, z) -> 0, 2);
+            // A one-block-wide, two-block-high cave has walls directly beside the body.
+            for (int x=-2; x<=2; x++) for (int z : new int[]{-1, 1}) for (int y=0; y<2; y++)
+                fixture.level.setBlock(landing.offset(x, y, z), Blocks.STONE.defaultBlockState(), 2);
+            var cave = fixture.search(fixture.target, List.of(fixture.target));
+            test.assertValueEqual(complete(cave).position(), Vec3.atBottomCenterOf(landing),
+                    "A low cave with solid side walls remains a valid landing");
+            test.assertTrue(cave.revalidate(), "Departure revalidation permits cave walls and a two-block ceiling");
+            fixture.level.setBlock(landing.above(), Blocks.STONE.defaultBlockState(), 2);
+            test.assertTrue(!cave.revalidate(), "A wall inside the actual body space still revokes departure");
         }
         test.succeed();
     }
 
     @GameTest(maxTicks=200)
-    public void protectionPortalAndVoidCandidatesAreRejected(GameTestHelper test) {
+    public void narrowLedgesAreAllowedButLosingTheActualFloorRevokesDeparture(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 226);
+        try (var ignored = fixture.empty()) {
+            fixture.corridor(Blocks.STONE, 0);
+            var search = fixture.search(fixture.target, List.of(fixture.target));
+            var result = complete(search);
+            test.assertValueEqual(result.status(), P2SafeDeployment.Status.FOUND,
+                    "A supported narrow ledge is usable even when the neighboring columns are deep drops");
+            var landing = BlockPos.containing(result.position());
+            fixture.level.setBlock(landing.offset(1, 0, 1), Blocks.LAVA.defaultBlockState(), 2);
+            test.assertTrue(search.revalidate(), "Lava outside the actual body does not veto a vanilla-legal landing");
+            var floor = fixture.level.getBlockState(landing.below());
+            fixture.level.setBlock(landing.below(), Blocks.AIR.defaultBlockState(), 2);
+            test.assertTrue(!search.revalidate(), "Removing actual support prevents an immediate fall or void deployment");
+            fixture.level.setBlock(landing.below(), floor, 2);
+            fixture.level.setBlock(landing, Blocks.LAVA.defaultBlockState(), 2);
+            test.assertTrue(!search.revalidate(), "Lava intersecting the actual player body revokes departure");
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
+    public void actualPlayerBoxAllowsPartialBlocksAndShortCeilingsButRejectsWalls(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 224);
+        var landing = fixture.samples().getFirst();
+        var point = Vec3.atBottomCenterOf(landing);
+        fixture.firstLanding((x, z) -> 0, 12);
+        var side = Blocks.OAK_TRAPDOOR.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.OPEN, true)
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING,
+                        net.minecraft.core.Direction.EAST);
+        fixture.level.setBlock(landing, side, 2);
+        test.assertTrue(P2SafeDeployment.canDeployAt(fixture.level, fixture.hunter, point),
+                "A partial block outside the actual body does not require a wholly empty block");
+        fixture.level.setBlock(landing, Blocks.AIR.defaultBlockState(), 2);
+        var ceiling = Blocks.OAK_TRAPDOOR.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HALF,
+                        net.minecraft.world.level.block.state.properties.Half.TOP);
+        fixture.level.setBlock(landing.above(), ceiling, 2);
+        test.assertTrue(!fixture.level.noCollision(EntityTypes.ZOMBIE.getSpawnAABB(point)),
+                "The control ceiling is too low for the native zombie spawn box");
+        test.assertTrue(P2SafeDeployment.canDeployAt(fixture.level, fixture.hunter, point),
+                "A ceiling above the player's real head may be below the visual monster's head");
+        fixture.level.setBlock(landing.above(), Blocks.AIR.defaultBlockState(), 2);
+        for (var floor : List.of(Blocks.GLASS, Blocks.OAK_LEAVES, Blocks.STONE_SLAB)) {
+            fixture.level.setBlock(landing.below(), floor.defaultBlockState(), 2);
+            test.assertTrue(P2SafeDeployment.canDeployAt(fixture.level, fixture.hunter, point),
+                    "Physically supported non-spawnable floors are also allowed: " + floor);
+        }
+        fixture.level.setBlock(landing.below(), Blocks.STONE.defaultBlockState(), 2);
+        fixture.level.setBlock(landing.east(), Blocks.STONE.defaultBlockState(), 2);
+        var original = fixture.hunter.getBoundingBox();
+        test.assertTrue(P2SafeDeployment.canDeployAt(fixture.level, fixture.hunter, point), "Ordinary player body fits beside a wall");
+        try {
+            fixture.hunter.setBoundingBox(original.inflate(.5, 0, .5));
+            test.assertTrue(!P2SafeDeployment.canDeployAt(fixture.level, fixture.hunter, point),
+                    "A changed actual player width is re-read rather than using a fixed or monster box");
+        } finally { fixture.hunter.setBoundingBox(original); }
+        fixture.level.setBlock(landing.above(), Blocks.STONE.defaultBlockState(), 2);
+        test.assertTrue(!P2SafeDeployment.canDeployAt(fixture.level, fixture.hunter, point), "A solid wall through the head is rejected");
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
+    public void vanillaLegalGroundAndBodyPlacementsAreNeverMadeStricter(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 230);
+        var landing = fixture.samples().getFirst();
+        var point = Vec3.atBottomCenterOf(landing);
+        fixture.firstLanding((x, z) -> 0, 12);
+        int comparisons = 0;
+        for (var floor : List.of(Blocks.STONE, Blocks.DIRT, Blocks.BEDROCK, Blocks.OBSIDIAN,
+                Blocks.GLASS, Blocks.OAK_LEAVES, Blocks.STONE_SLAB, Blocks.MAGMA_BLOCK,
+                Blocks.CACTUS, Blocks.CAMPFIRE, Blocks.SOUL_SAND, Blocks.MUD, Blocks.FARMLAND,
+                Blocks.HONEY_BLOCK, Blocks.SLIME_BLOCK, Blocks.SNOW_BLOCK)) {
+            fixture.level.setBlock(landing.below(), floor.defaultBlockState(), 2);
+            for (var inside : List.of(Blocks.AIR, Blocks.TORCH, Blocks.STONE_BUTTON, Blocks.SHORT_GRASS, Blocks.FIRE)) {
+                fixture.level.setBlock(landing, inside.defaultBlockState(), 2);
+                for (var type : List.of(EntityTypes.ZOMBIE, EntityTypes.SKELETON, EntityTypes.CREEPER)) {
+                    if (!SpawnPlacementTypes.ON_GROUND.isSpawnPositionOk(fixture.level, landing, type)
+                            || !fixture.level.noCollision(type.getSpawnAABB(point))) continue;
+                    comparisons++;
+                    test.assertTrue(P2SafeDeployment.canDeployAt(fixture.level, fixture.hunter, point),
+                            "Every vanilla-legal placement is admitted: " + type + "/" + floor + "/" + inside);
+                }
+            }
+        }
+        test.assertTrue(comparisons >= 30, "The differential test exercised a meaningful set of vanilla-legal placements");
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
+    public void protectionAndUnsupportedVoidCandidatesAreRejected(GameTestHelper test) {
         var fixture = new Fixture(test, test.getLevel(), 228);
         try (var ignored = fixture.empty()) { fixture.corridor(Blocks.STONE); }
         try (var ignored = fixture.protectedZone()) {
             test.assertValueEqual(complete(fixture.search(fixture.target, List.of(fixture.target))).status(),
-                    P2SafeDeployment.Status.FAILED, "Lobby protection rejects every candidate even with safe native ground");
+                    P2SafeDeployment.Status.FAILED, "Lobby protection still guards gameplay admission");
         }
         try (var ignored = fixture.empty()) {
-            fixture.corridor(Blocks.STONE);
-            var columns = new java.util.HashSet<BlockPos>();
-            for (var sample : fixture.samples()) for (int x=-2; x<=2; x++) for (int z=-2; z<=2; z++)
-                columns.add(sample.offset(x, 0, z));
-            // Control every alternate Y the search can inspect, including the native heightmap.
-            // A mountain above the portal must not offer an unrelated, genuinely safe surface.
-            for (var column : columns) for (int y=column.getY()-9; y<fixture.level.getMaxY(); y++) {
-                var position = column.atY(y);
-                var state = (y < column.getY() ? Blocks.STONE
-                        : y == column.getY() ? Blocks.END_PORTAL : Blocks.AIR).defaultBlockState();
-                if (!fixture.level.getBlockState(position).equals(state)) fixture.level.setBlock(position, state, 2);
-            }
-            test.assertValueEqual(complete(fixture.search(fixture.target, List.of(fixture.target))).status(),
-                    P2SafeDeployment.Status.FAILED, "A non-colliding portal is still an unsafe spawn");
             fixture.corridor(Blocks.AIR);
-            // Clear every sampled column down to the native minimum. Adjacent terrain is
-            // irrelevant: the candidate's own floor can never be invented across this void.
             for (var sample : fixture.samples()) for (int y=fixture.level.getMinY(); y<sample.getY(); y++)
                 fixture.level.setBlock(sample.atY(y), Blocks.AIR.defaultBlockState(), 2);
             test.assertValueEqual(complete(fixture.search(fixture.target, List.of(fixture.target))).status(),
-                    P2SafeDeployment.Status.FAILED, "No standing floor means no air or void deployment");
+                    P2SafeDeployment.Status.FAILED, "No floor means no air or void deployment");
         }
         test.succeed();
     }
@@ -113,7 +194,7 @@ public final class P2SafeDeploymentGameTest {
         var target = new Vec3(26_000_000.5, 100, 26_000_000.5);
         int chunkX = ((int)target.x) >> 4, chunkZ = ((int)target.z) >> 4;
         test.assertTrue(level.getChunkSource().getChunkNow(chunkX, chunkZ) == null, "The test destination starts unloaded");
-        var search = new P2SafeDeployment.Search(level, target, List.of(target), fixedRandom(), () -> 0);
+        var search = new P2SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), () -> 0);
         var first = search.tick();
         test.assertValueEqual(first.status(), P2SafeDeployment.Status.PENDING, "One tick cannot consume the entire candidate budget");
         test.assertValueEqual(first.candidates(), P2SafeDeployment.CANDIDATES_PER_TICK, "At most four fresh candidates are begun per tick");
@@ -131,12 +212,12 @@ public final class P2SafeDeploymentGameTest {
         var level = test.getLevel();
         var target = new Vec3(26_100_000.5, 100, 26_100_000.5);
         var clock = new AtomicLong();
-        var timeout = new P2SafeDeployment.Search(level, target, List.of(target), fixedRandom(), clock::get);
+        var timeout = new P2SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), clock::get);
         clock.set(P2SafeDeployment.MAX_SEARCH_NANOS);
         test.assertValueEqual(timeout.tick().status(), P2SafeDeployment.Status.FAILED, "Two elapsed seconds end the search without requiring a candidate");
         test.assertValueEqual(timeout.result().candidates(), 0, "Expired work cannot begin another candidate");
         var unitClock = new AtomicLong();
-        var sliced = new P2SafeDeployment.Search(level, target, List.of(target), fixedRandom(), () -> unitClock.getAndAdd(600_000));
+        var sliced = new P2SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), () -> unitClock.getAndAdd(600_000));
         var first = sliced.tick();
         test.assertValueEqual(first.status(), P2SafeDeployment.Status.PENDING, "A two-millisecond tick slice preserves the attempt for the next tick");
         test.assertTrue(first.candidates() < P2SafeDeployment.CANDIDATES_PER_TICK, "Clock budget stops work before the four-candidate count budget");
@@ -148,17 +229,17 @@ public final class P2SafeDeploymentGameTest {
         var level = test.getLevel();
         var target = new Vec3(26_200_000.5, 100, 26_200_000.5);
         var clock = new AtomicLong(1_500_000_000L);
-        var remaining = new P2SafeDeployment.Search(level, target, List.of(target), fixedRandom(), clock::get, 3, 0);
+        var remaining = new P2SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), clock::get, 3, 0);
         var result = complete(remaining);
         test.assertValueEqual(result.status(), P2SafeDeployment.Status.FAILED, "The same target in another dimension cannot extend the remaining candidate allowance");
         test.assertValueEqual(result.candidates(), 3, "Only the three remaining standing points are inspected");
         clock.set(P2SafeDeployment.MAX_SEARCH_NANOS);
-        var expired = new P2SafeDeployment.Search(level, target, List.of(target), fixedRandom(), clock::get, 3, 0);
+        var expired = new P2SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), clock::get, 3, 0);
         test.assertValueEqual(expired.tick().status(), P2SafeDeployment.Status.FAILED, "A target change does not restart the two-second deadline");
         test.assertValueEqual(expired.result().candidates(), 0, "An inherited expired deadline admits no new work");
         for (int invalid : new int[]{0, 65}) {
             boolean rejected = false;
-            try { new P2SafeDeployment.Search(level, target, List.of(target), fixedRandom(), clock::get, invalid, 0); }
+            try { new P2SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), clock::get, invalid, 0); }
             catch (IllegalArgumentException expected) { rejected = true; }
             test.assertTrue(rejected, "Shared budgets outside 1-64 are rejected");
         }
@@ -166,7 +247,7 @@ public final class P2SafeDeploymentGameTest {
     }
 
     @GameTest(maxTicks=200)
-    public void nativeNetherRoofAndEndArrivalPlatformAreRejected(GameTestHelper test) {
+    public void nativeNetherRoofAndEndObsidianDoNotAddTerrainBans(GameTestHelper test) {
         var server = test.getLevel().getServer();
         var nether = new Fixture(test, server.getLevel(Level.NETHER), 128);
         var end = new Fixture(test, server.getLevel(Level.END), 120);
@@ -175,10 +256,10 @@ public final class P2SafeDeploymentGameTest {
             for (var sample : nether.samples()) for (int y=-9; y<0; y++)
                 nether.level.setBlock(sample.offset(0, y, 0), Blocks.BEDROCK.defaultBlockState(), 2);
             test.assertValueEqual(complete(nether.search(nether.target, List.of(nether.target))).status(),
-                    P2SafeDeployment.Status.FAILED, "Native Nether roof deployment is forbidden");
+                    P2SafeDeployment.Status.FOUND, "The Nether ceiling adds no extra terrain ban");
             end.corridor(Blocks.OBSIDIAN);
             test.assertValueEqual(complete(end.search(end.target, List.of(end.target))).status(),
-                    P2SafeDeployment.Status.FAILED, "Native End obsidian arrival terrain is forbidden");
+                    P2SafeDeployment.Status.FOUND, "Supported End obsidian adds no extra terrain ban");
             end.corridor(Blocks.END_STONE);
             test.assertValueEqual(complete(end.search(end.target, List.of(end.target))).status(),
                     P2SafeDeployment.Status.FOUND, "Ordinary loaded End island ground remains usable");
@@ -194,10 +275,12 @@ public final class P2SafeDeploymentGameTest {
     private static Random fixedRandom() { return new Random(0) { @Override public double nextDouble() { return 0; } }; }
     private static final class Fixture {
         final ServerLevel level;
+        final ServerPlayer hunter;
         final BlockPos feet;
         final Vec3 target;
         Fixture(GameTestHelper test, ServerLevel level, int y) {
             this.level = java.util.Objects.requireNonNull(level);
+            hunter = test.makeMockServerPlayerInLevel();
             // The test server retains terrain between runs. Follow this run's randomized
             // structure origin so an earlier wide corridor cannot fill today's narrow ledge.
             var origin = test.absolutePos(BlockPos.ZERO);
@@ -219,17 +302,29 @@ public final class P2SafeDeploymentGameTest {
             level.setBlock(point.below(), floor.defaultBlockState(), 2);
             for (int y=0; y<3; y++) level.setBlock(point.above(y), Blocks.AIR.defaultBlockState(), 2);
         }
+        void firstLanding(java.util.function.IntBinaryOperator height, int clearance) {
+            var center = samples().getFirst();
+            for (int x=-2; x<=2; x++) for (int z=-2; z<=2; z++) {
+                int dy = height.applyAsInt(x, z);
+                for (int y=-6; y<=12; y++) {
+                    Block block = y < dy || y >= dy + clearance ? Blocks.STONE : Blocks.AIR;
+                    // Never offer the top of the test cave as an alternate landing.
+                    if (y == 12) block = Blocks.MAGMA_BLOCK;
+                    level.setBlock(center.offset(x, y, z), block.defaultBlockState(), 2);
+                }
+            }
+        }
         List<BlockPos> samples() {
             var points = new java.util.ArrayList<BlockPos>();
             for (int i=0; i<64; i++) {
                 double angle = i * Math.PI * (3 - Math.sqrt(5));
-                points.add(new BlockPos((int)Math.floor(target.x + Math.cos(angle) * 32.5), feet.getY(),
-                        (int)Math.floor(target.z + Math.sin(angle) * 32.5)));
+                points.add(new BlockPos((int)Math.floor(target.x + Math.cos(angle) * 25), feet.getY(),
+                        (int)Math.floor(target.z + Math.sin(angle) * 25)));
             }
             return points;
         }
         P2SafeDeployment.Search search(Vec3 target, List<Vec3> humans) {
-            return new P2SafeDeployment.Search(level, target, humans, fixedRandom(), () -> 0);
+            return new P2SafeDeployment.Search(level, hunter, target, humans, fixedRandom(), () -> 0);
         }
         dev.hardrush.gametest.RuntimeFixtures.Scope empty() { return scope(false); }
         dev.hardrush.gametest.RuntimeFixtures.Scope protectedZone() { return scope(true); }

@@ -451,8 +451,8 @@ public final class P2RuntimeLobbyGameTest {
                     "A successful monster sortie restores survival mode");
             test.assertValueEqual(monster.participant().monsterDeploymentSequence(), sequence, "Exactly one persisted sortie is admitted");
             double horizontal = monster.player.position().subtract(target.player.position()).horizontalDistance();
-            test.assertTrue(horizontal >= 32 && horizontal <= 64, "Actual native monster spawns in the target's 32-64 block ring");
-            test.assertTrue(monster.player.position().distanceToSqr(target.player.position()) >= 24 * 24, "Actual body respects the human separation");
+            test.assertTrue(horizontal >= 24 && horizontal <= 40, "Actual native monster spawns in the target's 24-40 block ring");
+            test.assertTrue(monster.player.position().distanceToSqr(target.player.position()) >= 16 * 16, "Actual body respects the human separation");
             test.assertFalse(P2ProtectionRuntime.protectedEntity(monster.player), "Actual monster never enters spawn protection");
             var kind = monster.participant().monsterRole();
             test.assertValueEqual(MonsterRoles.nativeModel(monster.player).getType(), switch (kind) {

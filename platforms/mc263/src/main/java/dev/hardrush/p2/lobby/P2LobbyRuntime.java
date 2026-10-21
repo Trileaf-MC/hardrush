@@ -453,7 +453,7 @@ public final class P2LobbyRuntime {
             searchFailed(b, d, "安全搜索预算已用完；3 秒后可重试，保留出场机会。"); return;
         }
         d.level = d.targetPlayer.level();
-        d.search = new P2SafeDeployment.Search(d.level, d.targetPlayer.position(), humans(b, d.level),
+        d.search = new P2SafeDeployment.Search(d.level, d.player, d.targetPlayer.position(), humans(b, d.level),
                 b.searchRandom, b.searchClock, P2SafeDeployment.MAX_CANDIDATES - d.spentCandidates, d.started);
         b.searches.put(d.identity.hunter(), d);
     }
