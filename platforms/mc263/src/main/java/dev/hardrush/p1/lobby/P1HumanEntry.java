@@ -1,6 +1,7 @@
 package dev.hardrush.p1.lobby;
 
 import dev.hardrush.core.lobby.*;
+import dev.hardrush.core.record.RoundResultText;
 import dev.hardrush.core.round.*;
 import dev.hardrush.p1.P1LobbySession;
 import dev.hardrush.p1.player.P1PlayerProfiles;
@@ -104,8 +105,10 @@ public final class P1HumanEntry {
                     && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE));
             lobby.statusLabel(session.recoveringCountdown() ? "正在恢复上次集结" : switch(round.phase()) {
                 case WAITING, COUNTDOWN -> "站入集结区参加"; case RUNNING, RESCUE -> "集结关闭 · 中途门开放";
-                case PREPARING -> "世界准备中 · 入口关闭"; case SETTLING -> "本轮结算 · 入口关闭";
-                case CELEBRATING -> "通关庆祝 · 入口关闭"; case ROTATING -> "正在换轮 · 入口关闭";
+                case PREPARING -> "世界准备中 · 入口关闭";
+                case SETTLING -> RoundResultText.stageLabel(round.result(), "本轮结算") + " · 入口关闭";
+                case CELEBRATING -> RoundResultText.stageLabel(round.result(), "通关庆祝") + " · 入口关闭";
+                case ROTATING -> "正在换轮 · 入口关闭";
                 case RECOVERY_REQUIRED -> "恢复核验中 · 入口关闭";
             }, round.rules().mode() == dev.hardrush.core.config.GameMode.NORMAL ? "普通模式 · 怪物区关闭" : "极限模式 · 角色／追猎／祭坛"); lastLabel = label;
         }

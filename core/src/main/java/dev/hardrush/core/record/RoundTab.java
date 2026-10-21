@@ -15,7 +15,7 @@ public record RoundTab(String header, String footer) {
         if (endEntrants < 0) throw new IllegalArgumentException("Negative End entrant count");
         long offline = round.participants().values().stream().filter(p -> p.role().isActiveHuman() && !p.online()).count();
         long monsters = round.participants().values().stream().filter(p -> p.role().isMonster()).count();
-        String state = phase(round.phase());
+        String state = phase(round);
         if (round.phase() == RoundPhase.RUNNING && round.pauseReason() != PauseReason.NONE) {
             state = "暂停（" + pause(round.pauseReason()) + "）";
         }
@@ -52,15 +52,15 @@ public record RoundTab(String header, String footer) {
     private static String safeName(String name) {
         return SafeBookText.literal(name.replace("§", ""), 64);
     }
-    private static String phase(RoundPhase phase) {
-        return switch (phase) {
+    private static String phase(RoundSnapshot round) {
+        return switch (round.phase()) {
             case PREPARING -> "世界准备中";
             case WAITING -> "等待加入／就绪";
             case COUNTDOWN -> "开局倒计时";
             case RUNNING -> "进行中";
             case RESCUE -> "等待救场";
-            case SETTLING -> "结算已保存";
-            case CELEBRATING -> "通关庆祝";
+            case SETTLING -> RoundResultText.stageLabel(round.result(), "结算已保存");
+            case CELEBRATING -> RoundResultText.stageLabel(round.result(), "通关庆祝");
             case ROTATING -> "正在轮换";
             case RECOVERY_REQUIRED -> "等待恢复核验";
         };

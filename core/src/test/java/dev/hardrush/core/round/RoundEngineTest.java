@@ -243,6 +243,27 @@ class RoundEngineTest {
         assertEquals(30_000, engine.view().remainingPhaseMillis());
     }
 
+    @Test void legacyFailedCelebrationRestoresAsFailureDisplayWithoutResettingItsTimer() {
+        var failed = new RoundResult(RoundResult.Kind.FAILED, null, "ALL_HUMANS_DEAD");
+        var stored = new RoundSnapshot(UUID.randomUUID(), 1, 123, 7, RulesConfig.defaults(),
+                RoundPhase.CELEBRATING, PauseReason.SERVER_STOPPED, 12_345_000_000L, 17_000_000_000L,
+                Map.of(), true, false, failed);
+        var engine = RoundEngine.restore(stored, clock);
+        clock.millis(100_000); // Time spent offline does not consume the saved display remainder.
+        apply(engine, engine.proposeTick(UUID.randomUUID()));
+        assertEquals(RoundPhase.SETTLING, engine.view().phase());
+        assertEquals(17_000, engine.view().remainingPhaseMillis());
+        clock.millis(16_999);
+        apply(engine, engine.proposeTick(UUID.randomUUID()));
+        assertEquals(RoundPhase.SETTLING, engine.view().phase());
+        assertEquals(1, engine.view().remainingPhaseMillis());
+        clock.millis(1);
+        apply(engine, engine.proposeTick(UUID.randomUUID()));
+        assertEquals(RoundPhase.ROTATING, engine.view().phase());
+        assertEquals(12_345, engine.view().challengeMillis());
+        assertEquals(failed, engine.view().result());
+    }
+
     @Test void oldPendingTenMinuteRulesAreCappedWithoutChangingTheirFingerprint() {
         var defaults = RulesConfig.defaults();
         var legacy = RulesConfig.decode(defaults.encode().replace("successCelebrationMillis=180000", "successCelebrationMillis=600000"));

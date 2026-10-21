@@ -609,10 +609,10 @@ public final class RoundEngine {
             }
         } else if (phase == RoundPhase.RESCUE && remaining == 0) {
             return failureProposal(eventId, "TICK", before, players, "RESCUE_EXPIRED");
-        } else if (phase == RoundPhase.SETTLING) {
-            phase = remaining == 0 ? RoundPhase.ROTATING : RoundPhase.CELEBRATING;
-        } else if (phase == RoundPhase.CELEBRATING && remaining == 0) {
-            phase = RoundPhase.ROTATING;
+        } else if (phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING) {
+            // Failed rounds display their result in the lobby, including legacy CELEBRATING snapshots.
+            phase = remaining == 0 ? RoundPhase.ROTATING
+                    : before.result().kind() == RoundResult.Kind.COMPLETED ? RoundPhase.CELEBRATING : RoundPhase.SETTLING;
         }
         return proposal(eventId, "TICK", before, phase, remaining, players, before.result(), false);
     }

@@ -107,6 +107,7 @@ class DeathBatchRevivalTest {
         apply(engine, batch(engine, death(engine, human, null)));
         assertEquals(RoundPhase.SETTLING, engine.view().phase());
         assertEquals("ALL_HUMANS_DEAD", engine.view().result().reason());
+        assertFailureDisplayUntilRotation(engine);
         var normal = fixture(GameMode.NORMAL, human(human, true), monster(true, false));
         apply(normal, batch(normal, death(normal, human, origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.MELEE))));
         assertEquals(RoundPhase.RUNNING, normal.view().phase());
@@ -177,7 +178,29 @@ class DeathBatchRevivalTest {
             assertEquals("RESCUE_EXPIRED", engine.view().result().reason());
             assertFalse(engine.view().participants().get(monster).revivalEntitled());
             assertThrows(IllegalStateException.class, () -> engine.proposeRevival(UUID.randomUUID(), round, monster, 1, 3));
+            assertFailureDisplayUntilRotation(engine);
         }
+    }
+
+    private void assertFailureDisplayUntilRotation(RoundEngine engine) {
+        var result = engine.view().result();
+        assertEquals(RoundResult.Kind.FAILED, result.kind());
+        long challenge = engine.view().challengeNanos();
+        apply(engine, engine.proposeTick(UUID.randomUUID()));
+        assertEquals(RoundPhase.SETTLING, engine.view().phase());
+        assertEquals(30_000, engine.view().remainingPhaseMillis());
+        clock.seconds(29);
+        apply(engine, engine.proposeTick(UUID.randomUUID()));
+        assertEquals(RoundPhase.SETTLING, engine.view().phase());
+        assertEquals(1_000, engine.view().remainingPhaseMillis());
+        var tab = dev.hardrush.core.record.RoundTab.from(engine.view(), 0, null);
+        assertTrue(tab.header().contains("挑战失败"));
+        assertFalse(tab.header().contains("庆祝"));
+        clock.seconds(1);
+        apply(engine, engine.proposeTick(UUID.randomUUID()));
+        assertEquals(RoundPhase.ROTATING, engine.view().phase());
+        assertEquals(result, engine.view().result());
+        assertEquals(challenge, engine.view().challengeNanos());
     }
 
     @Test void beforeDeadlineAcceptedRevivalWinsAndLaterTickCannotRaceThePendingWrite() {

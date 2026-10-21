@@ -3,6 +3,7 @@ package dev.hardrush.p2.lobby;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.hardrush.core.hunt.PersonalHuntRequest;
 import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.record.RoundResultText;
 import dev.hardrush.p1.lobby.LobbyProjections;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.config.RulesConfig;
@@ -672,7 +673,7 @@ public final class P2LobbyRuntime {
     private static List<P2LobbyUi.Button> menuButtons(ServerPlayer player, Binding b) {
         var round = b.session.view().orElseThrow(); var p = round.participants().get(player.getUUID());
         var buttons = new ArrayList<P2LobbyUi.Button>();
-        buttons.add(new P2LobbyUi.Button(Items.PAPER, "轮次 " + round.sequence() + " · " + phaseName(round.phase())
+        buttons.add(new P2LobbyUi.Button(Items.PAPER, "轮次 " + round.sequence() + " · " + phaseName(round)
                 + (p == null ? " · 未加入" : " · " + identityName(p.role())), "info", ""));
         buttons.add(new P2LobbyUi.Button(Items.EMERALD, "开局请站入集结区；中途加入请使用侧门", "info", ""));
         buttons.add(new P2LobbyUi.Button(Items.BOOK, "查看历史", "history", ""));
@@ -714,11 +715,13 @@ public final class P2LobbyRuntime {
     private static String kindName(MonsterRole role) {
         return switch (role) { case ZOMBIE -> "僵尸"; case SKELETON -> "骷髅"; case CREEPER -> "苦力怕"; };
     }
-    private static String phaseName(RoundPhase phase) {
-        return switch (phase) {
+    private static String phaseName(RoundSnapshot round) {
+        return switch (round.phase()) {
             case PREPARING -> "准备世界"; case WAITING -> "等待加入"; case COUNTDOWN -> "开局倒计时";
-            case RUNNING -> "进行中"; case RESCUE -> "救场中"; case SETTLING -> "结算中";
-            case CELEBRATING -> "庆祝中"; case ROTATING -> "换轮中"; case RECOVERY_REQUIRED -> "等待恢复";
+            case RUNNING -> "进行中"; case RESCUE -> "救场中";
+            case SETTLING -> RoundResultText.stageLabel(round.result(), "结算中");
+            case CELEBRATING -> RoundResultText.stageLabel(round.result(), "庆祝中");
+            case ROTATING -> "换轮中"; case RECOVERY_REQUIRED -> "等待恢复";
         };
     }
     private static String identityName(ParticipantRole role) {

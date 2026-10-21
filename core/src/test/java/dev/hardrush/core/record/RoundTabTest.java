@@ -45,6 +45,7 @@ final class RoundTabTest {
         var result = new RoundResult(RoundResult.Kind.COMPLETED, winner.id(), "trusted");
         var text = RoundTab.from(snapshot(RoundPhase.CELEBRATING, PauseReason.SETTLED, 600_000_000_000L,
                 Map.of(winner.id(), winner), false, result), 5, null);
+        assertTrue(text.header().contains("通关庆祝"));
         assertTrue(text.footer().contains("尾刀：甲乙"));
         assertFalse(text.footer().contains("§"));
         assertTrue(text.footer().contains("轮换倒计时 600 秒"));
@@ -52,6 +53,21 @@ final class RoundTabTest {
                 Map.of(), false, new RoundResult(RoundResult.Kind.FAILED, null, "no humans")), 0, null);
         assertTrue(failed.footer().contains("挑战失败"));
         assertTrue(failed.footer().contains("轮换倒计时 1 秒"));
+    }
+    @Test void unsuccessfulDisplayAndLegacyCelebrationShowTheirActualOutcome() {
+        for (var phase : java.util.List.of(RoundPhase.SETTLING, RoundPhase.CELEBRATING)) {
+            for (var kind : java.util.List.of(RoundResult.Kind.FAILED, RoundResult.Kind.ABORTED)) {
+                var result = new RoundResult(kind, null, "terminal");
+                var text = RoundTab.from(snapshot(phase, PauseReason.SETTLED, 29_000_000_000L,
+                        Map.of(), false, result), 0, null);
+                String expected = kind == RoundResult.Kind.FAILED ? "挑战失败" : "挑战中止";
+                assertTrue(text.header().contains(expected));
+                assertTrue(text.footer().contains(expected));
+                assertTrue(text.footer().contains("轮换倒计时 29 秒"));
+                assertFalse((text.header() + text.footer()).contains("庆祝"));
+                assertFalse(text.footer().contains("尾刀"));
+            }
+        }
     }
     @Test void rescueShowsRemainingTimeWithoutInventingOnlineHumansOrExposingEntitlementOwners() {
         var entitled = new Participant(UUID.randomUUID(), "SecretOwner", ParticipantRole.MONSTER_LOBBY,

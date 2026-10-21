@@ -98,6 +98,23 @@ class P2DeathBatchSessionTest {
             session.tick();
             pump(() -> !session.mutationPending());
             assertEquals(RoundResult.Kind.FAILED, session.snapshot().orElseThrow().result().kind());
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
+            session.tick();
+            pump(() -> !session.mutationPending());
+            var failed = session.snapshot().orElseThrow();
+            assertEquals(RoundPhase.SETTLING, failed.phase());
+            assertEquals(29_000, failed.remainingPhaseMillis());
+            assertTrue(dev.hardrush.core.record.RoundTab.from(failed, 0, null).header().contains("挑战失败"));
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(28));
+            session.tick();
+            pump(() -> !session.mutationPending());
+            assertEquals(RoundPhase.SETTLING, session.snapshot().orElseThrow().phase());
+            assertEquals(1_000, session.snapshot().orElseThrow().remainingPhaseMillis());
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
+            session.tick();
+            pump(() -> !session.mutationPending());
+            assertEquals(RoundPhase.ROTATING, session.snapshot().orElseThrow().phase());
+            assertEquals(failed.result(), session.snapshot().orElseThrow().result());
         }
     }
 

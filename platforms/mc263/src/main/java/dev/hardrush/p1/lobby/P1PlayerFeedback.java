@@ -1,6 +1,7 @@
 package dev.hardrush.p1.lobby;
 
 import dev.hardrush.core.lobby.*;
+import dev.hardrush.core.record.RoundResultText;
 import dev.hardrush.core.round.*;
 import dev.hardrush.p1.P1LobbySession;
 import dev.hardrush.p1.player.P1PlayerProfiles;
@@ -19,14 +20,19 @@ public final class P1PlayerFeedback {
         var stageBar=BARS.computeIfAbsent(server, ignored->new net.minecraft.server.level.ServerBossEvent(java.util.UUID.randomUUID(), Component.literal("HardRush"),
                 net.minecraft.world.BossEvent.BossBarColor.YELLOW, net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS));
         boolean rescue=round.phase()==dev.hardrush.core.round.RoundPhase.RESCUE;
-        boolean celebrating=round.phase()==dev.hardrush.core.round.RoundPhase.CELEBRATING;
+        boolean celebrationPhase=round.phase()==RoundPhase.CELEBRATING;
         boolean settling=round.phase()==dev.hardrush.core.round.RoundPhase.SETTLING;
+        boolean displaying=settling||celebrationPhase;
+        boolean completed=displaying&&round.result().kind()==RoundResult.Kind.COMPLETED;
+        boolean celebrating=celebrationPhase&&completed;
         boolean recovery = round.phase()==RoundPhase.RECOVERY_REQUIRED || dev.hardrush.p1.P1LobbyRuntime.sessionState(server)
                 .filter(state->state!=P1LobbySession.State.OPEN).isPresent();
-        stageBar.setVisible(recovery||rescue||celebrating||settling);
-        stageBar.setName(Component.literal(recovery ? "恢复隔离 · 竞技入口关闭，请联系管理员" : (rescue?"救场 · 祭坛复生／中途门加入":celebrating?"通关庆祝 · 龙池回厅，全员返回提前结束":"结算展示")
+        stageBar.setVisible(recovery||rescue||displaying);
+        String terminalText=displaying?RoundResultText.stageLabel(round.result(), celebrating?"通关庆祝 · 龙池回厅，全员返回提前结束":"结算展示"):"结算展示";
+        stageBar.setName(Component.literal(recovery ? "恢复隔离 · 竞技入口关闭，请联系管理员" : (rescue?"救场 · 祭坛复生／中途门加入":terminalText)
                 + " · 剩余 " + (round.remainingPhaseMillis()+999)/1000 + " 秒"));
-        long total=rescue?round.rules().combatValues().get("round.rescueMillis").longValue():celebrating?180000:round.rules().failureDisplayMillis();
+        long total=rescue?round.rules().combatValues().get("round.rescueMillis").longValue():completed
+                ?Math.min(round.rules().successCelebrationMillis(),RoundEngine.MAX_SUCCESS_CELEBRATION_MILLIS):round.rules().failureDisplayMillis();
         stageBar.setProgress(recovery ? 0 : Math.max(0,Math.min(1,(float)round.remainingPhaseMillis()/Math.max(1,total))));
         for(var old:java.util.List.copyOf(stageBar.getPlayers()))if(server.getPlayerList().getPlayer(old.getUUID())!=old)stageBar.removePlayer(old);
         for(var player:server.getPlayerList().getPlayers())stageBar.addPlayer(player);
