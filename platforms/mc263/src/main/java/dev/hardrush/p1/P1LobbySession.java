@@ -432,7 +432,7 @@ public final class P1LobbySession implements AutoCloseable {
                     fail("管理写入失败", error); reply.accept(new Reply(false, problem)); return;
                 }
                 if (result == CommitResult.STALE) {
-                    reply.accept(new Reply(false, "管理目标已改变，请重新查看并申请确认。")); return;
+                    reply.accept(new Reply(false, "管理目标已改变，请重新查看后执行命令。")); return;
                 }
                 try { applied.run(); reply.accept(new Reply(true, success)); }
                 catch (RuntimeException failed) {

@@ -34,7 +34,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.server.permissions.PermissionLevel;
 
-/** Headless native Brigadier permissions plus isolated SQLite confirmation execution. */
+/** Headless native Brigadier permissions plus isolated SQLite direct execution. */
 public final class P1AdminCommandGameTest {
     @GameTest(maxTicks = 100)
     public void registeredNativeCommandTreeSeparatesPlayerReadOperationsAndThreeOperatorLevels(GameTestHelper test) {
@@ -70,11 +70,12 @@ public final class P1AdminCommandGameTest {
             parses(test, dispatcher, admin, command, false);
             parses(test, dispatcher, owner, command, true);
         }
+        parses(test, dispatcher, owner, "hardrush admin confirm " + UUID.randomUUID(), false);
         test.succeed();
     }
 
     @GameTest(maxTicks = 200)
-    public void storageRepairAndRecoveryCloseRequireCurrentContextPermissionsAndOneConfirmation(GameTestHelper test) throws Exception {
+    public void storageRepairAndRecoveryCloseExecuteDirectlyWithPermissionsAndAudit(GameTestHelper test) throws Exception {
         var server = test.getLevel().getServer();
         Path database = Files.createTempDirectory("hardrush-recovery-command-").toRealPath().resolve("rounds.sqlite");
         seedHistoricalFixture(database);
@@ -85,103 +86,144 @@ public final class P1AdminCommandGameTest {
             var dispatcher = new CommandDispatcher<CommandSourceStack>();
             dispatcher.register(commands.attach(Commands.literal("hardrush")));
             var source = server.createCommandSourceStack().withSource(output);
-            var admin = permission(source, 3); var owner = permission(source, 4);
-            session.adapterFailure("测试存储故障", new IllegalStateException("first"));
+            var reader = permission(source, 2); var admin = permission(source, 3); var owner = permission(source, 4);
+            session.adapterFailure("测试存储故障", new IllegalStateException("retain"));
+            parses(test, dispatcher, reader, "hardrush admin recheck-storage 越权", false);
+            test.assertValueEqual(session.state(), P1LobbySession.State.FAILED, "Denied repair leaves the failure intact");
             execute(dispatcher, admin, "hardrush admin recheck-storage 存储已修复");
-            UUID stale = output.lastTicket();
-            session.adapterFailure("故障原因改变", new IllegalStateException("second"));
-            execute(dispatcher, admin, "hardrush admin confirm " + stale);
-            test.assertTrue(output.last().contains("不再匹配") || output.last().contains("no longer matches"), "Changed failure invalidates its preview");
-            test.assertValueEqual(session.state(), P1LobbySession.State.FAILED, "Stale ticket leaves the failure intact");
-            execute(dispatcher, admin, "hardrush admin recheck-storage 存储已修复");
-            UUID repair = output.lastTicket();
-            execute(dispatcher, permission(source, 2), "hardrush admin confirm " + repair);
-            test.assertTrue(output.last().contains("权限不足"), "Downgraded OP2 cannot repair storage");
-            execute(dispatcher, admin, "hardrush admin confirm " + repair);
+            test.assertValueEqual(session.state(), P1LobbySession.State.RECHECKING, "One repair command starts rechecking directly");
             pumpUntil(test, callbacks, () -> session.state() != P1LobbySession.State.RECHECKING);
             test.assertValueEqual(session.snapshot().orElseThrow().phase(), RoundPhase.RECOVERY_REQUIRED, "Successful repair never resumes competition");
             test.assertTrue(session.competitionLocked(), "Repaired state remains quarantined");
+            parses(test, dispatcher, admin, "hardrush admin close-recovery 越权", false);
             execute(dispatcher, owner, "hardrush admin close-recovery 审查后结束恢复轮");
-            UUID close = output.lastTicket();
-            execute(dispatcher, admin, "hardrush admin confirm " + close);
-            test.assertTrue(output.last().contains("权限不足"), "OP3 cannot confirm an OP4 recovery decision");
-            execute(dispatcher, owner, "hardrush admin confirm " + close);
             pumpUntil(test, callbacks, () -> !session.mutationPending());
             test.assertValueEqual(session.snapshot().orElseThrow().phase(), RoundPhase.ROTATING, "Decision awaits the separate world release gate");
             test.assertValueEqual(session.snapshot().orElseThrow().sequence(), 2L, "Decision alone does not create another round");
-            execute(dispatcher, owner, "hardrush admin confirm " + close);
-            test.assertTrue(output.last().contains("已消费"), "Recovery decision is single use");
+            execute(dispatcher, owner, "hardrush admin close-recovery 重复请求");
             test.assertValueEqual(query(test, callbacks, session.audits(null, 20, 0)).size(), 2, "Exactly repair and close are audited");
-            commands.forget(server);
+            test.assertFalse(output.hasTicketAfter(0), "Recovery commands never request confirmation");
         }
         test.succeed();
     }
 
     @GameTest(maxTicks = 200)
-    public void downgradedConfirmationSourceCannotChangeRulesOrReviseHistoryAndApprovedTicketsExecuteOnlyOnce(
-            GameTestHelper test) throws Exception {
+    public void rulesAndHistoryExecuteDirectlyWithPermissionsAndDurableResults(GameTestHelper test) throws Exception {
         var server = test.getLevel().getServer();
-        // Canonicalize macOS /var -> /private/var in this fixture; production still rejects symlink parents.
         Path database = Files.createTempDirectory("hardrush-admin-command-test-").toRealPath().resolve("rounds.sqlite");
         UUID historyId = seedHistoricalFixture(database);
-        var callbacks = new LinkedBlockingQueue<Runnable>();
-        var output = new RecordingSource();
+        var callbacks = new LinkedBlockingQueue<Runnable>(); var output = new RecordingSource();
         try (var session = new P1LobbySession(database, () -> 0, callbacks::add)) {
             pumpUntil(test, callbacks, () -> session.state() == P1LobbySession.State.OPEN && !session.mutationPending());
-            var commands = new P1AdminCommands(ignored -> session, ignored -> Optional.empty(),
-                    (ignored, failure) -> { throw new IllegalStateException("No world retry belongs to this fixture"); });
+            var commands = new P1AdminCommands(ignored -> session, ignored -> Optional.empty(), (ignored, failure) -> {});
             var dispatcher = new CommandDispatcher<CommandSourceStack>();
             dispatcher.register(commands.attach(Commands.literal("hardrush")));
             var source = server.createCommandSourceStack().withSource(output);
-            var reader = permission(source, 2);
-            var admin = permission(source, 3);
-            var owner = permission(source, 4);
-
+            var reader = permission(source, 2); var admin = permission(source, 3); var owner = permission(source, 4);
             var oldRules = session.nextRules().orElseThrow();
             GameMode target = oldRules.mode() == GameMode.NORMAL ? GameMode.HARDCORE : GameMode.NORMAL;
             String targetName = target == GameMode.NORMAL ? "normal" : "hardcore";
-            test.assertValueEqual(execute(dispatcher, admin, "hardrush admin next-mode " + targetName + " 权限变更测试"),
-                    1, "OP3 receives a concrete next-mode preview ticket");
-            UUID rulesTicket = output.lastTicket();
-            test.assertValueEqual(execute(dispatcher, reader, "hardrush admin confirm " + rulesTicket), 0,
-                    "The same operator downgraded to OP2 cannot confirm an OP3 ticket");
-            test.assertTrue(output.last().contains("当前权限不足"), "Denied confirmation explicitly reports current permissions");
-            test.assertValueEqual(session.nextRules().orElseThrow(), oldRules, "Permission downgrade does not change pending rules");
-            test.assertFalse(session.mutationPending(), "Denied confirmation starts no SQLite mutation");
-            test.assertValueEqual(query(test, callbacks, session.audits(null, 20, 0)).size(), 0,
-                    "A rejected confirmation creates no successful-operation audit");
-            execute(dispatcher, admin, "hardrush admin confirm " + rulesTicket);
+            parses(test, dispatcher, reader, "hardrush admin next-mode " + targetName + " 越权", false);
+            test.assertValueEqual(commands.nextMode(reader, targetName, "越权"), 0, "Alias handler also checks current permission");
+            test.assertValueEqual(commands.nextMode(admin, targetName, " "), 0, "Blank reason remains invalid without tickets");
+            test.assertValueEqual(session.nextRules().orElseThrow(), oldRules, "Denied requests preserve next rules");
+            test.assertFalse(session.mutationPending(), "Denied requests start no SQLite mutation");
+            execute(dispatcher, admin, "hardrush admin next-mode " + targetName + " 直接修改下轮");
+            test.assertValueEqual(session.nextRules().orElseThrow(), oldRules, "Rules publish only after SQLite acknowledgement");
+            execute(dispatcher, admin, "hardrush admin next-mode " + targetName + " 提交中重复请求");
+            test.assertTrue(output.last().contains("上一项状态仍在提交"), "Concurrent rule command cannot duplicate pending write");
             pumpUntil(test, callbacks, () -> !session.mutationPending() && session.nextRules().orElseThrow().mode() == target);
             var rulesAudits = query(test, callbacks, session.audits(null, 20, 0));
-            test.assertValueEqual(rulesAudits.size(), 1, "Authorized confirmation commits exactly one rule-change audit");
-            test.assertValueEqual(rulesAudits.getFirst().action(), "NEXT_RULES", "Actual command execution persists its action");
-            execute(dispatcher, admin, "hardrush admin confirm " + rulesTicket);
-            test.assertTrue(output.last().contains("已消费"), "Consumed ticket cannot execute a second time");
-            test.assertValueEqual(query(test, callbacks, session.audits(null, 20, 0)).size(), 1,
-                    "Repeated confirmation cannot append a duplicate rule-change audit");
-
+            test.assertValueEqual(rulesAudits.size(), 1, "One direct rule command commits one audit");
+            test.assertValueEqual(rulesAudits.getFirst().action(), "NEXT_RULES", "Actual execution persists its action");
             long oldEdition = query(test, callbacks, session.history(historyId)).orElseThrow().edition();
-            int previousMessages = output.messages.size();
-            execute(dispatcher, owner, "hardrush admin correct " + historyId + " 5000 none 修订权限测试");
-            pumpUntil(test, callbacks, () -> output.hasTicketAfter(previousMessages));
-            UUID revisionTicket = output.lastTicket();
-            execute(dispatcher, admin, "hardrush admin confirm " + revisionTicket);
-            test.assertTrue(output.last().contains("当前权限不足"), "OP4 to OP3 downgrade cannot confirm a history correction");
-            test.assertValueEqual(query(test, callbacks, session.history(historyId)).orElseThrow().edition(), oldEdition,
-                    "Downgraded correction keeps the historical book edition");
-            execute(dispatcher, owner, "hardrush admin confirm " + revisionTicket);
-            pumpUntil(test, callbacks, () -> !session.mutationPending() && output.last().contains("已持久化"));
+            parses(test, dispatcher, admin, "hardrush admin correct " + historyId + " 5000 none 越权", false);
+            int beforeCorrection = output.messages.size();
+            execute(dispatcher, owner, "hardrush admin correct " + historyId + " 5000 none 直接修订成绩");
+            pumpUntil(test, callbacks, () -> output.messages.size() > beforeCorrection
+                    && output.last().contains("已持久化") && !session.mutationPending());
             var revised = query(test, callbacks, session.history(historyId)).orElseThrow();
-            test.assertValueEqual(revised.edition(), oldEdition + 1, "OP4 correction persists a new historical book edition");
-            test.assertValueEqual(revised.challengeMillis(), 5000L, "OP4 command commits its exact reviewed duration");
+            test.assertValueEqual(revised.edition(), oldEdition + 1, "One correction directly persists a new book edition");
+            test.assertValueEqual(revised.challengeMillis(), 5000L, "Correction commits its exact requested duration");
             test.assertTrue(revised.timingUncertain(), "Corrected result remains pending verification");
-            test.assertValueEqual(query(test, callbacks, session.audits(null, 20, 0)).size(), 2,
-                    "Successful correction atomically adds exactly one audit after the rule change");
-            execute(dispatcher, owner, "hardrush admin confirm " + revisionTicket);
-            test.assertTrue(output.last().contains("已消费"), "History correction ticket is single use");
+            parses(test, dispatcher, admin, "hardrush admin validate " + historyId + " 越权", false);
+            int beforeValidation = output.messages.size();
+            execute(dispatcher, owner, "hardrush admin validate " + historyId + " 无可信首龙证据");
+            pumpUntil(test, callbacks, () -> output.messages.size() > beforeValidation && !session.mutationPending());
+            test.assertTrue(output.last().contains("不符合原始证据"), "Direct validation still refuses untrusted original evidence");
             test.assertValueEqual(query(test, callbacks, session.history(historyId)).orElseThrow().edition(), oldEdition + 1,
-                    "Repeated correction confirmation cannot bump another edition");
-            commands.forget(server);
+                    "Rejected validation leaves the book edition unchanged");
+            test.assertValueEqual(query(test, callbacks, session.audits(null, 20, 0)).size(), 2,
+                    "Only the successful rule and correction writes are audited");
+            test.assertFalse(output.hasTicketAfter(0), "Rule, correction and validation commands never request confirmation");
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks = 200)
+    public void startAndAbortExecuteDirectlyAndStillRequireReadyAdapters(GameTestHelper test) throws Exception {
+        var server = test.getLevel().getServer();
+        Path database = Files.createTempDirectory("hardrush-start-abort-command-").toRealPath().resolve("rounds.sqlite");
+        UUID player = UUID.randomUUID();
+        var rules = RulesConfig.defaults().withMode(GameMode.NORMAL);
+        var initial = new RoundSnapshot(UUID.randomUUID(), 1, 123, 0, rules, RoundPhase.WAITING, PauseReason.NOT_RUNNING,
+                0, 0, Map.of(player, new Participant(player, "Human", ParticipantRole.LOBBY, true, true, 0, -1, 0, false)), true, false, null);
+        try (var store = new SqliteRoundStore(database)) {
+            store.savePendingRules(rules.encode().getBytes(java.nio.charset.StandardCharsets.UTF_8), UUID.randomUUID(), "fixture");
+            store.commit(new SnapshotWrite(initial.roundId(), -1, 0, RoundSnapshotCodec.encode(initial), UUID.randomUUID(), "ROUND_CREATED"));
+        }
+        var callbacks = new LinkedBlockingQueue<Runnable>(); var output = new RecordingSource();
+        try (var session = new P1LobbySession(database, () -> 0, callbacks::add)) {
+            pumpUntil(test, callbacks, () -> session.state() == P1LobbySession.State.OPEN && !session.mutationPending());
+            var commands = new P1AdminCommands(ignored -> session, ignored -> Optional.empty(), (ignored, failure) -> {});
+            var dispatcher = new CommandDispatcher<CommandSourceStack>();
+            dispatcher.register(commands.attach(Commands.literal("hardrush")));
+            var source = server.createCommandSourceStack().withSource(output); var admin = permission(source, 3);
+            execute(dispatcher, admin, "hardrush admin start 适配器未就绪");
+            test.assertFalse(session.mutationPending(), "Unready adapters reject direct start");
+            test.assertValueEqual(session.snapshot().orElseThrow().phase(), RoundPhase.WAITING, "Rejected start preserves phase");
+            session.adaptersReady(initial.roundId()); pumpUntil(test, callbacks, () -> !session.mutationPending());
+            session.onOnline(player, "Human", true); pumpUntil(test, callbacks, () -> !session.mutationPending());
+            execute(dispatcher, admin, "hardrush admin start 直接提前开赛");
+            pumpUntil(test, callbacks, () -> !session.mutationPending());
+            test.assertValueEqual(session.snapshot().orElseThrow().phase(), RoundPhase.RUNNING, "One start command begins the round");
+            execute(dispatcher, admin, "hardrush admin abort 直接中止");
+            test.assertTrue(session.competitionLocked(), "Abort locks competition at command acceptance");
+            pumpUntil(test, callbacks, () -> !session.mutationPending());
+            test.assertValueEqual(session.snapshot().orElseThrow().phase(), RoundPhase.ROTATING, "One abort command starts safe rotation");
+            var audits = query(test, callbacks, session.audits(initial.roundId(), 20, 0));
+            test.assertValueEqual(audits.size(), 2, "Start and abort each commit one audit");
+            test.assertFalse(output.hasTicketAfter(0), "Start and abort never request confirmation");
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks = 200)
+    public void retryWorldExecutesDirectlyAfterItsAuditAndPreservesRoundIdentity(GameTestHelper test) throws Exception {
+        var server = test.getLevel().getServer();
+        Path database = Files.createTempDirectory("hardrush-retry-command-").toRealPath().resolve("rounds.sqlite");
+        seedHistoricalFixture(database);
+        var callbacks = new LinkedBlockingQueue<Runnable>(); var output = new RecordingSource();
+        var retries = new java.util.concurrent.atomic.AtomicInteger();
+        try (var session = new P1LobbySession(database, () -> 0, callbacks::add)) {
+            pumpUntil(test, callbacks, () -> session.state() == P1LobbySession.State.OPEN && !session.mutationPending());
+            var round = session.snapshot().orElseThrow();
+            var commands = new P1AdminCommands(ignored -> session, ignored -> Optional.of("测试世界准备失败"),
+                    (ignored, failure) -> retries.incrementAndGet());
+            var dispatcher = new CommandDispatcher<CommandSourceStack>();
+            dispatcher.register(commands.attach(Commands.literal("hardrush")));
+            var source = server.createCommandSourceStack().withSource(output); var admin = permission(source, 3);
+            test.assertValueEqual(commands.current(permission(source, 2), dev.hardrush.core.admin.AdminAction.RETRY, "越权"), 0,
+                    "Legacy retry handler also checks permission");
+            execute(dispatcher, admin, "hardrush admin retry-world 直接重试原世界");
+            test.assertValueEqual(retries.get(), 0, "Adapter cannot retry before the durable audit callback");
+            pumpUntil(test, callbacks, () -> !session.mutationPending());
+            test.assertValueEqual(retries.get(), 1, "One retry command directly invokes the adapter once");
+            test.assertValueEqual(session.snapshot().orElseThrow().roundId(), round.roundId(), "Retry preserves round identity");
+            test.assertValueEqual(session.snapshot().orElseThrow().seed(), round.seed(), "Retry preserves seed");
+            test.assertValueEqual(query(test, callbacks, session.audits(round.roundId(), 20, 0)).getFirst().action(), "RETRY_WORLD",
+                    "Retry records its durable intent");
+            test.assertFalse(output.hasTicketAfter(0), "Retry never requests confirmation");
         }
         test.succeed();
     }
@@ -215,7 +257,7 @@ public final class P1AdminCommandGameTest {
             parses(test, dispatcher, admin, "hardrush admin grant-revival Monster 0 测试", false);
             parses(test, dispatcher, admin, "hardrush admin grant-revival Monster -1 测试", false);
             execute(dispatcher, admin, "hardrush admin grant-revival Unknown 1 测试");
-            test.assertTrue(output.last().contains("玩家不存在"), "Unknown target must not create a ticket");
+            test.assertTrue(output.last().contains("玩家不存在"), "Unknown target is rejected");
             parses(test, dispatcher, reader, "hardrush admin grant-revival Monster 3 越权", false);
             int firstMessage = output.messages.size();
             execute(dispatcher, admin, "hardrush admin grant-revival Monster 3 管理补偿");
@@ -241,7 +283,6 @@ public final class P1AdminCommandGameTest {
             test.assertValueEqual(audits.size(), 2, "Only the two successful grants are audited");
             test.assertTrue(audits.stream().allMatch(a -> a.action().equals("GRANT_REVIVAL") && a.afterValue().contains("player=" + target)),
                     "Audit records the grant target and resulting balance");
-            commands.forget(server);
         }
         test.succeed();
     }
@@ -316,12 +357,6 @@ public final class P1AdminCommandGameTest {
         String last() { return messages.getLast(); }
         boolean hasTicketAfter(int first) {
             return messages.subList(first, messages.size()).stream().anyMatch(value -> value.contains("/hardrush admin confirm "));
-        }
-        UUID lastTicket() {
-            var preview = messages.stream().filter(value -> value.contains("/hardrush admin confirm "))
-                    .reduce((first, second) -> second).orElseThrow();
-            return UUID.fromString(preview.substring(preview.lastIndexOf("/hardrush admin confirm ")
-                    + "/hardrush admin confirm ".length()).strip());
         }
     }
 }
