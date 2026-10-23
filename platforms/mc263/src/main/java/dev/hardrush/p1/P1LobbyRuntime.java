@@ -296,7 +296,7 @@ public final class P1LobbyRuntime {
                         }
                     }
                     if (participant != null && participant.role() == ParticipantRole.HUMAN_ACTIVE
-                            && !participant.online() && worlds != null && worlds.ready() && P1PlayerProfiles.isLocked(player)) {
+                            && worlds != null && worlds.ready() && P1PlayerProfiles.isLocked(player)) {
                         if (!profiles.admit(player, round, worlds.level(Level.OVERWORLD), Vec3.atBottomCenterOf(worlds.spawn()),
                                 level -> P1RoundWorldBundle.sameRound(activeWorlds.level(Level.OVERWORLD), level))) continue;
                         names.put(player.getUUID(), player.getScoreboardName());

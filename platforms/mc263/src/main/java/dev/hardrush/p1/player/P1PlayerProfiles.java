@@ -811,6 +811,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
             player.onUpdateAbilities();
             player.inventoryMenu.sendAllDataToRemote();
             server.getPlayerList().sendActivePlayerEffects(player);
+            if (!entry.fresh) player.sendSystemMessage(Component.literal("已恢复本轮人类身份，返回离线前的位置继续游戏。"));
             return true;
         } catch (RuntimeException error) { fail(entry, error); moveToLobby(player); return false; }
     }
@@ -922,6 +923,10 @@ public final class P1PlayerProfiles implements AutoCloseable {
             }
             try {
                 resetForNewRound(entry.player, target);
+                if (entry.source.isPresent() && !entry.source.get().equals(target)) {
+                    entry.player.sendSystemMessage(Component.literal("上一轮已结束，当前是第 " + target.sequence()
+                            + " 轮；旧轮档案已封存，请在大厅参加新一轮。"));
+                }
                 ((ProfileTagged) entry.player).hardrush$suspensionId(UUID.randomUUID().toString());
                 entry.resume = capture(entry.player, true);
                 entry.fresh = true;
