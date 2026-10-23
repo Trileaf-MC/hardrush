@@ -15,13 +15,13 @@ public abstract class SummonTargetMixin {
     private void onlyHumans(LivingEntity target, CallbackInfo callback) {
         var mob=(Mob)(Object)this; var owner=MonsterRoles.summonOwner(mob);
         if (owner!=null && target!=null && mob.level() instanceof ServerLevel level
-                && (!MonsterRoles.legalTarget(owner,level,target) || P2CombatRuntime.reject(mob,target))) callback.cancel();
+                && (!MonsterRoles.legalHumanTarget(owner,level,target) || P2CombatRuntime.reject(mob,target))) callback.cancel();
     }
     @Inject(method="getTarget", at=@At("RETURN"), cancellable=true)
     private void forgetInvalid(CallbackInfoReturnable<LivingEntity> callback) {
         var mob=(Mob)(Object)this; var owner=MonsterRoles.summonOwner(mob); var target=callback.getReturnValue();
         if (owner!=null && target!=null && mob.level() instanceof ServerLevel level
-                && (!MonsterRoles.legalTarget(owner,level,target) || P2CombatRuntime.reject(mob,target))) {
+                && (!MonsterRoles.legalHumanTarget(owner,level,target) || P2CombatRuntime.reject(mob,target))) {
             mob.setTarget(null); callback.setReturnValue(null);
         }
     }

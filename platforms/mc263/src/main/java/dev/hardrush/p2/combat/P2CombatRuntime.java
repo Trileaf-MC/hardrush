@@ -106,6 +106,14 @@ public final class P2CombatRuntime {
         var round = access == null ? null : access.snapshot().orElse(null);
         if (!frozen.admitted() || round == null || !round.roundId().equals(frozen.roundId())
                 || round.phase() != RoundPhase.RUNNING || access.competitionLocked() || !access.formalLevel(level)) return true;
+        if (target instanceof net.minecraft.world.entity.Mob mob) {
+            return dev.hardrush.p0.monster.MonsterRoles.summonOwner(entity) != null
+                    || mob instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon
+                    || dev.hardrush.p0.monster.MonsterRoles.isNativeBody(mob)
+                    || dev.hardrush.p0.monster.MonsterRoles.summonOwner(mob) != null
+                    || frozen.ownerId().equals(mob.getUUID()) || !mob.isAlive() || mob.isRemoved() || mob.isInvulnerable()
+                    || P2ProtectionRuntime.protectedEntity(mob) || P2ProtectionRuntime.protectedEntity(entity);
+        }
         if (!(target instanceof ServerPlayer player) || !player.isAlive() || player.isRemoved() || player.isSpectator()
                 || level.getServer().getPlayerList().getPlayer(player.getUUID()) != player
                 || player.getAbilities().invulnerable || P1PlayerProfiles.isLocked(player)
