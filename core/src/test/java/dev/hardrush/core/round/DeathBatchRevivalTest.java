@@ -472,7 +472,7 @@ class DeathBatchRevivalTest {
         apply(engine, transition);
         assertEquals(RoundPhase.SETTLING, engine.view().phase());
         assertEquals(completion, engine.view().result());
-        assertEquals(180_000, engine.view().remainingPhaseMillis());
+        assertEquals(90_000, engine.view().remainingPhaseMillis());
         assertTrue(engine.view().participants().get(human).role().isMonster());
         assertFalse(engine.view().participants().get(monster).revivalEntitled());
     }

@@ -8,6 +8,7 @@ import dev.hardrush.core.api.ReplayPort;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.RoundSnapshot;
+import dev.hardrush.core.round.RoundEngine;
 import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.p1.player.P1PlayerProfiles;
@@ -551,7 +552,9 @@ public final class P1LobbyRuntime {
             var winner = after.result().winner() == null ? "胜者待核验"
                     : dev.hardrush.core.book.SafeBookText.literal(after.participants().get(after.result().winner()).name(), 64);
             server.getPlayerList().broadcastSystemMessage(Component.literal("本轮已通关：" + winner
-                    + "，有效挑战 " + after.challengeMillis() + " ms。末地庆祝最多 3 分钟，可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。"), false);
+                    + "，有效挑战 " + after.challengeMillis() + " ms。末地庆祝最多 "
+                    + (RoundEngine.successCelebrationMillis(after.rules()) + 999) / 1000
+                    + " 秒（现实时间），可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。"), false);
         }
         if (after.phase() != RoundPhase.RUNNING && after.phase() != RoundPhase.RESCUE) return;
         var worlds = WORLDS.get(server);

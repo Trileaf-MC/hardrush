@@ -18,6 +18,12 @@ import java.util.UUID;
 public final class RoundEngine {
     public static final long MAX_SUCCESS_CELEBRATION_MILLIS = 180_000;
     public static final long MONSTER_COOLDOWN_NANOS = 30_000_000_000L;
+
+    /** Live server milliseconds, shared by every completion path and its player-facing duration. */
+    public static long successCelebrationMillis(RulesConfig rules) {
+        return Math.min(rules.successCelebrationMillis(), MAX_SUCCESS_CELEBRATION_MILLIS);
+    }
+
     private final MonotonicClock clock;
     private RoundSnapshot committed;
     private RoundTransition pending;
@@ -318,7 +324,7 @@ public final class RoundEngine {
         }
         if (completion != null) {
             return proposal(eventId, "DEATH_BATCH", before, RoundPhase.SETTLING,
-                    millisToNanos(before.rules().successCelebrationMillis()), withoutEntitlements(players), completion, false);
+                    millisToNanos(successCelebrationMillis(before.rules())), withoutEntitlements(players), completion, false);
         }
         if (before.rules().mode() == GameMode.HARDCORE && !hasHuman(players)) {
             if (players.values().stream().anyMatch(p -> p.role().isMonster() && p.revivalEntitled())) {
@@ -533,7 +539,7 @@ public final class RoundEngine {
             }
         }
         long duration = switch (result.kind()) {
-            case COMPLETED -> Math.min(before.rules().successCelebrationMillis(), MAX_SUCCESS_CELEBRATION_MILLIS);
+            case COMPLETED -> successCelebrationMillis(before.rules());
             case FAILED -> before.rules().failureDisplayMillis();
             case ABORTED -> 0;
         };
