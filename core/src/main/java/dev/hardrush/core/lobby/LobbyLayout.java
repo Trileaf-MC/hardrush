@@ -36,8 +36,9 @@ public final class LobbyLayout {
         };
     }
     public static List<Point> displaySlots() {
+        // Face north toward the passage and monster role models (negative Z).
         return java.util.stream.IntStream.range(0, DISPLAY_CAPACITY)
-                .mapToObj(i -> new Point(15 + i % 5 * 3, 8 + i / 5 * 3, 90)).toList();
+                .mapToObj(i -> new Point(15 + i % 5 * 3, 8 + i / 5 * 3, 180)).toList();
     }
     private LobbyLayout() {}
 }
