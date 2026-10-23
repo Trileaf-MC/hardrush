@@ -14,6 +14,7 @@
     ],
     "fabric-gametest": [
       "dev.hardrush.gametest.HardRushServerGameTest",
+      "dev.hardrush.gametest.PortalActivationGameTest",
       "dev.hardrush.gametest.HardRushWorldBoundaryGameTest",
       "dev.hardrush.gametest.MonsterAppearanceGameTest",
       "dev.hardrush.gametest.MonsterRoleGameTest",
