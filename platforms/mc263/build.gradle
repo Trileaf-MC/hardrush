@@ -478,10 +478,50 @@ tasks.named('runGameTest') {
 }
 
 // A single production runtime suite owns each JVM; every launch receives a new directory.
-def lobbyRuntimeSuites = ['hardrushP1TenRounds', 'hardrushCelebration', 'hardrushP3Storage', 'hardrushP3Recovery',
+def lobbyRuntimeSuites = ['hardrushParticipationExit', 'hardrushAdminSpectator', 'hardrushP1TenRounds', 'hardrushCelebration', 'hardrushP3Storage', 'hardrushP3Recovery',
     'hardrushP2Identity', 'hardrushP2Lobby', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt', 'hardrushFullFlow', 'hardrushStabilization']
 if (lobbyRuntimeSuites.count { providers.gradleProperty(it).orNull == 'true' } > 1)
     throw new GradleException('Production runtime suites must use separate isolated JVMs')
+def participationExitRunDir = rootProject.file(".local/participation-exit/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushParticipationExit').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true')
+            throw new GradleException('Participation exit regression requires -PhardrushP1=true')
+        vmArg '-Dhardrush.lobby.testParticipationExit=true'
+        vmArg '-Dhardrush.p1.initialMode=normal'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:participation_exit_game_test*'
+        runDir participationExitRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushParticipationExit').orNull == 'true') {
+        doFirst {
+            participationExitRunDir.mkdirs()
+            copy { from rootProject.file('.local/server-p0/eula.txt'); into participationExitRunDir }
+            logger.lifecycle("Isolated participation exit storage: ${participationExitRunDir}")
+        }
+    }
+}
+def adminSpectatorRunDir = rootProject.file(".local/admin-spectator/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushAdminSpectator').orNull == 'true') {
+        if (providers.gradleProperty('hardrushP1').orNull != 'true')
+            throw new GradleException('Administrative spectator regression requires -PhardrushP1=true')
+        vmArg '-Dhardrush.lobby.testAdminSpectator=true'
+        vmArg '-Dhardrush.p1.initialMode=normal'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:administrative_spectator_game_test*'
+        runDir adminSpectatorRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushAdminSpectator').orNull == 'true') {
+        doFirst {
+            adminSpectatorRunDir.mkdirs()
+            copy { from rootProject.file('.local/server-p0/eula.txt'); into adminSpectatorRunDir }
+            logger.lifecycle("Isolated administrative spectator storage: ${adminSpectatorRunDir}")
+        }
+    }
+}
 def personalHuntRunDir = rootProject.file(".local/personal-hunt/${UUID.randomUUID()}")
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushPersonalHunt').orNull == 'true') {

@@ -102,6 +102,7 @@ public final class P2ProtectionRuntime {
     }
     /** All movements, including passengers and teleport targets, use the same durable identity check. */
     public static boolean rejectMove(Entity entity, ServerLevel destination, Vec3 target) {
+        if (entity instanceof ServerPlayer player && P1PlayerProfiles.rejectAdministrativeSpectatorMove(player, destination)) return true;
         if (RELOCATION.get() > 0) return false;
         var binding = BINDINGS.get(destination.getServer());
         if (binding == null) return false;
@@ -149,6 +150,12 @@ public final class P2ProtectionRuntime {
     }
     /** Network rejection always resynchronizes the client instead of allowing a predicted illegal position. */
     public static void correct(ServerPlayer player) {
+        // Spectators may hover or occupy solid blocks; rejection must not require a survival landing.
+        if (P1PlayerProfiles.isAdministrativeSpectator(player)) {
+            stopUnsafeMotion(player);
+            if (player.connection != null) player.connection.teleport(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+            return;
+        }
         var binding = BINDINGS.get(player.level().getServer());
         var state = binding == null ? null : binding.players.get(player.getUUID());
         if (state != null && state.player != player) state = null;

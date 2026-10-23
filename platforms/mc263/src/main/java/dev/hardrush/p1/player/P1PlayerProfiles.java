@@ -26,6 +26,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -124,6 +126,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
     }
 
     public static boolean isLocked(ServerPlayer player) {
+        if (dev.hardrush.p1.participation.P1ParticipationControl.pending(player)) return true;
         if (dev.hardrush.p1.storage.P1FullCheckpointRuntime.saving(player.level().getServer())) return true;
         if (!Boolean.getBoolean("hardrush.p1.enabled")) return false;
         var service = SERVICES.get(player.level().getServer());
@@ -133,10 +136,12 @@ public final class P1PlayerProfiles implements AutoCloseable {
     }
 
     public static boolean canMoveInLobby(ServerPlayer player) {
+        if (dev.hardrush.p1.participation.P1ParticipationControl.pending(player)) return false;
         if (dev.hardrush.p1.storage.P1FullCheckpointRuntime.saving(player.level().getServer())) return false;
         var service = SERVICES.get(player.level().getServer());
         var entry = service == null ? null : service.players.get(player.getUUID());
         return entry != null && entry.player == player && !service.closed && !entry.admitted
+                && (!dev.hardrush.p1.participation.P1ParticipationControl.disabled(player.level().getServer(), player.getUUID()) || entry.exclusionInitialized)
                 && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit
                 && player.isAlive() && player.gameMode.getGameModeForPlayer() == GameType.ADVENTURE
                 && dev.hardrush.p1.P1LobbyRuntime.lobbyActivityAllowed(player);
@@ -146,15 +151,84 @@ public final class P1PlayerProfiles implements AutoCloseable {
     public static boolean verifiedLobbyBody(ServerPlayer player) {
         var service = SERVICES.get(player.level().getServer());
         var entry = service == null ? null : service.players.get(player.getUUID());
-        return entry != null && entry.player == player && !service.closed && !entry.admitted
+        return entry != null && entry.player == player && !service.closed && !entry.admitted && !entry.adminSpectating
                 && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit
                 && entry.ready && entry.problem.isEmpty() && entry.diskSafe && player.isAlive()
                 && dev.hardrush.p1.world.P1LobbyWorld.isLobby(player.level());
     }
 
     public static boolean simulationFrozen(ServerPlayer player) {
+        if (dev.hardrush.p1.participation.P1ParticipationControl.pending(player)) return true;
         if (dev.hardrush.p1.storage.P1FullCheckpointRuntime.saving(player.level().getServer())) return true;
-        return isLocked(player) && !canMoveInLobby(player);
+        return isLocked(player) && !canMoveInLobby(player) && !isAdministrativeSpectator(player);
+    }
+
+    private static boolean administrativeBody(P1PlayerProfiles service, Entry entry, ServerPlayer player) {
+        return service != null && !service.closed && entry != null && entry.player == player && entry.connected
+                && entry.ready && entry.diskSafe && entry.problem.isEmpty() && !entry.admitted
+                && (!dev.hardrush.p1.participation.P1ParticipationControl.disabled(player.level().getServer(), player.getUUID()) || entry.exclusionInitialized)
+                && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit && player.isAlive();
+    }
+
+    /** Commands or committed withdrawals grant observation; the target's OP status never implies a grant. */
+    public static boolean isAdministrativeSpectator(ServerPlayer player) {
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        return administrativeBody(service, entry, player) && entry.adminSpectating && player.isSpectator()
+                && dev.hardrush.p1.P1LobbyRuntime.administrativeSpectatingAllowed(player, player.level());
+    }
+
+    public static boolean administrativeCommandAllowed(ServerPlayer player, String command) {
+        if (!Commands.hasPermission(Commands.LEVEL_GAMEMASTERS).test(player.createCommandSourceStack())
+                || dev.hardrush.p1.storage.P1FullCheckpointRuntime.saving(player.level().getServer())) return false;
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        if (!administrativeBody(service, entry, player)
+                || !dev.hardrush.p1.P1LobbyRuntime.administrativeSpectatingAllowed(player, player.level())) return false;
+        var words = command.strip().split("\\s+", 3);
+        return words[0].equals("tp") || words[0].equals("teleport")
+                || words[0].equals("gamemode") && words.length > 1
+                    && (words[1].equals("spectator") || words[1].equals("adventure"));
+    }
+
+    /** Preserve vanilla command permission checks and feedback while keeping admission sealed. */
+    public static Optional<Boolean> administrativeGameMode(CommandSourceStack source, ServerPlayer player, GameType mode) {
+        if (!Boolean.getBoolean("hardrush.p1.enabled")) return Optional.empty();
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        if (entry == null || entry.player != player || mode != GameType.SPECTATOR && !entry.adminSpectating) return Optional.empty();
+        if (!Commands.hasPermission(Commands.LEVEL_GAMEMASTERS).test(source)
+                || dev.hardrush.p1.storage.P1FullCheckpointRuntime.saving(player.level().getServer())) {
+            source.sendFailure(Component.literal("当前权限或保存状态不允许切换管理旁观。"));
+            return Optional.of(false);
+        }
+        if (mode == GameType.SPECTATOR) {
+            if (!administrativeBody(service, entry, player)
+                    || !dev.hardrush.p1.P1LobbyRuntime.administrativeSpectatingAllowed(player, player.level())) {
+                source.sendFailure(Component.literal("管理旁观仅允许本轮未参赛且未准备，或已退出／取消资格的玩家；档案与轮次均须核验就绪。"));
+                return Optional.of(false);
+            }
+            boolean previouslyGranted = entry.adminSpectating;
+            closeSuspendedContainer(player);
+            entry.adminSpectating = true;
+            return Optional.of(player.setGameMode(GameType.SPECTATOR) || !previouslyGranted);
+        }
+        if (mode != GameType.ADVENTURE) {
+            source.sendFailure(Component.literal("请用 /gamemode adventure <玩家> 结束管理旁观并返回大厅，再通过正常入口参赛。"));
+            return Optional.of(false);
+        }
+        entry.adminSpectating = false;
+        service.moveToLobby(player);
+        return Optional.of(true);
+    }
+
+    public static boolean rejectAdministrativeSpectatorMove(ServerPlayer player, ServerLevel destination) {
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        // Always permit the lifecycle's forced return, including failed/rotating generations.
+        return entry != null && entry.player == player && entry.adminSpectating && destination != service.lobby.get()
+                && (!administrativeBody(service, entry, player)
+                    || !dev.hardrush.p1.P1LobbyRuntime.administrativeSpectatingAllowed(player, destination));
     }
 
     /** Before durable suspension exists, retain vanilla player/advancement files rather than saving lobby coordinates. */
@@ -283,6 +357,87 @@ public final class P1PlayerProfiles implements AutoCloseable {
             } else onMonsterRespawn(player, player, round);
             return true;
         } catch (RuntimeException error) { fail(entry, error); moveToLobby(player); return false; }
+    }
+
+    /** Replace the competition body only after its excluded role is durable; no native death is created. */
+    public void reconcileParticipationExit(ServerPlayer player, RoundSnapshot round) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        var participant = round.participants().get(player.getUUID());
+        if (entry == null || entry.player != player || participant == null || !participant.role().isExcluded()) return;
+        if (entry.exclusionInitialized && entry.exclusionRole != participant.role()) {
+            entry.exclusionRole = participant.role();
+            entry.adminSpectating = false;
+            entry.exitObservationApplied = true;
+            moveToLobby(player);
+        }
+        if (!entry.exclusionInitialized) {
+            if (player.isDeadOrDying()) {
+                MONSTER_RESPAWN.set(this);
+                try {
+                    var replacement = server.getPlayerList().respawn(player, false, net.minecraft.world.entity.Entity.RemovalReason.KILLED);
+                    replacement.connection.player = replacement;
+                    replacement.connection.resetPosition();
+                    ((PlayerRespawnConnectionAccessor) replacement.connection).hardrush$restartClientLoadTimerAfterRespawn();
+                    onExcludedRespawn(player, replacement, round);
+                } finally { MONSTER_RESPAWN.remove(); }
+            } else onExcludedRespawn(player, player, round);
+            return;
+        }
+        if (participant.role() == ParticipantRole.WITHDRAWN && !entry.exitObservationApplied
+                && isReady(player.getUUID(), round)
+                && dev.hardrush.p1.P1LobbyRuntime.administrativeSpectatingAllowed(player, player.level())) {
+            entry.exitObservationApplied = true;
+            entry.adminSpectating = true;
+            player.setGameMode(GameType.SPECTATOR);
+            player.sendSystemMessage(Component.literal("已进入观战；本轮不能重新参赛，下轮恢复资格。"));
+        }
+    }
+
+    public void onExcludedRespawn(ServerPlayer previous, ServerPlayer replacement, RoundSnapshot round) {
+        requireMainThread();
+        var old = players.get(previous.getUUID());
+        if (old != null && old.player == replacement && old.exclusionInitialized) return;
+        var p = round.participants().get(replacement.getUUID());
+        if (old == null || p == null || !p.role().isExcluded() || !generation(round).equals(old.target))
+            throw new IllegalStateException("退出身体缺少已提交的本轮身份");
+        var sealed = old.admitted ? capture(previous, false)
+                : old.resume != null ? old.resume.copy() : old.original.copy();
+        replacement.stopUsingItem();
+        clearMonsterLobbyState(replacement);
+        resetHumanAttributes(replacement);
+        replacement.setAbsorptionAmount(0);
+        ((PlayerProfileResetAccessor) replacement).hardrush$setFoodData(new FoodData());
+        replacement.setCamera(replacement);
+        replacement.setPermanentlyInvulnerable(false);
+        replacement.setNoGravity(false);
+        for (var pearl : Set.copyOf(replacement.getEnderPearls())) pearl.discard();
+        ((ProfileTagged) replacement).hardrush$generation(old.target);
+        ((ProfileTagged) replacement).hardrush$lifeSequence(p.lifeSequence());
+        ((ProfileTagged) replacement).hardrush$isolated(true);
+        ((ProfileTagged) replacement).hardrush$respawnPermitted(false);
+        ((ProfileTagged) replacement).hardrush$suspensionId(UUID.randomUUID().toString());
+        moveToLobby(replacement);
+        var rebound = new Entry(replacement, Optional.of(old.target), false, capture(replacement, false));
+        rebound.target = old.target;
+        rebound.exclusionInitialized = true;
+        rebound.exclusionRole = p.role();
+        players.put(replacement.getUUID(), rebound);
+        var snapshot = rebound.original.copy();
+        supply(() -> {
+            var store = journal.join();
+            store.sealParticipationExit(replacement.getUUID(), rebound.target, encode(sealed));
+            store.suspend(replacement.getUUID(), rebound.target, encode(snapshot));
+            return null;
+        }).whenComplete((ignored, error) -> callbacks.execute(() -> {
+            if (!current(rebound, generation(round))) return;
+            if (error != null) { fail(rebound, error); return; }
+            rebound.resume = snapshot;
+            rebound.ready = true;
+            rebound.diskSafe = true;
+        }));
+        replacement.resetSentInfo();
+        replacement.inventoryMenu.sendAllDataToRemote();
     }
 
     /** A committed sortie opens only this monster body; never restore a human inventory. */
@@ -554,6 +709,11 @@ public final class P1PlayerProfiles implements AutoCloseable {
                 moveToLobby(entry.player);
             }
             if (entry.target == null && entry.problem.isEmpty()) prepare(entry, target);
+            if (entry.adminSpectating) {
+                if (isAdministrativeSpectator(entry.player)) continue;
+                entry.adminSpectating = false;
+                moveToLobby(entry.player);
+            }
             // A new human life may already be at its round spawn while its journal is saving.
             // Only a completed profile can be reconciled as a movable lobby body.
             if (entry.ready && !entry.admitted && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit
@@ -916,6 +1076,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
     public void returnToLobby(ServerPlayer player) {
         if (recoveryPaused) { moveToLobby(player); return; }
         var entry = players.get(player.getUUID());
+        if (entry != null && entry.player == player) entry.adminSpectating = false;
         if (entry != null && entry.player == player && !entry.admitted) {
             if (player.level() != lobby.get()) moveToLobby(player);
             else applyLobbyMode(player);
@@ -1309,6 +1470,10 @@ public final class P1PlayerProfiles implements AutoCloseable {
         boolean ready;
         boolean fresh;
         boolean admitted;
+        boolean adminSpectating;
+        boolean exclusionInitialized;
+        ParticipantRole exclusionRole;
+        boolean exitObservationApplied;
         boolean awaitingRespawn;
         int expectedRespawnLife;
         boolean deathScreenPermit;

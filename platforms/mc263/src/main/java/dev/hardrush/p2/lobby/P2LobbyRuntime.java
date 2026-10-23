@@ -136,6 +136,7 @@ public final class P2LobbyRuntime {
                 return context == LobbyContext.COMPETITION ? available(player) : contextAvailable(player, binding, context);
             }
             @Override public List<P2LobbyUi.Button> buttons(ServerPlayer player, LobbyContext context) {
+                if (context == LobbyContext.WITHDRAWAL) return dev.hardrush.p1.participation.P1ParticipationControl.withdrawalButtons(player);
                 if (context == LobbyContext.COMPETITION) return buttons(player);
                 if (context == LobbyContext.ENTRY) return dev.hardrush.p1.lobby.P1HumanEntry.gateButtons(player);
                 if (context == LobbyContext.REVIVAL) return altarButtons(player, binding);
@@ -154,7 +155,11 @@ public final class P2LobbyRuntime {
                         new P2LobbyUi.Button(Items.PAPER, "离线人类保留资格并暂停计时；无人类有资格时60秒救场", "info", ""));
             }
             @Override public void act(ServerPlayer player, UUID round, LobbyContext context, String action, String value) {
-                if (context == LobbyContext.ENTRY && action.equals("enter")) dev.hardrush.p1.lobby.P1HumanEntry.confirm(player, round);
+                if (context == LobbyContext.WITHDRAWAL) {
+                    if (action.equals("withdraw-confirm")) dev.hardrush.p1.participation.P1ParticipationControl.confirmWithdrawal(player, round, value);
+                    else if (action.equals("withdraw-cancel")) player.closeContainer();
+                }
+                else if (context == LobbyContext.ENTRY && action.equals("enter")) dev.hardrush.p1.lobby.P1HumanEntry.confirm(player, round);
                 else if (context == LobbyContext.REVIVAL && action.equals("revive")) {
                     var p = session.snapshot().orElseThrow().participants().get(player.getUUID());
                     if (p != null && value.equals(p.lifeSequence() + ":" + p.monsterDeploymentSequence())) request(player, round, action, value);
@@ -185,6 +190,7 @@ public final class P2LobbyRuntime {
     private static boolean contextAvailable(ServerPlayer player, Binding b, LobbyContext context) {
         boolean verified = current(player, b) && P1PlayerProfiles.verifiedLobbyBody(player);
         return switch (context) {
+            case WITHDRAWAL -> dev.hardrush.p1.participation.P1ParticipationControl.canWithdraw(player);
             case RULES -> verified;
             case ENTRY -> dev.hardrush.p1.lobby.P1HumanEntry.gateAvailable(player);
             case HISTORY -> verified;
@@ -734,6 +740,7 @@ public final class P2LobbyRuntime {
     }
     private static String identityName(ParticipantRole role) {
         return switch (role) {
+            case WITHDRAWN -> "已主动退出"; case DISQUALIFIED -> "本轮资格已取消";
             case LOBBY -> "大厅玩家"; case HUMAN_ACTIVE -> "人类"; case HUMAN_RESPAWNING -> "等待重生";
             case MONSTER_LOBBY -> "大厅怪物"; case MONSTER_DEPLOYED -> "外出怪物"; case TRANSITION_PENDING -> "转换中";
         };

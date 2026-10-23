@@ -86,6 +86,7 @@ public final class P1LobbyRuntime {
     public static void initialize() {
         if (initialized) return;
         initialized = true;
+        dev.hardrush.p1.participation.P1ParticipationControl.registerCommands();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             if (!Boolean.getBoolean("hardrush.p1.enabled")) return;
             var recovery = new dev.hardrush.p1.storage.P1FullCheckpoint(server.getWorldPath(LevelResource.ROOT)).restore();
@@ -116,6 +117,7 @@ public final class P1LobbyRuntime {
                         BOOK_ATTEMPTS.get(server).clear();
                         dev.hardrush.p1.storage.P1FullCheckpointRuntime.close(server);
                     });
+            dev.hardrush.p1.participation.P1ParticipationControl.configure(server, session, profiles);
             P2LobbyRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
             dev.hardrush.p1.record.P1Library.configure(server, session);
             dev.hardrush.p1.lobby.P1HumanEntry.configure(server, session, profiles, () -> WORLDS.get(server));
@@ -257,6 +259,7 @@ public final class P1LobbyRuntime {
                 var profiles = PROFILES.get(server);
                 var activeWorlds = worlds;
                 profiles.tick(round);
+                dev.hardrush.p1.participation.P1ParticipationControl.reconcile(server);
                 refreshTab(server, false);
                 if (worlds != null && worlds.ready() && lobby.ready()) session.adaptersReady(round.roundId());
                 if (round.phase() == RoundPhase.ROTATING) {
@@ -370,7 +373,10 @@ public final class P1LobbyRuntime {
             var session = SESSIONS.get(newPlayer.level().getServer());
             var round = session == null ? null : session.snapshot().orElse(null);
             var participant = round == null ? null : round.participants().get(newPlayer.getUUID());
-            if (participant != null && participant.role() == ParticipantRole.MONSTER_LOBBY) {
+            if (participant != null && participant.role().isExcluded()) {
+                var profiles = PROFILES.get(newPlayer.level().getServer());
+                if (profiles != null) profiles.onExcludedRespawn(oldPlayer, newPlayer, round);
+            } else if (participant != null && participant.role() == ParticipantRole.MONSTER_LOBBY) {
                 var profiles = PROFILES.get(newPlayer.level().getServer());
                 if (profiles != null) profiles.onMonsterRespawn(oldPlayer, newPlayer, round);
             } else if (participant != null && P1RoundWorldBundle.owns(newPlayer.level())) {
@@ -421,6 +427,7 @@ public final class P1LobbyRuntime {
             try { session.close(); }
             catch (Exception error) { LOGGER.error("P1 stop flush failed; retain database and inspect diagnostics", error); }
             SESSIONS.remove(server);
+            dev.hardrush.p1.participation.P1ParticipationControl.close(server);
             dev.hardrush.p1.storage.P1FullCheckpointRuntime.close(server);
             P2ProtectionRuntime.unconfigure(server);
             P2LobbyRuntime.unconfigure(server);
@@ -545,6 +552,18 @@ public final class P1LobbyRuntime {
     }
 
     private static void applyPlayers(MinecraftServer server, RoundSnapshot before, RoundSnapshot after) {
+        dev.hardrush.p1.participation.P1ParticipationControl.reconcile(server);
+        for (var p : after.participants().values()) {
+            var previous = before.participants().get(p.id());
+            var player = server.getPlayerList().getPlayer(p.id());
+            if (player != null && !p.role().isExcluded() && p.role() != ParticipantRole.LOBBY
+                    && (previous == null || previous.role() != p.role() || !previous.online() && p.online()))
+                dev.hardrush.p1.participation.P1ParticipationControl.offerWithdrawal(player);
+            if (player != null && p.role().isExcluded() && (previous == null || previous.role() != p.role()))
+                player.sendSystemMessage(Component.literal(p.role() == ParticipantRole.DISQUALIFIED
+                        ? "你的本轮参赛资格已取消；本轮不能重新入场、追猎或复生，下轮恢复资格。"
+                        : "你已主动退出本轮；本轮不能重新参赛，下轮恢复资格。"));
+        }
         refreshTab(server, true);
         dev.hardrush.p1.pact.DawnPactRuntime.tick(server);
         if (before.result() == null && P1CelebrationRuntime.successful(after)) P1CelebrationRuntime.start(server, after);
@@ -565,7 +584,8 @@ public final class P1LobbyRuntime {
                     if (profiles.manages(player)) profiles.returnToLobby(player);
                 }
                 server.getPlayerList().broadcastSystemMessage(Component.literal("本轮" + (after.result().kind() == dev.hardrush.core.round.RoundResult.Kind.FAILED ? "挑战失败" : "已中止") + "，原因："
-                        + dev.hardrush.core.book.SafeBookText.literal(after.result().reason(), 512)
+                        + dev.hardrush.core.book.SafeBookText.literal(after.result().reason().equals("NO_ELIGIBLE_PARTICIPANTS")
+                            ? "没有仍具参赛资格的人类或可复生怪物" : after.result().reason(), 512)
                         + "。已返回大厅，安全释放旧世界后轮换。"), false);
                 return;
             }
@@ -674,6 +694,24 @@ public final class P1LobbyRuntime {
                 && profiles != null && profiles.manages(player) && P1LobbyWorld.isLobby(player.level())
                 && session.snapshot().filter(round -> round.phase() != RoundPhase.RECOVERY_REQUIRED
                     && profiles.isReady(player.getUUID(), round)).isPresent();
+    }
+
+    /** Administrative spectators stay outside the roster and may visit only this ready generation. */
+    public static boolean administrativeSpectatingAllowed(ServerPlayer player, net.minecraft.server.level.ServerLevel destination) {
+        var server = player.level().getServer();
+        var session = SESSIONS.get(server);
+        var worlds = WORLDS.get(server);
+        if (session == null || session.state() != P1LobbySession.State.OPEN || session.admissionReserved(player.getUUID())
+                || worlds == null || !worlds.ready() || !P1LobbyWorld.open(server).ready()) return false;
+        var round = session.snapshot().orElse(null);
+        if (round == null || (round.phase() != RoundPhase.WAITING && round.phase() != RoundPhase.COUNTDOWN
+                && round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE)) return false;
+        var participant = round.participants().get(player.getUUID());
+        if (participant != null && !participant.role().isExcluded()
+                && (participant.role() != ParticipantRole.LOBBY || participant.ready()
+                    || participant.lifeSequence() != 0 || participant.joinedAtChallengeNanos() >= 0)) return false;
+        return P1LobbyWorld.isLobby(destination)
+                || P1RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), destination);
     }
 
     private static boolean canReceiveBook(ServerPlayer player) {

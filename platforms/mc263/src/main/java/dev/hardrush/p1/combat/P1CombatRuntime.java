@@ -56,6 +56,7 @@ public final class P1CombatRuntime {
         if (round.isEmpty() || !(owner instanceof ServerPlayer player) || owner.level() != level
                 || owner.isRemoved() || !player.isAlive() || rejectDamage(level)) return Optional.empty();
         var actor = BINDINGS.get(level.getServer()).rounds.actor(round.get(), owner.getUUID());
+        if (dev.hardrush.p1.participation.P1ParticipationControl.disabled(level.getServer(), owner.getUUID())) return Optional.empty();
         if (actor.isEmpty() || !actor.get().mayCreateAttack()) return Optional.empty();
         return Optional.of(new CombatOrigin(round.get(), UUID.randomUUID(), actor.get(), kind, direct, List.of()));
     }
@@ -71,6 +72,7 @@ public final class P1CombatRuntime {
         var binding = BINDINGS.get(level.getServer());
         if (binding == null || binding.rounds.roundOf(level).isEmpty()) return false;
         var cause = current(level);
+        if (cause != null && participationRevoked(level, cause.origin)) return true;
         return !binding.rounds.mayDamage(level, cause == null ? null : cause.batchId);
     }
     public static Optional<UUID> currentBatch(ServerLevel level) {
@@ -83,6 +85,11 @@ public final class P1CombatRuntime {
     }
     public static Optional<CombatOrigin> damageOrigin(ServerLevel level, DamageSource source) {
         return resolve(level, source);
+    }
+
+    public static boolean participationRevoked(ServerLevel level, Optional<CombatOrigin> origin) {
+        return origin.filter(value -> dev.hardrush.p1.participation.P1ParticipationControl.disabled(
+                level.getServer(), value.actor().playerId())).isPresent();
     }
     private static Optional<CombatOrigin> child(Optional<CombatOrigin> parent, AttackKind kind, UUID direct) {
         if (parent.isEmpty()) return Optional.empty();
@@ -190,7 +197,8 @@ public final class P1CombatRuntime {
         var round = round(level);
         var cause = current(level);
         var origin = cause == null ? resolve(level, source) : cause.origin;
-        return round.isPresent() && origin.filter(value -> !value.isHumanAttack(round.get())).isPresent();
+        return participationRevoked(level, origin)
+                || round.isPresent() && origin.filter(value -> !value.isHumanAttack(round.get())).isPresent();
     }
     /** Called once after actual damage; dragon parts use the parent dragon UUID. */
     public static void observed(ServerLevel level, Entity victim, DamageSource source, float actualDamage, boolean lethal) {

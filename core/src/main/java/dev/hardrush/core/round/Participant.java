@@ -45,6 +45,14 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
 
     public boolean revivalEntitled() { return revivalCharges > 0; }
 
+    /** Preserve participation history; this generation grants no further life or monster actions. */
+    public Participant exitCompetition(ParticipantRole destination) {
+        if (!destination.isExcluded()) throw new IllegalArgumentException("退出身份必须为主动退出或取消资格");
+        return new Participant(id, name, destination, online, false, humanNanos, joinedAtChallengeNanos,
+                lifeSequence, 0, hasLeftProtection, monsterRole, monsterDimension, 0,
+                monsterDeploymentSequence, Map.of());
+    }
+
     /** Compatibility for snapshots/callers before durable per-skill cooldowns. */
     public Participant(UUID id, String name, ParticipantRole role, boolean online, boolean ready,
                        long humanNanos, long joinedAtChallengeNanos, int lifeSequence,
