@@ -19,7 +19,8 @@
     "hardrush.p1.player.mixins.json",
     "hardrush.p1.book.mixins.json",
     "hardrush.p2.protection.mixins.json",
-    "hardrush.p2.combat.mixins.json"
+    "hardrush.p2.combat.mixins.json",
+    "hardrush.p2.locator.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.5",
