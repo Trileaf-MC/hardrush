@@ -68,7 +68,9 @@ public final class P1PlayerProfiles implements AutoCloseable {
     private final Supplier<Vec3> lobbySpawn;
     private final Map<UUID, Entry> players = new LinkedHashMap<>();
     private final ExecutorService io;
-    private final CompletableFuture<ProfileJournal> journal;
+    private CompletableFuture<ProfileJournal> journal;
+    private final Path journalRoot;
+    private boolean recoveryPaused;
     private boolean closed;
     private volatile Throwable ioFailure;
     private final java.util.concurrent.Executor callbacks;
@@ -81,6 +83,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
     public P1PlayerProfiles(MinecraftServer server, Path root, Supplier<ServerLevel> lobby, Supplier<Vec3> lobbySpawn,
             java.util.concurrent.Executor callbacks) {
         this.server = server;
+        this.journalRoot = root;
         this.lobby = lobby;
         this.lobbySpawn = lobbySpawn;
         this.callbacks = java.util.Objects.requireNonNull(callbacks);
@@ -121,6 +124,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
     }
 
     public static boolean isLocked(ServerPlayer player) {
+        if (dev.hardrush.p1.storage.P1FullCheckpointRuntime.saving(player.level().getServer())) return true;
         if (!Boolean.getBoolean("hardrush.p1.enabled")) return false;
         var service = SERVICES.get(player.level().getServer());
         var entry = service == null ? null : service.players.get(player.getUUID());
@@ -129,6 +133,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
     }
 
     public static boolean canMoveInLobby(ServerPlayer player) {
+        if (dev.hardrush.p1.storage.P1FullCheckpointRuntime.saving(player.level().getServer())) return false;
         var service = SERVICES.get(player.level().getServer());
         var entry = service == null ? null : service.players.get(player.getUUID());
         return entry != null && entry.player == player && !service.closed && !entry.admitted
@@ -148,6 +153,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
     }
 
     public static boolean simulationFrozen(ServerPlayer player) {
+        if (dev.hardrush.p1.storage.P1FullCheckpointRuntime.saving(player.level().getServer())) return true;
         return isLocked(player) && !canMoveInLobby(player);
     }
 
@@ -155,6 +161,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
     public static boolean allowVanillaSave(ServerPlayer player) {
         if (!Boolean.getBoolean("hardrush.p1.enabled")) return true;
         var service = SERVICES.get(player.level().getServer());
+        if (service != null && service.recoveryPaused) return false;
         var entry = service == null ? null : service.players.get(player.getUUID());
         if (entry == null || entry.player != player) return !((ProfileTagged) player).hardrush$isolated();
         return entry.admitted || entry.diskSafe;
@@ -211,6 +218,8 @@ public final class P1PlayerProfiles implements AutoCloseable {
         closeSuspendedContainer(player);
         moveToLobby(player);
         player.sendSystemMessage(Component.literal("玩家档案正在隔离并核验；完成后才允许加入本轮。"));
+        String recovery = dev.hardrush.p1.P1LobbyRuntime.recoveryNotice(player.level().getServer());
+        if (!recovery.isEmpty()) player.sendSystemMessage(Component.literal(recovery));
     }
 
     public void onDisconnect(ServerPlayer player) {
@@ -535,7 +544,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
 
     public void tick(RoundSnapshot round) {
         requireMainThread();
-        if (closed) return;
+        if (closed || recoveryPaused) return;
         var target = generation(round);
         for (var entry : java.util.List.copyOf(players.values())) {
             if (!entry.connected) continue;
@@ -569,6 +578,93 @@ public final class P1PlayerProfiles implements AutoCloseable {
     public boolean manages(ServerPlayer player) {
         var entry = players.get(player.getUUID());
         return entry != null && entry.player == player;
+    }
+
+    /** Every connected body's profile operation must finish before a coherent save can begin. */
+    public boolean readyForFullCheckpoint(RoundSnapshot round) {
+        return ioFailure == null && !closed && server.getPlayerList().getPlayers().stream()
+                .allMatch(player -> isReady(player.getUUID(), round) && !players.get(player.getUUID()).awaitingRespawn
+                        && !players.get(player.getUUID()).deathHeld);
+    }
+
+    public void flushForFullCheckpoint() throws Exception {
+        requireMainThread();
+        supply(() -> null).get(10, TimeUnit.SECONDS);
+        if (ioFailure != null) throw new IOException("档案后台写入失败，禁止发布完整保存点", ioFailure);
+    }
+
+    /** Invalidate callbacks before replacing journal/player files; no lobby body may overwrite the image. */
+    public void pauseForOnlineRecovery() throws Exception {
+        requireMainThread();
+        if (!recoveryPaused) for (var player : java.util.List.copyOf(server.getPlayerList().getPlayers())) returnToLobby(player);
+        recoveryPaused = true;
+        players.clear();
+        supply(() -> null).get(15, TimeUnit.SECONDS);
+    }
+
+    public static void verifyCheckpointProfiles(Path data, RoundSnapshot round) throws Exception {
+        var store = new ProfileJournal(data.resolve("hardrush/profiles"));
+        var target = generation(round);
+        for (var participant : round.participants().values()) {
+            if (participant.lifeSequence() == 0) continue;
+            var saved = store.recovery(participant.id(), target);
+            var body = decode(saved.snapshot());
+            requireSnapshotGeneration(body, target);
+            if (saved.transition().phase() != ProfileJournal.Phase.VERIFIED) throw new IOException("保存点玩家档案未完成核验");
+            if (participant.role() == ParticipantRole.HUMAN_ACTIVE) {
+                if (body.getIntOr("hardrush_life_sequence", 0) != participant.lifeSequence()) throw new IOException("保存点人类生命序号不一致");
+                String dimension = body.getStringOr("Dimension", "");
+                boolean valid = java.util.List.of("overworld", "nether", "end").stream().anyMatch(name ->
+                        dimension.equals(dev.hardrush.p1.world.P1WorldPaths.identifier(round.roundId(), name)));
+                if (!valid) throw new IOException("保存点人类位置不属于本轮世界");
+            }
+        }
+    }
+
+    /** Rebind connected entities to sealed checkpoint bodies, without requiring a disconnect or preparation. */
+    public void reloadOnlineCheckpoint(RoundSnapshot round) throws Exception {
+        requireMainThread();
+        if (!recoveryPaused) throw new IllegalStateException("档案恢复屏障未持有");
+        players.clear();
+        ioFailure = null;
+        journal = supply(() -> new ProfileJournal(journalRoot));
+        var store = journal.get(15, TimeUnit.SECONDS);
+        var target = generation(round);
+        for (var player : java.util.List.copyOf(server.getPlayerList().getPlayers())) {
+            var saved = store.suspended(player.getUUID(), target);
+            var original = saved.isPresent() ? decode(saved.get()) : capture(player, false);
+            if (saved.isPresent()) requireSnapshotGeneration(original, target);
+            var entry = new Entry(player, saved.isPresent() ? Optional.of(target) : Optional.empty(), saved.isPresent(), original);
+            players.put(player.getUUID(), entry);
+            closeSuspendedContainer(player);
+            var tagged = (ProfileTagged) player;
+            tagged.hardrush$isolated(true);
+            tagged.hardrush$respawnPermitted(false);
+            tagged.hardrush$clearLoadedProfile();
+            moveToLobby(player);
+        }
+        recoveryPaused = false;
+    }
+
+    public void resumeAfterRecoveryFailure(RoundSnapshot round) throws Exception {
+        if (recoveryPaused) reloadOnlineCheckpoint(round);
+    }
+
+    /** Preserve cursor/crafting stacks and advancements that vanilla player.dat alone does not seal. */
+    public Map<UUID, byte[]> captureFullCheckpointBodies(RoundSnapshot round) throws IOException {
+        requireMainThread();
+        var snapshots = new LinkedHashMap<UUID, byte[]>();
+        for (var entry : players.values()) {
+            if (!entry.connected || !entry.admitted) continue;
+            var participant = round.participants().get(entry.player.getUUID());
+            if (participant == null || participant.lifeSequence() != ((ProfileTagged) entry.player).hardrush$lifeSequence()) {
+                throw new IOException("保存点玩家生命与数据库不一致，禁止发布");
+            }
+            var snapshot = capture(entry.player, false);
+            snapshot.putString(SUSPENSION_ID, UUID.randomUUID().toString());
+            snapshots.put(entry.player.getUUID(), encode(snapshot));
+        }
+        return snapshots;
     }
 
     public static boolean celebrationRespawnInProgress() { return CELEBRATION_RESPAWN.get(); }
@@ -818,6 +914,7 @@ public final class P1PlayerProfiles implements AutoCloseable {
 
     /** A completed participant remains suspended in the lobby until another durable entry permits restoration. */
     public void returnToLobby(ServerPlayer player) {
+        if (recoveryPaused) { moveToLobby(player); return; }
         var entry = players.get(player.getUUID());
         if (entry != null && entry.player == player && !entry.admitted) {
             if (player.level() != lobby.get()) moveToLobby(player);

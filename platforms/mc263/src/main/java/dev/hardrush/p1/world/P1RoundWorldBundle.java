@@ -56,6 +56,11 @@ import xyz.nucleoid.fantasy.mixin.MinecraftServerAccess;
  * No getChunk/getChunkFuture, worker-thread world edits, deletion, or P0 world reuse.
  */
 public final class P1RoundWorldBundle implements AutoCloseable {
+    public static void verifyCheckpoint(Path root, RoundSnapshot round) throws java.io.IOException {
+        var manifest = P1WorldManifest.read(root, P1WorldPaths.manifest(root, round.roundId()));
+        manifest.requireSnapshot(round);
+        if (manifest.spawn == null) throw new java.io.IOException("保存点缺少已核验的正式出生点");
+    }
     public enum State { OPENING_MANIFEST, OPENING_DIMENSIONS, SEARCHING, LOADING_REGION, BUILDING, SAVING_MANIFEST, READY, FAILED, CLOSING, CLOSE_FAILED, CLOSED }
     public record Metrics(long elapsedMillis, long longestChunkMillis, long maximumTickMicros, int candidates, int changedBlocks) {}
     private static final long TICK_BUDGET_NANOS = 2_000_000;

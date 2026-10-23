@@ -40,6 +40,12 @@ public final class P1AdminCommands {
             .then(withReason("abort", AdminAction.ABORT))
             .then(withReason("retry-world", AdminAction.RETRY))
             .then(withReason("recheck-storage", AdminAction.RECHECK_STORAGE))
+            .then(Commands.literal("recovery").requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
+                .executes(c -> dev.hardrush.p1.storage.P1RecoveryRuntime.request(c.getSource()))
+                .then(Commands.literal("yes").then(Commands.argument("token", StringArgumentType.word())
+                    .executes(c -> dev.hardrush.p1.storage.P1RecoveryRuntime.decide(c.getSource(), "yes", StringArgumentType.getString(c, "token")))))
+                .then(Commands.literal("no").then(Commands.argument("token", StringArgumentType.word())
+                    .executes(c -> dev.hardrush.p1.storage.P1RecoveryRuntime.decide(c.getSource(), "no", StringArgumentType.getString(c, "token"))))))
             .then(Commands.literal("grant-revival").requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
                 .then(Commands.argument("player", StringArgumentType.word())
                     .suggests((c, b) -> {
@@ -55,6 +61,7 @@ public final class P1AdminCommands {
                             .executes(c -> grantRevival(c.getSource(), StringArgumentType.getString(c, "player"),
                                 IntegerArgumentType.getInteger(c, "count"), StringArgumentType.getString(c, "reason")))))))
             .then(Commands.literal("close-recovery").requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
+                .executes(c -> current(c.getSource(), AdminAction.CLOSE_RECOVERY, "管理员放弃故障轮并开始新轮"))
                 .then(Commands.argument("reason", StringArgumentType.greedyString())
                     .executes(c -> current(c.getSource(), AdminAction.CLOSE_RECOVERY, StringArgumentType.getString(c, "reason")))))
             .then(Commands.literal("next-mode").requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
@@ -112,7 +119,7 @@ public final class P1AdminCommands {
             case START -> session.adminStart(actor, reason, r -> reply(source, r));
             case ABORT -> session.adminAbort(actor, reason, r -> reply(source, r));
             case RECHECK_STORAGE -> session.recheckStorage(actor, reason, r -> reply(source, r));
-            case CLOSE_RECOVERY -> session.closeRecovery(actor, reason, r -> reply(source, r));
+            case CLOSE_RECOVERY -> { return dev.hardrush.p1.storage.P1RecoveryRuntime.closeRecovery(source, session, reason); }
             case RETRY -> {
                 String failure = worldFailure.apply(source.getServer()).orElse("");
                 if (failure.isEmpty()) return failure(source, "当前没有世界准备失败。日常配置不能清除状态故障。");

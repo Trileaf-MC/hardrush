@@ -159,10 +159,11 @@ def profile_marker(directory, pid, boundary):
 
 def launch(spec, directory, scenario, boundary, operation, attempt, timeout):
     label = 'write' if operation == 'write' else f'recover-{attempt}'
-    properties = ('-Dhardrush.p1.restart.', '-Dhardrush.p1.initialMode=', '-Dhardrush.p3.crash.', '-Dhardrush.p3.profile.', '-agentlib:jdwp=')
+    properties = ('-Dhardrush.p1.restart.', '-Dhardrush.p1.initialMode=', '-Dhardrush.p1.fullCheckpointIntervalSeconds=', '-Dhardrush.p3.crash.', '-Dhardrush.p3.profile.', '-agentlib:jdwp=')
     args = [arg for arg in spec['jvmArgs'] if not arg.startswith(properties)]
     args += [f'-Dhardrush.p1.restart.phase=RUNNING', f'-Dhardrush.p1.restart.operation={operation}',
-             f'-Dhardrush.p1.restart.directory={directory}', '-Dhardrush.p1.initialMode=hardcore']
+             f'-Dhardrush.p1.restart.directory={directory}', '-Dhardrush.p1.initialMode=hardcore',
+             '-Dhardrush.p1.fullCheckpointIntervalSeconds=0']
     if scenario == 'PROFILE':
         args += [f'-Dhardrush.p3.profile.boundary={boundary}']
         if operation == 'write':

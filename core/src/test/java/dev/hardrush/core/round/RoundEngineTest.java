@@ -110,6 +110,35 @@ class RoundEngineTest {
         assertEquals(7_000, engine.view().challengeMillis());
     }
 
+    @Test void verifiedFullCheckpointResumesSameLifeButNeverCountsDowntimeOrClaimsTrustedTiming() {
+        var original = running();
+        clock.millis(7_000);
+        apply(original, original.proposeCheckpoint(UUID.randomUUID(), false));
+        var stored = original.committed();
+        clock.millis(90_000);
+        assertEquals(RoundPhase.RECOVERY_REQUIRED, RoundEngine.restore(stored, clock).view().phase());
+        var resumed = RoundEngine.restoreVerifiedCheckpoint(stored, clock);
+        assertEquals(RoundPhase.RUNNING, resumed.view().phase());
+        assertTrue(resumed.view().timingUncertain());
+        assertFalse(resumed.view().cleanShutdown());
+        assertFalse(resumed.view().participants().get(A).online());
+        clock.millis(100_000);
+        assertEquals(7_000, resumed.view().challengeMillis());
+        apply(resumed, resumed.proposeOnline(UUID.randomUUID(), A, "Alice", true));
+        clock.millis(2_000);
+        assertEquals(9_000, resumed.view().challengeMillis());
+        assertEquals(stored.participants().get(A).lifeSequence(), resumed.view().participants().get(A).lifeSequence());
+        assertThrows(IllegalArgumentException.class, () -> RoundEngine.restoreVerifiedCheckpoint(waiting().committed(), clock));
+    }
+
+    @Test void fullCheckpointCopyPauseDoesNotAccrueChallengeOrPersonalTime() {
+        var engine = running(); clock.millis(5_000);
+        apply(engine, engine.proposeCheckpoint(UUID.randomUUID(), false));
+        clock.millis(9_000); engine.resumeAfterCheckpoint(); clock.millis(2_000);
+        assertEquals(7_000, engine.view().challengeMillis());
+        assertEquals(7_000_000_000L, engine.view().participants().get(A).humanNanos());
+    }
+
     @Test void normalDeathScreenPausesOnlyDeadHumansWithoutEndingTheRound() {
         RoundEngine engine = running();
         clock.millis(2_000);

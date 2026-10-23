@@ -106,6 +106,12 @@ public final class P1LobbySession implements AutoCloseable {
     private Long adminBoundary;
     private Long failureBoundary;
     private CompletableFuture<Loaded> pendingRecoveryWrite;
+    private final boolean restoredFullCheckpoint;
+    private String startupRecoveryMessage;
+    private boolean fullCheckpointSaving;
+    private long fullCheckpointStartedNanos;
+    private boolean fullCheckpointCaptured;
+    private boolean fullCheckpointResumePending;
 
     public P1LobbySession(Path database, MonotonicClock clock, Executor callbacks) {
         this(database, clock, callbacks, (message, error) -> {});
@@ -113,11 +119,18 @@ public final class P1LobbySession implements AutoCloseable {
 
     public P1LobbySession(Path database, MonotonicClock clock, Executor callbacks,
             BiConsumer<String, Throwable> diagnostics) {
+        this(database, clock, callbacks, diagnostics, false, "");
+    }
+
+    public P1LobbySession(Path database, MonotonicClock clock, Executor callbacks,
+            BiConsumer<String, Throwable> diagnostics, boolean restoredFullCheckpoint, String startupRecoveryMessage) {
         Objects.requireNonNull(database);
         this.database = database.toAbsolutePath().normalize();
         this.clock = Objects.requireNonNull(clock);
         this.callbacks = Objects.requireNonNull(callbacks);
         this.diagnostics = Objects.requireNonNull(diagnostics);
+        this.restoredFullCheckpoint = restoredFullCheckpoint;
+        this.startupRecoveryMessage = Objects.requireNonNull(startupRecoveryMessage);
         this.io = Executors.newSingleThreadExecutor(task -> {
             var thread = new Thread(task, "hardrush-p1-sqlite");
             thread.setDaemon(true);
@@ -167,9 +180,12 @@ public final class P1LobbySession implements AutoCloseable {
 
     private void install(Loaded loaded) {
         var stored = loaded.snapshot();
-        engine = loaded.fresh()
+        engine = restoredFullCheckpoint ? RoundEngine.restoreVerifiedCheckpoint(stored, this::engineTime)
+                : !startupRecoveryMessage.isEmpty() ? RoundEngine.restoreForRecovery(stored, this::engineTime) : loaded.fresh()
                 ? RoundEngine.create(stored.roundId(), stored.sequence(), stored.seed(), stored.rules(), this::engineTime)
                 : RoundEngine.restore(stored, this::engineTime);
+        fullCheckpointResumePending = restoredFullCheckpoint;
+        if (!startupRecoveryMessage.isEmpty()) problem = startupRecoveryMessage;
         nextRules = loaded.nextRules();
         if (RoundEngine.requiresLegacyClosure(stored)) problem = "旧投票规则活动轮需在旧构建完成，或经审计结束恢复轮；禁止自动恢复投票或切换个人追猎。";
         endEntrants = loaded.endEntrants();
@@ -205,7 +221,7 @@ public final class P1LobbySession implements AutoCloseable {
 
     /** Immediately closes new competitive actions, even while the terminal transaction is queued. */
     public boolean competitionLocked() {
-        return shutdownBoundary != null || adminBoundary != null || state != State.OPEN || terminalCandidate != null || engine == null
+        return fullCheckpointSaving || fullCheckpointResumePending || shutdownBoundary != null || adminBoundary != null || state != State.OPEN || terminalCandidate != null || engine == null
                 || pendingTransition != null && pendingTransition.after().result() != null
                 || engine.rescueExpiredAt(clock.nanoTime())
                 || engine.committed().phase() != RoundPhase.RUNNING && engine.committed().phase() != RoundPhase.RESCUE;
@@ -310,6 +326,8 @@ public final class P1LobbySession implements AutoCloseable {
         adaptersReady = false;
         unsupportedPhase = false;
         recoveringCountdown = false;
+        startupRecoveryMessage = "";
+        fullCheckpointResumePending = false;
         lastCheckpointNanos = clock.nanoTime();
         if (!stopping) try { committedListener.accept(before, next); }
         catch (RuntimeException failure) { fail("新轮已持久化但适配器应用失败", failure); }
@@ -328,7 +346,57 @@ public final class P1LobbySession implements AutoCloseable {
         adaptersReady = true;
         unsupportedPhase = false;
         if (phase == RoundPhase.PREPARING) submit(engine.proposeWorldReady(UUID.randomUUID()));
-        else if (engine.committed().cleanShutdown()) submit(engine.proposeCheckpoint(UUID.randomUUID(), false));
+        else if (engine.committed().cleanShutdown() || fullCheckpointResumePending) {
+            submit(engine.proposeCheckpoint(UUID.randomUUID(), false), reply -> {
+                if (reply.success()) fullCheckpointResumePending = false;
+            }, "完整保存点续局已持久化。");
+        }
+    }
+
+    /** Called on the server thread only; no transition or callback can be in flight. */
+    public boolean canSaveFullCheckpoint() {
+        return state == State.OPEN && !stopping && adaptersReady && !unsupportedPhase && !competitionLocked()
+                && !mutationPending() && events.isEmpty() && evidencePending == 0 && progressPending == 0 && queriesPending == 0
+                && deathBatches.isEmpty() && engine.committed().phase() == RoundPhase.RUNNING;
+    }
+
+    public boolean beginFullCheckpoint() {
+        if (!canSaveFullCheckpoint()) return false;
+        fullCheckpointStartedNanos = clock.nanoTime();
+        fullCheckpointCaptured = false;
+        fullCheckpointSaving = true;
+        return true;
+    }
+
+    public RoundSnapshot exportFullCheckpoint(Path target) throws Exception {
+        if (!fullCheckpointSaving) throw new IllegalStateException("Full checkpoint barrier is not held");
+        var transition = engine.proposeCheckpoint(UUID.randomUUID(), false);
+        try {
+            var result = supplyIo(() -> commitTransition(transition)).get(15, TimeUnit.SECONDS);
+            complete(transition, result, null);
+            if (state != State.OPEN) throw new IllegalStateException(problem);
+            fullCheckpointCaptured = true;
+        } catch (Exception error) {
+            if (engine.pending()) { engine.reject(transition, "完整保存点状态提交失败"); fail("完整保存点状态提交失败", error); }
+            throw error;
+        }
+        supplyIo(() -> { store.exportCheckpoint(target); return null; }).get(15, TimeUnit.SECONDS);
+        return engine.committed();
+    }
+
+    public void endFullCheckpoint() {
+        fullCheckpointSaving = false;
+        if (state == State.OPEN && engine != null && !engine.pending()) {
+            if (fullCheckpointCaptured) engine.resumeAfterCheckpoint();
+            else engine.excludeFailedCheckpointPause(clock.nanoTime() - fullCheckpointStartedNanos);
+        }
+        lastCheckpointNanos = clock.nanoTime();
+    }
+
+    public String startupRecoveryMessage() {
+        if (!startupRecoveryMessage.isEmpty()) return startupRecoveryMessage;
+        return engine != null && engine.committed().phase() == RoundPhase.RECOVERY_REQUIRED
+                ? "服务器异常退出，当前没有可用于自动续局的完整保存点；已保留对局和档案，请等待管理员处理。" : "";
     }
 
     public void adapterFailure(String reason, Throwable error) { fail(reason, error); }
@@ -533,6 +601,45 @@ public final class P1LobbySession implements AutoCloseable {
         state = State.OPEN;
     }
 
+    public boolean canRetryRecovery() {
+        return !stopping && shutdownBoundary == null && engine != null
+                && (state == State.FAILED || state == State.OPEN && engine.committed().phase() == RoundPhase.RECOVERY_REQUIRED)
+                && !mutationPending() && evidencePending == 0 && progressPending == 0 && queriesPending == 0;
+    }
+
+    /** Keep this session object and its adapter bindings; only the worker's database handle is replaced. */
+    public void suspendForOnlineRecovery() throws Exception {
+        if (!canRetryRecovery()) throw new IllegalStateException("当前不是可重试的故障轮，或已受理的写入尚未排空");
+        state = State.RECHECKING;
+        supplyIo(() -> { if (store != null) { store.close(); store = null; } return null; }).get(15, TimeUnit.SECONDS);
+    }
+
+    public void reloadOnlineCheckpoint(RoundSnapshot expected, String actor, long savedAt) throws Exception {
+        if (state != State.RECHECKING) throw new IllegalStateException("在线恢复未持有数据库屏障");
+        Loaded loaded = supplyIo(() -> open(database)).get(15, TimeUnit.SECONDS);
+        if (!loaded.snapshot().equals(expected)) throw new IllegalStateException("恢复后的数据库与已确认保存点不一致");
+        installRecovery(loaded);
+        engine = RoundEngine.restoreVerifiedCheckpoint(loaded.snapshot(), this::engineTime);
+        online.clear(); restoredReady.clear();
+        fullCheckpointResumePending = true;
+        startupRecoveryMessage = "管理员已恢复到保存点 " + java.time.Instant.ofEpochMilli(savedAt) + "；成绩待核验";
+        var transition = engine.proposeCheckpoint(UUID.randomUUID(), false);
+        var audit = new AdminAudit(transition.eventId(), expected.roundId(), actor, "RECOVER_CHECKPOINT",
+                "管理员确认在线续局", "故障轮；恢复到=" + java.time.Instant.ofEpochMilli(savedAt),
+                adminValue(transition.after()), System.currentTimeMillis());
+        var result = supplyIo(() -> store.commitAdmin(new SnapshotWrite(expected.roundId(), expected.version(),
+                transition.after().version(), RoundSnapshotCodec.encode(transition.after()), transition.eventId(), "RECOVER_CHECKPOINT"), audit))
+                .get(15, TimeUnit.SECONDS);
+        requireCommitted(result);
+        if (!engine.accept(transition)) throw new IllegalStateException("在线续局提交失效");
+    }
+
+    /** Used after a failed attempt so another point can be offered without unlocking gameplay. */
+    public void onlineRecoveryFailed(Throwable error) {
+        fullCheckpointResumePending = false;
+        fail("无法自动恢复，继续保留故障隔离", error);
+    }
+
     public void closeRecovery(String actor, String reason, Consumer<Reply> reply) {
         if (state != State.OPEN || stopping || shutdownBoundary != null || engine == null
                 || engine.committed().phase() != RoundPhase.RECOVERY_REQUIRED) {
@@ -568,7 +675,7 @@ public final class P1LobbySession implements AutoCloseable {
     private void requestAdminTransition(String actor, String reason, boolean abort,
             java.util.function.Supplier<RoundTransition> proposal, Consumer<Reply> reply, String success,
             String action, java.util.function.Function<RoundSnapshot, String> values) {
-        if (state != State.OPEN || stopping || shutdownBoundary != null || terminalCandidate != null) {
+        if (fullCheckpointSaving || state != State.OPEN || stopping || shutdownBoundary != null || terminalCandidate != null) {
             reply.accept(new Reply(false, "轮次已冻结或状态不可写，不能执行管理转换。")); return;
         }
         if (!adaptersReady) { reply.accept(blockedParticipation()); return; }
@@ -613,6 +720,7 @@ public final class P1LobbySession implements AutoCloseable {
         return query(action, false);
     }
     private <T> CompletableFuture<T> query(IoAction<T> action, boolean durable) {
+        if (fullCheckpointSaving && durable) return CompletableFuture.failedFuture(new IllegalStateException("正在保存完整对局"));
         if (stopping || state != State.OPEN) return CompletableFuture.failedFuture(new IllegalStateException(status()));
         if (queriesPending >= 32) return CompletableFuture.failedFuture(new IllegalStateException("历史查询繁忙，请稍后重试。"));
         queriesPending++;
@@ -645,8 +753,9 @@ public final class P1LobbySession implements AutoCloseable {
                 + "，本轮模式 " + modeName(round.rules().mode()) + "，下轮模式 " + modeName(nextRules.mode())
                 + "，已持久化版本 " + round.version() + "，规则 " + round.rules().fingerprint()
                 + "。" + (mutationPending() ? "正在提交状态。" : "")
+                + (startupRecoveryMessage().isEmpty() ? "" : startupRecoveryMessage() + "。")
                 + (round.phase() == RoundPhase.RECOVERY_REQUIRED
-                    ? "恢复隔离中；已提交身份、资格和原始记录保留，全员留在大厅。OP4 可审查后用 /hardrush admin close-recovery <原因> 结束原轮；不会继续原比赛。" : "")
+                    ? "恢复隔离中；全员留在大厅。OP4 可用 /hardrush admin recovery 检查并确认在线续局，或用 /hardrush admin close-recovery 放弃故障轮并开始新轮。" : "")
                 + (recoveringCountdown ? "正常重启倒计时已暂挂，等待原已就绪玩家完成档案核验。" : "")
                 + (adaptersReady ? "有效挑战 " + engine.view().challengeMillis() + " ms，在线活人 "
                     + engine.view().onlineHumans() + "，暂停原因 " + engine.view().pauseReason() + "。"
@@ -799,6 +908,7 @@ public final class P1LobbySession implements AutoCloseable {
     }
 
     private void requestAction(java.util.function.Supplier<RoundTransition> action, Consumer<Reply> reply, String success) {
+        if (fullCheckpointSaving) { reply.accept(new Reply(false, "正在保存完整对局，请稍候。")); return; }
         if (terminalCandidate != null || shutdownBoundary != null) { reply.accept(new Reply(false, "本轮已冻结，不能开始新的竞技操作。")); return; }
         if (state != State.OPEN || stopping || !adaptersReady) { reply.accept(blockedParticipation()); return; }
         if (recoveringCountdown) {
@@ -818,6 +928,7 @@ public final class P1LobbySession implements AutoCloseable {
         if (stopping) return;
         if (connected) online.put(playerId, name);
         else online.remove(playerId);
+        if (fullCheckpointSaving) return;
         if (shutdownBoundary != null || adminBoundary != null) return;
         if (terminalCandidate != null && !terminalQueued) return;
         boolean awaitingProof = restoredReady.contains(playerId);
@@ -919,6 +1030,7 @@ public final class P1LobbySession implements AutoCloseable {
 
     public void updateNextMode(GameMode mode, String actor, String reason, Consumer<Reply> reply) {
         Objects.requireNonNull(mode); Objects.requireNonNull(actor); Objects.requireNonNull(reply);
+        if (fullCheckpointSaving) { reply.accept(new Reply(false, "正在保存完整对局，请稍候。")); return; }
         if (state != State.OPEN || stopping) { reply.accept(new Reply(false, status())); return; }
         if (mutationPending()) { reply.accept(new Reply(false, "上一项状态仍在提交，请稍后重试。")); return; }
         var proposed = nextRules.withMode(mode);
