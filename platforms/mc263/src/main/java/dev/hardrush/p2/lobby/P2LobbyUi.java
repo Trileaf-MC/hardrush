@@ -71,7 +71,8 @@ public final class P2LobbyUi {
         if (round == null) return false;
         return player.openMenu(new SimpleMenuProvider((id, inventory, actor) ->
                 actor == player ? new LobbyMenu(id, player, binding, round, context) : null,
-                Component.literal(context == LobbyContext.RULES ? "HardRush 规则" : context == LobbyContext.HISTORY ? "HardRush 历史" : context == LobbyContext.REVIVAL ? "复生祭坛确认" : "HardRush 大厅"))).isPresent();
+                Component.literal(context == LobbyContext.WITHDRAWAL ? "退出本轮并观战 · 确认"
+                        : context == LobbyContext.RULES ? "HardRush 规则" : context == LobbyContext.HISTORY ? "HardRush 历史" : context == LobbyContext.REVIVAL ? "复生祭坛确认" : "HardRush 大厅"))).isPresent();
     }
 
     /** Also identifies stale menus so the network adapter keeps creative-slot packets sealed. */

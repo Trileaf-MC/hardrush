@@ -88,6 +88,17 @@ public final class ProfileJournal {
         atomicWrite(playerDirectory(player).resolve("suspended-" + generation.roundId() + ".bin"), envelope(snapshot));
     }
 
+    /** Immutable evidence of the first exit; later reconnects or sanctions cannot replace the equipment. */
+    public void sealParticipationExit(UUID player, Generation generation, byte[] snapshot) throws IOException {
+        requireSnapshot(snapshot);
+        var directory = playerDirectory(player).resolve("archives");
+        Files.createDirectories(directory);
+        requireDirectory(directory);
+        var path = directory.resolve("exit-" + generation.roundId() + ".bin");
+        if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) readSnapshot(path);
+        else atomicWrite(path, envelope(snapshot));
+    }
+
     public Optional<byte[]> suspended(UUID player, Generation generation) throws IOException {
         Path path = playerDirectory(player).resolve("suspended-" + generation.roundId() + ".bin");
         return Files.exists(path, LinkOption.NOFOLLOW_LINKS) ? Optional.of(readSnapshot(path)) : Optional.empty();

@@ -12,6 +12,8 @@ import net.minecraft.server.level.ServerLevel;
 public final class P2LegacyFixtures implements ModInitializer {
     @Override public void onInitialize() {
         ServerTickEvents.START_SERVER_TICK.register(server -> {
+            if (Boolean.getBoolean("hardrush.lobby.testParticipationExit")) return;
+            if (Boolean.getBoolean("hardrush.lobby.testAdminSpectator")) return;
             if (Boolean.getBoolean("hardrush.p2.testPersonalHunt") || Boolean.getBoolean("hardrush.lobby.testFoundation") || Boolean.getBoolean("hardrush.p2.testIdentity") || Boolean.getBoolean("hardrush.p2.testLobby")) return;
             // The dedicated P2 runtime test retains the production binding. Native protection
             // fixtures install their own zones; old P0/P1 fixtures predate protected lobbies.

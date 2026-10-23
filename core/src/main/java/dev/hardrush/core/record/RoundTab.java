@@ -24,6 +24,9 @@ public record RoundTab(String header, String footer) {
                 + " · 有效挑战 " + duration(round.challengeMillis());
         String footer = "人类在线 " + round.onlineHumans() + " / 离线 " + offline + " · 怪物 " + monsters
                 + "\n进入过末地 " + endEntrants + " 人";
+        long withdrawn = round.participants().values().stream().filter(p -> p.role() == dev.hardrush.core.round.ParticipantRole.WITHDRAWN).count();
+        long disqualified = round.participants().values().stream().filter(p -> p.role() == dev.hardrush.core.round.ParticipantRole.DISQUALIFIED).count();
+        if (withdrawn + disqualified > 0) footer += " · 主动退出 " + withdrawn + " / 取消资格 " + disqualified;
         if (round.result() != null) {
             String winner = round.result().winner() == null ? "待核验"
                     : safeName(round.participants().get(round.result().winner()).name());

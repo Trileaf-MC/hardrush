@@ -14,6 +14,20 @@ import org.junit.jupiter.api.io.TempDir;
 class ProfileJournalTest {
     @TempDir Path directory;
 
+    @Test void participationExitEvidenceSurvivesReconnectAndCannotBeOverwrittenByAnEmptyBody() throws Exception {
+        var player = UUID.randomUUID();
+        var target = generation(1);
+        var journal = new ProfileJournal(directory);
+        journal.sealParticipationExit(player, target, bytes("competition inventory"));
+        var path = directory.resolve(player.toString()).resolve("archives/exit-" + target.roundId() + ".bin");
+        var first = Files.readAllBytes(path);
+        new ProfileJournal(directory).sealParticipationExit(player, target, bytes("empty spectator"));
+        assertArrayEquals(first, Files.readAllBytes(path));
+        var damaged = first.clone(); damaged[damaged.length - 1] ^= 1; Files.write(path, damaged);
+        assertThrows(IOException.class, () -> journal.sealParticipationExit(player, target, bytes("replacement")));
+        assertArrayEquals(damaged, Files.readAllBytes(path), "Corruption is retained for diagnosis");
+    }
+
     @Test void celebrationRosterIsImmutableAndPlayerStateSurvivesReopeningPerRound() throws Exception {
         var player = UUID.randomUUID();
         var first = generation(1);

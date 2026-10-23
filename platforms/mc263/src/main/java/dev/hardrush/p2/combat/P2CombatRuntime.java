@@ -78,6 +78,7 @@ public final class P2CombatRuntime {
     }
     public static boolean rejectCurrent(Entity target) { return reject(current(), target); }
     public static boolean rejectDamage(Entity target, DamageSource source) {
+        if (target.level() instanceof ServerLevel level && P1CombatRuntime.participationRevoked(level, P1CombatRuntime.damageOrigin(level, source))) return true;
         if (dev.hardrush.p1.pact.DawnPactRuntime.rejectDamage(target, source)) return true;
         // A launched arrow's frozen identity wins over a mutable native owner reference.
         if (source(source.getDirectEntity()).isPresent()) return reject(source.getDirectEntity(), target);
@@ -105,7 +106,11 @@ public final class P2CombatRuntime {
         return dev.hardrush.p1.pact.DawnPactRuntime.reject(entity, target) || rejectMonster(entity, target);
     }
     private static boolean rejectMonster(Entity entity, Entity target) {
+        if (target.level() instanceof ServerLevel level && (P1CombatRuntime.participationRevoked(level, P1CombatRuntime.originOf(entity))
+                || entity instanceof ServerPlayer player && dev.hardrush.p1.participation.P1ParticipationControl.disabled(level.getServer(), player.getUUID()))) return true;
         var frozen = source(entity).orElse(null);
+        if (frozen != null && target.level() instanceof ServerLevel level
+                && dev.hardrush.p1.participation.P1ParticipationControl.disabled(level.getServer(), frozen.ownerId())) return true;
         if (frozen == null) return formalMonsterPlayer(entity); // Only the stamped native model may attack.
         if (!(target.level() instanceof ServerLevel level) || entity.level() != level) return true;
         var access = BINDINGS.get(level.getServer());

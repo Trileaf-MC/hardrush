@@ -200,7 +200,7 @@ public final class P1HumanEntryGameTest {
                 }).thenSucceed();
     }
 
-    private static final class Fixture {
+    static final class Fixture {
         final GameTestHelper test;
         final MinecraftServer server;
         final AtomicLong clock = new AtomicLong(System.nanoTime());

@@ -523,6 +523,27 @@ public final class P1LobbySession implements AutoCloseable {
                 "本轮已中止并保存原因与审计；立即回大厅，安全释放旧世界后轮换。");
     }
 
+    /** Trusted server API shared by commands and future automatic rules; actor identifies its source. */
+    public void requestParticipationExit(UUID roundId, UUID playerId, ParticipantRole expectedRole,
+            int expectedLife, int expectedDeployment, ParticipantRole destination,
+            String actor, String reason, Consumer<Reply> reply) {
+        requestAdminTransition(actor, reason, false,
+                () -> engine.proposeParticipationExit(UUID.randomUUID(), roundId, playerId, expectedRole,
+                        expectedLife, expectedDeployment, destination), reply,
+                destination == ParticipantRole.DISQUALIFIED ? "本轮参赛资格已取消；下轮恢复资格。"
+                        : "已退出本轮；本轮不能重新参赛，下轮恢复资格。",
+                destination == ParticipantRole.DISQUALIFIED ? "DISQUALIFY" : "WITHDRAW",
+                r -> adminValue(r) + ",player=" + playerId + ",identity=" + r.participants().get(playerId));
+    }
+
+    /** Seal input during the durable exit, before the old competition profile is suspended. */
+    public boolean participationExitReserved(UUID playerId) {
+        if (pendingTransition == null) return false;
+        var after = pendingTransition.after().participants().get(playerId);
+        var before = pendingTransition.before().participants().get(playerId);
+        return before != null && after != null && before.role() != after.role() && after.role().isExcluded();
+    }
+
     public void adminGrantRevival(UUID roundId, UUID playerId, int lifeSequence, int expectedCharges,
             int count, String actor, String reason, Consumer<Reply> reply) {
         requestAdminTransition(actor, reason, false,

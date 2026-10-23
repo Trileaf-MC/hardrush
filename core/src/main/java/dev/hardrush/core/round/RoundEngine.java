@@ -631,6 +631,44 @@ public final class RoundEngine {
                 players, before.result(), false, true);
     }
 
+    /** A shared, non-lethal exit for voluntary withdrawal and trusted administrative/automatic sanctions. */
+    public RoundTransition proposeParticipationExit(UUID eventId, UUID roundId, UUID playerId,
+            ParticipantRole expectedRole, int expectedLife, int expectedDeployment, ParticipantRole destination) {
+        var before = capture();
+        requirePhase(before, RoundPhase.WAITING, RoundPhase.COUNTDOWN, RoundPhase.RUNNING, RoundPhase.RESCUE);
+        requireOpenRescue(before);
+        if (!before.roundId().equals(roundId)) throw new IllegalStateException("轮次已改变，请重新操作。");
+        if (!destination.isExcluded()) throw new IllegalArgumentException("未知的参赛退出类型。");
+        var player = requirePlayer(before, playerId);
+        if (player.role() != expectedRole || player.lifeSequence() != expectedLife
+                || player.monsterDeploymentSequence() != expectedDeployment)
+            throw new IllegalStateException("玩家身份或生命已改变，请重新操作。");
+        if (player.role() == ParticipantRole.DISQUALIFIED || player.role() == destination)
+            throw new IllegalStateException("玩家本轮已经退出或被取消资格。");
+        if (player.role() == ParticipantRole.TRANSITION_PENDING) throw new IllegalStateException("玩家正在转换身份，请稍后重试。");
+        var players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.exitCompetition(destination));
+        var phase = before.phase();
+        long remaining = before.remainingPhaseNanos();
+        RoundResult result = null;
+        if (phase == RoundPhase.COUNTDOWN && readyOnline(players) == 0) {
+            phase = RoundPhase.WAITING; remaining = 0;
+        } else if ((phase == RoundPhase.RUNNING || phase == RoundPhase.RESCUE) && !hasHuman(players)) {
+            if (players.values().stream().anyMatch(p -> p.role().isMonster() && p.revivalEntitled())) {
+                remaining = phase == RoundPhase.RESCUE ? remaining
+                        : millisToNanos(before.rules().combatValues().getOrDefault("round.rescueMillis", 60_000.0).longValue());
+                phase = RoundPhase.RESCUE;
+            } else {
+                phase = RoundPhase.SETTLING;
+                remaining = millisToNanos(before.rules().failureDisplayMillis());
+                players = new LinkedHashMap<>(withoutEntitlements(players));
+                result = new RoundResult(RoundResult.Kind.FAILED, null, "NO_ELIGIBLE_PARTICIPANTS");
+            }
+        }
+        return proposal(eventId, destination == ParticipantRole.DISQUALIFIED ? "DISQUALIFY" : "WITHDRAW",
+                before, phase, remaining, players, result, false, destination == ParticipantRole.DISQUALIFIED);
+    }
+
     /** Captures the stop boundary and skips display time; rotation still owns safe world release. */
     public RoundTransition proposeAbort(UUID eventId, String reason) {
         RoundSnapshot before = capture();

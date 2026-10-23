@@ -32,7 +32,7 @@ public abstract class PlayerIsolationNetworkMixin {
     // Off-thread invocations proceed to vanilla's PacketUtils scheduling. The replay on the server thread is cancelled here.
     @Inject(method = {"handleMoveVehicle", "handleAttack", "handlePunch", "handlePaddleBoat",
             "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
-            "handlePlayerAbilities", "handleSpectatorAction", "handleTeleportToEntityPacket",
+            "handlePlayerAbilities",
             "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
             "handlePickItemFromBlock", "handlePickItemFromEntity", "handleBundleItemSelectedPacket",
             "handleContainerSlotStateChanged", "handleSetCommandBlock", "handleSetCommandMinecart",
@@ -41,6 +41,13 @@ public abstract class PlayerIsolationNetworkMixin {
             at = @At("HEAD"), cancellable = true)
     private void hardrush$holdGameplay(CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && P1PlayerProfiles.isLocked(player)) ci.cancel();
+    }
+
+    @Inject(method = {"handleSpectatorAction", "handleTeleportToEntityPacket"}, at = @At("HEAD"), cancellable = true)
+    private void hardrush$authorizedObservation(CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && P1PlayerProfiles.isLocked(player)
+                && (!P1PlayerProfiles.isAdministrativeSpectator(player) || P1PlayerProfiles.simulationFrozen(player))) ci.cancel();
+        // Destination admission remains owned by the player teleport/protection hooks.
     }
 
     @Inject(method = "handleInteract", at = @At("HEAD"), cancellable = true)
@@ -205,7 +212,8 @@ public abstract class PlayerIsolationNetworkMixin {
         if (P1PlayerProfiles.isLocked(player) && !hardrush$allowedCommand(packet.command())) ci.cancel();
     }
 
-    private static boolean hardrush$allowedCommand(String command) {
-        return command.equals("hardrush") || command.startsWith("hardrush ");
+    private boolean hardrush$allowedCommand(String command) {
+        return command.equals("hardrush") || command.startsWith("hardrush ")
+                || P1PlayerProfiles.administrativeCommandAllowed(player, command);
     }
 }
