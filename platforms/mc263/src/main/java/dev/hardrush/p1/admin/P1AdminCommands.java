@@ -48,6 +48,20 @@ public final class P1AdminCommands {
             .then(withReason("abort", AdminAction.ABORT))
             .then(withReason("retry-world", AdminAction.RETRY))
             .then(withReason("recheck-storage", AdminAction.RECHECK_STORAGE))
+            .then(Commands.literal("grant-revival").requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                .then(Commands.argument("player", StringArgumentType.word())
+                    .suggests((c, b) -> {
+                        var session = sessions.apply(c.getSource().getServer());
+                        if (session != null) session.snapshot().ifPresent(r -> r.participants().values().stream()
+                                .filter(p -> p.role().isMonster() || p.role().isActiveHuman())
+                                .map(p -> p.name()).filter(n -> n.toLowerCase(java.util.Locale.ROOT)
+                                        .startsWith(b.getRemainingLowerCase())).forEach(b::suggest));
+                        return b.buildFuture();
+                    })
+                    .then(Commands.argument("count", IntegerArgumentType.integer(1))
+                        .then(Commands.argument("reason", StringArgumentType.greedyString())
+                            .executes(c -> grantRevival(c.getSource(), StringArgumentType.getString(c, "player"),
+                                IntegerArgumentType.getInteger(c, "count"), StringArgumentType.getString(c, "reason")))))))
             .then(Commands.literal("close-recovery").requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
                 .then(Commands.argument("reason", StringArgumentType.greedyString())
                     .executes(c -> current(c.getSource(), AdminAction.CLOSE_RECOVERY, StringArgumentType.getString(c, "reason")))))
@@ -155,6 +169,34 @@ public final class P1AdminCommands {
                 () -> CompletableFuture.completedFuture(session.snapshot().orElseThrow().roundId() + ":"
                     + session.nextRules().orElseThrow().fingerprint()),
                 confirmed -> session.updateNextMode(mode, actor(confirmed).identity(), reason, r -> reply(confirmed, r)));
+    }
+
+    private int grantRevival(CommandSourceStack source, String input, int count, String reason) {
+        if (!permitted(source, AdminAction.GRANT_REVIVAL)) return failure(source, "当前权限不足，不能发放复生次数。");
+        var session = session(source);
+        if (session == null || session.snapshot().isEmpty()) return 0;
+        var round = session.snapshot().orElseThrow();
+        if (session.state() != P1LobbySession.State.OPEN || session.competitionLocked()
+                || round.rules().mode() != GameMode.HARDCORE
+                || round.phase() != dev.hardrush.core.round.RoundPhase.RUNNING
+                    && round.phase() != dev.hardrush.core.round.RoundPhase.RESCUE) {
+            return failure(source, "仅可在正常开放的极限挑战或救场期间发放复生次数。");
+        }
+        var matches = round.participants().values().stream()
+                .filter(p -> p.id().toString().equalsIgnoreCase(input) || p.name().equalsIgnoreCase(input)).toList();
+        if (matches.size() != 1) return failure(source, "玩家不存在或名称不唯一，请填写本轮玩家名称或 UUID。");
+        var target = matches.getFirst();
+        if ((!target.role().isMonster() && !target.role().isActiveHuman()) || target.lifeSequence() == 0
+                || target.joinedAtChallengeNanos() < 0) return failure(source, "只能向本轮已参赛的人类或怪物发放复生次数。");
+        if (count <= 0 || count > Integer.MAX_VALUE - target.revivalCharges()) {
+            return failure(source, "累计复生次数不能超过 " + Integer.MAX_VALUE + "。");
+        }
+        session.adminGrantRevival(round.roundId(), target.id(), target.lifeSequence(), target.revivalCharges(), count,
+                actor(source).identity(), reason, result -> {
+                    if (result.success()) say(source, target.name() + "（" + target.id() + "）：" + result.message());
+                    else failure(source, result.message());
+                });
+        return 1;
     }
 
     private int revise(CommandSourceStack source, String input, long millis, String winnerInput, String reason, boolean verify) {

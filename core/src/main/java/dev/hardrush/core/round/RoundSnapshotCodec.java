@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 5;
+    private static final int SCHEMA = 6;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -38,7 +38,7 @@ public final class RoundSnapshotCodec {
                 Participant p = entry.getValue();
                 writeUuid(out, p.id()); writeText(out, p.name()); writeText(out, p.role().name());
                 out.writeBoolean(p.online()); out.writeBoolean(p.ready()); out.writeLong(p.humanNanos());
-                out.writeLong(p.joinedAtChallengeNanos()); out.writeInt(p.lifeSequence()); out.writeBoolean(p.revivalEntitled());
+                out.writeLong(p.joinedAtChallengeNanos()); out.writeInt(p.lifeSequence()); out.writeInt(p.revivalCharges());
                 out.writeBoolean(p.hasLeftProtection());
                 writeText(out, p.monsterRole().name()); writeText(out, p.monsterDimension().name());
                 out.writeLong(p.monsterCooldownNanos()); out.writeInt(p.monsterDeploymentSequence());
@@ -87,7 +87,7 @@ public final class RoundSnapshotCodec {
                 boolean online = in.readBoolean(), ready = in.readBoolean();
                 long humanNanos = in.readLong(), joinedAt = in.readLong();
                 int lifeSequence = in.readInt();
-                boolean revivalEntitled = in.readBoolean();
+                int revivalCharges = schema >= 6 ? in.readInt() : (in.readBoolean() ? 1 : 0);
                 // P1 had no formal protection rule or exit record. Its existing lives receive
                 // the initial permission on upgrade; every later exit is durably recorded.
                 boolean hasLeftProtection = schema >= 2 && in.readBoolean();
@@ -108,7 +108,7 @@ public final class RoundSnapshotCodec {
                     }
                 }
                 Participant p = new Participant(playerId, name, role, online, ready,
-                        humanNanos, joinedAt, lifeSequence, revivalEntitled, hasLeftProtection,
+                        humanNanos, joinedAt, lifeSequence, revivalCharges, hasLeftProtection,
                         monsterRole, monsterDimension, monsterCooldown, deploymentSequence, skillCooldowns);
                 if (players.put(playerId, p) != null) throw new IOException("Duplicate participant UUID");
             }

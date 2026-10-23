@@ -227,7 +227,7 @@ public final class RoundEngine {
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         players.put(playerId, new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
                 player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
-                player.lifeSequence(), false, player.hasLeftProtection(), MonsterRole.ZOMBIE,
+                player.lifeSequence(), player.revivalCharges(), player.hasLeftProtection(), MonsterRole.ZOMBIE,
                 MonsterDimension.OVERWORLD, MONSTER_COOLDOWN_NANOS, player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis()));
         return proposal(eventId, "HARDCORE_DEATH", before, before.phase(), 0, players, before.result(), false);
     }
@@ -271,7 +271,7 @@ public final class RoundEngine {
                         ? player.withRole(ParticipantRole.HUMAN_RESPAWNING)
                         : new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
                                 player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
-                                player.lifeSequence(), false, player.hasLeftProtection(), MonsterRole.ZOMBIE,
+                                player.lifeSequence(), player.revivalCharges(), player.hasLeftProtection(), MonsterRole.ZOMBIE,
                                 MonsterDimension.OVERWORLD, MONSTER_COOLDOWN_NANOS,
                                 player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis()));
             } else {
@@ -561,6 +561,28 @@ public final class RoundEngine {
         startReady(players, admissionPending);
         return proposal(eventId, "ADMIN_START", before, RoundPhase.RUNNING, 0,
                 players, null, false, true);
+    }
+
+    /** Admin credits are additive; ordinary kill rewards still only ensure at least one credit. */
+    public RoundTransition proposeAdminGrantRevival(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedCharges, int count) {
+        RoundSnapshot before = capture();
+        requirePhase(before, RoundPhase.RUNNING, RoundPhase.RESCUE);
+        requireOpenRescue(before);
+        if (!before.roundId().equals(roundId)) throw new IllegalStateException("轮次已改变，请重新申请。");
+        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("仅极限模式支持发放复生次数。");
+        Participant player = requirePlayer(before, playerId);
+        if ((!player.role().isMonster() && !player.role().isActiveHuman())
+                || player.lifeSequence() == 0 || player.joinedAtChallengeNanos() < 0) {
+            throw new IllegalStateException("只能向本轮已参赛的人类或怪物发放复生次数。");
+        }
+        if (player.lifeSequence() != expectedLifeSequence || player.revivalCharges() != expectedCharges) {
+            throw new IllegalStateException("玩家生命或剩余次数已改变，请重新申请。");
+        }
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.addRevivalCharges(count));
+        return proposal(eventId, "ADMIN_GRANT_REVIVAL", before, before.phase(), before.remainingPhaseNanos(),
+                players, before.result(), false, true);
     }
 
     /** Captures the stop boundary and skips display time; rotation still owns safe world release. */

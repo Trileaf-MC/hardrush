@@ -62,7 +62,7 @@ class RoundSnapshotCodecMigrationTest {
         assertFalse(migrated.participants().get(RESPAWNING).hasLeftProtection());
         assertFalse(migrated.participants().get(LOBBY).hasLeftProtection());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(5, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(6, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 
@@ -120,6 +120,43 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(9, monster.monsterDeploymentSequence());
         assertTrue(monster.monsterSkillReadyAtMillis().isEmpty());
         assertEquals(migrated, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(migrated)));
+    }
+
+    @Test void schemaFourAndFiveBooleanEntitlementsUpgradeToZeroOrOneCredit() throws Exception {
+        for (int schema : new int[]{4, 5}) for (boolean entitled : List.of(false, true)) {
+            var bytes = new ByteArrayOutputStream();
+            var out = new DataOutputStream(bytes);
+            out.writeInt(0x48525331); out.writeInt(schema);
+            uuid(out, ROUND); out.writeLong(4); out.writeLong(123); out.writeLong(7);
+            text(out, RulesConfig.defaults().encode()); text(out, "RUNNING"); text(out, "NO_ONLINE_HUMANS");
+            out.writeLong(123_456); out.writeLong(0); out.writeBoolean(true); out.writeBoolean(false);
+            out.writeInt(1);
+            uuid(out, ACTIVE); text(out, "Monster"); text(out, "MONSTER_LOBBY");
+            out.writeBoolean(false); out.writeBoolean(false); out.writeLong(98_765); out.writeLong(25);
+            out.writeInt(3); out.writeBoolean(entitled); out.writeBoolean(true);
+            text(out, "SKELETON"); text(out, "NETHER"); out.writeLong(0); out.writeInt(9);
+            out.writeInt(1); text(out, MonsterSkill.SKELETON_BURST.id()); out.writeLong(123_000);
+            out.writeBoolean(false);
+            var migrated = RoundSnapshotCodec.decode(bytes.toByteArray());
+            assertEquals(entitled ? 1 : 0, migrated.participants().get(ACTIVE).revivalCharges());
+            assertEquals(migrated, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(migrated)));
+        }
+    }
+
+    @Test void schemaSixRejectsNegativeRevivalCredits() {
+        var player = new Participant(ACTIVE, "Monster", ParticipantRole.MONSTER_LOBBY, true, false,
+                0, 0, 1, 123456789, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of());
+        var snapshot = new RoundSnapshot(ROUND, 1, 1, 0, RulesConfig.defaults(), RoundPhase.RUNNING,
+                PauseReason.NONE, 0, 0, Map.of(ACTIVE, player), true, false, null);
+        byte[] bytes = RoundSnapshotCodec.encode(snapshot);
+        assertEquals(123456789, RoundSnapshotCodec.decode(bytes).participants().get(ACTIVE).revivalCharges());
+        var buffer = ByteBuffer.wrap(bytes);
+        boolean corrupted = false;
+        for (int i = 8; i <= bytes.length - 4; i++) if (buffer.getInt(i) == 123456789) {
+            buffer.putInt(i, -1); corrupted = true; break;
+        }
+        assertTrue(corrupted);
+        assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(bytes));
     }
 
     /** The exact P1 wire layout, independent of the current encoder's schema and added fields. */

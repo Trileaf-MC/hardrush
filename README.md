@@ -33,7 +33,7 @@ HardRush 是面向原版客户端的 Fabric 多人速通挑战模组。玩家在
 - [真实怪物角色与技能原型](docs/p0-monster-roles.md)
 - [P1 第一批规则与持久化基础](docs/p1-foundations.md)
 - [P1 基础人工客户端检查](docs/人工客户端测试/P1基础与持久化.md)
-- [P1 管理确认、审计与成绩修订](docs/p1-admin-controls.md)
+- [P1 管理确认、审计与成绩修订](docs/p1-admin-controls.md)（含 OP 3 发放复生次数：`/hardrush admin grant-revival <玩家名或UUID> <次数> <原因>`，执行后直接生效）
 - [P1 管理人工客户端检查](docs/人工客户端测试/P1管理命令与成绩修订.md)
 - [P1 同服十轮与新 JVM 正常恢复记录](docs/p1-ten-round-regression.md)
 - [P1 十轮与正常恢复人工检查](docs/人工客户端测试/P1十轮与正常恢复.md)

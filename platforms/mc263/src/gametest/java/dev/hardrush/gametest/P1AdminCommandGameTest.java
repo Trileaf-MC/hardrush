@@ -56,6 +56,7 @@ public final class P1AdminCommandGameTest {
         for (String command : new String[]{"hardrush admin start 测试原因", "hardrush admin abort 测试原因",
                 "hardrush admin retry-world 测试原因", "hardrush admin next-mode normal 测试原因",
                 "hardrush admin recheck-storage 测试原因",
+                "hardrush admin grant-revival Tester 3 测试补偿",
                 "hardrush retry-world 测试原因", "hardrush config next-mode normal 测试原因"}) {
             parses(test, dispatcher, player, command, false);
             parses(test, dispatcher, reader, command, false);
@@ -180,6 +181,66 @@ public final class P1AdminCommandGameTest {
             test.assertTrue(output.last().contains("已消费"), "History correction ticket is single use");
             test.assertValueEqual(query(test, callbacks, session.history(historyId)).orElseThrow().edition(), oldEdition + 1,
                     "Repeated correction confirmation cannot bump another edition");
+            commands.forget(server);
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks = 200)
+    public void revivalGrantAppliesDirectlyWithPermissionAndAtomicAudit(GameTestHelper test) throws Exception {
+        var server = test.getLevel().getServer();
+        Path database = Files.createTempDirectory("hardrush-admin-revival-").toRealPath().resolve("rounds.sqlite");
+        UUID roundId = UUID.randomUUID(), target = UUID.randomUUID(), human = UUID.randomUUID();
+        var rules = RulesConfig.defaults().withMode(GameMode.HARDCORE);
+        var initial = new RoundSnapshot(roundId, 1, 123, 0, rules, RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
+                0, 0, Map.of(target, new Participant(target, "Monster", ParticipantRole.MONSTER_LOBBY, false, false, 0, 0, 1, false),
+                        human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 0, 0, 1, false)),
+                true, false, null);
+        try (var store = new SqliteRoundStore(database)) {
+            store.savePendingRules(rules.encode().getBytes(java.nio.charset.StandardCharsets.UTF_8), UUID.randomUUID(), "fixture");
+            store.commit(new SnapshotWrite(roundId, -1, 0, RoundSnapshotCodec.encode(initial), UUID.randomUUID(), "ROUND_CREATED"));
+        }
+        var callbacks = new LinkedBlockingQueue<Runnable>();
+        var output = new RecordingSource();
+        try (var session = new P1LobbySession(database, () -> 0, callbacks::add)) {
+            pumpUntil(test, callbacks, () -> session.state() == P1LobbySession.State.OPEN && !session.mutationPending());
+            session.adaptersReady(roundId);
+            pumpUntil(test, callbacks, () -> !session.mutationPending());
+            var commands = new P1AdminCommands(ignored -> session, ignored -> Optional.empty(), (ignored, failure) -> {});
+            var dispatcher = new CommandDispatcher<CommandSourceStack>();
+            dispatcher.register(commands.attach(Commands.literal("hardrush")));
+            var source = server.createCommandSourceStack().withSource(output);
+            var admin = permission(source, 3);
+            var reader = permission(source, 2);
+            parses(test, dispatcher, admin, "hardrush admin grant-revival Monster 0 测试", false);
+            parses(test, dispatcher, admin, "hardrush admin grant-revival Monster -1 测试", false);
+            execute(dispatcher, admin, "hardrush admin grant-revival Unknown 1 测试");
+            test.assertTrue(output.last().contains("玩家不存在"), "Unknown target must not create a ticket");
+            parses(test, dispatcher, reader, "hardrush admin grant-revival Monster 3 越权", false);
+            int firstMessage = output.messages.size();
+            execute(dispatcher, admin, "hardrush admin grant-revival Monster 3 管理补偿");
+            test.assertFalse(output.hasTicketAfter(firstMessage), "Grant command never issues a confirmation ticket");
+            test.assertValueEqual(session.snapshot().orElseThrow().participants().get(target).revivalCharges(), 0,
+                    "Credits publish only after the SQLite callback");
+            execute(dispatcher, admin, "hardrush admin grant-revival Monster 3 提交中重复请求");
+            test.assertTrue(output.last().contains("上一项状态仍在提交"), "Concurrent grant cannot duplicate a pending write");
+            pumpUntil(test, callbacks, () -> !session.mutationPending());
+            test.assertValueEqual(session.snapshot().orElseThrow().participants().get(target).revivalCharges(), 3,
+                    "One command directly grants exact credits to an offline monster");
+            test.assertTrue(output.last().contains("Monster") && output.last().contains("已发放 3 次复生"),
+                    "Success identifies the target and committed amount");
+            test.assertTrue(session.snapshot().orElseThrow().timingUncertain(), "Admin intervention marks the round uncertain");
+            execute(dispatcher, admin, "hardrush admin grant-revival Monster 2147483647 溢出");
+            test.assertTrue(output.last().contains("不能超过"), "Balance overflow is refused");
+            execute(dispatcher, admin, "hardrush admin grant-revival " + target + " 2 追加补偿");
+            pumpUntil(test, callbacks, () -> !session.mutationPending());
+            test.assertValueEqual(session.snapshot().orElseThrow().participants().get(target).revivalCharges(), 5,
+                    "Another direct UUID command adds to the latest balance");
+            test.assertFalse(output.hasTicketAfter(firstMessage), "No grant operation requires confirm");
+            var audits = query(test, callbacks, session.audits(roundId, 20, 0));
+            test.assertValueEqual(audits.size(), 2, "Only the two successful grants are audited");
+            test.assertTrue(audits.stream().allMatch(a -> a.action().equals("GRANT_REVIVAL") && a.afterValue().contains("player=" + target)),
+                    "Audit records the grant target and resulting balance");
             commands.forget(server);
         }
         test.succeed();

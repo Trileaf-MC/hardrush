@@ -140,7 +140,7 @@ public final class P1FullFlowGameTest {
         seq.thenExecute(()->{
                     test.assertTrue(f.monster.participant().monsterCooldownNanos()>0,"Return starts sortie cooldown");
                     state.facility(f.monster.player,LobbyLayout.Facility.ALTAR);
-                    test.assertTrue(state.has(f.monster.player,"已有一份"),"Altar shows the viewer's entitlement");
+                    test.assertTrue(state.has(f.monster.player,"剩余复生次数：1"),"Altar shows the viewer's entitlement");
                     f.monster.player.connection.handleContainerClose(new ServerboundContainerClosePacket(f.monster.player.containerMenu.containerId));
                     test.assertTrue(f.monster.participant().revivalEntitled(),"Closing confirmation consumes nothing");
                     state.facility(f.monster.player,LobbyLayout.Facility.ALTAR);

@@ -455,6 +455,15 @@ public final class P1LobbySession implements AutoCloseable {
                 "本轮已中止并保存原因与审计；立即回大厅，安全释放旧世界后轮换。");
     }
 
+    public void adminGrantRevival(UUID roundId, UUID playerId, int lifeSequence, int expectedCharges,
+            int count, String actor, String reason, Consumer<Reply> reply) {
+        requestAdminTransition(actor, reason, false,
+                () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), roundId, playerId, lifeSequence, expectedCharges, count),
+                reply, "已发放 " + count + " 次复生，剩余 " + ((long) expectedCharges + count)
+                        + " 次；本轮成绩标记待核验。", "GRANT_REVIVAL",
+                r -> adminValue(r) + ",player=" + playerId + ",revivalCharges=" + r.participants().get(playerId).revivalCharges());
+    }
+
     /** This only restores database availability. Native effects and competition remain quarantined. */
     public void recheckStorage(String actor, String reason, Consumer<Reply> reply) {
         if (state != State.FAILED || stopping || shutdownBoundary != null || engine == null) {
@@ -552,6 +561,13 @@ public final class P1LobbySession implements AutoCloseable {
 
     private void requestAdminTransition(String actor, String reason, boolean abort,
             java.util.function.Supplier<RoundTransition> proposal, Consumer<Reply> reply, String success) {
+        requestAdminTransition(actor, reason, abort, proposal, reply, success, abort ? "ABORT" : "START",
+                P1LobbySession::adminValue);
+    }
+
+    private void requestAdminTransition(String actor, String reason, boolean abort,
+            java.util.function.Supplier<RoundTransition> proposal, Consumer<Reply> reply, String success,
+            String action, java.util.function.Function<RoundSnapshot, String> values) {
         if (state != State.OPEN || stopping || shutdownBoundary != null || terminalCandidate != null) {
             reply.accept(new Reply(false, "轮次已冻结或状态不可写，不能执行管理转换。")); return;
         }
@@ -568,7 +584,7 @@ public final class P1LobbySession implements AutoCloseable {
             if (actor.length() > 256) throw new IllegalArgumentException("操作者标识超过审计字段长度。");
             var transition = proposal.get();
             var audit = new AdminAudit(transition.eventId(), transition.after().roundId(), actor,
-                    abort ? "ABORT" : "START", reason, adminValue(transition.before()), adminValue(transition.after()),
+                    action, reason, values.apply(transition.before()), values.apply(transition.after()),
                     System.currentTimeMillis());
             if (abort) adminBoundary = accepted;
             submit(transition, audit, reply, success);

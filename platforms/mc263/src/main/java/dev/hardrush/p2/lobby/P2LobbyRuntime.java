@@ -518,9 +518,13 @@ public final class P2LobbyRuntime {
                 if (revived != null && MonsterRoles.isMonster(revived)) MonsterRoles.clear(revived);
                 b.channels.remove(p.id()); b.searches.remove(p.id()); b.resumptions.remove(p.id());
             }
-            if (old != null && !old.revivalEntitled() && p.revivalEntitled()) {
+            if (old != null && p.revivalCharges() > old.revivalCharges()) {
                 var owner = server.getPlayerList().getPlayer(p.id());
-                if (owner != null) { tell(owner, "已获得一份复生资格；归返营地后可在祭坛确认空装复生。"); sound(owner, true); }
+                if (owner != null) {
+                    tell(owner, "复生次数增加 " + (p.revivalCharges() - old.revivalCharges()) + "，剩余 " + p.revivalCharges()
+                            + " 次；成为大厅怪物后可在祭坛确认空装复生。");
+                    sound(owner, true);
+                }
             }
             if (p.role() != ParticipantRole.MONSTER_LOBBY || old == null || old.role() != ParticipantRole.MONSTER_DEPLOYED) continue;
             var player = server.getPlayerList().getPlayer(p.id());
@@ -682,7 +686,7 @@ public final class P2LobbyRuntime {
             buttons.add(new P2LobbyUi.Button(Items.OAK_DOOR, "引导返回大厅（5 秒）", "return", ""));
             buttons.add(new P2LobbyUi.Button(Items.PLAYER_HEAD, "右键庭院模型直接追猎 · 当前 " + kindName(p.monsterRole())
                     + " · 出场冷却 " + seconds(p.monsterCooldownNanos()) + " 秒", "info", ""));
-            buttons.add(new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "复生资格：" + (p.revivalEntitled() ? "有" : "无") + " · 请到祭坛确认空装复生", "info", ""));
+            buttons.add(new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "剩余复生次数：" + p.revivalCharges() + " · 请到祭坛确认空装复生", "info", ""));
 
         }
         return buttons;
@@ -703,8 +707,8 @@ public final class P2LobbyRuntime {
     private static List<P2LobbyUi.Button> altarButtons(ServerPlayer player, Binding b) {
         var p = b.session.snapshot().orElseThrow().participants().get(player.getUUID());
         var buttons = new ArrayList<P2LobbyUi.Button>();
-        buttons.add(new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, p.revivalEntitled() ? "已有一份复生资格" : "尚无复生资格 · 击杀在赛人类后获得", "info", ""));
-        buttons.add(new P2LobbyUi.Button(Items.GRASS_BLOCK, "消耗资格，空装恢复人类 · 主世界自然出生点，无出生保护", "info", ""));
+        buttons.add(new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, p.revivalEntitled() ? "剩余复生次数：" + p.revivalCharges() : "尚无复生资格 · 击杀在赛人类后获得", "info", ""));
+        buttons.add(new P2LobbyUi.Button(Items.GRASS_BLOCK, "消耗一次复生，空装恢复人类 · 主世界自然出生点，无出生保护", "info", ""));
         buttons.add(new P2LobbyUi.Button(Items.PAPER, "保留本轮进度战绩；旧掉落不找回；出场冷却期间也可复生", "info", ""));
         if (p.revivalEntitled()) buttons.add(new P2LobbyUi.Button(Items.EMERALD, b.committing.contains(p.id()) ? "正在复生" : "确认复生", b.committing.contains(p.id()) ? "info" : "revive", p.lifeSequence() + ":" + p.monsterDeploymentSequence()));
         return buttons;

@@ -69,6 +69,71 @@ class DeathBatchRevivalTest {
         return engine;
     }
 
+    @Test void adminCreditsStackConsumeOneAtATimeAndSurviveHumanDeathsAndCleanRestarts() {
+        var engine = fixture(GameMode.HARDCORE, human(human, true), monster(true, true));
+        apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 1, 2));
+        assertEquals(3, engine.view().participants().get(monster).revivalCharges());
+        assertTrue(engine.view().timingUncertain());
+        var cooldowns = engine.view().participants().get(monster).monsterSkillReadyAtMillis();
+        for (int remaining = 2; remaining >= 0; remaining--) {
+            var before = engine.view().participants().get(monster);
+            apply(engine, engine.proposeRevival(UUID.randomUUID(), round, monster, before.lifeSequence(), 3));
+            assertEquals(remaining, engine.view().participants().get(monster).revivalCharges());
+            assertEquals(cooldowns, engine.view().participants().get(monster).monsterSkillReadyAtMillis());
+            apply(engine, engine.proposeCheckpoint(UUID.randomUUID(), true));
+            engine = RoundEngine.restore(RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(engine.committed())), clock);
+            apply(engine, engine.proposeOnline(UUID.randomUUID(), monster, "Monster", true));
+            apply(engine, batch(engine, death(engine, monster, null)));
+            assertEquals(remaining, engine.view().participants().get(monster).revivalCharges());
+        }
+        var exhausted = engine;
+        int life = engine.view().participants().get(monster).lifeSequence();
+        assertThrows(IllegalStateException.class, () -> exhausted.proposeRevival(UUID.randomUUID(), round, monster, life, 3));
+    }
+
+    @Test void adminCanPregrantOfflineHumanAndKillRewardDoesNotIncreaseExistingCredits() {
+        var engine = fixture(GameMode.HARDCORE, human(human, false), human(other, true), monster(true, false));
+        apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, human, 1, 0, 3));
+        apply(engine, engine.proposeHardcoreDeath(UUID.randomUUID(), human, 1));
+        assertEquals(3, engine.view().participants().get(human).revivalCharges());
+        apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 0, 4));
+        apply(engine, batch(engine, death(engine, other, origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON))));
+        assertEquals(4, engine.view().participants().get(monster).revivalCharges());
+        assertEquals(3, engine.view().participants().get(human).revivalCharges());
+        apply(engine, engine.proposeAbort(UUID.randomUUID(), "end test"));
+        assertTrue(engine.view().participants().values().stream().allMatch(p -> p.revivalCharges() == 0));
+    }
+
+    @Test void adminGrantRejectsStaleIdentityNonpositiveCountsOverflowAndWrongModeWithoutPendingMutation() {
+        var engine = fixture(GameMode.HARDCORE, human(human, true), monster(true, false));
+        assertThrows(IllegalArgumentException.class, () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 0, -1));
+        assertThrows(IllegalStateException.class, () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), UUID.randomUUID(), monster, 1, 0, 1));
+        assertThrows(IllegalStateException.class, () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 2, 0, 1));
+        assertThrows(IllegalStateException.class, () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 1, 1));
+        assertThrows(IllegalStateException.class, () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), round, UUID.randomUUID(), 1, 0, 1));
+        assertFalse(engine.pending());
+        apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 0, Integer.MAX_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, Integer.MAX_VALUE, 1));
+        assertFalse(engine.pending());
+        var normal = fixture(GameMode.NORMAL, human(human, true));
+        assertThrows(IllegalStateException.class, () -> normal.proposeAdminGrantRevival(UUID.randomUUID(), round, human, 1, 0, 1));
+        assertFalse(normal.pending());
+    }
+
+    @Test void adminGrantDoesNotExtendRescueAndCannotReopenExpiredOrCompletedRounds() {
+        var engine = rescue(true);
+        clock.seconds(21);
+        apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 1, 3));
+        assertEquals(39_000, engine.view().remainingPhaseMillis());
+        assertEquals(4, engine.view().participants().get(monster).revivalCharges());
+        clock.seconds(39);
+        assertThrows(IllegalStateException.class, () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 4, 1));
+        apply(engine, engine.proposeTick(UUID.randomUUID()));
+        assertEquals(0, engine.view().participants().get(monster).revivalCharges());
+        assertThrows(IllegalStateException.class, () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 0, 1));
+    }
+
     @Test void selfExplosionMultikillAwardsBeforeTestingLastHumanAndKeepsOneEntitlement() {
         var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), monster(true, false));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
