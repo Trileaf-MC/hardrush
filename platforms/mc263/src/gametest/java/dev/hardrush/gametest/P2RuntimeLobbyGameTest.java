@@ -11,6 +11,7 @@ import dev.hardrush.p1.P1LobbySession;
 import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p1.world.P1RoundWorldBundle;
 import dev.hardrush.p2.lobby.P2LobbyRuntime;
+import dev.hardrush.p2.locator.PlayerLocator;
 import dev.hardrush.p2.monster.P2MonsterRuntime;
 import dev.hardrush.p2.protection.P2ProtectionRuntime;
 import dev.hardrush.persistence.SqliteRoundStore;
@@ -298,6 +299,8 @@ public final class P2RuntimeLobbyGameTest {
                         f.test.assertValueEqual(hunter.player.getFoodData().getFoodLevel(), 20, "Human default food is restored");
                         f.test.assertFalse(P2ProtectionRuntime.protectedEntity(hunter.player), "Revival returns an unprotected human to the natural spawn");
                         f.test.assertValueEqual(hunter.player.getAttribute(Attributes.ARMOR).getBaseValue(), 0d, "Intrinsic monster armor is removed");
+                        f.test.assertFalse(PlayerLocator.hideFrom(hunter.player, f.target.player),
+                                "A committed human revival restores locator visibility");
                         if (hunter == f.monster) {
                             f.assertSkillCooldowns();
                             f.test.assertValueEqual(hunter.player.getEnderChestInventory().getItem(0).getCount(), 6,
@@ -447,6 +450,8 @@ public final class P2RuntimeLobbyGameTest {
                     && arenaTicking() && level.isPositionEntityTicking(monster.player.blockPosition()) && originalLootVisible();
         }
         void assertDeployment(int sequence) {
+            test.assertTrue(PlayerLocator.hideFrom(monster.player, target.player), "Formal deployed monster is hidden from a human locator");
+            test.assertFalse(PlayerLocator.hideFrom(target.player, monster.player), "Formal monster still receives human locations");
             test.assertValueEqual(monster.player.gameMode.getGameModeForPlayer(), net.minecraft.world.level.GameType.SURVIVAL,
                     "A successful monster sortie restores survival mode");
             test.assertValueEqual(monster.participant().monsterDeploymentSequence(), sequence, "Exactly one persisted sortie is admitted");
@@ -542,6 +547,9 @@ public final class P2RuntimeLobbyGameTest {
             test.assertTrue(monster.player.connection.player == monster.player, "The native connection rebinds to the live lobby body");
             test.assertTrue(monster.player.getInventory().isEmpty(), "No role controls or human death inventory enter the lobby");
             test.assertFalse(MonsterRoles.isMonster(monster.player), "Lobby has no active prototype role body");
+            test.assertTrue(PlayerLocator.hideFrom(monster.player, target.player),
+                    "Committed camp identity hides a monster even when the native body looks human");
+            test.assertFalse(PlayerLocator.hideFrom(target.player, monster.player), "Camp monster retains permission to receive human locations");
             test.assertValueEqual(monster.player.getEnderChestInventory().getItem(0).getCount(), 6, "Same-round ender storage survives every sortie and native respawn");
             test.assertValueEqual(monster.participant().lifeSequence(), 1, "Monster outings never create a new human life");
             test.assertValueEqual(diamonds(), 3, "Exactly one human death drop set remains");
