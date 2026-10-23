@@ -399,7 +399,6 @@ public final class P1LobbyRuntime {
             TABS.remove(server);
             BOOKS.remove(server);
             BOOK_ATTEMPTS.remove(server);
-            ADMIN.forget(server);
             P1ProgressRuntime.unconfigure(server);
             P1CombatRuntime.unconfigure(server);
             dev.hardrush.p1.lobby.P1HumanEntry.close(server);

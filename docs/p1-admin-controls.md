@@ -1,10 +1,12 @@
-# P1 第五批：管理命令、确认审计与成绩修订
+# P1 第五批：管理命令、事务审计与成绩修订
 
 更新：2026-10-15；自动验证于 2026-10-14 完成。实现范围为 Minecraft 26.3 普通模式／开发适配的 P1-16。209 项 JUnit 与 62 项必需无图形服务端 GameTest 通过，日志、源码／制品指纹见[本批证据](evidence/p1-admin-controls-20261014/manifest.json)。源码与本记录一同提交，未推送或发布；证据清单的 `uncommitted` 表示验证采集时的工作树状态。没有运行真实客户端或 computer use。P0、P0b、P1-G 仍未通过。
 
+2026-10-23 更新：全部管理命令改为输入后直接提交，移除 `/hardrush admin confirm` 及确认票据。下述操作入口与提交边界为当前行为；历史自动验证记录仍描述对应交付时的版本。真实客户端复验见[人工操作清单](人工客户端测试/P1管理命令与成绩修订.md)。
+
 ## 权限与操作入口
 
-玩家 join、ready、status、history、leaderboard、book 入口继续按原规则工作。管理默认用原版 OP 级别，预览和确认时都检查权限。
+玩家 join、ready、status、history、leaderboard、book 入口继续按原规则工作。管理默认用原版 OP 级别，受理命令时检查权限；历史查询完成后提交修订前再次检查权限。
 
 | 权限 | 命令 | 范围 |
 | --- | --- | --- |
@@ -17,17 +19,18 @@
 | OP 3 | `/hardrush admin retry-world <原因>` | OPEN 会话的 PREPARING 世界准备失败，只重试原轮／原种子 |
 | OP 4 | `/hardrush admin correct <轮次> <耗时毫秒> <胜者UUID或none> <原因>` | 已通关历史的成绩投影修订，书版递增并转待核验 |
 | OP 4 | `/hardrush admin validate <轮次> <原因>` | 依据原始可信首龙胜者核验，成功后可恢复正常榜资格 |
-| 对应操作级别 | `/hardrush admin confirm <票据UUID>` | 在 120 秒内确认本人申请的具体操作 |
+| OP 3 | `/hardrush admin recheck-storage <原因>` | 重新核验 FAILED 会话的原数据库，成功仍保持恢复隔离 |
+| OP 4 | `/hardrush admin close-recovery <原因>` | 结束 RECOVERY_REQUIRED 轮次，等待原有安全释放门槛后创建下轮 |
 
-表内简写子命令都使用 `/hardrush admin` 前缀。轮次支持正整数序号或 UUID；审计另支持 `current` 查询尚未结算轮、`all` 查询全局。旧 `/hardrush config next-mode <模式> <原因>` 与 `/hardrush retry-world <原因>` 转入同一确认流程，不能绕过权限或审计。旧的无原因配置命令已替换，自动服务端命令夹具已同步升级。
+表内简写子命令都使用 `/hardrush admin` 前缀。轮次支持正整数序号或 UUID；审计另支持 `current` 查询尚未结算轮、`all` 查询全局。旧 `/hardrush config next-mode <模式> <原因>` 与 `/hardrush retry-world <原因>` 也直接执行，不能绕过权限或审计。旧的无原因配置命令已替换，自动服务端命令夹具已同步升级。
 
 世界仍由运行时自动分片准备；管理重试不能制造 READY。默认极限轮不会因管理员 start 绕过 P2：需把下轮设为普通，再在已就绪的等待轮中止、安全轮换。PREPARING 半完成世界保留原身份重试；当前不提供数据库／档案故障清除、录像保存跳过、归档或删除入口，这些在 P3 实现。
 
-## 确认与提交边界
+## 直接执行与提交边界
 
-票据保存不可变的操作者标识、动作、具体 roundId、原因和影响。身份使用命令源实体 UUID 或控制台标识；昵称只作展示。每服最多 128 张，原因最长 512 个码点；拒绝控制／双向／格式字符及非法 Unicode。单调时钟计 120 秒，成功确认先消费票据，再提交；重启不恢复票据。另一操作者、降权、重复确认或过期票据不能写库。
+命令输入后即受理并提交，不生成预览票据，也无需再输入哈希或 UUID。操作者使用命令源实体 UUID 或控制台标识；昵称只作展示。原因仍必填，最长 512 个码点；拒绝控制／双向／格式字符及非法 Unicode。OP 权限分级、状态与证据校验保持生效。
 
-当前轮票据绑定阶段、规则、终局与参与者 UUID／角色／在线／就绪／生命序号的语义指纹，普通计时检查点不会使其瞬间过期。历史票据绑定书版，事务再按 edition CAS；先确认同一版的一项后，其他旧版票据失效。实际运行写入继续使用当前 snapshot.version CAS，避免确认窗口覆盖新状态。
+当前轮操作读取执行时的轮次与状态，底层继续按 snapshot.version CAS 提交。历史操作读取目标当前书版，再按 edition CAS 修订；查询后目标改变时拒绝过期写入。写入中的并发管理请求继续被拒绝；提交完成后再次输入命令会作为新的操作重新校验并执行。
 
 开始和中止仍走 RoundEngine proposal → 独立 SQLite worker → accept，管理快照与完整审计在同一事务提交，成功回执及玩家转换只在事务成功后发生。世界／档案未核验、未就绪玩家、状态写入繁忙及已捕获首龙终局都不能被管理命令绕过。
 
@@ -80,3 +83,10 @@ OP 3 或更高权限、服务端控制台可执行：
 初次带确认版本的自动验证：core 172、persistence 94、platform 115 项 JUnit 全部通过（共 381 项）；4 项原生管理员命令无图形 GameTest 与独立正式大厅全流程 1 项均通过，生产 JAR 构建及 `git diff --check` 通过。新增回归覆盖次数累加／逐次消费、死亡与正常重启保留、旧布尔快照升级、整数溢出、救场截止、权限降级／重复确认／余额改变后的旧票据拒绝，以及真实 SQLite 审计失败时余额回滚。没有启动真实客户端。
 
 同日按用户要求将 `grant-revival` 改为执行后直接生效；本次复验 8 项管理 Session JUnit 和 4 项原生管理员命令无图形 GameTest 全部通过，生产 JAR 已重新构建，`git diff --check` 通过。直接命令回归确认无需票据即可发放、OP 2 无法执行、提交中并发请求不重复发放、按最新余额追加与审计正确。人工操作清单已同步更新，真实客户端未运行。
+
+
+## 2026-10-23：全部管理命令直接执行
+
+移除 `start`、`abort`、`retry-world`、`recheck-storage`、`close-recovery`、`next-mode`、`correct`、`validate` 的二次确认，旧 `config next-mode`、`retry-world` 别名同步直接执行。`admin confirm`、内存票据、过期检查及不再使用的确认模型已删除。`grant-revival` 继续直接执行。操作者身份、必填原因与安全文本检查、权限分级、并发写入限制、版本 CAS、事务审计以及世界／档案释放门槛继续生效。
+
+自动验证：`scripts/p0-gradle.sh checkP3 :platforms:mc263:compileGametestJava -PhardrushP1=true -x :platforms:mc263:prepareDebugTools --console=plain` 通过。JUnit 共 373 项（core 164、persistence 94、platform 115），118 项必需无图形服务端 GameTest 全部通过，生产 JAR 已构建。原 9 项确认票据测试替换为 1 项仍适用的安全文本测试；新增／更新原生命令回归覆盖直接开赛、中止、世界重试、存储重核、结束恢复、规则修改、成绩修订与核验拒绝，以及权限和提交后回执。真实客户端没有运行，人工复验清单已同步更新。
