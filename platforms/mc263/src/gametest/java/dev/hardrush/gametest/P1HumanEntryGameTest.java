@@ -4,9 +4,11 @@ import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.BookPort;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.api.OperationTag;
+import dev.hardrush.core.lobby.LobbyLayout;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.p1.P1LobbyRuntime;
 import dev.hardrush.p1.P1LobbySession;
+import dev.hardrush.p1.lobby.LobbyInteractions;
 import dev.hardrush.p1.book.P1BookPort;
 import dev.hardrush.p1.player.P1PlayerProfiles;
 import dev.hardrush.p1.world.P1LobbyWorld;
@@ -65,9 +67,12 @@ public final class P1HumanEntryGameTest {
                         test.assertTrue(lobby.holdingLevel().getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) != null, "Every owned block is loaded");
                     for (var facility : dev.hardrush.core.lobby.LobbyLayout.Facility.values()) {
                         var pos = BlockPos.containing(lobby.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(facility)));
-                        test.assertTrue(lobby.holdingLevel().getBlockState(pos).is(Blocks.LECTERN), "Facility physically built: " + facility);
+                        test.assertTrue(LobbyLayout.MONSTER_FACILITIES.contains(facility)
+                                ? lobby.holdingLevel().getBlockState(pos).isAir()
+                                : lobby.holdingLevel().getBlockState(pos).is(Blocks.LECTERN), "Facility physically built: " + facility);
                     }
                     for (var landing : dev.hardrush.core.lobby.LobbyLayout.Landing.values()) test.assertTrue(lobby.safeLanding(landing), "Safe landing: " + landing);
+                    f.assertRoleModels();
                     f.assertLobby(); f.profileReady(f.b, false); f.hold = true; f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY);
                 })
                 .thenWaitUntil(() -> f.await(f.session.mutationPending(), "Assembly pending SQLite callback"))
@@ -91,10 +96,23 @@ public final class P1HumanEntryGameTest {
                 .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.WAITING && f.idle(), "Last-second exit cancels even at zero"))
                 .thenExecute(() -> f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "Single human prepares"))
-                .thenExecute(() -> f.a.disconnect());
+                .thenExecute(() -> {
+                    f.oldRoleModels = LobbyInteractions.get(f.server).orElseThrow().roleModels().view(f.a.player);
+                    f.a.disconnect();
+                });
         f.a.login(sequence);
         sequence.thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.WAITING && !f.ready(f.a) && f.idle(), "Ordinary disconnect cancelled readiness"))
-                .thenExecute(() -> { test.assertFalse(P1LobbyWorld.open(f.server).inAssembly(f.a.player, true), "Reconnect stays outside"); f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY); })
+                .thenExecute(() -> {
+                    LobbyInteractions.tick(f.server);
+                    var router = LobbyInteractions.get(f.server).orElseThrow();
+                    var ids = router.roleModels().view(f.a.player);
+                    test.assertValueEqual(ids.size(), 3, "Reconnect restores all three native monster models");
+                    test.assertTrue(ids.values().stream().noneMatch(f.oldRoleModels.values()::contains), "Reconnect never reuses stale role IDs");
+                    P2HuntFixtures.click(f.a.player, f.oldRoleModels.get(LobbyLayout.Facility.ZOMBIE), InteractionHand.MAIN_HAND);
+                    test.assertValueEqual(router.lastResult(f.a.player).orElseThrow(), LobbyInteractions.Result.UNREGISTERED, "Old connection role ID is rejected");
+                    test.assertFalse(P1LobbyWorld.open(f.server).inAssembly(f.a.player, true), "Reconnect stays outside");
+                    f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY);
+                })
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "Single human prepares again"))
                 .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
                 .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RUNNING && !P1PlayerProfiles.isLocked(f.a.player) && f.idle(), "One human starts at natural spawn"))
@@ -169,6 +187,16 @@ public final class P1HumanEntryGameTest {
                     f.gate(f.a, false);
                     test.assertValueEqual(f.round().participants().get(f.a.profile.id()).role(), dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY, "Gate and assembly cannot restore a dead UUID");
                     f.a.disconnect(); f.b.disconnect();
+                    f.reopenLegacyCamp("PREPARED", false);
+                })
+                .thenWaitUntil(() -> f.await(P1LobbyWorld.open(f.server).ready(), "Interrupted v1 camp upgrades"))
+                .thenExecute(() -> { f.assertUpgradedCamp(); f.reopenLegacyCamp("COMPLETE", true); })
+                .thenWaitUntil(() -> f.await(P1LobbyWorld.open(f.server).ready(), "Completed v1 camp upgrades"))
+                .thenExecute(() -> {
+                    f.assertUpgradedCamp();
+                    var lobby = P1LobbyWorld.open(f.server);
+                    test.assertTrue(lobby.holdingLevel().getBlockState(BlockPos.containing(lobby.holdingSpawn()).offset(-8, -1, 10)).is(Blocks.GOLD_BLOCK),
+                            "Completed camp upgrade preserves unrelated administrator terrain");
                 }).thenSucceed();
     }
 
@@ -184,6 +212,7 @@ public final class P1HumanEntryGameTest {
         net.minecraft.server.level.ServerLevel savedLevel;
         String lastStage;
         int stageStarted;
+        Map<LobbyLayout.Facility, Integer> oldRoleModels;
         Fixture(GameTestHelper test) { this.test = test; server = test.getLevel().getServer(); }
         @SuppressWarnings("unchecked") <T> T service(String name) {
             try { var field = P1LobbyRuntime.class.getDeclaredField(name); field.setAccessible(true); return (T) ((Map<?, ?>) field.get(null)).get(server); }
@@ -291,6 +320,81 @@ public final class P1HumanEntryGameTest {
                 test.assertFalse(peer.player.getAbilities().mayBuild || peer.player.getAbilities().mayfly, "Lobby abilities are authoritative");
             }
             test.assertTrue(a.player.level() == b.player.level(), "Both peers belong to the same native level");
+        }
+        void assertRoleModels() {
+            LobbyInteractions.tick(server);
+            var router = LobbyInteractions.get(server).orElseThrow();
+            var ids = router.roleModels().view(a.player);
+            test.assertValueEqual(ids.size(), 3, "Waiting humans see all three monster choices");
+            test.assertTrue(ids.values().stream().noneMatch(router.roleModels().view(b.player).values()::contains), "Each connection owns independent role IDs");
+            var lobby = P1LobbyWorld.open(server);
+            for (var facility : LobbyLayout.MONSTER_FACILITIES) {
+                int id = ids.get(facility);
+                var spawn = a.connection.packets.stream().filter(ClientboundAddEntityPacket.class::isInstance)
+                        .map(ClientboundAddEntityPacket.class::cast).filter(p -> p.getId() == id).findFirst().orElseThrow();
+                var type = switch (facility) {
+                    case ZOMBIE -> net.minecraft.world.entity.EntityTypes.ZOMBIE;
+                    case SKELETON -> net.minecraft.world.entity.EntityTypes.SKELETON;
+                    case CREEPER -> net.minecraft.world.entity.EntityTypes.CREEPER;
+                    default -> throw new AssertionError("Not a monster facility");
+                };
+                test.assertTrue(spawn.getType() == type, "Uses the native full monster model: " + facility);
+                var pos = lobby.layoutPosition(LobbyLayout.facility(facility));
+                test.assertTrue(pos.distanceToSqr(new Vec3(spawn.getX(), spawn.getY(), spawn.getZ())) < .000001, "Model occupies the former lectern position");
+                test.assertTrue(a.player.level().getEntity(id) == null, "Display is never a live hostile mob");
+                test.assertTrue(a.connection.packets.stream().anyMatch(p -> p instanceof ClientboundSetEntityDataPacket data && data.id() == id), "Native model metadata is sent");
+            }
+            test.assertTrue(a.connection.packets.stream().anyMatch(p -> p instanceof ClientboundSetEquipmentPacket equipment
+                    && equipment.getEntity() == ids.get(LobbyLayout.Facility.SKELETON)
+                    && equipment.getSlots().stream().anyMatch(slot -> slot.getFirst() == net.minecraft.world.entity.EquipmentSlot.MAINHAND
+                    && slot.getSecond().is(Items.BOW))), "Skeleton carries its native bow");
+            int id = ids.get(LobbyLayout.Facility.ZOMBIE);
+            P2HuntFixtures.click(a.player, id, InteractionHand.MAIN_HAND);
+            test.assertValueEqual(router.lastResult(a.player).orElseThrow(), LobbyInteractions.Result.DISTANCE, "Remote role click is rejected");
+            var pos = lobby.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.ZOMBIE));
+            P2HuntFixtures.move(a.player, pos.add(0, 0, 2)); a.acknowledge();
+            P2HuntFixtures.click(a.player, id, InteractionHand.OFF_HAND);
+            test.assertValueEqual(router.lastResult(a.player).orElseThrow(), LobbyInteractions.Result.INPUT, "Offhand role duplicate is rejected");
+            var forged = new ServerboundInteractPacket(id, InteractionHand.MAIN_HAND, new Vec3(Double.NaN, 1, 0), false);
+            test.assertValueEqual(LobbyInteractions.entity(a.player, forged), LobbyInteractions.Result.INPUT, "Invalid model hit is rejected");
+            var packet = new ServerboundInteractPacket(id, InteractionHand.MAIN_HAND, new Vec3(0, 1, 0), false);
+            int before = a.connection.packets.size();
+            test.assertValueEqual(LobbyInteractions.entity(a.player, packet), LobbyInteractions.Result.ACCEPTED, "Role model reaches the existing facility action");
+            int after = a.connection.packets.size();
+            test.assertTrue(after > before, "Existing closed-area feedback is preserved");
+            LobbyInteractions.entity(a.player, packet);
+            test.assertValueEqual(a.connection.packets.size(), after, "Two network guards dispatch each click once");
+            test.assertFalse(session.mutationPending(), "Waiting humans cannot bypass existing role restrictions");
+            place(a, LobbyLayout.Landing.CENTRAL);
+        }
+        void reopenLegacyCamp(String marker, boolean editFloor) {
+            var lobby = P1LobbyWorld.open(server);
+            var level = lobby.holdingLevel(); var anchor = BlockPos.containing(lobby.holdingSpawn());
+            // No players remain. Reopen the actual persistent level through production migration,
+            // with a fixture-owned old manifest and old lecterns (no production test bypass).
+            P1LobbyWorld.shutdown(server);
+            for (var facility : LobbyLayout.MONSTER_FACILITIES) {
+                var point = LobbyLayout.facility(facility);
+                var pos = anchor.offset((int) point.x(), 0, (int) point.z());
+                test.assertTrue(level.setBlockAndUpdate(pos, Blocks.LECTERN.defaultBlockState()), "Fixture restores an old v1 role lectern");
+            }
+            if (editFloor) level.setBlockAndUpdate(anchor.offset(-8, -1, 10), Blocks.GOLD_BLOCK.defaultBlockState());
+            level.save(null, true, false);
+            var manifest = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("hardrush/lobby-layout.txt");
+            try {
+                java.nio.file.Files.writeString(manifest, "hardrush:lobby\nversion=" + LobbyLayout.VERSION
+                        + "\nanchor=" + anchor.asLong() + "\n" + marker + "\n");
+            } catch (java.io.IOException error) { throw new IllegalStateException(error); }
+            P1LobbyWorld.open(server);
+        }
+        void assertUpgradedCamp() {
+            var lobby = P1LobbyWorld.open(server);
+            for (var facility : LobbyLayout.Facility.values()) {
+                var pos = BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(facility)));
+                test.assertTrue(LobbyLayout.MONSTER_FACILITIES.contains(facility)
+                        ? lobby.holdingLevel().getBlockState(pos).isAir()
+                        : lobby.holdingLevel().getBlockState(pos).is(Blocks.LECTERN), "Legacy upgrade only replaces monster lecterns: " + facility);
+            }
         }
         void assertProtectionAndUi() {
             var floor = BlockPos.containing(a.player.position()).below(2);

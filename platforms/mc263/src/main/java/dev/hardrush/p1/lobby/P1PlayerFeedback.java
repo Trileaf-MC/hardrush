@@ -73,7 +73,7 @@ public final class P1PlayerFeedback {
                         case RULES -> "右键规则讲台阅读玩法"; case HISTORY -> "右键书屋 · 轮次／名单／分榜／主册与分卷";
                         case ALTAR -> p!=null&&p.revivalEntitled()?"剩余复生 " + p.revivalCharges() + " 次 · 右键祭坛确认，冷却期间可用":"尚无复生资格 · 击杀在赛人类后获得";
                         case MIDROUND -> "中途门 · 挑战／救场中确认空装加入";
-                        case ZOMBIE, SKELETON, CREEPER -> "右键角色展位选择怪物，之后右键目标模型追猎";
+                        case ZOMBIE, SKELETON, CREEPER -> "右键怪物模型选择角色，之后右键目标模型追猎";
                         case PREVIOUS, NEXT -> "右键翻阅本人的追猎庭院";
                     };
                     hints.offer("facility",LobbyHints.Priority.FACILITY,text,now+300); break;

@@ -255,7 +255,7 @@ public final class P2LobbyRuntime {
         }
         try {
             switch (action) {
-                case "role" -> tell(player, "请右键营地的僵尸、骷髅或苦力怕角色展位。");
+                case "role" -> tell(player, "请右键营地的僵尸、骷髅或苦力怕模型。");
                 case "revive" -> {
                     var worlds = b.worlds.get();
                     if (worlds == null || !worlds.ready()
@@ -553,7 +553,7 @@ public final class P2LobbyRuntime {
             b.slots.clear(); b.deadAt.clear(); b.displays.clear(); b.cooling.clear(); b.reviving.clear();
         }
     }
-    /** Role and paging facilities are registered by round 2, through the same protected block route. */
+    /** Role models and paging blocks use the same guarded facility action. */
     public static void facility(ServerPlayer player, LobbyLayout.Facility facility) {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);

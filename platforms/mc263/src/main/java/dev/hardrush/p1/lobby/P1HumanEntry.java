@@ -86,11 +86,12 @@ public final class P1HumanEntry {
         if (lobby.ready() && registeredRound == null) {
             var router = LobbyInteractions.get(server).orElseThrow();
             for (var facility : LobbyLayout.Facility.values()) {
+                if (LobbyLayout.MONSTER_FACILITIES.contains(facility)) continue;
                 var pos = BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(facility)));
                 router.registerBlock(pos, Blocks.LECTERN, LobbyContext.RULES, player -> {
                     if (facility == LobbyLayout.Facility.RULES) P2LobbyUi.open(player, LobbyContext.RULES);
                     else if (facility == LobbyLayout.Facility.MIDROUND) openGate(player);
-                    else if (switch (facility) { case ZOMBIE, SKELETON, CREEPER, PREVIOUS, NEXT -> true; default -> false; })
+                    else if (facility == LobbyLayout.Facility.PREVIOUS || facility == LobbyLayout.Facility.NEXT)
                         dev.hardrush.p2.lobby.P2LobbyRuntime.facility(player, facility);
                     else if (facility == LobbyLayout.Facility.ALTAR) P2LobbyRuntime.altar(player);
                     else if (facility == LobbyLayout.Facility.HISTORY) dev.hardrush.p1.record.P1Library.open(player);
