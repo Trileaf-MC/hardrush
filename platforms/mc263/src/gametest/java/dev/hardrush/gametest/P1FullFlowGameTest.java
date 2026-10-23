@@ -60,7 +60,13 @@ public final class P1FullFlowGameTest {
                 .thenWaitUntil(()->f.await(f.target.participant()!=null&&f.target.participant().ready()&&!f.session.mutationPending(),"Second spatial readiness"))
                 .thenExecute(()->f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
                 .thenWaitUntil(()->f.await(f.humansReady(),"Two admitted human lives"))
-                .thenExecute(f::prepareArena)
+                .thenExecute(() -> {
+                    f.prepareArena();
+                    // This combat fixture runs after the first-sunrise grace period, at night for the zombie body.
+                    var daylight = f.level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
+                            .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+                    f.level.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DawnPact.SUNRISE_TICKS + 18_000);
+                })
                 .thenWaitUntil(()->f.await(f.arenaTicking(),"Bounded fixture arena ticking"))
                 .thenExecute(()->{
                     f.target.move(f.anchor);f.monster.move(f.anchor.add(10,0,0));
@@ -72,9 +78,11 @@ public final class P1FullFlowGameTest {
                 .thenWaitUntil(()->f.await(f.monsterReady(true),"Hardcore death in camp"))
                 .thenExecute(()->{f.monster.player=f.monster.current();P2HuntFixtures.role(f.monster.player,"zombie");})
                 .thenWaitUntil(()->f.await(!f.session.mutationPending(),"Role saved"))
+                .thenExecute(state::withdrawalShortcut)
                 .thenExecute(()->f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
                 .thenExecute(()->P2HuntFixtures.hunt(f.monster.player,f.target.profile.id(),f.monster.connection.packets))
                 .thenWaitUntil(()->f.await(f.deployed(1),"Model right click safely deployed"))
+                .thenExecute(state::withdrawalShortcut)
                 .thenIdle(5)
                 .thenExecute(()->{
                     state.use(f.monster.player,7);state.use(f.monster.player,7);
@@ -305,6 +313,17 @@ public final class P1FullFlowGameTest {
         }
         void assembly(ServerPlayer p){var l=P1LobbyWorld.open(f.server);move(p,l.holdingLevel(),l.landing(LobbyLayout.Landing.RESTORE_READY));}
         static void move(ServerPlayer p,ServerLevel level,Vec3 point){p.teleportTo(level,point.x,point.y,point.z,Set.of(),0,0,true);}
+        void withdrawalShortcut() {
+            var p = f.monster.player;
+            var participant = f.monster.participant();
+            var main = p.getMainHandItem().copy(); var offhand = p.getOffhandItem().copy();
+            ParticipationExitGameTest.shortcut(p, true);
+            test.assertTrue(P2LobbyUi.isMenu(p), "Lobby and deployed monsters can open withdrawal confirmation through fixed inventory locks");
+            p.connection.handleContainerClose(new ServerboundContainerClosePacket(p.containerMenu.containerId));
+            ParticipationExitGameTest.sneak(p, false);
+            test.assertTrue(ItemStack.matches(main, p.getMainHandItem()) && ItemStack.matches(offhand, p.getOffhandItem()), "Shortcut preserves monster loadout");
+            test.assertTrue(f.monster.participant().equals(participant) && !f.session.mutationPending(), "Opening and closing never commits a monster exit");
+        }
         void use(ServerPlayer p,int slot){p.connection.handleSetCarriedItem(new ServerboundSetCarriedItemPacket(slot));p.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND,1,0,0));}
         void facility(ServerPlayer p,LobbyLayout.Facility facility){var l=P1LobbyWorld.open(f.server);var pos=BlockPos.containing(l.layoutPosition(LobbyLayout.facility(facility)));move(p,l.holdingLevel(),Vec3.atBottomCenterOf(pos.south(2)));p.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,new BlockHitResult(Vec3.atCenterOf(pos),Direction.UP,pos,false),2));test.assertTrue(P2LobbyUi.isMenu(p),"Physical facility opened "+facility);}
         boolean has(ServerPlayer p,String label){for(int n=0;n<45&&n<p.containerMenu.slots.size();n++)if(p.containerMenu.getSlot(n).getItem().getHoverName().getString().contains(label))return true;return false;}

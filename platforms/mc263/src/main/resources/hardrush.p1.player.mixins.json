@@ -11,6 +11,7 @@
     "PlayerLoginIsolationMixin",
     "PlayerIsolationEntityMixin",
     "PlayerIsolationNetworkMixin",
+    "ParticipationExitNetworkMixin",
     "PlayerAdvancementProfileAccessor",
     "PlayerAdvancementIsolationMixin",
     "PlayerProgressDimensionMixin",
