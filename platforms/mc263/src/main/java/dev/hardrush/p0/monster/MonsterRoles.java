@@ -352,6 +352,7 @@ public final class MonsterRoles {
 
     public static boolean attack(ServerPlayer player, Entity target) {
         dev.hardrush.p2.lobby.P2LobbyRuntime.interruptReturn(player);
+        if (dev.hardrush.p1.pact.DawnPactRuntime.reject(player, target)) return false;
         Role role = ROLES.get(player.getUUID());
         if (role == null || !P2MonsterRuntime.canAct(player) || !player.isAlive() || (role.kind!=Kind.ZOMBIE && (role.kind!=Kind.SKELETON || role.gear.get(EquipmentSlot.MAINHAND).is(Items.BOW))) || !(target instanceof LivingEntity living)
                 || !legalTarget(player.getUUID(), player.level(), target)) return false;

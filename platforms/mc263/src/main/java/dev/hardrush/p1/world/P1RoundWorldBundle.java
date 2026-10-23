@@ -129,6 +129,15 @@ public final class P1RoundWorldBundle implements AutoCloseable {
         return bundle;
     }
 
+    public dev.hardrush.p1.pact.DawnPactData dawnPact() {
+        // Upgrading an already active round preserves its original day; only new rounds reset at admission.
+        boolean existing = switch (snapshot.phase()) {
+            case PREPARING, WAITING, COUNTDOWN -> false;
+            default -> true;
+        };
+        return dev.hardrush.p1.pact.DawnPactData.get(level(Level.OVERWORLD), existing);
+    }
+
     private void beginManifest() {
         var worldDimensions = WorldPresets.createNormalWorldDimensions(server.registryAccess());
         var ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());

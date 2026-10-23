@@ -109,6 +109,20 @@ public final class P1LobbyRuntime {
             dev.hardrush.p1.record.P1Library.configure(server, session);
             dev.hardrush.p1.lobby.P1HumanEntry.configure(server, session, profiles, () -> WORLDS.get(server));
             P1CelebrationRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
+            dev.hardrush.p1.pact.DawnPactRuntime.configure(server, new dev.hardrush.p1.pact.DawnPactRuntime.Access() {
+                public Optional<RoundSnapshot> snapshot() { return session.snapshot(); }
+                public net.minecraft.server.level.ServerLevel overworld() {
+                    var worlds = WORLDS.get(server);
+                    return worlds != null && worlds.ready() && session.snapshot().filter(r -> r.roundId().equals(worlds.roundId())).isPresent()
+                            ? worlds.level(Level.OVERWORLD) : null;
+                }
+                public dev.hardrush.p1.pact.DawnPactData data() { return WORLDS.get(server).dawnPact(); }
+                public boolean formalLevel(net.minecraft.server.level.ServerLevel level) {
+                    var overworld = overworld();
+                    return overworld != null && P1RoundWorldBundle.sameRound(overworld, level);
+                }
+                public boolean locked() { return session.competitionLocked(); }
+            });
             P2ProtectionRuntime.configure(server, new P2ProtectionRuntime.Access() {
                 @Override public Optional<P2ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) {
                     var round = session.snapshot().orElse(null);
@@ -302,6 +316,8 @@ public final class P1LobbyRuntime {
                 session.tick();
             } catch (RuntimeException error) { session.adapterFailure("世界／档案适配失败", error); }
             finally {
+                try { dev.hardrush.p1.pact.DawnPactRuntime.tick(server); }
+                catch (RuntimeException error) { session.adapterFailure("黎明契约状态更新失败", error); }
                 session.view().ifPresent(round -> dev.hardrush.p1.lobby.P1PlayerFeedback.tick(server, round, session));
             }
         });
@@ -401,6 +417,7 @@ public final class P1LobbyRuntime {
             BOOK_ATTEMPTS.remove(server);
             P1ProgressRuntime.unconfigure(server);
             P1CombatRuntime.unconfigure(server);
+            dev.hardrush.p1.pact.DawnPactRuntime.close(server);
             dev.hardrush.p1.lobby.P1HumanEntry.close(server);
             P1LobbyWorld.shutdown(server);
         });
@@ -508,6 +525,7 @@ public final class P1LobbyRuntime {
 
     private static void applyPlayers(MinecraftServer server, RoundSnapshot before, RoundSnapshot after) {
         refreshTab(server, true);
+        dev.hardrush.p1.pact.DawnPactRuntime.tick(server);
         if (before.result() == null && P1CelebrationRuntime.successful(after)) P1CelebrationRuntime.start(server, after);
         P2LobbyRuntime.onCommitted(server, before, after);
         if (!before.roundId().equals(after.roundId())) {

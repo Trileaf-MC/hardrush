@@ -16,6 +16,7 @@
     "hardrush.p0.world.mixins.json",
     "hardrush.p0.monster.mixins.json",
     "hardrush.p1.combat.mixins.json",
+    "hardrush.p1.pact.mixins.json",
     "hardrush.p1.player.mixins.json",
     "hardrush.p1.book.mixins.json",
     "hardrush.p2.protection.mixins.json",

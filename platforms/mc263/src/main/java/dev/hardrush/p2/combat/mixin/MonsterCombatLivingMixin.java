@@ -20,11 +20,11 @@ public abstract class MonsterCombatLivingMixin {
     }
     @Inject(method="addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z", at=@At("HEAD"), cancellable=true)
     private void effect(MobEffectInstance effect, Entity source, CallbackInfoReturnable<Boolean> ci) {
-        if (P2CombatRuntime.rejectEffect(source, (Entity)(Object)this)) ci.setReturnValue(false);
+        if (P2CombatRuntime.rejectEffect(source, (Entity)(Object)this, effect)) ci.setReturnValue(false);
     }
     @Inject(method="forceAddEffect", at=@At("HEAD"), cancellable=true)
     private void effect(MobEffectInstance effect, Entity source, CallbackInfo ci) {
-        if (P2CombatRuntime.rejectEffect(source, (Entity)(Object)this)) ci.cancel();
+        if (P2CombatRuntime.rejectEffect(source, (Entity)(Object)this, effect)) ci.cancel();
     }
     @Inject(method="knockback(DDDLnet/minecraft/world/damagesource/DamageSource;FZ)V", at=@At("HEAD"), cancellable=true)
     private void knockback(double force, double x, double z, DamageSource source, float scale, boolean blocked, CallbackInfo ci) {

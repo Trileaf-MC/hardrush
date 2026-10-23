@@ -78,18 +78,21 @@ public final class P2CombatRuntime {
     }
     public static boolean rejectCurrent(Entity target) { return reject(current(), target); }
     public static boolean rejectDamage(Entity target, DamageSource source) {
+        if (dev.hardrush.p1.pact.DawnPactRuntime.rejectDamage(target, source)) return true;
         // A launched arrow's frozen identity wins over a mutable native owner reference.
         if (source(source.getDirectEntity()).isPresent()) return reject(source.getDirectEntity(), target);
         if (capturedHuman(source.getDirectEntity())) return false;
         if (source.getEntity() != null) return reject(source.getEntity(), target);
         return rejectCurrent(target);
     }
-    public static boolean rejectEffect(Entity source, Entity target) {
+    public static boolean rejectEffect(Entity source, Entity target, net.minecraft.world.effect.MobEffectInstance effect) {
         var action = current();
+        if (!effect.getEffect().value().isBeneficial()
+                && dev.hardrush.p1.pact.DawnPactRuntime.reject(action != null ? action : source, target)) return true;
         if (action instanceof AbstractArrow && (source(action).isPresent() || capturedHuman(action))) {
-            return reject(action, target);
+            return rejectMonster(action, target);
         }
-        return source != null ? reject(source, target) : rejectCurrent(target);
+        return rejectMonster(source != null ? source : action, target);
     }
     /** Ordinary native Player.attack must never bypass the monster model's range, cooldown and attributes. */
     public static boolean formalMonsterPlayer(Entity entity) {
@@ -99,6 +102,9 @@ public final class P2CombatRuntime {
                 .filter(p -> p.role().isMonster()).isPresent();
     }
     public static boolean reject(Entity entity, Entity target) {
+        return dev.hardrush.p1.pact.DawnPactRuntime.reject(entity, target) || rejectMonster(entity, target);
+    }
+    private static boolean rejectMonster(Entity entity, Entity target) {
         var frozen = source(entity).orElse(null);
         if (frozen == null) return formalMonsterPlayer(entity); // Only the stamped native model may attack.
         if (!(target.level() instanceof ServerLevel level) || entity.level() != level) return true;

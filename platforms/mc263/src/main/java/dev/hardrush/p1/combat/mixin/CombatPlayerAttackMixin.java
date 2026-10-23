@@ -16,7 +16,7 @@ public abstract class CombatPlayerAttackMixin {
     private void attack(Entity target, Operation<Void> original) {
         if (!((Object)this instanceof ServerPlayer player)) { original.call(target); return; }
         var level = player.level();
-        if (P1CombatRuntime.rejectDamage(level)) return;
+        if (P1CombatRuntime.rejectDamage(level) || dev.hardrush.p1.pact.DawnPactRuntime.reject(player, target)) return;
         try (var ignored = P1CombatRuntime.playerAction(level, player, AttackKind.MELEE)) { original.call(target); }
     }
 }
