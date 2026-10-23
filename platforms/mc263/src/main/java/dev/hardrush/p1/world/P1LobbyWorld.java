@@ -135,14 +135,16 @@ public final class P1LobbyWorld {
                     for (var entry : blueprint.entrySet()) {
                         var actual = level.getBlockState(entry.getKey());
                         boolean natural = entry.getKey().getY() == spawn.getY() - 1 ? actual.is(Blocks.GRASS_BLOCK) : actual.isAir();
-                        if (!natural && !(saved.equals(identity + "PREPARED\n") && actual.equals(entry.getValue())))
+                        if (!natural && !(saved.equals(identity + "PREPARED\n") && (actual.equals(entry.getValue())
+                                || P1CampBlueprint.legacyMonsterLectern(spawn, entry.getKey(), actual))))
                             throw new IllegalStateException("未拥有或施工期间被修改的营地方块：" + entry.getKey());
                     }
                     // Check the entire walking volume before claiming it, not just the blocks we place.
                     for (int x = LobbyLayout.MIN_X; x <= LobbyLayout.MAX_X; x++) for (int z = LobbyLayout.MIN_Z; z <= LobbyLayout.MAX_Z; z++)
                         for (int y = 0; y < 4; y++) {
                             var pos = spawn.offset(x, y, z); var actual = level.getBlockState(pos);
-                            if (!actual.isAir() && !(saved.equals(identity + "PREPARED\n") && actual.equals(blueprint.get(pos))))
+                            if (!actual.isAir() && !(saved.equals(identity + "PREPARED\n") && (actual.equals(blueprint.get(pos))
+                                    || P1CampBlueprint.legacyMonsterLectern(spawn, pos, actual))))
                                 throw new IllegalStateException("营地行走空间存在未拥有方块：" + pos);
                         }
                     construction.addAll(blueprint.entrySet());
@@ -165,6 +167,17 @@ public final class P1LobbyWorld {
             }
             for (var purpose : new LobbyLayout.Landing[]{LobbyLayout.Landing.CENTRAL, LobbyLayout.Landing.MONSTER, LobbyLayout.Landing.WAIT_OUTSIDE})
                 if (!safeLanding(purpose)) throw new IllegalStateException("营地落点不安全，保留地形等待修复：" + purpose);
+            // Keep the v1 terrain manifest: only these three owned facilities change representation.
+            // Completed camps and interrupted old builds upgrade without rebuilding other terrain.
+            boolean replaced = false;
+            for (var facility : LobbyLayout.MONSTER_FACILITIES) {
+                var point = LobbyLayout.facility(facility);
+                var pos = spawn.offset((int)point.x(), 0, (int)point.z());
+                if (P1CampBlueprint.legacyMonsterLectern(spawn, pos, level.getBlockState(pos))) {
+                    level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState()); replaced = true;
+                }
+            }
+            if (replaced) level.save(null, true, false);
             ready = true;
         } catch (RuntimeException error) { failure = "超平坦大厅准备失败：" + error.getMessage(); }
     }
@@ -195,7 +208,7 @@ public final class P1LobbyWorld {
             var pos = spawn.offset((int)point.x(), 0, (int)point.z() + 2);
             var original = P1CampBlueprint.labels(spawn).get(pos);
             label(pos, new String[]{original[0], enabled ? switch (facility) {
-                case PREVIOUS, NEXT -> "右键翻页 · 仅本人"; default -> "右键选择角色";
+                case PREVIOUS, NEXT -> "右键翻页 · 仅本人"; default -> "右键模型选角";
             } : "极限挑战时开放", enabled ? "右键活人模型追猎" : "", ""});
         }
     }

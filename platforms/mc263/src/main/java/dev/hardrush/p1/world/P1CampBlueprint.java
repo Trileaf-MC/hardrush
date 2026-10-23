@@ -28,7 +28,8 @@ public final class P1CampBlueprint {
         for (int x = 12; x <= 30; x++) for (int z = -6; z <= 5; z++) blocks.put(anchor.offset(x, 4, z), Blocks.OAK_PLANKS.defaultBlockState());
         for (var facility : LobbyLayout.Facility.values()) {
             var p = LobbyLayout.facility(facility);
-            blocks.put(anchor.offset((int)p.x(), 0, (int)p.z()), Blocks.LECTERN.defaultBlockState());
+            blocks.put(anchor.offset((int)p.x(), 0, (int)p.z()),
+                    (LobbyLayout.MONSTER_FACILITIES.contains(facility) ? Blocks.AIR : Blocks.LECTERN).defaultBlockState());
         }
         // Nonfunctional areas are visibly marked closed until their delivery round.
         for (var p : LobbyLayout.displaySlots()) blocks.put(anchor.offset((int)p.x(), -1, (int)p.z()), Blocks.POLISHED_ANDESITE.defaultBlockState());
@@ -53,6 +54,11 @@ public final class P1CampBlueprint {
                     facility == LobbyLayout.Facility.MIDROUND ? "挑战／救场时开放" : "", ""});
         }
         return labels;
+    }
+    /** The three owned v1 lecterns may be removed when opening an existing camp. */
+    public static boolean legacyMonsterLectern(BlockPos anchor, BlockPos pos, BlockState state) {
+        return state.is(Blocks.LECTERN) && LobbyLayout.MONSTER_FACILITIES.stream()
+                .map(LobbyLayout::facility).anyMatch(p -> pos.equals(anchor.offset((int)p.x(), 0, (int)p.z())));
     }
     private P1CampBlueprint() {}
 }

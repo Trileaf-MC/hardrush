@@ -33,12 +33,14 @@ public final class LobbyInteractions {
     private record Hints(ServerPlayer owner, ServerGamePacketListenerImpl connection, LobbyHints values) {}
     private final Map<UUID, Hints> hints = new HashMap<>();
     private final LobbyProjections projections;
+    private final LobbyRoleModels roleModels;
     private UUID round;
     private boolean closed;
 
     private LobbyInteractions(MinecraftServer server, Access access) {
         this.server = server; this.access = access; round = access.round();
         projections = new LobbyProjections(this);
+        roleModels = new LobbyRoleModels(this);
     }
     public static LobbyInteractions configure(MinecraftServer server, Access access) {
         if (!server.isSameThread()) throw new IllegalStateException("Lobby configure requires server thread");
@@ -48,6 +50,7 @@ public final class LobbyInteractions {
     }
     public static Optional<LobbyInteractions> get(MinecraftServer server) { return Optional.ofNullable(SERVICES.get(server)); }
     public LobbyProjections projections() { return projections; }
+    public LobbyRoleModels roleModels() { return roleModels; }
     public UUID round() { return access.round(); }
     public LobbyHints hints(ServerPlayer player) {
         requireThread(); synchronizeRound();
@@ -106,7 +109,10 @@ public final class LobbyInteractions {
     public static Result entity(ServerPlayer player, ServerboundInteractPacket packet) {
         var service = SERVICES.get(player.level().getServer());
         if (service == null || !player.level().getServer().isSameThread()) return Result.UNREGISTERED;
-        return service.dispatch(player, packet, () -> service.projections.click(player, packet));
+        return service.dispatch(player, packet, () -> {
+            var result = service.roleModels.click(player, packet);
+            return consumed(result) ? result : service.projections.click(player, packet);
+        });
     }
     private Result dispatch(ServerPlayer player, Object packet, java.util.function.Supplier<Result> action) {
         var previous = dispatches.get(player.getUUID());
@@ -120,7 +126,7 @@ public final class LobbyInteractions {
     private void synchronizeRound() {
         UUID current = round();
         if (!Objects.equals(round, current)) {
-            blocks.clear(); dispatches.clear(); projections.clear(); hints.clear(); round = current;
+            blocks.clear(); dispatches.clear(); projections.clear(); roleModels.clear(); hints.clear(); round = current;
         }
     }
     public Optional<Result> lastResult(ServerPlayer player) {
@@ -129,7 +135,7 @@ public final class LobbyInteractions {
     }
     public static void tick(MinecraftServer server) {
         var service = SERVICES.get(server); if (service == null) return;
-        service.synchronizeRound(); service.projections.tick();
+        service.synchronizeRound(); service.projections.tick(); service.roleModels.tick(server);
         dev.hardrush.p2.lobby.P2LobbyUi.tick(server);
         dev.hardrush.p1.record.P1Library.tick(server);
         // Quarantine skips vanilla player doTick, including container invalidation. Still enforce contexts.
@@ -142,12 +148,13 @@ public final class LobbyInteractions {
     }
     public static void disconnected(ServerPlayer player) {
         var service = SERVICES.get(player.level().getServer()); if (service == null) return;
-        service.projections.remove(player); service.dispatches.remove(player.getUUID()); service.hints.remove(player.getUUID());
+        service.projections.remove(player); service.roleModels.remove(player);
+        service.dispatches.remove(player.getUUID()); service.hints.remove(player.getUUID());
     }
     public static void close(MinecraftServer server) {
         var service = SERVICES.remove(server);
         if (service != null) {
-            service.requireThread(); service.projections.clear();
+            service.requireThread(); service.projections.clear(); service.roleModels.clear();
             service.blocks.clear(); service.dispatches.clear(); service.hints.clear(); service.closed = true;
         }
     }

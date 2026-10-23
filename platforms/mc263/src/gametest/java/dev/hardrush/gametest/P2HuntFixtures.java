@@ -24,6 +24,12 @@ final class P2HuntFixtures {
         var lobby = P1LobbyWorld.open(player.level().getServer());
         var pos = BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(facility)));
         move(player, Vec3.atBottomCenterOf(pos.south(2)));
+        if (LobbyLayout.MONSTER_FACILITIES.contains(facility)) {
+            LobbyInteractions.tick(player.level().getServer());
+            var ids = LobbyInteractions.get(player.level().getServer()).orElseThrow().roleModels().view(player);
+            click(player, ids.get(facility), InteractionHand.MAIN_HAND);
+            return;
+        }
         player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,
                 new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false), 100));
     }

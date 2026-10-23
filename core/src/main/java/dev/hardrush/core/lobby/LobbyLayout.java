@@ -9,6 +9,7 @@ public final class LobbyLayout {
     public static final int DISPLAY_CAPACITY = 20;
     public enum Landing { CENTRAL, MONSTER, WAIT_OUTSIDE, RESTORE_READY }
     public enum Facility { RULES, HISTORY, MIDROUND, ZOMBIE, SKELETON, CREEPER, PREVIOUS, NEXT, ALTAR }
+    public static final List<Facility> MONSTER_FACILITIES = List.of(Facility.ZOMBIE, Facility.SKELETON, Facility.CREEPER);
     public record Point(double x, double z, float yaw) {}
     public record Circle(double x, double z, double radius) {
         public boolean contains(double px, double pz) { return Math.hypot(px - x, pz - z) <= radius; }
