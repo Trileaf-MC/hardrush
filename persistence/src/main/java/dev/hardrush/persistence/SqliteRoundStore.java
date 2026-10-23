@@ -34,10 +34,15 @@ public final class SqliteRoundStore implements AutoCloseable {
     }
 
     public SqliteRoundStore(Path databasePath, int busyTimeoutMillis) throws IOException, SQLException {
+        this(databasePath, busyTimeoutMillis, false);
+    }
+
+    private SqliteRoundStore(Path databasePath, int busyTimeoutMillis, boolean readOnly) throws IOException, SQLException {
         if (busyTimeoutMillis < 0) throw new IllegalArgumentException("Negative busy timeout");
         this.databasePath = SafeDatabasePath.prepare(Objects.requireNonNull(databasePath, "databasePath"));
         var config = new SQLiteConfig();
         config.setBusyTimeout(busyTimeoutMillis);
+        config.setReadOnly(readOnly);
         // Fabric/Knot can initialize the store before JDBC's service loader sees the mod class loader.
         // Connect directly through the bundled driver instead of depending on TCCL/SPI registration order.
         connection = new org.sqlite.JDBC().connect("jdbc:sqlite:" + this.databasePath, config.toProperties());
@@ -46,6 +51,10 @@ public final class SqliteRoundStore implements AutoCloseable {
         try {
             var version = schemaVersion();
             if (version > SCHEMA_VERSION) throw new SQLException("Database schema is newer than this build: " + version);
+            if (readOnly) {
+                if (version != SCHEMA_VERSION) throw new SQLException("Checkpoint inspection requires the current database schema");
+                return;
+            }
             try (var statement = connection.createStatement()) {
                 try (var mode = statement.executeQuery("PRAGMA journal_mode=WAL")) {
                     if (!mode.next() || !"wal".equalsIgnoreCase(mode.getString(1))) {
@@ -69,6 +78,31 @@ public final class SqliteRoundStore implements AutoCloseable {
         } catch (SQLException | RuntimeException | Error failure) {
             try { connection.close(); } catch (SQLException closeFailure) { failure.addSuppressed(closeFailure); }
             throw failure;
+        }
+    }
+
+    /** Inspect a stopped server without migrating it or checkpointing its WAL. */
+    public static Optional<RoundSnapshot> inspectLatest(Path database) throws IOException, SQLException {
+        if (!java.nio.file.Files.isRegularFile(database, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("比赛数据库缺失，禁止创建空库代替恢复");
+        }
+        try (var store = new SqliteRoundStore(database, DEFAULT_BUSY_TIMEOUT_MILLIS, true)) {
+            store.checkIntegrity();
+            return store.latest().map(data -> RoundSnapshotCodec.decode(data.payload()));
+        }
+    }
+
+    /** A standalone SQLite image includes committed WAL content, never a raw copy of a live main file. */
+    public synchronized void exportCheckpoint(Path destination) throws IOException, SQLException {
+        checkOpenPath();
+        checkIntegrity();
+        Path target = SafeDatabasePath.prepare(destination);
+        if (target.equals(databasePath) || java.nio.file.Files.exists(target)) {
+            throw new IOException("Checkpoint destination already exists");
+        }
+        try (var statement = connection.prepareStatement("VACUUM main INTO ?")) {
+            statement.setString(1, target.toString());
+            statement.execute();
         }
     }
 

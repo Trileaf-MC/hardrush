@@ -64,7 +64,9 @@ public final class P1AdminCommandGameTest {
             parses(test, dispatcher, owner, command, true);
         }
         for (String command : new String[]{"hardrush admin correct 1 5000 none 测试原因",
-                "hardrush admin validate 1 测试原因", "hardrush admin close-recovery 测试原因"}) {
+                "hardrush admin validate 1 测试原因", "hardrush admin close-recovery 测试原因",
+                "hardrush admin close-recovery", "hardrush admin recovery",
+                "hardrush admin recovery yes " + UUID.randomUUID(), "hardrush admin recovery no " + UUID.randomUUID()}) {
             parses(test, dispatcher, player, command, false);
             parses(test, dispatcher, reader, command, false);
             parses(test, dispatcher, admin, command, false);

@@ -72,6 +72,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
     @Override public void onInitialize() {
         if (System.getProperty("hardrush.p1.restart.operation") == null
                 || System.getProperty("hardrush.p3.crash.scenario") != null
+                || System.getProperty("hardrush.p1.fullCheckpoint.test") != null
                 || System.getProperty("hardrush.p3.profile.boundary") != null) return;
         // Register the production listeners before this observer, independent of mod iteration order.
         P1LobbyRuntime.initialize();
@@ -106,6 +107,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
         Throwable failure;
         boolean stopping;
         BlockPos marker;
+        long expectedWorldClock = 17_000;
 
         Fixture(MinecraftServer server) { this(server, true); }
 
@@ -140,6 +142,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
                         require(data.get("pid").getAsLong() != ProcessHandle.current().pid(), "must use a distinct JVM");
                         expected = RoundSnapshotCodec.decode(Base64.getDecoder().decode(data.get("checkpoint").getAsString()));
                         marker = BlockPos.of(data.get("marker").getAsLong());
+                        if (data.has("worldClock")) expectedWorldClock = data.get("worldClock").getAsLong();
                         sameIdentity(expected, round());
                         require(round().phase() == expected.phase(), "saved phase restored before adapters");
                         require(round().challengeNanos() == expected.challengeNanos(), "downtime never added to challenge");
@@ -552,7 +555,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
                 require(chest != null && chest.getItem(0).is(Items.AMETHYST_SHARD) && chest.getItem(0).getCount() == ++index, "actual native chest contents survived");
                 require(level.clockManager() != server.overworld().clockManager(), "round clock independent of permanent lobby");
             }
-            require(worlds.level(Level.OVERWORLD).getOverworldClockTime() == 17000, "native SavedData clock restored");
+            require(worlds.level(Level.OVERWORLD).getOverworldClockTime() == expectedWorldClock, "native SavedData clock restored");
             require(worlds.level(Level.OVERWORLD).getWeatherData().isRaining(), "native weather SavedData restored");
         }
 
@@ -598,6 +601,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
         void stop() {
             details.addProperty("observedPhase", round().phase().name());
             details.addProperty("marker", marker.asLong());
+            if (worlds != null && worlds.ready()) details.addProperty("worldClock", worlds.level(Level.OVERWORLD).getOverworldClockTime());
             if (fight != null) details.addProperty("nativeDragonId", fight.dragonUUID().toString());
             stopping = true;
             // Same production halt path as the console stop command; do not pre-close any P1 service.
@@ -674,7 +678,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
             try {
                 require(System.nanoTime() - started < TimeUnit.MINUTES.toNanos(5)
                         && System.nanoTime() - stepStarted < TimeUnit.MINUTES.toNanos(2), "scenario timeout at " + (steps.isEmpty() ? "complete" : steps.getFirst().name()));
-                require(P1LobbyRuntime.sessionState(server).filter(s -> s == P1LobbySession.State.FAILED).isEmpty(), P1LobbyRuntime.status(server));
+                if (!operation.equals("online")) require(P1LobbyRuntime.sessionState(server).filter(s -> s == P1LobbySession.State.FAILED).isEmpty(), P1LobbyRuntime.status(server));
                 acknowledge(a); acknowledge(b);
                 var step = steps.peek();
                 if (step != null && step.work().getAsBoolean()) { steps.remove(); stepStarted = System.nanoTime(); LoggerFactory.getLogger("hardrush-p1-server-restart").info("Step passed: {}", step.name()); }

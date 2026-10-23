@@ -154,7 +154,7 @@ def read_snapshot_header(payload):
     if number('>I') != 0x48525331:
         raise RuntimeError('Unsupported round snapshot format')
     schema = number('>i')
-    if not 1 <= schema <= 5:
+    if not 1 <= schema <= 6:
         raise RuntimeError('Unsupported round snapshot schema')
     result = {'schema': schema, 'roundId': str(uuid.UUID(bytes=take(16))), 'sequence': number('>q'),
               'seed': number('>q'), 'version': number('>q'), 'rules': text(131072),

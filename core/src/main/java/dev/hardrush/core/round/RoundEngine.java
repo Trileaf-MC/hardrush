@@ -71,6 +71,29 @@ public final class RoundEngine {
                 stored.participants(), false, true, stored.result()), clock);
     }
 
+    /** Only a complete, verified world + profile + database checkpoint permits crash continuation. */
+    public static RoundEngine restoreVerifiedCheckpoint(RoundSnapshot stored, MonotonicClock clock) {
+        if (stored.phase() != RoundPhase.RUNNING || stored.result() != null || requiresLegacyClosure(stored)) {
+            throw new IllegalArgumentException("Only a current active round can resume from a full checkpoint");
+        }
+        var players = new LinkedHashMap<UUID, Participant>();
+        stored.participants().forEach((id, p) -> players.put(id, p.withSession(p.name(), false)));
+        return new RoundEngine(new RoundSnapshot(stored.roundId(), stored.sequence(), stored.seed(), stored.version(),
+                stored.rules(), RoundPhase.RUNNING, PauseReason.NO_ONLINE_HUMANS, stored.challengeNanos(),
+                stored.remainingPhaseNanos(), players, false, true, null), clock);
+    }
+
+    /** A full checkpoint pauses native simulation; its disk-copy interval is not challenge time. */
+    public void resumeAfterCheckpoint() {
+        if (pending != null) throw new IllegalStateException("Cannot resume a pending checkpoint");
+        boundary = clock.nanoTime();
+    }
+
+    public void excludeFailedCheckpointPause(long pausedNanos) {
+        if (pending != null || pausedNanos < 0) throw new IllegalStateException("Invalid checkpoint pause");
+        boundary = Math.addExact(boundary, pausedNanos);
+    }
+
     public RoundSnapshot committed() { return committed; }
     public boolean pending() { return pending != null; }
     public RoundSnapshot view() { return pending == null ? project(committed, boundary, clock.nanoTime()) : pending.before(); }

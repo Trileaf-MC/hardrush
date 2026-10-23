@@ -27,7 +27,7 @@ def prefix(schema=4, clean=1, uncertain=0):
 
 class SnapshotHeaderTest(unittest.TestCase):
     def test_all_known_schemas_share_the_identity_and_timing_prefix(self):
-        for schema in range(1, 6):
+        for schema in range(1, 7):
             with self.subTest(schema=schema):
                 result = RUNNER.read_snapshot_header(prefix(schema) + b'participant-tail-is-checked-by-JVM')
                 self.assertEqual(result, {
@@ -38,7 +38,7 @@ class SnapshotHeaderTest(unittest.TestCase):
                 })
 
     def test_unknown_schema_and_magic_fail_closed(self):
-        for schema in (-1, 0, 6, 2**31 - 1):
+        for schema in (-1, 0, 7, 2**31 - 1):
             with self.subTest(schema=schema), self.assertRaisesRegex(RuntimeError, 'Unsupported round snapshot schema'):
                 RUNNER.read_snapshot_header(prefix(schema))
         with self.assertRaisesRegex(RuntimeError, 'Unsupported round snapshot format'):

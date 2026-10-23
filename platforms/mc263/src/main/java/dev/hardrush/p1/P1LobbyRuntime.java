@@ -88,6 +88,8 @@ public final class P1LobbyRuntime {
         initialized = true;
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             if (!Boolean.getBoolean("hardrush.p1.enabled")) return;
+            var recovery = new dev.hardrush.p1.storage.P1FullCheckpoint(server.getWorldPath(LevelResource.ROOT)).restore();
+            if (!recovery.message().isEmpty()) LOGGER.warn("{}", recovery.message());
             var lobby = P1LobbyWorld.open(server);
             var profiles = new P1PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profiles"),
                     lobby::holdingLevel, lobby::holdingSpawn);
@@ -103,9 +105,17 @@ public final class P1LobbyRuntime {
                         // bootstrap IO finished before constructor return.
                         if (reference[0] == null) bootstrapCallbacks.add(task);
                         else if (SESSIONS.get(server) == reference[0]) task.run();
-                    }), (message, error) -> LOGGER.error(message, error));
+                    }), (message, error) -> LOGGER.error(message, error), recovery.restored(), recovery.message());
             reference[0] = session;
             SESSIONS.put(server, session);
+            new dev.hardrush.p1.storage.P1RecoveryRuntime(server, session, profiles,
+                    () -> WORLDS.get(server), bundle -> {
+                        if (bundle == null) WORLDS.remove(server); else WORLDS.put(server, bundle);
+                    }, () -> RECORDINGS.get(server), () -> {
+                        ADMITTED.get(server).clear(); RELEASES.remove(server); REPLAY_FLUSHES.remove(server);
+                        BOOK_ATTEMPTS.get(server).clear();
+                        dev.hardrush.p1.storage.P1FullCheckpointRuntime.close(server);
+                    });
             P2LobbyRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
             dev.hardrush.p1.record.P1Library.configure(server, session);
             dev.hardrush.p1.lobby.P1HumanEntry.configure(server, session, profiles, () -> WORLDS.get(server));
@@ -220,6 +230,7 @@ public final class P1LobbyRuntime {
                 lobby.tick();
                 dev.hardrush.p1.lobby.LobbyInteractions.tick(server);
                 dev.hardrush.p1.lobby.P1HumanEntry.readOnlyTick(server);
+                if (dev.hardrush.p1.storage.P1RecoveryRuntime.tick(server)) return;
                 if (lobby.failure().isPresent() && session.state() != P1LobbySession.State.FAILED
                         && session.state() != P1LobbySession.State.RECHECKING) {
                     throw new IllegalStateException(lobby.failure().orElseThrow());
@@ -310,6 +321,7 @@ public final class P1LobbyRuntime {
                         session.onOnline(player.getUUID(), player.getScoreboardName(), true);
                     }
                 }
+                dev.hardrush.p1.storage.P1FullCheckpointRuntime.tick(server, session, worlds, profiles);
                 P1ProgressRuntime.tick(server);
                 P2ProtectionRuntime.tick(server);
                 P2LobbyRuntime.tick(server);
@@ -370,6 +382,8 @@ public final class P1LobbyRuntime {
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             var session = SESSIONS.get(server);
             if (session == null) return;
+            try { dev.hardrush.p1.storage.P1RecoveryRuntime.stop(server); }
+            catch (Exception error) { session.adapterFailure("在线恢复停服屏障失败", error); }
             session.prepareStop();
             P1CelebrationRuntime.prepareStop(server);
             P2LobbyRuntime.prepareStop(server);
@@ -407,6 +421,7 @@ public final class P1LobbyRuntime {
             try { session.close(); }
             catch (Exception error) { LOGGER.error("P1 stop flush failed; retain database and inspect diagnostics", error); }
             SESSIONS.remove(server);
+            dev.hardrush.p1.storage.P1FullCheckpointRuntime.close(server);
             P2ProtectionRuntime.unconfigure(server);
             P2LobbyRuntime.unconfigure(server);
             dev.hardrush.p1.record.P1Library.close(server);
@@ -468,6 +483,11 @@ public final class P1LobbyRuntime {
     }
 
     /** Main-thread, read-only health access; no participation or world-ready bypass. */
+    public static String recoveryNotice(MinecraftServer server) {
+        var session = SESSIONS.get(server);
+        return session == null ? "" : session.startupRecoveryMessage();
+    }
+
     public static String status(MinecraftServer server) {
         var session = SESSIONS.get(server);
         var worlds = WORLDS.get(server);

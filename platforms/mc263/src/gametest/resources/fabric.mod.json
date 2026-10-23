@@ -8,6 +8,7 @@
     "main": [
       "dev.hardrush.p0.HardRushP0",
       "dev.hardrush.gametest.P1ServerRestartRegression",
+      "dev.hardrush.gametest.P1FullCheckpointRegression",
       "dev.hardrush.gametest.P3ServerCrashRegression",
       "dev.hardrush.gametest.P3ProfileCrashRegression",
       "dev.hardrush.gametest.P2LegacyFixtures"
