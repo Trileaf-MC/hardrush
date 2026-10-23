@@ -28,6 +28,48 @@ class P2RevivalStoreTest {
     private static final String SET = "a".repeat(64);
     private static final Set<String> ADVANCEMENTS = Set.of("minecraft:story/mine_stone", "minecraft:story/upgrade_tools");
 
+    @Test void humanKillChargesStackSurviveSqliteReopenAndPayForLaterHumanLivesWithoutReplayRewards() throws Exception {
+        try (var fixture = new Fixture(directory.toRealPath().resolve("human-kills.sqlite"))) {
+            fixture.start();
+            var first = fixture.engine.proposeDeathBatch(UUID.randomUUID(), fixture.round(),
+                    List.of(death(fixture.player(BOB), Optional.of(lethal(fixture.round(),
+                            fixture.player(ALICE), BOB, AttackKind.MELEE)))), null);
+            var replay = write(first);
+            fixture.commit(first);
+            assertEquals(1, fixture.player(ALICE).revivalCharges());
+            assertEquals(CommitResult.DUPLICATE, fixture.store.commit(replay));
+
+            UUID newcomer = UUID.randomUUID();
+            fixture.commit(fixture.engine.proposeJoin(UUID.randomUUID(), newcomer, "Newcomer"));
+            fixture.commit(fixture.engine.proposeDeathBatch(UUID.randomUUID(), fixture.round(),
+                    List.of(death(fixture.player(newcomer), Optional.of(lethal(fixture.round(),
+                            fixture.player(ALICE), newcomer, AttackKind.ARROW)))), null));
+            fixture.reopen();
+            assertEquals(2, fixture.player(ALICE).revivalCharges());
+            assertEquals(0, fixture.store.participantRecord(fixture.round(), ALICE).orElseThrow().revivalCount(),
+                    "Earning charges is separate from actually reviving");
+
+            for (int remaining = 1; remaining >= 0; remaining--) {
+                fixture.commit(fixture.engine.proposeDeathBatch(UUID.randomUUID(), fixture.round(),
+                        List.of(death(fixture.player(ALICE), Optional.empty())), null));
+                assertEquals(RoundPhase.RESCUE, fixture.engine.committed().phase());
+                fixture.reopen();
+                var alice = fixture.player(ALICE);
+                assertEquals(remaining + 1, alice.revivalCharges());
+                fixture.commit(fixture.engine.proposeRevival(UUID.randomUUID(), fixture.round(), ALICE,
+                        alice.lifeSequence(), alice.monsterDeploymentSequence()));
+                fixture.reopen();
+                assertEquals(remaining, fixture.player(ALICE).revivalCharges());
+                assertEquals(ParticipantRole.HUMAN_ACTIVE, fixture.player(ALICE).role());
+                assertEquals(2 - remaining, fixture.store.participantRecord(fixture.round(), ALICE).orElseThrow().revivalCount());
+                assertEquals(CommitResult.DUPLICATE, fixture.store.commit(replay));
+                assertEquals(remaining, fixture.player(ALICE).revivalCharges());
+            }
+            assertEquals(2, fixture.store.participantRecord(fixture.round(), ALICE).orElseThrow().deathCount());
+            assertEquals(1, fixture.store.participantRecord(fixture.round(), BOB).orElseThrow().deathCount());
+        }
+    }
+
     @Test void twentyRewardAndRevivalCyclesKeepExactCountsProgressAndCooldownsAcrossSqliteReopen() throws Exception {
         try (var fixture = new Fixture(directory.toRealPath().resolve("revival.sqlite"))) {
             fixture.start();
@@ -180,7 +222,7 @@ class P2RevivalStoreTest {
         var origin = new CombatOrigin(round, UUID.randomUUID(), new CombatActor(attacker.id(), attacker.role(),
                 attacker.lifeSequence(), attacker.monsterDeploymentSequence()), kind, Optional.of(direct), List.of());
         return new CombatEvent(round, UUID.randomUUID(), UUID.randomUUID(), 1, victim, Optional.of(origin),
-                CombatEvent.Attribution.MONSTER, "minecraft:mob_attack", Optional.of(direct), Optional.of(attacker.id()), 20, true, 0);
+                CombatEvent.classify(round, Optional.of(origin)), "test:actual_lethal", Optional.of(direct), Optional.of(attacker.id()), 20, true, 0);
     }
 
     private static SnapshotWrite write(RoundTransition transition) {

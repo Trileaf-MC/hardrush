@@ -233,7 +233,7 @@ public final class RoundEngine {
     }
 
     /**
-     * Atomically commits all actual deaths, their non-stacking rewards and the resulting phase.
+     * Atomically commits all actual deaths, their revival rewards and the resulting phase.
      * completion is supplied only by the adapter's verified first-dragon arbiter for this batch.
      */
     public RoundTransition proposeDeathBatch(UUID eventId, UUID roundId, List<RoundDeath> deaths,
@@ -279,20 +279,37 @@ public final class RoundEngine {
             }
         }
         // Qualify against identity at lethal collection, before applying this batch's human deaths.
-        // Returning, self-dying or disconnecting monsters retain rewards; a revived human cannot bank one.
+        // Human PvP adds one charge per victim; monster attacks keep their existing entitlement rule.
         if (before.rules().mode() == GameMode.HARDCORE) {
             for (RoundDeath death : deaths) {
                 if (!before.participants().get(death.playerId()).role().isActiveHuman() || death.cause().isEmpty()) continue;
                 CombatEvent cause = death.cause().get();
-                if (cause.attribution() != CombatEvent.Attribution.MONSTER || cause.origin().isEmpty()) continue;
+                if (cause.origin().isEmpty()) continue;
                 var origin = cause.origin().get();
                 if (!origin.roundId().equals(roundId)) continue;
+                Participant owner = before.participants().get(origin.actor().playerId());
+                if (owner == null || owner.id().equals(death.playerId())) continue;
+                if (cause.attribution() == CombatEvent.Attribution.HUMAN) {
+                    boolean directHumanAttack = switch (origin.kind()) {
+                        case MELEE, ARROW, BED, RESPAWN_ANCHOR, TNT, END_CRYSTAL -> true;
+                        default -> false;
+                    };
+                    if (directHumanAttack && owner.role().isActiveHuman()
+                            && origin.actor().lifeSequence() == owner.lifeSequence()
+                            && origin.actor().deploymentSequence() == owner.monsterDeploymentSequence()) {
+                        Participant rewarded = players.get(owner.id());
+                        if (rewarded.revivalCharges() < Integer.MAX_VALUE) {
+                            players.put(owner.id(), rewarded.addRevivalCharges(1));
+                        }
+                    }
+                    continue;
+                }
+                if (cause.attribution() != CombatEvent.Attribution.MONSTER) continue;
                 boolean directMonsterAttack = switch (origin.kind()) {
                     case MELEE, ARROW, CREEPER, SUMMON -> true;
                     default -> false;
                 };
-                Participant owner = before.participants().get(origin.actor().playerId());
-                if (!directMonsterAttack || owner == null || !owner.role().isMonster()
+                if (!directMonsterAttack || !owner.role().isMonster()
                         || origin.actor().lifeSequence() > owner.lifeSequence()
                         || origin.actor().deploymentSequence() > owner.monsterDeploymentSequence()) continue;
                 Participant rewarded = players.get(owner.id());

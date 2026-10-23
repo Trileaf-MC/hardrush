@@ -20,6 +20,48 @@ class P2DeathBatchSessionTest {
     final AtomicLong clock = new AtomicLong();
     final LinkedBlockingQueue<Runnable> callbacks = new LinkedBlockingQueue<>();
 
+    @Test void humanKillPersistsOneChargeBeforeDeathAndLaterRevivalConsumesItExactlyOnce() throws Exception {
+        Path path = seed(ParticipantRole.HUMAN_ACTIVE);
+        try (var session = open(path)) {
+            UUID batch = UUID.randomUUID();
+            var origin = new CombatOrigin(round, UUID.randomUUID(), new CombatActor(hunter, ParticipantRole.HUMAN_ACTIVE, 1, 0),
+                    AttackKind.MELEE, Optional.empty(), List.of());
+            var cause = new CombatEvent(round, UUID.randomUUID(), batch, 1, victim, Optional.of(origin),
+                    CombatEvent.Attribution.HUMAN, "minecraft:player_attack", Optional.of(hunter), Optional.of(hunter),
+                    20, true, clock.get());
+            session.captureDeath(round, victim, 1, 0, batch);
+            session.captureLethalEvidence(cause);
+            session.captureLethalEvidence(cause);
+            session.finishDamageBatch(round, batch);
+            assertEquals(0, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges());
+            pump(() -> !session.mutationPending());
+            assertEquals(P1LobbySession.State.OPEN, session.state(), session.problem());
+            assertEquals(1, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges());
+            assertEquals(ParticipantRole.HUMAN_ACTIVE, session.snapshot().orElseThrow().participants().get(hunter).role());
+            session.finishDamageBatch(round, batch);
+            assertFalse(session.mutationPending());
+
+            UUID later = UUID.randomUUID();
+            session.captureDeath(round, hunter, 1, 0, later);
+            session.finishDamageBatch(round, later);
+            pump(() -> !session.mutationPending());
+            assertEquals(RoundPhase.RESCUE, session.snapshot().orElseThrow().phase());
+            assertEquals(1, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges());
+            var reply = new AtomicReference<P1LobbySession.Reply>();
+            session.requestRevival(round, hunter, 1, 0, reply::set);
+            pump(() -> reply.get() != null);
+            assertTrue(reply.get().success(), reply.get().message());
+            assertEquals(0, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges());
+        }
+        try (var store = new SqliteRoundStore(path)) {
+            var saved = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload());
+            assertEquals(0, saved.participants().get(hunter).revivalCharges());
+            assertEquals(2, saved.participants().get(hunter).lifeSequence());
+            assertEquals(1, store.participantRecord(round, hunter).orElseThrow().revivalCount());
+            assertEquals(1, store.participantRecord(round, victim).orElseThrow().deathCount());
+        }
+    }
+
     @Test void lethalEvidenceAndSelfDeathCommitBeforeRescueAndDuplicateRevivalCannotConsumeAgain() throws Exception {
         Path path = seed();
         try (var session = open(path)) {
@@ -125,8 +167,11 @@ class P2DeathBatchSessionTest {
                 "minecraft:explosion", Optional.empty(), Optional.empty(), 20, true, clock.get());
     }
     Path seed() throws Exception {
+        return seed(ParticipantRole.MONSTER_LOBBY);
+    }
+    Path seed(ParticipantRole hunterRole) throws Exception {
         Path path = temp.toRealPath().resolve("batch.sqlite");
-        var monster = new Participant(hunter, "Hunter", ParticipantRole.MONSTER_LOBBY, false, false, 100, 0, 1, false,
+        var monster = new Participant(hunter, "Hunter", hunterRole, false, false, 100, 0, 1, false,
                 true, MonsterRole.CREEPER, MonsterDimension.OVERWORLD, 0, 0);
         var human = new Participant(victim, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false);
         var snapshot = new RoundSnapshot(round, 1, 9, 0, RulesConfig.defaults(), RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
@@ -144,7 +189,7 @@ class P2DeathBatchSessionTest {
         session.onOnline(hunter, "Hunter", true);
         pump(() -> !session.mutationPending());
         var monster = session.snapshot().orElseThrow().participants().get(hunter);
-        if (monster.monsterDeploymentSequence() == 0) {
+        if (monster.role().isMonster() && monster.monsterDeploymentSequence() == 0) {
             var reply = new AtomicReference<P1LobbySession.Reply>();
             session.requestMonsterDeploy(round, hunter, 1, 0, reply::set);
             pump(() -> reply.get() != null);
