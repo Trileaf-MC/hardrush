@@ -61,7 +61,7 @@ public final class P1ProfileGameTest {
         var profiles = new P1PlayerProfiles(server, root, test::getLevel, () -> position);
         var initial = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
         var celebrating = new RoundSnapshot(initial.roundId(), initial.sequence(), initial.seed(), initial.version(), initial.rules(),
-                RoundPhase.CELEBRATING, PauseReason.SETTLED, 123, 180_000_000_000L, initial.participants(), false, false,
+                RoundPhase.CELEBRATING, PauseReason.SETTLED, 123, 90_000_000_000L, initial.participants(), false, false,
                 new dev.hardrush.core.round.RoundResult(dev.hardrush.core.round.RoundResult.Kind.COMPLETED, player.getUUID(), "verified fixture"));
         var next = round(UUID.randomUUID(), 2, player, GameMode.NORMAL);
         var state = new net.minecraft.nbt.CompoundTag();

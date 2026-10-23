@@ -148,7 +148,9 @@ public final class P2LobbyRuntime {
                         new P2LobbyUi.Button(Items.ROTTEN_FLESH, "怪物击杀在赛人类：没有复生次数时获得一次", "info", ""),
                         new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "死亡后到营地祭坛消耗一次空装复生，冷却中可用", "info", ""),
                         new P2LobbyUi.Button(Items.GRASS_BLOCK, "中途门确认空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),
-                        new P2LobbyUi.Button(Items.DRAGON_EGG, "人类尾刀首龙通关；末地庆祝最多180秒，龙池回厅；书屋查战绩领书", "info", ""),
+                        new P2LobbyUi.Button(Items.DRAGON_EGG, "人类尾刀首龙通关；末地庆祝最多"
+                                + (RoundEngine.successCelebrationMillis(round.rules()) + 999) / 1000
+                                + "秒（现实时间），龙池回厅；书屋查战绩领书", "info", ""),
                         new P2LobbyUi.Button(Items.PAPER, "离线人类保留资格并暂停计时；无人类有资格时60秒救场", "info", ""));
             }
             @Override public void act(ServerPlayer player, UUID round, LobbyContext context, String action, String value) {

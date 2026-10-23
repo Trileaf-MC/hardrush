@@ -212,11 +212,11 @@ class RoundEngineTest {
         assertEquals(8_765, engine.view().challengeMillis());
         apply(engine, finish);
         assertEquals(8_765, engine.view().challengeMillis());
-        assertEquals(168_000, engine.view().remainingPhaseMillis());
+        assertEquals(78_000, engine.view().remainingPhaseMillis());
         apply(engine, engine.proposeTick(UUID.randomUUID()));
         assertEquals(RoundPhase.CELEBRATING, engine.view().phase());
         assertThrows(IllegalStateException.class, () -> engine.proposeFinish(UUID.randomUUID(), new RoundResult(RoundResult.Kind.COMPLETED, A, "duplicate")));
-        clock.millis(168_000);
+        clock.millis(78_000);
         apply(engine, engine.proposeTick(UUID.randomUUID()));
         assertEquals(RoundPhase.ROTATING, engine.view().phase());
     }
@@ -266,7 +266,7 @@ class RoundEngineTest {
 
     @Test void oldPendingTenMinuteRulesAreCappedWithoutChangingTheirFingerprint() {
         var defaults = RulesConfig.defaults();
-        var legacy = RulesConfig.decode(defaults.encode().replace("successCelebrationMillis=180000", "successCelebrationMillis=600000"));
+        var legacy = RulesConfig.decode(defaults.encode().replace("successCelebrationMillis=" + defaults.successCelebrationMillis(), "successCelebrationMillis=600000"));
         RoundEngine engine = RoundEngine.create(UUID.randomUUID(), 1, 1, legacy, clock);
         apply(engine, engine.proposeWorldReady(UUID.randomUUID()));
         apply(engine, engine.proposeJoin(UUID.randomUUID(), A, "Alice"));
@@ -320,10 +320,10 @@ class RoundEngineTest {
         apply(engine, engine.proposeCheckpoint(UUID.randomUUID(), true));
         clock.millis(10_000_000);
         RoundEngine restored = RoundEngine.restore(engine.committed(), clock);
-        assertEquals(170_000, restored.view().remainingPhaseMillis());
+        assertEquals(80_000, restored.view().remainingPhaseMillis());
         apply(restored, restored.proposeCheckpoint(UUID.randomUUID(), false));
         clock.millis(20_000);
-        assertEquals(150_000, restored.view().remainingPhaseMillis());
+        assertEquals(60_000, restored.view().remainingPhaseMillis());
         assertEquals(0, restored.view().challengeMillis());
     }
 

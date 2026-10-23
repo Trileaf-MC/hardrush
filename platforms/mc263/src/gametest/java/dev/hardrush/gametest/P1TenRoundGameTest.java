@@ -112,16 +112,16 @@ public final class P1TenRoundGameTest {
                 .thenExecute(() -> {
                     f.assertKit(f.first.player);
                     test.assertFalse(f.offline.player.getInventory().contains(stack -> stack.is(Items.FIREWORK_ROCKET)), "Nether player is not issued a kit");
-                    f.advance(179);
+                    f.advance(89);
                 })
-                .thenWaitUntil(() -> f.await(f.session.view().orElseThrow().remainingPhaseMillis() == 1_000 && !f.session.mutationPending(), "179 seconds leaves one second"))
+                .thenWaitUntil(() -> f.await(f.session.view().orElseThrow().remainingPhaseMillis() == 1_000 && !f.session.mutationPending(), "89 seconds leaves one second"))
                 .thenExecute(() -> {
                     test.assertTrue(dev.hardrush.p1.celebration.P1CelebrationRuntime.active(f.first.player), "Celebration remains usable before deadline");
                     f.disconnect(f.offline); // Offline lobby player cannot block timeout or release.
                     f.advance(1);
                 })
                 .thenWaitUntil(() -> f.await(f.round().sequence() == 3 && f.round().phase() == RoundPhase.WAITING
-                        && f.profiles.isReady(f.first.profile.id(), f.round()), "180-second timeout evacuates and rotates"))
+                        && f.profiles.isReady(f.first.profile.id(), f.round()), "90-second timeout evacuates and rotates"))
                 .thenExecute(() -> {
                     test.assertTrue(P1LobbyWorld.isLobby(f.first.player.level()), "Timeout returns remaining celebrant to permanent lobby");
                     test.assertValueEqual(f.worlds.state(), P1RoundWorldBundle.State.CLOSED, "Timeout closes old native IO");

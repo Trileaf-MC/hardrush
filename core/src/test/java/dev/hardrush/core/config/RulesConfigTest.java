@@ -22,7 +22,7 @@ class RulesConfigTest {
         assertEquals("normal", rules.generationRule());
         assertEquals(32, rules.protectionRadius());
         assertEquals(30_000, rules.startCountdownMillis());
-        assertEquals(180_000, rules.successCelebrationMillis());
+        assertEquals(90_000, rules.successCelebrationMillis());
         assertEquals(30_000, rules.failureDisplayMillis());
         assertEquals(20, rules.combatValues().get("zombie.maxHealth"));
         assertEquals(20, rules.combatValues().get("skeleton.maxHealth"));

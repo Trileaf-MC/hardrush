@@ -32,7 +32,7 @@ public final class P1PlayerFeedback {
         stageBar.setName(Component.literal(recovery ? "恢复隔离 · 竞技入口关闭，请联系管理员" : (rescue?"救场 · 祭坛复生／中途门加入":terminalText)
                 + " · 剩余 " + (round.remainingPhaseMillis()+999)/1000 + " 秒"));
         long total=rescue?round.rules().combatValues().get("round.rescueMillis").longValue():completed
-                ?Math.min(round.rules().successCelebrationMillis(),RoundEngine.MAX_SUCCESS_CELEBRATION_MILLIS):round.rules().failureDisplayMillis();
+                ?RoundEngine.successCelebrationMillis(round.rules()):round.rules().failureDisplayMillis();
         stageBar.setProgress(recovery ? 0 : Math.max(0,Math.min(1,(float)round.remainingPhaseMillis()/Math.max(1,total))));
         for(var old:java.util.List.copyOf(stageBar.getPlayers()))if(server.getPlayerList().getPlayer(old.getUUID())!=old)stageBar.removePlayer(old);
         for(var player:server.getPlayerList().getPlayers())stageBar.addPlayer(player);

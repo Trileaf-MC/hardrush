@@ -20,7 +20,8 @@ class RoundSnapshotCodecMigrationTest {
     private static final UUID LOBBY = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
     @Test void oldSuccessTimersKeepElapsedTimeAndAreMigratedOnlyOnce() {
-        var rules = RulesConfig.decode(RulesConfig.defaults().encode().replace("successCelebrationMillis=180000", "successCelebrationMillis=600000"));
+        var defaults = RulesConfig.defaults();
+        var rules = RulesConfig.decode(defaults.encode().replace("successCelebrationMillis=" + defaults.successCelebrationMillis(), "successCelebrationMillis=600000"));
         for (var phase : List.of(RoundPhase.SETTLING, RoundPhase.CELEBRATING)) {
             for (long remaining : new long[]{600_000, 480_000, 420_000, 10_000}) {
                 var snapshot = new RoundSnapshot(ROUND, 1, 1, 7, rules, phase, PauseReason.SETTLED, 123, remaining * 1_000_000,

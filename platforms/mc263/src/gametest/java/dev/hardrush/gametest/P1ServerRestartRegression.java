@@ -243,7 +243,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
                             "exit portal bypasses old respawn binding");
                 });
                 waitFor("returned second profile durable before stop", () -> P1LobbyWorld.isLobby(b.player.level()) && profiles.isReady(b.profile.id(), round()));
-                act("elapsed celebration", () -> advance(119)); act("stop celebration", this::stop); return;
+                act("elapsed celebration", () -> advance(29)); act("stop celebration", this::stop); return;
             }
             act("expire celebration", () -> advance(601));
             waitFor("rotation committed before next native release tick", () -> round().phase() == RoundPhase.ROTATING && idle());
@@ -633,7 +633,7 @@ public final class P1ServerRestartRegression implements ModInitializer {
                         require(saved.phase() == target, "writer stopped at requested durable phase: " + saved.phase());
                         if (target == RoundPhase.COUNTDOWN) require(saved.remainingPhaseNanos() == TimeUnit.SECONDS.toNanos(23), "writer saves 30 minus 7 countdown seconds");
                         if (target == RoundPhase.RESCUE) require(saved.remainingPhaseNanos() == TimeUnit.SECONDS.toNanos(50), "writer saves sixty minus ten rescue seconds");
-                        if (target == RoundPhase.CELEBRATING) require(saved.remainingPhaseNanos() == TimeUnit.SECONDS.toNanos(60), "writer saves 180 minus 120 celebration seconds");
+                        if (target == RoundPhase.CELEBRATING) require(saved.remainingPhaseNanos() == TimeUnit.SECONDS.toNanos(60), "writer saves 90 minus 30 celebration seconds");
                         if (target == RoundPhase.RUNNING || saved.result() != null) {
                             require(saved.challengeNanos() == TimeUnit.SECONDS.toNanos(13), "writer saves known thirteen active seconds");
                             require(saved.participants().get(a.profile.id()).humanNanos() == TimeUnit.SECONDS.toNanos(13)
