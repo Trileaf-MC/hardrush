@@ -38,13 +38,14 @@ import net.minecraft.world.phys.Vec3;
 /** P2-08 native server hooks; no client, screenshots or computer use. */
 public final class P2CombatWhitelistGameTest {
     @GameTest(maxTicks=200)
-    public void nativeMonsterWhitelistRejectsIllegalTargetsBeforeEverySideEffect(GameTestHelper test) {
+    public void nativeMonsterWhitelistRejectsProtectedTargetsBeforeEverySideEffect(GameTestHelper test) {
         try (var f = new Fixture(test); var ignored = f.install()) {
             var model = f.model();
             var cow = EntityTypes.COW.create(f.level, EntitySpawnReason.COMMAND);
             cow.setPosRaw(f.center.x + 4, f.center.y, f.center.z);
+            f.protectedTarget = true;
             float before = cow.getHealth();
-            test.assertTrue(!model.doHurtTarget(f.level, cow), "Native zombie attack rejects a nonhuman before damage or enchantment effects");
+            test.assertTrue(!model.doHurtTarget(f.level, cow), "Native zombie attack rejects a protected mob before damage or enchantment effects");
             test.assertTrue(!cow.hurtServer(f.level, f.level.damageSources().mobAttack(model), 8), "Direct native LivingEntity damage cannot bypass the whitelist");
             test.assertValueEqual(cow.getHealth(), before, "Illegal mob health is unchanged");
             test.assertTrue(!cow.addEffect(new MobEffectInstance(MobEffects.POISON, 200), model), "Explicit harmful effect admission uses the same source policy");
@@ -61,6 +62,7 @@ public final class P2CombatWhitelistGameTest {
             test.assertValueEqual(cow.getDeltaMovement(), Vec3.ZERO, "Knockback, push and explosion impulse cannot move illegal targets");
             var blast = new ServerExplosion(f.level, model, null, null, f.center, 4, false, Explosion.BlockInteraction.KEEP);
             test.assertTrue(cow.ignoreExplosion(blast), "Native explosion skips illegal targets before damage and impulse");
+            f.protectedTarget = false;
             var crystal = EntityTypes.END_CRYSTAL.create(f.level, EntitySpawnReason.COMMAND);
             crystal.setPosRaw(f.center.x + 4, f.center.y, f.center.z);
             test.assertTrue(!crystal.hurtServer(f.level, f.level.damageSources().mobAttack(model), 2), "Nonliving crystal hook rejects monster damage");
@@ -77,7 +79,7 @@ public final class P2CombatWhitelistGameTest {
     }
 
     @GameTest(maxTicks=200)
-    public void flamingArrowRejectsMobsCrystalsProtectedAndStaleHumansBeforeNativeImpact(GameTestHelper test) {
+    public void flamingArrowAdmitsMobsAndRejectsCrystalsProtectedAndStaleHumans(GameTestHelper test) {
         try (var f = new Fixture(test); var ignored = f.install()) {
             var cow = EntityTypes.COW.create(f.level, EntitySpawnReason.COMMAND);
             var crystal = EntityTypes.END_CRYSTAL.create(f.level, EntitySpawnReason.COMMAND);
@@ -85,8 +87,9 @@ public final class P2CombatWhitelistGameTest {
             crystal.setPosRaw(f.center.x + 4, f.center.y, f.center.z);
             f.impact(f.arrow(), cow);
             f.impact(f.arrow(), crystal);
-            test.assertValueEqual(cow.getHealth(), cow.getMaxHealth(), "Flaming arrow cannot damage an illegal mob");
-            test.assertTrue(cow.getRemainingFireTicks() <= 0 && !cow.hasEffect(MobEffects.POISON) && !crystal.isRemoved(), "Rejected impact does not ignite or poison mobs or remove crystals");
+            test.assertTrue(cow.getHealth() < cow.getMaxHealth(), "Flaming arrow damages a native mob");
+            test.assertTrue(cow.getRemainingFireTicks() > 0 && cow.hasEffect(MobEffects.POISON), "Admitted mob impact retains native fire and potion effects");
+            test.assertTrue(!crystal.isRemoved(), "Crystal impact remains forbidden");
             var protectedArrow = f.arrow();
             f.protectedTarget = true;
             f.impact(protectedArrow, f.human);
@@ -99,6 +102,31 @@ public final class P2CombatWhitelistGameTest {
             test.assertValueEqual(f.human.getArrowCount(), 0, "Rejected impact cannot add an embedded arrow");
             test.assertValueEqual(f.human.getDeltaMovement(), Vec3.ZERO, "Rejected impact cannot add native arrow knockback");
             cow.discard(); crystal.discard();
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
+    public void nativeMobCombatPreservesSummonOwnershipAndFrozenRoundRules(GameTestHelper test) {
+        try (var f = new Fixture(test); var ignored = f.install()) {
+            var model = f.model();
+            var cow = EntityTypes.COW.create(f.level, EntitySpawnReason.COMMAND);
+            cow.setPosRaw(f.center.x+1, f.center.y, f.center.z);
+            test.assertFalse(P2CombatRuntime.reject(model, cow), "Player monster model may attack a native mob");
+            test.assertTrue(cow.hurtServer(f.level, f.level.damageSources().mobAttack(model), 2), "Native model damages a mob");
+            var child = EntityTypes.ZOMBIE.create(f.level, EntitySpawnReason.COMMAND);
+            child.entityTags().add("hardrush.summon-owner=" + f.owner.getUUID());
+            P2CombatRuntime.stampSource(child, f.owner);
+            MonsterRoles.configureSummon(child);
+            child.setTarget(cow);
+            test.assertTrue(child.getTarget() == null && P2CombatRuntime.reject(child, cow), "Summons still reject native mobs");
+            test.assertTrue(P2CombatRuntime.reject(model, child), "Player monsters cannot damage owned summons");
+            test.assertTrue(P2CombatRuntime.reject(model, f.owner), "Owner remains excluded");
+            f.participants.put(f.human.getUUID(), f.participants.get(f.human.getUUID()).withRole(ParticipantRole.MONSTER_DEPLOYED));
+            test.assertTrue(P2CombatRuntime.reject(model, f.human), "Monster teammates remain excluded");
+            f.round = UUID.randomUUID();
+            test.assertTrue(P2CombatRuntime.reject(model, cow), "Opening mob combat cannot admit an old-round attack");
+            model.discard(); cow.discard(); child.discard();
         }
         test.succeed();
     }

@@ -74,6 +74,7 @@ public final class MonsterRoles {
     private static final String SUMMON_OWNER = "hardrush.summon-owner=";
     private static final String SUMMON_EVENT = "hardrush.summon-event=";
     private static final String SHOT_OWNER = "hardrush.shot-owner=";
+    private static final String NATIVE_BODY = "hardrush.native-body";
     private static final List<Holder<Attribute>> CONTROLLED = List.of(Attributes.MAX_HEALTH, Attributes.MOVEMENT_SPEED,
         Attributes.ARMOR, Attributes.ARMOR_TOUGHNESS, Attributes.ATTACK_DAMAGE, Attributes.ATTACK_SPEED,
         Attributes.KNOCKBACK_RESISTANCE, Attributes.STEP_HEIGHT);
@@ -154,6 +155,7 @@ public final class MonsterRoles {
         if (dead) player.setHealth(0);
         DisguiseProbe.clear(player);
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player);
+        MonsterAiIdentity.changed(player);
     }
 
     /** The caller seals actual gear first. Celebration must not spawn gear drops into the settled world. */
@@ -167,6 +169,7 @@ public final class MonsterRoles {
         if (dead) player.setHealth(0);
         DisguiseProbe.clear(player);
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player);
+        MonsterAiIdentity.changed(player);
     }
 
     private static void restoreOriginal(ServerPlayer player, Role role) {
@@ -194,6 +197,10 @@ public final class MonsterRoles {
     public static Mob nativeModel(ServerPlayer player) {
         Role role = ROLES.get(player.getUUID());
         return role == null ? null : role.model;
+    }
+
+    public static boolean isNativeBody(Entity entity) {
+        return entity != null && entity.entityTags().contains(NATIVE_BODY);
     }
 
     public static ItemStack actualEquipment(ServerPlayer player,EquipmentSlot slot) {
@@ -326,6 +333,7 @@ public final class MonsterRoles {
             restoreOriginal(player, role);
             role.burstRemaining = 0; role.chargeTick = -1; role.igniteAt = 0;
             role.player = null; role.model = null;
+            MonsterAiIdentity.changed(player);
         }
     }
 
@@ -559,6 +567,7 @@ public final class MonsterRoles {
         Role role = ROLES.get(owner);
         if (role != null && role.kind == Kind.SKELETON && role.model != null && role.model.level() == level) return role.model;
         Mob source = EntityTypes.SKELETON.create(level, EntitySpawnReason.COMMAND);
+        source.entityTags().add(NATIVE_BODY);
         source.setUUID(owner);
         if (vanilla != null) source.setId(vanilla.getId());
         return source;
@@ -572,10 +581,19 @@ public final class MonsterRoles {
         return null;
     }
 
-    public static boolean legalTarget(UUID owner, ServerLevel level, Entity target) {
+    public static boolean legalHumanTarget(UUID owner, ServerLevel level, Entity target) {
         if (!dev.hardrush.p2.lobby.P2LobbyRuntime.targetAllowed(owner, level, target)) return false;
         return target instanceof ServerPlayer player && !owner.equals(player.getUUID()) && player.level() == level
             && player.isAlive() && !isMonster(player) && !player.isSpectator() && !player.getAbilities().invulnerable;
+    }
+
+    /** Player-controlled bodies may fight native mobs; owned summons retain their human-only policy. */
+    public static boolean legalTarget(UUID owner, ServerLevel level, Entity target) {
+        if (target instanceof ServerPlayer) return legalHumanTarget(owner, level, target);
+        return target instanceof Mob mob && !(mob instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon)
+                && !isNativeBody(mob) && summonOwner(mob) == null && !owner.equals(mob.getUUID()) && mob.level() == level
+                && mob.isAlive() && !mob.isRemoved() && !mob.isInvulnerable()
+                && !P2ProtectionRuntime.protectedEntity(mob);
     }
 
     public static boolean isIgniting(ServerPlayer player) {
@@ -590,7 +608,10 @@ public final class MonsterRoles {
                 && dev.hardrush.p1.combat.P1CombatRuntime.originOf(direct)
                     .filter(origin -> origin.actor().identity().isActiveHuman()).isPresent()) return true;
         UUID owner = taggedOwner(direct, SHOT_OWNER);
-        if (owner == null) owner = summonOwner(causing);
+        if (owner == null) {
+            owner = summonOwner(causing);
+            if (owner != null) return legalHumanTarget(owner, (ServerLevel)target.level(), target);
+        }
         if (owner == null && causing != null && !(causing instanceof Player) && ROLES.containsKey(causing.getUUID())) owner = causing.getUUID();
         if (owner != null) return legalTarget(owner, (ServerLevel) target.level(), target);
         // Monster players never fall back to the ordinary player combat path.
@@ -606,7 +627,7 @@ public final class MonsterRoles {
         var targets = ((MonsterMobAccessor) child).hardrush$targetSelector();
         targets.removeAllGoals(goal -> true);
         targets.addGoal(2, new NearestAttackableTargetGoal<>(child, ServerPlayer.class, true,
-            (candidate, level) -> legalTarget(owner, level, candidate) && !P2CombatRuntime.reject(child, candidate)));
+            (candidate, level) -> legalHumanTarget(owner, level, candidate) && !P2CombatRuntime.reject(child, candidate)));
     }
 
     private static void bind(ServerPlayer player, Role role, boolean heal) {
@@ -617,6 +638,7 @@ public final class MonsterRoles {
         if (role.model == null) throw new IllegalStateException("Native monster template unavailable");
         role.model.setUUID(player.getUUID());
         role.model.setId(player.getId());
+        role.model.entityTags().add(NATIVE_BODY);
         String species = role.kind.name().toLowerCase(java.util.Locale.ROOT);
         role.model.getAttribute(Attributes.MAX_HEALTH).setBaseValue(role.value(species + ".maxHealth"));
         role.model.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(role.value(species + ".movementAttribute"));
@@ -645,6 +667,7 @@ public final class MonsterRoles {
         player.getFoodData().setFoodLevel(6); player.getFoodData().setSaturation(0);
         DisguiseProbe.apply(player, role.kind.name().toLowerCase(java.util.Locale.ROOT));
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player);
+        MonsterAiIdentity.changed(player);
     }
 
     public static void repairLoadout(ServerPlayer player) {

@@ -1,5 +1,9 @@
 # P2 第三批：正式角色、技能冷却与攻击白名单
 
+2026-10-23 规则覆盖：玩家控制的怪物身体、普通箭／连射和爆炸现可伤害普通原版 Mob，包括动物、宠物、村民、自然怪物和铁傀儡；召唤物维持仅攻击合法参赛人类。玩家怪物队友、召唤物、末影龙／龙部位、水晶、其他非生物实体、保护状态和非法／旧轮来源继续拦截，击杀原版生物不发放复生资格。伤害及附带效果共用同一门槛，不增加数据库字段或迁移。原版 AI 同时按真实变身物种决定选敌、报复及避让，实际目标引用仍是玩家；下文旧版“非人类全部排除”规则作为历史保留。人工验收见[物种关系清单](人工客户端测试/玩家怪物的原版物种关系.md)。
+
+本次验证：新增 7 项物种 AI GameTest 通过，涵盖原版实体对照、实际狼追击与伤害、报复、避让、Brain 感知、形态变化、跨维度和离线模板失效。`scripts/p0-gradle.sh checkP2 -PhardrushP1=true -PhardrushP2Lobby=true --offline --console=plain` 通过，包含单元检查、生产 JAR 与正式大厅／出场生命周期；默认全量 GameTest 为 128／129 通过，唯一失败是未改动的 `P1ProgressGameTest.isolationAndProfileRestorationDoNotCreateProgressAndCelebrationCannotWrite`：关闭 P1 功能时 `P1PlayerProfiles.isLocked` 直接返回 false，与该测试的隔离断言冲突。本次未修改该独立基线问题，未启动真实客户端或 computer use，人工体验验收仍待完成。
+
 日期：2026-10-15。按用户指示提前继续 P2-07／08；P0／P0b／P1 和 P2 的阶段验收保持未通过。本批源码、文档与验证证据一同提交；未推送或发布，验证内容由 [本批证据](evidence/p2-monster-combat-20261015/manifest.json) 的源码／制品 SHA-256 标识。
 
 ## 正式入口与身体

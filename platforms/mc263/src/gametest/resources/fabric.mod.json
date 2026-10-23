@@ -43,7 +43,8 @@
       "dev.hardrush.gametest.P1HumanEntryGameTest",
       "dev.hardrush.gametest.P2PersonalHuntGameTest",
       "dev.hardrush.gametest.P1FullFlowGameTest",
-      "dev.hardrush.gametest.P1StabilizationGameTest"
+      "dev.hardrush.gametest.P1StabilizationGameTest",
+      "dev.hardrush.gametest.MonsterAiIdentityGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"

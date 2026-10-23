@@ -148,7 +148,8 @@ public final class MonsterRoleGameTest {
                 test.assertTrue(!MonsterRoles.attack(zombie,human) && human.getHealth()==after,"Native 20-tick melee interval prevents spam");
                 var pig=EntityTypes.PIG.create(zombie.level(),net.minecraft.world.entity.EntitySpawnReason.COMMAND);
                 pig.snapTo(zombie.position().add(0,0,1)); zombie.level().addFreshEntity(pig);
-                test.assertTrue(!MonsterRoles.attack(zombie,pig),"Monster cannot attack an animal"); pig.discard();
+                test.assertTrue(MonsterRoles.legalTarget(zombie.getUUID(),zombie.level(),pig),"Native animals are legal player-monster targets");
+                test.assertTrue(!MonsterRoles.attack(zombie,pig),"Changing to an animal target cannot bypass the melee cooldown"); pig.discard();
                 MonsterRoles.select(zombie,"skeleton");
                 test.assertTrue(!MonsterRoles.attack(zombie,human),"Fixed-bow skeleton cannot fall back to player melee");
                 MonsterRoles.select(zombie,"creeper");
@@ -275,11 +276,10 @@ public final class MonsterRoleGameTest {
                 .thenExecute(()->{
                     try {
                         test.assertTrue(human.getHealth()<20 || !human.isAlive(),"Legal human receives native blast damage");
-                        test.assertValueEqual(pig.getHealth(),pigHealth,"Animal receives no blast damage");
-                        test.assertTrue(Math.abs(pig.getDeltaMovement().x)<.0001 && Math.abs(pig.getDeltaMovement().z)<.0001,"Animal receives no illegal knockback");
+                        test.assertTrue(pig.getHealth()<pigHealth,"Native animals receive the native blast damage");
                         test.assertTrue(creeper.level().getBlockState(floor).is(Blocks.SMOOTH_STONE),"Blocks are preserved");
                         var loot=creeper.level().getEntitiesOfClass(ItemEntity.class,creeper.getBoundingBox().inflate(5));
-                        test.assertTrue(loot.isEmpty(),"Fixed role controls do not drop as loot");
+                        test.assertTrue(loot.stream().noneMatch(item -> item.getItem().is(Items.GUNPOWDER)),"Fixed role controls do not drop as loot");
                     } finally { pig.discard(); remove(creeper); remove(human); }
                 }).thenSucceed();
         });
@@ -502,7 +502,7 @@ public final class MonsterRoleGameTest {
         item.setNoPickUpDelay();player.level().addFreshEntity(item);return item;
     }
 
-    private static ServerPlayer actor(GameTestHelper test) {
+    static ServerPlayer actor(GameTestHelper test) {
         int center=1000+ARENA.getAndIncrement()*24;
         var server=test.getLevel().getServer();
         var profile=new GameProfile(java.util.UUID.randomUUID(),"HRRole"+center);
@@ -528,7 +528,7 @@ public final class MonsterRoleGameTest {
         player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
         return player;
     }
-    private static void remove(ServerPlayer player) {
+    static void remove(ServerPlayer player) {
         MonsterRoles.clear(player); DisguiseProbe.clear(player);
         player.level().getServer().getPlayerList().remove(player);
         var channel=CHANNELS.remove(player.getUUID()); if(channel!=null)channel.finishAndReleaseAll();
