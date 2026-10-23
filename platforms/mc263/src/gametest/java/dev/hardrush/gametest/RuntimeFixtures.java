@@ -23,4 +23,9 @@ public final class RuntimeFixtures {
     public static P2CombatRuntime.Scope monsterCombat(MinecraftServer server,P2CombatRuntime.Access access){var restore=restore(P2CombatRuntime.class,server);P2CombatRuntime.configure(server,access);return restore::run;}
     public static Scope protection(MinecraftServer server,P2ProtectionRuntime.Access access){var restore=restore(P2ProtectionRuntime.class,server);P2ProtectionRuntime.configure(server,access);return restore::run;}
     public static Scope progress(MinecraftServer server,P1ProgressRuntime.Eligibility access,Consumer<ProgressWrite> writes){var restore=restore(P1ProgressRuntime.class,server);P1ProgressRuntime.configure(server,access,writes);return restore::run;}
+    public static Scope dawnPact(MinecraftServer server,dev.hardrush.p1.pact.DawnPactRuntime.Access access){
+        var restore=restore(dev.hardrush.p1.pact.DawnPactRuntime.class,server);
+        dev.hardrush.p1.pact.DawnPactRuntime.configure(server,access);
+        return ()->{dev.hardrush.p1.pact.DawnPactRuntime.close(server);restore.run();};
+    }
 }

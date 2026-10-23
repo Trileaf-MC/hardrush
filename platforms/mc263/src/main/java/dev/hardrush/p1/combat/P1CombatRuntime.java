@@ -77,6 +77,13 @@ public final class P1CombatRuntime {
         var cause = current(level);
         return cause == null ? Optional.empty() : Optional.of(cause.batchId);
     }
+    public static Optional<CombatOrigin> currentOrigin(ServerLevel level) {
+        var cause = current(level);
+        return cause == null ? Optional.empty() : cause.origin;
+    }
+    public static Optional<CombatOrigin> damageOrigin(ServerLevel level, DamageSource source) {
+        return resolve(level, source);
+    }
     private static Optional<CombatOrigin> child(Optional<CombatOrigin> parent, AttackKind kind, UUID direct) {
         if (parent.isEmpty()) return Optional.empty();
         try { return Optional.of(parent.get().child(UUID.randomUUID(), kind, Optional.of(direct))); }
