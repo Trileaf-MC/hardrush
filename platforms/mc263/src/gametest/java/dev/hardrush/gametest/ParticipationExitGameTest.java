@@ -7,6 +7,7 @@ import dev.hardrush.p1.P1LobbyRuntime;
 import dev.hardrush.p1.P1LobbySession;
 import dev.hardrush.p1.combat.P1CombatRuntime;
 import dev.hardrush.p1.player.P1PlayerProfiles;
+import dev.hardrush.p1.record.P1TabRuntime;
 import dev.hardrush.p1.world.P1LobbyWorld;
 import dev.hardrush.p2.combat.P2CombatRuntime;
 import dev.hardrush.p2.lobby.P2LobbyUi;
@@ -17,9 +18,16 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
+import net.minecraft.network.protocol.game.ClientboundTabListPacket;
+import net.minecraft.network.protocol.game.ServerboundContainerClosePacket;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
+import net.minecraft.network.protocol.game.ServerboundPlayerInputPacket;
+import net.minecraft.core.Direction;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.entity.projectile.arrow.Arrow;
+import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -52,6 +60,14 @@ public final class ParticipationExitGameTest {
                     f.place(f.a, LobbyLayout.Landing.RESTORE_READY);
                 })
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "First ready"))
+                .thenExecute(() -> {
+                    shortcut(f.a.player, true);
+                    test.assertTrue(P2LobbyUi.isMenu(f.a.player), "Ready player can reach confirmation through the lobby inventory lock: sneak="
+                            + f.a.player.isShiftKeyDown() + ", eligible=" + dev.hardrush.p1.participation.P1ParticipationControl.canWithdraw(f.a.player));
+                    f.a.player.connection.handleContainerClose(new ServerboundContainerClosePacket(f.a.player.containerMenu.containerId));
+                    test.assertTrue(f.ready(f.a) && f.idle(), "Closing confirmation keeps spatial readiness");
+                    sneak(f.a.player, false);
+                })
                 .thenExecute(() -> f.place(f.b, LobbyLayout.Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.b) && f.idle(), "Second ready"))
                 .thenExecute(() -> f.place(c, LobbyLayout.Landing.RESTORE_READY))
@@ -61,19 +77,41 @@ public final class ParticipationExitGameTest {
                         && !P1PlayerProfiles.isLocked(f.b.player) && !P1PlayerProfiles.isLocked(c.player) && f.idle(), "Three humans admitted"))
                 .thenExecute(() -> {
                     f.a.player.getInventory().setItem(4, new ItemStack(Items.DIAMOND, 7));
+                    f.a.player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_SWORD));
+                    f.a.player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.SHIELD));
+                    shortcut(f.a.player, false);
+                    test.assertTrue(f.a.player.getMainHandItem().is(Items.SHIELD) && f.a.player.getOffhandItem().is(Items.IRON_SWORD)
+                            && !P2LobbyUi.isMenu(f.a.player), "Unmodified swap still uses vanilla hand swapping");
+                    shortcut(f.a.player, false);
+                    var tab = new P1TabRuntime();
+                    tab.refresh(f.server, f.round(), 0, null, true);
+                    test.assertTrue(latestFooter(f.a).contains("退出本轮并观战"), "Eligible player receives a persistent native TAB hint");
                     arrow[0] = new Arrow(f.a.player.level(), f.a.player, new ItemStack(Items.ARROW), new ItemStack(Items.BOW));
                     test.assertTrue(P1CombatRuntime.originOf(arrow[0]).isPresent(), "Real human arrow origin");
                     packet(f.a.player, "hardrush spectate");
                     test.assertTrue(P2LobbyUi.isMenu(f.a.player), "Voluntary exit opens vanilla confirmation");
                     f.click(f.a, (short)3);
                     test.assertTrue(role(f, f.a.profile.id()) == ParticipantRole.HUMAN_ACTIVE, "Cancel preserves identity");
-                    packet(f.a.player, "hardrush spectate"); f.click(f.a, (short)2);
+                    shortcut(f.a.player, true);
+                    test.assertTrue(P2LobbyUi.isMenu(f.a.player), "Sneak + native swap opens the same confirmation without a command");
+                    var menu = f.a.player.containerMenu;
+                    shortcut(f.a.player, true);
+                    test.assertTrue(f.a.player.containerMenu == menu, "Repeated shortcut cannot replace an open menu");
+                    test.assertTrue(f.a.player.getMainHandItem().is(Items.IRON_SWORD) && f.a.player.getOffhandItem().is(Items.SHIELD), "Shortcut preserves both held items");
+                    f.a.player.connection.handleContainerClose(new ServerboundContainerClosePacket(menu.containerId));
+                    test.assertTrue(role(f, f.a.profile.id()) == ParticipantRole.HUMAN_ACTIVE && f.idle(), "Closing shortcut confirmation does not withdraw");
+                    shortcut(f.a.player, true); f.click(f.a, (short)2);
                     test.assertTrue(f.session.participationExitReserved(f.a.profile.id()), "Pending exit seals input before SQLite callback");
                     f.a.assertFrozen();
                 })
                 .thenWaitUntil(() -> f.await(role(f, f.a.profile.id()) == ParticipantRole.WITHDRAWN
                         && P1PlayerProfiles.isAdministrativeSpectator(f.a.player) && f.idle(), "Voluntary exit and empty spectator body ready"))
                 .thenExecute(() -> {
+                    new P1TabRuntime().refresh(f.server, f.round(), 0, null, true);
+                    test.assertFalse(latestFooter(f.a).contains("退出本轮并观战"), "Excluded observer no longer receives an actionable shortcut hint");
+                    test.assertTrue(latestFooter(f.b).contains("退出本轮并观战"), "Still eligible peer retains the hint independently");
+                    shortcut(f.a.player, true);
+                    test.assertFalse(P2LobbyUi.isMenu(f.a.player), "An excluded player cannot reopen withdrawal confirmation");
                     test.assertTrue(f.a.player.getInventory().getItem(4).isEmpty(), "Competition equipment is sealed");
                     test.assertValueEqual(f.round().onlineHumans(), 2L, "Observers are not surviving humans");
                     test.assertValueEqual(f.round().participants().get(f.a.profile.id()).lifeSequence(), 1, "No artificial death or new life");
@@ -127,6 +165,18 @@ public final class ParticipationExitGameTest {
                 .thenExecute(() -> f.place(f.a, LobbyLayout.Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "Formerly excluded player can prepare next round"))
                 .thenExecute(() -> { f.a.disconnect(); f.b.disconnect(); c.disconnect(); }).thenSucceed();
+    }
+    private static String latestFooter(P1HumanEntryGameTest.Fixture.Peer peer) {
+        return peer.receivedPackets().stream().filter(ClientboundTabListPacket.class::isInstance)
+                .map(ClientboundTabListPacket.class::cast).reduce((first, last) -> last).orElseThrow().footer().getString();
+    }
+    static void shortcut(net.minecraft.server.level.ServerPlayer player, boolean sneaking) {
+        sneak(player, sneaking);
+        player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND,
+                player.blockPosition(), Direction.DOWN, 0));
+    }
+    static void sneak(net.minecraft.server.level.ServerPlayer player, boolean sneaking) {
+        player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(new Input(false, false, false, false, false, sneaking, false)));
     }
     private static ParticipantRole role(P1HumanEntryGameTest.Fixture f, java.util.UUID id) { return f.round().participants().get(id).role(); }
     private static void packet(net.minecraft.server.level.ServerPlayer player, String command) {

@@ -428,6 +428,7 @@ public final class P1HumanEntryGameTest {
             int batchCount;
             int observedFrom;
             Peer(String name) { profile = new GameProfile(UUID.randomUUID(), name); }
+            List<Packet<?>> receivedPackets() { return List.copyOf(connection.packets); }
             void login(GameTestSequence sequence) { login(sequence, false); }
             void login(GameTestSequence sequence, boolean active) {
                 sequence.thenExecute(() -> { prepare = new PrepareSpawnTask(server, new NameAndId(profile)); prepare.start(packet -> {}); })

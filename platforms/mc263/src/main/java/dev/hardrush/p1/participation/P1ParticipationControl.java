@@ -23,7 +23,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Items;
 
-/** Command and vanilla confirmation adapters; every exit uses the session's audited durable API. */
+/** Native shortcut, command and confirmation adapters; every exit uses the session's audited durable API. */
 public final class P1ParticipationControl {
     private record Binding(P1LobbySession session, P1PlayerProfiles profiles) {}
     private static final Map<MinecraftServer, Binding> BINDINGS = new IdentityHashMap<>();
@@ -119,10 +119,27 @@ public final class P1ParticipationControl {
 
     private static String token(Participant p) { return p.role() + ":" + p.lifeSequence() + ":" + p.monsterDeploymentSequence(); }
 
+    /** Uses native keybind components so the client displays its own configured controls. */
+    public static Component shortcutHint() {
+        return Component.literal("退出本轮并观战：按住 ").append(Component.keybind("key.sneak"))
+                .append(" + ").append(Component.keybind("key.swapOffhand")).append(" 打开确认菜单")
+                .withStyle(ChatFormatting.GRAY);
+    }
+
+    /** Consume only an eligible player's deliberate sneak + swap gesture; opening never commits an exit. */
+    public static boolean withdrawalShortcut(ServerPlayer player) {
+        if (!player.isShiftKeyDown() || !canWithdraw(player)) return false;
+        // A repeated/forged packet must not replace an open menu or release its carried stack.
+        if (player.containerMenu == player.inventoryMenu) P2LobbyUi.open(player, LobbyContext.WITHDRAWAL);
+        player.containerMenu.sendAllDataToRemote();
+        return true;
+    }
+
     public static void offerWithdrawal(ServerPlayer player) {
         player.sendSystemMessage(Component.literal("[退出本轮并观战]").withStyle(style -> style.withColor(ChatFormatting.GRAY)
                 .withUnderlined(true).withClickEvent(new ClickEvent.RunCommand("/hardrush spectate"))
                 .withHoverEvent(new HoverEvent.ShowText(Component.literal("点击打开确认菜单；退出后本轮不能重新参赛")))));
+        player.sendSystemMessage(Component.literal("常驻入口见 TAB · ").append(shortcutHint()));
     }
 
     public static boolean disabled(MinecraftServer server, UUID player) {
