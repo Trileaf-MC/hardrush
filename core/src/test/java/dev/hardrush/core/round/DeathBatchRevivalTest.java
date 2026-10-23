@@ -48,7 +48,10 @@ class DeathBatchRevivalTest {
     }
     private CombatOrigin origin(UUID owner, ParticipantRole role, AttackKind kind) {
         return new CombatOrigin(round, UUID.randomUUID(), new CombatActor(owner, role, 1, role.isMonster() ? 3 : 0),
-                kind, kind == AttackKind.ARROW ? Optional.of(UUID.randomUUID()) : Optional.empty(), List.of());
+                kind, switch (kind) {
+                    case ARROW, TNT, END_CRYSTAL -> Optional.of(UUID.randomUUID());
+                    default -> Optional.empty();
+                }, List.of());
     }
     private CombatEvent lethal(UUID victim, CombatOrigin origin) {
         var source = Optional.ofNullable(origin);
@@ -67,6 +70,89 @@ class DeathBatchRevivalTest {
         apply(engine, batch(engine, death(engine, human, origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON))));
         assertEquals(RoundPhase.RESCUE, engine.view().phase());
         return engine;
+    }
+
+    @Test void humanDirectKillsAddOneChargeToExistingBalanceForEverySupportedAttack() {
+        for (var kind : List.of(AttackKind.MELEE, AttackKind.ARROW, AttackKind.BED,
+                AttackKind.RESPAWN_ANCHOR, AttackKind.TNT, AttackKind.END_CRYSTAL)) {
+            var engine = fixture(GameMode.HARDCORE, human(human, true).addRevivalCharges(2), human(other, true));
+            var victim = death(engine, other, origin(human, ParticipantRole.HUMAN_ACTIVE, kind));
+            var transition = batch(engine, victim);
+            assertEquals(2, engine.committed().participants().get(human).revivalCharges(), "Wait for durable commit");
+            apply(engine, transition);
+            assertEquals(3, engine.view().participants().get(human).revivalCharges(), kind.toString());
+            assertEquals(ParticipantRole.HUMAN_ACTIVE, engine.view().participants().get(human).role());
+            assertEquals(0, engine.view().participants().get(other).revivalCharges());
+            assertFalse(engine.view().timingUncertain(), "Ordinary PvP rewards are not administrator intervention");
+            assertThrows(IllegalStateException.class, () -> batch(engine, victim));
+            assertEquals(3, engine.view().participants().get(human).revivalCharges(), "No reward on replay");
+        }
+    }
+
+    @Test void humanExplosionMultikillAndSelfDeathBankChargesBeforeRescueAndConsumeOnePerRevival() {
+        var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), human(monster, true));
+        var explosion = origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.TNT);
+        apply(engine, batch(engine, death(engine, human, explosion), death(engine, other, explosion),
+                death(engine, monster, explosion)));
+        assertEquals(RoundPhase.RESCUE, engine.view().phase());
+        assertEquals(ParticipantRole.MONSTER_LOBBY, engine.view().participants().get(human).role());
+        assertEquals(2, engine.view().participants().get(human).revivalCharges(), "Self-kill adds nothing");
+        apply(engine, engine.proposeRevival(UUID.randomUUID(), round, human, 1, 0));
+        assertEquals(RoundPhase.RUNNING, engine.view().phase());
+        assertEquals(1, engine.view().participants().get(human).revivalCharges());
+        apply(engine, batch(engine, death(engine, human, null)));
+        assertEquals(RoundPhase.RESCUE, engine.view().phase());
+        apply(engine, engine.proposeRevival(UUID.randomUUID(), round, human, 2, 0));
+        assertEquals(0, engine.view().participants().get(human).revivalCharges());
+    }
+
+    @Test void humanKillsOfPlayerMonstersAndNormalModeHumanKillsDoNotEarnCharges() {
+        var engine = fixture(GameMode.HARDCORE, human(human, true), monster(true, false));
+        apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
+        apply(engine, batch(engine, death(engine, monster, origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.MELEE))));
+        assertEquals(0, engine.view().participants().get(human).revivalCharges());
+        var normal = fixture(GameMode.NORMAL, human(human, true), human(other, true));
+        apply(normal, batch(normal, death(normal, other, origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.MELEE))));
+        assertEquals(0, normal.view().participants().get(human).revivalCharges());
+        assertEquals(ParticipantRole.HUMAN_RESPAWNING, normal.view().participants().get(other).role());
+    }
+
+    @Test void humanRewardsRejectUnknownEnvironmentStaleRoundAndMonsterOnlySources() {
+        var oldRound = origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.ARROW);
+        oldRound = new CombatOrigin(UUID.randomUUID(), oldRound.originId(), oldRound.actor(), oldRound.kind(),
+                oldRound.directEntityId(), List.of());
+        var sources = new java.util.ArrayList<CombatOrigin>();
+        sources.add(null); // Includes falls/lava after an earlier nonlethal hit: no direct lethal provenance.
+        sources.add(oldRound);
+        sources.add(origin(UUID.randomUUID(), ParticipantRole.HUMAN_ACTIVE, AttackKind.MELEE));
+        sources.add(origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.SUMMON));
+        sources.add(origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.CREEPER));
+        sources.add(origin(human, ParticipantRole.MONSTER_DEPLOYED, AttackKind.ARROW));
+        for (var source : sources) {
+            var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true));
+            apply(engine, batch(engine, death(engine, other, source)));
+            assertEquals(0, engine.view().participants().get(human).revivalCharges());
+        }
+    }
+
+    @Test void humanArrowsCannotRewardDifferentLifeOrDeploymentOfTheirOwner() {
+        var owner = human(human, true).addRevivalCharges(1).revive(false);
+        for (var actor : List.of(new CombatActor(human, ParticipantRole.HUMAN_ACTIVE, 1, 0),
+                new CombatActor(human, ParticipantRole.HUMAN_ACTIVE, 3, 0),
+                new CombatActor(human, ParticipantRole.HUMAN_ACTIVE, 2, 1))) {
+            var source = new CombatOrigin(round, UUID.randomUUID(), actor, AttackKind.ARROW,
+                    Optional.of(UUID.randomUUID()), List.of());
+            var engine = fixture(GameMode.HARDCORE, owner, human(other, true));
+            apply(engine, batch(engine, death(engine, other, source)));
+            assertEquals(0, engine.view().participants().get(human).revivalCharges());
+        }
+    }
+
+    @Test void fullChargeBalanceDoesNotOverflowOrBlockAnActualDeath() {
+        var engine = fixture(GameMode.HARDCORE, human(human, true).addRevivalCharges(Integer.MAX_VALUE), human(other, true));
+        apply(engine, batch(engine, death(engine, other, origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.MELEE))));
+        assertEquals(Integer.MAX_VALUE, engine.view().participants().get(human).revivalCharges());
+        assertEquals(ParticipantRole.MONSTER_LOBBY, engine.view().participants().get(other).role());
     }
 
     @Test void adminCreditsStackConsumeOneAtATimeAndSurviveHumanDeathsAndCleanRestarts() {

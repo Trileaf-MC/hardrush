@@ -144,7 +144,9 @@ public final class P2LobbyRuntime {
                 return List.of(new P2LobbyUi.Button(Items.BOOK, "站入集结区参加，离开取消准备", "info", ""),
                         new P2LobbyUi.Button(Items.PAPER, "追猎规则：" + (round.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET ? "右键庭院模型，个人定向追猎" : "旧版投票（升级恢复隔离）"), "info", ""),
                         new P2LobbyUi.Button(Items.CLOCK, "右键快捷栏技能；回响碎片归返营地，移动、攻击、用物或受伤中断", "info", ""),
-                        new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "极限击杀获一份资格；营地祭坛确认空装复生，冷却中可用", "info", ""),
+                        new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "极限：人类击杀在赛人类每人 +1 次复生；击杀怪物不奖励", "info", ""),
+                        new P2LobbyUi.Button(Items.ROTTEN_FLESH, "怪物击杀在赛人类：没有复生次数时获得一次", "info", ""),
+                        new P2LobbyUi.Button(Items.TOTEM_OF_UNDYING, "死亡后到营地祭坛消耗一次空装复生，冷却中可用", "info", ""),
                         new P2LobbyUi.Button(Items.GRASS_BLOCK, "中途门确认空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),
                         new P2LobbyUi.Button(Items.DRAGON_EGG, "人类尾刀首龙通关；末地庆祝最多180秒，龙池回厅；书屋查战绩领书", "info", ""),
                         new P2LobbyUi.Button(Items.PAPER, "离线人类保留资格并暂停计时；无人类有资格时60秒救场", "info", ""));
