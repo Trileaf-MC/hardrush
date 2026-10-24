@@ -8,6 +8,14 @@ allprojects {
     repositories { mavenCentral() }
 }
 
+tasks.named('assemble') {
+    dependsOn ':platforms:mc263:assemble'
+    doLast {
+        def modJar = project(':platforms:mc263').tasks.named('jar').get().archiveFile.get().asFile
+        logger.lifecycle("\n模组构建完成：\n${modJar.absolutePath}")
+    }
+}
+
 tasks.register('checkP0') {
     group = 'verification'
     description = 'Build the 26.3 P0 mod and run automated checks (not a visual acceptance).'

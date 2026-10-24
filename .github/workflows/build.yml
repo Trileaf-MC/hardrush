@@ -1,0 +1,49 @@
+name: Build mod
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  assemble:
+    name: Assemble (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Exercise wrapper paths containing spaces on both platforms.
+          path: source tree
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+          cache-dependency-path: |
+            source tree/**/*.gradle
+            source tree/**/gradle.properties
+            source tree/**/gradle-wrapper.properties
+      - name: Assemble on macOS
+        if: runner.os == 'macOS'
+        working-directory: source tree
+        run: ./gradlew assemble --no-daemon --console=plain
+      - name: Assemble on Windows (PowerShell)
+        if: runner.os == 'Windows'
+        working-directory: source tree
+        shell: pwsh
+        run: |
+          .\gradlew.bat assemble --no-daemon --console=plain
+          exit $LASTEXITCODE
+      - name: Assemble on Windows (CMD)
+        if: runner.os == 'Windows'
+        working-directory: source tree
+        shell: cmd
+        run: call gradlew.bat assemble --offline --no-daemon --console=plain
