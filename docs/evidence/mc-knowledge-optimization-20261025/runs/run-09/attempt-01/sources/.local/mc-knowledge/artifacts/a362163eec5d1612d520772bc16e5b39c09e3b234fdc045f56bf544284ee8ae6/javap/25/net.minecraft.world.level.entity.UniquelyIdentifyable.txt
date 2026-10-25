@@ -1,0 +1,8 @@
+Compiled from "UniquelyIdentifyable.java"
+public interface net.minecraft.world.level.entity.UniquelyIdentifyable {
+  public abstract java.util.UUID getUUID();
+    descriptor: ()Ljava/util/UUID;
+
+  public abstract boolean isRemoved();
+    descriptor: ()Z
+}

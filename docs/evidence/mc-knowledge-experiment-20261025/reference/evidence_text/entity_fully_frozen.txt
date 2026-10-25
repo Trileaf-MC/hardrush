@@ -1,0 +1,14 @@
+public abstract class Entity
+   implements Nameable,
+   EntityAccess,
+   ScoreHolder,
+   SyncedDataHolder,
+   DataComponentGetter,
+   ItemOwner,
+   SlotProvider,
+   DebugValueSource,
+   TypedInstance<EntityType<?>> {
+   public boolean isFullyFrozen() {
+      return this.getTicksFrozen() >= this.getTicksRequiredToFreeze();
+   }
+}

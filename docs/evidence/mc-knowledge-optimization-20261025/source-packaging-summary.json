@@ -1,0 +1,461 @@
+[
+  {
+    "id": "run-01",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "4511d130d5c81824790843f0a7f062770061a366a11a9de92fb1303273a05b0e",
+      "files": 138,
+      "bytes_uncompressed": 734351
+    },
+    "link_counts": {
+      "workspace_links": 11,
+      "rewritten_links": 11,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-02",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "cdbb839f041ee465da5fa80666d32b34a5c0d8e8676047564277275ca71028dc",
+      "files": 73,
+      "bytes_uncompressed": 577488
+    },
+    "link_counts": {
+      "workspace_links": 12,
+      "rewritten_links": 12,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-03",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "33446a7573da780529515e3227edeb6ae8a341eccd439a665082ec8d4d470317",
+      "files": 90,
+      "bytes_uncompressed": 1254776
+    },
+    "link_counts": {
+      "workspace_links": 11,
+      "rewritten_links": 11,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-04",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "69e9f05a760f47abf5f35ba869b49e75b356b9c4791ad9ef344e9524b9951b98",
+      "files": 40,
+      "bytes_uncompressed": 239400
+    },
+    "link_counts": {
+      "workspace_links": 5,
+      "rewritten_links": 5,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-05",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "6c150562c91cbeafa3bcf92adfa1b3b127393a408918b1f9e8b6626027c408d1",
+      "files": 41,
+      "bytes_uncompressed": 273204
+    },
+    "link_counts": {
+      "workspace_links": 6,
+      "rewritten_links": 6,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-06",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "fccd7b4a8686611e8d64e4c18535dae82e0550b37c6409bbd43385068800b657",
+      "files": 55,
+      "bytes_uncompressed": 272609
+    },
+    "link_counts": {
+      "workspace_links": 6,
+      "rewritten_links": 6,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-07",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "d424311674e767d0e3bd9d18e52435fc093a8fa133ac40322fcd0a2997e920ea",
+      "files": 124,
+      "bytes_uncompressed": 1125801
+    },
+    "link_counts": {
+      "workspace_links": 10,
+      "rewritten_links": 10,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-08",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "db591322cd326cdc5e1dd8903782c95fea688ef329b32958e3997901d1f2976b",
+      "files": 100,
+      "bytes_uncompressed": 539159
+    },
+    "link_counts": {
+      "workspace_links": 16,
+      "rewritten_links": 16,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-09",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "294b659dcfda2d3c7dd4165112358fd420262b4ab4c8e3b348a9257f4f548154",
+      "files": 114,
+      "bytes_uncompressed": 591391
+    },
+    "link_counts": {
+      "workspace_links": 14,
+      "rewritten_links": 14,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-10",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "79781bfc614af684ff022446dad03cd254b1548c06aea2dc1b0396feb95fa5c0",
+      "files": 26,
+      "bytes_uncompressed": 155738
+    },
+    "link_counts": {
+      "workspace_links": 6,
+      "rewritten_links": 6,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 0
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-11",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "3c3bc671ca727d7399bd9204a9bc2b53c5d26c9b1a6432052b5a9e3aa748a399",
+      "files": 47,
+      "bytes_uncompressed": 563079
+    },
+    "link_counts": {
+      "workspace_links": 7,
+      "rewritten_links": 7,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-12",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "4be1e3fd4ca4c026e42b86355fee1b21a6e3cc37573c6e8018b97b3206e3285e",
+      "files": 53,
+      "bytes_uncompressed": 264188
+    },
+    "link_counts": {
+      "workspace_links": 6,
+      "rewritten_links": 6,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-13",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "bad9b0960e8f92b6fc9f6ed8ecc6eac30e2a9bff4df85169fca63b3394f3f25f",
+      "files": 49,
+      "bytes_uncompressed": 265018
+    },
+    "link_counts": {
+      "workspace_links": 7,
+      "rewritten_links": 7,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 0
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-14",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "efbd9e2d913e7a1319d7fa51ce7743ef75b06499df3e92ae097f5d97661fbff3",
+      "files": 43,
+      "bytes_uncompressed": 221394
+    },
+    "link_counts": {
+      "workspace_links": 7,
+      "rewritten_links": 7,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-15",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "fb5a6c24f1390b882587585440c5fa4370f6d03a943ff9b67c24c7ed324d2f95",
+      "files": 34,
+      "bytes_uncompressed": 162482
+    },
+    "link_counts": {
+      "workspace_links": 6,
+      "rewritten_links": 6,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-16",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "f7c048d18e38aafb19bbab0c92893afc26f9b4f2d96d03b027f6951def52aabf",
+      "files": 92,
+      "bytes_uncompressed": 353732
+    },
+    "link_counts": {
+      "workspace_links": 7,
+      "rewritten_links": 7,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-17",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "0579af81ab803223e3e3030d881e1a23f084982fe2985dd0e7dcf91767d0935b",
+      "files": 99,
+      "bytes_uncompressed": 487827
+    },
+    "link_counts": {
+      "workspace_links": 11,
+      "rewritten_links": 11,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-18",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "5f0337cec89beda4f992b116a9abcba25a3b7839ce8fd73e4fa1a637921a64b0",
+      "files": 123,
+      "bytes_uncompressed": 674482
+    },
+    "link_counts": {
+      "workspace_links": 12,
+      "rewritten_links": 12,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-19",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "7c3ae3d64254a2abfdb76ab6b0be71177a09f60d224614071b17878a8eec1b8c",
+      "files": 96,
+      "bytes_uncompressed": 408892
+    },
+    "link_counts": {
+      "workspace_links": 15,
+      "rewritten_links": 15,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-20",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "48b82b974b691afaa79057c54c8b4ba94a8b866cbd7c7e502ec64286b37ec567",
+      "files": 96,
+      "bytes_uncompressed": 517496
+    },
+    "link_counts": {
+      "workspace_links": 10,
+      "rewritten_links": 10,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-21",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "245ba0dc991aa7e09df499d49be108c81abb87b1446ce4bcea0a45c5c4176d94",
+      "files": 111,
+      "bytes_uncompressed": 597203
+    },
+    "link_counts": {
+      "workspace_links": 15,
+      "rewritten_links": 15,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-22",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "67c41734342243c9c42474f56efff3031dd0905318b84301335b1909db001162",
+      "files": 104,
+      "bytes_uncompressed": 708348
+    },
+    "link_counts": {
+      "workspace_links": 14,
+      "rewritten_links": 14,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-23",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "31ebc500b5cb6a9ab08509f1d750d8aa1963c1b0bdeb3efe2d882e5f6c99d64f",
+      "files": 104,
+      "bytes_uncompressed": 427743
+    },
+    "link_counts": {
+      "workspace_links": 18,
+      "rewritten_links": 18,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-24",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "ba1d15c3338aed37796bf3858ed5cb50e809b0af9b59945a6c5c8d1efdb61b12",
+      "files": 90,
+      "bytes_uncompressed": 467590
+    },
+    "link_counts": {
+      "workspace_links": 11,
+      "rewritten_links": 11,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-25",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "348e53a08062e5103635c8a19131379c254427655e4c8011b860beecbfa9d97f",
+      "files": 123,
+      "bytes_uncompressed": 533814
+    },
+    "link_counts": {
+      "workspace_links": 15,
+      "rewritten_links": 15,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-26",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "1542eb7ec2e7fdd88cd000f7ecccfe2113cba930f38a134532b943f5c43dde88",
+      "files": 72,
+      "bytes_uncompressed": 316162
+    },
+    "link_counts": {
+      "workspace_links": 15,
+      "rewritten_links": 15,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  },
+  {
+    "id": "run-27",
+    "attempt": "attempt-01",
+    "archive": {
+      "path": "sources.tar.gz",
+      "sha256": "73ab990f437e9c5f1da743b04e38436c7aa424a2eb2b3aa8e82067ab835f0b4c",
+      "files": 88,
+      "bytes_uncompressed": 478547
+    },
+    "link_counts": {
+      "workspace_links": 14,
+      "rewritten_links": 14,
+      "unresolved_workspace_links": 0,
+      "nonworkspace_links": 1
+    },
+    "formal_answer_and_logs_unchanged": true
+  }
+]

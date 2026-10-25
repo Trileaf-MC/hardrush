@@ -1,0 +1,6 @@
+{
+  "change": "Validated relative workspace Markdown references are also rewritten to sources/. Original answers, logs and scores unchanged.",
+  "additional_relative_links": 23,
+  "total_portable_workspace_links": 287,
+  "test_count": 16
+}

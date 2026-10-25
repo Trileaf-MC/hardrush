@@ -1,0 +1,19 @@
+Compiled from "SitWhenOrderedToGoal.java"
+public class net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal extends net.minecraft.world.entity.ai.goal.Goal {
+  private final net.minecraft.world.entity.TamableAnimal mob;
+    descriptor: Lnet/minecraft/world/entity/TamableAnimal;
+  public net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal(net.minecraft.world.entity.TamableAnimal);
+    descriptor: (Lnet/minecraft/world/entity/TamableAnimal;)V
+
+  public boolean canContinueToUse();
+    descriptor: ()Z
+
+  public boolean canUse();
+    descriptor: ()Z
+
+  public void start();
+    descriptor: ()V
+
+  public void stop();
+    descriptor: ()V
+}

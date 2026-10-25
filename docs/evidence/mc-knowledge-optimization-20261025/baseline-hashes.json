@@ -1,0 +1,7 @@
+{
+  ".agents/skills/minecraft-knowledge/SKILL.md": "747c8af80cdb40755846454b27d9b7e8637785fd13289e8797b339ceeabc3d7c",
+  "scripts/mc-knowledge.py": "fd52f164568c442ce86ff1396c9916df6aeb3409271777f76627262de79804c5",
+  "scripts/mc_knowledge_wiki.py": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87",
+  "scripts/test_mc_knowledge.py": "7738fa72c8043eb433ec2b32cee41ed048979bf4e184f478e4cc6f3b2e663fc8",
+  "scripts/test_mc_knowledge_wiki.py": "f90b6d9961822992a407c45fe48c0caff4b85582bf57ee8c028f029523a9e15a"
+}

@@ -1,0 +1,506 @@
+Compiled from "Level.java"
+public abstract class net.minecraft.world.level.Level implements net.minecraft.world.level.LevelAccessor,java.lang.AutoCloseable {
+  public static final com.mojang.serialization.Codec<net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>> RESOURCE_KEY_CODEC;
+    descriptor: Lcom/mojang/serialization/Codec;
+  public static final net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> OVERWORLD;
+    descriptor: Lnet/minecraft/resources/ResourceKey;
+  public static final net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> NETHER;
+    descriptor: Lnet/minecraft/resources/ResourceKey;
+  public static final net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> END;
+    descriptor: Lnet/minecraft/resources/ResourceKey;
+  public static final int MAX_LEVEL_SIZE;
+    descriptor: I
+  public static final int ACROSS_THE_WHOLE_WORLD;
+    descriptor: I
+  public static final int LONG_PARTICLE_CLIP_RANGE;
+    descriptor: I
+  public static final int SHORT_PARTICLE_CLIP_RANGE;
+    descriptor: I
+  public static final int MAX_BRIGHTNESS;
+    descriptor: I
+  public static final int MAX_ENTITY_SPAWN_Y;
+    descriptor: I
+  public static final int MIN_ENTITY_SPAWN_Y;
+    descriptor: I
+  private static final net.minecraft.util.random.WeightedList<net.minecraft.core.particles.ExplosionParticleInfo> DEFAULT_EXPLOSION_BLOCK_PARTICLES;
+    descriptor: Lnet/minecraft/util/random/WeightedList;
+  protected final java.util.List<net.minecraft.world.level.block.entity.TickingBlockEntity> blockEntityTickers;
+    descriptor: Ljava/util/List;
+  protected final net.minecraft.world.level.redstone.CollectingNeighborUpdater neighborUpdater;
+    descriptor: Lnet/minecraft/world/level/redstone/CollectingNeighborUpdater;
+  private final java.util.List<net.minecraft.world.level.block.entity.TickingBlockEntity> pendingBlockEntityTickers;
+    descriptor: Ljava/util/List;
+  private boolean tickingBlockEntities;
+    descriptor: Z
+  private final java.lang.Thread thread;
+    descriptor: Ljava/lang/Thread;
+  private final boolean isDebug;
+    descriptor: Z
+  private int skyDarken;
+    descriptor: I
+  protected int randValue;
+    descriptor: I
+  protected final int addend;
+    descriptor: I
+  protected float oRainLevel;
+    descriptor: F
+  protected float rainLevel;
+    descriptor: F
+  protected float oThunderLevel;
+    descriptor: F
+  protected float thunderLevel;
+    descriptor: F
+  protected final net.minecraft.util.RandomSource random;
+    descriptor: Lnet/minecraft/util/RandomSource;
+  private final net.minecraft.util.RandomSource soundSeedGenerator;
+    descriptor: Lnet/minecraft/util/RandomSource;
+  private final net.minecraft.core.Holder<net.minecraft.world.level.dimension.DimensionType> dimensionTypeRegistration;
+    descriptor: Lnet/minecraft/core/Holder;
+  protected final net.minecraft.world.level.storage.WritableLevelData levelData;
+    descriptor: Lnet/minecraft/world/level/storage/WritableLevelData;
+  private final boolean isClientSide;
+    descriptor: Z
+  private final net.minecraft.world.level.biome.BiomeManager biomeManager;
+    descriptor: Lnet/minecraft/world/level/biome/BiomeManager;
+  private final net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension;
+    descriptor: Lnet/minecraft/resources/ResourceKey;
+  private final net.minecraft.core.RegistryAccess registryAccess;
+    descriptor: Lnet/minecraft/core/RegistryAccess;
+  private final net.minecraft.world.damagesource.DamageSources damageSources;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSources;
+  private final net.minecraft.world.level.chunk.PalettedContainerFactory palettedContainerFactory;
+    descriptor: Lnet/minecraft/world/level/chunk/PalettedContainerFactory;
+  private long subTickCount;
+    descriptor: J
+  protected net.minecraft.world.level.Level(net.minecraft.world.level.storage.WritableLevelData, net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>, net.minecraft.core.RegistryAccess, net.minecraft.core.Holder<net.minecraft.world.level.dimension.DimensionType>, boolean, boolean, long, int);
+    descriptor: (Lnet/minecraft/world/level/storage/WritableLevelData;Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/core/RegistryAccess;Lnet/minecraft/core/Holder;ZZJI)V
+
+  public int getNextEntityId();
+    descriptor: ()I
+
+  public boolean isClientSide();
+    descriptor: ()Z
+
+  public net.minecraft.server.MinecraftServer getServer();
+    descriptor: ()Lnet/minecraft/server/MinecraftServer;
+
+  public boolean isInWorldBounds(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Z
+
+  public boolean isInValidBounds(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Z
+
+  public static boolean isInSpawnableBounds(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Z
+
+  private static boolean isInWorldBoundsHorizontal(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Z
+
+  private static boolean isInValidBoundsHorizontal(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Z
+
+  private static boolean isOutsideSpawnableHeight(int);
+    descriptor: (I)Z
+
+  public net.minecraft.world.level.chunk.LevelChunk getChunkAt(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/chunk/LevelChunk;
+
+  public net.minecraft.world.level.chunk.LevelChunk getChunk(int, int);
+    descriptor: (II)Lnet/minecraft/world/level/chunk/LevelChunk;
+
+  public net.minecraft.world.level.chunk.ChunkAccess getChunk(int, int, net.minecraft.world.level.chunk.status.ChunkStatus, boolean);
+    descriptor: (IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;
+
+  public boolean setBlock(net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState, int, int);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;II)Z
+
+  public void updatePOIOnBlockStateChange(net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState, net.minecraft.world.level.block.state.BlockState);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/block/state/BlockState;)V
+
+  public boolean removeBlock(net.minecraft.core.BlockPos, boolean);
+    descriptor: (Lnet/minecraft/core/BlockPos;Z)Z
+
+  public boolean destroyBlock(net.minecraft.core.BlockPos, boolean, net.minecraft.world.entity.Entity, int);
+    descriptor: (Lnet/minecraft/core/BlockPos;ZLnet/minecraft/world/entity/Entity;I)Z
+
+  public void addDestroyBlockEffect(net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;)V
+
+  public abstract void sendBlockUpdated(net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState, net.minecraft.world.level.block.state.BlockState, int);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/block/state/BlockState;I)V
+
+  public void setBlocksDirty(net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState, net.minecraft.world.level.block.state.BlockState);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/block/state/BlockState;)V
+
+  public void updateNeighborsAt(net.minecraft.core.BlockPos, net.minecraft.world.level.block.Block, net.minecraft.world.level.redstone.Orientation);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;Lnet/minecraft/world/level/redstone/Orientation;)V
+
+  public void updateNeighborsAtExceptFromFacing(net.minecraft.core.BlockPos, net.minecraft.world.level.block.Block, net.minecraft.core.Direction, net.minecraft.world.level.redstone.Orientation);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;Lnet/minecraft/core/Direction;Lnet/minecraft/world/level/redstone/Orientation;)V
+
+  public void neighborChanged(net.minecraft.core.BlockPos, net.minecraft.world.level.block.Block, net.minecraft.world.level.redstone.Orientation);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;Lnet/minecraft/world/level/redstone/Orientation;)V
+
+  public void neighborChanged(net.minecraft.world.level.block.state.BlockState, net.minecraft.core.BlockPos, net.minecraft.world.level.block.Block, net.minecraft.world.level.redstone.Orientation, boolean);
+    descriptor: (Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;Lnet/minecraft/world/level/redstone/Orientation;Z)V
+
+  public void neighborShapeChanged(net.minecraft.core.Direction, net.minecraft.core.BlockPos, net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState, int, int);
+    descriptor: (Lnet/minecraft/core/Direction;Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;II)V
+
+  public int getHeight(net.minecraft.world.level.levelgen.Heightmap$Types, int, int);
+    descriptor: (Lnet/minecraft/world/level/levelgen/Heightmap$Types;II)I
+
+  public net.minecraft.world.level.lighting.LevelLightEngine getLightEngine();
+    descriptor: ()Lnet/minecraft/world/level/lighting/LevelLightEngine;
+
+  public net.minecraft.world.level.block.state.BlockState getBlockState(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;
+
+  public net.minecraft.world.level.material.FluidState getFluidState(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/material/FluidState;
+
+  public boolean isBrightOutside();
+    descriptor: ()Z
+
+  public boolean isDarkOutside();
+    descriptor: ()Z
+
+  public void playSound(net.minecraft.world.entity.Entity, net.minecraft.core.BlockPos, net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundSource, float, float);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/core/BlockPos;Lnet/minecraft/sounds/SoundEvent;Lnet/minecraft/sounds/SoundSource;FF)V
+
+  public abstract void playSeededSound(net.minecraft.world.entity.Entity, double, double, double, net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent>, net.minecraft.sounds.SoundSource, float, float, long);
+    descriptor: (Lnet/minecraft/world/entity/Entity;DDDLnet/minecraft/core/Holder;Lnet/minecraft/sounds/SoundSource;FFJ)V
+
+  public void playSeededSound(net.minecraft.world.entity.Entity, double, double, double, net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundSource, float, float, long);
+    descriptor: (Lnet/minecraft/world/entity/Entity;DDDLnet/minecraft/sounds/SoundEvent;Lnet/minecraft/sounds/SoundSource;FFJ)V
+
+  public abstract void playSeededSound(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity, net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent>, net.minecraft.sounds.SoundSource, float, float, long);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/Entity;Lnet/minecraft/core/Holder;Lnet/minecraft/sounds/SoundSource;FFJ)V
+
+  public void playSound(net.minecraft.world.entity.Entity, double, double, double, net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundSource);
+    descriptor: (Lnet/minecraft/world/entity/Entity;DDDLnet/minecraft/sounds/SoundEvent;Lnet/minecraft/sounds/SoundSource;)V
+
+  public void playSound(net.minecraft.world.entity.Entity, double, double, double, net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundSource, float, float);
+    descriptor: (Lnet/minecraft/world/entity/Entity;DDDLnet/minecraft/sounds/SoundEvent;Lnet/minecraft/sounds/SoundSource;FF)V
+
+  public void playSound(net.minecraft.world.entity.Entity, double, double, double, net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent>, net.minecraft.sounds.SoundSource, float, float);
+    descriptor: (Lnet/minecraft/world/entity/Entity;DDDLnet/minecraft/core/Holder;Lnet/minecraft/sounds/SoundSource;FF)V
+
+  public void playSound(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity, net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundSource, float, float);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/Entity;Lnet/minecraft/sounds/SoundEvent;Lnet/minecraft/sounds/SoundSource;FF)V
+
+  public void playSound(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity, net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent>, net.minecraft.sounds.SoundSource, float, float);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/Entity;Lnet/minecraft/core/Holder;Lnet/minecraft/sounds/SoundSource;FF)V
+
+  public void playLocalSound(net.minecraft.core.BlockPos, net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundSource, float, float, boolean);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/sounds/SoundEvent;Lnet/minecraft/sounds/SoundSource;FFZ)V
+
+  public void playLocalSound(net.minecraft.world.entity.Entity, net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundSource, float, float);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/sounds/SoundEvent;Lnet/minecraft/sounds/SoundSource;FF)V
+
+  public void playLocalSound(double, double, double, net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundSource, float, float, boolean);
+    descriptor: (DDDLnet/minecraft/sounds/SoundEvent;Lnet/minecraft/sounds/SoundSource;FFZ)V
+
+  public void playPlayerSound(net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundSource, float, float);
+    descriptor: (Lnet/minecraft/sounds/SoundEvent;Lnet/minecraft/sounds/SoundSource;FF)V
+
+  public void addParticle(net.minecraft.core.particles.ParticleOptions, double, double, double, double, double, double);
+    descriptor: (Lnet/minecraft/core/particles/ParticleOptions;DDDDDD)V
+
+  public void addParticle(net.minecraft.core.particles.ParticleOptions, boolean, boolean, double, double, double, double, double, double);
+    descriptor: (Lnet/minecraft/core/particles/ParticleOptions;ZZDDDDDD)V
+
+  public void addAlwaysVisibleParticle(net.minecraft.core.particles.ParticleOptions, double, double, double, double, double, double);
+    descriptor: (Lnet/minecraft/core/particles/ParticleOptions;DDDDDD)V
+
+  public void addAlwaysVisibleParticle(net.minecraft.core.particles.ParticleOptions, boolean, double, double, double, double, double, double);
+    descriptor: (Lnet/minecraft/core/particles/ParticleOptions;ZDDDDDD)V
+
+  public void addBlockEntityTicker(net.minecraft.world.level.block.entity.TickingBlockEntity);
+    descriptor: (Lnet/minecraft/world/level/block/entity/TickingBlockEntity;)V
+
+  public void tickBlockEntities();
+    descriptor: ()V
+
+  public <T extends net.minecraft.world.entity.Entity> void guardEntityTick(java.util.function.Consumer<T>, T);
+    descriptor: (Ljava/util/function/Consumer;Lnet/minecraft/world/entity/Entity;)V
+
+  public boolean shouldTickDeath(net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;)Z
+
+  public boolean shouldTickBlocksAt(long);
+    descriptor: (J)Z
+
+  public boolean shouldTickBlocksAt(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Z
+
+  public void explode(net.minecraft.world.entity.Entity, double, double, double, float, net.minecraft.world.level.Level$ExplosionInteraction);
+    descriptor: (Lnet/minecraft/world/entity/Entity;DDDFLnet/minecraft/world/level/Level$ExplosionInteraction;)V
+
+  public void explode(net.minecraft.world.entity.Entity, double, double, double, float, boolean, net.minecraft.world.level.Level$ExplosionInteraction);
+    descriptor: (Lnet/minecraft/world/entity/Entity;DDDFZLnet/minecraft/world/level/Level$ExplosionInteraction;)V
+
+  public void explode(net.minecraft.world.entity.Entity, net.minecraft.world.damagesource.DamageSource, net.minecraft.world.level.ExplosionDamageCalculator, net.minecraft.world.phys.Vec3, float, boolean, net.minecraft.world.level.Level$ExplosionInteraction);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/damagesource/DamageSource;Lnet/minecraft/world/level/ExplosionDamageCalculator;Lnet/minecraft/world/phys/Vec3;FZLnet/minecraft/world/level/Level$ExplosionInteraction;)V
+
+  public void explode(net.minecraft.world.entity.Entity, net.minecraft.world.damagesource.DamageSource, net.minecraft.world.level.ExplosionDamageCalculator, double, double, double, float, boolean, net.minecraft.world.level.Level$ExplosionInteraction);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/damagesource/DamageSource;Lnet/minecraft/world/level/ExplosionDamageCalculator;DDDFZLnet/minecraft/world/level/Level$ExplosionInteraction;)V
+
+  public abstract void explode(net.minecraft.world.entity.Entity, net.minecraft.world.damagesource.DamageSource, net.minecraft.world.level.ExplosionDamageCalculator, double, double, double, float, boolean, net.minecraft.world.level.Level$ExplosionInteraction, net.minecraft.core.particles.ParticleOptions, net.minecraft.core.particles.ParticleOptions, net.minecraft.util.random.WeightedList<net.minecraft.core.particles.ExplosionParticleInfo>, net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent>);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/damagesource/DamageSource;Lnet/minecraft/world/level/ExplosionDamageCalculator;DDDFZLnet/minecraft/world/level/Level$ExplosionInteraction;Lnet/minecraft/core/particles/ParticleOptions;Lnet/minecraft/core/particles/ParticleOptions;Lnet/minecraft/util/random/WeightedList;Lnet/minecraft/core/Holder;)V
+
+  public abstract java.lang.String gatherChunkSourceStats();
+    descriptor: ()Ljava/lang/String;
+
+  public net.minecraft.world.level.block.entity.BlockEntity getBlockEntity(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/entity/BlockEntity;
+
+  public void setBlockEntity(net.minecraft.world.level.block.entity.BlockEntity);
+    descriptor: (Lnet/minecraft/world/level/block/entity/BlockEntity;)V
+
+  public void removeBlockEntity(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)V
+
+  public boolean isLoaded(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Z
+
+  public boolean loadedAndEntityCanStandOnFace(net.minecraft.core.BlockPos, net.minecraft.world.entity.Entity, net.minecraft.core.Direction);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/Entity;Lnet/minecraft/core/Direction;)Z
+
+  public boolean loadedAndEntityCanStandOn(net.minecraft.core.BlockPos, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/Entity;)Z
+
+  public void updateSkyBrightness();
+    descriptor: ()V
+
+  public void setSpawnSettings(boolean);
+    descriptor: (Z)V
+
+  public abstract void setRespawnData(net.minecraft.world.level.storage.LevelData$RespawnData);
+    descriptor: (Lnet/minecraft/world/level/storage/LevelData$RespawnData;)V
+
+  public abstract net.minecraft.world.level.storage.LevelData$RespawnData getRespawnData();
+    descriptor: ()Lnet/minecraft/world/level/storage/LevelData$RespawnData;
+
+  public net.minecraft.world.level.storage.LevelData$RespawnData getWorldBorderAdjustedRespawnData(net.minecraft.world.level.storage.LevelData$RespawnData);
+    descriptor: (Lnet/minecraft/world/level/storage/LevelData$RespawnData;)Lnet/minecraft/world/level/storage/LevelData$RespawnData;
+
+  public void close() throws java.io.IOException;
+    descriptor: ()V
+
+  public net.minecraft.world.level.BlockGetter getChunkForCollisions(int, int);
+    descriptor: (II)Lnet/minecraft/world/level/BlockGetter;
+
+  public java.util.List<net.minecraft.world.entity.Entity> getEntities(net.minecraft.world.entity.Entity, net.minecraft.world.phys.AABB, java.util.function.Predicate<? super net.minecraft.world.entity.Entity>);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/phys/AABB;Ljava/util/function/Predicate;)Ljava/util/List;
+
+  public <T extends net.minecraft.world.entity.Entity> java.util.List<T> getEntities(net.minecraft.world.level.entity.EntityTypeTest<net.minecraft.world.entity.Entity, T>, net.minecraft.world.phys.AABB, java.util.function.Predicate<? super T>);
+    descriptor: (Lnet/minecraft/world/level/entity/EntityTypeTest;Lnet/minecraft/world/phys/AABB;Ljava/util/function/Predicate;)Ljava/util/List;
+
+  public <T extends net.minecraft.world.entity.Entity> void getEntities(net.minecraft.world.level.entity.EntityTypeTest<net.minecraft.world.entity.Entity, T>, net.minecraft.world.phys.AABB, java.util.function.Predicate<? super T>, java.util.List<? super T>);
+    descriptor: (Lnet/minecraft/world/level/entity/EntityTypeTest;Lnet/minecraft/world/phys/AABB;Ljava/util/function/Predicate;Ljava/util/List;)V
+
+  public <T extends net.minecraft.world.entity.Entity> void getEntities(net.minecraft.world.level.entity.EntityTypeTest<net.minecraft.world.entity.Entity, T>, net.minecraft.world.phys.AABB, java.util.function.Predicate<? super T>, java.util.List<? super T>, int);
+    descriptor: (Lnet/minecraft/world/level/entity/EntityTypeTest;Lnet/minecraft/world/phys/AABB;Ljava/util/function/Predicate;Ljava/util/List;I)V
+
+  public <T extends net.minecraft.world.entity.Entity> boolean hasEntities(net.minecraft.world.level.entity.EntityTypeTest<net.minecraft.world.entity.Entity, T>, net.minecraft.world.phys.AABB, java.util.function.Predicate<? super T>);
+    descriptor: (Lnet/minecraft/world/level/entity/EntityTypeTest;Lnet/minecraft/world/phys/AABB;Ljava/util/function/Predicate;)Z
+
+  public java.util.List<net.minecraft.world.entity.Entity> getPushableEntities(net.minecraft.world.entity.Entity, net.minecraft.world.phys.AABB);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/phys/AABB;)Ljava/util/List;
+
+  public abstract net.minecraft.world.entity.Entity getEntity(int);
+    descriptor: (I)Lnet/minecraft/world/entity/Entity;
+
+  public net.minecraft.world.entity.Entity getEntity(java.util.UUID);
+    descriptor: (Ljava/util/UUID;)Lnet/minecraft/world/entity/Entity;
+
+  public net.minecraft.world.entity.Entity getEntityInAnyDimension(java.util.UUID);
+    descriptor: (Ljava/util/UUID;)Lnet/minecraft/world/entity/Entity;
+
+  public net.minecraft.world.entity.player.Player getPlayerInAnyDimension(java.util.UUID);
+    descriptor: (Ljava/util/UUID;)Lnet/minecraft/world/entity/player/Player;
+
+  public abstract java.util.Collection<net.minecraft.world.entity.boss.enderdragon.EnderDragonPart> dragonParts();
+    descriptor: ()Ljava/util/Collection;
+
+  public void blockEntityChanged(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)V
+
+  public void onBlockEntityAdded(net.minecraft.world.level.block.entity.BlockEntity);
+    descriptor: (Lnet/minecraft/world/level/block/entity/BlockEntity;)V
+
+  public long getOverworldClockTime();
+    descriptor: ()J
+
+  public long getDefaultClockTime();
+    descriptor: ()J
+
+  private long getClockTimeTicks(java.util.Optional<? extends net.minecraft.core.Holder<net.minecraft.world.clock.WorldClock>>);
+    descriptor: (Ljava/util/Optional;)J
+
+  public boolean mayInteract(net.minecraft.world.entity.Entity, net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/core/BlockPos;)Z
+
+  public void broadcastEntityEvent(net.minecraft.world.entity.Entity, byte);
+    descriptor: (Lnet/minecraft/world/entity/Entity;B)V
+
+  public void broadcastDamageEvent(net.minecraft.world.entity.Entity, net.minecraft.world.damagesource.DamageSource);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/damagesource/DamageSource;)V
+
+  public void blockEvent(net.minecraft.core.BlockPos, net.minecraft.world.level.block.Block, int, int);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;II)V
+
+  public net.minecraft.world.level.storage.LevelData getLevelData();
+    descriptor: ()Lnet/minecraft/world/level/storage/LevelData;
+
+  public abstract net.minecraft.world.TickRateManager tickRateManager();
+    descriptor: ()Lnet/minecraft/world/TickRateManager;
+
+  public float getRelativeTickSpeed();
+    descriptor: ()F
+
+  public float getThunderLevel(float);
+    descriptor: (F)F
+
+  public void setThunderLevel(float);
+    descriptor: (F)V
+
+  public float getRainLevel(float);
+    descriptor: (F)F
+
+  public void setRainLevel(float);
+    descriptor: (F)V
+
+  public boolean canHaveWeather();
+    descriptor: ()Z
+
+  public boolean isThundering();
+    descriptor: ()Z
+
+  public boolean isRaining();
+    descriptor: ()Z
+
+  public boolean isRainingAt(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Z
+
+  public net.minecraft.world.level.biome.Biome$Precipitation precipitationAt(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/biome/Biome$Precipitation;
+
+  public abstract net.minecraft.world.level.saveddata.maps.MapItemSavedData getMapData(net.minecraft.world.level.saveddata.maps.MapId);
+    descriptor: (Lnet/minecraft/world/level/saveddata/maps/MapId;)Lnet/minecraft/world/level/saveddata/maps/MapItemSavedData;
+
+  public void globalLevelEvent(int, net.minecraft.core.BlockPos, int);
+    descriptor: (ILnet/minecraft/core/BlockPos;I)V
+
+  public net.minecraft.CrashReportCategory fillReportDetails(net.minecraft.CrashReport);
+    descriptor: (Lnet/minecraft/CrashReport;)Lnet/minecraft/CrashReportCategory;
+
+  public abstract void destroyBlockProgress(int, net.minecraft.core.BlockPos, int);
+    descriptor: (ILnet/minecraft/core/BlockPos;I)V
+
+  public void createFireworks(double, double, double, double, double, double, java.util.List<net.minecraft.world.item.component.FireworkExplosion>, boolean);
+    descriptor: (DDDDDDLjava/util/List;Z)V
+
+  public abstract net.minecraft.world.scores.Scoreboard getScoreboard();
+    descriptor: ()Lnet/minecraft/world/scores/Scoreboard;
+
+  public void updateNeighbourForOutputSignal(net.minecraft.core.BlockPos, net.minecraft.world.level.block.Block);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;)V
+
+  public int getSkyDarken();
+    descriptor: ()I
+
+  public void setSkyFlashTime(int);
+    descriptor: (I)V
+
+  public void sendPacketToServer(net.minecraft.network.protocol.Packet<?>);
+    descriptor: (Lnet/minecraft/network/protocol/Packet;)V
+
+  public net.minecraft.world.level.dimension.DimensionType dimensionType();
+    descriptor: ()Lnet/minecraft/world/level/dimension/DimensionType;
+
+  public net.minecraft.core.Holder<net.minecraft.world.level.dimension.DimensionType> dimensionTypeRegistration();
+    descriptor: ()Lnet/minecraft/core/Holder;
+
+  public net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension();
+    descriptor: ()Lnet/minecraft/resources/ResourceKey;
+
+  public net.minecraft.util.RandomSource getRandom();
+    descriptor: ()Lnet/minecraft/util/RandomSource;
+
+  public boolean isStateAtPosition(net.minecraft.core.BlockPos, java.util.function.Predicate<net.minecraft.world.level.block.state.BlockState>);
+    descriptor: (Lnet/minecraft/core/BlockPos;Ljava/util/function/Predicate;)Z
+
+  public boolean isFluidAtPosition(net.minecraft.core.BlockPos, java.util.function.Predicate<net.minecraft.world.level.material.FluidState>);
+    descriptor: (Lnet/minecraft/core/BlockPos;Ljava/util/function/Predicate;)Z
+
+  public abstract net.minecraft.world.item.crafting.RecipeAccess recipeAccess();
+    descriptor: ()Lnet/minecraft/world/item/crafting/RecipeAccess;
+
+  public net.minecraft.core.BlockPos getBlockRandomPos(int, int, int, int);
+    descriptor: (IIII)Lnet/minecraft/core/BlockPos;
+
+  public boolean noSave();
+    descriptor: ()Z
+
+  public net.minecraft.world.level.biome.BiomeManager getBiomeManager();
+    descriptor: ()Lnet/minecraft/world/level/biome/BiomeManager;
+
+  public final boolean isDebug();
+    descriptor: ()Z
+
+  protected abstract net.minecraft.world.level.entity.LevelEntityGetter<net.minecraft.world.entity.Entity> getEntities();
+    descriptor: ()Lnet/minecraft/world/level/entity/LevelEntityGetter;
+
+  public long nextSubTickCount();
+    descriptor: ()J
+
+  public net.minecraft.core.RegistryAccess registryAccess();
+    descriptor: ()Lnet/minecraft/core/RegistryAccess;
+
+  public net.minecraft.world.damagesource.DamageSources damageSources();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSources;
+
+  public abstract net.minecraft.world.clock.ClockManager clockManager();
+    descriptor: ()Lnet/minecraft/world/clock/ClockManager;
+
+  public abstract net.minecraft.world.attribute.EnvironmentAttributeSystem environmentAttributes();
+    descriptor: ()Lnet/minecraft/world/attribute/EnvironmentAttributeSystem;
+
+  public int getClientLeafTintColor(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)I
+
+  public net.minecraft.world.level.chunk.PalettedContainerFactory palettedContainerFactory();
+    descriptor: ()Lnet/minecraft/world/level/chunk/PalettedContainerFactory;
+
+  public net.minecraft.world.attribute.EnvironmentAttributeReader environmentAttributes();
+    descriptor: ()Lnet/minecraft/world/attribute/EnvironmentAttributeReader;
+
+  public net.minecraft.world.level.chunk.ChunkAccess getChunk(int, int);
+    descriptor: (II)Lnet/minecraft/world/level/chunk/ChunkAccess;
+
+  private java.lang.String lambda$fillReportDetails$2() throws java.lang.Exception;
+    descriptor: ()Ljava/lang/String;
+
+  private java.lang.String lambda$fillReportDetails$1() throws java.lang.Exception;
+    descriptor: ()Ljava/lang/String;
+
+  private java.lang.String lambda$fillReportDetails$0() throws java.lang.Exception;
+    descriptor: ()Ljava/lang/String;
+
+  private java.lang.Long lambda$getClockTimeTicks$0(net.minecraft.core.Holder);
+    descriptor: (Lnet/minecraft/core/Holder;)Ljava/lang/Long;
+
+  private static net.minecraft.util.Continuation lambda$hasEntities$0(java.util.function.Predicate, org.apache.commons.lang3.mutable.MutableBoolean, net.minecraft.world.level.entity.EntityTypeTest, net.minecraft.world.entity.Entity);
+    descriptor: (Ljava/util/function/Predicate;Lorg/apache/commons/lang3/mutable/MutableBoolean;Lnet/minecraft/world/level/entity/EntityTypeTest;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/util/Continuation;
+
+  private static net.minecraft.util.Continuation lambda$getEntities$1(java.util.function.Predicate, java.util.List, int, net.minecraft.world.level.entity.EntityTypeTest, net.minecraft.world.entity.Entity);
+    descriptor: (Ljava/util/function/Predicate;Ljava/util/List;ILnet/minecraft/world/level/entity/EntityTypeTest;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/util/Continuation;
+
+  private static void lambda$getEntities$0(net.minecraft.world.entity.Entity, java.util.function.Predicate, java.util.List, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Ljava/util/function/Predicate;Ljava/util/List;Lnet/minecraft/world/entity/Entity;)V
+
+  static {};
+    descriptor: ()V
+}

@@ -1,0 +1,14 @@
+{
+  "common_environment_sha256": "ba354b8e33750bc2d6aba6c8b9acc16b34a7ee246747d265e99243029855b65a",
+  "environment": {
+    "HOME": "/Users/leifwebber",
+    "LANG": "C.UTF-8",
+    "LC_ALL": "C.UTF-8",
+    "LC_CTYPE": "C.UTF-8",
+    "LOGNAME": "leifwebber",
+    "PATH": "/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/opt/homebrew/opt/libpq/bin:/Users/leifwebber/.grok/bin:/Users/leifwebber/.antigravity-ide/antigravity-ide/bin:/opt/homebrew/bin:/Users/leifwebber/.local/bin:/Users/leifwebber/go/bin:/Users/leifwebber/.antigravity/antigravity/bin:/Users/leifwebber/.nvm/versions/node/v24.12.0/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/usr/local/go/bin:/opt/homebrew/bin:/Users/leifwebber/.codex/tmp/arg0-macos/codex-arg0e1NITP:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/leifwebber/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override:/opt/homebrew/opt/libpq/bin:/Users/leifwebber/.grok/bin:/Users/leifwebber/.antigravity-ide/antigravity-ide/bin:/Users/leifwebber/.local/bin:/Users/leifwebber/go/bin:/Users/leifwebber/.antigravity/antigravity/bin:/Users/leifwebber/Library/pnpm/bin:/Users/leifwebber/.nvm/versions/node/v24.12.0/bin:/Users/leifwebber/.cargo/bin:/Users/leifwebber/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:/Applications/ChatGPT.app/Contents/Resources:/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS",
+    "SHELL": "/bin/zsh",
+    "TMPDIR": "/var/folders/r2/z_1kc3ld74x13g0npl0jpdym0000gn/T/",
+    "USER": "leifwebber"
+  }
+}

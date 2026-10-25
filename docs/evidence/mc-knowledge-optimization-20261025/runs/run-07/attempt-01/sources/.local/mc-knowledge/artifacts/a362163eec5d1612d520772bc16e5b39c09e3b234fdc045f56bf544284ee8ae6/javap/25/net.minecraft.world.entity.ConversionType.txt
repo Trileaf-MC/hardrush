@@ -1,0 +1,39 @@
+Compiled from "ConversionType.java"
+public abstract class net.minecraft.world.entity.ConversionType extends java.lang.Enum<net.minecraft.world.entity.ConversionType> {
+  public static final net.minecraft.world.entity.ConversionType SINGLE;
+    descriptor: Lnet/minecraft/world/entity/ConversionType;
+  public static final net.minecraft.world.entity.ConversionType SPLIT_ON_DEATH;
+    descriptor: Lnet/minecraft/world/entity/ConversionType;
+  private static final java.util.Set<net.minecraft.core.component.DataComponentType<?>> COMPONENTS_TO_COPY;
+    descriptor: Ljava/util/Set;
+  private final boolean discardAfterConversion;
+    descriptor: Z
+  private static final net.minecraft.world.entity.ConversionType[] $VALUES;
+    descriptor: [Lnet/minecraft/world/entity/ConversionType;
+  public static net.minecraft.world.entity.ConversionType[] values();
+    descriptor: ()[Lnet/minecraft/world/entity/ConversionType;
+
+  public static net.minecraft.world.entity.ConversionType valueOf(java.lang.String);
+    descriptor: (Ljava/lang/String;)Lnet/minecraft/world/entity/ConversionType;
+
+  private net.minecraft.world.entity.ConversionType(boolean);
+    descriptor: (Ljava/lang/String;IZ)V
+
+  public boolean shouldDiscardAfterConversion();
+    descriptor: ()Z
+
+  public abstract void convert(net.minecraft.world.entity.Mob, net.minecraft.world.entity.Mob, net.minecraft.world.entity.ConversionParams);
+    descriptor: (Lnet/minecraft/world/entity/Mob;Lnet/minecraft/world/entity/Mob;Lnet/minecraft/world/entity/ConversionParams;)V
+
+  private static void convertCommon(net.minecraft.world.entity.Mob, net.minecraft.world.entity.Mob, net.minecraft.world.entity.ConversionParams);
+    descriptor: (Lnet/minecraft/world/entity/Mob;Lnet/minecraft/world/entity/Mob;Lnet/minecraft/world/entity/ConversionParams;)V
+
+  private static <T> void copyComponent(net.minecraft.world.entity.Mob, net.minecraft.world.entity.Mob, net.minecraft.core.component.DataComponentType<T>);
+    descriptor: (Lnet/minecraft/world/entity/Mob;Lnet/minecraft/world/entity/Mob;Lnet/minecraft/core/component/DataComponentType;)V
+
+  private static net.minecraft.world.entity.ConversionType[] $values();
+    descriptor: ()[Lnet/minecraft/world/entity/ConversionType;
+
+  static {};
+    descriptor: ()V
+}

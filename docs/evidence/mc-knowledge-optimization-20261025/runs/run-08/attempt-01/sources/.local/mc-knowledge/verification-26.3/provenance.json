@@ -1,0 +1,122 @@
+{
+  "version": "Java 26.3",
+  "evidence": [
+    {
+      "file": "Skeleton.java",
+      "sha256": "5ea3cbbfed7443ada5750bdf1b33b04dd72d3f9555716dfa0bc712d6d52f7b17",
+      "class": "net.minecraft.world.entity.monster.skeleton.Skeleton",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/0d2fb4ca3ad3d950060d9024fa7d97c4a6fd4a929c9ebb80f201a9d799642fd9.json"
+    },
+    {
+      "file": "ConversionTracker.java",
+      "sha256": "6558b9a69852340b156ec8d6363b4137d5bf688df34d0484916959716f0f3cb2",
+      "class": "net.minecraft.world.entity.ConversionTracker",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/953d7eefd077762cf80cfe26ce4295eb0d1c196bf652bef9b1750a133a265b3c.json"
+    },
+    {
+      "file": "Wolf.registerGoals.java",
+      "sha256": "69de1241561618864589f2435b146f1b8e66994d69232065a1264ba85eb50933",
+      "class": "net.minecraft.world.entity.animal.wolf.Wolf",
+      "member": "registerGoals",
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/a98b3d049e6db21a6544baef1187f3975a9108ec4b6be1b0937f453f60538d8a.json"
+    },
+    {
+      "file": "Stray.java",
+      "sha256": "9b86146ddd6b112b4c9907e6773d6a7c5fe592e94a7daf4df33ec0cf2695a0b6",
+      "class": "net.minecraft.world.entity.monster.skeleton.Stray",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/6ba9a06730c997a18fb1504dc1a1b63209f9e3c5539ed414811b63a28a08d0a0.json"
+    },
+    {
+      "file": "SitWhenOrderedToGoal.java",
+      "sha256": "9d1d38fac970dc3cdfdf3c63e7c524719a88eac1a559ac6678ffb433b35eb275",
+      "class": "net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/9e22d791c5cde6263e7d9222d9a6cd51cc5f88c96a87a50db460ae512bbde42c.json"
+    },
+    {
+      "file": "ConversionType.java",
+      "sha256": "c82804e1198c7c48d0036b3f3e4ddb25ab8ae725fa00d0d2270784b6e7812b91",
+      "class": "net.minecraft.world.entity.ConversionType",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/f0c53b289446b9d0ca67cc5aceb195223b95a3381c003a193886efce81f78837.json"
+    },
+    {
+      "file": "ConversionParams.java",
+      "sha256": "0589524df2eabdf30cfa906dc6f71c8922c777f4a8a98a43295f0ee9d6f4773f",
+      "class": "net.minecraft.world.entity.ConversionParams",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/3373c7539ebab2299eb5b0734f8cd71033bf6ac392bcdf3a919fb1afff4e87a1.json"
+    },
+    {
+      "file": "InsideBlockEffectType.java",
+      "sha256": "2d4d2e7a05105a01739802b40d11ab1bf0e6a0b126376f21d0e0186675af4f17",
+      "class": "net.minecraft.world.entity.InsideBlockEffectType",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/b88bdee1808fd09d282093bcdb62d14fc666129f6869643da4ef9c0a6ea279d6.json"
+    },
+    {
+      "file": "NearestAttackableTargetGoal.java",
+      "sha256": "61cf3e900bc6e09d0dd318dd616a65a1bbd172e4420e1ba4e67b84f12e1ce190",
+      "class": "net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/2835b1578c2b6237364059da62b17e6ef8b1f3bdf0812fc78881e3ea69cb4fac.json"
+    },
+    {
+      "file": "NonTameRandomTargetGoal.java",
+      "sha256": "295938b6dc2cf0b0446bf31f1273c11c851c6758365b8eda1627a192449964b9",
+      "class": "net.minecraft.world.entity.ai.goal.target.NonTameRandomTargetGoal",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/aaa6b24b915265dc4f16b8a9bb3565d3c55d982172c01c94bd86f2f93993372d.json"
+    },
+    {
+      "file": "OwnerHurtByTargetGoal.java",
+      "sha256": "83dd6d7579eb7b43b41d713ab707e098f922195b31a9f4e4e5de3b2c4b9b1200",
+      "class": "net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/b5c23350e2441503e68e236b0f5c46cff3f2cd643202328b067dd3c2427f6799.json"
+    },
+    {
+      "file": "OwnerHurtTargetGoal.java",
+      "sha256": "3475329655079eeefbdf08f071b6e6da1c5e7e0eb4b102624aa1bb446c86c90f",
+      "class": "net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/81537e366b10928a6d84780413d24b839b4481da274305526286812942ce8164.json"
+    },
+    {
+      "file": "TargetingConditions.java",
+      "sha256": "bbff01bdb3d5da357c84d7f936c91b9fee8b835c92a563b5015051f01107f8ba",
+      "class": "net.minecraft.world.entity.ai.targeting.TargetingConditions",
+      "member": null,
+      "provenance": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/d3d387b5ebbc9fb4960e649cb308be29b5b66a86d1582fb5907156ff852d4f20.json"
+    },
+    {
+      "file": "ConversionTracker.tick.javap.txt",
+      "provenance": [
+        "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/a763d0080ce03ff45162fc063cc285db123015db45f32fba75bf92101731b747.json"
+      ]
+    },
+    {
+      "file": "Wolf.registerGoals.javap.txt",
+      "provenance": [
+        "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/6763301e22032158f433a1fc1a93c64d2ad9c12a9888cf82be8625097dbf7805.json",
+        "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/evidence/6364116782fa7136a524769ec06512018649128a4475c0c5b6c391b24fd11910.json"
+      ]
+    }
+  ],
+  "jar": {
+    "edition": "Java",
+    "integrity": "matches server bundle SHA-256",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "kind": "vanilla-server",
+    "minecraft_version": "26.3"
+  },
+  "decompiler": {
+    "path": "/Users/leifwebber/.gradle/caches/modules-2/files-2.1/org.vineflower/vineflower/1.12.0/85570609a0a5941a7d2918b6260b209de810f66f/vineflower-1.12.0.jar",
+    "sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+    "version": "1.12.0"
+  }
+}

@@ -1,0 +1,119 @@
+class net/minecraft/world/entity/monster/skeleton/Skeleton extends net/minecraft/world/entity/monster/skeleton/AbstractSkeleton
+
+<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+     0: aload_0              
+     1: aload_1              
+     2: aload_2              
+     3: invokespecial        net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+     6: aload_0              
+     7: new                  net/minecraft/world/entity/ConversionTracker
+    10: dup                  
+    11: aload_0              
+    12: getstatic            net/minecraft/world/entity/monster/skeleton/Skeleton.DATA_STRAY_CONVERSION_IDLnet/minecraft/network/syncher/EntityDataAccessor;
+    15: invokedynamic        <InvokeDynamic(index=15,method_attr_index=0,name_and_type=<NameAndType(index=16,name=<UTF8(index=17, value='get'>),descriptor=<UTF8(index=18, value='()Ljava/util/function/Supplier;'>))>)> 0 0
+    20: invokedynamic        <InvokeDynamic(index=19,method_attr_index=1,name_and_type=<NameAndType(index=16,name=<UTF8(index=17, value='get'>),descriptor=<UTF8(index=18, value='()Ljava/util/function/Supplier;'>))>)> 0 0
+    25: aload_0              
+    26: invokedynamic        <InvokeDynamic(index=20,method_attr_index=2,name_and_type=<NameAndType(index=21,name=<UTF8(index=22, value='getAsBoolean'>),descriptor=<UTF8(index=23, value='(Lnet/minecraft/world/entity/monster/skeleton/Skeleton;)Ljava/util/function/BooleanSupplier;'>))>)> 0 0
+    31: ldc                  'FreezingTime'
+    33: sipush               140
+    36: ldc                  'StrayConversionTime'
+    38: sipush               300
+    41: aconst_null          
+    42: invokespecial        net/minecraft/world/entity/ConversionTracker.<init>(Lnet/minecraft/world/entity/Mob;Lnet/minecraft/network/syncher/EntityDataAccessor;Ljava/util/function/Supplier;Ljava/util/function/Supplier;Ljava/util/function/BooleanSupplier;Ljava/lang/String;ILjava/lang/String;ILjava/util/function/BiConsumer;)V
+    45: putfield             net/minecraft/world/entity/monster/skeleton/Skeleton.freezingTrackerLnet/minecraft/world/entity/ConversionTracker;
+    48: return               
+
+defineSynchedData(Lnet/minecraft/network/syncher/SynchedEntityData$Builder;)V
+     0: aload_0              
+     1: aload_1              
+     2: invokespecial        net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.defineSynchedData(Lnet/minecraft/network/syncher/SynchedEntityData$Builder;)V
+     5: aload_1              
+     6: getstatic            net/minecraft/world/entity/monster/skeleton/Skeleton.DATA_STRAY_CONVERSION_IDLnet/minecraft/network/syncher/EntityDataAccessor;
+     9: iconst_0             
+    10: invokestatic         java/lang/Boolean.valueOf(Z)Ljava/lang/Boolean;
+    13: invokevirtual        net/minecraft/network/syncher/SynchedEntityData$Builder.define(Lnet/minecraft/network/syncher/EntityDataAccessor;Ljava/lang/Object;)Lnet/minecraft/network/syncher/SynchedEntityData$Builder;
+    16: pop                  
+    17: return               
+
+isShaking()Z
+     0: aload_0              
+     1: getfield             net/minecraft/world/entity/monster/skeleton/Skeleton.freezingTrackerLnet/minecraft/world/entity/ConversionTracker;
+     4: invokevirtual        net/minecraft/world/entity/ConversionTracker.isConverting()Z
+     7: ireturn              
+
+tick()V
+     0: aload_0              
+     1: getfield             net/minecraft/world/entity/monster/skeleton/Skeleton.freezingTrackerLnet/minecraft/world/entity/ConversionTracker;
+     4: invokevirtual        net/minecraft/world/entity/ConversionTracker.tick()V
+     7: aload_0              
+     8: invokespecial        net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.tick()V
+    11: return               
+
+addAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueOutput;)V
+     0: aload_0              
+     1: aload_1              
+     2: invokespecial        net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.addAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueOutput;)V
+     5: aload_0              
+     6: getfield             net/minecraft/world/entity/monster/skeleton/Skeleton.freezingTrackerLnet/minecraft/world/entity/ConversionTracker;
+     9: aload_1              
+    10: invokevirtual        net/minecraft/world/entity/ConversionTracker.addAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueOutput;)V
+    13: return               
+
+readAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueInput;)V
+     0: aload_0              
+     1: aload_1              
+     2: invokespecial        net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.readAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueInput;)V
+     5: aload_0              
+     6: getfield             net/minecraft/world/entity/monster/skeleton/Skeleton.freezingTrackerLnet/minecraft/world/entity/ConversionTracker;
+     9: aload_1              
+    10: invokevirtual        net/minecraft/world/entity/ConversionTracker.readAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueInput;)V
+    13: return               
+
+startFreezeConversion(I)V
+     0: aload_0              
+     1: getfield             net/minecraft/world/entity/monster/skeleton/Skeleton.freezingTrackerLnet/minecraft/world/entity/ConversionTracker;
+     4: iload_1              
+     5: invokevirtual        net/minecraft/world/entity/ConversionTracker.startConversion(I)V
+     8: return               
+
+canFreeze()Z
+     0: iconst_0             
+     1: ireturn              
+
+getAmbientSound()Lnet/minecraft/sounds/SoundEvent;
+     0: getstatic            net/minecraft/sounds/SoundEvents.SKELETON_AMBIENTLnet/minecraft/sounds/SoundEvent;
+     3: areturn              
+
+getHurtSound(Lnet/minecraft/world/damagesource/DamageSource;)Lnet/minecraft/sounds/SoundEvent;
+     0: getstatic            net/minecraft/sounds/SoundEvents.SKELETON_HURTLnet/minecraft/sounds/SoundEvent;
+     3: areturn              
+
+getDeathSound()Lnet/minecraft/sounds/SoundEvent;
+     0: getstatic            net/minecraft/sounds/SoundEvents.SKELETON_DEATHLnet/minecraft/sounds/SoundEvent;
+     3: areturn              
+
+getStepSound()Lnet/minecraft/sounds/SoundEvent;
+     0: getstatic            net/minecraft/sounds/SoundEvents.SKELETON_STEPLnet/minecraft/sounds/SoundEvent;
+     3: areturn              
+
+lambda$new$2()Z
+     0: aload_0              
+     1: getfield             net/minecraft/world/entity/monster/skeleton/Skeleton.isInPowderSnowZ
+     4: ireturn              
+
+lambda$new$1()Ljava/lang/Integer;
+     0: sipush               1048
+     3: invokestatic         java/lang/Integer.valueOf(I)Ljava/lang/Integer;
+     6: areturn              
+
+lambda$new$0()Lnet/minecraft/world/entity/EntityType;
+     0: getstatic            net/minecraft/world/entity/EntityTypes.STRAYLnet/minecraft/world/entity/EntityType;
+     3: areturn              
+
+<clinit>()V
+     0: ldc                  net/minecraft/world/entity/monster/skeleton/Skeleton
+     2: getstatic            net/minecraft/network/syncher/EntityDataSerializers.BOOLEANLnet/minecraft/network/syncher/EntityDataSerializer;
+     5: invokestatic         net/minecraft/network/syncher/SynchedEntityData.defineId(Ljava/lang/Class;Lnet/minecraft/network/syncher/EntityDataSerializer;)Lnet/minecraft/network/syncher/EntityDataAccessor;
+     8: putstatic            net/minecraft/world/entity/monster/skeleton/Skeleton.DATA_STRAY_CONVERSION_IDLnet/minecraft/network/syncher/EntityDataAccessor;
+    11: return               
+

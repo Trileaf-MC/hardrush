@@ -1,0 +1,113 @@
+class net/minecraft/world/entity/InsideBlockEffectType extends java/lang/Enum
+
+values()[Lnet/minecraft/world/entity/InsideBlockEffectType;
+     0: getstatic            net/minecraft/world/entity/InsideBlockEffectType.$VALUES[Lnet/minecraft/world/entity/InsideBlockEffectType;
+     3: invokevirtual        [Lnet/minecraft/world/entity/InsideBlockEffectType;.clone()Ljava/lang/Object;
+     6: checkcast            [Lnet/minecraft/world/entity/InsideBlockEffectType;
+     9: areturn              
+
+valueOf(Ljava/lang/String;)Lnet/minecraft/world/entity/InsideBlockEffectType;
+     0: ldc                  net/minecraft/world/entity/InsideBlockEffectType
+     2: aload_0              
+     3: invokestatic         java/lang/Enum.valueOf(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;
+     6: checkcast            net/minecraft/world/entity/InsideBlockEffectType
+     9: areturn              
+
+<init>(Ljava/lang/String;ILjava/util/function/Consumer;)V
+     0: aload_0              
+     1: aload_1              
+     2: iload_2              
+     3: invokespecial        java/lang/Enum.<init>(Ljava/lang/String;I)V
+     6: aload_0              
+     7: aload_3              
+     8: putfield             net/minecraft/world/entity/InsideBlockEffectType.effectLjava/util/function/Consumer;
+    11: return               
+
+effect()Ljava/util/function/Consumer;
+     0: aload_0              
+     1: getfield             net/minecraft/world/entity/InsideBlockEffectType.effectLjava/util/function/Consumer;
+     4: areturn              
+
+$values()[Lnet/minecraft/world/entity/InsideBlockEffectType;
+     0: iconst_5             
+     1: anewarray            1
+     4: dup                  
+     5: iconst_0             
+     6: getstatic            net/minecraft/world/entity/InsideBlockEffectType.FREEZELnet/minecraft/world/entity/InsideBlockEffectType;
+     9: aastore              
+    10: dup                  
+    11: iconst_1             
+    12: getstatic            net/minecraft/world/entity/InsideBlockEffectType.CLEAR_FREEZELnet/minecraft/world/entity/InsideBlockEffectType;
+    15: aastore              
+    16: dup                  
+    17: iconst_2             
+    18: getstatic            net/minecraft/world/entity/InsideBlockEffectType.FIRE_IGNITELnet/minecraft/world/entity/InsideBlockEffectType;
+    21: aastore              
+    22: dup                  
+    23: iconst_3             
+    24: getstatic            net/minecraft/world/entity/InsideBlockEffectType.LAVA_IGNITELnet/minecraft/world/entity/InsideBlockEffectType;
+    27: aastore              
+    28: dup                  
+    29: iconst_4             
+    30: getstatic            net/minecraft/world/entity/InsideBlockEffectType.EXTINGUISHLnet/minecraft/world/entity/InsideBlockEffectType;
+    33: aastore              
+    34: areturn              
+
+lambda$static$0(Lnet/minecraft/world/entity/Entity;)V
+     0: aload_0              
+     1: iconst_1             
+     2: invokevirtual        net/minecraft/world/entity/Entity.setIsInPowderSnow(Z)V
+     5: aload_0              
+     6: invokevirtual        net/minecraft/world/entity/Entity.canFreeze()Z
+     9: ifeq                 29 (offset +20)
+    12: aload_0              
+    13: aload_0              
+    14: invokevirtual        net/minecraft/world/entity/Entity.getTicksRequiredToFreeze()I
+    17: aload_0              
+    18: invokevirtual        net/minecraft/world/entity/Entity.getTicksFrozen()I
+    21: iconst_1             
+    22: iadd                 
+    23: invokestatic         java/lang/Math.min(II)I
+    26: invokevirtual        net/minecraft/world/entity/Entity.setTicksFrozen(I)V
+    29: return               
+
+<clinit>()V
+     0: new                  net/minecraft/world/entity/InsideBlockEffectType
+     3: dup                  
+     4: ldc                  'FREEZE'
+     6: iconst_0             
+     7: invokedynamic        <InvokeDynamic(index=70,method_attr_index=0,name_and_type=<NameAndType(index=71,name=<UTF8(index=72, value='accept'>),descriptor=<UTF8(index=73, value='()Ljava/util/function/Consumer;'>))>)> 0 0
+    12: invokespecial        net/minecraft/world/entity/InsideBlockEffectType.<init>(Ljava/lang/String;ILjava/util/function/Consumer;)V
+    15: putstatic            net/minecraft/world/entity/InsideBlockEffectType.FREEZELnet/minecraft/world/entity/InsideBlockEffectType;
+    18: new                  net/minecraft/world/entity/InsideBlockEffectType
+    21: dup                  
+    22: ldc                  'CLEAR_FREEZE'
+    24: iconst_1             
+    25: invokedynamic        <InvokeDynamic(index=78,method_attr_index=1,name_and_type=<NameAndType(index=71,name=<UTF8(index=72, value='accept'>),descriptor=<UTF8(index=73, value='()Ljava/util/function/Consumer;'>))>)> 0 0
+    30: invokespecial        net/minecraft/world/entity/InsideBlockEffectType.<init>(Ljava/lang/String;ILjava/util/function/Consumer;)V
+    33: putstatic            net/minecraft/world/entity/InsideBlockEffectType.CLEAR_FREEZELnet/minecraft/world/entity/InsideBlockEffectType;
+    36: new                  net/minecraft/world/entity/InsideBlockEffectType
+    39: dup                  
+    40: ldc                  'FIRE_IGNITE'
+    42: iconst_2             
+    43: invokedynamic        <InvokeDynamic(index=80,method_attr_index=2,name_and_type=<NameAndType(index=71,name=<UTF8(index=72, value='accept'>),descriptor=<UTF8(index=73, value='()Ljava/util/function/Consumer;'>))>)> 0 0
+    48: invokespecial        net/minecraft/world/entity/InsideBlockEffectType.<init>(Ljava/lang/String;ILjava/util/function/Consumer;)V
+    51: putstatic            net/minecraft/world/entity/InsideBlockEffectType.FIRE_IGNITELnet/minecraft/world/entity/InsideBlockEffectType;
+    54: new                  net/minecraft/world/entity/InsideBlockEffectType
+    57: dup                  
+    58: ldc                  'LAVA_IGNITE'
+    60: iconst_3             
+    61: invokedynamic        <InvokeDynamic(index=82,method_attr_index=3,name_and_type=<NameAndType(index=71,name=<UTF8(index=72, value='accept'>),descriptor=<UTF8(index=73, value='()Ljava/util/function/Consumer;'>))>)> 0 0
+    66: invokespecial        net/minecraft/world/entity/InsideBlockEffectType.<init>(Ljava/lang/String;ILjava/util/function/Consumer;)V
+    69: putstatic            net/minecraft/world/entity/InsideBlockEffectType.LAVA_IGNITELnet/minecraft/world/entity/InsideBlockEffectType;
+    72: new                  net/minecraft/world/entity/InsideBlockEffectType
+    75: dup                  
+    76: ldc                  'EXTINGUISH'
+    78: iconst_4             
+    79: invokedynamic        <InvokeDynamic(index=84,method_attr_index=4,name_and_type=<NameAndType(index=71,name=<UTF8(index=72, value='accept'>),descriptor=<UTF8(index=73, value='()Ljava/util/function/Consumer;'>))>)> 0 0
+    84: invokespecial        net/minecraft/world/entity/InsideBlockEffectType.<init>(Ljava/lang/String;ILjava/util/function/Consumer;)V
+    87: putstatic            net/minecraft/world/entity/InsideBlockEffectType.EXTINGUISHLnet/minecraft/world/entity/InsideBlockEffectType;
+    90: invokestatic         net/minecraft/world/entity/InsideBlockEffectType.$values()[Lnet/minecraft/world/entity/InsideBlockEffectType;
+    93: putstatic            net/minecraft/world/entity/InsideBlockEffectType.$VALUES[Lnet/minecraft/world/entity/InsideBlockEffectType;
+    96: return               
+

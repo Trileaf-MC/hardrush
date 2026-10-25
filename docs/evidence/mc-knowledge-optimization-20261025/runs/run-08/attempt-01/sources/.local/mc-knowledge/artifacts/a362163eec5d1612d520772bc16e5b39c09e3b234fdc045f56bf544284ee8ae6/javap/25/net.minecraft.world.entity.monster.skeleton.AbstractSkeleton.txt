@@ -1,0 +1,71 @@
+Compiled from "AbstractSkeleton.java"
+public abstract class net.minecraft.world.entity.monster.skeleton.AbstractSkeleton extends net.minecraft.world.entity.monster.Monster implements net.minecraft.world.entity.monster.RangedAttackMob {
+  private static final int HARD_ATTACK_INTERVAL;
+    descriptor: I
+  private static final int NORMAL_ATTACK_INTERVAL;
+    descriptor: I
+  protected static final int INCREASED_HARD_ATTACK_INTERVAL;
+    descriptor: I
+  protected static final int INCREASED_NORMAL_ATTACK_INTERVAL;
+    descriptor: I
+  private final net.minecraft.world.entity.ai.goal.RangedBowAttackGoal<net.minecraft.world.entity.monster.skeleton.AbstractSkeleton> bowGoal;
+    descriptor: Lnet/minecraft/world/entity/ai/goal/RangedBowAttackGoal;
+  private final net.minecraft.world.entity.ai.goal.MeleeAttackGoal meleeGoal;
+    descriptor: Lnet/minecraft/world/entity/ai/goal/MeleeAttackGoal;
+  protected net.minecraft.world.entity.monster.skeleton.AbstractSkeleton(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.monster.skeleton.AbstractSkeleton>, net.minecraft.world.level.Level);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+
+  protected void registerGoals();
+    descriptor: ()V
+
+  public static net.minecraft.world.entity.ai.attributes.AttributeSupplier$Builder createAttributes();
+    descriptor: ()Lnet/minecraft/world/entity/ai/attributes/AttributeSupplier$Builder;
+
+  protected void playStepSound(net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;)V
+
+  protected abstract net.minecraft.sounds.SoundEvent getStepSound();
+    descriptor: ()Lnet/minecraft/sounds/SoundEvent;
+
+  public void rideTick();
+    descriptor: ()V
+
+  protected void populateDefaultEquipmentSlots(net.minecraft.util.RandomSource, net.minecraft.world.DifficultyInstance);
+    descriptor: (Lnet/minecraft/util/RandomSource;Lnet/minecraft/world/DifficultyInstance;)V
+
+  public net.minecraft.world.entity.SpawnGroupData finalizeSpawn(net.minecraft.world.level.ServerLevelAccessor, net.minecraft.world.DifficultyInstance, net.minecraft.world.entity.EntitySpawnReason, net.minecraft.world.entity.SpawnGroupData);
+    descriptor: (Lnet/minecraft/world/level/ServerLevelAccessor;Lnet/minecraft/world/DifficultyInstance;Lnet/minecraft/world/entity/EntitySpawnReason;Lnet/minecraft/world/entity/SpawnGroupData;)Lnet/minecraft/world/entity/SpawnGroupData;
+
+  public void reassessWeaponGoal();
+    descriptor: ()V
+
+  protected int getHardAttackInterval();
+    descriptor: ()I
+
+  protected int getAttackInterval();
+    descriptor: ()I
+
+  public void performRangedAttack(net.minecraft.world.entity.LivingEntity, float);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;F)V
+
+  protected net.minecraft.world.entity.projectile.arrow.AbstractArrow getArrow(net.minecraft.world.item.ItemStack, float, net.minecraft.world.item.ItemStack);
+    descriptor: (Lnet/minecraft/world/item/ItemStack;FLnet/minecraft/world/item/ItemStack;)Lnet/minecraft/world/entity/projectile/arrow/AbstractArrow;
+
+  public boolean canUseNonMeleeWeapon(net.minecraft.world.item.ItemStack);
+    descriptor: (Lnet/minecraft/world/item/ItemStack;)Z
+
+  public net.minecraft.tags.TagKey<net.minecraft.world.item.Item> getPreferredWeaponType();
+    descriptor: ()Lnet/minecraft/tags/TagKey;
+
+  protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueInput;)V
+
+  public void onEquipItem(net.minecraft.world.entity.EquipmentSlot, net.minecraft.world.item.ItemStack, net.minecraft.world.item.ItemStack);
+    descriptor: (Lnet/minecraft/world/entity/EquipmentSlot;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)V
+
+  public boolean isShaking();
+    descriptor: ()Z
+
+  public boolean wantsToPickUp(net.minecraft.server.level.ServerLevel, net.minecraft.world.item.ItemStack);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/item/ItemStack;)Z
+}

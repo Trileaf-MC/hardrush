@@ -1,0 +1,119 @@
+Compiled from "AgeableMob.java"
+public abstract class net.minecraft.world.entity.AgeableMob extends net.minecraft.world.entity.PathfinderMob {
+  private static final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Boolean> DATA_BABY_ID;
+    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;
+  private static final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Boolean> AGE_LOCKED;
+    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;
+  public static final int BABY_START_AGE;
+    descriptor: I
+  public static final int AGE_LOCK_COOLDOWN_TICKS;
+    descriptor: I
+  public static final float AGE_LOCK_DOWNWARDS_MOVING_PARTICLE_Y_OFFSET;
+    descriptor: F
+  private static final int FORCED_AGE_PARTICLE_TICKS;
+    descriptor: I
+  protected static final int DEFAULT_AGE;
+    descriptor: I
+  protected static final int DEFAULT_FORCED_AGE;
+    descriptor: I
+  protected int age;
+    descriptor: I
+  protected int forcedAge;
+    descriptor: I
+  protected int forcedAgeTimer;
+    descriptor: I
+  protected int ageLockParticleTimer;
+    descriptor: I
+  protected net.minecraft.world.entity.AgeableMob(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.AgeableMob>, net.minecraft.world.level.Level);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+
+  public net.minecraft.world.entity.SpawnGroupData finalizeSpawn(net.minecraft.world.level.ServerLevelAccessor, net.minecraft.world.DifficultyInstance, net.minecraft.world.entity.EntitySpawnReason, net.minecraft.world.entity.SpawnGroupData);
+    descriptor: (Lnet/minecraft/world/level/ServerLevelAccessor;Lnet/minecraft/world/DifficultyInstance;Lnet/minecraft/world/entity/EntitySpawnReason;Lnet/minecraft/world/entity/SpawnGroupData;)Lnet/minecraft/world/entity/SpawnGroupData;
+
+  public abstract net.minecraft.world.entity.AgeableMob getBreedOffspring(net.minecraft.server.level.ServerLevel, net.minecraft.world.entity.AgeableMob);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/AgeableMob;)Lnet/minecraft/world/entity/AgeableMob;
+
+  protected net.minecraft.world.InteractionResult mobInteract(net.minecraft.world.entity.player.Player, net.minecraft.world.InteractionHand);
+    descriptor: (Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/InteractionHand;)Lnet/minecraft/world/InteractionResult;
+
+  public static boolean canUseGoldenDandelion(net.minecraft.world.item.ItemStack, boolean, int, net.minecraft.world.entity.Mob);
+    descriptor: (Lnet/minecraft/world/item/ItemStack;ZILnet/minecraft/world/entity/Mob;)Z
+
+  private void setAgeLockedData();
+    descriptor: ()V
+
+  public static void setAgeLocked(net.minecraft.world.entity.Mob, java.util.function.Supplier<java.lang.Boolean>, net.minecraft.world.entity.player.Player, net.minecraft.world.item.ItemStack, java.util.function.Consumer<net.minecraft.world.entity.Mob>);
+    descriptor: (Lnet/minecraft/world/entity/Mob;Ljava/util/function/Supplier;Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/item/ItemStack;Ljava/util/function/Consumer;)V
+
+  protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData$Builder);
+    descriptor: (Lnet/minecraft/network/syncher/SynchedEntityData$Builder;)V
+
+  public boolean canBreed();
+    descriptor: ()Z
+
+  public int getAge();
+    descriptor: ()I
+
+  public void ageUp(int, boolean);
+    descriptor: (IZ)V
+
+  public void ageUp(int);
+    descriptor: (I)V
+
+  public void setAge(int);
+    descriptor: (I)V
+
+  protected void setAgeLocked(boolean);
+    descriptor: (Z)V
+
+  protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueOutput;)V
+
+  protected boolean canBeABaby();
+    descriptor: ()Z
+
+  protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueInput;)V
+
+  public void onSyncedDataUpdated(net.minecraft.network.syncher.EntityDataAccessor<?>);
+    descriptor: (Lnet/minecraft/network/syncher/EntityDataAccessor;)V
+
+  public void aiStep();
+    descriptor: ()V
+
+  public boolean canAgeUp();
+    descriptor: ()Z
+
+  public static int makeAgeLockedParticle(net.minecraft.world.level.Level, net.minecraft.world.entity.Mob, int, boolean);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/Mob;IZ)I
+
+  protected void ageBoundaryReached();
+    descriptor: ()V
+
+  protected int getBabyStartAge();
+    descriptor: ()I
+
+  public final boolean isBaby();
+    descriptor: ()Z
+
+  public final void setBaby(boolean);
+    descriptor: (Z)V
+
+  public static int getSpeedUpSecondsWhenFeeding(int);
+    descriptor: (I)I
+
+  public int getForcedAge();
+    descriptor: ()I
+
+  public int getForcedAgeTimer();
+    descriptor: ()I
+
+  public boolean isAgeLocked();
+    descriptor: ()Z
+
+  private void lambda$mobInteract$0(net.minecraft.world.entity.Mob);
+    descriptor: (Lnet/minecraft/world/entity/Mob;)V
+
+  static {};
+    descriptor: ()V
+}

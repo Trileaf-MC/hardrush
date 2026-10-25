@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "decompiled": {
+    "class": "net.minecraft.world.entity.LivingEntity",
+    "member": "tryAddFrost",
+    "descriptor": "()V",
+    "compiler": "1.12.0",
+    "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/7c765958b465c95eb56b890eb83569ba0608d83ab908ce596fb09559bf16fd76/source.java",
+    "warnings": [],
+    "cache_hit": false,
+    "view": "method"
+  },
+  "text": "public abstract class LivingEntity extends Entity implements Attackable, WaypointTransmitter {\n   protected void tryAddFrost() {\n      if (!this.getBlockStateOnLegacy().isAir()) {\n         int ticksFrozen = this.getTicksFrozen();\n         if (ticksFrozen > 0) {\n            AttributeInstance speed = this.getAttribute(Attributes.MOVEMENT_SPEED);\n            if (speed == null) {\n               return;\n            }\n\n            float slowAmount = -0.05F * this.getPercentFrozen();\n            speed.addTransientModifier(new AttributeModifier(SPEED_MODIFIER_POWDER_SNOW_ID, slowAmount, Operation.ADD_VALUE));\n         }\n      }\n   }\n}\n",
+  "total_lines": 54,
+  "total_chars": 2258,
+  "returned_range": {
+    "start_line": 39,
+    "start_char": 0,
+    "end_line": 55,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 3877.96,
+    "body_chars": 635,
+    "output_chars": 1751
+  }
+}

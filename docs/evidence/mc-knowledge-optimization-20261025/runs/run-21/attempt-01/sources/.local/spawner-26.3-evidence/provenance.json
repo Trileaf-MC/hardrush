@@ -1,0 +1,283 @@
+{
+  "BaseSpawner.java": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/f60c214cf683ca9fbf4e2926948c854188699f1fa96ffff3a26efc638baf8eb3.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "decompiler_provenance": {
+      "class": "net.minecraft.world.level.BaseSpawner",
+      "compiler": "1.12.0",
+      "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "descriptor": null,
+      "member": null,
+      "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.java",
+      "source_sha256": "37b4edff9c35facf37c0efe62bcc5ebdb665c4f111f062bdb03038b4aa2d2454",
+      "warnings": []
+    },
+    "copied_sha256": "37b4edff9c35facf37c0efe62bcc5ebdb665c4f111f062bdb03038b4aa2d2454"
+  },
+  "EntityGetter.hasNearbyAlivePlayer.java": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/3364fca1d8ae6f4615d90711d637bdcbcd7c5d00ed7d75ec254399fffc6a52e2.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "decompiler_provenance": {
+      "class": "net.minecraft.world.level.EntityGetter",
+      "compiler": "1.12.0",
+      "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "descriptor": "(DDDD)Z",
+      "member": "hasNearbyAlivePlayer",
+      "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.java",
+      "source_sha256": "079b8fcd1faf4f7f2dd946eccd5ecb26f5db1ba9f063bd3bd0fcf92c51834ed0",
+      "warnings": []
+    },
+    "copied_sha256": "079b8fcd1faf4f7f2dd946eccd5ecb26f5db1ba9f063bd3bd0fcf92c51834ed0"
+  },
+  "TrialSpawner.java": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/557f278dc1ba3b9264f9ee61462cee1d8417ccaaca8a2bae2927dafedc42e621.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "decompiler_provenance": {
+      "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawner$FullConfig",
+      "compiler": "1.12.0",
+      "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "descriptor": null,
+      "member": null,
+      "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/c2cd987ee2d6c32b269c8c8e3599e44d17be10ba7205a08fde26a3635d2ab956/source.java",
+      "source_sha256": "19a19e692f52d6e3ee74436f48a54b25f3126cf13f980148a8310fa8aec18ecc",
+      "warnings": []
+    },
+    "copied_sha256": "19a19e692f52d6e3ee74436f48a54b25f3126cf13f980148a8310fa8aec18ecc"
+  },
+  "TrialSpawnerState.tickAndGetNext.java": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/47d78d56e4ef9d944d36b258efba33d12f13457abede57eea60cd19047038cc4.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "decompiler_provenance": {
+      "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState",
+      "compiler": "1.12.0",
+      "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "descriptor": "(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;Lnet/minecraft/server/level/ServerLevel;)Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;",
+      "member": "tickAndGetNext",
+      "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.java",
+      "source_sha256": "f23bf543a8d942720fe4ba2bb251ce6755f302cd7d3bbd7052faeffd553cc7c5",
+      "warnings": []
+    },
+    "copied_sha256": "f23bf543a8d942720fe4ba2bb251ce6755f302cd7d3bbd7052faeffd553cc7c5"
+  },
+  "TrialSpawnerStateData.java": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/078ec027b8846cd150a97d2fc9d1515abfa8868c702cf177b0a981198f1f6088.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "decompiler_provenance": {
+      "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData",
+      "compiler": "1.12.0",
+      "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "descriptor": null,
+      "member": null,
+      "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.java",
+      "source_sha256": "b8b590ee4be641d382a8a2d06783953a53df604b591fd5b706ed9075156232e3",
+      "warnings": []
+    },
+    "copied_sha256": "b8b590ee4be641d382a8a2d06783953a53df604b591fd5b706ed9075156232e3"
+  },
+  "TrialSpawnerConfig.java": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/db35d67e62dfaffe448ecac46f341d4f202b7036cc66ec585d8ac8f7918a1a03.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "decompiler_provenance": {
+      "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig",
+      "compiler": "1.12.0",
+      "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "descriptor": null,
+      "member": null,
+      "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.java",
+      "source_sha256": "1eccc27c61b483954c1aad907a336cf6502baf5a32f63875652cc85709051cc4",
+      "warnings": []
+    },
+    "copied_sha256": "1eccc27c61b483954c1aad907a336cf6502baf5a32f63875652cc85709051cc4"
+  },
+  "PlayerDetector.java": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/bffd48cd1e6d18bc8854454f0b048addc8610c8fbad52165060e2a5448e1aa71.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "decompiler_provenance": {
+      "class": "net.minecraft.world.level.block.entity.trialspawner.PlayerDetector",
+      "compiler": "1.12.0",
+      "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "descriptor": null,
+      "member": null,
+      "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.java",
+      "source_sha256": "b614ed9947b18f42daecfd115950010be289e9d199b6accf1f95f674b1631ddc",
+      "warnings": []
+    },
+    "copied_sha256": "b614ed9947b18f42daecfd115950010be289e9d199b6accf1f95f674b1631ddc"
+  },
+  "TrialSpawnerBlockEntity.java": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/3713100e3269e7a386110bd15e1326e1834062af53586fce5a5cdb2b31fff38e.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "decompiler_provenance": {
+      "class": "net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity",
+      "compiler": "1.12.0",
+      "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "descriptor": null,
+      "member": null,
+      "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0/source.java",
+      "source_sha256": "3d224068dc0dac0d38d4b98f00f81575d73e8972c4c8b515e8258bde6dbeef5e",
+      "warnings": []
+    },
+    "copied_sha256": "3d224068dc0dac0d38d4b98f00f81575d73e8972c4c8b515e8258bde6dbeef5e"
+  },
+  "LevelChunk.tick.java": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/230826dc773d469ee6b9651cac23f01bc0bdd26788d08f95e1f88a272d9873dc.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "decompiler_provenance": {
+      "class": "net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity",
+      "compiler": "1.12.0",
+      "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "descriptor": "()V",
+      "member": "tick",
+      "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.java",
+      "source_sha256": "c2f6740073505ae56adbce87c1f0d832b2178fb1676d0ff15861c461e9dcbcca",
+      "warnings": []
+    },
+    "copied_sha256": "c2f6740073505ae56adbce87c1f0d832b2178fb1676d0ff15861c461e9dcbcca"
+  },
+  "LevelChunk.isTicking.java": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/d132307da850ed3c626c40bf89b0f25dce2d0c889d06b59ca3fa507ae1db7ce7.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "decompiler_provenance": {
+      "class": "net.minecraft.world.level.chunk.LevelChunk",
+      "compiler": "1.12.0",
+      "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "descriptor": "(Lnet/minecraft/core/BlockPos;)Z",
+      "member": "isTicking",
+      "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.java",
+      "source_sha256": "d44047341e0242da0a8fdec1f2b7fbac04949595aa4b3eba26d241cc9f7ad036",
+      "warnings": []
+    },
+    "copied_sha256": "d44047341e0242da0a8fdec1f2b7fbac04949595aa4b3eba26d241cc9f7ad036"
+  },
+  "ServerLevel.isSpawnerBlockEnabled.java": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/e0187806a4ff72303f56c4fead0cd63b247ea234f27f55f47418fda4fef27ab3.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "decompiler_provenance": {
+      "class": "net.minecraft.server.level.ServerLevel",
+      "compiler": "1.12.0",
+      "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+      "descriptor": "()Z",
+      "member": "isSpawnerBlockEnabled",
+      "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.java",
+      "source_sha256": "77d6c92fe9c290462ba40da35652a3a7651fd87d97c5616801b48950891843bd",
+      "warnings": []
+    },
+    "copied_sha256": "77d6c92fe9c290462ba40da35652a3a7651fd87d97c5616801b48950891843bd"
+  },
+  "zombie.normal.json": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/a9316d6041ab96782b1ac4e8a689970044d37de020f0673fc6be53fad63a2296.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "resource": "data/minecraft/trial_spawner/trial_chamber/melee/zombie/normal.json",
+    "copied_sha256": "14cd7b6a05b8c8b804278a255715580ced53908040dc00653a529e34019dd2d8"
+  },
+  "breeze.normal.json": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/c93ee4b0d2e072a5dd60f1f20a9da65acf27f3b11e77f4ee296397554fa812ff.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "resource": "data/minecraft/trial_spawner/trial_chamber/breeze/normal.json",
+    "copied_sha256": "7f8981d74b11ed0eaebb983194ac411db8cb419890b7a4bd89e8c49a08f5d433"
+  },
+  "slow_ranged_skeleton.normal.json": {
+    "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace/.local/mc-knowledge/evidence/f9a9580515887116d555ce7277a78a6ec18a1504ed93a4f4b92b5e8293bf733d.json",
+    "source": {
+      "edition": "Java",
+      "integrity": "matches server bundle SHA-256",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "kind": "vanilla-server",
+      "minecraft_version": "26.3"
+    },
+    "resource": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/normal.json",
+    "copied_sha256": "1b80398e3fdaa3534cb2512cdf6dacf404a91db692af724cb6c71efe5f89dda2"
+  }
+}

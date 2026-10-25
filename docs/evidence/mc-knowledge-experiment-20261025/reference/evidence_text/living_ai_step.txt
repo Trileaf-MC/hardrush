@@ -1,0 +1,136 @@
+public abstract class LivingEntity extends Entity implements Attackable, WaypointTransmitter {
+   public void aiStep() {
+      if (this.noJumpDelay > 0) {
+         this.noJumpDelay--;
+      }
+
+      if (!this.isInterpolating() && !this.canSimulateMovement()) {
+         this.setDeltaMovement(this.getDeltaMovement().scale(0.98));
+      }
+
+      if (this.lerpHeadSteps > 0) {
+         this.lerpHeadRotationStep(this.lerpHeadSteps, this.lerpYHeadRot);
+         this.lerpHeadSteps--;
+      }
+
+      this.equipment.tick(this);
+      Vec3 movement = this.getDeltaMovement();
+      double dx = movement.x;
+      double dy = movement.y;
+      double dz = movement.z;
+      if (this.is(EntityTypes.PLAYER)) {
+         if (movement.horizontalDistanceSqr() < 9.0E-6) {
+            dx = 0.0;
+            dz = 0.0;
+         }
+      } else {
+         if (Math.abs(movement.x) < 0.003) {
+            dx = 0.0;
+         }
+
+         if (Math.abs(movement.z) < 0.003) {
+            dz = 0.0;
+         }
+      }
+
+      if (Math.abs(movement.y) < 0.003) {
+         dy = 0.0;
+      }
+
+      this.setDeltaMovement(dx, dy, dz);
+      ProfilerFiller profiler = Profiler.get();
+      profiler.push("ai");
+      this.applyInput();
+      if (this.isImmobile()) {
+         this.jumping = false;
+         this.xxa = 0.0F;
+         this.zza = 0.0F;
+      } else if (this.isEffectiveAi() && !this.level().isClientSide()) {
+         profiler.push("newAi");
+         this.serverAiStep();
+         profiler.pop();
+      }
+
+      profiler.pop();
+      profiler.push("jump");
+      if (this.jumping && this.isAffectedByFluids()) {
+         double fluidHeight;
+         if (this.isInLava()) {
+            fluidHeight = this.getFluidHeight(FluidTags.LAVA);
+         } else {
+            fluidHeight = this.getFluidHeight(FluidTags.WATER);
+         }
+
+         boolean inWaterAndHasFluidHeight = this.isInWater() && fluidHeight > 0.0;
+         double fluidJumpThreshold = this.getFluidJumpThreshold();
+         if (!inWaterAndHasFluidHeight || this.onGround() && !(fluidHeight > fluidJumpThreshold)) {
+            if (!this.isInLava() || this.onGround() && this.isInShallowFluid(FluidTags.LAVA)) {
+               if ((this.onGround() || inWaterAndHasFluidHeight && fluidHeight <= fluidJumpThreshold) && this.noJumpDelay == 0) {
+                  this.jumpFromGround();
+                  this.noJumpDelay = 10;
+               }
+            } else {
+               this.jumpInLiquid(FluidTags.LAVA);
+            }
+         } else {
+            this.jumpInLiquid(FluidTags.WATER);
+         }
+      } else {
+         this.noJumpDelay = 0;
+      }
+
+      profiler.pop();
+      profiler.push("travel");
+      if (this.isFallFlying()) {
+         this.updateFallFlying();
+      }
+
+      AABB beforeTravelBox = this.getBoundingBox();
+      Vec3 input = new Vec3(this.xxa, this.yya, this.zza);
+      if (this.hasEffect(MobEffects.SLOW_FALLING) || this.hasEffect(MobEffects.LEVITATION)) {
+         this.resetFallDistance();
+      }
+
+      if (this.getControllingPassenger() instanceof Player controller && this.isAlive()) {
+         this.travelRidden(controller, input);
+      } else if (this.canSimulateMovement() && this.isEffectiveAi()) {
+         this.travel(input);
+      }
+
+      if (!this.level().isClientSide() || this.isLocalInstanceAuthoritative()) {
+         this.applyEffectsFromBlocks();
+      }
+
+      if (this.level().isClientSide()) {
+         this.calculateEntityAnimation(this.omnidirectionalAirMover());
+      }
+
+      profiler.pop();
+      if (this.level() instanceof ServerLevel serverLevel) {
+         profiler.push("freezing");
+         if (!this.isInPowderSnow || !this.canFreeze()) {
+            this.setTicksFrozen(Math.max(0, this.getTicksFrozen() - 2));
+         }
+
+         this.removeFrost();
+         this.tryAddFrost();
+         if (this.tickCount % 40 == 0 && this.isFullyFrozen() && this.canFreeze()) {
+            this.hurtServer(serverLevel, this.damageSources().freeze(), 1.0F);
+         }
+
+         profiler.pop();
+      }
+
+      profiler.push("push");
+      if (this.autoSpinAttackTicks > 0) {
+         this.autoSpinAttackTicks--;
+         this.checkAutoSpinAttack(beforeTravelBox, this.getBoundingBox());
+      }
+
+      this.pushEntities();
+      profiler.pop();
+      if (this.level() instanceof ServerLevel serverLevel && this.isSensitiveToWater() && this.isInWaterOrRain()) {
+         this.hurtServer(serverLevel, this.damageSources().drown(), 1.0F);
+      }
+   }
+}

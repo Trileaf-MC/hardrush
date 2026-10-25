@@ -1,0 +1,8 @@
+Compiled from "SyncedDataHolder.java"
+public interface net.minecraft.network.syncher.SyncedDataHolder {
+  public abstract void onSyncedDataUpdated(net.minecraft.network.syncher.EntityDataAccessor<?>);
+    descriptor: (Lnet/minecraft/network/syncher/EntityDataAccessor;)V
+
+  public abstract void onSyncedDataUpdated(java.util.List<net.minecraft.network.syncher.SynchedEntityData$DataValue<?>>);
+    descriptor: (Ljava/util/List;)V
+}

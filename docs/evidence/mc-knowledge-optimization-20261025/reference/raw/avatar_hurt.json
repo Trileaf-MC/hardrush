@@ -1,0 +1,13 @@
+{
+  "ok": false,
+  "error": {
+    "code": "MEMBER_NOT_FOUND",
+    "message": "成员必须在此类声明；重载请指定 --descriptor，继承成员请查声明它的父类。",
+    "candidates": []
+  },
+  "metrics": {
+    "elapsed_ms": 288.3,
+    "body_chars": 0,
+    "output_chars": 240
+  }
+}

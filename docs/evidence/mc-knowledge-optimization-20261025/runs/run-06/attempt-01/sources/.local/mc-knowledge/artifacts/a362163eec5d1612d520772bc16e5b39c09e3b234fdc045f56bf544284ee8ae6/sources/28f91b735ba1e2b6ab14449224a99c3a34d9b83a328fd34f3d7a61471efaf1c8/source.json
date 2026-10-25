@@ -1,0 +1,10 @@
+{
+  "class": "net.minecraft.world.entity.player.Player",
+  "member": "hurtServer",
+  "descriptor": "(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;F)Z",
+  "compiler": "1.12.0",
+  "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+  "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-06/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.java",
+  "source_sha256": "57768e741a282383829196777a111139eb39470feecd4b51d37d78082fc72860",
+  "warnings": []
+}

@@ -1,0 +1,10 @@
+{
+  "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawner",
+  "member": "canSpawnInLevel",
+  "descriptor": "(Lnet/minecraft/server/level/ServerLevel;)Z",
+  "compiler": "1.12.0",
+  "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+  "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-27/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bce0c37251a1255f351a37fc21b1c1f3fa639bc58ab056f27314f620a4fd29c7/source.java",
+  "source_sha256": "5368d11bcd7242ab4628d85c43abb3ae9abab0f2f55c23856d09ed42c62ba8a3",
+  "warnings": []
+}

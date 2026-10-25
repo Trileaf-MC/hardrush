@@ -1,0 +1,106 @@
+Compiled from "SitWhenOrderedToGoal.java"
+public class net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal extends net.minecraft.world.entity.ai.goal.Goal {
+  private final net.minecraft.world.entity.TamableAnimal mob;
+    descriptor: Lnet/minecraft/world/entity/TamableAnimal;
+
+  public net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal(net.minecraft.world.entity.TamableAnimal);
+    descriptor: (Lnet/minecraft/world/entity/TamableAnimal;)V
+    Code:
+         0: aload_0
+         1: invokespecial #1                  // Method net/minecraft/world/entity/ai/goal/Goal."<init>":()V
+         4: aload_0
+         5: aload_1
+         6: putfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+         9: aload_0
+        10: getstatic     #13                 // Field net/minecraft/world/entity/ai/goal/Goal$Flag.JUMP:Lnet/minecraft/world/entity/ai/goal/Goal$Flag;
+        13: getstatic     #19                 // Field net/minecraft/world/entity/ai/goal/Goal$Flag.MOVE:Lnet/minecraft/world/entity/ai/goal/Goal$Flag;
+        16: invokestatic  #22                 // Method java/util/EnumSet.of:(Ljava/lang/Enum;Ljava/lang/Enum;)Ljava/util/EnumSet;
+        19: invokevirtual #28                 // Method setFlags:(Ljava/util/EnumSet;)V
+        22: return
+
+  public boolean canContinueToUse();
+    descriptor: ()Z
+    Code:
+         0: aload_0
+         1: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+         4: invokevirtual #32                 // Method net/minecraft/world/entity/TamableAnimal.isOrderedToSit:()Z
+         7: ireturn
+
+  public boolean canUse();
+    descriptor: ()Z
+    Code:
+         0: aload_0
+         1: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+         4: invokevirtual #32                 // Method net/minecraft/world/entity/TamableAnimal.isOrderedToSit:()Z
+         7: istore_1
+         8: iload_1
+         9: ifne          24
+        12: aload_0
+        13: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+        16: invokevirtual #38                 // Method net/minecraft/world/entity/TamableAnimal.isTame:()Z
+        19: ifne          24
+        22: iconst_0
+        23: ireturn
+        24: aload_0
+        25: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+        28: invokevirtual #41                 // Method net/minecraft/world/entity/TamableAnimal.isInWater:()Z
+        31: ifeq          36
+        34: iconst_0
+        35: ireturn
+        36: aload_0
+        37: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+        40: invokevirtual #44                 // Method net/minecraft/world/entity/TamableAnimal.onGround:()Z
+        43: ifne          48
+        46: iconst_0
+        47: ireturn
+        48: aload_0
+        49: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+        52: invokevirtual #47                 // Method net/minecraft/world/entity/TamableAnimal.getOwner:()Lnet/minecraft/world/entity/LivingEntity;
+        55: astore_2
+        56: aload_2
+        57: ifnull        74
+        60: aload_2
+        61: invokevirtual #51                 // Method net/minecraft/world/entity/LivingEntity.level:()Lnet/minecraft/world/level/Level;
+        64: aload_0
+        65: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+        68: invokevirtual #57                 // Method net/minecraft/world/entity/TamableAnimal.level:()Lnet/minecraft/world/level/Level;
+        71: if_acmpeq     76
+        74: iconst_1
+        75: ireturn
+        76: aload_0
+        77: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+        80: aload_2
+        81: invokevirtual #58                 // Method net/minecraft/world/entity/TamableAnimal.distanceToSqr:(Lnet/minecraft/world/entity/Entity;)D
+        84: ldc2_w        #62                 // double 144.0d
+        87: dcmpg
+        88: ifge          100
+        91: aload_2
+        92: invokevirtual #64                 // Method net/minecraft/world/entity/LivingEntity.getLastHurtByMob:()Lnet/minecraft/world/entity/LivingEntity;
+        95: ifnull        100
+        98: iconst_0
+        99: ireturn
+       100: iload_1
+       101: ireturn
+
+  public void start();
+    descriptor: ()V
+    Code:
+         0: aload_0
+         1: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+         4: invokevirtual #67                 // Method net/minecraft/world/entity/TamableAnimal.getNavigation:()Lnet/minecraft/world/entity/ai/navigation/PathNavigation;
+         7: invokevirtual #71                 // Method net/minecraft/world/entity/ai/navigation/PathNavigation.stop:()V
+        10: aload_0
+        11: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+        14: iconst_1
+        15: invokevirtual #76                 // Method net/minecraft/world/entity/TamableAnimal.setInSittingPose:(Z)V
+        18: return
+
+  public void stop();
+    descriptor: ()V
+    Code:
+         0: aload_0
+         1: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+         4: iconst_0
+         5: invokevirtual #76                 // Method net/minecraft/world/entity/TamableAnimal.setInSittingPose:(Z)V
+         8: return
+}

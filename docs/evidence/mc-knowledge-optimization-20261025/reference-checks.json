@@ -1,0 +1,12 @@
+[
+  {
+    "manifest": "SHA256SUMS",
+    "checked": 132,
+    "mismatches": []
+  },
+  {
+    "manifest": "T1-SHA256SUMS",
+    "checked": 2,
+    "mismatches": []
+  }
+]

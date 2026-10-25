@@ -1,0 +1,48 @@
+Compiled from "Avatar.java"
+public abstract class net.minecraft.world.entity.Avatar extends net.minecraft.world.entity.LivingEntity {
+  public static final net.minecraft.world.entity.HumanoidArm DEFAULT_MAIN_HAND;
+    descriptor: Lnet/minecraft/world/entity/HumanoidArm;
+  public static final int DEFAULT_MODEL_CUSTOMIZATION;
+    descriptor: I
+  public static final float DEFAULT_EYE_HEIGHT;
+    descriptor: F
+  public static final net.minecraft.world.phys.Vec3 DEFAULT_VEHICLE_ATTACHMENT;
+    descriptor: Lnet/minecraft/world/phys/Vec3;
+  private static final float CROUCH_BB_HEIGHT;
+    descriptor: F
+  private static final float SWIMMING_BB_WIDTH;
+    descriptor: F
+  public static final float SWIMMING_BB_HEIGHT;
+    descriptor: F
+  protected static final net.minecraft.world.entity.EntityDimensions STANDING_DIMENSIONS;
+    descriptor: Lnet/minecraft/world/entity/EntityDimensions;
+  protected static final java.util.Map<net.minecraft.world.entity.Pose, net.minecraft.world.entity.EntityDimensions> POSES;
+    descriptor: Ljava/util/Map;
+  protected static final net.minecraft.network.syncher.EntityDataAccessor<net.minecraft.world.entity.HumanoidArm> DATA_PLAYER_MAIN_HAND;
+    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;
+  protected static final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Byte> DATA_PLAYER_MODE_CUSTOMISATION;
+    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;
+  protected net.minecraft.world.entity.Avatar(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.LivingEntity>, net.minecraft.world.level.Level);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+
+  protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData$Builder);
+    descriptor: (Lnet/minecraft/network/syncher/SynchedEntityData$Builder;)V
+
+  public net.minecraft.world.entity.HumanoidArm getMainArm();
+    descriptor: ()Lnet/minecraft/world/entity/HumanoidArm;
+
+  public void setMainArm(net.minecraft.world.entity.HumanoidArm);
+    descriptor: (Lnet/minecraft/world/entity/HumanoidArm;)V
+
+  public boolean isModelPartShown(net.minecraft.world.entity.player.PlayerModelPart);
+    descriptor: (Lnet/minecraft/world/entity/player/PlayerModelPart;)Z
+
+  public net.minecraft.world.entity.EntityDimensions getDefaultDimensions(net.minecraft.world.entity.Pose);
+    descriptor: (Lnet/minecraft/world/entity/Pose;)Lnet/minecraft/world/entity/EntityDimensions;
+
+  public abstract net.minecraft.world.item.component.ResolvableProfile getProfile();
+    descriptor: ()Lnet/minecraft/world/item/component/ResolvableProfile;
+
+  static {};
+    descriptor: ()V
+}

@@ -1,0 +1,88 @@
+{
+  "case": "case-01",
+  "reviewer": 1,
+  "rubric_version": "1.0",
+  "items": [
+    {
+      "id": "V1",
+      "points": 5,
+      "max_points": 5,
+      "reason": "明确限定Java 26.3正式版原版，并说明静态调查及适用边界。"
+    },
+    {
+      "id": "S1",
+      "points": 5,
+      "max_points": 5,
+      "reason": "明确普通骷髅在细雪中转为流浪者。"
+    },
+    {
+      "id": "S2",
+      "points": 10,
+      "max_points": 10,
+      "reason": "明确140 tick约7秒、300设定约15秒和约22秒，补充20 TPS及141/140加301的有效处理边界，未保证从画面接触起精确440 tick。"
+    },
+    {
+      "id": "S3",
+      "points": 5,
+      "max_points": 5,
+      "reason": "明确离开重置前置累计，再进入重算。"
+    },
+    {
+      "id": "S4",
+      "points": 10,
+      "max_points": 10,
+      "reason": "明确已颤抖阶段离开也取消，再进入重新累计并转化。"
+    },
+    {
+      "id": "S5",
+      "points": 3,
+      "max_points": 5,
+      "reason": "明确AI未关闭才推进，得3分；未明确颤抖转化本身不禁用普通AI，2分缺失。"
+    },
+    {
+      "id": "S6",
+      "points": 8,
+      "max_points": 10,
+      "reason": "明确canFreeze=false 4分、普通骷髅免冻结伤害2分、颤抖为第二阶段2分；虽区分细雪标记与能否冻结判定，但未明确转化计时独立于普通冻结进度／完全冻结，独立计时2分不从代码补入。"
+    },
+    {
+      "id": "W1",
+      "points": 10,
+      "max_points": 10,
+      "reason": "明确野生狼无须挑衅便攻击流浪者，且以AbstractSkeleton规则和Stray继承说明。"
+    },
+    {
+      "id": "W2",
+      "points": 10,
+      "max_points": 10,
+      "reason": "明确可正常行动的驯服狼仍自主攻击流浪者，并区分普通动物捕猎的未驯服限制。"
+    },
+    {
+      "id": "W3",
+      "points": 4,
+      "max_points": 10,
+      "reason": "未解释主人被攻击时护主与主人攻击目标时协助这两个触发，6分缺失；明确搜索、距离、寻路或高优先级行为等实际攻击限制，4分得分。"
+    },
+    {
+      "id": "W4",
+      "points": 5,
+      "max_points": 10,
+      "reason": "明确正常稳定坐下阻止普通自主追击，得5分；未说明命令坐下使两个主人协助目标不能启动，另5分缺失。"
+    },
+    {
+      "id": "E1",
+      "points": 10,
+      "max_points": 10,
+      "reason": "骷髅的Skeleton／ConversionTracker和狼的Wolf.registerGoals／Stray等原版出处可识别并支持本版本核心结论，两部分各5分。"
+    }
+  ],
+  "factual_score": 75,
+  "factual_max": 90,
+  "evidence_score": 10,
+  "evidence_max": 10,
+  "total": 85,
+  "major_errors": [],
+  "optional_errors": [],
+  "group_guess": "不知道",
+  "notes": "仅从最终答案明确事实评分；明确独立计时的自然语言可接受，不从代码和免伤判定推补计时分离。未读取分组、映射、指标或其他评审，未修改已有评分及裁决。"
+}

@@ -1,0 +1,877 @@
+{
+  "archive": {
+    "path": "sources.tar.gz",
+    "sha256": "348e53a08062e5103635c8a19131379c254427655e4c8011b860beecbfa9d97f",
+    "files": 123,
+    "bytes_uncompressed": 533814
+  },
+  "files": [
+    {
+      "relative_path": ".agents/skills/minecraft-knowledge/SKILL.md",
+      "category": "other_workspace_text",
+      "bytes": 4362,
+      "sha256": "747c8af80cdb40755846454b27d9b7e8637785fd13289e8797b339ceeabc3d7c",
+      "initial_input": true
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BaseSpawner.txt",
+      "category": "cli_cache",
+      "bytes": 6278,
+      "sha256": "a67a289a19b1974cf348b690e8aa03e7d285f1bbf8f08e115dd574cae1b7c848",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.EntityGetter.txt",
+      "category": "cli_cache",
+      "bytes": 3196,
+      "sha256": "4e31fd3af5b7af40fcc1957e9bb73e749d61a04534425470f3dacb85fc6f4c75",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity.code.txt",
+      "category": "cli_cache",
+      "bytes": 14536,
+      "sha256": "a9f91e25ace0a4ac4943ab1c57ca76a56314b7f72e780b36b6bcac169f76ad61",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity.txt",
+      "category": "cli_cache",
+      "bytes": 2837,
+      "sha256": "195263f14a3da8a3096125cd4413c8c87cfbd4244c574beaf98c348c1f0a361f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.PlayerDetector.txt",
+      "category": "cli_cache",
+      "bytes": 3949,
+      "sha256": "055d0bf0abfa95d2ed8f679cb75f510a7e691f6b49f16eb08d265032700a0d7a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawner.txt",
+      "category": "cli_cache",
+      "bytes": 9387,
+      "sha256": "58c6e97836f4766459ea2a5ccfb661a60e598335ab4715e797af22a43e87ac78",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig.txt",
+      "category": "cli_cache",
+      "bytes": 4639,
+      "sha256": "98cf739d3210c3f30004ff1ab0846af11cc2dbfd00ac8e900002b409f08676e6",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState.txt",
+      "category": "cli_cache",
+      "bytes": 9007,
+      "sha256": "0df37b16d78bb1004f7a1294f5fd2644f87dacb1beb8050584b8b92313cf90de",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData.txt",
+      "category": "cli_cache",
+      "bytes": 7342,
+      "sha256": "8c2b1cb0c6c76f25fb38b77933290d7d0ca1d2892380ebba52e7f92286275e80",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity.txt",
+      "category": "cli_cache",
+      "bytes": 1337,
+      "sha256": "26ab9d62625fcc34e35b19e08eabc524f7739a9fb0b68ebd7196fd6ca8f0e692",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk.txt",
+      "category": "cli_cache",
+      "bytes": 12897,
+      "sha256": "a901974c181925af6ea8c0ea8e1d4c503bd63dcf37703e9b311c37a524aec5a5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/235bb4655f38d3ca26599c10446309873e0ad6672b198b96746c78782e530f09/source.java",
+      "category": "cli_cache",
+      "bytes": 1114,
+      "sha256": "da517806af158aff2778b69d1642372bed9fdfe599890b4a8c7e699189d3567e",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/235bb4655f38d3ca26599c10446309873e0ad6672b198b96746c78782e530f09/source.json",
+      "category": "cli_cache",
+      "bytes": 695,
+      "sha256": "fe974053fbac88931f3e8821be063779bca0fe83288fb3d44aed68fea70476eb",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.java",
+      "category": "cli_cache",
+      "bytes": 7957,
+      "sha256": "1eccc27c61b483954c1aad907a336cf6502baf5a32f63875652cc85709051cc4",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.json",
+      "category": "cli_cache",
+      "bytes": 619,
+      "sha256": "56e36205dc391611817f1eae7f52e09ffea91b8fa93fe6bb0a7c192150cb0687",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.java",
+      "category": "cli_cache",
+      "bytes": 19159,
+      "sha256": "19a19e692f52d6e3ee74436f48a54b25f3126cf13f980148a8310fa8aec18ecc",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.json",
+      "category": "cli_cache",
+      "bytes": 613,
+      "sha256": "285cba2668f215fa90ca1366f5413e6a79973c1f0b9878c95be4732a0e1a41d9",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.java",
+      "category": "cli_cache",
+      "bytes": 2959,
+      "sha256": "c2f6740073505ae56adbce87c1f0d832b2178fb1676d0ff15861c461e9dcbcca",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.json",
+      "category": "cli_cache",
+      "bytes": 618,
+      "sha256": "e2d01f0475e5cb8fba6f722a4e6db67ab503d6066147856bba070fcaf58925bf",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.java",
+      "category": "cli_cache",
+      "bytes": 14757,
+      "sha256": "b8b590ee4be641d382a8a2d06783953a53df604b591fd5b706ed9075156232e3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.json",
+      "category": "cli_cache",
+      "bytes": 622,
+      "sha256": "d5a00b215a656ba61a1f350759bb1adfe39941af0f115635ac9739d86c183eee",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.java",
+      "category": "cli_cache",
+      "bytes": 5227,
+      "sha256": "f23bf543a8d942720fe4ba2bb251ce6755f302cd7d3bbd7052faeffd553cc7c5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.json",
+      "category": "cli_cache",
+      "bytes": 836,
+      "sha256": "bf152397f011e76a185f844ec95d1a6eddfe07c0cac11fd9bfd58a4917ab280f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/89ee8b6d86d719bf50b29237a48077fc267dbc3df54fdddc4d121d29a8b58ce7/source.java",
+      "category": "cli_cache",
+      "bytes": 3110,
+      "sha256": "9c07f146ae08319ac702d7c4a7b9e982578e38b1613d914f5621b059df67169f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/89ee8b6d86d719bf50b29237a48077fc267dbc3df54fdddc4d121d29a8b58ce7/source.json",
+      "category": "cli_cache",
+      "bytes": 772,
+      "sha256": "1c563dd9fc9edd69faca01a443aa9a120759af502154bd3505bb9e6f01fc50ee",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.java",
+      "category": "cli_cache",
+      "bytes": 860,
+      "sha256": "079b8fcd1faf4f7f2dd946eccd5ecb26f5db1ba9f063bd3bd0fcf92c51834ed0",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.json",
+      "category": "cli_cache",
+      "bytes": 610,
+      "sha256": "c8f824a1629b59cd8e1b3f1d5b1a41af18b670a8b3e0260c7282e6787186e55e",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.java",
+      "category": "cli_cache",
+      "bytes": 1333,
+      "sha256": "d44047341e0242da0a8fdec1f2b7fbac04949595aa4b3eba26d241cc9f7ad036",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.json",
+      "category": "cli_cache",
+      "bytes": 628,
+      "sha256": "d7dbdb0a9b5d1d8c053dddbd5a831aed6dbb89a395350818439ecbad73ad15e3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.java",
+      "category": "cli_cache",
+      "bytes": 12944,
+      "sha256": "37b4edff9c35facf37c0efe62bcc5ebdb665c4f111f062bdb03038b4aa2d2454",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.json",
+      "category": "cli_cache",
+      "bytes": 586,
+      "sha256": "b945819cc7d15ffcc58342ab14a75a5c7f979fa2a5ba5fa8044a81f83422a1af",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.java",
+      "category": "cli_cache",
+      "bytes": 1005,
+      "sha256": "62bc77dd7e690d9ebd55f7ad05f0dd8af70fad949113238c99600784d859cb1b",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.json",
+      "category": "cli_cache",
+      "bytes": 717,
+      "sha256": "92b090cbfbc3f645258250730c216f223f0a9c3b21b84d95b164bc904e227bf8",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bce0c37251a1255f351a37fc21b1c1f3fa639bc58ab056f27314f620a4fd29c7/source.java",
+      "category": "cli_cache",
+      "bytes": 983,
+      "sha256": "5368d11bcd7242ab4628d85c43abb3ae9abab0f2f55c23856d09ed42c62ba8a3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bce0c37251a1255f351a37fc21b1c1f3fa639bc58ab056f27314f620a4fd29c7/source.json",
+      "category": "cli_cache",
+      "bytes": 667,
+      "sha256": "c60b67e25f61ab57a947d466bb237d61242291025f0ae39af8a5f2cc02a07c10",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/c2cd987ee2d6c32b269c8c8e3599e44d17be10ba7205a08fde26a3635d2ab956/source.java",
+      "category": "cli_cache",
+      "bytes": 19159,
+      "sha256": "19a19e692f52d6e3ee74436f48a54b25f3126cf13f980148a8310fa8aec18ecc",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/c2cd987ee2d6c32b269c8c8e3599e44d17be10ba7205a08fde26a3635d2ab956/source.json",
+      "category": "cli_cache",
+      "bytes": 624,
+      "sha256": "e26c24f7adcbbd07947e6c64f417ca55c29c87048442c7b60e5ef36e0bf69c73",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.java",
+      "category": "cli_cache",
+      "bytes": 4615,
+      "sha256": "b614ed9947b18f42daecfd115950010be289e9d199b6accf1f95f674b1631ddc",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.json",
+      "category": "cli_cache",
+      "bytes": 615,
+      "sha256": "069974056015c2f5337a2b89352d5b7ad3b4fae3f4eb0f71f201a27b4ef34b77",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.java",
+      "category": "cli_cache",
+      "bytes": 1159,
+      "sha256": "a90741d7cead411f354d48646e8621c1f37b7376e9238302531174669a37eb1b",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.json",
+      "category": "cli_cache",
+      "bytes": 692,
+      "sha256": "6269d9df51c531d9109ef19b55ee19e34b9d79aa0cdb3684f40002c0bd5c8522",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/dfce5183648d0aa7e8296f9dbaeeda17091e4aace0695ac0d9be938029e3586b/source.java",
+      "category": "cli_cache",
+      "bytes": 4605,
+      "sha256": "c9ce8441fc69f36957a9d00c8e832ec0cf5ef900ccab4e725df82ccba22e5721",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/dfce5183648d0aa7e8296f9dbaeeda17091e4aace0695ac0d9be938029e3586b/source.json",
+      "category": "cli_cache",
+      "bytes": 708,
+      "sha256": "004813680981e2da1de2a170d2a4b065cbd4a36f73e4d9609c9bf6dd8ffa3f93",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/044d4191297804a9625c6613d18d31ecfa2c3e73768765a1735671a870a17e65.json",
+      "category": "cli_cache",
+      "bytes": 14556,
+      "sha256": "044d4191297804a9625c6613d18d31ecfa2c3e73768765a1735671a870a17e65",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/123f042d6745dc62301aaba5363404aa39c7654e548cbf01138392b316d686f4.json",
+      "category": "cli_cache",
+      "bytes": 1744,
+      "sha256": "123f042d6745dc62301aaba5363404aa39c7654e548cbf01138392b316d686f4",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/1a34b508ba009dab060a6493683f0c5d218fb69ed93fb6472db3b5fe434ffcd5.json",
+      "category": "cli_cache",
+      "bytes": 1205,
+      "sha256": "1a34b508ba009dab060a6493683f0c5d218fb69ed93fb6472db3b5fe434ffcd5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/233b29726bda15840aa823e71203e7ed79d3f0fb881882636d1c6529d1814364.json",
+      "category": "cli_cache",
+      "bytes": 3981,
+      "sha256": "233b29726bda15840aa823e71203e7ed79d3f0fb881882636d1c6529d1814364",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/2a9688c4cee06284b64affc520b9257cd9003403c589f1e508c838217821cf12.json",
+      "category": "cli_cache",
+      "bytes": 5931,
+      "sha256": "2a9688c4cee06284b64affc520b9257cd9003403c589f1e508c838217821cf12",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/3864a3161e5b02370a5079458ab3d9178494f077afb330b0e3b091f087e5dd75.json",
+      "category": "cli_cache",
+      "bytes": 10699,
+      "sha256": "3864a3161e5b02370a5079458ab3d9178494f077afb330b0e3b091f087e5dd75",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/3fed2e74a0c8f1d1c99f2ec2b2f3e253aa0f5f8389843342bbddf7ea7ee993fd.json",
+      "category": "cli_cache",
+      "bytes": 13203,
+      "sha256": "3fed2e74a0c8f1d1c99f2ec2b2f3e253aa0f5f8389843342bbddf7ea7ee993fd",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/40414078208ef2b30d49d906b2660a4510e841a9c92afaeed2044653b2771d56.json",
+      "category": "cli_cache",
+      "bytes": 5471,
+      "sha256": "40414078208ef2b30d49d906b2660a4510e841a9c92afaeed2044653b2771d56",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/46dd0215d3d5e43f3950c6a4ca433921638722ee4479aa804d8ffd988d816c2a.json",
+      "category": "cli_cache",
+      "bytes": 5649,
+      "sha256": "46dd0215d3d5e43f3950c6a4ca433921638722ee4479aa804d8ffd988d816c2a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/4764efbfac860a9b91300f4572cb4a1cfc3246fdf058218fa7819bc84acabb7a.json",
+      "category": "cli_cache",
+      "bytes": 1476,
+      "sha256": "4764efbfac860a9b91300f4572cb4a1cfc3246fdf058218fa7819bc84acabb7a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/611c4bf736d2b510d345357220c8f8a3c41f6a6905dce068eb0466c398bdc1c6.json",
+      "category": "cli_cache",
+      "bytes": 2916,
+      "sha256": "611c4bf736d2b510d345357220c8f8a3c41f6a6905dce068eb0466c398bdc1c6",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/6442fe59d22fe9497a48da9ce2c013a7b70f09ac1b178fad19d8f1f5240b7940.json",
+      "category": "cli_cache",
+      "bytes": 4861,
+      "sha256": "6442fe59d22fe9497a48da9ce2c013a7b70f09ac1b178fad19d8f1f5240b7940",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/701d51b9085fe1f50365f3b27fa90150a74a10f0b0c06c72a5ed022b2c3e7002.json",
+      "category": "cli_cache",
+      "bytes": 1495,
+      "sha256": "701d51b9085fe1f50365f3b27fa90150a74a10f0b0c06c72a5ed022b2c3e7002",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/70ca098120f433dcb33c37cf7c4e9e2dc0aff91a6ce7d5a21523eda3b60a4610.json",
+      "category": "cli_cache",
+      "bytes": 8152,
+      "sha256": "70ca098120f433dcb33c37cf7c4e9e2dc0aff91a6ce7d5a21523eda3b60a4610",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/7101b7af59359de03cb979e928309d41e60eb736e52206e1c8850201339624e1.json",
+      "category": "cli_cache",
+      "bytes": 5189,
+      "sha256": "7101b7af59359de03cb979e928309d41e60eb736e52206e1c8850201339624e1",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/71dd347a3b258bd91e93548bde8649adb6b1819cc0b530251addb6a570cfd59c.json",
+      "category": "cli_cache",
+      "bytes": 6858,
+      "sha256": "71dd347a3b258bd91e93548bde8649adb6b1819cc0b530251addb6a570cfd59c",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/7569256a6d3b6f516e4c4b9d4695ca11febe6f72cd87ac6df0231bf02dfd0c49.json",
+      "category": "cli_cache",
+      "bytes": 2665,
+      "sha256": "7569256a6d3b6f516e4c4b9d4695ca11febe6f72cd87ac6df0231bf02dfd0c49",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/7d1bea55c291d4370ecaa9c1027e46f707d73272f1cbb3858796b3fba03bf1dc.json",
+      "category": "cli_cache",
+      "bytes": 2656,
+      "sha256": "7d1bea55c291d4370ecaa9c1027e46f707d73272f1cbb3858796b3fba03bf1dc",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/852fa4ad3c70fdff1939a6e7eb8af3f7348d15718b244e34f940dca6dc26c8b2.json",
+      "category": "cli_cache",
+      "bytes": 2705,
+      "sha256": "852fa4ad3c70fdff1939a6e7eb8af3f7348d15718b244e34f940dca6dc26c8b2",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/9094bfcd6625b17ec55e77d0297e8d83a860ca8978e238594f1e87163c1037c3.json",
+      "category": "cli_cache",
+      "bytes": 1529,
+      "sha256": "9094bfcd6625b17ec55e77d0297e8d83a860ca8978e238594f1e87163c1037c3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/9227bdd67cfb4c26e0a90388b6422040b20cbac83e2f9a015a51007d47098218.json",
+      "category": "cli_cache",
+      "bytes": 10332,
+      "sha256": "9227bdd67cfb4c26e0a90388b6422040b20cbac83e2f9a015a51007d47098218",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/ac01daf9e1e2cfa927aa7d833ac2f958f77cb34b8917f3fbdd7bafa3f6ec4074.json",
+      "category": "cli_cache",
+      "bytes": 4844,
+      "sha256": "ac01daf9e1e2cfa927aa7d833ac2f958f77cb34b8917f3fbdd7bafa3f6ec4074",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/bd37e3e978971a3c98c57967b2fb9726c338283d303bf114795081b83e30f62e.json",
+      "category": "cli_cache",
+      "bytes": 2163,
+      "sha256": "bd37e3e978971a3c98c57967b2fb9726c338283d303bf114795081b83e30f62e",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/c105163497c7cf1e39b9e05bde5280b5a493c8ddb4a3c4222d95df3a6914b59c.json",
+      "category": "cli_cache",
+      "bytes": 9630,
+      "sha256": "c105163497c7cf1e39b9e05bde5280b5a493c8ddb4a3c4222d95df3a6914b59c",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/c62883072d571336fe9451576ffc21979f197a694a520c63357db236c46a7e6f.json",
+      "category": "cli_cache",
+      "bytes": 2997,
+      "sha256": "c62883072d571336fe9451576ffc21979f197a694a520c63357db236c46a7e6f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/c6cbc5385efe6abec8a079516a21eac17f7caf837afa110a73faaa957c46b2fb.json",
+      "category": "cli_cache",
+      "bytes": 2712,
+      "sha256": "c6cbc5385efe6abec8a079516a21eac17f7caf837afa110a73faaa957c46b2fb",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/c7cf36d2c019ed2266fb2419def33078a079f14e305bf6a96a80f84bad416c37.json",
+      "category": "cli_cache",
+      "bytes": 6258,
+      "sha256": "c7cf36d2c019ed2266fb2419def33078a079f14e305bf6a96a80f84bad416c37",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/c9ec29dfba0ea5c309dcb6c165cf9965671cce5f9b4b83e312aef46b5963ef97.json",
+      "category": "cli_cache",
+      "bytes": 4397,
+      "sha256": "c9ec29dfba0ea5c309dcb6c165cf9965671cce5f9b4b83e312aef46b5963ef97",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/ce1d11fac1f44d56f969dc5c0fa7a6cf70a97e7780b6eb8770336c65780182c9.json",
+      "category": "cli_cache",
+      "bytes": 2830,
+      "sha256": "ce1d11fac1f44d56f969dc5c0fa7a6cf70a97e7780b6eb8770336c65780182c9",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/d5b49eef38eb286eacc7a32eb5ae10a36f5a4a913308fbea739f4685e29ccc86.json",
+      "category": "cli_cache",
+      "bytes": 5161,
+      "sha256": "d5b49eef38eb286eacc7a32eb5ae10a36f5a4a913308fbea739f4685e29ccc86",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/dd05b910692f56362442c227e66d7ef322b072f182be1a11b7ad461043190ed3.json",
+      "category": "cli_cache",
+      "bytes": 1516,
+      "sha256": "dd05b910692f56362442c227e66d7ef322b072f182be1a11b7ad461043190ed3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/e480e43930b160c69e4845f74dfe21752d67d426000551ecc3dbab131d0052cc.json",
+      "category": "cli_cache",
+      "bytes": 2835,
+      "sha256": "e480e43930b160c69e4845f74dfe21752d67d426000551ecc3dbab131d0052cc",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/fb85ac4605d4cffd00fbc9cb66fa9c9973fb4511dfb0155c9d86cf23fe29e146.json",
+      "category": "cli_cache",
+      "bytes": 7322,
+      "sha256": "fb85ac4605d4cffd00fbc9cb66fa9c9973fb4511dfb0155c9d86cf23fe29e146",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/febda117308bb324018778362b731e806f462c0fbad9a2caad23bb8f78ee5214.json",
+      "category": "cli_cache",
+      "bytes": 6187,
+      "sha256": "febda117308bb324018778362b731e806f462c0fbad9a2caad23bb8f78ee5214",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/BaseSpawner.java",
+      "category": "other_workspace_text",
+      "bytes": 12944,
+      "sha256": "37b4edff9c35facf37c0efe62bcc5ebdb665c4f111f062bdb03038b4aa2d2454",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/EntityGetter-hasNearbyAlivePlayer.java",
+      "category": "other_workspace_text",
+      "bytes": 860,
+      "sha256": "079b8fcd1faf4f7f2dd946eccd5ecb26f5db1ba9f063bd3bd0fcf92c51834ed0",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/LevelChunk-BoundTickingBlockEntity-tick.java",
+      "category": "other_workspace_text",
+      "bytes": 2959,
+      "sha256": "c2f6740073505ae56adbce87c1f0d832b2178fb1676d0ff15861c461e9dcbcca",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/LevelChunk-isTicking.java",
+      "category": "other_workspace_text",
+      "bytes": 1333,
+      "sha256": "d44047341e0242da0a8fdec1f2b7fbac04949595aa4b3eba26d241cc9f7ad036",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/PlayerDetector.java",
+      "category": "other_workspace_text",
+      "bytes": 4615,
+      "sha256": "b614ed9947b18f42daecfd115950010be289e9d199b6accf1f95f674b1631ddc",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/TrialSpawner.java",
+      "category": "other_workspace_text",
+      "bytes": 19159,
+      "sha256": "19a19e692f52d6e3ee74436f48a54b25f3126cf13f980148a8310fa8aec18ecc",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/TrialSpawnerBlockEntity-createDefaultSpawner.java",
+      "category": "other_workspace_text",
+      "bytes": 1114,
+      "sha256": "da517806af158aff2778b69d1642372bed9fdfe599890b4a8c7e699189d3567e",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/TrialSpawnerConfig.java",
+      "category": "other_workspace_text",
+      "bytes": 7957,
+      "sha256": "1eccc27c61b483954c1aad907a336cf6502baf5a32f63875652cc85709051cc4",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/TrialSpawnerState-tickAndGetNext.java",
+      "category": "other_workspace_text",
+      "bytes": 5227,
+      "sha256": "f23bf543a8d942720fe4ba2bb251ce6755f302cd7d3bbd7052faeffd553cc7c5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/TrialSpawnerStateData.java",
+      "category": "other_workspace_text",
+      "bytes": 14757,
+      "sha256": "b8b590ee4be641d382a8a2d06783953a53df604b591fd5b706ed9075156232e3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 312,
+      "sha256": "a723713a81964a056a70ba06b8658438b130b68231de1d9bf86d14d4db5d7775",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 510,
+      "sha256": "671e6b2d3c0bae579a180f581b4de6f7cd8060ba89f810c8aafa893572b1c95d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 251,
+      "sha256": "756f4295eaac41526feffd65040d6585e7bfc772731d44f46b3edee5aa4ceb5f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 613,
+      "sha256": "2bd3901ddbac943891e4c1aeff03db602c43649a5088ac05f6c58ab4b938a7a9",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 253,
+      "sha256": "966aba89ff4994ac62affec269190665b69e3636870b2b7cb520d9ba6906273e",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 501,
+      "sha256": "4c553333ed8631fe4b34538b5cdcf958d00a9549f37f4d23d4d7077818fbc46a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 253,
+      "sha256": "aa77f44defcf188929049a98f3df40f51721f64bb10fcf2598f5ae8b0343f90e",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 615,
+      "sha256": "9f93848843edc6bfa8bda551e66099912e9fe2ae10f8ba770e8b5119108ada2a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 253,
+      "sha256": "ef9bb1e6e320af74843235f686cba39802bf0de40b0436902ca45071d4e6d7e1",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 616,
+      "sha256": "ecda078b8b30a15d22b7555fc8e1da6bcbbf58b0a87ebac0ca058bcfbb2eb8a6",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 255,
+      "sha256": "58c11e442a819b367165fa545713cf8f4a91a4f0e0ad8696e4f849068595258d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 618,
+      "sha256": "4039ff731a040ad404c3456c7a87224e1c78b66a20ed8df64ddd7619c6e06b8c",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 252,
+      "sha256": "79e6b78e23e9ad0ae73e0c8990dfd554f824de396689f24f0ed075d657b5ee19",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 615,
+      "sha256": "13b722d369d778e6799f57d3cb080fb600575b529f66382877d7e67175727f37",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 254,
+      "sha256": "a3660446359fcb009c1b91b542c7f3bc6b5e417861256639046db5ab6c30dcb4",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 617,
+      "sha256": "013223dc20603f1686861c9cba0ce6ca20dab149f6dd1a83c149c505ec0a5007",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 256,
+      "sha256": "d798230eada5f9ad31fc88430263a345e02b01f24b072afccc25e8fb1c85f24b",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 619,
+      "sha256": "e487e2b5e55bcefaaf52b550716a294b227df42d0e5e43df4de1b18b7acfe97b",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 253,
+      "sha256": "529a4d063096c33b4a0ff5eac5c3d9522f361cdeef7bfd3c10b210ea29303d9e",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 616,
+      "sha256": "42def85ece1c0abf0774a6526653cf6a2a5d0494f81a6e64aa1c0e3a071b0851",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 248,
+      "sha256": "1579f371bd4d7c947fc8afdae662ab94d865c0ccee02646c1dcb28951162c401",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 610,
+      "sha256": "82801da3e48f601c6120eea3dc248c747d83e5fb43092bf9cd4ba7dc0546b83c",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 258,
+      "sha256": "f5a1e290bc8ae3ad7576e23ad61b828de39ccd10a6f835cbdd50607176b372b5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 506,
+      "sha256": "9e3e4f0d7dc265d335634e51ba14b38986e3a7e9c099d6c8d1d481dde66108f3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 257,
+      "sha256": "66bf53a1806fc036f756437fac357912f04eff7e77e8000d18f55ca540a44b73",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 505,
+      "sha256": "a03b83abdc827e6bb2f2cbc8cf393b909c732937db62a792155c46bf4541660d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/normal.json",
+      "category": "other_workspace_text",
+      "bytes": 414,
+      "sha256": "8b5dad37af109513800a98b02483874ecb340ad86307bdb4c3bdc8334b5cd987",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/ominous.json",
+      "category": "other_workspace_text",
+      "bytes": 662,
+      "sha256": "49a751c1734a86803b72f343bee7d2e9144cc310dfd03027338144d092d6f7ac",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/provenance.json",
+      "category": "other_workspace_text",
+      "bytes": 21703,
+      "sha256": "6034b7fd59791aff98bac7f2d6bb054765315ea2141c4441ef0ae07e5b91efd1",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/version.json",
+      "category": "other_workspace_text",
+      "bytes": 422,
+      "sha256": "70444a856374443fbd57e4b23e9acfdd50309b25906ced3e3cf658abf25dd3ae",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/toolchains/java-home.txt",
+      "category": "other_workspace_text",
+      "bytes": 93,
+      "sha256": "0761e9b251763354792a22da0b724cbd6d31bcd657174dd460b114d79579bc60",
+      "initial_input": true
+    },
+    {
+      "relative_path": "gradle.properties",
+      "category": "other_workspace_text",
+      "bytes": 241,
+      "sha256": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc-knowledge.py",
+      "category": "other_workspace_text",
+      "bytes": 35730,
+      "sha256": "c0447daec64d1af3e000bdc9ac036a9cdd98afd05ed0878963517904f53a100e",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc_knowledge_output.py",
+      "category": "other_workspace_text",
+      "bytes": 12627,
+      "sha256": "7c65e2302bd7da8a6e1f21a0202abb64b278cb31232f1e8ec4c54cb18dab6727",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc_knowledge_wiki.py",
+      "category": "other_workspace_text",
+      "bytes": 16621,
+      "sha256": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87",
+      "initial_input": true
+    }
+  ],
+  "skipped": [
+    {
+      "path": "scripts/__pycache__/mc_knowledge_output.cpython-314.pyc",
+      "reason": "credential_or_excluded_path_not_read"
+    }
+  ]
+}

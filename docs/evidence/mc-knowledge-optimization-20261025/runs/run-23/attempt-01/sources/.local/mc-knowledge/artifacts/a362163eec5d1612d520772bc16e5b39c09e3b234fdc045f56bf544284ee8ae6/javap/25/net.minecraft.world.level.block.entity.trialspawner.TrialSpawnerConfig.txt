@@ -1,0 +1,89 @@
+Compiled from "TrialSpawnerConfig.java"
+public final class net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig extends java.lang.Record {
+  private final int spawnRange;
+    descriptor: I
+  private final float totalMobs;
+    descriptor: F
+  private final float simultaneousMobs;
+    descriptor: F
+  private final float totalMobsAddedPerPlayer;
+    descriptor: F
+  private final float simultaneousMobsAddedPerPlayer;
+    descriptor: F
+  private final int ticksBetweenSpawn;
+    descriptor: I
+  private final net.minecraft.util.random.WeightedList<net.minecraft.world.level.SpawnData> spawnPotentialsDefinition;
+    descriptor: Lnet/minecraft/util/random/WeightedList;
+  private final net.minecraft.util.random.WeightedList<net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable>> lootTablesToEject;
+    descriptor: Lnet/minecraft/util/random/WeightedList;
+  private final net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable> itemsToDropWhenOminous;
+    descriptor: Lnet/minecraft/resources/ResourceKey;
+  public static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig DEFAULT;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig;
+  public static final com.mojang.serialization.Codec<net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig> DIRECT_CODEC;
+    descriptor: Lcom/mojang/serialization/Codec;
+  public static final com.mojang.serialization.Codec<net.minecraft.core.Holder<net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig>> CODEC;
+    descriptor: Lcom/mojang/serialization/Codec;
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig(int, float, float, float, float, int, net.minecraft.util.random.WeightedList<net.minecraft.world.level.SpawnData>, net.minecraft.util.random.WeightedList<net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable>>, net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable>);
+    descriptor: (IFFFFILnet/minecraft/util/random/WeightedList;Lnet/minecraft/util/random/WeightedList;Lnet/minecraft/resources/ResourceKey;)V
+
+  public int calculateTargetTotalMobs(int);
+    descriptor: (I)I
+
+  public int calculateTargetSimultaneousMobs(int);
+    descriptor: (I)I
+
+  public long ticksBetweenItemSpawners();
+    descriptor: ()J
+
+  public static net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig$Builder builder();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig$Builder;
+
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig withSpawning(net.minecraft.world.entity.EntityType<?>);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;)Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig;
+
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig withSpawning(net.minecraft.world.item.component.TypedEntityData<net.minecraft.world.entity.EntityType<?>>);
+    descriptor: (Lnet/minecraft/world/item/component/TypedEntityData;)Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig;
+
+  public final java.lang.String toString();
+    descriptor: ()Ljava/lang/String;
+
+  public final int hashCode();
+    descriptor: ()I
+
+  public final boolean equals(java.lang.Object);
+    descriptor: (Ljava/lang/Object;)Z
+
+  public int spawnRange();
+    descriptor: ()I
+
+  public float totalMobs();
+    descriptor: ()F
+
+  public float simultaneousMobs();
+    descriptor: ()F
+
+  public float totalMobsAddedPerPlayer();
+    descriptor: ()F
+
+  public float simultaneousMobsAddedPerPlayer();
+    descriptor: ()F
+
+  public int ticksBetweenSpawn();
+    descriptor: ()I
+
+  public net.minecraft.util.random.WeightedList<net.minecraft.world.level.SpawnData> spawnPotentialsDefinition();
+    descriptor: ()Lnet/minecraft/util/random/WeightedList;
+
+  public net.minecraft.util.random.WeightedList<net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable>> lootTablesToEject();
+    descriptor: ()Lnet/minecraft/util/random/WeightedList;
+
+  public net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable> itemsToDropWhenOminous();
+    descriptor: ()Lnet/minecraft/resources/ResourceKey;
+
+  private static com.mojang.datafixers.kinds.App lambda$static$0(com.mojang.serialization.codecs.RecordCodecBuilder$Instance);
+    descriptor: (Lcom/mojang/serialization/codecs/RecordCodecBuilder$Instance;)Lcom/mojang/datafixers/kinds/App;
+
+  static {};
+    descriptor: ()V
+}

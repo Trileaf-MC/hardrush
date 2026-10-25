@@ -1,0 +1,10 @@
+{
+  "class": "net.minecraft.world.entity.animal.golem.IronGolem",
+  "member": "getAttackDamage",
+  "descriptor": "()F",
+  "compiler": "1.12.0",
+  "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+  "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-14/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.java",
+  "source_sha256": "6692e161a10a89d0ad3f5cabc14950abcef26fc9cd99d8b5be7a60d8a1dd2b9d",
+  "warnings": []
+}

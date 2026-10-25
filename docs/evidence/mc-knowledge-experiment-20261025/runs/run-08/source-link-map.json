@@ -1,0 +1,10 @@
+{
+  "evidence-26.3/provenance.json": "01-provenance.json",
+  "evidence-26.3/src/net/minecraft/world/entity/monster/skeleton/Skeleton.java": "02-Skeleton.java",
+  "evidence-26.3/src/net/minecraft/world/entity/ConversionTracker.java": "03-ConversionTracker.java",
+  "evidence-26.3/src/net/minecraft/world/entity/InsideBlockEffectType.java": "04-InsideBlockEffectType.java",
+  "evidence-26.3/bytecode/ConversionTracker.javap.txt": "05-ConversionTracker.javap.txt",
+  "evidence-26.3/src/net/minecraft/world/entity/animal/wolf/Wolf.java": "06-Wolf.java",
+  "evidence-26.3/src/net/minecraft/world/entity/monster/skeleton/Stray.java": "07-Stray.java",
+  "evidence-26.3/src/net/minecraft/world/entity/ai/goal/SitWhenOrderedToGoal.java": "08-SitWhenOrderedToGoal.java"
+}

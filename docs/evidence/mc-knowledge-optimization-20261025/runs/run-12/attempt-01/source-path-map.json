@@ -1,0 +1,585 @@
+[
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.agents/skills/minecraft-knowledge/SKILL.md",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.agents/skills/minecraft-knowledge/SKILL.md",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.agents/skills/minecraft-knowledge/SKILL.md"
+    ],
+    "archive_relative_path": ".agents/skills/minecraft-knowledge/SKILL.md",
+    "portable_relative_path": "sources/.agents/skills/minecraft-knowledge/SKILL.md",
+    "category": "other_workspace_text",
+    "sha256": "747c8af80cdb40755846454b27d9b7e8637785fd13289e8797b339ceeabc3d7c"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.CombatRules.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.CombatRules.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.CombatRules.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.CombatRules.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.CombatRules.txt",
+    "category": "cli_cache",
+    "sha256": "4fbf80491173cf908c1fe447106d58755e5146ac64d417a4b965c48e04755998"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSource.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSource.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSource.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSource.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSource.txt",
+    "category": "cli_cache",
+    "sha256": "03897452056106a845d541853c64db8cad3527227b626fd617a9cfdcaa66465d"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSources.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSources.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSources.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSources.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSources.txt",
+    "category": "cli_cache",
+    "sha256": "65292bc2491a63c81bc8b0f9f1aa0e5de4a1a071e13ca51190c1b9e2974c970a"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.LivingEntity.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.LivingEntity.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.LivingEntity.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.LivingEntity.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.LivingEntity.txt",
+    "category": "cli_cache",
+    "sha256": "7040817d198f1cc644956fd6cd92b3a27245050cc3675228b98a9a5327a2e327"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.animal.golem.IronGolem.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.animal.golem.IronGolem.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.animal.golem.IronGolem.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.animal.golem.IronGolem.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.animal.golem.IronGolem.txt",
+    "category": "cli_cache",
+    "sha256": "99e2d2ad1124b350d067f5fdc0007c4f7e42177b59dc0fa816c24e1ea5ec17d0"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.player.Player.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.player.Player.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.player.Player.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.player.Player.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.player.Player.txt",
+    "category": "cli_cache",
+    "sha256": "8cc4cd2dd389d6dba68d5744b54d9e477c401022eb6456e1a9e4a2886d50361f"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.levelgen.BitRandomSource.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.levelgen.BitRandomSource.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.levelgen.BitRandomSource.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.levelgen.BitRandomSource.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.levelgen.BitRandomSource.txt",
+    "category": "cli_cache",
+    "sha256": "bad81b2a4346ef13b0c5fec85c7179df02c65b716bcbcb1915b9cf1cbafd03f1"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.java",
+    "category": "cli_cache",
+    "sha256": "f869b6f745f14d70fb3d517af232aa4cc2aa495f06c7334e71815ce41c15d58f"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.json",
+    "category": "cli_cache",
+    "sha256": "530fd31f2bae09750425adf9a96cb8c174e6ff2b63c2eb7803aaf3a5f2b8ff0e"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.java",
+    "category": "cli_cache",
+    "sha256": "57768e741a282383829196777a111139eb39470feecd4b51d37d78082fc72860"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.json",
+    "category": "cli_cache",
+    "sha256": "d6f0a25ced07d3bfba99eb870873f680a83ae5d844e334d3c309dfc2dae7aafe"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.java",
+    "category": "cli_cache",
+    "sha256": "71223359c2a3293d86aaf75ea0d725ebfff720ea3c988284187aa2d37f4bae40"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.json",
+    "category": "cli_cache",
+    "sha256": "49add0e67d93875e90e5de565d9efc23e68c13c04dddbf452afd086a49f57bb9"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.java",
+    "category": "cli_cache",
+    "sha256": "09925083eda0357f59b71ea79d349a2fec81f5b598b7748343beeee90ec762f7"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.json",
+    "category": "cli_cache",
+    "sha256": "9765892e50e1afa426d216fc0da55463c39c0e7c66bb607ebb315c613103fbc9"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.java",
+    "category": "cli_cache",
+    "sha256": "b179d754f733df04d1f5d2ecb39a9cf482b3a782bc61093a8cbb8450e8f4cf3d"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.json",
+    "category": "cli_cache",
+    "sha256": "3f6d181a65642c4d328571aee5e76955a3d4d1042293cd174346218a4934638b"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.java",
+    "category": "cli_cache",
+    "sha256": "08e8c7a2f330604ffc887905f67fa3b68af9f3f72bcaeb2c8b8fa680af06888c"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.json",
+    "category": "cli_cache",
+    "sha256": "5d4e63df47987c590d3d9b0b2a95184be503b2f15332cfd6dbc3908f2f4d161f"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/68662ae6783c958b5853516b2d10067c63402ab3e99e909aa80f2e0cb4f8a519/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/68662ae6783c958b5853516b2d10067c63402ab3e99e909aa80f2e0cb4f8a519/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/68662ae6783c958b5853516b2d10067c63402ab3e99e909aa80f2e0cb4f8a519/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/68662ae6783c958b5853516b2d10067c63402ab3e99e909aa80f2e0cb4f8a519/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/68662ae6783c958b5853516b2d10067c63402ab3e99e909aa80f2e0cb4f8a519/source.java",
+    "category": "cli_cache",
+    "sha256": "936c6e2e6c95011625be59cc709f13e2d199dbc3ee4f9bcd71b3c85da1d1aa9d"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/68662ae6783c958b5853516b2d10067c63402ab3e99e909aa80f2e0cb4f8a519/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/68662ae6783c958b5853516b2d10067c63402ab3e99e909aa80f2e0cb4f8a519/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/68662ae6783c958b5853516b2d10067c63402ab3e99e909aa80f2e0cb4f8a519/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/68662ae6783c958b5853516b2d10067c63402ab3e99e909aa80f2e0cb4f8a519/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/68662ae6783c958b5853516b2d10067c63402ab3e99e909aa80f2e0cb4f8a519/source.json",
+    "category": "cli_cache",
+    "sha256": "0ea0f0b9b681d41ef693b97ed2546b8ac5608e683fd109ef20f1ab5c39b6e28e"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.java",
+    "category": "cli_cache",
+    "sha256": "17b3f80df5682a7c90ff4e77b5c6b09322f44f678b43233c1ba92a8caea2a0e1"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.json",
+    "category": "cli_cache",
+    "sha256": "289ebc47ef4f24be11d175d424ddb07fd038ad8024bceb53df122d552c6437d5"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.java",
+    "category": "cli_cache",
+    "sha256": "9ad7ae8661cf453d7d5b0bf3fca528aea198045d3f49f8a02991f1aea9585281"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.json",
+    "category": "cli_cache",
+    "sha256": "96befc58918a784a75baa5a9469c322812fa3ee06a652896fb94be076cb28241"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.java",
+    "category": "cli_cache",
+    "sha256": "6692e161a10a89d0ad3f5cabc14950abcef26fc9cd99d8b5be7a60d8a1dd2b9d"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.json",
+    "category": "cli_cache",
+    "sha256": "349f59b83f59e4d2a1f5822a5f97a45d2eb6f51c08848e1bcfc3fe12e29eb16b"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.java",
+    "category": "cli_cache",
+    "sha256": "c9b39c88db5be6c85a49d1487b9cccbc4e789cb2099c0ed9890b2237c5062358"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.json",
+    "category": "cli_cache",
+    "sha256": "95d5d1ea82eba5aa3ddd319f66b4fe2ea4bb8efc24d12cb17f189402beb34923"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.java",
+    "category": "cli_cache",
+    "sha256": "a138f2aefd0c96a0b2e27ae04210dcc107f4784d8dc73f9a8e5081b6dc961660"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.json",
+    "category": "cli_cache",
+    "sha256": "10cb446abd20b19b0638025ba7deb17652ebbf8228fa9dfa82adda99a574db74"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/0f2a4731d4f04f5d464d89731ca4b1501764af47facdca1c97b5794be0220b1b.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/0f2a4731d4f04f5d464d89731ca4b1501764af47facdca1c97b5794be0220b1b.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/0f2a4731d4f04f5d464d89731ca4b1501764af47facdca1c97b5794be0220b1b.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/0f2a4731d4f04f5d464d89731ca4b1501764af47facdca1c97b5794be0220b1b.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/0f2a4731d4f04f5d464d89731ca4b1501764af47facdca1c97b5794be0220b1b.json",
+    "category": "cli_cache",
+    "sha256": "0f2a4731d4f04f5d464d89731ca4b1501764af47facdca1c97b5794be0220b1b"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/164997cb7fbf389a9ba6a95f0020732bb9e955780956256ac15005ce88e95d18.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/164997cb7fbf389a9ba6a95f0020732bb9e955780956256ac15005ce88e95d18.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/164997cb7fbf389a9ba6a95f0020732bb9e955780956256ac15005ce88e95d18.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/164997cb7fbf389a9ba6a95f0020732bb9e955780956256ac15005ce88e95d18.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/164997cb7fbf389a9ba6a95f0020732bb9e955780956256ac15005ce88e95d18.json",
+    "category": "cli_cache",
+    "sha256": "164997cb7fbf389a9ba6a95f0020732bb9e955780956256ac15005ce88e95d18"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/2da57c01c72685e0a8858e3f8d97a91b34b6555535e4d8b078b2f4fc38a34564.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/2da57c01c72685e0a8858e3f8d97a91b34b6555535e4d8b078b2f4fc38a34564.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/2da57c01c72685e0a8858e3f8d97a91b34b6555535e4d8b078b2f4fc38a34564.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/2da57c01c72685e0a8858e3f8d97a91b34b6555535e4d8b078b2f4fc38a34564.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/2da57c01c72685e0a8858e3f8d97a91b34b6555535e4d8b078b2f4fc38a34564.json",
+    "category": "cli_cache",
+    "sha256": "2da57c01c72685e0a8858e3f8d97a91b34b6555535e4d8b078b2f4fc38a34564"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/33093e47fb4dddcee652736e08f3c30cc11a7269a53f5b9064962cd9dd1a143d.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/33093e47fb4dddcee652736e08f3c30cc11a7269a53f5b9064962cd9dd1a143d.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/33093e47fb4dddcee652736e08f3c30cc11a7269a53f5b9064962cd9dd1a143d.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/33093e47fb4dddcee652736e08f3c30cc11a7269a53f5b9064962cd9dd1a143d.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/33093e47fb4dddcee652736e08f3c30cc11a7269a53f5b9064962cd9dd1a143d.json",
+    "category": "cli_cache",
+    "sha256": "33093e47fb4dddcee652736e08f3c30cc11a7269a53f5b9064962cd9dd1a143d"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/3c3fa9959b42a4bf2c6fed56bb511fb67ae60b3eec9dc8c2029568fa8961c12c.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/3c3fa9959b42a4bf2c6fed56bb511fb67ae60b3eec9dc8c2029568fa8961c12c.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/3c3fa9959b42a4bf2c6fed56bb511fb67ae60b3eec9dc8c2029568fa8961c12c.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/3c3fa9959b42a4bf2c6fed56bb511fb67ae60b3eec9dc8c2029568fa8961c12c.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/3c3fa9959b42a4bf2c6fed56bb511fb67ae60b3eec9dc8c2029568fa8961c12c.json",
+    "category": "cli_cache",
+    "sha256": "3c3fa9959b42a4bf2c6fed56bb511fb67ae60b3eec9dc8c2029568fa8961c12c"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/54b95fe6384d6c8aecac2f4bd7d4e7ccaa7d5bed79bdc95d1072ba7fc396a9ba.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/54b95fe6384d6c8aecac2f4bd7d4e7ccaa7d5bed79bdc95d1072ba7fc396a9ba.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/54b95fe6384d6c8aecac2f4bd7d4e7ccaa7d5bed79bdc95d1072ba7fc396a9ba.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/54b95fe6384d6c8aecac2f4bd7d4e7ccaa7d5bed79bdc95d1072ba7fc396a9ba.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/54b95fe6384d6c8aecac2f4bd7d4e7ccaa7d5bed79bdc95d1072ba7fc396a9ba.json",
+    "category": "cli_cache",
+    "sha256": "54b95fe6384d6c8aecac2f4bd7d4e7ccaa7d5bed79bdc95d1072ba7fc396a9ba"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/5f7c50aea0cadf6b8f9e5e14e958ae3dad95d10e2a4589a6def310213cc1885d.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/5f7c50aea0cadf6b8f9e5e14e958ae3dad95d10e2a4589a6def310213cc1885d.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/5f7c50aea0cadf6b8f9e5e14e958ae3dad95d10e2a4589a6def310213cc1885d.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/5f7c50aea0cadf6b8f9e5e14e958ae3dad95d10e2a4589a6def310213cc1885d.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/5f7c50aea0cadf6b8f9e5e14e958ae3dad95d10e2a4589a6def310213cc1885d.json",
+    "category": "cli_cache",
+    "sha256": "5f7c50aea0cadf6b8f9e5e14e958ae3dad95d10e2a4589a6def310213cc1885d"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/a67fbfcd997b375c9b9677f16e9e765cef1553c450e841ebf348bda1cdc7a9c3.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/a67fbfcd997b375c9b9677f16e9e765cef1553c450e841ebf348bda1cdc7a9c3.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/a67fbfcd997b375c9b9677f16e9e765cef1553c450e841ebf348bda1cdc7a9c3.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/a67fbfcd997b375c9b9677f16e9e765cef1553c450e841ebf348bda1cdc7a9c3.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/a67fbfcd997b375c9b9677f16e9e765cef1553c450e841ebf348bda1cdc7a9c3.json",
+    "category": "cli_cache",
+    "sha256": "a67fbfcd997b375c9b9677f16e9e765cef1553c450e841ebf348bda1cdc7a9c3"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/a8e4cc34425be2c3b07368d1ca990144ebb98f445369b6ed85677179bdeac92e.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/a8e4cc34425be2c3b07368d1ca990144ebb98f445369b6ed85677179bdeac92e.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/a8e4cc34425be2c3b07368d1ca990144ebb98f445369b6ed85677179bdeac92e.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/a8e4cc34425be2c3b07368d1ca990144ebb98f445369b6ed85677179bdeac92e.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/a8e4cc34425be2c3b07368d1ca990144ebb98f445369b6ed85677179bdeac92e.json",
+    "category": "cli_cache",
+    "sha256": "a8e4cc34425be2c3b07368d1ca990144ebb98f445369b6ed85677179bdeac92e"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d27130bf5700fe3b8937e1b26b31b32ad850610473631cdf2bf6f4c5b5759072.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d27130bf5700fe3b8937e1b26b31b32ad850610473631cdf2bf6f4c5b5759072.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d27130bf5700fe3b8937e1b26b31b32ad850610473631cdf2bf6f4c5b5759072.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/d27130bf5700fe3b8937e1b26b31b32ad850610473631cdf2bf6f4c5b5759072.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/d27130bf5700fe3b8937e1b26b31b32ad850610473631cdf2bf6f4c5b5759072.json",
+    "category": "cli_cache",
+    "sha256": "d27130bf5700fe3b8937e1b26b31b32ad850610473631cdf2bf6f4c5b5759072"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d56fd4dda21d837cb0a05953cd4ea64f42dc391f7c1c9d57e6b39306943efbe0.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d56fd4dda21d837cb0a05953cd4ea64f42dc391f7c1c9d57e6b39306943efbe0.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d56fd4dda21d837cb0a05953cd4ea64f42dc391f7c1c9d57e6b39306943efbe0.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/d56fd4dda21d837cb0a05953cd4ea64f42dc391f7c1c9d57e6b39306943efbe0.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/d56fd4dda21d837cb0a05953cd4ea64f42dc391f7c1c9d57e6b39306943efbe0.json",
+    "category": "cli_cache",
+    "sha256": "d56fd4dda21d837cb0a05953cd4ea64f42dc391f7c1c9d57e6b39306943efbe0"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d6f404e405a8124a6c88b8c32e5cc7710d3ff3211efebd6942b6846ce6614072.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d6f404e405a8124a6c88b8c32e5cc7710d3ff3211efebd6942b6846ce6614072.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d6f404e405a8124a6c88b8c32e5cc7710d3ff3211efebd6942b6846ce6614072.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/d6f404e405a8124a6c88b8c32e5cc7710d3ff3211efebd6942b6846ce6614072.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/d6f404e405a8124a6c88b8c32e5cc7710d3ff3211efebd6942b6846ce6614072.json",
+    "category": "cli_cache",
+    "sha256": "d6f404e405a8124a6c88b8c32e5cc7710d3ff3211efebd6942b6846ce6614072"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d9711f6773eec666b8ba18cc1c004566a24d6b1d8a3c558072665c4b6df45485.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d9711f6773eec666b8ba18cc1c004566a24d6b1d8a3c558072665c4b6df45485.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/d9711f6773eec666b8ba18cc1c004566a24d6b1d8a3c558072665c4b6df45485.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/d9711f6773eec666b8ba18cc1c004566a24d6b1d8a3c558072665c4b6df45485.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/d9711f6773eec666b8ba18cc1c004566a24d6b1d8a3c558072665c4b6df45485.json",
+    "category": "cli_cache",
+    "sha256": "d9711f6773eec666b8ba18cc1c004566a24d6b1d8a3c558072665c4b6df45485"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/dfa3a3f9d116ab179743e2d7e94f015a7e5ffcbbb5ec7e9e717f7b07f8b52e94.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/dfa3a3f9d116ab179743e2d7e94f015a7e5ffcbbb5ec7e9e717f7b07f8b52e94.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/dfa3a3f9d116ab179743e2d7e94f015a7e5ffcbbb5ec7e9e717f7b07f8b52e94.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/dfa3a3f9d116ab179743e2d7e94f015a7e5ffcbbb5ec7e9e717f7b07f8b52e94.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/dfa3a3f9d116ab179743e2d7e94f015a7e5ffcbbb5ec7e9e717f7b07f8b52e94.json",
+    "category": "cli_cache",
+    "sha256": "dfa3a3f9d116ab179743e2d7e94f015a7e5ffcbbb5ec7e9e717f7b07f8b52e94"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/ec6eaea4deb619c34fa53297e5557be670ddd5677aa9c517497b027db4c86c70.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/ec6eaea4deb619c34fa53297e5557be670ddd5677aa9c517497b027db4c86c70.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/ec6eaea4deb619c34fa53297e5557be670ddd5677aa9c517497b027db4c86c70.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/ec6eaea4deb619c34fa53297e5557be670ddd5677aa9c517497b027db4c86c70.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/ec6eaea4deb619c34fa53297e5557be670ddd5677aa9c517497b027db4c86c70.json",
+    "category": "cli_cache",
+    "sha256": "ec6eaea4deb619c34fa53297e5557be670ddd5677aa9c517497b027db4c86c70"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/fd70c25032fc7a4745fe6258457c57c8aff4bde853a32885ccd6ec693deb6755.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/fd70c25032fc7a4745fe6258457c57c8aff4bde853a32885ccd6ec693deb6755.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/mc-knowledge/evidence/fd70c25032fc7a4745fe6258457c57c8aff4bde853a32885ccd6ec693deb6755.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/evidence/fd70c25032fc7a4745fe6258457c57c8aff4bde853a32885ccd6ec693deb6755.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/evidence/fd70c25032fc7a4745fe6258457c57c8aff4bde853a32885ccd6ec693deb6755.json",
+    "category": "cli_cache",
+    "sha256": "fd70c25032fc7a4745fe6258457c57c8aff4bde853a32885ccd6ec693deb6755"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/toolchains/java-home.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/toolchains/java-home.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/.local/toolchains/java-home.txt"
+    ],
+    "archive_relative_path": ".local/toolchains/java-home.txt",
+    "portable_relative_path": "sources/.local/toolchains/java-home.txt",
+    "category": "other_workspace_text",
+    "sha256": "0761e9b251763354792a22da0b724cbd6d31bcd657174dd460b114d79579bc60"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/gradle.properties",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/gradle.properties",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/gradle.properties"
+    ],
+    "archive_relative_path": "gradle.properties",
+    "portable_relative_path": "sources/gradle.properties",
+    "category": "other_workspace_text",
+    "sha256": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/scripts/mc-knowledge.py",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/scripts/mc-knowledge.py",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/scripts/mc-knowledge.py"
+    ],
+    "archive_relative_path": "scripts/mc-knowledge.py",
+    "portable_relative_path": "sources/scripts/mc-knowledge.py",
+    "category": "other_workspace_text",
+    "sha256": "c0447daec64d1af3e000bdc9ac036a9cdd98afd05ed0878963517904f53a100e"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/scripts/mc_knowledge_output.py",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/scripts/mc_knowledge_output.py",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/scripts/mc_knowledge_output.py"
+    ],
+    "archive_relative_path": "scripts/mc_knowledge_output.py",
+    "portable_relative_path": "sources/scripts/mc_knowledge_output.py",
+    "category": "other_workspace_text",
+    "sha256": "7c65e2302bd7da8a6e1f21a0202abb64b278cb31232f1e8ec4c54cb18dab6727"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/scripts/mc_knowledge_wiki.py",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/scripts/mc_knowledge_wiki.py",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-12/attempt-01/workspace/scripts/mc_knowledge_wiki.py"
+    ],
+    "archive_relative_path": "scripts/mc_knowledge_wiki.py",
+    "portable_relative_path": "sources/scripts/mc_knowledge_wiki.py",
+    "category": "other_workspace_text",
+    "sha256": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87"
+  }
+]

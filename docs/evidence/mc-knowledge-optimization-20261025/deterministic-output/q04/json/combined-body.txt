@@ -1,0 +1,7 @@
+public class Skeleton extends AbstractSkeleton {
+   @Override
+   public void tick() {
+      this.freezingTracker.tick();
+      super.tick();
+   }
+}

@@ -1,0 +1,63 @@
+{
+  "result": {
+    "index": 2,
+    "query": [
+      "find-class",
+      "Skeleton"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 0,
+    "new_exit": 0
+  },
+  "legacy": {
+    "ok": true,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "matches": [
+      "net.minecraft.world.entity.monster.skeleton.Skeleton",
+      "net.minecraft.util.datafix.fixes.EntitySkeletonSplitFix",
+      "net.minecraft.world.entity.animal.equine.SkeletonHorse",
+      "net.minecraft.world.entity.animal.equine.SkeletonTrapGoal",
+      "net.minecraft.world.entity.monster.skeleton.AbstractSkeleton"
+    ],
+    "total_matches": 11,
+    "truncated": true,
+    "metrics": {
+      "elapsed_ms": 51.06,
+      "body_chars": 0,
+      "output_chars": 823
+    }
+  },
+  "optimized": {
+    "ok": true,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "matches": [
+      "net.minecraft.world.entity.monster.skeleton.Skeleton",
+      "net.minecraft.util.datafix.fixes.EntitySkeletonSplitFix",
+      "net.minecraft.world.entity.animal.equine.SkeletonHorse",
+      "net.minecraft.world.entity.animal.equine.SkeletonTrapGoal",
+      "net.minecraft.world.entity.monster.skeleton.AbstractSkeleton"
+    ],
+    "total_matches": 11,
+    "truncated": true,
+    "metrics": {
+      "elapsed_ms": 50.58,
+      "body_chars": 0,
+      "output_chars": 823
+    }
+  }
+}

@@ -1,0 +1,20 @@
+package net.minecraft.world.entity.animal.golem;
+
+import net.minecraft.world.entity.EntityReference;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.NeutralMob;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier.Builder;
+
+public class IronGolem extends AbstractGolem implements NeutralMob {
+   public static Builder createAttributes() {
+      return Mob.createMobAttributes()
+         .add(Attributes.MAX_HEALTH, 100.0)
+         .add(Attributes.MOVEMENT_SPEED, 0.25)
+         .add(Attributes.KNOCKBACK_RESISTANCE, 1.0)
+         .add(Attributes.ATTACK_DAMAGE, 15.0)
+         .add(Attributes.STEP_HEIGHT, 1.0);
+   }
+}

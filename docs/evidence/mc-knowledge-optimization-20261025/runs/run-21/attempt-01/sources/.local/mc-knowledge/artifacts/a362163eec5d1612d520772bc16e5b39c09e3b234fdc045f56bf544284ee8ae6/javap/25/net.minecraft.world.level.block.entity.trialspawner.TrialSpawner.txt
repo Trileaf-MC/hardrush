@@ -1,0 +1,141 @@
+Compiled from "TrialSpawner.java"
+public final class net.minecraft.world.level.block.entity.trialspawner.TrialSpawner {
+  private static final org.slf4j.Logger LOGGER;
+    descriptor: Lorg/slf4j/Logger;
+  public static final int DETECT_PLAYER_SPAWN_BUFFER;
+    descriptor: I
+  private static final int DEFAULT_TARGET_COOLDOWN_LENGTH;
+    descriptor: I
+  private static final int DEFAULT_PLAYER_SCAN_RANGE;
+    descriptor: I
+  private static final int MAX_MOB_TRACKING_DISTANCE;
+    descriptor: I
+  private static final int MAX_MOB_TRACKING_DISTANCE_SQR;
+    descriptor: I
+  private static final float SPAWNING_AMBIENT_SOUND_CHANCE;
+    descriptor: F
+  private final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData data;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerStateData;
+  private net.minecraft.world.level.block.entity.trialspawner.TrialSpawner$FullConfig config;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner$FullConfig;
+  private final net.minecraft.world.level.block.entity.trialspawner.TrialSpawner$StateAccessor stateAccessor;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner$StateAccessor;
+  private net.minecraft.world.level.block.entity.trialspawner.PlayerDetector playerDetector;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/PlayerDetector;
+  private final net.minecraft.world.level.block.entity.trialspawner.PlayerDetector$EntitySelector entitySelector;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/PlayerDetector$EntitySelector;
+  private boolean overridePeacefulAndMobSpawnRule;
+    descriptor: Z
+  private boolean isOminous;
+    descriptor: Z
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawner(net.minecraft.world.level.block.entity.trialspawner.TrialSpawner$FullConfig, net.minecraft.world.level.block.entity.trialspawner.TrialSpawner$StateAccessor, net.minecraft.world.level.block.entity.trialspawner.PlayerDetector, net.minecraft.world.level.block.entity.trialspawner.PlayerDetector$EntitySelector);
+    descriptor: (Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner$FullConfig;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner$StateAccessor;Lnet/minecraft/world/level/block/entity/trialspawner/PlayerDetector;Lnet/minecraft/world/level/block/entity/trialspawner/PlayerDetector$EntitySelector;)V
+
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig activeConfig();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig;
+
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig normalConfig();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig;
+
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig ominousConfig();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig;
+
+  public void load(net.minecraft.world.level.storage.ValueInput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueInput;)V
+
+  public void store(net.minecraft.world.level.storage.ValueOutput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueOutput;)V
+
+  public void applyOminous(net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;)V
+
+  public void removeOminous(net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;)V
+
+  public boolean isOminous();
+    descriptor: ()Z
+
+  public int getTargetCooldownLength();
+    descriptor: ()I
+
+  public int getRequiredPlayerRange();
+    descriptor: ()I
+
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState getState();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData getStateData();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerStateData;
+
+  public void setState(net.minecraft.world.level.Level, net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;)V
+
+  public void markUpdated();
+    descriptor: ()V
+
+  public net.minecraft.world.level.block.entity.trialspawner.PlayerDetector getPlayerDetector();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/PlayerDetector;
+
+  public net.minecraft.world.level.block.entity.trialspawner.PlayerDetector$EntitySelector getEntitySelector();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/PlayerDetector$EntitySelector;
+
+  public boolean canSpawnInLevel(net.minecraft.server.level.ServerLevel);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;)Z
+
+  public java.util.Optional<java.util.UUID> spawnMob(net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;)Ljava/util/Optional;
+
+  public void ejectReward(net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos, net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable>);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Lnet/minecraft/resources/ResourceKey;)V
+
+  public void tickClient(net.minecraft.world.level.Level, net.minecraft.core.BlockPos, boolean);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Z)V
+
+  public void tickServer(net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos, boolean);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Z)V
+
+  private static boolean shouldMobBeUntracked(net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos, java.util.UUID);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Ljava/util/UUID;)Z
+
+  private static boolean inLineOfSight(net.minecraft.world.level.Level, net.minecraft.world.phys.Vec3, net.minecraft.world.phys.Vec3);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;)Z
+
+  public static void addSpawnParticles(net.minecraft.world.level.Level, net.minecraft.core.BlockPos, net.minecraft.util.RandomSource, net.minecraft.core.particles.SimpleParticleType);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/util/RandomSource;Lnet/minecraft/core/particles/SimpleParticleType;)V
+
+  public static void addBecomeOminousParticles(net.minecraft.world.level.Level, net.minecraft.core.BlockPos, net.minecraft.util.RandomSource);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/util/RandomSource;)V
+
+  public static void addDetectPlayerParticles(net.minecraft.world.level.Level, net.minecraft.core.BlockPos, net.minecraft.util.RandomSource, int, net.minecraft.core.particles.ParticleOptions);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/util/RandomSource;ILnet/minecraft/core/particles/ParticleOptions;)V
+
+  public static void addEjectItemParticles(net.minecraft.world.level.Level, net.minecraft.core.BlockPos, net.minecraft.util.RandomSource);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/util/RandomSource;)V
+
+  public void overrideEntityToSpawn(net.minecraft.world.entity.EntityType<?>, net.minecraft.world.level.Level);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+
+  public void overrideEntityToSpawn(net.minecraft.world.item.component.TypedEntityData<net.minecraft.world.entity.EntityType<?>>, net.minecraft.world.level.Level);
+    descriptor: (Lnet/minecraft/world/item/component/TypedEntityData;Lnet/minecraft/world/level/Level;)V
+
+  public void setPlayerDetector(net.minecraft.world.level.block.entity.trialspawner.PlayerDetector);
+    descriptor: (Lnet/minecraft/world/level/block/entity/trialspawner/PlayerDetector;)V
+
+  public void overridePeacefulAndMobSpawnRule();
+    descriptor: ()V
+
+  private static boolean lambda$tickServer$0(net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos, java.util.UUID);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Ljava/util/UUID;)Z
+
+  private static net.minecraft.world.entity.Entity lambda$spawnMob$2(net.minecraft.world.phys.Vec3, net.minecraft.util.RandomSource, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/util/RandomSource;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/entity/Entity;
+
+  private net.minecraft.world.phys.Vec3 lambda$spawnMob$1(net.minecraft.core.BlockPos, net.minecraft.util.RandomSource);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/util/RandomSource;)Lnet/minecraft/world/phys/Vec3;
+
+  private static java.lang.String lambda$spawnMob$0(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Ljava/lang/String;
+
+  static {};
+    descriptor: ()V
+}

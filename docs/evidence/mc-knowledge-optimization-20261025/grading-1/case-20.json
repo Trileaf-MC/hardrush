@@ -1,0 +1,74 @@
+{
+  "case_id": "case-20",
+  "topic": "T3",
+  "assessable": true,
+  "rubric_scores": {
+    "factual_accuracy": 89,
+    "evidence_quality": 10,
+    "total": 99
+  },
+  "items": [
+    {
+      "id": "P1",
+      "earned": 18,
+      "maximum": 18,
+      "reason": "明确所有合格玩家离开范围后普通笼不生成，得6分；剩余Delay暂停保留、回来续计而非重抽，得8分；说明玩家距离与持续方块实体tick／区块卸载条件，得4分。"
+    },
+    {
+      "id": "P2",
+      "earned": 8,
+      "maximum": 8,
+      "reason": "明确默认16格得6分，并正确限定方块中心三维距离、存活非旁观玩家且创造可激活，得2分。"
+    },
+    {
+      "id": "P3",
+      "earned": 15,
+      "maximum": 16,
+      "reason": "初始20 tick得3分；明确MinSpawnDelay=200、MaxSpawnDelay=800得4分；实际200…799得5分。正值每tick递减且减到0后下一tick才尝试已说明，推进子项给3/4分；未说明Delay=-1先重设，另1分未得。"
+    },
+    {
+      "id": "P4",
+      "earned": 8,
+      "maximum": 8,
+      "reason": "明确一轮最多4次尝试，得5分，并明确不是保证生成4只、条件失败影响实际生成数，得3分。"
+    },
+    {
+      "id": "P5",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确默认6且达到上限立即结束本轮并重设延迟，得7分；限定局部同类实体查询而非全局自然刷怪上限，得3分。"
+    },
+    {
+      "id": "P6",
+      "earned": 16,
+      "maximum": 16,
+      "reason": "明确普通位置／碰撞／光照或生成规则失败且整轮无成功时不重设，到期下个活跃tick重试，得7分；至少成功一次轮末重设，得4分；上限与无效类型／加载／加入世界失败等会立即重设并返回，得5分。"
+    },
+    {
+      "id": "P7",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "试炼默认14格探测得3分；明确已激活登记后走远本身不取消／暂停，受持续tick、生成条件和轮次限额约束，得6分；用状态／绝对游戏时间和追踪并发、本轮配额区别普通笼，得3分；明确失败不更新成功间隔、可于下个就绪tick重试，得2分。"
+    },
+    {
+      "id": "E1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确Java26.3原版及JAR来源身份，得2分；普通BaseSpawner默认值、serverTick与delay可定位，得4分；试炼状态机、探测和计时有对应类／成员出处，得3分；限定静态查询，未冒充游戏实测或把已知截断当完整，得1分。"
+    }
+  ],
+  "major_errors": [],
+  "omissions": [
+    "普通刷怪笼Delay=-1时先重设延迟的处理未说明。"
+  ],
+  "citations": [
+    "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:43",
+    "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:95",
+    "<workspace>/.local/spawner-26.3-evidence/EntityGetter-hasNearbyAlivePlayer.java:12",
+    "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerConfig.java:109",
+    "<workspace>/.local/spawner-26.3-evidence/TrialSpawner.java:395",
+    "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerState.java:38",
+    "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerStateData.java:104"
+  ],
+  "notes": "仅按最终答案评分，按T3允许子项部分分，对推进处理已覆盖的常规倒计时／归零时序给3分，缺失-1重设扣该子项1分。试炼次级配置数值和官方包校验扩展不另加分。"
+}

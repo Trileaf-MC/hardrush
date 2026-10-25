@@ -1,0 +1,74 @@
+{
+  "case_id": "case-03",
+  "topic": "T3",
+  "assessable": true,
+  "rubric_scores": {
+    "factual_accuracy": 88,
+    "evidence_quality": 10,
+    "total": 98
+  },
+  "items": [
+    {
+      "id": "P1",
+      "earned": 18,
+      "maximum": 18,
+      "reason": "明确普通笼没有合格玩家就不生成，得6分；剩余Delay保留暂停、回来续计而非重抽，得8分；区分玩家范围与持续方块实体tick／仅加载不足，得4分。"
+    },
+    {
+      "id": "P2",
+      "earned": 8,
+      "maximum": 8,
+      "reason": "明确默认16格得6分；方块中心距离、活着的非旁观玩家及创造可激活等基本限定正确，得2分。"
+    },
+    {
+      "id": "P3",
+      "earned": 14,
+      "maximum": 16,
+      "reason": "初始20 tick得3分；重设下界200有说明，但未明确MaxSpawnDelay默认配置值800，Min／Max子项给2/4分；实际200…799正确得5分；Delay>0只减计时、进入tick时已0才尝试，以及Delay=-1先初始化延迟均明确，推进4分。"
+    },
+    {
+      "id": "P4",
+      "earned": 8,
+      "maximum": 8,
+      "reason": "每轮最多4次尝试得5分，并明确不保证成功4只，成功／失败影响实际数量，得3分。"
+    },
+    {
+      "id": "P5",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "默认附近同类6，达到上限结束该轮并重设延迟，得7分；明确局部查询盒、相同Java类而非全球自然刷怪上限，得3分。"
+    },
+    {
+      "id": "P6",
+      "earned": 16,
+      "maximum": 16,
+      "reason": "普通位置／碰撞／光照／生成规则失败且整轮无成功时保持0／到期、下个有效tick重试，得7分；至少成功一次轮末重设，得4分；附近上限或无效类型、加载／加入世界失败存在立即重设返回，得5分。"
+    },
+    {
+      "id": "P7",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "默认14格探测得3分；已激活登记后走远本身不暂停，受区块tick、配置／生成条件、本轮与并存限制，得6分；以状态／游戏时间或下次绝对时刻、追踪集合和本轮配额区别普通笼，得3分；失败不执行成功更新时间、下个就绪tick可重试，得2分。"
+    },
+    {
+      "id": "E1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确Java26.3原版及JAR来源身份，得2分；BaseSpawner默认值、serverTick与delay有可核对出处，得4分；试炼状态机、探测和计时成员有可核对出处，得3分；保留静态核查边界，未冒充运行验证或将已知截断当完整，得1分。"
+    }
+  ],
+  "major_errors": [],
+  "omissions": [
+    "未明确普通笼MaxSpawnDelay默认配置值为800；实际200…799抽样范围正确。"
+  ],
+  "citations": [
+    "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:43",
+    "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:95",
+    "<workspace>/.local/spawner-26.3-evidence/EntityGetter-hasNearbyAlivePlayer.java:11",
+    "<workspace>/.local/spawner-26.3-evidence/PlayerDetector.java:26",
+    "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerConfig.java:109",
+    "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerState-tickAndGetNext.java:38",
+    "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerStateData.java:104"
+  ],
+  "notes": "仅按最终答案评分。与同标准处理一致：实际200…799抽样得满分，但不补出未写明的MaxSpawnDelay配置值800。未要求量表排除的试炼次级细节。"
+}

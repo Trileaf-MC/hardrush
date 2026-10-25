@@ -1,0 +1,65 @@
+Compiled from "MeleeAttackGoal.java"
+public class net.minecraft.world.entity.ai.goal.MeleeAttackGoal extends net.minecraft.world.entity.ai.goal.Goal {
+  protected final net.minecraft.world.entity.PathfinderMob mob;
+    descriptor: Lnet/minecraft/world/entity/PathfinderMob;
+  private final double speedModifier;
+    descriptor: D
+  private final boolean followingTargetEvenIfNotSeen;
+    descriptor: Z
+  private net.minecraft.world.level.pathfinder.Path path;
+    descriptor: Lnet/minecraft/world/level/pathfinder/Path;
+  private double pathedTargetX;
+    descriptor: D
+  private double pathedTargetY;
+    descriptor: D
+  private double pathedTargetZ;
+    descriptor: D
+  private int ticksUntilNextPathRecalculation;
+    descriptor: I
+  private int ticksUntilNextAttack;
+    descriptor: I
+  private final int attackInterval;
+    descriptor: I
+  private long lastCanUseCheck;
+    descriptor: J
+  private static final long COOLDOWN_BETWEEN_CAN_USE_CHECKS;
+    descriptor: J
+  public net.minecraft.world.entity.ai.goal.MeleeAttackGoal(net.minecraft.world.entity.PathfinderMob, double, boolean);
+    descriptor: (Lnet/minecraft/world/entity/PathfinderMob;DZ)V
+
+  public boolean canUse();
+    descriptor: ()Z
+
+  public boolean canContinueToUse();
+    descriptor: ()Z
+
+  public void start();
+    descriptor: ()V
+
+  public void stop();
+    descriptor: ()V
+
+  public boolean requiresUpdateEveryTick();
+    descriptor: ()Z
+
+  public void tick();
+    descriptor: ()V
+
+  protected void checkAndPerformAttack(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)V
+
+  protected void resetAttackCooldown();
+    descriptor: ()V
+
+  protected boolean isTimeToAttack();
+    descriptor: ()Z
+
+  protected boolean canPerformAttack(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)Z
+
+  protected int getTicksUntilNextAttack();
+    descriptor: ()I
+
+  protected int getAttackInterval();
+    descriptor: ()I
+}

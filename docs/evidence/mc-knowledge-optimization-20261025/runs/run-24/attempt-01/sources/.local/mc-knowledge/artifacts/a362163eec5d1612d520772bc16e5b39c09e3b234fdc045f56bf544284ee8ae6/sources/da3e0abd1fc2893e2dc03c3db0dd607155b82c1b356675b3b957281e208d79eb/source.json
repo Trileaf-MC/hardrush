@@ -1,0 +1,10 @@
+{
+  "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData",
+  "member": "isReadyToSpawnNextMob",
+  "descriptor": "(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig;I)Z",
+  "compiler": "1.12.0",
+  "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+  "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-24/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/da3e0abd1fc2893e2dc03c3db0dd607155b82c1b356675b3b957281e208d79eb/source.java",
+  "source_sha256": "670bb56909f6199ca3d08b9372b63629f54c12867ab9c2a309f39f5a473cde6d",
+  "warnings": []
+}

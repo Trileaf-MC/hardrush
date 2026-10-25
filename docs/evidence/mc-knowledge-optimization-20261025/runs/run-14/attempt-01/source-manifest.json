@@ -1,0 +1,317 @@
+{
+  "archive": {
+    "path": "sources.tar.gz",
+    "sha256": "efbd9e2d913e7a1319d7fa51ce7743ef75b06499df3e92ae097f5d97661fbff3",
+    "files": 43,
+    "bytes_uncompressed": 221394
+  },
+  "files": [
+    {
+      "relative_path": ".agents/skills/minecraft-knowledge/SKILL.md",
+      "category": "other_workspace_text",
+      "bytes": 4362,
+      "sha256": "747c8af80cdb40755846454b27d9b7e8637785fd13289e8797b339ceeabc3d7c",
+      "initial_input": true
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/BitRandomSource.nextInt.java",
+      "category": "other_workspace_text",
+      "bytes": 600,
+      "sha256": "c9b39c88db5be6c85a49d1487b9cccbc4e789cb2099c0ed9890b2237c5062358",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/DamageSource.scalesWithDifficulty.java",
+      "category": "other_workspace_text",
+      "bytes": 583,
+      "sha256": "b179d754f733df04d1f5d2ecb39a9cf482b3a782bc61093a8cbb8450e8f4cf3d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/DamageSources.mobAttack.java",
+      "category": "other_workspace_text",
+      "bytes": 286,
+      "sha256": "a138f2aefd0c96a0b2e27ae04210dcc107f4784d8dc73f9a8e5081b6dc961660",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/IronGolem.createAttributes.java",
+      "category": "other_workspace_text",
+      "bytes": 810,
+      "sha256": "71223359c2a3293d86aaf75ea0d725ebfff720ea3c988284187aa2d37f4bae40",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/IronGolem.doHurtTarget.java",
+      "category": "other_workspace_text",
+      "bytes": 1615,
+      "sha256": "08e8c7a2f330604ffc887905f67fa3b68af9f3f72bcaeb2c8b8fa680af06888c",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/IronGolem.getAttackDamage.java",
+      "category": "other_workspace_text",
+      "bytes": 485,
+      "sha256": "6692e161a10a89d0ad3f5cabc14950abcef26fc9cd99d8b5be7a60d8a1dd2b9d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/Player.actuallyHurt.java",
+      "category": "other_workspace_text",
+      "bytes": 2022,
+      "sha256": "f869b6f745f14d70fb3d517af232aa4cc2aa495f06c7334e71815ce41c15d58f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/Player.hurtServer.java",
+      "category": "other_workspace_text",
+      "bytes": 1835,
+      "sha256": "57768e741a282383829196777a111139eb39470feecd4b51d37d78082fc72860",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/doctor.txt",
+      "category": "other_workspace_text",
+      "bytes": 1146,
+      "sha256": "df6518299743c5a06d5e6075d632cfbadcebb6d049cedbca89cbf4600fd9127e",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/mob_attack.json",
+      "category": "other_workspace_text",
+      "bytes": 95,
+      "sha256": "716aba9d27df19def024a5490489c8668b7b0482e55486882a58b3f22cd3252a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/source-map.json",
+      "category": "other_workspace_text",
+      "bytes": 982,
+      "sha256": "e56bc30c81b63f25af3aba37a6931372c0b1011d10728231ca9c061b613b8eb7",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/iron-golem-26.3-evidence/version.json",
+      "category": "other_workspace_text",
+      "bytes": 422,
+      "sha256": "70444a856374443fbd57e4b23e9acfdd50309b25906ced3e3cf658abf25dd3ae",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSource.txt",
+      "category": "cli_cache",
+      "bytes": 3664,
+      "sha256": "03897452056106a845d541853c64db8cad3527227b626fd617a9cfdcaa66465d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSources.txt",
+      "category": "cli_cache",
+      "bytes": 13877,
+      "sha256": "65292bc2491a63c81bc8b0f9f1aa0e5de4a1a071e13ca51190c1b9e2974c970a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.Avatar.txt",
+      "category": "cli_cache",
+      "bytes": 2677,
+      "sha256": "85660d0ec0cf8a9b0cbd657c75686d2690b9f11b091b1847103ef98f46076fd9",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.LivingEntity.txt",
+      "category": "cli_cache",
+      "bytes": 65815,
+      "sha256": "7040817d198f1cc644956fd6cd92b3a27245050cc3675228b98a9a5327a2e327",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.animal.golem.IronGolem.txt",
+      "category": "cli_cache",
+      "bytes": 5452,
+      "sha256": "99e2d2ad1124b350d067f5fdc0007c4f7e42177b59dc0fa816c24e1ea5ec17d0",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.player.Player.txt",
+      "category": "cli_cache",
+      "bytes": 31744,
+      "sha256": "8cc4cd2dd389d6dba68d5744b54d9e477c401022eb6456e1a9e4a2886d50361f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.levelgen.BitRandomSource.txt",
+      "category": "cli_cache",
+      "bytes": 675,
+      "sha256": "bad81b2a4346ef13b0c5fec85c7179df02c65b716bcbcb1915b9cf1cbafd03f1",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.java",
+      "category": "cli_cache",
+      "bytes": 2022,
+      "sha256": "f869b6f745f14d70fb3d517af232aa4cc2aa495f06c7334e71815ce41c15d58f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.json",
+      "category": "cli_cache",
+      "bytes": 688,
+      "sha256": "5c391b35854cf05dc1f3a71d0529e4122064f84dcaf21baf2b2774fc4498777a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.java",
+      "category": "cli_cache",
+      "bytes": 1835,
+      "sha256": "57768e741a282383829196777a111139eb39470feecd4b51d37d78082fc72860",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.json",
+      "category": "cli_cache",
+      "bytes": 686,
+      "sha256": "febdf7ef083a3fc454b2259479cd9a9c810f9adecf9abad39b80eaaf095773e7",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.java",
+      "category": "cli_cache",
+      "bytes": 810,
+      "sha256": "71223359c2a3293d86aaf75ea0d725ebfff720ea3c988284187aa2d37f4bae40",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.json",
+      "category": "cli_cache",
+      "bytes": 680,
+      "sha256": "63e4ba95475c514d6c1a84edc108660ff3909b632bae711d7d39ff451753f9a1",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.java",
+      "category": "cli_cache",
+      "bytes": 583,
+      "sha256": "b179d754f733df04d1f5d2ecb39a9cf482b3a782bc61093a8cbb8450e8f4cf3d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.json",
+      "category": "cli_cache",
+      "bytes": 613,
+      "sha256": "964dc1db73ddf4b729487e2d2c9635e3453d1420b8cba9514d976b06ddeb8656",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.java",
+      "category": "cli_cache",
+      "bytes": 1615,
+      "sha256": "08e8c7a2f330604ffc887905f67fa3b68af9f3f72bcaeb2c8b8fa680af06888c",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.json",
+      "category": "cli_cache",
+      "bytes": 684,
+      "sha256": "8504bd38bdf696d329fbc7c53255471c779a9b51b59f8fe8ba29083f5784a2db",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.java",
+      "category": "cli_cache",
+      "bytes": 2753,
+      "sha256": "9ad7ae8661cf453d7d5b0bf3fca528aea198045d3f49f8a02991f1aea9585281",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd6834f70b533ab591303bd6021e6af3dccadab91938b530df313a5df8b0dc6d/source.json",
+      "category": "cli_cache",
+      "bytes": 687,
+      "sha256": "8898ffc1d51a586fa7dc8873849525fb21bb754823f2a8de97030384b15ad511",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.java",
+      "category": "cli_cache",
+      "bytes": 485,
+      "sha256": "6692e161a10a89d0ad3f5cabc14950abcef26fc9cd99d8b5be7a60d8a1dd2b9d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.json",
+      "category": "cli_cache",
+      "bytes": 612,
+      "sha256": "bb73bea1e8eef6e341d2e0978060b93998223fb439d21692076fd2893b6948a1",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.java",
+      "category": "cli_cache",
+      "bytes": 600,
+      "sha256": "c9b39c88db5be6c85a49d1487b9cccbc4e789cb2099c0ed9890b2237c5062358",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d6f75e770baeeb213455935d9452212d35abb4be919e002048e473d1bd304396/source.json",
+      "category": "cli_cache",
+      "bytes": 606,
+      "sha256": "0906bc70ec5ed16ac7cacec24dc0504392990ca9c336315f3ee825c4e6dd79ed",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.java",
+      "category": "cli_cache",
+      "bytes": 286,
+      "sha256": "a138f2aefd0c96a0b2e27ae04210dcc107f4784d8dc73f9a8e5081b6dc961660",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.json",
+      "category": "cli_cache",
+      "bytes": 690,
+      "sha256": "aefb9a650d28d7a450c7fcd0b551c9449f5220bccc0789b3c6f43bd376b687b2",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/toolchains/java-home.txt",
+      "category": "other_workspace_text",
+      "bytes": 93,
+      "sha256": "0761e9b251763354792a22da0b724cbd6d31bcd657174dd460b114d79579bc60",
+      "initial_input": true
+    },
+    {
+      "relative_path": "gradle.properties",
+      "category": "other_workspace_text",
+      "bytes": 241,
+      "sha256": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc-knowledge.py",
+      "category": "other_workspace_text",
+      "bytes": 35730,
+      "sha256": "c0447daec64d1af3e000bdc9ac036a9cdd98afd05ed0878963517904f53a100e",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc_knowledge_output.py",
+      "category": "other_workspace_text",
+      "bytes": 12627,
+      "sha256": "7c65e2302bd7da8a6e1f21a0202abb64b278cb31232f1e8ec4c54cb18dab6727",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc_knowledge_wiki.py",
+      "category": "other_workspace_text",
+      "bytes": 16621,
+      "sha256": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87",
+      "initial_input": true
+    }
+  ],
+  "skipped": [
+    {
+      "path": "scripts/__pycache__/mc_knowledge_output.cpython-314.pyc",
+      "reason": "credential_or_excluded_path_not_read"
+    }
+  ]
+}

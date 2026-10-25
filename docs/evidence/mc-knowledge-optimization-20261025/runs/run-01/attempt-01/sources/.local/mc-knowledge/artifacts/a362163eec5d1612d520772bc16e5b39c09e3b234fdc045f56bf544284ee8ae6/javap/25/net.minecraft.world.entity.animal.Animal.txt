@@ -1,0 +1,100 @@
+Compiled from "Animal.java"
+public abstract class net.minecraft.world.entity.animal.Animal extends net.minecraft.world.entity.AgeableMob {
+  protected static final int PARENT_AGE_AFTER_BREEDING;
+    descriptor: I
+  private static final int DEFAULT_IN_LOVE_TIME;
+    descriptor: I
+  private int inLove;
+    descriptor: I
+  private net.minecraft.world.entity.EntityReference<net.minecraft.server.level.ServerPlayer> loveCause;
+    descriptor: Lnet/minecraft/world/entity/EntityReference;
+  protected net.minecraft.world.entity.animal.Animal(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.animal.Animal>, net.minecraft.world.level.Level);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+
+  public static net.minecraft.world.entity.ai.attributes.AttributeSupplier$Builder createAnimalAttributes();
+    descriptor: ()Lnet/minecraft/world/entity/ai/attributes/AttributeSupplier$Builder;
+
+  protected void customServerAiStep(net.minecraft.server.level.ServerLevel);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;)V
+
+  public void aiStep();
+    descriptor: ()V
+
+  protected void actuallyHurt(net.minecraft.server.level.ServerLevel, net.minecraft.world.damagesource.DamageSource, float);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;F)V
+
+  public float getWalkTargetValue(net.minecraft.core.BlockPos, net.minecraft.world.level.LevelReader);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/LevelReader;)F
+
+  protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueOutput;)V
+
+  protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueInput;)V
+
+  public static boolean checkAnimalSpawnRules(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.animal.Animal>, net.minecraft.world.level.LevelAccessor, net.minecraft.world.entity.EntitySpawnReason, net.minecraft.core.BlockPos, net.minecraft.util.RandomSource);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/LevelAccessor;Lnet/minecraft/world/entity/EntitySpawnReason;Lnet/minecraft/core/BlockPos;Lnet/minecraft/util/RandomSource;)Z
+
+  protected static boolean isBrightEnoughToSpawn(net.minecraft.world.level.BlockAndLightGetter, net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/world/level/BlockAndLightGetter;Lnet/minecraft/core/BlockPos;)Z
+
+  public int getAmbientSoundInterval();
+    descriptor: ()I
+
+  public boolean removeWhenFarAway(double);
+    descriptor: (D)Z
+
+  protected int getBaseExperienceReward(net.minecraft.server.level.ServerLevel);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;)I
+
+  public abstract boolean isFood(net.minecraft.world.item.ItemStack);
+    descriptor: (Lnet/minecraft/world/item/ItemStack;)Z
+
+  public net.minecraft.world.InteractionResult mobInteract(net.minecraft.world.entity.player.Player, net.minecraft.world.InteractionHand);
+    descriptor: (Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/InteractionHand;)Lnet/minecraft/world/InteractionResult;
+
+  protected void playEatingSound();
+    descriptor: ()V
+
+  public boolean canFallInLove();
+    descriptor: ()Z
+
+  public void setInLove(net.minecraft.world.entity.player.Player);
+    descriptor: (Lnet/minecraft/world/entity/player/Player;)V
+
+  public void setInLoveTime(int);
+    descriptor: (I)V
+
+  public int getInLoveTime();
+    descriptor: ()I
+
+  public net.minecraft.server.level.ServerPlayer getLoveCause();
+    descriptor: ()Lnet/minecraft/server/level/ServerPlayer;
+
+  public boolean isInLove();
+    descriptor: ()Z
+
+  public void resetLove();
+    descriptor: ()V
+
+  public boolean canMate(net.minecraft.world.entity.animal.Animal);
+    descriptor: (Lnet/minecraft/world/entity/animal/Animal;)Z
+
+  public void spawnChildFromBreeding(net.minecraft.server.level.ServerLevel, net.minecraft.world.entity.animal.Animal);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/animal/Animal;)V
+
+  public void finalizeSpawnChildFromBreeding(net.minecraft.server.level.ServerLevel, net.minecraft.world.entity.animal.Animal, net.minecraft.world.entity.AgeableMob);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/animal/Animal;Lnet/minecraft/world/entity/AgeableMob;)V
+
+  public void handleEntityEvent(byte);
+    descriptor: (B)V
+
+  public net.minecraft.world.phys.Vec3 getDismountLocationForPassenger(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)Lnet/minecraft/world/phys/Vec3;
+
+  private void lambda$finalizeSpawnChildFromBreeding$1(net.minecraft.world.entity.animal.Animal, net.minecraft.world.entity.AgeableMob, net.minecraft.server.level.ServerPlayer);
+    descriptor: (Lnet/minecraft/world/entity/animal/Animal;Lnet/minecraft/world/entity/AgeableMob;Lnet/minecraft/server/level/ServerPlayer;)V
+
+  private static java.util.Optional lambda$finalizeSpawnChildFromBreeding$0(net.minecraft.world.entity.animal.Animal);
+    descriptor: (Lnet/minecraft/world/entity/animal/Animal;)Ljava/util/Optional;
+}

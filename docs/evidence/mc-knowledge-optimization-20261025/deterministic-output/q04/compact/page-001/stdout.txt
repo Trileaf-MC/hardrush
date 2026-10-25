@@ -1,0 +1,9 @@
+{"ok":true,"source":{"edition":"Java","minecraft_version":"26.3","kind":"vanilla-server","integrity":"matches server bundle SHA-256","jar_id":"sha256:a362163eec5d1612","side":"server"},"decompiled":{"class":"net.minecraft.world.entity.monster.skeleton.Skeleton","member":"tick","descriptor":"()V","view":"method"},"total_lines":11,"total_chars":249,"returned_range":{"start_line":5,"start_char":0,"end_line":12,"end_char":0},"truncated":false,"next":null,"evidence":{"path":"/private/tmp/hardrush-mc-optimization-20261025/deterministic-output/workspace/.local/mc-knowledge/evidence/cd9344d018a9e979740c974d26ea975ed59613104135eb8d4e9d532aea61fd0a.json","id":"sha256:cd9344d018a9e979"},"warnings":[],"completeness":"complete","format":"compact","metrics":{"elapsed_ms":112.64,"body_chars":148,"output_chars":962}}
+public class Skeleton extends AbstractSkeleton {
+   @Override
+   public void tick() {
+      this.freezingTracker.tick();
+      super.tick();
+   }
+}
+

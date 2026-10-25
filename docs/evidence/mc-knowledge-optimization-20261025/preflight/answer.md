@@ -1,0 +1,1 @@
+是，stdout 使用紧凑格式：输出明确包含 `"format":"compact"`。命令执行成功，返回值为 `"when_caused_by_living_non_player"`。

@@ -1,0 +1,8 @@
+{
+  "gradle.properties": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c",
+  "scripts/mc_knowledge_wiki.py": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87",
+  "scripts/mc_knowledge_output.py": "7c65e2302bd7da8a6e1f21a0202abb64b278cb31232f1e8ec4c54cb18dab6727",
+  "scripts/mc-knowledge.py": "c0447daec64d1af3e000bdc9ac036a9cdd98afd05ed0878963517904f53a100e",
+  ".agents/skills/minecraft-knowledge/SKILL.md": "e5f62de77a5cfecabf1a35f0951fd64a6a27f03cecfbdc923190ab90ee156595",
+  ".local/toolchains/java-home.txt": "0761e9b251763354792a22da0b724cbd6d31bcd657174dd460b114d79579bc60"
+}

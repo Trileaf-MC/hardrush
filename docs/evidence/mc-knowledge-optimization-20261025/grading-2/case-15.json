@@ -1,0 +1,71 @@
+{
+  "case_id": "case-15",
+  "topic": "T3",
+  "assessable": true,
+  "rubric_scores": {
+    "factual_accuracy": 90,
+    "evidence_quality": 10,
+    "total": 100
+  },
+  "items": [
+    {
+      "id": "P1",
+      "earned": 18,
+      "maximum": 18,
+      "reason": "明确所有合格玩家离开后普通笼不生成，Delay暂停保留、返回续计；要求所在区块持续方块实体tick，加载不能代替玩家条件。6+8+4。"
+    },
+    {
+      "id": "P2",
+      "earned": 8,
+      "maximum": 8,
+      "reason": "默认16格，明确以笼中心三维距离判定、存活非旁观者，创造可激活，限定不误导。6+2。"
+    },
+    {
+      "id": "P3",
+      "earned": 16,
+      "maximum": 16,
+      "reason": "初始Delay20；常规下限200、最大配置800且排除800，实际200…799；明确正数递减、减为0后的下一活跃tick尝试，-1先重设。3+4+5+4。"
+    },
+    {
+      "id": "P4",
+      "earned": 8,
+      "maximum": 8,
+      "reason": "一轮最多4次尝试，明确并非保证成功4只，失败分支可改变成功数量。5+3。"
+    },
+    {
+      "id": "P5",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "附近同类默认6，达到6立即结束批次并重抽；明确局部区域内同类计数，非全世界自然刷怪上限。7+3。"
+    },
+    {
+      "id": "P6",
+      "earned": 16,
+      "maximum": 16,
+      "reason": "普通碰撞/位置/生成条件导致整轮无成功且无提前退出时保持0、下一活跃tick重试；至少成功一次批末重设；达到附近上限或类型/加载/加入失败会立即重设返回。7+4+5。"
+    },
+    {
+      "id": "P7",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "默认14格；已激活登记后走远不取消登记/暂停，且有tick、并发上限、本轮配额和配置限制；用状态机/游戏时间戳和本笼追踪数量，不能套普通4次/附近6/200…799；失败不推进成功计数或重设成功间隔，后续tick可再试。3+6+3+2。"
+    },
+    {
+      "id": "E1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确Java26.3原版服务端及制品来源；BaseSpawner默认值/serverTick/delay可定位；TrialSpawner/State/StateData/PlayerDetector或FullConfig支持试炼区别；明确静态核对未游戏实测。2+4+3+1。"
+    }
+  ],
+  "major_errors": [],
+  "omissions": [],
+  "citations": [
+    "BaseSpawner字段/初始化",
+    "BaseSpawner.serverTick / delay",
+    "EntityGetter.hasNearbyAlivePlayer",
+    "TrialSpawner.FullConfig / TrialSpawnerConfig",
+    "TrialSpawnerState.ACTIVE",
+    "TrialSpawnerStateData.tryDetectPlayers / isReadyToSpawnNextMob"
+  ],
+  "notes": "仅依据最终答案逐项评分；试炼预设、47格追踪、冷却等次级细节不因篇幅加分，未要求量表排除的细节。P3推进子项允许部分分，明确两项而漏-1重设时给3/4；盲化<workspace>路径不扣分。"
+}

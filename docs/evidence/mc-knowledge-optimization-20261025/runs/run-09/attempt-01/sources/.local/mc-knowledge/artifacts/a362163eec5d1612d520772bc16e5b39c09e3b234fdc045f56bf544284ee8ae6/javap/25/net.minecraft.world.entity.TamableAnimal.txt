@@ -1,0 +1,117 @@
+Compiled from "TamableAnimal.java"
+public abstract class net.minecraft.world.entity.TamableAnimal extends net.minecraft.world.entity.animal.Animal implements net.minecraft.world.entity.OwnableEntity {
+  public static final int TELEPORT_WHEN_DISTANCE_IS_SQ;
+    descriptor: I
+  private static final int MIN_HORIZONTAL_DISTANCE_FROM_TARGET_AFTER_TELEPORTING;
+    descriptor: I
+  private static final int MAX_HORIZONTAL_DISTANCE_FROM_TARGET_AFTER_TELEPORTING;
+    descriptor: I
+  private static final int MAX_VERTICAL_DISTANCE_FROM_TARGET_AFTER_TELEPORTING;
+    descriptor: I
+  private static final boolean DEFAULT_ORDERED_TO_SIT;
+    descriptor: Z
+  protected static final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Byte> DATA_FLAGS_ID;
+    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;
+  protected static final net.minecraft.network.syncher.EntityDataAccessor<java.util.Optional<net.minecraft.world.entity.EntityReference<net.minecraft.world.entity.LivingEntity>>> DATA_OWNERUUID_ID;
+    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;
+  private boolean orderedToSit;
+    descriptor: Z
+  protected net.minecraft.world.entity.TamableAnimal(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.TamableAnimal>, net.minecraft.world.level.Level);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+
+  protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData$Builder);
+    descriptor: (Lnet/minecraft/network/syncher/SynchedEntityData$Builder;)V
+
+  protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueOutput;)V
+
+  protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueInput;)V
+
+  public boolean canBeLeashed();
+    descriptor: ()Z
+
+  protected void spawnTamingParticles(boolean);
+    descriptor: (Z)V
+
+  public void handleEntityEvent(byte);
+    descriptor: (B)V
+
+  public boolean isTame();
+    descriptor: ()Z
+
+  public void setTame(boolean, boolean);
+    descriptor: (ZZ)V
+
+  protected void applyTamingSideEffects();
+    descriptor: ()V
+
+  protected void feed(net.minecraft.world.entity.player.Player, net.minecraft.world.InteractionHand, net.minecraft.world.item.ItemStack, float, float);
+    descriptor: (Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/InteractionHand;Lnet/minecraft/world/item/ItemStack;FF)V
+
+  public boolean isInSittingPose();
+    descriptor: ()Z
+
+  public void setInSittingPose(boolean);
+    descriptor: (Z)V
+
+  public net.minecraft.world.entity.EntityReference<net.minecraft.world.entity.LivingEntity> getOwnerReference();
+    descriptor: ()Lnet/minecraft/world/entity/EntityReference;
+
+  public void setOwner(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)V
+
+  public void setOwnerReference(net.minecraft.world.entity.EntityReference<net.minecraft.world.entity.LivingEntity>);
+    descriptor: (Lnet/minecraft/world/entity/EntityReference;)V
+
+  public void tame(net.minecraft.world.entity.player.Player);
+    descriptor: (Lnet/minecraft/world/entity/player/Player;)V
+
+  public boolean canAttack(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)Z
+
+  public boolean isOwnedBy(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)Z
+
+  public boolean wantsToAttack(net.minecraft.world.entity.LivingEntity, net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/LivingEntity;)Z
+
+  public net.minecraft.world.scores.PlayerTeam getTeam();
+    descriptor: ()Lnet/minecraft/world/scores/PlayerTeam;
+
+  protected boolean considersEntityAsAlly(net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;)Z
+
+  public void die(net.minecraft.world.damagesource.DamageSource);
+    descriptor: (Lnet/minecraft/world/damagesource/DamageSource;)V
+
+  public boolean isOrderedToSit();
+    descriptor: ()Z
+
+  public void setOrderedToSit(boolean);
+    descriptor: (Z)V
+
+  public void tryToTeleportToOwner();
+    descriptor: ()V
+
+  public boolean shouldTryTeleportToOwner();
+    descriptor: ()Z
+
+  private void teleportToAroundBlockPos(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)V
+
+  private boolean maybeTeleportTo(int, int, int);
+    descriptor: (III)Z
+
+  private boolean canTeleportTo(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Z
+
+  public final boolean unableToMoveToOwner();
+    descriptor: ()Z
+
+  protected boolean canFlyToOwner();
+    descriptor: ()Z
+
+  static {};
+    descriptor: ()V
+}

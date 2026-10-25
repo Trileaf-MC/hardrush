@@ -1,0 +1,29 @@
+{
+  "state": "completed",
+  "exit_code": 0,
+  "stdout_chars": 792,
+  "stdout_tokens_o200k": 250,
+  "body_chars": 35,
+  "body_tokens_o200k": 10,
+  "truncated": false,
+  "output_truncated": false,
+  "body_truncated": false,
+  "completeness": "complete",
+  "returned_range": {
+    "start_line": 1,
+    "start_char": 0,
+    "end_line": 2,
+    "end_char": 0
+  },
+  "next": null,
+  "evidence_reference_present": true,
+  "source_identity": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "integrity": "matches server bundle SHA-256",
+    "jar_id": "sha256:a362163eec5d1612",
+    "side": "server"
+  },
+  "body_sha256": "a88aa9da4ffa73bbf7bd54972e02a651372c6fff19e63414dc4acaea3b940392"
+}

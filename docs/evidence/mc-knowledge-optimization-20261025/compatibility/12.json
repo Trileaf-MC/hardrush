@@ -1,0 +1,75 @@
+{
+  "result": {
+    "index": 12,
+    "query": [
+      "search",
+      "ConversionTracker"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 0,
+    "new_exit": 0
+  },
+  "legacy": {
+    "ok": true,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "coverage": "cached decompilations only; includes partial method views",
+    "cached_classes": 2,
+    "total_matches": 0,
+    "matches_limited": false,
+    "text": "",
+    "total_lines": 1,
+    "total_chars": 0,
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 2,
+      "end_char": 0
+    },
+    "truncated": false,
+    "next": null,
+    "metrics": {
+      "elapsed_ms": 48.27,
+      "body_chars": 0,
+      "output_chars": 788
+    }
+  },
+  "optimized": {
+    "ok": true,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "coverage": "cached decompilations only; includes partial method views",
+    "cached_classes": 2,
+    "total_matches": 0,
+    "matches_limited": false,
+    "text": "",
+    "total_lines": 1,
+    "total_chars": 0,
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 2,
+      "end_char": 0
+    },
+    "truncated": false,
+    "next": null,
+    "metrics": {
+      "elapsed_ms": 48.61,
+      "body_chars": 0,
+      "output_chars": 788
+    }
+  }
+}

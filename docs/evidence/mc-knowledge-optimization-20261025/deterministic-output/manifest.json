@@ -1,0 +1,84 @@
+{
+  "queries": [
+    {
+      "id": "q03",
+      "compatibility_index": 3,
+      "argv": [
+        "outline",
+        "Skeleton",
+        "--member",
+        "tick"
+      ]
+    },
+    {
+      "id": "q04",
+      "compatibility_index": 4,
+      "argv": [
+        "source",
+        "Skeleton",
+        "--member",
+        "tick"
+      ]
+    },
+    {
+      "id": "q05",
+      "compatibility_index": 5,
+      "argv": [
+        "source",
+        "Skeleton",
+        "--member",
+        "<init>"
+      ]
+    },
+    {
+      "id": "q06",
+      "compatibility_index": 6,
+      "argv": [
+        "source",
+        "Wolf",
+        "--member",
+        "registerGoals"
+      ]
+    },
+    {
+      "id": "q07",
+      "compatibility_index": 7,
+      "argv": [
+        "data",
+        "damage_type/mob_attack",
+        "--pointer",
+        "/scaling"
+      ]
+    },
+    {
+      "id": "q08",
+      "compatibility_index": 8,
+      "argv": [
+        "data",
+        "tags/entity_type/freeze_immune_entity_types"
+      ]
+    }
+  ],
+  "frozen_source_sha256": {
+    "final/scripts/mc-knowledge.py": "c0447daec64d1af3e000bdc9ac036a9cdd98afd05ed0878963517904f53a100e",
+    "final/scripts/mc_knowledge_output.py": "7c65e2302bd7da8a6e1f21a0202abb64b278cb31232f1e8ec4c54cb18dab6727",
+    "final/scripts/mc_knowledge_wiki.py": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87",
+    "final/.agents/skills/minecraft-knowledge/SKILL.md": "e5f62de77a5cfecabf1a35f0951fd64a6a27f03cecfbdc923190ab90ee156595",
+    "baseline/.agents/skills/minecraft-knowledge/SKILL.md": "747c8af80cdb40755846454b27d9b7e8637785fd13289e8797b339ceeabc3d7c",
+    "inputs/gradle.properties": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c",
+    "inputs/.local/toolchains/java-home.txt": "0761e9b251763354792a22da0b724cbd6d31bcd657174dd460b114d79579bc60"
+  },
+  "cli_sha256": "c0447daec64d1af3e000bdc9ac036a9cdd98afd05ed0878963517904f53a100e",
+  "max_pages": 100,
+  "model_calls": 0,
+  "participant_results_read": false,
+  "cache_policy": "Shared isolated generated cache. One JSON warm-up per query, then measured formats in alternating order. Raw Gradle inputs unchanged.",
+  "measurement_scope": "Exact standalone CLI stdout, not tool wrappers or native model billing.",
+  "limitations": [
+    "Fixed deterministic query policy; wall-clock timing fields can still vary.",
+    "Default compact whole-output cap differs from default JSON; first responses may contain different body extents.",
+    "Complete-body comparisons require equal reconstructed body hashes and no unresolved continuation.",
+    "Provenance file reads are a separately specified policy, not observed LLM behavior.",
+    "No inference about LLM correctness, search strategy, cumulative input or causal savings."
+  ]
+}

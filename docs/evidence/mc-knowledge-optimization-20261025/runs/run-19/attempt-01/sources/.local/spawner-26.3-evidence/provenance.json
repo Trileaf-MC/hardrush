@@ -1,0 +1,30 @@
+{
+  "edition": "Java",
+  "version": "26.3",
+  "official_release": "https://www.minecraft.net/en-us/article/minecraft-java-edition-26-3",
+  "official_server_url": "https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar",
+  "bundle_sha1": "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c",
+  "extracted_server_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+  "decompiler": "Vineflower 1.12.0",
+  "method": "Static inspection only; no game process started",
+  "source_copies": {
+    "BaseSpawner.java": "b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb",
+    "TrialSpawner.java": "5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b",
+    "TrialSpawnerState.java": "820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc",
+    "TrialSpawnerStateData.java": "5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39",
+    "TrialSpawnerConfig.java": "361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e",
+    "PlayerDetector.java": "cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684",
+    "EntityGetter-hasNearbyAlivePlayer.java": "9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0",
+    "TrialSpawnerBlockEntity.java": "36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0",
+    "LevelChunk-tick.java": "5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608",
+    "LevelChunk-isTicking.java": "ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317",
+    "ServerLevel-isSpawnerBlockEnabled.java": "d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32"
+  },
+  "reproduce": [
+    "python3 scripts/mc-knowledge.py doctor",
+    "python3 scripts/mc-knowledge.py source net.minecraft.world.level.BaseSpawner --max-lines 360 --max-chars 21000",
+    "python3 scripts/mc-knowledge.py source net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState --member tickAndGetNext --max-lines 180 --max-chars 10500",
+    "python3 scripts/mc-knowledge.py source net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData --member tryDetectPlayers --max-lines 150 --max-chars 9000",
+    "python3 scripts/mc-knowledge.py data trial_spawner/trial_chamber/melee/zombie/normal"
+  ]
+}

@@ -1,0 +1,1058 @@
+[
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.agents/skills/minecraft-knowledge/SKILL.md",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.agents/skills/minecraft-knowledge/SKILL.md",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.agents/skills/minecraft-knowledge/SKILL.md"
+    ],
+    "archive_relative_path": ".agents/skills/minecraft-knowledge/SKILL.md",
+    "portable_relative_path": "sources/.agents/skills/minecraft-knowledge/SKILL.md",
+    "category": "other_workspace_text",
+    "sha256": "747c8af80cdb40755846454b27d9b7e8637785fd13289e8797b339ceeabc3d7c"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.server.level.ServerLevel.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.server.level.ServerLevel.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.server.level.ServerLevel.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.server.level.ServerLevel.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.server.level.ServerLevel.txt",
+    "category": "cli_cache",
+    "sha256": "6ac337caa5817e848541afe5934fd4643df383c6939881d23d9808558faf3d13"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BlockAndLightGetter.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BlockAndLightGetter.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BlockAndLightGetter.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BlockAndLightGetter.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BlockAndLightGetter.txt",
+    "category": "cli_cache",
+    "sha256": "85fc25321b3d86afe4c4b33787a176e306b9038494635be0d71da19a9dd190db"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BlockGetter.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BlockGetter.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BlockGetter.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BlockGetter.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BlockGetter.txt",
+    "category": "cli_cache",
+    "sha256": "778070fdcd4b6b4dc93cbdb49497ed40ddcc2eadcaf6a10aa0ffb0e9b2ca8a93"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.CollisionGetter.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.CollisionGetter.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.CollisionGetter.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.CollisionGetter.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.CollisionGetter.txt",
+    "category": "cli_cache",
+    "sha256": "dae726b36132835e74b33789bfed2d84fcbada7f62bf385535f716863d5fe222"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.CommonLevelAccessor.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.CommonLevelAccessor.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.CommonLevelAccessor.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.CommonLevelAccessor.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.CommonLevelAccessor.txt",
+    "category": "cli_cache",
+    "sha256": "a730990f80df7a1e6460836ef9efcb3db11ec7e20176d14a70f22b0f605a3173"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.EntityGetter.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.EntityGetter.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.EntityGetter.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.EntityGetter.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.EntityGetter.txt",
+    "category": "cli_cache",
+    "sha256": "4e31fd3af5b7af40fcc1957e9bb73e749d61a04534425470f3dacb85fc6f4c75"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.Level.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.Level.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.Level.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.Level.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.Level.txt",
+    "category": "cli_cache",
+    "sha256": "58acf891b62460b2fe340958f440ace3b23cc1ddcaf627647da7b6dd457df0e9"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelAccessor.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelAccessor.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelAccessor.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelAccessor.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelAccessor.txt",
+    "category": "cli_cache",
+    "sha256": "50d5d638b1b76fba83f6a2dc726e26ed5796165f05746d795d83f6e82cba6d80"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelHeightAccessor.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelHeightAccessor.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelHeightAccessor.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelHeightAccessor.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelHeightAccessor.txt",
+    "category": "cli_cache",
+    "sha256": "17bb81e1563f2d9d32ebfc02f58287423ac07c8b0de2f28698bd005741032315"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelReader.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelReader.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelReader.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelReader.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelReader.txt",
+    "category": "cli_cache",
+    "sha256": "60844e8c19b34245a43735aa42613ad4648f078658640180ed3f0a48c6427aa7"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelSimulatedRW.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelSimulatedRW.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelSimulatedRW.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelSimulatedRW.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelSimulatedRW.txt",
+    "category": "cli_cache",
+    "sha256": "40bfb2753b0a63e46a6ec91fec28b7ebf44249110f5dad5450339d91866a5aa6"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelSimulatedReader.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelSimulatedReader.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelSimulatedReader.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelSimulatedReader.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelSimulatedReader.txt",
+    "category": "cli_cache",
+    "sha256": "2ee514a19e3bd91314fabdc4116598d79d47e037d51e6f837e9590591cd6b312"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelWriter.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelWriter.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelWriter.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelWriter.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.LevelWriter.txt",
+    "category": "cli_cache",
+    "sha256": "283c5ebccbcba0501594e4d065200eeaa0928a99615ac33baee81ffeb7985d28"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.ScheduledTickAccess.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.ScheduledTickAccess.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.ScheduledTickAccess.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.ScheduledTickAccess.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.ScheduledTickAccess.txt",
+    "category": "cli_cache",
+    "sha256": "ef1d632f1c6851c7e1d3e5f3f9d5630d0c31eaa2bb4c66698d8f90d7367047b8"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.SignalGetter.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.SignalGetter.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.SignalGetter.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.SignalGetter.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.SignalGetter.txt",
+    "category": "cli_cache",
+    "sha256": "8b199931aa8f773efaad7175839689c5ebe3d40cf75128defe2c0557bd859ade"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.biome.BiomeResolver.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.biome.BiomeResolver.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.biome.BiomeResolver.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.biome.BiomeResolver.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.biome.BiomeResolver.txt",
+    "category": "cli_cache",
+    "sha256": "77cfa9f7c2a0f5d9de4b99e772980497e3fc597c000fb0b6ed8fa2730630a4bb"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawner.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawner.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawner.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawner.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawner.txt",
+    "category": "cli_cache",
+    "sha256": "58c6e97836f4766459ea2a5ccfb661a60e598335ab4715e797af22a43e87ac78"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState.txt",
+    "category": "cli_cache",
+    "sha256": "0df37b16d78bb1004f7a1294f5fd2644f87dacb1beb8050584b8b92313cf90de"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity.txt",
+    "category": "cli_cache",
+    "sha256": "26ab9d62625fcc34e35b19e08eabc524f7739a9fb0b68ebd7196fd6ca8f0e692"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk.txt"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk.txt",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk.txt",
+    "category": "cli_cache",
+    "sha256": "a901974c181925af6ea8c0ea8e1d4c503bd63dcf37703e9b311c37a524aec5a5"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.java",
+    "category": "cli_cache",
+    "sha256": "1eccc27c61b483954c1aad907a336cf6502baf5a32f63875652cc85709051cc4"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.json",
+    "category": "cli_cache",
+    "sha256": "5bfc4132384fff56ecf450f55b1301a61c48cb424d6be1cc16574afc14f7e1fe"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0/source.java",
+    "category": "cli_cache",
+    "sha256": "3d224068dc0dac0d38d4b98f00f81575d73e8972c4c8b515e8258bde6dbeef5e"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/36d0067b6d040ddd278e8a0deb02270c9fc79807d21e2fcd7f8a9f02860253a0/source.json",
+    "category": "cli_cache",
+    "sha256": "d6b4ef04f557f323fa6b40c7e179e71c6e2f45270d1552fa51c582440e1323f7"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4c28778d7f13617d17902431456a40a3fd79c7a11680eb3a413d3c258aa32de8/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4c28778d7f13617d17902431456a40a3fd79c7a11680eb3a413d3c258aa32de8/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4c28778d7f13617d17902431456a40a3fd79c7a11680eb3a413d3c258aa32de8/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4c28778d7f13617d17902431456a40a3fd79c7a11680eb3a413d3c258aa32de8/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4c28778d7f13617d17902431456a40a3fd79c7a11680eb3a413d3c258aa32de8/source.java",
+    "category": "cli_cache",
+    "sha256": "2a1853f04f12faefa2495795fd98391ef99248f37ef3074abff8f882b5a9efc2"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4c28778d7f13617d17902431456a40a3fd79c7a11680eb3a413d3c258aa32de8/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4c28778d7f13617d17902431456a40a3fd79c7a11680eb3a413d3c258aa32de8/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4c28778d7f13617d17902431456a40a3fd79c7a11680eb3a413d3c258aa32de8/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4c28778d7f13617d17902431456a40a3fd79c7a11680eb3a413d3c258aa32de8/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4c28778d7f13617d17902431456a40a3fd79c7a11680eb3a413d3c258aa32de8/source.json",
+    "category": "cli_cache",
+    "sha256": "e28f4ff1823626653c90cf41ad3ca6e5239506fa70071d2828cfa4c711c8bd04"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.java",
+    "category": "cli_cache",
+    "sha256": "19a19e692f52d6e3ee74436f48a54b25f3126cf13f980148a8310fa8aec18ecc"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.json",
+    "category": "cli_cache",
+    "sha256": "416ed8825af308823dfac02478f02263ad15b2aa5e52c6c46f6b5c03fe652af5"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.java",
+    "category": "cli_cache",
+    "sha256": "c2f6740073505ae56adbce87c1f0d832b2178fb1676d0ff15861c461e9dcbcca"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.json",
+    "category": "cli_cache",
+    "sha256": "2b9a6c783ca4465afc0808108018908f0f36efc4fa5cd18350ad7d4be6d0a458"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.java",
+    "category": "cli_cache",
+    "sha256": "b8b590ee4be641d382a8a2d06783953a53df604b591fd5b706ed9075156232e3"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.json",
+    "category": "cli_cache",
+    "sha256": "1d2067165f8b263a2d4e1185f0f24e6d0a7dbcb7926caf61913fa97723e630e7"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.java",
+    "category": "cli_cache",
+    "sha256": "f23bf543a8d942720fe4ba2bb251ce6755f302cd7d3bbd7052faeffd553cc7c5"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.json",
+    "category": "cli_cache",
+    "sha256": "21d019e390062c032debc7f67198f956637b6d03430ce94b15db1bdd70cd1929"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.java",
+    "category": "cli_cache",
+    "sha256": "079b8fcd1faf4f7f2dd946eccd5ecb26f5db1ba9f063bd3bd0fcf92c51834ed0"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.json",
+    "category": "cli_cache",
+    "sha256": "502e5ab867786f9ba723b5fb98a7ac4d18841d5fbf785d6764e97491cb62081b"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.java",
+    "category": "cli_cache",
+    "sha256": "d44047341e0242da0a8fdec1f2b7fbac04949595aa4b3eba26d241cc9f7ad036"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.json",
+    "category": "cli_cache",
+    "sha256": "fb0c496f75ccb446cf884a440fa670686106aa8f329d8971d8a3d02574579ff8"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.java",
+    "category": "cli_cache",
+    "sha256": "37b4edff9c35facf37c0efe62bcc5ebdb665c4f111f062bdb03038b4aa2d2454"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.json",
+    "category": "cli_cache",
+    "sha256": "e4e028c7e9aab8f421dfd78e4e6522f59fee541439a6ee11a7d62c122aa2c1aa"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.java",
+    "category": "cli_cache",
+    "sha256": "62bc77dd7e690d9ebd55f7ad05f0dd8af70fad949113238c99600784d859cb1b"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/bb09183e8550f772c9b4bc5f48833341e6fd7f595b0a28c1f6b82d7229d3a802/source.json",
+    "category": "cli_cache",
+    "sha256": "0e3f090debd8a8da4626393ab7752ee9d0f5d25f445791e7efa20cbb288e85df"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.java",
+    "category": "cli_cache",
+    "sha256": "b614ed9947b18f42daecfd115950010be289e9d199b6accf1f95f674b1631ddc"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.json",
+    "category": "cli_cache",
+    "sha256": "b3eb4a3249562c7d2594de49384284cdd9582309793f698f85c5a171bad52acd"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.java",
+    "category": "cli_cache",
+    "sha256": "77d6c92fe9c290462ba40da35652a3a7651fd87d97c5616801b48950891843bd"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.json",
+    "category": "cli_cache",
+    "sha256": "795aa144343b5090a6e1a4d39953de64a3bc046270b89b30c83aa1c86f7d0c88"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.java"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.java",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.java",
+    "category": "cli_cache",
+    "sha256": "a90741d7cead411f354d48646e8621c1f37b7376e9238302531174669a37eb1b"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.json"
+    ],
+    "archive_relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.json",
+    "portable_relative_path": "sources/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.json",
+    "category": "cli_cache",
+    "sha256": "3ca0de4c638f359d28ae082953033b600e6a0e951c3d426a1ca6233c153dc3eb"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/BaseSpawner.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/BaseSpawner.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/BaseSpawner.java"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/BaseSpawner.java",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/BaseSpawner.java",
+    "category": "other_workspace_text",
+    "sha256": "37b4edff9c35facf37c0efe62bcc5ebdb665c4f111f062bdb03038b4aa2d2454"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/EntityGetter-hasNearbyAlivePlayer.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/EntityGetter-hasNearbyAlivePlayer.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/EntityGetter-hasNearbyAlivePlayer.java"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/EntityGetter-hasNearbyAlivePlayer.java",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/EntityGetter-hasNearbyAlivePlayer.java",
+    "category": "other_workspace_text",
+    "sha256": "079b8fcd1faf4f7f2dd946eccd5ecb26f5db1ba9f063bd3bd0fcf92c51834ed0"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/LevelChunk-isTicking.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/LevelChunk-isTicking.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/LevelChunk-isTicking.java"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/LevelChunk-isTicking.java",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/LevelChunk-isTicking.java",
+    "category": "other_workspace_text",
+    "sha256": "d44047341e0242da0a8fdec1f2b7fbac04949595aa4b3eba26d241cc9f7ad036"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/LevelChunk-tick.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/LevelChunk-tick.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/LevelChunk-tick.java"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/LevelChunk-tick.java",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/LevelChunk-tick.java",
+    "category": "other_workspace_text",
+    "sha256": "c2f6740073505ae56adbce87c1f0d832b2178fb1676d0ff15861c461e9dcbcca"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/PlayerDetector.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/PlayerDetector.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/PlayerDetector.java"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/PlayerDetector.java",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/PlayerDetector.java",
+    "category": "other_workspace_text",
+    "sha256": "b614ed9947b18f42daecfd115950010be289e9d199b6accf1f95f674b1631ddc"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/ServerLevel-isSpawnerBlockEnabled.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/ServerLevel-isSpawnerBlockEnabled.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/ServerLevel-isSpawnerBlockEnabled.java"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/ServerLevel-isSpawnerBlockEnabled.java",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/ServerLevel-isSpawnerBlockEnabled.java",
+    "category": "other_workspace_text",
+    "sha256": "77d6c92fe9c290462ba40da35652a3a7651fd87d97c5616801b48950891843bd"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawner.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawner.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawner.java"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/TrialSpawner.java",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/TrialSpawner.java",
+    "category": "other_workspace_text",
+    "sha256": "19a19e692f52d6e3ee74436f48a54b25f3126cf13f980148a8310fa8aec18ecc"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerBlockEntity.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerBlockEntity.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerBlockEntity.java"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/TrialSpawnerBlockEntity.java",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/TrialSpawnerBlockEntity.java",
+    "category": "other_workspace_text",
+    "sha256": "3d224068dc0dac0d38d4b98f00f81575d73e8972c4c8b515e8258bde6dbeef5e"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerConfig.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerConfig.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerConfig.java"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/TrialSpawnerConfig.java",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/TrialSpawnerConfig.java",
+    "category": "other_workspace_text",
+    "sha256": "1eccc27c61b483954c1aad907a336cf6502baf5a32f63875652cc85709051cc4"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerState.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerState.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerState.java"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/TrialSpawnerState.java",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/TrialSpawnerState.java",
+    "category": "other_workspace_text",
+    "sha256": "f23bf543a8d942720fe4ba2bb251ce6755f302cd7d3bbd7052faeffd553cc7c5"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerStateData.java",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerStateData.java",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/TrialSpawnerStateData.java"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/TrialSpawnerStateData.java",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/TrialSpawnerStateData.java",
+    "category": "other_workspace_text",
+    "sha256": "b8b590ee4be641d382a8a2d06783953a53df604b591fd5b706ed9075156232e3"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "a723713a81964a056a70ba06b8658438b130b68231de1d9bf86d14d4db5d7775"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/breeze/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "671e6b2d3c0bae579a180f581b4de6f7cd8060ba89f810c8aafa893572b1c95d"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "756f4295eaac41526feffd65040d6585e7bfc772731d44f46b3edee5aa4ceb5f"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/husk/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "2bd3901ddbac943891e4c1aeff03db602c43649a5088ac05f6c58ab4b938a7a9"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "966aba89ff4994ac62affec269190665b69e3636870b2b7cb520d9ba6906273e"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/spider/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "4c553333ed8631fe4b34538b5cdcf958d00a9549f37f4d23d4d7077818fbc46a"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "aa77f44defcf188929049a98f3df40f51721f64bb10fcf2598f5ae8b0343f90e"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/melee/zombie/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "9f93848843edc6bfa8bda551e66099912e9fe2ae10f8ba770e8b5119108ada2a"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "ef9bb1e6e320af74843235f686cba39802bf0de40b0436902ca45071d4e6d7e1"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "ecda078b8b30a15d22b7555fc8e1da6bcbbf58b0a87ebac0ca058bcfbb2eb8a6"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "58c11e442a819b367165fa545713cf8f4a91a4f0e0ad8696e4f849068595258d"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "4039ff731a040ad404c3456c7a87224e1c78b66a20ed8df64ddd7619c6e06b8c"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "79e6b78e23e9ad0ae73e0c8990dfd554f824de396689f24f0ed075d657b5ee19"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/ranged/stray/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "13b722d369d778e6799f57d3cb080fb600575b529f66382877d7e67175727f37"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "a3660446359fcb009c1b91b542c7f3bc6b5e417861256639046db5ab6c30dcb4"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "013223dc20603f1686861c9cba0ce6ca20dab149f6dd1a83c149c505ec0a5007"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "d798230eada5f9ad31fc88430263a345e02b01f24b072afccc25e8fb1c85f24b"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "e487e2b5e55bcefaaf52b550716a294b227df42d0e5e43df4de1b18b7acfe97b"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "529a4d063096c33b4a0ff5eac5c3d9522f361cdeef7bfd3c10b210ea29303d9e"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "42def85ece1c0abf0774a6526653cf6a2a5d0494f81a6e64aa1c0e3a071b0851"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "1579f371bd4d7c947fc8afdae662ab94d865c0ccee02646c1dcb28951162c401"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "82801da3e48f601c6120eea3dc248c747d83e5fb43092bf9cd4ba7dc0546b83c"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "f5a1e290bc8ae3ad7576e23ad61b828de39ccd10a6f835cbdd50607176b372b5"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "9e3e4f0d7dc265d335634e51ba14b38986e3a7e9c099d6c8d1d481dde66108f3"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "66bf53a1806fc036f756437fac357912f04eff7e77e8000d18f55ca540a44b73"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "a03b83abdc827e6bb2f2cbc8cf393b909c732937db62a792155c46bf4541660d"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/normal.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/normal.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/normal.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/normal.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/normal.json",
+    "category": "other_workspace_text",
+    "sha256": "8b5dad37af109513800a98b02483874ecb340ad86307bdb4c3bdc8334b5cd987"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/ominous.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/ominous.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/ominous.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/ominous.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/data/minecraft/trial_spawner/trial_chamber/small_melee/slime/ominous.json",
+    "category": "other_workspace_text",
+    "sha256": "49a751c1734a86803b72f343bee7d2e9144cc310dfd03027338144d092d6f7ac"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/provenance.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/provenance.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/provenance.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/provenance.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/provenance.json",
+    "category": "other_workspace_text",
+    "sha256": "8479c9834c653274c481ba340501813bfc0376707a379c1a43d50731209de260"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/trial-config-values.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/trial-config-values.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/trial-config-values.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/trial-config-values.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/trial-config-values.json",
+    "category": "other_workspace_text",
+    "sha256": "e659930b88b91114c796ae54935d841059e83562c1b8010781d787705aa68311"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/version.json",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/version.json",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/spawner-26.3-evidence/version.json"
+    ],
+    "archive_relative_path": ".local/spawner-26.3-evidence/version.json",
+    "portable_relative_path": "sources/.local/spawner-26.3-evidence/version.json",
+    "category": "other_workspace_text",
+    "sha256": "70444a856374443fbd57e4b23e9acfdd50309b25906ced3e3cf658abf25dd3ae"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/toolchains/java-home.txt",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/toolchains/java-home.txt",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/.local/toolchains/java-home.txt"
+    ],
+    "archive_relative_path": ".local/toolchains/java-home.txt",
+    "portable_relative_path": "sources/.local/toolchains/java-home.txt",
+    "category": "other_workspace_text",
+    "sha256": "0761e9b251763354792a22da0b724cbd6d31bcd657174dd460b114d79579bc60"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/gradle.properties",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/gradle.properties",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/gradle.properties"
+    ],
+    "archive_relative_path": "gradle.properties",
+    "portable_relative_path": "sources/gradle.properties",
+    "category": "other_workspace_text",
+    "sha256": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/scripts/mc-knowledge.py",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/scripts/mc-knowledge.py",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/scripts/mc-knowledge.py"
+    ],
+    "archive_relative_path": "scripts/mc-knowledge.py",
+    "portable_relative_path": "sources/scripts/mc-knowledge.py",
+    "category": "other_workspace_text",
+    "sha256": "c0447daec64d1af3e000bdc9ac036a9cdd98afd05ed0878963517904f53a100e"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/scripts/mc_knowledge_output.py",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/scripts/mc_knowledge_output.py",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/scripts/mc_knowledge_output.py"
+    ],
+    "archive_relative_path": "scripts/mc_knowledge_output.py",
+    "portable_relative_path": "sources/scripts/mc_knowledge_output.py",
+    "category": "other_workspace_text",
+    "sha256": "7c65e2302bd7da8a6e1f21a0202abb64b278cb31232f1e8ec4c54cb18dab6727"
+  },
+  {
+    "source_absolute": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/scripts/mc_knowledge_wiki.py",
+    "source_aliases": [
+      "/private/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/scripts/mc_knowledge_wiki.py",
+      "/tmp/hardrush-mc-optimization-20261025/runs/run-19/attempt-01/workspace/scripts/mc_knowledge_wiki.py"
+    ],
+    "archive_relative_path": "scripts/mc_knowledge_wiki.py",
+    "portable_relative_path": "sources/scripts/mc_knowledge_wiki.py",
+    "category": "other_workspace_text",
+    "sha256": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87"
+  }
+]

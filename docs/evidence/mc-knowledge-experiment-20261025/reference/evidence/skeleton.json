@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "decompiled": {
+    "class": "net.minecraft.world.entity.monster.skeleton.Skeleton",
+    "compiler": "1.12.0",
+    "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/a435f90e407da2c07897d9faf1f3f5a369b7d2f770dd357dc0088acaf0627c9e/source.java",
+    "warnings": [],
+    "cache_hit": false,
+    "view": "class"
+  },
+  "text": "package net.minecraft.world.entity.monster.skeleton;\n\nimport com.google.common.annotations.VisibleForTesting;\nimport net.minecraft.network.syncher.EntityDataAccessor;\nimport net.minecraft.network.syncher.EntityDataSerializers;\nimport net.minecraft.network.syncher.SynchedEntityData;\nimport net.minecraft.network.syncher.SynchedEntityData.Builder;\nimport net.minecraft.sounds.SoundEvent;\nimport net.minecraft.sounds.SoundEvents;\nimport net.minecraft.world.damagesource.DamageSource;\nimport net.minecraft.world.entity.ConversionTracker;\nimport net.minecraft.world.entity.EntityType;\nimport net.minecraft.world.entity.EntityTypes;\nimport net.minecraft.world.level.Level;\nimport net.minecraft.world.level.storage.ValueInput;\nimport net.minecraft.world.level.storage.ValueOutput;\n\npublic class Skeleton extends AbstractSkeleton {\n   private static final EntityDataAccessor<Boolean> DATA_STRAY_CONVERSION_ID = SynchedEntityData.defineId(Skeleton.class, EntityDataSerializers.BOOLEAN);\n   private final ConversionTracker<AbstractSkeleton> freezingTracker = new ConversionTracker<>(\n      this, DATA_STRAY_CONVERSION_ID, () -> EntityTypes.STRAY, () -> 1048, () -> this.isInPowderSnow, \"FreezingTime\", 140, \"StrayConversionTime\", 300, null\n   );\n\n   public Skeleton(final EntityType<? extends Skeleton> type, final Level level) {\n      super(type, level);\n   }\n\n   @Override\n   protected void defineSynchedData(final Builder entityData) {\n      super.defineSynchedData(entityData);\n      entityData.define(DATA_STRAY_CONVERSION_ID, false);\n   }\n\n   @Override\n   public boolean isShaking() {\n      return this.freezingTracker.isConverting();\n   }\n\n   @Override\n   public void tick() {\n      this.freezingTracker.tick();\n      super.tick();\n   }\n\n   @Override\n   protected void addAdditionalSaveData(final ValueOutput output) {\n      super.addAdditionalSaveData(output);\n      this.freezingTracker.addAdditionalSaveData(output);\n   }\n\n   @Override\n   protected void readAdditionalSaveData(final ValueInput input) {\n      super.readAdditionalSaveData(input);\n      this.freezingTracker.readAdditionalSaveData(input);\n   }\n\n   @VisibleForTesting\n   public void startFreezeConversion(final int time) {\n      this.freezingTracker.startConversion(time);\n   }\n\n   @Override\n   public boolean canFreeze() {\n      return false;\n   }\n\n   @Override\n   protected SoundEvent getAmbientSound() {\n      return SoundEvents.SKELETON_AMBIENT;\n   }\n\n   @Override\n   protected SoundEvent getHurtSound(final DamageSource source) {\n      return SoundEvents.SKELETON_HURT;\n   }\n\n   @Override\n   protected SoundEvent getDeathSound() {\n      return SoundEvents.SKELETON_DEATH;\n   }\n\n   @Override\n   protected SoundEvent getStepSound() {\n      return SoundEvents.SKELETON_STEP;\n   }\n}\n",
+  "total_lines": 86,
+  "total_chars": 2749,
+  "returned_range": {
+    "start_line": 1,
+    "start_char": 0,
+    "end_line": 87,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 841.47,
+    "body_chars": 2749,
+    "output_chars": 3896
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "invocations": [
+    {
+      "call_id": "call_a0a0bf854a364c60b996fe4c189ac1bf",
+      "command": "python3 scripts/mc-knowledge.py --help",
+      "environment_default": "compact",
+      "command_environment_override": null,
+      "explicit_format": null,
+      "expected_format": "compact",
+      "query_kind": "help",
+      "visible_output_format": null,
+      "certainty": "unknown",
+      "reason": "complex_shell_or_redirect",
+      "follows_arm_default": null,
+      "explicit_override_of_arm": false,
+      "protocol_deviation": false
+    },
+    {
+      "call_id": "call_8fc7ef12587d420ea324cfaf43a823c6",
+      "command": "python3 scripts/mc-knowledge.py --version 26.3 doctor",
+      "environment_default": "compact",
+      "command_environment_override": null,
+      "explicit_format": null,
+      "expected_format": "compact",
+      "query_kind": "doctor",
+      "visible_output_format": null,
+      "certainty": "unknown",
+      "reason": "complex_shell_or_redirect",
+      "follows_arm_default": null,
+      "explicit_override_of_arm": false,
+      "protocol_deviation": false
+    },
+    {
+      "call_id": "call_8fc7ef12587d420ea324cfaf43a823c6",
+      "command": "python3 scripts/mc-knowledge.py --version 26.3 find-class IronGolem",
+      "environment_default": "compact",
+      "command_environment_override": null,
+      "explicit_format": null,
+      "expected_format": "compact",
+      "query_kind": "find-class",
+      "visible_output_format": null,
+      "certainty": "unknown",
+      "reason": "complex_shell_or_redirect",
+      "follows_arm_default": null,
+      "explicit_override_of_arm": false,
+      "protocol_deviation": false
+    },
+    {
+      "call_id": "call_8fc7ef12587d420ea324cfaf43a823c6",
+      "command": "python3 scripts/mc-knowledge.py --version 26.3 source --help",
+      "environment_default": "compact",
+      "command_environment_override": null,
+      "explicit_format": null,
+      "expected_format": "compact",
+      "query_kind": "help",
+      "visible_output_format": null,
+      "certainty": "unknown",
+      "reason": "complex_shell_or_redirect",
+      "follows_arm_default": null,
+      "explicit_override_of_arm": false,
+      "protocol_deviation": false
+    },
+    {
+      "call_id": "call_63c3d8fa55a841de89053c50d8f4b9d2",
+      "certainty": "unknown",
+      "reason": "unparsed_tool_arguments",
+      "arguments_sha_only": true
+    },
+    {
+      "call_id": "call_5e7d3bb944f54eb1909761610f08c37e",
+      "certainty": "unknown",
+      "reason": "unparsed_tool_arguments",
+      "arguments_sha_only": true
+    },
+    {
+      "call_id": "call_79051a5a920d4651a95554b7456eaa9d",
+      "certainty": "unknown",
+      "reason": "unparsed_tool_arguments",
+      "arguments_sha_only": true
+    },
+    {
+      "call_id": "call_1cb8be69e89c4d2db0e0f99762102d9b",
+      "command": "python3 scripts/mc-knowledge.py --version 26.3 source IronGolem --member doHurtTarget --bytecode --start-line 81 --start-char 0",
+      "environment_default": "compact",
+      "command_environment_override": null,
+      "explicit_format": null,
+      "expected_format": "compact",
+      "query_kind": "source",
+      "visible_output_format": null,
+      "certainty": "unknown",
+      "reason": "complex_shell_or_redirect",
+      "follows_arm_default": null,
+      "explicit_override_of_arm": false,
+      "protocol_deviation": false
+    }
+  ],
+  "summary": {
+    "identified_invocations": 5,
+    "unknown_candidates": 3,
+    "confirmed_visible_format": 0,
+    "unknown_visible_format": 5,
+    "explicit_format_count": 0,
+    "explicit_overrides_of_arm": 0,
+    "command_environment_overrides": 0,
+    "protocol_deviations": 0,
+    "confirmed_follows_arm_default": 0,
+    "confirmed_default_adoption_rate": null,
+    "adoption_rate_denominator": "Only invocations with unambiguous visible output; unknowns reported separately."
+  }
+}

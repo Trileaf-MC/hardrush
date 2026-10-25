@@ -1,0 +1,43 @@
+Compiled from "TrialSpawnerBlockEntity.java"
+public class net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity extends net.minecraft.world.level.block.entity.BlockEntity implements net.minecraft.world.level.block.entity.trialspawner.TrialSpawner$StateAccessor,net.minecraft.world.level.Spawner {
+  private final net.minecraft.world.level.block.entity.trialspawner.TrialSpawner trialSpawner;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;
+  public net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity(net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;)V
+
+  private net.minecraft.world.level.block.entity.trialspawner.TrialSpawner createDefaultSpawner();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;
+
+  protected void loadAdditional(net.minecraft.world.level.storage.ValueInput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueInput;)V
+
+  protected void saveAdditional(net.minecraft.world.level.storage.ValueOutput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueOutput;)V
+
+  public net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket getUpdatePacket();
+    descriptor: ()Lnet/minecraft/network/protocol/game/ClientboundBlockEntityDataPacket;
+
+  public net.minecraft.nbt.CompoundTag getUpdateTag(net.minecraft.core.HolderLookup$Provider);
+    descriptor: (Lnet/minecraft/core/HolderLookup$Provider;)Lnet/minecraft/nbt/CompoundTag;
+
+  public void setEntityId(net.minecraft.world.entity.EntityType<?>, net.minecraft.util.RandomSource);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/util/RandomSource;)V
+
+  public void setEntityData(net.minecraft.world.item.component.TypedEntityData<net.minecraft.world.entity.EntityType<?>>, net.minecraft.util.RandomSource);
+    descriptor: (Lnet/minecraft/world/item/component/TypedEntityData;Lnet/minecraft/util/RandomSource;)V
+
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawner getTrialSpawner();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;
+
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState getState();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+
+  public void setState(net.minecraft.world.level.Level, net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;)V
+
+  public void markUpdated();
+    descriptor: ()V
+
+  public net.minecraft.network.protocol.Packet getUpdatePacket();
+    descriptor: ()Lnet/minecraft/network/protocol/Packet;
+}

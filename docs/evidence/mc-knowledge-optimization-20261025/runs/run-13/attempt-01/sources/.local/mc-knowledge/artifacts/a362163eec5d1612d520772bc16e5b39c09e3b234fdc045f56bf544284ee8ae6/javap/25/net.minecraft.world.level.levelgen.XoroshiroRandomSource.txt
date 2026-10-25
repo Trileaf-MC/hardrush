@@ -1,0 +1,69 @@
+Compiled from "XoroshiroRandomSource.java"
+public class net.minecraft.world.level.levelgen.XoroshiroRandomSource implements net.minecraft.util.RandomSource {
+  private static final float FLOAT_UNIT;
+    descriptor: F
+  private static final double DOUBLE_UNIT;
+    descriptor: D
+  public static final com.mojang.serialization.Codec<net.minecraft.world.level.levelgen.XoroshiroRandomSource> CODEC;
+    descriptor: Lcom/mojang/serialization/Codec;
+  private net.minecraft.world.level.levelgen.Xoroshiro128PlusPlus randomNumberGenerator;
+    descriptor: Lnet/minecraft/world/level/levelgen/Xoroshiro128PlusPlus;
+  private final net.minecraft.world.level.levelgen.MarsagliaPolarGaussian gaussianSource;
+    descriptor: Lnet/minecraft/world/level/levelgen/MarsagliaPolarGaussian;
+  public net.minecraft.world.level.levelgen.XoroshiroRandomSource(long);
+    descriptor: (J)V
+
+  public net.minecraft.world.level.levelgen.XoroshiroRandomSource(net.minecraft.world.level.levelgen.RandomSupport$Seed128bit);
+    descriptor: (Lnet/minecraft/world/level/levelgen/RandomSupport$Seed128bit;)V
+
+  public net.minecraft.world.level.levelgen.XoroshiroRandomSource(long, long);
+    descriptor: (JJ)V
+
+  private net.minecraft.world.level.levelgen.XoroshiroRandomSource(net.minecraft.world.level.levelgen.Xoroshiro128PlusPlus);
+    descriptor: (Lnet/minecraft/world/level/levelgen/Xoroshiro128PlusPlus;)V
+
+  public net.minecraft.util.RandomSource fork();
+    descriptor: ()Lnet/minecraft/util/RandomSource;
+
+  public net.minecraft.world.level.levelgen.PositionalRandomFactory forkPositional();
+    descriptor: ()Lnet/minecraft/world/level/levelgen/PositionalRandomFactory;
+
+  public void setSeed(long);
+    descriptor: (J)V
+
+  public int nextInt();
+    descriptor: ()I
+
+  public int nextInt(int);
+    descriptor: (I)I
+
+  public long nextLong();
+    descriptor: ()J
+
+  public boolean nextBoolean();
+    descriptor: ()Z
+
+  public float nextFloat();
+    descriptor: ()F
+
+  public double nextDouble();
+    descriptor: ()D
+
+  public double nextGaussian();
+    descriptor: ()D
+
+  public void consumeCount(int);
+    descriptor: (I)V
+
+  private long nextBits(int);
+    descriptor: (I)J
+
+  private static net.minecraft.world.level.levelgen.Xoroshiro128PlusPlus lambda$static$1(net.minecraft.world.level.levelgen.XoroshiroRandomSource);
+    descriptor: (Lnet/minecraft/world/level/levelgen/XoroshiroRandomSource;)Lnet/minecraft/world/level/levelgen/Xoroshiro128PlusPlus;
+
+  private static net.minecraft.world.level.levelgen.XoroshiroRandomSource lambda$static$0(net.minecraft.world.level.levelgen.Xoroshiro128PlusPlus);
+    descriptor: (Lnet/minecraft/world/level/levelgen/Xoroshiro128PlusPlus;)Lnet/minecraft/world/level/levelgen/XoroshiroRandomSource;
+
+  static {};
+    descriptor: ()V
+}

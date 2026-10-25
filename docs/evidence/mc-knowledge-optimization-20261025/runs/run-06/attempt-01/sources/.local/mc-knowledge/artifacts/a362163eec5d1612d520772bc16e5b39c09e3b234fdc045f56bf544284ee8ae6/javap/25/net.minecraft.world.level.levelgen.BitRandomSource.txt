@@ -1,0 +1,27 @@
+Compiled from "BitRandomSource.java"
+public interface net.minecraft.world.level.levelgen.BitRandomSource extends net.minecraft.util.RandomSource {
+  public static final float FLOAT_MULTIPLIER;
+    descriptor: F
+  public static final double DOUBLE_MULTIPLIER;
+    descriptor: D
+  public abstract int next(int);
+    descriptor: (I)I
+
+  public default int nextInt();
+    descriptor: ()I
+
+  public default int nextInt(int);
+    descriptor: (I)I
+
+  public default long nextLong();
+    descriptor: ()J
+
+  public default boolean nextBoolean();
+    descriptor: ()Z
+
+  public default float nextFloat();
+    descriptor: ()F
+
+  public default double nextDouble();
+    descriptor: ()D
+}

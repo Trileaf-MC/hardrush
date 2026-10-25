@@ -1,0 +1,10 @@
+{
+  "class": "net.minecraft.world.entity.InsideBlockEffectType",
+  "member": null,
+  "descriptor": null,
+  "compiler": "1.12.0",
+  "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+  "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-07/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/607cf89239c7442e3b819e208d18f0a4b86d16439222d12af13cacb237b64684/source.java",
+  "source_sha256": "2d4d2e7a05105a01739802b40d11ab1bf0e6a0b126376f21d0e0186675af4f17",
+  "warnings": []
+}

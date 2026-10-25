@@ -1,0 +1,29 @@
+[
+  {
+    "role": "developer",
+    "sha256": "f0d77ea6513b09746a8e91ffa64966a338a410a9dca29da635f292bda1db269e",
+    "chars": 5260,
+    "estimated_tokens_o200k": 1315,
+    "memory_summary_mentions": 0,
+    "minecraft_skill_mentions": 2,
+    "text_exported": false
+  },
+  {
+    "role": "user",
+    "sha256": "db5b96769bb7713f770a0151f2dab65a2f4c1ecadfbccb58baa5d8fba4587fb3",
+    "chars": 3320,
+    "estimated_tokens_o200k": 786,
+    "memory_summary_mentions": 0,
+    "minecraft_skill_mentions": 0,
+    "text_exported": false
+  },
+  {
+    "role": "user",
+    "sha256": "ad1605adb0a8bc8295ecb4f44a2684a22a2d967e692a841a9b693a8621a9ed68",
+    "chars": 377,
+    "estimated_tokens_o200k": 221,
+    "memory_summary_mentions": 0,
+    "minecraft_skill_mentions": 1,
+    "text_exported": false
+  }
+]

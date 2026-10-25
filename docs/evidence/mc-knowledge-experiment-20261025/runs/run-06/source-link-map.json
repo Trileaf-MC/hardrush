@@ -1,0 +1,14 @@
+{
+  ".local/vanilla-26.3-evidence/provenance.json": "01-provenance.json",
+  ".local/vanilla-26.3-evidence/Skeleton.java": "02-Skeleton.java",
+  ".local/vanilla-26.3-evidence/ConversionTracker.java": "03-ConversionTracker.java",
+  ".local/vanilla-26.3-evidence/InsideBlockEffectType.java": "04-InsideBlockEffectType.java",
+  ".local/vanilla-26.3-evidence/ConversionTracker.tick.bytecode.txt": "05-ConversionTracker.tick.bytecode.txt",
+  ".local/vanilla-26.3-evidence/ConversionType.java": "06-ConversionType.java",
+  ".local/vanilla-26.3-evidence/Mob.convertTo.java": "07-Mob.convertTo.java",
+  ".local/vanilla-26.3-evidence/LivingEntity.constructor.bytecode.txt": "08-LivingEntity.constructor.bytecode.txt",
+  ".local/vanilla-26.3-evidence/Wolf.registerGoals.java": "09-Wolf.registerGoals.java",
+  ".local/vanilla-26.3-evidence/Stray.java": "10-Stray.java",
+  ".local/vanilla-26.3-evidence/NearestAttackableTargetGoal.java": "11-NearestAttackableTargetGoal.java",
+  ".local/vanilla-26.3-evidence/SitWhenOrderedToGoal.java": "12-SitWhenOrderedToGoal.java"
+}

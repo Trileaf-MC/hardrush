@@ -1,0 +1,13 @@
+Compiled from "NonTameRandomTargetGoal.java"
+public class net.minecraft.world.entity.ai.goal.target.NonTameRandomTargetGoal<T extends net.minecraft.world.entity.LivingEntity> extends net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal<T> {
+  private final net.minecraft.world.entity.TamableAnimal tamableMob;
+    descriptor: Lnet/minecraft/world/entity/TamableAnimal;
+  public net.minecraft.world.entity.ai.goal.target.NonTameRandomTargetGoal(net.minecraft.world.entity.TamableAnimal, java.lang.Class<T>, boolean, net.minecraft.world.entity.ai.targeting.TargetingConditions$Selector);
+    descriptor: (Lnet/minecraft/world/entity/TamableAnimal;Ljava/lang/Class;ZLnet/minecraft/world/entity/ai/targeting/TargetingConditions$Selector;)V
+
+  public boolean canUse();
+    descriptor: ()Z
+
+  public boolean canContinueToUse();
+    descriptor: ()Z
+}

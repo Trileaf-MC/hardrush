@@ -1,0 +1,32 @@
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "class_name": "net.minecraft.world.entity.player.Player",
+  "cache_hit": false,
+  "text": "Compiled from \"Player.java\"\npublic abstract class net.minecraft.world.entity.player.Player extends net.minecraft.world.entity.Avatar implements net.minecraft.world.entity.ContainerUser {\n  public static final int MAX_HEALTH;\n    descriptor: I\n  public static final int SLEEP_DURATION;\n    descriptor: I\n  public static final int WAKE_UP_DURATION;\n    descriptor: I\n  public static final int ENDER_SLOT_OFFSET;\n    descriptor: I\n  public static final int HELD_ITEM_SLOT;\n    descriptor: I\n  public static final int CRAFTING_SLOT_OFFSET;\n    descriptor: I\n  public static final float DEFAULT_BLOCK_INTERACTION_RANGE;\n    descriptor: F\n  public static final float DEFAULT_ENTITY_INTERACTION_RANGE;\n    descriptor: F\n  private static final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Float> DATA_PLAYER_ABSORPTION_ID;\n    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;\n  private static final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Integer> DATA_SCORE_ID;\n    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;\n  private static final net.minecraft.network.syncher.EntityDataAccessor<java.util.OptionalInt> DATA_SHOULDER_PARROT_LEFT;\n    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;\n  private static final net.minecraft.network.syncher.EntityDataAccessor<java.util.OptionalInt> DATA_SHOULDER_PARROT_RIGHT;\n    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;\n  private static final short DEFAULT_SLEEP_TIMER;\n    descriptor: S\n  private static final float DEFAULT_EXPERIENCE_PROGRESS;\n    descriptor: F\n  private static final int DEFAULT_EXPERIENCE_LEVEL;\n    descriptor: I\n  private static final int DEFAULT_TOTAL_EXPERIENCE;\n    descriptor: I\n  private static final int NO_ENCHANTMENT_SEED;\n    descriptor: I\n  private static final int DEFAULT_SELECTED_SLOT;\n    descriptor: I\n  private static final int DEFAULT_SCORE;\n    descriptor: I\n  public static final float CREATIVE_ENTITY_INTERACTION_RANGE_MODIFIER_VALUE;\n    descriptor: F\n  private final net.minecraft.world.entity.player.Inventory inventory;\n    descriptor: Lnet/minecraft/world/entity/player/Inventory;\n  protected net.minecraft.world.inventory.PlayerEnderChestContainer enderChestInventory;\n    descriptor: Lnet/minecraft/world/inventory/PlayerEnderChestContainer;\n  public final net.minecraft.world.inventory.InventoryMenu inventoryMenu;\n    descriptor: Lnet/minecraft/world/inventory/InventoryMenu;\n  public net.minecraft.world.inventory.AbstractContainerMenu containerMenu;\n    descriptor: Lnet/minecraft/world/inventory/AbstractContainerMenu;\n  protected net.minecraft.world.food.FoodData foodData;\n    descriptor: Lnet/minecraft/world/food/FoodData;\n  protected int jumpTriggerTime;\n    descriptor: I\n  public int takeXpDelay;\n    descriptor: I\n  private int sleepCounter;\n    descriptor: I\n  protected boolean wasUnderwater;\n    descriptor: Z\n  private final net.minecraft.world.entity.player.Abilities abilities;\n    descriptor: Lnet/minecraft/world/entity/player/Abilities;\n  public int experienceLevel;\n    descriptor: I\n  public int totalExperience;\n    descriptor: I\n  public float experienceProgress;\n    descriptor: F\n  protected int enchantmentSeed;\n    descriptor: I\n  protected final float defaultFlySpeed;\n    descriptor: F\n  private int lastLevelUpTime;\n    descriptor: I\n  private final com.mojang.authlib.GameProfile gameProfile;\n    descriptor: Lcom/mojang/authlib/GameProfile;\n  private boolean reducedDebugInfo;\n    descriptor: Z\n  private net.minecraft.world.item.ItemStack lastItemInMainHand;\n    descriptor: Lnet/minecraft/world/item/ItemStack;\n",
+  "total_lines": 771,
+  "total_chars": 31744,
+  "returned_range": {
+    "start_line": 1,
+    "start_char": 0,
+    "end_line": 81,
+    "end_char": 0
+  },
+  "truncated": true,
+  "next": {
+    "start_line": 81,
+    "start_char": 0
+  },
+  "metrics": {
+    "elapsed_ms": 314.97,
+    "body_chars": 3626,
+    "output_chars": 4484
+  }
+}

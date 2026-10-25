@@ -1,0 +1,478 @@
+{
+  "scope": "Java 26.3 vanilla server static JAR inspection; no runtime validation",
+  "files": [
+    {
+      "file": "BaseSpawner.java",
+      "sha256": "37b4edff9c35facf37c0efe62bcc5ebdb665c4f111f062bdb03038b4aa2d2454",
+      "class": "net.minecraft.world.level.BaseSpawner",
+      "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge/evidence/044d4191297804a9625c6613d18d31ecfa2c3e73768765a1735671a870a17e65.json",
+      "query": {
+        "bytecode": false,
+        "cache_dir": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge",
+        "class_name": "BaseSpawner",
+        "command": "source",
+        "descriptor": null,
+        "explicit_start": false,
+        "format": "compact",
+        "gradle_home": "/Users/leifwebber/.gradle",
+        "jar": null,
+        "java_home": null,
+        "limit": 5,
+        "max_chars": 22000,
+        "max_lines": 260,
+        "max_output_chars": 26000,
+        "member": null,
+        "offline": false,
+        "project": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace",
+        "provenance": "reference",
+        "side": "server",
+        "start_char": 0,
+        "start_line": 1,
+        "timeout": 30,
+        "version": null,
+        "vineflower": null
+      }
+    },
+    {
+      "file": "TrialSpawner.java",
+      "sha256": "19a19e692f52d6e3ee74436f48a54b25f3126cf13f980148a8310fa8aec18ecc",
+      "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawner",
+      "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge/evidence/c9ec29dfba0ea5c309dcb6c165cf9965671cce5f9b4b83e312aef46b5963ef97.json",
+      "query": {
+        "bytecode": false,
+        "cache_dir": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge",
+        "class_name": "TrialSpawner",
+        "command": "source",
+        "descriptor": null,
+        "explicit_start": true,
+        "format": "compact",
+        "gradle_home": "/Users/leifwebber/.gradle",
+        "jar": null,
+        "java_home": null,
+        "limit": 5,
+        "max_chars": 5000,
+        "max_lines": 80,
+        "max_output_chars": 10000,
+        "member": null,
+        "offline": false,
+        "project": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace",
+        "provenance": "reference",
+        "side": "server",
+        "start_char": 0,
+        "start_line": 390,
+        "timeout": 30,
+        "version": null,
+        "vineflower": null
+      }
+    },
+    {
+      "file": "TrialSpawnerState-tickAndGetNext.java",
+      "sha256": "f23bf543a8d942720fe4ba2bb251ce6755f302cd7d3bbd7052faeffd553cc7c5",
+      "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState",
+      "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge/evidence/fb85ac4605d4cffd00fbc9cb66fa9c9973fb4511dfb0155c9d86cf23fe29e146.json",
+      "query": {
+        "bytecode": false,
+        "cache_dir": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge",
+        "class_name": "TrialSpawnerState",
+        "command": "source",
+        "descriptor": null,
+        "explicit_start": false,
+        "format": "compact",
+        "gradle_home": "/Users/leifwebber/.gradle",
+        "jar": null,
+        "java_home": null,
+        "limit": 5,
+        "max_chars": 19000,
+        "max_lines": 230,
+        "max_output_chars": 23000,
+        "member": "tickAndGetNext",
+        "offline": false,
+        "project": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace",
+        "provenance": "reference",
+        "side": "server",
+        "start_char": 0,
+        "start_line": 1,
+        "timeout": 30,
+        "version": null,
+        "vineflower": null
+      }
+    },
+    {
+      "file": "TrialSpawnerStateData.java",
+      "sha256": "b8b590ee4be641d382a8a2d06783953a53df604b591fd5b706ed9075156232e3",
+      "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData",
+      "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge/evidence/70ca098120f433dcb33c37cf7c4e9e2dc0aff91a6ce7d5a21523eda3b60a4610.json",
+      "query": {
+        "bytecode": false,
+        "cache_dir": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge",
+        "class_name": "TrialSpawnerStateData",
+        "command": "source",
+        "descriptor": null,
+        "explicit_start": true,
+        "format": "compact",
+        "gradle_home": "/Users/leifwebber/.gradle",
+        "jar": null,
+        "java_home": null,
+        "limit": 5,
+        "max_chars": 12000,
+        "max_lines": 130,
+        "max_output_chars": 16000,
+        "member": null,
+        "offline": false,
+        "project": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace",
+        "provenance": "reference",
+        "side": "server",
+        "start_char": 0,
+        "start_line": 60,
+        "timeout": 30,
+        "version": null,
+        "vineflower": null
+      }
+    },
+    {
+      "file": "TrialSpawnerConfig.java",
+      "sha256": "1eccc27c61b483954c1aad907a336cf6502baf5a32f63875652cc85709051cc4",
+      "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig",
+      "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge/evidence/9227bdd67cfb4c26e0a90388b6422040b20cbac83e2f9a015a51007d47098218.json",
+      "query": {
+        "bytecode": false,
+        "cache_dir": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge",
+        "class_name": "TrialSpawnerConfig",
+        "command": "source",
+        "descriptor": null,
+        "explicit_start": false,
+        "format": "compact",
+        "gradle_home": "/Users/leifwebber/.gradle",
+        "jar": null,
+        "java_home": null,
+        "limit": 5,
+        "max_chars": 14000,
+        "max_lines": 180,
+        "max_output_chars": 18000,
+        "member": null,
+        "offline": false,
+        "project": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace",
+        "provenance": "reference",
+        "side": "server",
+        "start_char": 0,
+        "start_line": 1,
+        "timeout": 30,
+        "version": null,
+        "vineflower": null
+      }
+    },
+    {
+      "file": "PlayerDetector.java",
+      "sha256": "b614ed9947b18f42daecfd115950010be289e9d199b6accf1f95f674b1631ddc",
+      "class": "net.minecraft.world.level.block.entity.trialspawner.PlayerDetector",
+      "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge/evidence/71dd347a3b258bd91e93548bde8649adb6b1819cc0b530251addb6a570cfd59c.json",
+      "query": {
+        "bytecode": false,
+        "cache_dir": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge",
+        "class_name": "PlayerDetector",
+        "command": "source",
+        "descriptor": null,
+        "explicit_start": false,
+        "format": "compact",
+        "gradle_home": "/Users/leifwebber/.gradle",
+        "jar": null,
+        "java_home": null,
+        "limit": 5,
+        "max_chars": 13000,
+        "max_lines": 160,
+        "max_output_chars": 18000,
+        "member": null,
+        "offline": false,
+        "project": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace",
+        "provenance": "reference",
+        "side": "server",
+        "start_char": 0,
+        "start_line": 1,
+        "timeout": 30,
+        "version": null,
+        "vineflower": null
+      }
+    },
+    {
+      "file": "EntityGetter-hasNearbyAlivePlayer.java",
+      "sha256": "079b8fcd1faf4f7f2dd946eccd5ecb26f5db1ba9f063bd3bd0fcf92c51834ed0",
+      "class": "net.minecraft.world.level.EntityGetter",
+      "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge/evidence/852fa4ad3c70fdff1939a6e7eb8af3f7348d15718b244e34f940dca6dc26c8b2.json",
+      "query": {
+        "bytecode": false,
+        "cache_dir": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge",
+        "class_name": "EntityGetter",
+        "command": "source",
+        "descriptor": null,
+        "explicit_start": false,
+        "format": "compact",
+        "gradle_home": "/Users/leifwebber/.gradle",
+        "jar": null,
+        "java_home": null,
+        "limit": 5,
+        "max_chars": 5000,
+        "max_lines": 80,
+        "max_output_chars": null,
+        "member": "hasNearbyAlivePlayer",
+        "offline": false,
+        "project": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace",
+        "provenance": "reference",
+        "side": "server",
+        "start_char": 0,
+        "start_line": 1,
+        "timeout": 30,
+        "version": null,
+        "vineflower": null
+      }
+    },
+    {
+      "file": "LevelChunk-isTicking.java",
+      "sha256": "d44047341e0242da0a8fdec1f2b7fbac04949595aa4b3eba26d241cc9f7ad036",
+      "class": "net.minecraft.world.level.chunk.LevelChunk",
+      "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge/evidence/7569256a6d3b6f516e4c4b9d4695ca11febe6f72cd87ac6df0231bf02dfd0c49.json",
+      "query": {
+        "bytecode": false,
+        "cache_dir": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge",
+        "class_name": "LevelChunk",
+        "command": "source",
+        "descriptor": null,
+        "explicit_start": false,
+        "format": "compact",
+        "gradle_home": "/Users/leifwebber/.gradle",
+        "jar": null,
+        "java_home": null,
+        "limit": 5,
+        "max_chars": 5000,
+        "max_lines": 80,
+        "max_output_chars": null,
+        "member": "isTicking",
+        "offline": false,
+        "project": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace",
+        "provenance": "reference",
+        "side": "server",
+        "start_char": 0,
+        "start_line": 1,
+        "timeout": 30,
+        "version": null,
+        "vineflower": null
+      }
+    },
+    {
+      "file": "LevelChunk-BoundTickingBlockEntity-tick.java",
+      "sha256": "c2f6740073505ae56adbce87c1f0d832b2178fb1676d0ff15861c461e9dcbcca",
+      "class": "net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity",
+      "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge/evidence/233b29726bda15840aa823e71203e7ed79d3f0fb881882636d1c6529d1814364.json",
+      "query": {
+        "bytecode": false,
+        "cache_dir": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge",
+        "class_name": "LevelChunk$BoundTickingBlockEntity",
+        "command": "source",
+        "descriptor": null,
+        "explicit_start": false,
+        "format": "compact",
+        "gradle_home": "/Users/leifwebber/.gradle",
+        "jar": null,
+        "java_home": null,
+        "limit": 5,
+        "max_chars": 10000,
+        "max_lines": 120,
+        "max_output_chars": 14000,
+        "member": "tick",
+        "offline": false,
+        "project": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace",
+        "provenance": "reference",
+        "side": "server",
+        "start_char": 0,
+        "start_line": 1,
+        "timeout": 30,
+        "version": null,
+        "vineflower": null
+      }
+    },
+    {
+      "file": "TrialSpawnerBlockEntity-createDefaultSpawner.java",
+      "sha256": "da517806af158aff2778b69d1642372bed9fdfe599890b4a8c7e699189d3567e",
+      "class": "net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity",
+      "evidence": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge/evidence/e480e43930b160c69e4845f74dfe21752d67d426000551ecc3dbab131d0052cc.json",
+      "query": {
+        "bytecode": false,
+        "cache_dir": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace/.local/mc-knowledge",
+        "class_name": "TrialSpawnerBlockEntity",
+        "command": "source",
+        "descriptor": null,
+        "explicit_start": false,
+        "format": "compact",
+        "gradle_home": "/Users/leifwebber/.gradle",
+        "jar": null,
+        "java_home": null,
+        "limit": 5,
+        "max_chars": 5000,
+        "max_lines": 80,
+        "max_output_chars": null,
+        "member": "createDefaultSpawner",
+        "offline": false,
+        "project": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-25/attempt-01/workspace",
+        "provenance": "reference",
+        "side": "server",
+        "start_char": 0,
+        "start_line": 1,
+        "timeout": 30,
+        "version": null,
+        "vineflower": null
+      }
+    },
+    {
+      "file": "version.json",
+      "sha256": "70444a856374443fbd57e4b23e9acfdd50309b25906ced3e3cf658abf25dd3ae",
+      "jar_resource": "version.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/breeze/normal.json",
+      "sha256": "a723713a81964a056a70ba06b8658438b130b68231de1d9bf86d14d4db5d7775",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/breeze/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/breeze/ominous.json",
+      "sha256": "671e6b2d3c0bae579a180f581b4de6f7cd8060ba89f810c8aafa893572b1c95d",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/breeze/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/melee/husk/normal.json",
+      "sha256": "756f4295eaac41526feffd65040d6585e7bfc772731d44f46b3edee5aa4ceb5f",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/melee/husk/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/melee/husk/ominous.json",
+      "sha256": "2bd3901ddbac943891e4c1aeff03db602c43649a5088ac05f6c58ab4b938a7a9",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/melee/husk/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/melee/spider/normal.json",
+      "sha256": "966aba89ff4994ac62affec269190665b69e3636870b2b7cb520d9ba6906273e",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/melee/spider/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/melee/spider/ominous.json",
+      "sha256": "4c553333ed8631fe4b34538b5cdcf958d00a9549f37f4d23d4d7077818fbc46a",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/melee/spider/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/melee/zombie/normal.json",
+      "sha256": "aa77f44defcf188929049a98f3df40f51721f64bb10fcf2598f5ae8b0343f90e",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/melee/zombie/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/melee/zombie/ominous.json",
+      "sha256": "9f93848843edc6bfa8bda551e66099912e9fe2ae10f8ba770e8b5119108ada2a",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/melee/zombie/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/normal.json",
+      "sha256": "ef9bb1e6e320af74843235f686cba39802bf0de40b0436902ca45071d4e6d7e1",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/ominous.json",
+      "sha256": "ecda078b8b30a15d22b7555fc8e1da6bcbbf58b0a87ebac0ca058bcfbb2eb8a6",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/ranged/poison_skeleton/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/normal.json",
+      "sha256": "58c11e442a819b367165fa545713cf8f4a91a4f0e0ad8696e4f849068595258d",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/ominous.json",
+      "sha256": "4039ff731a040ad404c3456c7a87224e1c78b66a20ed8df64ddd7619c6e06b8c",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/ranged/skeleton/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/ranged/stray/normal.json",
+      "sha256": "79e6b78e23e9ad0ae73e0c8990dfd554f824de396689f24f0ed075d657b5ee19",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/ranged/stray/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/ranged/stray/ominous.json",
+      "sha256": "13b722d369d778e6799f57d3cb080fb600575b529f66382877d7e67175727f37",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/ranged/stray/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/normal.json",
+      "sha256": "a3660446359fcb009c1b91b542c7f3bc6b5e417861256639046db5ab6c30dcb4",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/ominous.json",
+      "sha256": "013223dc20603f1686861c9cba0ce6ca20dab149f6dd1a83c149c505ec0a5007",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/poison_skeleton/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/normal.json",
+      "sha256": "d798230eada5f9ad31fc88430263a345e02b01f24b072afccc25e8fb1c85f24b",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/ominous.json",
+      "sha256": "e487e2b5e55bcefaaf52b550716a294b227df42d0e5e43df4de1b18b7acfe97b",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/skeleton/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/normal.json",
+      "sha256": "529a4d063096c33b4a0ff5eac5c3d9522f361cdeef7bfd3c10b210ea29303d9e",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/ominous.json",
+      "sha256": "42def85ece1c0abf0774a6526653cf6a2a5d0494f81a6e64aa1c0e3a071b0851",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/slow_ranged/stray/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/normal.json",
+      "sha256": "1579f371bd4d7c947fc8afdae662ab94d865c0ccee02646c1dcb28951162c401",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/ominous.json",
+      "sha256": "82801da3e48f601c6120eea3dc248c747d83e5fb43092bf9cd4ba7dc0546b83c",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/small_melee/baby_zombie/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/normal.json",
+      "sha256": "f5a1e290bc8ae3ad7576e23ad61b828de39ccd10a6f835cbdd50607176b372b5",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/ominous.json",
+      "sha256": "9e3e4f0d7dc265d335634e51ba14b38986e3a7e9c099d6c8d1d481dde66108f3",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/small_melee/cave_spider/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/normal.json",
+      "sha256": "66bf53a1806fc036f756437fac357912f04eff7e77e8000d18f55ca540a44b73",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/ominous.json",
+      "sha256": "a03b83abdc827e6bb2f2cbc8cf393b909c732937db62a792155c46bf4541660d",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/small_melee/silverfish/ominous.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/small_melee/slime/normal.json",
+      "sha256": "8b5dad37af109513800a98b02483874ecb340ad86307bdb4c3bdc8334b5cd987",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/small_melee/slime/normal.json"
+    },
+    {
+      "file": "data/minecraft/trial_spawner/trial_chamber/small_melee/slime/ominous.json",
+      "sha256": "49a751c1734a86803b72f343bee7d2e9144cc310dfd03027338144d092d6f7ac",
+      "jar_resource": "data/minecraft/trial_spawner/trial_chamber/small_melee/slime/ominous.json"
+    }
+  ],
+  "source": {
+    "edition": "Java",
+    "integrity": "matches server bundle SHA-256",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "kind": "vanilla-server",
+    "minecraft_version": "26.3"
+  }
+}

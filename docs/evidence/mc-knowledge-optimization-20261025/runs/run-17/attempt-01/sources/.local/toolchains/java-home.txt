@@ -1,0 +1,1 @@
+/Users/leifwebber/projects/minecraft/hardrush/.local/toolchains/jdk-25.0.4.1+1/Contents/Home

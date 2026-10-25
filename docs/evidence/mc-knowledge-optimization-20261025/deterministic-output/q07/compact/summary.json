@@ -1,0 +1,55 @@
+{
+  "format": "compact",
+  "pages": [
+    {
+      "state": "completed",
+      "exit_code": 0,
+      "stdout_chars": 792,
+      "stdout_tokens_o200k": 250,
+      "body_chars": 35,
+      "body_tokens_o200k": 10,
+      "truncated": false,
+      "output_truncated": false,
+      "body_truncated": false,
+      "completeness": "complete",
+      "returned_range": {
+        "start_line": 1,
+        "start_char": 0,
+        "end_line": 2,
+        "end_char": 0
+      },
+      "next": null,
+      "evidence_reference_present": true,
+      "source_identity": {
+        "edition": "Java",
+        "minecraft_version": "26.3",
+        "kind": "vanilla-server",
+        "integrity": "matches server bundle SHA-256",
+        "jar_id": "sha256:a362163eec5d1612",
+        "side": "server"
+      },
+      "body_sha256": "a88aa9da4ffa73bbf7bd54972e02a651372c6fff19e63414dc4acaea3b940392"
+    }
+  ],
+  "complete_body_verified": true,
+  "cli_calls": 1,
+  "continuation_calls": 0,
+  "first_stdout_chars": 792,
+  "first_stdout_tokens_o200k": 250,
+  "all_stdout_chars": 792,
+  "all_stdout_tokens_o200k": 250,
+  "truncated_response_count": 0,
+  "output_truncated_response_count": 0,
+  "evidence_reference_count": 1,
+  "combined_body_chars": 35,
+  "combined_body_sha256": "a88aa9da4ffa73bbf7bd54972e02a651372c6fff19e63414dc4acaea3b940392",
+  "first_page_full_jar_provenance_policy": {
+    "policy": "full first-page source JAR SHA256",
+    "evidence_reads": 1,
+    "extra_file_chars": 1182,
+    "extra_file_tokens_o200k": 348,
+    "verified": true,
+    "sha256": "d7c0fefdd6a8fba529c104fdf461c53bb9d3295526cc4831534e4e0a0ef649dc",
+    "note": "Explicit provenance-reading policy; not an assertion that an LLM would read this artifact."
+  }
+}

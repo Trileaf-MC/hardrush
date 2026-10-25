@@ -1,0 +1,67 @@
+{
+  "case_id": "case-23",
+  "topic": "T2",
+  "assessable": true,
+  "rubric_scores": {
+    "factual_accuracy": 86,
+    "evidence_quality": 10,
+    "total": 96
+  },
+  "items": [
+    {
+      "id": "A1",
+      "earned": 12,
+      "maximum": 12,
+      "reason": "明确基础属性15／15.0，并区分它与每次随机命中伤害、不是固定15点，8+4分均得。"
+    },
+    {
+      "id": "A2",
+      "earned": 24,
+      "maximum": 24,
+      "reason": "公式等价于7.5+nextInt(15)，明确7.5、8.5、…、21.5的15个离散小数值、间隔1且两端可取，公式8分、范围8分、离散性质8分均得。"
+    },
+    {
+      "id": "A3",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "简单公式min(D/2+1,D)或本题等价D/2+1正确，最终4.75至11.75，6+8分均得。"
+    },
+    {
+      "id": "A4",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "普通保留D、不缩放，最终7.5至21.5，3+7分均得。"
+    },
+    {
+      "id": "A5",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "困难为D×1.5／D×3/2，最终11.25至32.25，6+8分均得。"
+    },
+    {
+      "id": "A6",
+      "earned": 12,
+      "maximum": 16,
+      "reason": "明确属性→随机→玩家难度缩放→减伤扣血，并强调不能先改属性再随机，得8分；mob_attack定义由非玩家生物造成时缩放且铁傀儡符合，得4分。虽然引用Player.actuallyHurt并列出护甲、魔法减伤、吸收顺序，但没有写明float直接扣生命、不会做伤害整数舍入；该4分缺失，不能从引用内容补入最终答案。"
+    },
+    {
+      "id": "E1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确Java26.3原版与可定位目标JAR来源，得2分；属性与公式具体定位IronGolem.createAttributes和doHurtTarget，得3分；mob_attack缩放条件与Player.hurtServer有对应出处，得3分；保留适用条件和静态核查、未运行验证边界，得2分。"
+    }
+  ],
+  "major_errors": [],
+  "omissions": [
+    "没有明确玩家生命按浮点伤害扣除、不作伤害整数舍入。"
+  ],
+  "citations": [
+    "<workspace>/.local/iron-golem-26.3-evidence/IronGolem.createAttributes.java:12",
+    "<workspace>/.local/iron-golem-26.3-evidence/IronGolem.doHurtTarget.java:19",
+    "<workspace>/.local/iron-golem-26.3-evidence/mob_attack.json:4",
+    "<workspace>/.local/iron-golem-26.3-evidence/Player.hurtServer.java:40",
+    "<workspace>/.local/iron-golem-26.3-evidence/Player.actuallyHurt.java:25",
+    "<workspace>/.local/iron-golem-26.3-evidence/version.json:2"
+  ],
+  "notes": "仅按最终答案评分；数学式15/2结合明确7.5结果按实数运算理解，不误判为整数除法。未从Player.actuallyHurt引用补写答案缺少的浮点／无舍入处理。"
+}

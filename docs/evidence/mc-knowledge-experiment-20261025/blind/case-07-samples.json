@@ -1,0 +1,290 @@
+[
+  {
+    "sample_id": "case-07-01",
+    "tool_output_index": 1,
+    "start_token": 122,
+    "end_token": 250,
+    "before": "lim: 200] Crawled: 4 days ago; Image: Invicon Skeleton Spawn Egg.png: Inventory sprite for Skeleton Spawn Egg in Minecraft as shown in-game with description: Skeleton Spawn Egg ... A skeleton also has a random chance to drop each piece of naturally spawned equipment, including its bow, if it is",
+    "target": " killed by a player or tamed wolf. ... When within 15 blocks of a target, with a clear line of sight, a skeleton starts shooting arrows, once every 3 seconds on Easy and Normal difficulties or once every 2 seconds on Hard difficulty. ... 21w13a  | Decreased stray conversion time in powder snow from 30 to 7 seconds.\\n  * An underwater skeleton uses a melee attack because it is unable to use a bow underwater.\\n\\nIn most cases, if a skeleton's arrow hits a neutral or hostile mob that has not yet been attacked by the player, the mob attacks the skeleton",
+    "after": ". When a skeleton is attacked by another mob (including another skeleton), it attacks that mob, reorienting on the player once the mob is dead. Skeletons flee from wolves. A skeleton runs from a chasing wolf until the wolf deals damage, after which the skeleton turns to shoot at the wolf that successfully attacked it"
+  },
+  {
+    "sample_id": "case-07-02",
+    "tool_output_index": 1,
+    "start_token": 2875,
+    "end_token": 3003,
+    "before": " or tamed wolf and an extra 1–3 if the stray has armor.\\n\\n--------------------------------------------------------------------------------\\nSkeleton Drops, Health and Spawning | Minecraft Wiki (https://wikily.gg/minecraft/mobs/skeleton)\\nciteturn0search4 [wordlim:",
+    "target": " 200] Crawled: 2 days ago; Burns in daylight  | Burns under open sky in daylight, 8 seconds at a time. ... Stray conversion  | A Skeleton that stays in Powder Snow for 7 seconds starts shaking and turns into a Stray 15 seconds later.\\n\\n### 20 (10 hearts)\\n\\nHealth\\n\\n  * Image\\n\\n### 2\\n\\nAttack damage\\n\\n[Button: Copy command]\\n\\nImage\\n\\n## Stats and behavior\\n\\nType  | Hostile mob\\nSize  | 0.6 blocks wide, 1.99 blocks tall",
+    "after": "\\nBurns in daylight  | Burns under open sky in daylight, 8 seconds at a time. Water, rain and Powder Snow stop it. An item worn on the head also stops it and wears down instead.\\nWeapon  | A Skeleton holding a Bow shoots Arrows. Without a Bow it attacks in melee"
+  },
+  {
+    "sample_id": "case-07-03",
+    "tool_output_index": 1,
+    "start_token": 4231,
+    "end_token": 4359,
+    "before": " skeleton inside the powder snow to spawn a Stray in Minecraft.When you keep a skeleton inside the Powder snow for 7 seconds, it begins shaking.Give it another 15 seconds, the skeleton becomes a stray.\\n--------------------------------------------------------------------------------\\nThe Stray does not spawn in most cold biomes on Java Edition. (https",
+    "target": "://www.reddit.com/r/Minecraft/comments/1xas5gp/the_stray_does_not_spawn_in_most_cold_biomes_on/)\\nciteturn0reddit12 [wordlim: 200] Published: 4 days ago; * Upvote this comment if this is a good quality post that fits the purpose of r/Minecraft ...   they do spawn in bedrock edition,  it's probably to compare ...   And even ignoring that 3 of these are mountain biomes that have powdered snow, the thing that turns skeletons in to stray. ...    ",
+    "after": " The parity should be the other way around, Bedrock should be like Java ...   Powdered snow there can already turn skeleton into strays\\n--------------------------------------------------------------------------------\\nDamage in Minecraft represents harm caused by attacks or environmental factors. Health points are the vital energy of players and mobs, which decrease when they're injured. Each \\\"heart"
+  },
+  {
+    "sample_id": "case-07-04",
+    "tool_output_index": 1,
+    "start_token": 8193,
+    "end_token": 8321,
+    "before": "original_token_count\":699,\"output\":\"<workspace>\\n/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-server.jar\\n/Users/leifwebber/.gradle/caches/f",
+    "target": "abric-loom/26.3/minecraft-extracted_server.jar\\n/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-client.jar\\n/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-merged.jar\\n/Users/leifwebber/.gradle/caches/fabric-loom/26.3/mojang_minecraft_info.json\\n/Users/leifwebber/.gradle/caches/modules-2/files-2.1/org.vineflower/vineflower/1.12.0/85570609a0a",
+    "after": "5941a7d2918b6260b209de810f66f/vineflower-1.12.0.jar\\n/Users/leifwebber/.gradle/caches/fabric-loom/26.1.2/mojang_minecraft_info.json\\n/Users/leifwebber/.grad"
+  },
+  {
+    "sample_id": "case-07-05",
+    "tool_output_index": 1,
+    "start_token": 8801,
+    "end_token": 8929,
+    "before": "-merged-deobf-26.2.pom\\n/Users/leifwebber/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged-deobf/26.2/minecraft-merged-deobf-26.2.jar\\n/Users/leifwebber",
+    "target": "/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged-deobf/26.2/minecraft-merged-deobf-26.2.jar.backup\\n/Users/leifwebber/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged-deobf/26.3/minecraft-merged-deobf-26.3.pom\\n/Users/leifwebber/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged-deobf/26.3/minecraft-merged-deob",
+    "after": "f-26.3.jar.backup\\n/Users/leifwebber/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged-deobf/26.3/minecraft-merged-deobf-26.3.jar\\n/Users/leifwebber/.gradle"
+  },
+  {
+    "sample_id": "case-07-06",
+    "tool_output_index": 2,
+    "start_token": 2113,
+    "end_token": 2241,
+    "before": "Bring STEM to Life Try to survive while you explore five incredible biomes.†education.minecraft.net】\\nL72: \\nL73: 【20†Explore Online Safety Dive into digital citizenship skills with new worlds and learning resources.†aka.ms】\\nL74:       * 【21†Download Demo",
+    "target": "†education.minecraft.net】\\nL75:       * 【22†For Parents†education.minecraft.net】\\nL76:       * 【23†For Educators†education.minecraft.net】\\nL77:       * 【24†How to Buy†education.minecraft.net】\\nL78: \\nL79:     * 【25†Download Minecraft】\\nL80:     * 【26†Redeem a Gift Code】\\nL81: \\nL82:   * Shop\\nL83: \\nL84: Back\\nL85: ## Shop\\nL86: \\nL",
+    "after": "87:     * Marketplace\\nL88: \\nL89: Shop\\nL90: \\nL91: ### Marketplace\\nL92: \\nL93: 【27†Skin Packs Change your character's appearance to stand out from the crowd!】\\nL94: \\nL95: 【"
+  },
+  {
+    "sample_id": "case-07-07",
+    "tool_output_index": 2,
+    "start_token": 3137,
+    "end_token": 3265,
+    "before": "       * 【49†Choose your Game】\\nL168: \\nL169:     * Beyond The Game\\nL170: \\nL171: Explore\\nL172: ### Beyond The Game\\nL173: \\nL174: 【50†A Minecraft Movie Now Streaming.】\\nL",
+    "target": "175: \\nL176: 【51†Minecraft Experiences Dig into the first ever in-person, immersive and interactive adventure!】\\nL177: \\nL178:       * 【52†Send Fan Mail†help.minecraft.net】\\nL179:       * 【53†Share Feedback†feedback.minecraft.net】\\nL180: \\nL181:     * Creator Learning Portal\\nL182: \\nL183: Explore\\nL184: ### Creator Learning Portal\\nL185: \\nL186: 【54†Minecraft Creators Develop your skills as a Minecraft creator.】\\nL187:",
+    "after": " \\nL188: 【55†Creator Tools Work smarter and build faster with a powerful set of creator tools at your fingertips.】\\nL189: \\nL190: 【32†Minecraft Partners Find out what it takes to become an official partner.】\\nL191: \\nL192:"
+  },
+  {
+    "sample_id": "case-07-08",
+    "tool_output_index": 2,
+    "start_token": 7060,
+    "end_token": 7188,
+    "before": "\\nL496:     * 【26†Redeem】\\nL497:     * Sign out\\nL498:     * 【85†Image】\\nL499: \\nL500: -\\nL501: \\nL502: 【86†Image: Efe is sitting on",
+    "target": " a cushion in front of a camp fire in an abandoned camp in a dappled forest.】\\nL503: \\nL504: News\\nL505: \\nL506: 【87†Image: Java Team】\\nL507: \\nL508: Written By\\nL509:     Java Team\\nL510: Published\\nL511:     9/15/26\\nL512: # Minecraft Java Edition 26.3\\nL513: \\nL514: Minecraft Java 26.3 Released\\nL515: \\nL516: Wilderness Bound is out now in Minecraft Java",
+    "after": " Edition! Pack your supplies and set off on an expedition into the dappled forest where the trails end and adventure begins. Seek out abandoned camps, build outposts among the poplar trees, sleep under the stars on straw beds, and share campfire stories atop cushions. Just remember that the wilderness rewards the prepared -"
+  },
+  {
+    "sample_id": "case-07-09",
+    "tool_output_index": 2,
+    "start_token": 8205,
+    "end_token": 8333,
+    "before": "     * Birch Forest\\nL580:     * Old Growth Birch Forest\\nL581:     * Flower Forest\\nL582:     * Windswept Forest\\nL583:     * Dappled Forest\\nL584:     * Taiga\\nL585:     * Snowy Taiga\\nL586:",
+    "target": "     * Old Growth Spruce Taiga\\nL587:     * Old Growth Pine Taiga\\nL588:     * Sparse Jungle\\nL589:     * Bamboo Jungle\\nL590:     * Swamp\\nL591:     * Savanna\\nL592:     * Wooded Badlands\\nL593:     * Pale Garden\\nL594:   * Each of these biomes has its own variant of the structure with a design based on the biome\\nL595:   * Certain structure pieces are generic for all biome variants of the structure\\nL596:   * Various Chests and Barrels with loot can be",
+    "after": " found at Abandoned Camps\\nL597: ### Cushion\\nL598: \\nL599:   * The Cushion is an item that the player can place in the world and interact with to sit on\\nL600:   * Can be crafted in 16 colored variants\\nL601:   * Cushions are"
+  },
+  {
+    "sample_id": "case-07-10",
+    "tool_output_index": 4,
+    "start_token": 221,
+    "end_token": 349,
+    "before": ":20:48+00:00\\\",\\n    \\\"java_component\\\": \\\"java-runtime-epsilon\\\",\\n    \\\"java_version\\\": 25,\\n    \\\"stable\\\": true,\\n    \\\"use_editor\\\": false\\n}\\ndata/minecraft/tags/entity_type/freeze_hurts_extra_types.json {\\n  \\\"",
+    "target": "values\\\": [\\n    \\\"minecraft:strider\\\",\\n    \\\"minecraft:blaze\\\",\\n    \\\"minecraft:magma_cube\\\"\\n  ]\\n}\\ndata/minecraft/tags/entity_type/freeze_immune_entity_types.json {\\n  \\\"values\\\": [\\n    \\\"minecraft:stray\\\",\\n    \\\"minecraft:polar_bear\\\",\\n    \\\"minecraft:snow_golem\\\",\\n    \\\"minecraft:wither\\\"\\n  ]\\n}\\ndata/minecraft/tags/entity_type/skeletons.json {\\n  \\\"values\\\": [\\n    \\\"minecraft:skeleton\\\",\\n    \\\"minecraft:stray\\\",\\n   ",
+    "after": " \\\"minecraft:wither_skeleton\\\",\\n    \\\"minecraft:skeleton_horse\\\",\\n    \\\"minecraft:bogged\\\",\\n    \\\"minecraft:parched\\\"\\n  ]\\n}\\nminecraft-server.jar SHA1 33680f5f2ac32864d6d7cf5e56a705"
+  },
+  {
+    "sample_id": "case-07-11",
+    "tool_output_index": 6,
+    "start_token": 74,
+    "end_token": 202,
+    "before": "\nOutput:\n\nWarning: truncated output (original token count: 12281)\nTotal output lines: 2\n\n{\"i\":0,\"result\":{\"status\":\"fulfilled\",\"value\":{\"chunk_id\":\"960e80\",\"wall_time_seconds\":0.000003042,\"exit_code\":0,\"original_token_count\":2035",
+    "target": ",\"output\":\"package net.minecraft.world.entity.monster.skeleton;\\n\\nimport com.google.common.annotations.VisibleForTesting;\\nimport net.minecraft.network.syncher.EntityDataAccessor;\\nimport net.minecraft.network.syncher.EntityDataSerializers;\\nimport net.minecraft.network.syncher.SynchedEntityData;\\nimport net.minecraft.network.syncher.SynchedEntityData.Builder;\\nimport net.minecraft.sounds.SoundEvent;\\nimport net.minecraft.sounds.SoundEvents;\\nimport net.minecraft.world.damagesource.DamageSource;\\nimport net.minecraft.world.entity.ConversionTracker;\\nimport net.minecraft.world.entity.EntityType;\\nimport net.minecraft",
+    "after": ".world.entity.EntityTypes;\\nimport net.minecraft.world.level.Level;\\nimport net.minecraft.world.level.storage.ValueInput;\\nimport net.minecraft.world.level.storage.ValueOutput;\\n\\npublic class Skeleton extends AbstractSkeleton {\\n   private static final EntityDataAccessor<Boolean> DATA_STRAY_CONVERSION_ID = SynchedEntityData.define"
+  },
+  {
+    "sample_id": "case-07-12",
+    "tool_output_index": 6,
+    "start_token": 2014,
+    "end_token": 2142,
+    "before": ", subselector);\\n      this.tamableMob = mob;\\n   }\\n\\n   @Override\\n   public boolean canUse() {\\n      return !this.tamableMob.isTame() && super.canUse();\\n   }\\n\\n   @Override\\n   public boolean canContinueTo",
+    "target": "Use() {\\n      return this.targetConditions != null ? this.targetConditions.test(getServerLevel(this.mob), this.mob, this.target) : super.canContinueToUse();\\n   }\\n}\\n\"}}}\n{\"i\":1,\"result\":{\"status\":\"fulfilled\",\"value\":{\"chunk_id\":\"76928e\",\"wall_time_seconds\":0.000002584,\"exit_code\":0,\"original_token_count\":10405,\"output\":\"Warning: truncated output (original token count: 10405)\\nTotal output lines: 350\\n\\nevidence-26.3/decompiled/net/minecraft/world/entity/monster/skeleton/",
+    "after": "Stray.java-12-import net.minecraft.world.entity.monster.Monster;\\nevidence-26.3/decompiled/net/minecraft/world/entity/monster/skeleton/Stray.java-13-import net.minecraft.world.entity.projectile.arrow.AbstractArrow;\\nevidence-26.3/decompiled/net/minecraft/world/entity/monster"
+  },
+  {
+    "sample_id": "case-07-13",
+    "tool_output_index": 6,
+    "start_token": 4951,
+    "end_token": 5079,
+    "before": "Reference<LivingEntity> persistentAngerTarget;\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-122-\\nevidence-26.3/decompiled/net/minecraft/world/entity/an…2281 tokens truncated…e-26.3/decompiled/net/minecraft/world",
+    "target": "/entity/animal/wolf/Wolf.java-416-   private boolean canArmorAbsorb(final DamageSource source) {\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-417-      return this.getBodyArmorItem().is(Items.WOLF_ARMOR) && !source.is(DamageTypeTags.BYPASSES_WOLF_ARMOR);\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-418-   }\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-419-\\ne",
+    "after": "vidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-420-   @Override\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-421-   protected void applyTamingSideEffects() {\\nevidence-26."
+  },
+  {
+    "sample_id": "case-07-14",
+    "tool_output_index": 6,
+    "start_token": 8031,
+    "end_token": 8159,
+    "before": ") {\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-573-         if (this.random.nextBoolean()) {\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-574-            baby.setVariant(this.getVariant",
+    "target": "());\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-575-         } else {\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-576-            baby.setVariant(partnerWolf.getVariant());\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-577-         }\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-578-\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf",
+    "after": "/Wolf.java:579:         if (this.isTame()) {\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-580-            baby.setOwnerReference(this.getOwnerReference());\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal"
+  },
+  {
+    "sample_id": "case-07-15",
+    "tool_output_index": 6,
+    "start_token": 9890,
+    "end_token": 10018,
+    "before": "/Wolf.java-645-\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-646-      public WolfAvoidEntityGoal(\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-647-         final Wolf wolf,",
+    "target": " final Class<T> avoidClass, final float maxDist, final double walkSpeedModifier, final double sprintSpeedModifier\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-648-      ) {\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-649-         super(wolf, avoidClass, maxDist, walkSpeedModifier, sprintSpeedModifier);\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-650-         this.wolf = wolf;\\nevidence-26.3",
+    "after": "/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-651-      }\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-652-\\nevidence-26.3/decompiled/net/minecraft/world/entity/animal/wolf/Wolf.java-653"
+  },
+  {
+    "sample_id": "case-07-16",
+    "tool_output_index": 7,
+    "start_token": 1328,
+    "end_token": 1456,
+    "before": ".targeting.TargetingConditions.Selector;\\nimport net.minecraft.world.entity.player.Player;\\nimport net.minecraft.world.phys.AABB;\\nimport org.jspecify.annotations.Nullable;\\n\\npublic class NearestAttackableTargetGoal<T extends LivingEntity> extends TargetGoal {\\n   private static final int DEFAULT_RANDOM_INTERVAL",
+    "target": " = 10;\\n   protected final Class<T> targetType;\\n   protected final int randomInterval;\\n   protected @Nullable LivingEntity target;\\n   protected final TargetingConditions targetConditions;\\n\\n   public NearestAttackableTargetGoal(final Mob mob, final Class<T> targetType, final boolean mustSee) {\\n      this(mob, targetType, 10, mustSee, false, null);\\n   }\\n\\n   public NearestAttackableTargetGoal(final Mob mob, final Class<T> targetType, final boolean mustSee, final Selector selector) {\\n      this(mob, target",
+    "after": "Type, 10, mustSee, false, selector);\\n   }\\n\\n   public NearestAttackableTargetGoal(final Mob mob, final Class<T> targetType, final boolean mustSee, final boolean mustReach) {\\n      this(mob, targetType, 10, mustSee, mustReach"
+  },
+  {
+    "sample_id": "case-07-17",
+    "tool_output_index": 7,
+    "start_token": 2790,
+    "end_token": 2918,
+    "before": "By, owner);\\n            } else {\\n               return false;\\n            }\\n         }\\n      } else {\\n         return false;\\n      }\\n   }\\n\\n   @Override\\n   public void start() {\\n      this.mob.setTarget(this.ownerLastHurtBy);\\n      Living",
+    "target": "Entity owner = this.tameAnimal.getOwner();\\n      if (owner != null) {\\n         this.timestamp = owner.getLastHurtByMobTimestamp();\\n      }\\n\\n      super.start();\\n   }\\n}\\npackage net.minecraft.world.entity.ai.goal.target;\\n\\nimport java.util.EnumSet;\\nimport net.minecraft.world.entity.LivingEntity;\\nimport net.minecraft.world.entity.TamableAnimal;\\nimport net.minecraft.world.entity.ai.goal.Goal.Flag;\\nimport net.minecraft.world.entity.ai.targeting.TargetingConditions;\\n\\npublic class OwnerHurtTargetGoal extends TargetGoal {\\n",
+    "after": "   private final TamableAnimal tameAnimal;\\n   private LivingEntity ownerLastHurt;\\n   private int timestamp;\\n\\n   public OwnerHurtTargetGoal(final TamableAnimal tameAnimal) {\\n      super(tameAnimal, false);\\n      this.tameAnimal = tameAnimal;\\n      this"
+  },
+  {
+    "sample_id": "case-07-18",
+    "tool_output_index": 7,
+    "start_token": 4905,
+    "end_token": 5033,
+    "before": "n      T value = from.get(componentType);\\n      if (value != null) {\\n         to.setComponent(componentType, value);\\n      }\\n   }\\n}\\n\"}}}\n{\"i\":3,\"result\":{\"status\":\"fulfilled\",\"value\":{\"chunk_id\":\"d6768b\",\"wall_time_seconds",
+    "target": "\":7.92e-7,\"exit_code\":0,\"original_token_count\":4173,\"output\":\"evidence-26.3/decompiled/net/minecraft/world/entity/Mob.java-505-\\nevidence-26.3/decompiled/net/minecraft/world/entity/Mob.java-506-   private boolean isSunBurnTick() {\\nevidence-26.3/decompiled/net/minecraft/world/entity/Mob.java-507-      if (!this.level().isClientSide() && (Boolean)this.level().environmentAttributes().getValue(EnvironmentAttributes.MONSTERS_BURN, this.position())) {\\nevidence-26.3/de",
+    "after": "compiled/net/minecraft/world/entity/Mob.java-508-         float br = this.getLightLevelDependentMagicValue();\\nevidence-26.3/decompiled/net/minecraft/world/entity/Mob.java-509-         BlockPos roundedPos = BlockPos.containing(this.getX(), this.getEyeY(), this"
+  },
+  {
+    "sample_id": "case-07-19",
+    "tool_output_index": 7,
+    "start_token": 7996,
+    "end_token": 8124,
+    "before": "-565-         this.spawnSprintParticle();\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-566-      }\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-567-\\nevidence-26.3/decompiled/net/minecraft/world/entity/",
+    "target": "Entity.java:568:      this.wasInPowderSnow = this.isInPowderSnow;\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java:569:      this.isInPowderSnow = false;\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-570-      this.wasEyeInWater = this.isEyeInFluid(FluidTags.WATER);\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-571-      this.updateFluidInteraction();\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java",
+    "after": "-572-      this.updateSwimming();\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-573-      if (this.level() instanceof ServerLevel serverLevel) {\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-574-         if (this"
+  },
+  {
+    "sample_id": "case-07-20",
+    "tool_output_index": 7,
+    "start_token": 8521,
+    "end_token": 8649,
+    "before": "VisualFire\\\", false);\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-2259-            this.customData = input.read(\\\"data\\\", CustomData.CODEC).orElse(CustomData.EMPTY);\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-226",
+    "target": "0-            this.tags.clear();\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-2261-            input.read(\\\"Tags\\\", TAG_LIST_CODEC).ifPresent(this.tags::addAll);\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-2262-            input.getString(\\\"Team\\\").ifPresent(teamName -> {\\n--\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-2921-   public void setAirSupply(final int supply) {\\nevidence-26.3/decompiled/net/minecraft/world/entity/",
+    "after": "Entity.java-2922-      this.entityData.set(DATA_AIR_SUPPLY_ID, supply);\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-2923-   }\\nevidence-26.3/decompiled/net/minecraft/world/entity/Entity.java-2924-\\nevidence"
+  },
+  {
+    "sample_id": "case-07-21",
+    "tool_output_index": 8,
+    "start_token": 1615,
+    "end_token": 1743,
+    "before": " getVisualShape(final BlockState state, final BlockGetter level, final BlockPos pos, final CollisionContext context) {\\n      return Shapes.empty();\\n   }\\n\\n   public static boolean canEntityWalkOnPowderSnow(final Entity entity) {\\n      if (entity.is(EntityTypeTags.POWDER",
+    "target": "_SNOW_WALKABLE_MOBS)) {\\n         return true;\\n      } else {\\n         return entity instanceof LivingEntity livingEntity ? livingEntity.getItemBySlot(EquipmentSlot.FEET).is(Items.LEATHER_BOOTS) : false;\\n      }\\n   }\\n\\n   public ItemStack pickupBlock(final @Nullable LivingEntity user, final LevelAccessor level, final BlockPos pos, final BlockState state) {\\n      level.setBlock(pos, Blocks.AIR.defaultBlockState(), 11);\\n      if (!level.isClientSide()) {\\n         level.levelEvent(2001, pos, Block",
+    "after": ".getId(state));\\n      }\\n\\n      return new ItemStack(Items.POWDER_SNOW_BUCKET);\\n   }\\n\\n   public Optional<SoundEvent> getPickupSound() {\\n      return Optional.of(SoundEvents.BUCKET_FILL_POWDER_SNOW);\\n   }\\n\\n"
+  },
+  {
+    "sample_id": "case-07-22",
+    "tool_output_index": 8,
+    "start_token": 2980,
+    "end_token": 3108,
+    "before": " public float getHeadRollAngle(final float a) {\\n      return Mth.lerp(a, this.interestedAngleO, this.interestedAngle) * 0.15F * (float) Math.PI;\\n   }\\n\\n   public int getMaxHeadXRot() {\\n      return this.is",
+    "target": "InSittingPose() ? 20 : super.getMaxHeadXRot();\\n   }\\n\\n   public boolean hurtServer(final ServerLevel level, final DamageSource source, final float damage) {\\n      if (this.isInvulnerableTo(level, source)) {\\n         return false;\\n      }\\n\\n      this.setOrderedToSit(false);\\n      return super.hurtServer(level, source, damage);\\n   }\\n\\n   protected void actuallyHurt(final ServerLevel level, final DamageSource source, final float damage) {\\n      if (!this.canArmorAbsorb(source)) {\\n        ",
+    "after": " super.actuallyHurt(level, source, damage);\\n      } else {\\n         ItemStack armorBefore = this.getBodyArmorItem();\\n         int damageBefore = armorBefore.getDamageValue();\\n         int maxDamage = armorBefore.getMaxDamage();\\n         armorBefore.hurtAndBreak"
+  },
+  {
+    "sample_id": "case-07-23",
+    "tool_output_index": 8,
+    "start_token": 5238,
+    "end_token": 5366,
+    "before": " Creative mode using a spawn egg.\\n1.6.1  | 13w16a  | Added leads, which can be used to leash wolves.\\n13w18a  | Wolves no longer become angry when attacked by a player in Creative mode.\\nWolves now appear angry when attacking sheep.\\",
+    "target": "n?  | Untamed wolves that are not angry now despawn after existing in loaded chunks for at least two minutes.\\n1.8  | 14w02a  | Feeding baby wolves now accelerates their growth.\\n14w05b  | Ta…2208 tokens truncated…old worlds are converted to the matching new item on load.\\n    * Explorer maps can still be cloned in a crafting table, and the copies keep their own item type.\\n  * Explorer maps and buried treasure maps can no longer be zoomed out, neither in a crafting table nor in a cartography table.\\n    *",
+    "after": " Buried treasure maps could previously be zoomed out in both.\\n    * Explorer maps could previously be zoomed out in a cartography table.\\n    * Only maps in the `#minecraft:extendable_maps` tag can be zoomed out.\\n\\nMap and Empty Map\\n\\n  * Updated inventory"
+  },
+  {
+    "sample_id": "case-07-24",
+    "tool_output_index": 8,
+    "start_token": 7771,
+    "end_token": 7899,
+    "before": " Skeletons).\\n--------------------------------------------------------------------------------\\nHas anybody got a version of this working on bedrock? (https://www.reddit.com/r/MCPE/comments/cs2l2b)\\nciteturn2reddit13 [wordlim: 200] Published: 7",
+    "target": ".2 years ago; Crawled: 7.2 years ago; If you don’t know what it is, it’s an afk xp farm because when tamed wolves killed skeletons(which they do naturally) they drop xp. ...     Yeah I think so, I wanted to do the wolf killer because it’s easy early game since I just started. ... If you make it in a snow biome the skeleton/strays will spawn more often, if you have dogs on the outside the skeletons wont go there, however if they are on the inside you can get lots of spawns and mob drops for your farm\\n--------------------------------------------------------------------------------",
+    "after": "\\nVery Safe Hands-Free XP Source (https://www.reddit.com/r/technicalminecraft/comments/1lqhwx2)\\nciteturn2reddit14 [wordlim: 200] Published: 1.3 years ago; Crawled: 1"
+  },
+  {
+    "sample_id": "case-07-25",
+    "tool_output_index": 9,
+    "start_token": 827,
+    "end_token": 955,
+    "before": ": aload_0\\n        49: aload         8\\n        51: putfield      #39                 // Field conversionTimeTag:Ljava/lang/String;\\n        54: aload_0\\n        55: iload         9\\n        57: putfield      #42                 //",
+    "target": " Field totalConversionTime:I\\n        60: aload_0\\n        61: aload         10\\n        63: putfield      #45                 // Field postConversionStep:Ljava/util/function/BiConsumer;\\n        66: return\\n\\n  public void tick();\\n    Code:\\n         0: aload_0\\n         1: getfield      #13                 // Field mob:Lnet/minecraft/world/entity/Mob;\\n         4: invokevirtual #49                 // Method net/minecraft/world/entity/Mob.level:()Lnet/minecraft/world/level/Level;\\n        ",
+    "after": " 7: astore_2\\n         8: aload_2\\n         9: instanceof    #55                 // class net/minecraft/server/level/ServerLevel\\n        12: ifeq          126\\n        15: aload_2\\n        16: checkcast     #55                "
+  },
+  {
+    "sample_id": "case-07-26",
+    "tool_output_index": 9,
+    "start_token": 1132,
+    "end_token": 1260,
+    "before": ";\\n        24: invokevirtual #57                 // Method net/minecraft/world/entity/Mob.isAlive:()Z\\n        27: ifeq          126\\n        30: aload_0\\n        31: getfield      #13                 // Field mob:Lnet/minecraft/world/entity/Mob",
+    "target": ";\\n        34: invokevirtual #61                 // Method net/minecraft/world/entity/Mob.isNoAi:()Z\\n        37: ifne          126\\n        40: aload_0\\n        41: getfield      #28                 // Field isAfflicted:Ljava/util/function/BooleanSupplier;\\n        44: invokeinterface #64,  1           // InterfaceMethod java/util/function/BooleanSupplier.getAsBoolean:()Z\\n        49: ifeq          116\\n        52: aload_0\\n        53: invokevirtual #69                 // Method isConverting",
+    "after": ":()Z\\n        56: ifeq          84\\n        59: aload_0\\n        60: dup\\n        61: getfield      #72                 // Field conversionTime:I\\n        64: iconst_1\\n        65: isub\\n        66:"
+  },
+  {
+    "sample_id": "case-07-27",
+    "tool_output_index": 9,
+    "start_token": 4392,
+    "end_token": 4520,
+    "before": "ynchedEntityData$Builder);\\n    Code:\\n         0: aload_0\\n         1: aload_1\\n         2: invokespecial #39                 // Method net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.defineSynchedData:(Lnet/minecraft/network/syncher",
+    "target": "/SynchedEntityData$Builder;)V\\n         5: aload_1\\n         6: getstatic     #9                  // Field DATA_STRAY_CONVERSION_ID:Lnet/minecraft/network/syncher/EntityDataAccessor;\\n         9: iconst_0\\n        10: invokestatic  #43                 // Method java/lang/Boolean.valueOf:(Z)Ljava/lang/Boolean;\\n        13: invokevirtual #49                 // Method net/minecraft/network/syncher/SynchedEntityData$Builder.define:(Lnet/minecraft/network/syncher/EntityDataAccessor;Ljava/lang/Object",
+    "after": ";)Lnet/minecraft/network/syncher/SynchedEntityData$Builder;\\n        16: pop\\n        17: return\\n\\n  public boolean isShaking();\\n    Code:\\n         0: aload_0\\n         1: getfield      #35                 // Field"
+  },
+  {
+    "sample_id": "case-07-28",
+    "tool_output_index": 9,
+    "start_token": 5662,
+    "end_token": 5790,
+    "before": "STRAY:Lnet/minecraft/world/entity/EntityType;\\n         3: areturn\\n\\n  static {};\\n    Code:\\n         0: ldc           #10                 // class net/minecraft/world/entity/monster/skeleton/Skeleton\\n         2: getstatic     #110                //",
+    "target": " Field net/minecraft/network/syncher/EntityDataSerializers.BOOLEAN:Lnet/minecraft/network/syncher/EntityDataSerializer;\\n         5: invokestatic  #116                // Method net/minecraft/network/syncher/SynchedEntityData.defineId:(Ljava/lang/Class;Lnet/minecraft/network/syncher/EntityDataSerializer;)Lnet/minecraft/network/syncher/EntityDataAccessor;\\n         8: putstatic     #9                  // Field DATA_STRAY_CONVERSION_ID:Lnet/minecraft/network/syncher/EntityDataAccessor;\\n        11: return\\n}\\n\"}",
+    "after": ""
+  },
+  {
+    "sample_id": "case-07-29",
+    "tool_output_index": 10,
+    "start_token": 1961,
+    "end_token": 2089,
+    "before": "/net/minecraft/world/entity/LivingEntity.java-1182-\\nevidence-26.3/decompiled/net/minecraft/world/entity/LivingEntity.java-1183-   public boolean isDeadOrDying() {\\n    45\\t      this.isAfflicted = isAfflicted;\\n    46\\t",
+    "target": "      this.afflictionTimeTag = afflictionTimeTag;\\n    47\\t      this.totalAfflictionTime = totalAfflictionTime;\\n    48\\t      this.conversionTimeTag = conversionTimeTag;\\n    49\\t      this.totalConversionTime = totalConversionTime;\\n    50\\t      this.postConversionStep = postConversionStep;\\n    51\\t   }\\n    52\\t\\n    53\\t   public void tick() {\\n    54\\t      if (this.mob.level() instanceof ServerLevel serverLevel && this.mob.isAlive() && !this.mob.isNoAi",
+    "after": "()) {\\n    55\\t         if (this.isAfflicted.getAsBoolean()) {\\n    56\\t            if (this.isConverting()) {\\n    57\\t               this.conversionTime--;\\n    58\\t               if (this.conversionTime < 0) {\\n   "
+  },
+  {
+    "sample_id": "case-07-30",
+    "tool_output_index": 11,
+    "start_token": 373,
+    "end_token": 501,
+    "before": ".mojang.com】 - The player can see through blocks when inside snow layers\nL3379:   * 【408†MC-311593†bugs.mojang.com】 - Spears' charging animation jitters from another player's perspective when swapping to a spear and charging it in the same tick\nL3380",
+    "target": ":   * 【409†MC-311722†bugs.mojang.com】 - Pressing Windows+↓ in fullscreen mode incorrectly restores the game window to a borderless windowed state\nL3381: 【410†Image】\nL3382: ## Get the Release\nL3383: \nL3384: To install the Release, open up the 【411†Minecraft Launcher】 and click play! Make sure your Launcher is set to the \"Latest Release\" option.\nL3385: \nL3386: Cross-platform server jar:\nL3387: \nL3388:   * 【412†Minecraft server",
+    "after": " jar†piston-data.mojang.com】\nL3389: \nL3390: Report bugs here:\nL3391: \nL3392:   * 【413†Minecraft issue tracker†bugs.mojang.com】!\nL3393: \nL3394: Want to give feedback?\nL339"
+  },
+  {
+    "sample_id": "case-07-31",
+    "tool_output_index": 11,
+    "start_token": 3479,
+    "end_token": 3607,
+    "before": "_provider type\nL1991:       * Requires at least one value\nL1992: #### Added minecraft:truncate\nL1993: \nL1994:   * Returns the truncated (rounded towards zero) value of input\nL1995:   * Fields:\nL1996:     * input -",
+    "target": " an inline value or a namespaced ID of a minecraft:context_float_provider type\nL1997: \nL1998: #### Added minecraft:uniform\nL1999: \nL2000:   * Picks a random number from a range\nL2001:   * Fields:\nL2002:     * min - minimum value, an inline value, or a namespaced ID of a minecraft:context_float_provider type\nL2003:     * max - maximum value, an inline value, or a namespaced ID of a minecraft:context_float_provider type\nL2004: #### Added minecraft:weighted_list\n",
+    "after": "L2005: \nL2006:   * Returns a value from a distribution of weighted number providers\nL2007:   * Fields:\nL2008:     * distribution - a list of objects with the following fields\nL2009:       * Fields:\nL2010:         * data - an"
+  },
+  {
+    "sample_id": "case-07-32",
+    "tool_output_index": 12,
+    "start_token": 534,
+    "end_token": 662,
+    "before": "Goal(this, 8.0F));\\n   141\\t      this.goalSelector.addGoal(10, new LookAtPlayerGoal(this, Player.class, 8.0F));\\n   142\\t      this.goalSelector.addGoal(10, new RandomLookAroundGoal(this));\\n",
+    "target": "   143\\t      this.targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));\\n   144\\t      this.targetSelector.addGoal(2, new OwnerHurtTargetGoal(this));\\n   145\\t      this.targetSelector.addGoal(3, new HurtByTargetGoal(this).setAlertOthers());\\n   146\\t      this.targetSelector.addGoal(4, new NearestAttackableTargetGoal(this, Player.class, 10, true, false, this::isAngryAt));\\n   147\\t      this.targetSelector.addGoal(5, new",
+    "after": " NonTameRandomTargetGoal(this, Animal.class, false, PREY_SELECTOR));\\n   148\\t      this.targetSelector.addGoal(6, new NonTameRandomTargetGoal(this, Turtle.class, false, Turtle.BABY_ON_LAND_SELECTOR));\\n   149\\t      this.target"
+  }
+]
