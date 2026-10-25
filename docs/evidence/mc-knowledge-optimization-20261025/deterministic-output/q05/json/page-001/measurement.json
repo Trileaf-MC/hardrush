@@ -1,0 +1,29 @@
+{
+  "state": "completed",
+  "exit_code": 0,
+  "stdout_chars": 3009,
+  "stdout_tokens_o200k": 858,
+  "body_chars": 1972,
+  "body_tokens_o200k": 490,
+  "truncated": false,
+  "output_truncated": false,
+  "body_truncated": false,
+  "completeness": null,
+  "returned_range": {
+    "start_line": 1,
+    "start_char": 0,
+    "end_line": 26,
+    "end_char": 0
+  },
+  "next": null,
+  "evidence_reference_present": false,
+  "source_identity": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "body_sha256": "a660d6cb2d357eb8493191427f03248eb0045b1d4b7a7935b180c0a54e911d93"
+}

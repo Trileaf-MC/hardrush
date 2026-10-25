@@ -1,0 +1,1052 @@
+{
+  "trials": [
+    {
+      "id": "run-01",
+      "group": "A",
+      "repeat": 1,
+      "wave": 1,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-01/workspace",
+      "prompt_sha256": "b76bf54f353de34a3896d80b3da6b8ac8aee5a5eabc0a03789a1b3c6806379e0",
+      "state": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 250.361,
+      "thread_id": "01a171c9-0356-75b0-9ba6-56e5052e7ffb",
+      "usage": {
+        "input_tokens": 728880,
+        "cached_input_tokens": 658816,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 7925,
+        "reasoning_output_tokens": 1624
+      },
+      "first_input_tokens": 13375,
+      "peak_input_tokens": 82105,
+      "model_calls": 15,
+      "tool_responses": 14,
+      "tool_output_chars": 215902,
+      "tool_output_tokens_o200k": 62905,
+      "tool_output_unique_tokens_o200k": 62905,
+      "outer_output_truncations": 0,
+      "cli_item_counts": {
+        "agent_message": 4,
+        "command_execution": 42,
+        "web_search": 3
+      },
+      "command_failures": 1,
+      "initial_text_tokens_o200k": 2102,
+      "compactions": 0,
+      "model_configurations": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        }
+      ],
+      "case": "case-04",
+      "quality": 85,
+      "factual": 75,
+      "evidence": 10,
+      "score_items": {
+        "V1": 5,
+        "S1": 5,
+        "S2": 10,
+        "S3": 5,
+        "S4": 10,
+        "S5": 3,
+        "S6": 8,
+        "W1": 10,
+        "W2": 10,
+        "W3": 4,
+        "W4": 5,
+        "E1": 10
+      },
+      "rater_1": 85,
+      "rater_2": 85,
+      "noise_percent": {
+        "E": 16.875,
+        "O": 49.0625,
+        "I": 34.0625,
+        "F": 0
+      },
+      "irrelevant_tokens_o200k_estimate": 21427.015625,
+      "irrelevant_and_failure_tokens_o200k_estimate": 21427.015625,
+      "uncached_input_tokens": 70064,
+      "peak_above_first_input": 68730
+    },
+    {
+      "id": "run-02",
+      "group": "C",
+      "repeat": 1,
+      "wave": 1,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-02/workspace",
+      "prompt_sha256": "387f6ce768f8b239cffccf60728a03f939a9f6ba0750486574b1881a0bf3a8d4",
+      "state": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 237.544,
+      "thread_id": "01a171c9-0356-7a81-b017-d4ba4180c7ff",
+      "usage": {
+        "input_tokens": 711754,
+        "cached_input_tokens": 629504,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 7208,
+        "reasoning_output_tokens": 1517
+      },
+      "first_input_tokens": 13257,
+      "peak_input_tokens": 96553,
+      "model_calls": 13,
+      "tool_responses": 12,
+      "tool_output_chars": 276468,
+      "tool_output_tokens_o200k": 77899,
+      "tool_output_unique_tokens_o200k": 77899,
+      "outer_output_truncations": 3,
+      "cli_item_counts": {
+        "agent_message": 4,
+        "web_search": 4,
+        "command_execution": 25,
+        "file_change": 2
+      },
+      "command_failures": 2,
+      "initial_text_tokens_o200k": 1984,
+      "compactions": 0,
+      "model_configurations": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        }
+      ],
+      "case": "case-02",
+      "quality": 80,
+      "factual": 70,
+      "evidence": 10,
+      "score_items": {
+        "V1": 5,
+        "S1": 5,
+        "S2": 10,
+        "S3": 5,
+        "S4": 10,
+        "S5": 0,
+        "S6": 6,
+        "W1": 10,
+        "W2": 10,
+        "W3": 4,
+        "W4": 5,
+        "E1": 10
+      },
+      "rater_1": 80,
+      "rater_2": 84,
+      "noise_percent": {
+        "E": 12.1875,
+        "O": 27.8125,
+        "I": 60,
+        "F": 0
+      },
+      "irrelevant_tokens_o200k_estimate": 46739.4,
+      "irrelevant_and_failure_tokens_o200k_estimate": 46739.4,
+      "uncached_input_tokens": 82250,
+      "peak_above_first_input": 83296
+    },
+    {
+      "id": "run-03",
+      "group": "B",
+      "repeat": 1,
+      "wave": 1,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-03/workspace",
+      "prompt_sha256": "bfdc677f86a54b928282455fc1cccb1a60c04968a393c5386d4d02604792ea70",
+      "state": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 257.679,
+      "thread_id": "01a171c9-0356-77d2-91a4-aab621ad9f20",
+      "usage": {
+        "input_tokens": 745429,
+        "cached_input_tokens": 651264,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 7815,
+        "reasoning_output_tokens": 1106
+      },
+      "first_input_tokens": 13300,
+      "peak_input_tokens": 85809,
+      "model_calls": 14,
+      "tool_responses": 13,
+      "tool_output_chars": 244688,
+      "tool_output_tokens_o200k": 66274,
+      "tool_output_unique_tokens_o200k": 66274,
+      "outer_output_truncations": 2,
+      "cli_item_counts": {
+        "agent_message": 4,
+        "command_execution": 21,
+        "web_search": 5,
+        "file_change": 1
+      },
+      "command_failures": 0,
+      "initial_text_tokens_o200k": 2027,
+      "compactions": 0,
+      "model_configurations": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        }
+      ],
+      "case": "case-07",
+      "quality": 87,
+      "factual": 77,
+      "evidence": 10,
+      "score_items": {
+        "V1": 5,
+        "S1": 5,
+        "S2": 10,
+        "S3": 5,
+        "S4": 10,
+        "S5": 3,
+        "S6": 10,
+        "W1": 10,
+        "W2": 10,
+        "W3": 4,
+        "W4": 5,
+        "E1": 10
+      },
+      "rater_1": 87,
+      "rater_2": 87,
+      "noise_percent": {
+        "E": 20.9375,
+        "O": 34.6875,
+        "I": 43.75,
+        "F": 0.625
+      },
+      "irrelevant_tokens_o200k_estimate": 28994.875,
+      "irrelevant_and_failure_tokens_o200k_estimate": 29409.0875,
+      "uncached_input_tokens": 94165,
+      "peak_above_first_input": 72509
+    },
+    {
+      "id": "run-04",
+      "group": "B",
+      "repeat": 2,
+      "wave": 2,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-04/workspace",
+      "prompt_sha256": "bfdc677f86a54b928282455fc1cccb1a60c04968a393c5386d4d02604792ea70",
+      "state": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 349.639,
+      "thread_id": "01a171cc-f13e-7193-b53b-04e04df7903c",
+      "usage": {
+        "input_tokens": 1253556,
+        "cached_input_tokens": 1180032,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 10992,
+        "reasoning_output_tokens": 2066
+      },
+      "first_input_tokens": 13343,
+      "peak_input_tokens": 90159,
+      "model_calls": 20,
+      "tool_responses": 19,
+      "tool_output_chars": 242581,
+      "tool_output_tokens_o200k": 67661,
+      "tool_output_unique_tokens_o200k": 67661,
+      "outer_output_truncations": 1,
+      "cli_item_counts": {
+        "agent_message": 5,
+        "command_execution": 21,
+        "web_search": 4,
+        "file_change": 1
+      },
+      "command_failures": 2,
+      "initial_text_tokens_o200k": 2006,
+      "compactions": 0,
+      "model_configurations": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        }
+      ],
+      "case": "case-03",
+      "quality": 87,
+      "factual": 77,
+      "evidence": 10,
+      "score_items": {
+        "V1": 5,
+        "S1": 5,
+        "S2": 10,
+        "S3": 5,
+        "S4": 10,
+        "S5": 3,
+        "S6": 10,
+        "W1": 10,
+        "W2": 10,
+        "W3": 4,
+        "W4": 5,
+        "E1": 10
+      },
+      "rater_1": 87,
+      "rater_2": 87,
+      "noise_percent": {
+        "E": 15.625,
+        "O": 45.3125,
+        "I": 39.0625,
+        "F": 0
+      },
+      "irrelevant_tokens_o200k_estimate": 26430.078125,
+      "irrelevant_and_failure_tokens_o200k_estimate": 26430.078125,
+      "uncached_input_tokens": 73524,
+      "peak_above_first_input": 76816
+    },
+    {
+      "id": "run-05",
+      "group": "C",
+      "repeat": 2,
+      "wave": 2,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-05/workspace",
+      "prompt_sha256": "387f6ce768f8b239cffccf60728a03f939a9f6ba0750486574b1881a0bf3a8d4",
+      "state": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 377.357,
+      "thread_id": "01a171cc-f13e-7ed2-9433-12b179884ca0",
+      "usage": {
+        "input_tokens": 873091,
+        "cached_input_tokens": 751616,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 11013,
+        "reasoning_output_tokens": 3372
+      },
+      "first_input_tokens": 13300,
+      "peak_input_tokens": 105587,
+      "model_calls": 14,
+      "tool_responses": 13,
+      "tool_output_chars": 312237,
+      "tool_output_tokens_o200k": 83313,
+      "tool_output_unique_tokens_o200k": 83313,
+      "outer_output_truncations": 3,
+      "cli_item_counts": {
+        "agent_message": 4,
+        "web_search": 5,
+        "command_execution": 11,
+        "file_change": 3
+      },
+      "command_failures": 1,
+      "initial_text_tokens_o200k": 1963,
+      "compactions": 0,
+      "model_configurations": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        }
+      ],
+      "case": "case-05",
+      "quality": 79,
+      "factual": 69,
+      "evidence": 10,
+      "score_items": {
+        "V1": 5,
+        "S1": 5,
+        "S2": 10,
+        "S3": 5,
+        "S4": 10,
+        "S5": 0,
+        "S6": 8,
+        "W1": 10,
+        "W2": 7,
+        "W3": 4,
+        "W4": 5,
+        "E1": 10
+      },
+      "rater_1": 79,
+      "rater_2": 79,
+      "noise_percent": {
+        "E": 19.6875,
+        "O": 28.4375,
+        "I": 48.4375,
+        "F": 3.4375
+      },
+      "irrelevant_tokens_o200k_estimate": 40354.734375,
+      "irrelevant_and_failure_tokens_o200k_estimate": 43218.61875,
+      "uncached_input_tokens": 121475,
+      "peak_above_first_input": 92287
+    },
+    {
+      "id": "run-06",
+      "group": "A",
+      "repeat": 2,
+      "wave": 2,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-06/workspace",
+      "prompt_sha256": "b76bf54f353de34a3896d80b3da6b8ac8aee5a5eabc0a03789a1b3c6806379e0",
+      "state": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 254.326,
+      "thread_id": "01a171cc-f13e-7c62-915d-3f16c5023122",
+      "usage": {
+        "input_tokens": 560742,
+        "cached_input_tokens": 495744,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 7135,
+        "reasoning_output_tokens": 1855
+      },
+      "first_input_tokens": 13418,
+      "peak_input_tokens": 68566,
+      "model_calls": 12,
+      "tool_responses": 11,
+      "tool_output_chars": 172584,
+      "tool_output_tokens_o200k": 50119,
+      "tool_output_unique_tokens_o200k": 50119,
+      "outer_output_truncations": 1,
+      "cli_item_counts": {
+        "agent_message": 4,
+        "command_execution": 32,
+        "web_search": 3
+      },
+      "command_failures": 2,
+      "initial_text_tokens_o200k": 2081,
+      "compactions": 0,
+      "model_configurations": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        }
+      ],
+      "case": "case-06",
+      "quality": 83,
+      "factual": 73,
+      "evidence": 10,
+      "score_items": {
+        "V1": 5,
+        "S1": 5,
+        "S2": 10,
+        "S3": 5,
+        "S4": 10,
+        "S5": 3,
+        "S6": 6,
+        "W1": 10,
+        "W2": 10,
+        "W3": 4,
+        "W4": 5,
+        "E1": 10
+      },
+      "rater_1": 85,
+      "rater_2": 83,
+      "noise_percent": {
+        "E": 15,
+        "O": 46.25,
+        "I": 36.25,
+        "F": 2.5
+      },
+      "irrelevant_tokens_o200k_estimate": 18168.1375,
+      "irrelevant_and_failure_tokens_o200k_estimate": 19421.1125,
+      "uncached_input_tokens": 64998,
+      "peak_above_first_input": 55148
+    },
+    {
+      "id": "run-07",
+      "group": "A",
+      "repeat": 3,
+      "wave": 3,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-07/workspace",
+      "prompt_sha256": "b76bf54f353de34a3896d80b3da6b8ac8aee5a5eabc0a03789a1b3c6806379e0",
+      "state": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 255.265,
+      "thread_id": "01a171d2-b35e-7593-93ec-2354dc8e7895",
+      "usage": {
+        "input_tokens": 657297,
+        "cached_input_tokens": 591104,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 7215,
+        "reasoning_output_tokens": 1846
+      },
+      "first_input_tokens": 13375,
+      "peak_input_tokens": 80229,
+      "model_calls": 13,
+      "tool_responses": 12,
+      "tool_output_chars": 210793,
+      "tool_output_tokens_o200k": 61669,
+      "tool_output_unique_tokens_o200k": 61669,
+      "outer_output_truncations": 1,
+      "cli_item_counts": {
+        "agent_message": 4,
+        "command_execution": 33,
+        "web_search": 3
+      },
+      "command_failures": 1,
+      "initial_text_tokens_o200k": 2102,
+      "compactions": 0,
+      "model_configurations": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        }
+      ],
+      "case": "case-08",
+      "quality": 85,
+      "factual": 75,
+      "evidence": 10,
+      "score_items": {
+        "V1": 5,
+        "S1": 5,
+        "S2": 10,
+        "S3": 5,
+        "S4": 10,
+        "S5": 3,
+        "S6": 8,
+        "W1": 10,
+        "W2": 10,
+        "W3": 4,
+        "W4": 5,
+        "E1": 10
+      },
+      "rater_1": 85,
+      "rater_2": 85,
+      "noise_percent": {
+        "E": 9.375,
+        "O": 42.1875,
+        "I": 48.4375,
+        "F": 0
+      },
+      "irrelevant_tokens_o200k_estimate": 29870.921875,
+      "irrelevant_and_failure_tokens_o200k_estimate": 29870.921875,
+      "uncached_input_tokens": 66193,
+      "peak_above_first_input": 66854
+    },
+    {
+      "id": "run-08",
+      "group": "B",
+      "repeat": 3,
+      "wave": 3,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-08/workspace",
+      "prompt_sha256": "bfdc677f86a54b928282455fc1cccb1a60c04968a393c5386d4d02604792ea70",
+      "state": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 241.267,
+      "thread_id": "01a171d2-b35e-7163-9cd8-aa27942e19df",
+      "usage": {
+        "input_tokens": 664978,
+        "cached_input_tokens": 596480,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 7965,
+        "reasoning_output_tokens": 1702
+      },
+      "first_input_tokens": 13300,
+      "peak_input_tokens": 81334,
+      "model_calls": 13,
+      "tool_responses": 12,
+      "tool_output_chars": 218922,
+      "tool_output_tokens_o200k": 61915,
+      "tool_output_unique_tokens_o200k": 61915,
+      "outer_output_truncations": 1,
+      "cli_item_counts": {
+        "agent_message": 4,
+        "command_execution": 20,
+        "web_search": 3
+      },
+      "command_failures": 1,
+      "initial_text_tokens_o200k": 2027,
+      "compactions": 0,
+      "model_configurations": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        }
+      ],
+      "case": "case-01",
+      "quality": 85,
+      "factual": 75,
+      "evidence": 10,
+      "score_items": {
+        "V1": 5,
+        "S1": 5,
+        "S2": 10,
+        "S3": 5,
+        "S4": 10,
+        "S5": 3,
+        "S6": 8,
+        "W1": 10,
+        "W2": 10,
+        "W3": 4,
+        "W4": 5,
+        "E1": 10
+      },
+      "rater_1": 85,
+      "rater_2": 85,
+      "noise_percent": {
+        "E": 14.6875,
+        "O": 40,
+        "I": 45.3125,
+        "F": 0
+      },
+      "irrelevant_tokens_o200k_estimate": 28055.234375,
+      "irrelevant_and_failure_tokens_o200k_estimate": 28055.234375,
+      "uncached_input_tokens": 68498,
+      "peak_above_first_input": 68034
+    },
+    {
+      "id": "run-09",
+      "group": "C",
+      "repeat": 3,
+      "wave": 3,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-09/workspace",
+      "prompt_sha256": "387f6ce768f8b239cffccf60728a03f939a9f6ba0750486574b1881a0bf3a8d4",
+      "state": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 345.945,
+      "thread_id": "01a171d2-b35e-76e0-9713-bb216207858d",
+      "usage": {
+        "input_tokens": 979384,
+        "cached_input_tokens": 889216,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 9517,
+        "reasoning_output_tokens": 2337
+      },
+      "first_input_tokens": 13257,
+      "peak_input_tokens": 95169,
+      "model_calls": 17,
+      "tool_responses": 16,
+      "tool_output_chars": 277800,
+      "tool_output_tokens_o200k": 73833,
+      "tool_output_unique_tokens_o200k": 73833,
+      "outer_output_truncations": 1,
+      "cli_item_counts": {
+        "agent_message": 5,
+        "web_search": 6,
+        "command_execution": 15,
+        "file_change": 1
+      },
+      "command_failures": 1,
+      "initial_text_tokens_o200k": 1984,
+      "compactions": 0,
+      "model_configurations": [
+        {
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        }
+      ],
+      "case": "case-09",
+      "quality": 84,
+      "factual": 74,
+      "evidence": 10,
+      "score_items": {
+        "V1": 5,
+        "S1": 5,
+        "S2": 10,
+        "S3": 5,
+        "S4": 10,
+        "S5": 0,
+        "S6": 10,
+        "W1": 10,
+        "W2": 10,
+        "W3": 4,
+        "W4": 5,
+        "E1": 10
+      },
+      "rater_1": 84,
+      "rater_2": 84,
+      "noise_percent": {
+        "E": 12.1875,
+        "O": 27.5,
+        "I": 58.125,
+        "F": 2.1875
+      },
+      "irrelevant_tokens_o200k_estimate": 42915.43125,
+      "irrelevant_and_failure_tokens_o200k_estimate": 44530.528125,
+      "uncached_input_tokens": 90168,
+      "peak_above_first_input": 81912
+    }
+  ],
+  "groups": {
+    "A": {
+      "n": 3,
+      "median": {
+        "quality": 85,
+        "factual": 75,
+        "evidence": 10,
+        "elapsed_seconds": 254.326,
+        "peak_input_tokens": 80229,
+        "peak_above_first_input": 66854,
+        "tool_output_tokens_o200k": 61669,
+        "tool_output_chars": 210793,
+        "model_calls": 13,
+        "uncached_input_tokens": 66193,
+        "irrelevant_tokens_o200k_estimate": 21427.015625,
+        "irrelevant_and_failure_tokens_o200k_estimate": 21427.015625,
+        "input_tokens": 657297,
+        "cached_input_tokens": 591104,
+        "output_tokens": 7215,
+        "reasoning_output_tokens": 1846,
+        "noise_E_percent": 15,
+        "noise_O_percent": 46.25,
+        "noise_I_percent": 36.25,
+        "noise_F_percent": 0
+      },
+      "range": {
+        "quality": [
+          83,
+          85
+        ],
+        "factual": [
+          73,
+          75
+        ],
+        "evidence": [
+          10,
+          10
+        ],
+        "elapsed_seconds": [
+          250.361,
+          255.265
+        ],
+        "peak_input_tokens": [
+          68566,
+          82105
+        ],
+        "peak_above_first_input": [
+          55148,
+          68730
+        ],
+        "tool_output_tokens_o200k": [
+          50119,
+          62905
+        ],
+        "tool_output_chars": [
+          172584,
+          215902
+        ],
+        "model_calls": [
+          12,
+          15
+        ],
+        "uncached_input_tokens": [
+          64998,
+          70064
+        ],
+        "irrelevant_tokens_o200k_estimate": [
+          18168.1375,
+          29870.921875
+        ],
+        "irrelevant_and_failure_tokens_o200k_estimate": [
+          19421.1125,
+          29870.921875
+        ],
+        "input_tokens": [
+          560742,
+          728880
+        ],
+        "cached_input_tokens": [
+          495744,
+          658816
+        ],
+        "output_tokens": [
+          7135,
+          7925
+        ],
+        "reasoning_output_tokens": [
+          1624,
+          1855
+        ],
+        "noise_E_percent": [
+          9.375,
+          16.875
+        ],
+        "noise_O_percent": [
+          42.1875,
+          49.0625
+        ],
+        "noise_I_percent": [
+          34.0625,
+          48.4375
+        ],
+        "noise_F_percent": [
+          0,
+          2.5
+        ]
+      },
+      "mean": {
+        "quality": 84.33333333333333,
+        "factual": 74.33333333333333,
+        "evidence": 10,
+        "elapsed_seconds": 253.31733333333332,
+        "peak_input_tokens": 76966.66666666667,
+        "peak_above_first_input": 63577.333333333336,
+        "tool_output_tokens_o200k": 58231,
+        "tool_output_chars": 199759.66666666666,
+        "model_calls": 13.333333333333334,
+        "uncached_input_tokens": 67085,
+        "irrelevant_tokens_o200k_estimate": 23155.358333333334,
+        "irrelevant_and_failure_tokens_o200k_estimate": 23573.016666666666,
+        "input_tokens": 648973,
+        "cached_input_tokens": 581888,
+        "output_tokens": 7425,
+        "reasoning_output_tokens": 1775,
+        "noise_E_percent": 13.75,
+        "noise_O_percent": 45.833333333333336,
+        "noise_I_percent": 39.583333333333336,
+        "noise_F_percent": 0.8333333333333334
+      }
+    },
+    "B": {
+      "n": 3,
+      "median": {
+        "quality": 87,
+        "factual": 77,
+        "evidence": 10,
+        "elapsed_seconds": 257.679,
+        "peak_input_tokens": 85809,
+        "peak_above_first_input": 72509,
+        "tool_output_tokens_o200k": 66274,
+        "tool_output_chars": 242581,
+        "model_calls": 14,
+        "uncached_input_tokens": 73524,
+        "irrelevant_tokens_o200k_estimate": 28055.234375,
+        "irrelevant_and_failure_tokens_o200k_estimate": 28055.234375,
+        "input_tokens": 745429,
+        "cached_input_tokens": 651264,
+        "output_tokens": 7965,
+        "reasoning_output_tokens": 1702,
+        "noise_E_percent": 15.625,
+        "noise_O_percent": 40,
+        "noise_I_percent": 43.75,
+        "noise_F_percent": 0
+      },
+      "range": {
+        "quality": [
+          85,
+          87
+        ],
+        "factual": [
+          75,
+          77
+        ],
+        "evidence": [
+          10,
+          10
+        ],
+        "elapsed_seconds": [
+          241.267,
+          349.639
+        ],
+        "peak_input_tokens": [
+          81334,
+          90159
+        ],
+        "peak_above_first_input": [
+          68034,
+          76816
+        ],
+        "tool_output_tokens_o200k": [
+          61915,
+          67661
+        ],
+        "tool_output_chars": [
+          218922,
+          244688
+        ],
+        "model_calls": [
+          13,
+          20
+        ],
+        "uncached_input_tokens": [
+          68498,
+          94165
+        ],
+        "irrelevant_tokens_o200k_estimate": [
+          26430.078125,
+          28994.875
+        ],
+        "irrelevant_and_failure_tokens_o200k_estimate": [
+          26430.078125,
+          29409.0875
+        ],
+        "input_tokens": [
+          664978,
+          1253556
+        ],
+        "cached_input_tokens": [
+          596480,
+          1180032
+        ],
+        "output_tokens": [
+          7815,
+          10992
+        ],
+        "reasoning_output_tokens": [
+          1106,
+          2066
+        ],
+        "noise_E_percent": [
+          14.6875,
+          20.9375
+        ],
+        "noise_O_percent": [
+          34.6875,
+          45.3125
+        ],
+        "noise_I_percent": [
+          39.0625,
+          45.3125
+        ],
+        "noise_F_percent": [
+          0,
+          0.625
+        ]
+      },
+      "mean": {
+        "quality": 86.33333333333333,
+        "factual": 76.33333333333333,
+        "evidence": 10,
+        "elapsed_seconds": 282.8616666666667,
+        "peak_input_tokens": 85767.33333333333,
+        "peak_above_first_input": 72453,
+        "tool_output_tokens_o200k": 65283.333333333336,
+        "tool_output_chars": 235397,
+        "model_calls": 15.666666666666666,
+        "uncached_input_tokens": 78729,
+        "irrelevant_tokens_o200k_estimate": 27826.729166666668,
+        "irrelevant_and_failure_tokens_o200k_estimate": 27964.8,
+        "input_tokens": 887987.6666666666,
+        "cached_input_tokens": 809258.6666666666,
+        "output_tokens": 8924,
+        "reasoning_output_tokens": 1624.6666666666667,
+        "noise_E_percent": 17.083333333333332,
+        "noise_O_percent": 40.0,
+        "noise_I_percent": 42.708333333333336,
+        "noise_F_percent": 0.20833333333333334
+      }
+    },
+    "C": {
+      "n": 3,
+      "median": {
+        "quality": 80,
+        "factual": 70,
+        "evidence": 10,
+        "elapsed_seconds": 345.945,
+        "peak_input_tokens": 96553,
+        "peak_above_first_input": 83296,
+        "tool_output_tokens_o200k": 77899,
+        "tool_output_chars": 277800,
+        "model_calls": 14,
+        "uncached_input_tokens": 90168,
+        "irrelevant_tokens_o200k_estimate": 42915.43125,
+        "irrelevant_and_failure_tokens_o200k_estimate": 44530.528125,
+        "input_tokens": 873091,
+        "cached_input_tokens": 751616,
+        "output_tokens": 9517,
+        "reasoning_output_tokens": 2337,
+        "noise_E_percent": 12.1875,
+        "noise_O_percent": 27.8125,
+        "noise_I_percent": 58.125,
+        "noise_F_percent": 2.1875
+      },
+      "range": {
+        "quality": [
+          79,
+          84
+        ],
+        "factual": [
+          69,
+          74
+        ],
+        "evidence": [
+          10,
+          10
+        ],
+        "elapsed_seconds": [
+          237.544,
+          377.357
+        ],
+        "peak_input_tokens": [
+          95169,
+          105587
+        ],
+        "peak_above_first_input": [
+          81912,
+          92287
+        ],
+        "tool_output_tokens_o200k": [
+          73833,
+          83313
+        ],
+        "tool_output_chars": [
+          276468,
+          312237
+        ],
+        "model_calls": [
+          13,
+          17
+        ],
+        "uncached_input_tokens": [
+          82250,
+          121475
+        ],
+        "irrelevant_tokens_o200k_estimate": [
+          40354.734375,
+          46739.4
+        ],
+        "irrelevant_and_failure_tokens_o200k_estimate": [
+          43218.61875,
+          46739.4
+        ],
+        "input_tokens": [
+          711754,
+          979384
+        ],
+        "cached_input_tokens": [
+          629504,
+          889216
+        ],
+        "output_tokens": [
+          7208,
+          11013
+        ],
+        "reasoning_output_tokens": [
+          1517,
+          3372
+        ],
+        "noise_E_percent": [
+          12.1875,
+          19.6875
+        ],
+        "noise_O_percent": [
+          27.5,
+          28.4375
+        ],
+        "noise_I_percent": [
+          48.4375,
+          60
+        ],
+        "noise_F_percent": [
+          0,
+          3.4375
+        ]
+      },
+      "mean": {
+        "quality": 81,
+        "factual": 71,
+        "evidence": 10,
+        "elapsed_seconds": 320.28200000000004,
+        "peak_input_tokens": 99103,
+        "peak_above_first_input": 85831.66666666667,
+        "tool_output_tokens_o200k": 78348.33333333333,
+        "tool_output_chars": 288835,
+        "model_calls": 14.666666666666666,
+        "uncached_input_tokens": 97964.33333333333,
+        "irrelevant_tokens_o200k_estimate": 43336.521875,
+        "irrelevant_and_failure_tokens_o200k_estimate": 44829.515625,
+        "input_tokens": 854743,
+        "cached_input_tokens": 756778.6666666666,
+        "output_tokens": 9246,
+        "reasoning_output_tokens": 2408.6666666666665,
+        "noise_E_percent": 14.6875,
+        "noise_O_percent": 27.916666666666668,
+        "noise_I_percent": 55.520833333333336,
+        "noise_F_percent": 1.875
+      }
+    }
+  },
+  "completed_scored_trials": 9,
+  "native_usage_total": {
+    "input_tokens": 7175111,
+    "cached_input_tokens": 6443776,
+    "output_tokens": 76785,
+    "reasoning_output_tokens": 17425
+  },
+  "adjudications": {
+    "case-02": {
+      "S6": 6
+    },
+    "case-06": {
+      "S6": 6
+    }
+  }
+}

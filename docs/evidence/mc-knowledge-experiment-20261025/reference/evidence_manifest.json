@@ -1,0 +1,997 @@
+[
+  {
+    "file": "evidence/abstract_skeleton.json",
+    "sha256": "66a66cc9a04d098d47a0b598445222d3ffdcd981210f2f1285f4a871233d4c94",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.monster.skeleton.AbstractSkeleton",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/fa827529dde629f7f7f3b9975b631bc32b9377697228a5253d5d17e8ec24279c/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 214,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/abstract_skeleton.txt"
+  },
+  {
+    "file": "evidence/conversion_tick_bytecode.json",
+    "sha256": "52db6464eac708994286c8af7f2a59cfa8e50d56153408a83c85dadaf172ba14",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": null,
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 66,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/conversion_tick_bytecode.txt"
+  },
+  {
+    "file": "evidence/conversion_tracker.json",
+    "sha256": "c2d1e60d74566653121df093aadd8c7fdc2c13e7394a067cf2794d4c1159da91",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.ConversionTracker",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/e63d300cfbe735a78ee13f5fdeb6e3aba6dea419d3499196f35b8ade133d9f90/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 122,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/conversion_tracker.txt"
+  },
+  {
+    "file": "evidence/doctor.json",
+    "sha256": "3b83e2b36d83ec3a4f16eb7c2829135c81c24b7b89cccc25b461301aa7db8daa",
+    "ok": true,
+    "truncated": null,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": null,
+    "returned_range": null
+  },
+  {
+    "file": "evidence/entity_base_tick.json",
+    "sha256": "e02e4383abe59374773829ab2685c281d90168f329a5b7a76d02ce559c1b4999",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.Entity",
+      "member": "baseTick",
+      "descriptor": "()V",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/8109181ff5a36d04341e5e0b939481ca0756896a6c0e5048bf749f4ee549e182/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 34,
+      "start_char": 0,
+      "end_line": 100,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/entity_base_tick.txt"
+  },
+  {
+    "file": "evidence/entity_can_freeze.json",
+    "sha256": "2c5dcd2631c68a9dc5b2bbcf900d9e21bb8a1ed19b7ee85d18d772a3a91b3ec9",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.Entity",
+      "member": "canFreeze",
+      "descriptor": "()Z",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/f688538c442bf576f903af455270c4604cbb5df623ddfac8ea5fca6451aaaa06/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 32,
+      "start_char": 0,
+      "end_line": 46,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/entity_can_freeze.txt"
+  },
+  {
+    "file": "evidence/entity_freeze.json",
+    "sha256": "2d77f176b406b35e9b6aef312113d330e81825676e3d9ae4a295769f46100d83",
+    "ok": false,
+    "truncated": null,
+    "source": null,
+    "decompiled": null,
+    "returned_range": null
+  },
+  {
+    "file": "evidence/entity_frozen_methods.json",
+    "sha256": "5e446521e7679359d7aac58722acfe139ebf30ef28ba07bb379329ffb450c5cd",
+    "ok": true,
+    "truncated": true,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": null,
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 261,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/entity_frozen_methods.txt"
+  },
+  {
+    "file": "evidence/entity_frozen_required.json",
+    "sha256": "01bc94a5c91af357af91e97aab5956bdef70421b33f5990a65dfb77a61667908",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.Entity",
+      "member": "getTicksRequiredToFreeze",
+      "descriptor": "()I",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/89e4d7fbab4f9dc603b48064e2cb5df84c361fc74733486e952e809fdafde1dc/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 31,
+      "start_char": 0,
+      "end_line": 45,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/entity_frozen_required.txt"
+  },
+  {
+    "file": "evidence/entity_fully_frozen.json",
+    "sha256": "8fa685625fa5f6ddc5c720e6ee6fc7ad071321585885fc60746efdee245136c5",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.Entity",
+      "member": "isFullyFrozen",
+      "descriptor": "()Z",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ed0ce24d8bad073f7491754185ef3485335783b03473c0b7479c6de4be348052/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 31,
+      "start_char": 0,
+      "end_line": 45,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/entity_fully_frozen.txt"
+  },
+  {
+    "file": "evidence/freeze_hurts_extra.json",
+    "sha256": "7b0d96557668bf7b646f14b665815f729066a9d79520f840250448a854882d1e",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": null,
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 8,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/freeze_hurts_extra.txt"
+  },
+  {
+    "file": "evidence/freeze_immune.json",
+    "sha256": "4d4e5de52e0e7dc56aa5bdedf4cba8cfb7c65b4c48e94b8e25bda76c3c9cdce7",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": null,
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 9,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/freeze_immune.txt"
+  },
+  {
+    "file": "evidence/hurt_by.json",
+    "sha256": "161a17d74fc7e985be2e90cf58143c055d7dfa0ac8a48889808b1c0345441097",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/76887263daf4a6a2cb0ace936b30a10470d25c59b86fe74fd74eaf4116e22177/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 117,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/hurt_by.txt"
+  },
+  {
+    "file": "evidence/inside_block_effect.json",
+    "sha256": "9f977ab175eb81d0c788fbcb9d58ca66d721aa16a0be669d54b8e79cafc2fd10",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.InsideBlockEffectType",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/607cf89239c7442e3b819e208d18f0a4b86d16439222d12af13cacb237b64684/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 28,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/inside_block_effect.txt"
+  },
+  {
+    "file": "evidence/living_ai_step.json",
+    "sha256": "63053a54818d8ee8d49bd87db7ce7e881c2978a4cdb20f57a2b9524c297c4083",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.LivingEntity",
+      "member": "aiStep",
+      "descriptor": "()V",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/54af14dc2b105d148da02d4dd62e22316579c968f048b01d2509c191f5c41ffa/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 42,
+      "start_char": 0,
+      "end_line": 178,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/living_ai_step.txt"
+  },
+  {
+    "file": "evidence/living_can_freeze.json",
+    "sha256": "60097274ba466a285bdc328c8d02c1f2e37ca4ba4870fe9a1f99d6b7e50bd108",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.LivingEntity",
+      "member": "canFreeze",
+      "descriptor": "()Z",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67ffba069996e97801f677b4cdd8166510053b29461de881e9fd0449fed60be8/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 37,
+      "start_char": 0,
+      "end_line": 53,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/living_can_freeze.txt"
+  },
+  {
+    "file": "evidence/living_outline.json",
+    "sha256": "2ecd288eace88b3c5feb4ebdd31fd624af9906fdf8beca6a92f5d98b493601df",
+    "ok": true,
+    "truncated": true,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": null,
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 261,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/living_outline.txt"
+  },
+  {
+    "file": "evidence/living_try_frost.json",
+    "sha256": "af03f9e39fe03d1c0b18ff0f1eb9c9ff9a39d3fd1e4a3d4932692c8ba9d73c41",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.LivingEntity",
+      "member": "tryAddFrost",
+      "descriptor": "()V",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/7c765958b465c95eb56b890eb83569ba0608d83ab908ce596fb09559bf16fd76/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 39,
+      "start_char": 0,
+      "end_line": 55,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/living_try_frost.txt"
+  },
+  {
+    "file": "evidence/melee_can_use.json",
+    "sha256": "56d6f0e1c4decc46304aa0ea83d79374f4f8ebe412cf7d89642bb8d74d5cd248",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.ai.goal.MeleeAttackGoal",
+      "member": "canUse",
+      "descriptor": "()Z",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac1e2473aafdafad5f563894aee9c2a36b1fd9649c4b08ca88e92ae0eded2ba8/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 5,
+      "start_char": 0,
+      "end_line": 27,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/melee_can_use.txt"
+  },
+  {
+    "file": "evidence/nearest_target.json",
+    "sha256": "7038c4fa279c04e043663cd77cc3f25f549373f717aebbafa9ba9228286f8cbd",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/893b350eb4cd46314afe1404de9076f9821909bfc3da343e41b5d3314462118b/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 88,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/nearest_target.txt"
+  },
+  {
+    "file": "evidence/no_wolf_retaliation.json",
+    "sha256": "fbb3df383b31c3dce000385150b20c1db33f4b5bc5a350801fdf06cfa383ecef",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": null,
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 6,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/no_wolf_retaliation.txt"
+  },
+  {
+    "file": "evidence/non_tame_target.json",
+    "sha256": "6ae5248ce815b86873cefa9edb0b62f03452bb6755c8ffd141b388bf2bf084aa",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.ai.goal.target.NonTameRandomTargetGoal",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d4dd230e530540c8539afa7bad454310f2a63c7144744cc159fe7f199a0d5de9/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 26,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/non_tame_target.txt"
+  },
+  {
+    "file": "evidence/owner_hurt_by.json",
+    "sha256": "0b931e30a3b347dc4b10db8b0f49a95011e9a432747fffc9f1e957b4b7eac390",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/804ffe4eb074f607070ef7caf86c683851c7ab40de24e47e7f821470fb6420e5/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 56,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/owner_hurt_by.txt"
+  },
+  {
+    "file": "evidence/owner_hurt_target.json",
+    "sha256": "b5d5838e5e1c369c3337ae48340d851110fb1a215679a29aa9b35f59e7423383",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/07315896fa0b1badfa08b35096d25ef93584f8541fb862239200c96e25e9969c/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 49,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/owner_hurt_target.txt"
+  },
+  {
+    "file": "evidence/powder_snow.json",
+    "sha256": "6c283679db0c1671fe50cde955a6a81adb3e0a1fc0704988a345781fe5054b4b",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.level.block.PowderSnowBlock",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/59ed962a5f72e3656b966dc47ce349a544644b414a3d42c733bdfd8106c05125/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 168,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/powder_snow.txt"
+  },
+  {
+    "file": "evidence/sit_goal.json",
+    "sha256": "3b61488b277a5bc05ed654a99c4e84ee95beefd57ee3b2cfbb595483c4dffb30",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/73a770f57731692bd8fcd77ec2a7b344cade4beb631737a62406c25e8bee2e1d/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 51,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/sit_goal.txt"
+  },
+  {
+    "file": "evidence/sit_goal_bytecode.json",
+    "sha256": "bc707ca3cb145529d1bdabc3f2d3526e6ea86521a193cd3e2b7b7341b0a83a67",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": null,
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 9,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/sit_goal_bytecode.txt"
+  },
+  {
+    "file": "evidence/skeleton.json",
+    "sha256": "854f514fbbd842ff0aa590f2b9660e60ef8515ede4b511c7f2df11b5dd640f2e",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.monster.skeleton.Skeleton",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/a435f90e407da2c07897d9faf1f3f5a369b7d2f770dd357dc0088acaf0627c9e/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 87,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/skeleton.txt"
+  },
+  {
+    "file": "evidence/stray.json",
+    "sha256": "31977157caa02a173c5afe35de6ce9e8797eda765f103dc90ec3083f69da04fc",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.monster.skeleton.Stray",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/48e64e30e32bc96e46d276c9ac4aa70734e0e8a570ee5fca2930b5ad7788813b/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 69,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/stray.txt"
+  },
+  {
+    "file": "evidence/tamable.json",
+    "sha256": "70b1c0e56470f9efcd110c4d5e9d026981674c763f46ffdcf279d27e2d35dbe8",
+    "ok": true,
+    "truncated": true,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.TamableAnimal",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/21265e19b30e3c5ed9a905924e26744178df6ec8d63d4b86c62b557962182104/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 261,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/tamable.txt"
+  },
+  {
+    "file": "evidence/target_conditions.json",
+    "sha256": "51b9b817eb4ebb78f9f1675137fa899b5e62032ea2fa3d4a8c4abf7845214dc4",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.ai.targeting.TargetingConditions",
+      "member": "test",
+      "descriptor": "(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/LivingEntity;)Z",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/beded61effc19fcdbb5ccc801c91d62135e65b083951572c2b71345326c1a5f9/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 9,
+      "start_char": 0,
+      "end_line": 49,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/target_conditions.txt"
+  },
+  {
+    "file": "evidence/target_goal.json",
+    "sha256": "4b6b4d83701af266af59d4a46b8580f4443bab5fb9396e66725bf364795c96e0",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.ai.goal.target.TargetGoal",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/0e3d5a1edc8c608fbd340d25b6518f97e2d10538ad041c5629a2db9dac2fa6d2/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 143,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/target_goal.txt"
+  },
+  {
+    "file": "evidence/wolf.json",
+    "sha256": "dd3ac881f82acb84ec0b6dceaebb31304c567b905b30b7ef6bac79d26212cbdb",
+    "ok": true,
+    "truncated": true,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.animal.wolf.Wolf",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/743bcba2f0cc2ba144315a71911c0987145373cba014062bb369aebccadf3adb/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "class"
+    },
+    "returned_range": {
+      "start_line": 1,
+      "start_char": 0,
+      "end_line": 251,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/wolf.txt"
+  },
+  {
+    "file": "evidence/wolf_can_attack.json",
+    "sha256": "ce3ba1807b4ae6e1b2afe12ca256aed6ee5f3b6e2b04b9e71dd8ea45b08b1d72",
+    "ok": false,
+    "truncated": null,
+    "source": null,
+    "decompiled": null,
+    "returned_range": null
+  },
+  {
+    "file": "evidence/wolf_mob_interact.json",
+    "sha256": "6d836767136fb997fb9ccbdace89ea215e36cada258f3365b337c74459dcaa44",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.animal.wolf.Wolf",
+      "member": "mobInteract",
+      "descriptor": "(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/InteractionHand;)Lnet/minecraft/world/InteractionResult;",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d1a05326503e92de2d73fc4437107e061cdbbbed88f8fb7e993cad5b13e79f17/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 23,
+      "start_char": 0,
+      "end_line": 80,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/wolf_mob_interact.txt"
+  },
+  {
+    "file": "evidence/wolf_register_goals.json",
+    "sha256": "714fe1d71bbae27b1025211f14a678132f50d38bb8b85a490aacc0331f910416",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.animal.wolf.Wolf",
+      "member": "registerGoals",
+      "descriptor": "()V",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/7ef8347359018c6cb3058839839f92d8ccf10dd41b8c65b9eccebbe5fdf40346/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 36,
+      "start_char": 0,
+      "end_line": 61,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/wolf_register_goals.txt"
+  },
+  {
+    "file": "evidence/wolf_wants_attack.json",
+    "sha256": "736a9c2bd3143fb503d7023b388b374c719e61343d9e3cae16d0bc1d35459834",
+    "ok": true,
+    "truncated": false,
+    "source": {
+      "edition": "Java",
+      "minecraft_version": "26.3",
+      "kind": "vanilla-server",
+      "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+      "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+      "integrity": "matches server bundle SHA-256"
+    },
+    "decompiled": {
+      "class": "net.minecraft.world.entity.animal.wolf.Wolf",
+      "member": "wantsToAttack",
+      "descriptor": "(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/LivingEntity;)Z",
+      "compiler": "1.12.0",
+      "path": "/private/tmp/hardrush-mc-reference-20261025/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/dafecd9fade1d73b2fcf2cde342d1537e97e18004fa6b5e02ce7b701a92a1c36/source.java",
+      "warnings": [],
+      "cache_hit": false,
+      "view": "method"
+    },
+    "returned_range": {
+      "start_line": 18,
+      "start_char": 0,
+      "end_line": 32,
+      "end_char": 0
+    },
+    "text_file": "evidence_text/wolf_wants_attack.txt"
+  }
+]

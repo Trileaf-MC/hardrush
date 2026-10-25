@@ -1,0 +1,390 @@
+{
+  "edition": "Java",
+  "version": {
+    "id": "26.3",
+    "name": "26.3",
+    "world_version": 5023,
+    "series_id": "main",
+    "protocol_version": 777,
+    "pack_version": {
+      "resource_major": 97,
+      "resource_minor": 1,
+      "data_major": 121,
+      "data_minor": 0
+    },
+    "build_time": "2026-09-15T11:20:48+00:00",
+    "java_component": "java-runtime-epsilon",
+    "java_version": 25,
+    "stable": true,
+    "use_editor": false
+  },
+  "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+  "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+  "bundle": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-server.jar",
+  "bundle_sha1": "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c",
+  "official_server_sha1_from_live_manifest": "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c",
+  "official_version_metadata_url": "https://piston-meta.mojang.com/v1/packages/61fff1316bd50312624a858bbb5eb18fa45208ed/26.3.json",
+  "official_server_url": "https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar",
+  "bundle_versions_list": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6\t26.3\t26.3/server-26.3.jar",
+  "queries": [
+    {
+      "name": "Skeleton",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "Skeleton",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "Skeleton.java"
+    },
+    {
+      "name": "ConversionTracker",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "ConversionTracker",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "ConversionTracker.java"
+    },
+    {
+      "name": "ConversionTracker.tick.bytecode",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "ConversionTracker",
+        "--member",
+        "tick",
+        "--bytecode",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "ConversionTracker.tick.bytecode.txt"
+    },
+    {
+      "name": "Wolf.registerGoals",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "Wolf",
+        "--member",
+        "registerGoals",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "Wolf.registerGoals.java"
+    },
+    {
+      "name": "Wolf.registerGoals.bytecode",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "Wolf",
+        "--member",
+        "registerGoals",
+        "--bytecode",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "Wolf.registerGoals.bytecode.txt"
+    },
+    {
+      "name": "Stray",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "Stray",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "Stray.java"
+    },
+    {
+      "name": "NonTameRandomTargetGoal",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "NonTameRandomTargetGoal",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "NonTameRandomTargetGoal.java"
+    },
+    {
+      "name": "NearestAttackableTargetGoal",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "NearestAttackableTargetGoal",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "NearestAttackableTargetGoal.java"
+    },
+    {
+      "name": "TargetingConditions",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "TargetingConditions",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "TargetingConditions.java"
+    },
+    {
+      "name": "TargetGoal",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "TargetGoal",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "TargetGoal.java"
+    },
+    {
+      "name": "SitWhenOrderedToGoal",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "SitWhenOrderedToGoal",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "SitWhenOrderedToGoal.java"
+    },
+    {
+      "name": "ConversionParams",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "ConversionParams",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "ConversionParams.java"
+    },
+    {
+      "name": "ConversionType",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "ConversionType",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "ConversionType.java"
+    },
+    {
+      "name": "LivingEntity.constructor.bytecode",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "LivingEntity",
+        "--member",
+        "<init>",
+        "--bytecode",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "LivingEntity.constructor.bytecode.txt"
+    },
+    {
+      "name": "InsideBlockEffectType",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "InsideBlockEffectType",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "InsideBlockEffectType.java"
+    },
+    {
+      "name": "PowderSnowBlock.entityInside",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "PowderSnowBlock",
+        "--member",
+        "entityInside",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "PowderSnowBlock.entityInside.java"
+    },
+    {
+      "name": "OwnerHurtByTargetGoal",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "OwnerHurtByTargetGoal",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "OwnerHurtByTargetGoal.java"
+    },
+    {
+      "name": "OwnerHurtTargetGoal",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "OwnerHurtTargetGoal",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "OwnerHurtTargetGoal.java"
+    },
+    {
+      "name": "Wolf.tryToTame",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "Wolf",
+        "--member",
+        "tryToTame",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "Wolf.tryToTame.java"
+    },
+    {
+      "name": "Wolf.wantsToAttack",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "Wolf",
+        "--member",
+        "wantsToAttack",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "Wolf.wantsToAttack.java"
+    },
+    {
+      "name": "Mob.convertTo",
+      "command": [
+        "python3",
+        "scripts/mc-knowledge.py",
+        "--version",
+        "26.3",
+        "source",
+        "Mob",
+        "--member",
+        "convertTo",
+        "--descriptor",
+        "(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/entity/ConversionParams;Lnet/minecraft/world/entity/EntitySpawnReason;Lnet/minecraft/world/entity/ConversionParams$AfterConversion;)Lnet/minecraft/world/entity/Mob;",
+        "--max-lines",
+        "1600",
+        "--max-chars",
+        "120000"
+      ],
+      "file": "Mob.convertTo.java"
+    }
+  ],
+  "method": "Static inspection using javap and Vineflower 1.12.0; no game client/server executed.",
+  "bundle_matches_official_sha1": true
+}

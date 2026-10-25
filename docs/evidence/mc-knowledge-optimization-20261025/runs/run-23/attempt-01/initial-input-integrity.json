@@ -1,0 +1,45 @@
+{
+  "state": "verified",
+  "protocol_deviation": false,
+  "evaluated_files": 6,
+  "changed_paths": [],
+  "files": [
+    {
+      "path": ".agents/skills/minecraft-knowledge/SKILL.md",
+      "expected_sha256": "747c8af80cdb40755846454b27d9b7e8637785fd13289e8797b339ceeabc3d7c",
+      "current_sha256": "747c8af80cdb40755846454b27d9b7e8637785fd13289e8797b339ceeabc3d7c",
+      "state": "unchanged"
+    },
+    {
+      "path": ".local/toolchains/java-home.txt",
+      "expected_sha256": "0761e9b251763354792a22da0b724cbd6d31bcd657174dd460b114d79579bc60",
+      "current_sha256": "0761e9b251763354792a22da0b724cbd6d31bcd657174dd460b114d79579bc60",
+      "state": "unchanged"
+    },
+    {
+      "path": "gradle.properties",
+      "expected_sha256": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c",
+      "current_sha256": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c",
+      "state": "unchanged"
+    },
+    {
+      "path": "scripts/mc-knowledge.py",
+      "expected_sha256": "c0447daec64d1af3e000bdc9ac036a9cdd98afd05ed0878963517904f53a100e",
+      "current_sha256": "c0447daec64d1af3e000bdc9ac036a9cdd98afd05ed0878963517904f53a100e",
+      "state": "unchanged"
+    },
+    {
+      "path": "scripts/mc_knowledge_output.py",
+      "expected_sha256": "7c65e2302bd7da8a6e1f21a0202abb64b278cb31232f1e8ec4c54cb18dab6727",
+      "current_sha256": "7c65e2302bd7da8a6e1f21a0202abb64b278cb31232f1e8ec4c54cb18dab6727",
+      "state": "unchanged"
+    },
+    {
+      "path": "scripts/mc_knowledge_wiki.py",
+      "expected_sha256": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87",
+      "current_sha256": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87",
+      "state": "unchanged"
+    }
+  ],
+  "note": "End-of-attempt comparison only. No repair, exclusion or status modification."
+}

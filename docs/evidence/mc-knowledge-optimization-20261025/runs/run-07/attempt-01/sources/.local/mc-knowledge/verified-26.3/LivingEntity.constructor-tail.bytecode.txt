@@ -1,0 +1,84 @@
+        31: ldc           #34                 // class net/minecraft/world/entity/EquipmentSlot
+        33: invokedynamic #36,  0             // InvokeDynamic #0:apply:()Ljava/util/function/Function;
+        38: invokestatic  #40                 // Method net/minecraft/util/Util.makeEnumMap:(Ljava/lang/Class;Ljava/util/function/Function;)Ljava/util/Map;
+        41: putfield      #46                 // Field lastEquipmentItems:Ljava/util/Map;
+        44: aload_0
+        45: new           #49                 // class net/minecraft/world/entity/LivingEntity$SwingState
+        48: dup
+        49: invokespecial #51                 // Method net/minecraft/world/entity/LivingEntity$SwingState."<init>":()V
+        52: putfield      #54                 // Field swingState:Lnet/minecraft/world/entity/LivingEntity$SwingState;
+        55: aload_0
+        56: iconst_0
+        57: putfield      #58                 // Field discardFriction:Z
+        60: aload_0
+        61: new           #62                 // class net/minecraft/world/entity/WalkAnimationState
+        64: dup
+        65: invokespecial #64                 // Method net/minecraft/world/entity/WalkAnimationState."<init>":()V
+        68: putfield      #65                 // Field walkAnimation:Lnet/minecraft/world/entity/WalkAnimationState;
+        71: aload_0
+        72: new           #69                 // class net/minecraft/world/entity/ElytraAnimationState
+        75: dup
+        76: aload_0
+        77: invokespecial #71                 // Method net/minecraft/world/entity/ElytraAnimationState."<init>":(Lnet/minecraft/world/entity/LivingEntity;)V
+        80: putfield      #72                 // Field elytraAnimationState:Lnet/minecraft/world/entity/ElytraAnimationState;
+        83: aload_0
+        84: iconst_1
+        85: putfield      #76                 // Field effectsDirty:Z
+        88: aload_0
+        89: getstatic     #79                 // Field net/minecraft/world/item/ItemStack.EMPTY:Lnet/minecraft/world/item/ItemStack;
+        92: putfield      #85                 // Field useItem:Lnet/minecraft/world/item/ItemStack;
+        95: aload_0
+        96: ldc2_w        #90                 // long -2147483648l
+        99: putfield      #92                 // Field lastKineticHitFeedbackTime:J
+       102: aload_0
+       103: invokestatic  #96                 // Method java/util/Optional.empty:()Ljava/util/Optional;
+       106: putfield      #102                // Field lastClimbablePos:Ljava/util/Optional;
+       109: aload_0
+       110: new           #106                // class java/util/EnumMap
+       113: dup
+       114: ldc           #34                 // class net/minecraft/world/entity/EquipmentSlot
+       116: invokespecial #108                // Method java/util/EnumMap."<init>":(Ljava/lang/Class;)V
+       119: putfield      #111                // Field activeLocationDependentEnchantments:Ljava/util/EnumMap;
+       122: aload_0
+       123: new           #115                // class net/minecraft/world/waypoints/Waypoint$Icon
+       126: dup
+       127: invokespecial #117                // Method net/minecraft/world/waypoints/Waypoint$Icon."<init>":()V
+       130: putfield      #118                // Field locatorBarIcon:Lnet/minecraft/world/waypoints/Waypoint$Icon;
+       133: aload_0
+       134: new           #122                // class net/minecraft/world/entity/ai/attributes/AttributeMap
+       137: dup
+       138: aload_1
+       139: invokestatic  #124                // Method net/minecraft/world/entity/ai/attributes/DefaultAttributes.getSupplier:(Lnet/minecraft/world/entity/EntityType;)Lnet/minecraft/world/entity/ai/attributes/AttributeSupplier;
+       142: invokespecial #130                // Method net/minecraft/world/entity/ai/attributes/AttributeMap."<init>":(Lnet/minecraft/world/entity/ai/attributes/AttributeSupplier;)V
+       145: putfield      #133                // Field attributes:Lnet/minecraft/world/entity/ai/attributes/AttributeMap;
+       148: aload_0
+       149: aload_0
+       150: invokevirtual #137                // Method getMaxHealth:()F
+       153: invokevirtual #141                // Method setHealth:(F)V
+       156: aload_0
+       157: aload_0
+       158: invokevirtual #145                // Method createEquipment:()Lnet/minecraft/world/entity/EntityEquipment;
+       161: putfield      #149                // Field equipment:Lnet/minecraft/world/entity/EntityEquipment;
+       164: aload_0
+       165: iconst_1
+       166: putfield      #153                // Field blocksBuilding:Z
+       169: aload_0
+       170: invokevirtual #156                // Method reapplyPosition:()V
+       173: aload_0
+       174: aload_0
+       175: getfield      #159                // Field random:Lnet/minecraft/util/RandomSource;
+       178: invokeinterface #163,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
+       183: ldc           #170                // float 6.2831855f
+       185: fmul
+       186: invokevirtual #171                // Method setYRot:(F)V
+       189: aload_0
+       190: aload_0
+       191: invokevirtual #174                // Method getYRot:()F
+       194: putfield      #177                // Field yHeadRot:F
+       197: aload_0
+       198: aload_0
+       199: getstatic     #181                // Field net/minecraft/world/entity/ai/Brain$Packed.EMPTY:Lnet/minecraft/world/entity/ai/Brain$Packed;
+       202: invokevirtual #186                // Method makeBrain:(Lnet/minecraft/world/entity/ai/Brain$Packed;)Lnet/minecraft/world/entity/ai/Brain;
+       205: putfield      #190                // Field brain:Lnet/minecraft/world/entity/ai/Brain;
+       208: return
+

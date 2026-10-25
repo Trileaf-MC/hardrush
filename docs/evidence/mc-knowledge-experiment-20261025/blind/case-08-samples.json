@@ -1,0 +1,290 @@
+[
+  {
+    "sample_id": "case-08-01",
+    "tool_output_index": 2,
+    "start_token": 0,
+    "end_token": 128,
+    "before": "",
+    "target": "Script completed\nWall time 10.0 seconds\nOutput:\n\n{\"i\":0,\"result\":{\"status\":\"fulfilled\",\"value\":{\"chunk_id\":\"93d154\",\"wall_time_seconds\":0.000002917,\"exit_code\":0,\"original_token_count\":509,\"output\":\"usage: mc-knowledge.py [-h] [--project PROJECT] [--version VERSION]\\n                       [--gradle-home GRADLE_HOME] [--cache-dir CACHE_DIR]\\n                       [--java-home JAVA_HOME] [--vineflower VINEFLOWER]\\n                       [--jar JAR] [--side {server,client}]",
+    "after": " [--offline]\\n                       [--max-lines MAX_LINES] [--max-chars MAX_CHARS]\\n                       [--start-line START_LINE] [--start-char START_CHAR]\\n                       [--limit LIMIT] [--timeout TIMEOUT]\\n                       {doctor,find-class,outline,source,data,"
+  },
+  {
+    "sample_id": "case-08-02",
+    "tool_output_index": 2,
+    "start_token": 962,
+    "end_token": 1090,
+    "before": "flower\\\": {\\n    \\\"path\\\": \\\"/Users/leifwebber/.gradle/caches/modules-2/files-2.1/org.vineflower/vineflower/1.12.0/85570609a0a5941a7d2918b6260b209de810f66",
+    "target": "f/vineflower-1.12.0.jar\\\",\\n    \\\"version\\\": \\\"1.12.0\\\",\\n    \\\"sha256\\\": \\\"1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d\\\"\\n  },\\n  \\\"metrics\\\": {\\n    \\\"elapsed_ms\\\": 177.47,\\n    \\\"body_chars\\\": 0,\\n    \\\"output_chars\\\": 1128\\n  }\\n}\\n\"}}}\n{\"i\":2,\"result\":{\"status\":\"fulfilled\",\"value\":\"Powder Snow",
+    "after": " – Minecraft Wiki (https://minecraft.wiki/w/Powder_snow)\\nciteturn0search0 [wordlim: 200] Crawled: 4 days ago; Powder snow does not have an item form in Java Edition. ... October 3, "
+  },
+  {
+    "sample_id": "case-08-03",
+    "tool_output_index": 2,
+    "start_token": 2626,
+    "end_token": 2754,
+    "before": "45a  | Skeletons now spawn in trial chambers behind the \\\"Update 1.21\\\" experimental data pack.\\nSkeletons from trial spawners surrounded by bone blocks, podzol and red mushrooms shoot tipped arrows of Poison.\\n1.20.5ExperimentUpdate 1.21  | 24",
+    "target": "w04a  | Skeletons no longer retaliate against attacks from the breeze.\\n24w07a  | Trial spawners surrounded by bone blocks, podzol and red mushrooms no longer spawn skeletons with tipped arrows of Poison, and instead spawn bogged.\\n1.21.2  | 24w33a  | Skeletons now naturally spawn with armor in the order of (most likely to least likely): helmet, chestplate, leggings, boots.^{[6]}\\n1.21.4  | 24w45a  | Skeletons now prefer to pick bows from the ground as",
+    "after": " opposed to other items.\\n--------------------------------------------------------------------------------\\nJava Edition 26.3 – Minecraft Wiki (https://minecraft.wiki/w/Java_Edition_26.3)\\nciteturn0search3 [wordlim: 200] Published: last month; Crawled"
+  },
+  {
+    "sample_id": "case-08-04",
+    "tool_output_index": 2,
+    "start_token": 4619,
+    "end_token": 4747,
+    "before": " gated to versions of the game where it is present (1.17+).\\n--------------------------------------------------------------------------------\\nPowder Snow – Minecraft Wiki (https://minecraft.fandom.com/wiki/Powder_Snow)\\nciteturn0search11 [wordlim: 200] Crawled",
+    "target": ": 3 months ago; In Java Edition, players in Spectator mode can see through powder snow without any fogging effect. ... Powder snow converting a skeleton into a stray. ... September 26, 2019  | Powder snow was announced as “Snowier Snow” at MINECON Live 2019 as part of mountains in the biome vote, and was set to be added to the game due to mountains winning the vote.October 3, 2020  | Powder snow was mentioned at Minecraft Live 2020, but no images were shown.\\n--------------------------------------------------------------------------------\\nThe Stray does not spawn in most",
+    "after": " cold biomes on Java Edition. (https://www.reddit.com/r/Minecraft/comments/1xas5gp/the_stray_does_not_spawn_in_most_cold_biomes_on/)\\nciteturn0reddit12 [wordlim: 200]"
+  },
+  {
+    "sample_id": "case-08-05",
+    "tool_output_index": 2,
+    "start_token": 7471,
+    "end_token": 7599,
+    "before": "239e17_61250552241.pdf)\\nciteturn0search26 [wordlim: 200] Published: 1.4 years ago; Varies with skeleton bow enchantment * Slime (big): 3 / 4 / 6 No damage",
+    "target": " * Slime (medium): 2 / 3 No damage * Slime (small): 0 No damage * Spider: 2 / 3 No damage, but can spawn with effects * Spider Jockey (spider): 2 / 3 No damage, but can spawn with effects * Spider Jockey arrow (JE only): 3 to 5 No damage * Spider Jockey arrow (BE only):Damage varies with proximity * Stray arrow (JE only): 3 to 5 Slowness for 30 seconds when their tipped arrow hits any mob (including another stray) * Stray arrow (BE only",
+    "after": "): Damage varies with proximity * Stray (melee): 2 / 3 No damage * Trader Llama spit: 1 No damage * Vex: 5.5 × 2.75 / 9 / 13.5 × 6.75 No damage * Vindicator: 7."
+  },
+  {
+    "sample_id": "case-08-06",
+    "tool_output_index": 3,
+    "start_token": 462,
+    "end_token": 590,
+    "before": "Testing;\\\\nimport net.minecraft.network.syncher.EntityDataAccessor;\\\\nimport net.minecraft.network.syncher.EntityDataSerializers;\\\\nimport net.minecraft.network.syncher.SynchedEntityData;\\\\nimport net.minecraft.network.syncher.SynchedEntityData.Builder;\\\\nimport net.minecraft.sounds.Sound",
+    "target": "Event;\\\\nimport net.minecraft.sounds.SoundEvents;\\\\nimport net.minecraft.world.damagesource.DamageSource;\\\\nimport net.minecraft.world.entity.ConversionTracker;\\\\nimport net.minecraft.world.entity.EntityType;\\\\nimport net.minecraft.world.entity.EntityTypes;\\\\nimport net.minecraft.world.level.Level;\\\\nimport net.minecraft.world.level.storage.ValueInput;\\\\nimport net.minecraft.world.level.storage.ValueOutput;\\\\n\\\\npublic class Skeleton extends AbstractSkeleton {\\\\n   private static final EntityDataAccessor<Boolean> DATA_STRAY_CONVERSION_ID = SynchedEntityData.defineId(Skeleton.class, Entity",
+    "after": "DataSerializers.BOOLEAN);\\\\n   private final ConversionTracker<AbstractSkeleton> freezingTracker = new ConversionTracker<>(\\\\n      this, DATA_STRAY_CONVERSION_ID, () -> EntityTypes.STRAY, () -> 1048, () -> this.isInPowderSnow, \\\\\\\"FreezingTime\\\\"
+  },
+  {
+    "sample_id": "case-08-07",
+    "tool_output_index": 3,
+    "start_token": 1170,
+    "end_token": 1298,
+    "before": "\\\\n   protected SoundEvent getStepSound() {\\\\n      return SoundEvents.SKELETON_STEP;\\\\n   }\\\\n}\\\\n\\\",\\n  \\\"total_lines\\\": 86,\\n  \\\"total_chars\\\": 2749,\\n  \\\"returned_range\\\": {\\n    \\\"start_line\\\":",
+    "target": " 1,\\n    \\\"start_char\\\": 0,\\n    \\\"end_line\\\": 87,\\n    \\\"end_char\\\": 0\\n  },\\n  \\\"truncated\\\": false,\\n  \\\"next\\\": null,\\n  \\\"metrics\\\": {\\n    \\\"elapsed_ms\\\": 872.39,\\n    \\\"body_chars\\\": 2749,\\n    \\\"output_chars\\\": 3928\\n  }\\n}\\n\"}}}\n{\"i\":1,\"result\":{\"status\":\"fulfilled\",\"value\":{\"chunk_id\":\"164167\",\"wall_time_seconds\":1.285570291,\"exit_code\":0,\"original_token",
+    "after": "_count\":752,\"output\":\"{\\n  \\\"ok\\\": true,\\n  \\\"source\\\": {\\n    \\\"edition\\\": \\\"Java\\\",\\n    \\\"minecraft_version\\\": \\\"26.3\\\",\\n    \\\"kind\\\": \\\"vanilla-server\\\",\\n    \\\"jar\\\": \\\"/Users/leifwebber/.gradle"
+  },
+  {
+    "sample_id": "case-08-08",
+    "tool_output_index": 3,
+    "start_token": 3750,
+    "end_token": 3878,
+    "before": " imagine.】\\nL15: \\nL16: 【2†Game Drops Explore the history of Minecraft updates.】\\nL17: \\nL18: 【3†Minecraft Realms Play with your friends on your own personal server.】\\nL19: \\nL20:      ",
+    "target": " * 【4†Buy Minecraft】\\nL21:       * 【5†New to Minecraft?】\\nL22:       * 【6†Try Minecraft Free】\\nL23: \\nL24:     * Minecraft Dungeons II\\nL25: \\nL26: Games\\nL27: ### Minecraft Dungeons II\\nL28: \\nL29: 【7†Minecraft Dungeons II Embark on an all-new dungeon crawling adventure in the sequel to Minecraft Dungeons.】\\nL30: \\nL31: 【8†Watch the Trailer Drop the pickaxe, grab a",
+    "after": " sword, and charge into a thrilling new adventure in Minecraft Dungeons II.】\\nL32: \\nL33: 【9†Dungeons II Newsletter Subscribe to stay up to date on Minecraft Dungeons II.】\\nL34: \\nL35:       * 【10†Buy Minecraft D"
+  },
+  {
+    "sample_id": "case-08-09",
+    "tool_output_index": 3,
+    "start_token": 6044,
+    "end_token": 6172,
+    "before": " Free】\\nL230: \\nL231:     * Follow Minecraft\\nL232: \\nL233: Community\\nL234: ### Follow Minecraft\\nL235: \\nL236: 【66†YouTube Subscribe to the official Minecraft YouTube channel for updates, original series, and more!",
+    "target": "†youtube.com】\\nL237: \\nL238: 【67†Discord Join the official Minecraft Discord server to share your creations, join build contests, and take part in community activities!†discordapp.com】\\nL239: \\nL240: 【68†TikTok Follow the official Minecraft TikTok for news, updates, and fan creations!†www.tiktok.com】\\nL241:       * 【69†WhatsApp†aka.ms】\\nL242:       * 【70†Instagram†www.instagram.com】\\nL243:       * 【71†X†x.com】",
+    "after": "\\nL244:       * 【72†Spotify†open.spotify.com】\\nL245: \\nL246:     * Get Involved\\nL247: \\nL248: Community\\nL249: ### Get Involved\\nL250: \\nL251: 【60†Submit an idea"
+  },
+  {
+    "sample_id": "case-08-10",
+    "tool_output_index": 3,
+    "start_token": 6747,
+    "end_token": 6875,
+    "before": "     * 【26†Redeem】\\nL298:     * Sign out\\nL299:     * 【85†Image】\\nL300: \\nL301: -\\nL302: \\nL303: 【49†Buy Now】\\nL304: \\nL305",
+    "target": ":   * Games\\nL306: \\nL307: Minecraft Java & Bedrock Minecraft Dungeons II Minecraft Dungeons Minecraft Legends Minecraft Education\\nL308: \\nL309: 【1†Minecraft Explore your own unique world, survive the night, and create anything you can imagine.】\\nL310: \\nL311: 【2†Game Drops Explore the history of Minecraft updates.】\\nL312: 【3†Minecraft Realms Play with your friends on your own personal server.】\\nL313: \\nL314:     * 【4†Buy Minecraft】\\nL315:",
+    "after": "     * 【5†New to Minecraft?】\\nL316:     * 【6†Try Minecraft Free】\\nL317: \\nL318: 【7†Minecraft Dungeons II Embark on an all-new dungeon crawling adventure in the sequel to Minecraft Dungeons.】\\nL319:"
+  },
+  {
+    "sample_id": "case-08-11",
+    "tool_output_index": 4,
+    "start_token": 1803,
+    "end_token": 1931,
+    "before": "output\":\"{\\n  \\\"ok\\\": true,\\n  \\\"source\\\": {\\n    \\\"edition\\\": \\\"Java\\\",\\n    \\\"minecraft_version\\\": \\\"26.3\\\",\\n    \\\"kind\\\": \\\"vanilla-server\\\",\\n    \\\"jar\\\": \\\"/Users/leifwebber/.gradle/caches/fabric",
+    "target": "-loom/26.3/minecraft-extracted_server.jar\\\",\\n    \\\"jar_sha256\\\": \\\"a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6\\\",\\n    \\\"integrity\\\": \\\"matches server bundle SHA-256\\\"\\n  },\\n  \\\"decompiled\\\": {\\n    \\\"class\\\": \\\"net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal\\\",\\n    \\\"compiler\\\": \\\"1.12.0\\\",\\n    \\\"path\\\": \\\"/private/tmp/hardrush-m",
+    "after": "c-experiment-20261025/run-07/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/893b350eb4"
+  },
+  {
+    "sample_id": "case-08-12",
+    "tool_output_index": 4,
+    "start_token": 3272,
+    "end_token": 3400,
+    "before": " \\\"jar_sha256\\\": \\\"a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6\\\",\\n    \\\"integrity\\\": \\\"matches server bundle SHA-256\\\"\\n  },\\n  \\\"",
+    "target": "decompiled\\\": {\\n    \\\"class\\\": \\\"net.minecraft.world.entity.ai.goal.target.TargetGoal\\\",\\n    \\\"compiler\\\": \\\"1.12.0\\\",\\n    \\\"path\\\": \\\"<workspace>/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/0e3d5a1edc8c608fbd340d25b6518f97e2",
+    "after": "d10538ad041c5629a2db9dac2fa6d2/source.java\\\",\\n    \\\"warnings\\\": [],\\n    \\\"cache_hit\\\": false,\\n    \\\"view\\\": \\\"class\\\"\\n  },\\n  \\\"text\\\": \\\"package net.minecraft.world.entity.ai.goal.target;\\\\"
+  },
+  {
+    "sample_id": "case-08-13",
+    "tool_output_index": 5,
+    "start_token": 381,
+    "end_token": 509,
+    "before": ".minecraft.network.syncher.EntityDataAccessor<java.lang.Integer> DATA_COLLAR_COLOR;\\\\n    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;\\\\n  private static final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Long> DATA_ANGER_END_TIME;\\\\n    descriptor: L",
+    "target": "net/minecraft/network/syncher/EntityDataAccessor;\\\\n  private static final net.minecraft.network.syncher.EntityDataAccessor<net.minecraft.core.Holder<net.minecraft.world.entity.animal.wolf.WolfVariant>> DATA_VARIANT_ID;\\\\n    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;\\\\n  private static final net.minecraft.network.syncher.EntityDataAccessor<net.minecraft.core.Holder<net.minecraft.world.entity.animal.wolf.WolfSoundVariant>> DATA_SOUND_VARIANT_ID;\\\\n    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;\\\\n",
+    "after": "  public static final net.minecraft.world.entity.ai.targeting.TargetingConditions$Selector PREY_SELECTOR;\\\\n    descriptor: Lnet/minecraft/world/entity/ai/targeting/TargetingConditions$Selector;\\\\n  private static final net.minecraft.world.entity.EntityDimensions BABY_DIMENSIONS;\\\\n    descriptor"
+  },
+  {
+    "sample_id": "case-08-14",
+    "tool_output_index": 5,
+    "start_token": 1541,
+    "end_token": 1669,
+    "before": "next\\\": {\\n    \\\"start_line\\\": 81,\\n    \\\"start_char\\\": 0\\n  },\\n  \\\"metrics\\\": {\\n    \\\"elapsed_ms\\\": 99.78,\\n    \\\"body_chars\\\": 4667,\\n    \\\"output_chars\\\": 5526\\n  }\\n",
+    "target": "}\\n\"}}}\n{\"i\":1,\"result\":{\"status\":\"fulfilled\",\"value\":{\"chunk_id\":\"7a0657\",\"wall_time_seconds\":0.718350708,\"exit_code\":0,\"original_token_count\":430,\"output\":\"{\\n  \\\"ok\\\": true,\\n  \\\"source\\\": {\\n    \\\"edition\\\": \\\"Java\\\",\\n    \\\"minecraft_version\\\": \\\"26.3\\\",\\n    \\\"kind\\\": \\\"vanilla-server\\\",\\n    \\\"jar\\\": \\\"/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar\\\",\\n    \\\"jar_sha",
+    "after": "256\\\": \\\"a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6\\\",\\n    \\\"integrity\\\": \\\"matches server bundle SHA-256\\\"\\n  },\\n  \\\"decompiled\\\":"
+  },
+  {
+    "sample_id": "case-08-15",
+    "tool_output_index": 5,
+    "start_token": 2716,
+    "end_token": 2844,
+    "before": " Level level, final BlockPos pos, final Entity entity, final InsideBlockEffectApplier effectApplier, final boolean isPrecise\\\\n   ) {\\\\n      if (!(entity instanceof LivingEntity) || entity.getInBlockState().is(this)) {\\\\n         entity.makeStuckInBlock(state,",
+    "target": " new Vec3(0.9F, 1.5, 0.9F));\\\\n         if (level instanceof ServerLevel serverLevel) {\\\\n            RandomSource random = level.getRandom();\\\\n            Vec3 knownMovement = entity.getKnownMovement();\\\\n            boolean isMoving = knownMovement.x() != 0.0 || knownMovement.z() != 0.0;\\\\n            if (isMoving && random.nextBoolean()) {\\\\n               serverLevel.sendParticles(\\\\n                  ParticleTypes.SNOWFLAKE,\\\\n                  entity.getX(),\\\\n                  pos.getY",
+    "after": "() + 1,\\\\n                  entity.getZ(),\\\\n                  1,\\\\n                  0.0,\\\\n                  0.0,\\\\n                  0.0,\\\\n                  Mth.randomBetween(random, -1.0F, 1.0F) *"
+  },
+  {
+    "sample_id": "case-08-16",
+    "tool_output_index": 6,
+    "start_token": 1747,
+    "end_token": 1875,
+    "before": "n   private static final EntityDataAccessor<Holder<WolfSoundVariant>> DATA_SOUND_VARIANT_ID = SynchedEntityData.defineId(\\\\n      Wolf.class, EntityDataSerializers.WOLF_SOUND_VARIANT\\\\n   );\\\\n   public static final Selector PREY_SELECTOR = (target, level) ->",
+    "target": " target.is(EntityTypes.SHEEP) || target.is(EntityTypes.RABBIT) || target.is(EntityTypes.FOX);\\\\n   private static final EntityDimensions BABY_DIMENSIONS = EntityDimensions.scalable(0.3F, 0.425F)\\\\n      .withEyeHeight(0.34375F)\\\\n      .withAttachments(EntityAttachments.builder().attach(EntityAttachment.PASSENGER, 0.0F, 0.4375F, 0.0F));\\\\n   private static final float START_HEALTH = 8.0F;\\\\n   private static final",
+    "after": " float TAME_HEALTH = 40.0F;\\\\n   private static final float ARMOR_REPAIR_UNIT = 0.125F;\\\\n   public static final float DEFAULT_TAIL_ANGLE = (float) (Math.PI / 5);\\\\n   private static final DyeColor DEFAULT_COLL"
+  },
+  {
+    "sample_id": "case-08-17",
+    "tool_output_index": 6,
+    "start_token": 3401,
+    "end_token": 3529,
+    "before": "));\\\\n         return true;\\\\n      } else if (type == DataComponents.WOLF_COLLAR) {\\\\n         this.setCollarColor(castComponentValue(DataComponents.WOLF_COLLAR, value));\\\\n         return true;\\\\n      } else {\\\\n         return super.applyImplicit",
+    "target": "Component(type, value);\\\\n      }\\\\n   }\\\\n\\\\n   public static Builder createAttributes() {\\\\n      return Animal.createAnimalAttributes().add(Attributes.MOVEMENT_SPEED, 0.3F).add(Attributes.MAX_HEALTH, 8.0).add(Attributes.ATTACK_DAMAGE, 4.0);\\\\n   }\\\\n\\\\n   @Override\\\\n   protected void defineSynchedData(final net.minecraft.network.syncher.SynchedEntityData.Builder entityData) {\\\\n      super.defineSynchedData(entityData);\\\\n      Registry<WolfSoundVariant",
+    "after": "> wolfSoundVariants = this.registryAccess().lookupOrThrow(Registries.WOLF_SOUND_VARIANT);\\\\n      entityData.define(DATA_VARIANT_ID, VariantUtils.getDefaultOrAny(this.registryAccess(), WolfVariants.DEFAULT));\\\\n      entityData.define(DATA_SOUND_VARIANT_ID, wolfSoundVariants.get(Wolf"
+  },
+  {
+    "sample_id": "case-08-18",
+    "tool_output_index": 6,
+    "start_token": 4356,
+    "end_token": 4484,
+    "before": " protected SoundEvent getAmbientSound() {\\\\n      if (this.isAngry()) {\\\\n         return this.getSoundSet().growlSound().value();\\\\n      } else if (this.random.nextInt(3) == 0) {\\\\n         return this.isTame() && this",
+    "target": ".getHealth() < 20.0F ? this.getSoundSet().whineSound().value() : this.getSoundSet().pantSound().value();\\\\n      } else {\\\\n         return this.getSoundSet().ambientSound().value();\\\\n      }\\\\n   }\\\\n\\\\n   @Override\\\\n   protected SoundEvent getHurtSound(final DamageSource source) {\\\\n      return this.canArmorAbsorb(source) ? SoundEvents.WOLF_ARMOR_DAMAGE : this.getSoundSet().hurtSound().value();\\\\n   }\\\\n\\\\n   @Override\\\\n   protected",
+    "after": " SoundEvent getDeathSound() {\\\\n      return this.getSoundSet().deathSound().value();\\\\n   }\\\\n\\\\n   @Override\\\\n   protected float getSoundVolume() {\\\\n      return 0.4F;\\\\n   }\\\\n\\\\n   @Override\\\\"
+  },
+  {
+    "sample_id": "case-08-19",
+    "tool_output_index": 6,
+    "start_token": 6347,
+    "end_token": 6475,
+    "before": "\\\\n\\\\n   @Override\\\\n   public EntityDimensions getDefaultDimensions(final Pose pose) {\\\\n      return this.isBaby() ? BABY_DIMENSIONS : super.getDefaultDimensions(pose);\\\\n   }\\\\n\\\\n   public @Nullable Wolf getBreedOffspring(final ServerLevel level,",
+    "target": " final AgeableMob partner) {\\\\n      Wolf baby = EntityTypes.WOLF.create(level, EntitySpawnReason.BREEDING);\\\\n      if (baby != null && partner instanceof Wolf partnerWolf) {\\\\n         if (this.random.nextBoolean()) {\\\\n            baby.setVariant(this.getVariant());\\\\n         } else {\\\\n            baby.setVariant(partnerWolf.getVariant());\\\\n         }\\\\n\\\\n         if (this.isTame()) {\\\\n            baby.setOwnerReference(this.getOwnerReference());\\\\n            baby.setTame(true, true);\\\\n            DyeColor",
+    "after": " parent1CollarColor = this.getCollarColor();\\\\n            DyeColor parent2CollarColor = partnerWolf.getCollarColor();\\\\n            baby.setCollarColor(DyeColor.getMixedColor(level, parent1CollarColor, parent2CollarColor));\\\\n         }\\\\n"
+  },
+  {
+    "sample_id": "case-08-20",
+    "tool_output_index": 6,
+    "start_token": 9124,
+    "end_token": 9252,
+    "before": "ModuleType.ANGRY_AT)) {\\\\n         convertedBrain.setMemory(MemoryModuleType.ANGRY_AT, oldBrain.getMemory(MemoryModuleType.ANGRY_AT));\\\\n      }\\\\n\\\\n      if (params.preserveCanPickUpLoot()) {\\\\n         to",
+    "target": ".setCanPickUpLoot(from.canPickUpLoot());\\\\n      }\\\\n\\\\n      to.setLeftHanded(from.isLeftHanded());\\\\n      to.setNoAi(from.isNoAi());\\\\n      if (from.isPersistenceRequired()) {\\\\n         to.setPersistenceRequired();\\\\n      }\\\\n\\\\n      to.setCustomNameVisible(from.isCustomNameVisible());\\\\n      to.setSharedFlagOnFire(from.isOnFire());\\\\n      to.setPermanentlyInvulnerable(from.isPermanentlyInvulnerable());\\\\n      to.setInvulnerableTime(from.getInv",
+    "after": "ulnerableTime());\\\\n      to.setNoGravity(from.isNoGravity());\\\\n      to.setPortalCooldown(from.getPortalCooldown());\\\\n      to.setSilent(from.isSilent());\\\\n      from.entityTags().forEach(to::addTag);\\\\n\\\\n      for (DataComponentType<?> component"
+  },
+  {
+    "sample_id": "case-08-21",
+    "tool_output_index": 7,
+    "start_token": 116,
+    "end_token": 244,
+    "before": "_count\":404,\"output\":\"usage: mc-knowledge.py source [-h] [--project PROJECT] [--version VERSION]\\n                              [--gradle-home GRADLE_HOME]\\n                              [--cache-dir CACHE_DIR] [--java-home JAVA_HOME]\\n                              [--vineflower VINEFLOWER",
+    "target": "] [--jar JAR]\\n                              [--side {server,client}] [--offline]\\n                              [--max-lines MAX_LINES] [--max-chars MAX_CHARS]\\n                              [--start-line START_LINE]\\n                              [--start-char START_CHAR] [--limit LIMIT]\\n                              [--timeout TIMEOUT] [--member MEMBER]\\n                              [--descriptor DESCRIPTOR] [--bytecode]\\n                              class_name\\n\\npositional arguments:\\n  class_name\\n\\noptions:\\n  -h, --help            show this help message and exit\\n  --project PROJECT     项目",
+    "after": "根目录，默认本脚本所属仓库\\n  --version VERSION     显式比较其他版本；默认 gradle.properties\\n  --gradle-home GRADLE_HOME\\n  --cache-dir CACHE_DIR\\n  --java-home JAVA_HOME\\n  --vineflower VINEFLOWER\\n                        已有"
+  },
+  {
+    "sample_id": "case-08-22",
+    "tool_output_index": 7,
+    "start_token": 2027,
+    "end_token": 2155,
+    "before": "targeter == null) {\\\\n         if (this.isCombat && (!target.canBeSeenAsEnemy() || level.getDifficulty() == Difficulty.PEACEFUL)) {\\\\n            return false;\\\\n         }\\\\n      } else {\\\\n         if (this.isCombat && (!targeter",
+    "target": ".canAttack(target) || targeter.isAlliedTo(target))) {\\\\n            return false;\\\\n         }\\\\n\\\\n         if (this.range > 0.0) {\\\\n            double modifier = this.testInvisible ? target.getVisibilityPercent(level, targeter) : 1.0;\\\\n            double visibilityDistance = Math.max(this.range * modifier, 2.0);\\\\n            double distanceToSqr = targeter.distanceToSqr(target.getX(), target.getY(), target.getZ());\\\\n            if (distanceToSqr > visibilityDistance * visibilityDistance) {",
+    "after": "\\\\n               return false;\\\\n            }\\\\n         }\\\\n\\\\n         if (this.checkLineOfSight && targeter instanceof Mob mob && !mob.getSensing().hasLineOfSight(target)) {\\\\n            return false;\\\\n         }\\\\n      }\\\\n\\\\n"
+  },
+  {
+    "sample_id": "case-08-23",
+    "tool_output_index": 7,
+    "start_token": 4013,
+    "end_token": 4141,
+    "before": "; Source: find({\\\"ref_id\\\":\\\"turn1view0\\\",\\\"pattern\\\":\\\"Published\\\"}); Total lines: 3485\\nL448: 【68†TikTok Follow the official Minecraft TikTok for news, updates, and fan creations!†www.tiktok.com】\\nL449: \\nL450",
+    "target": ":     * 【69†WhatsApp†aka.ms】\\nL451:     * 【70†Instagram†www.instagram.com】\\nL452:     * 【71†X†x.com】\\nL453:     * 【72†Spotify†open.spotify.com】\\nL454: \\nL455: 【60†Submit an idea: Minecraft Feedback Share your thoughts with us! †feedback.minecraft.net】\\nL456: \\nL457: 【73†Feedback Discord Server Provide your feedback alongside other players in our Discord server.†discord.com】\\nL458: \\n",
+    "after": "L459: 【74†Report Bugs Submit bugs you've found while playing.†bugs.mojang.com】\\nL460:     * 【52†Send Fan Mail†help.minecraft.net】\\nL461:     * 【75†Affiliate Program】\\nL462:     * 【76†Minecraft"
+  },
+  {
+    "sample_id": "case-08-24",
+    "tool_output_index": 7,
+    "start_token": 5067,
+    "end_token": 5195,
+    "before": "536: ### Dappled Forest Biome\\nL537:   * A new type of forest biome which can be found near cold biomes\\nL538:   * Poplar Trees and fallen Poplar Trees generate here\\nL539:   * Shelf Mushrooms can be found here, placed on Poplar Trees",
+    "target": " and fallen Poplar Trees\\nL540:   * Red Shrubs generate here\\nL541:   * The following passive and neutral mobs spawn in the Dappled Forest, using their cold variants where applicable:\\nL542:     * Sheep\\nL543:     * Chicken\\nL544:     * Cow\\nL545:     * Pig\\nL546:     * Rabbit\\nL547:     * Fox\\nL548:   * A Dappled Forest variant of the new Abandoned Camp structure can be found here\\nL549: ### Poplar Trees\\nL550:   * A new type of tree which",
+    "after": " comes in three color variations:\\nL551:     * Red Poplar Leaves\\nL552:     * Orange Poplar Leaves\\nL553:     * Yellow Poplar Leaves\\nL554:   * Each variant of the tree has its own variant of falling leaf particles matching the color of the leaves\\nL555"
+  },
+  {
+    "sample_id": "case-08-25",
+    "tool_output_index": 7,
+    "start_token": 7408,
+    "end_token": 7536,
+    "before": ":   * 【417†Mojang Studios Careers】\\nL3424:   * 【418†Build a Better World†minecraft.net】\\nL3425:   * 【50†A Minecraft Movie】\\nL3426: \\nL3427: ## Shop\\nL3428",
+    "target": ": \\nL3429:   * 【30†Marketplace】\\nL3430:   * 【419†Minecraft Shop†shop.minecraft.net】\\nL3431: \\nL3432: ## Support\\nL3433: \\nL3434:   * 【420†Tips for Beginners】\\nL3435:   * 【79†Help†help.minecraft.net】\\nL3436:   * 【60†Feedback†feedback.minecraft.net】\\nL3437:   * 【421†Site Map】\\nL3438:   * 【25†Download】\\",
+    "after": "nL3439:   * 【422†Contact us†help.minecraft.net】\\nL3440: ## Account\\nL3441: \\nL3442:   * 【423†Profile】\\nL3443:   * 【26†Redeem】\\nL3444: \\"
+  },
+  {
+    "sample_id": "case-08-26",
+    "tool_output_index": 8,
+    "start_token": 1674,
+    "end_token": 1802,
+    "before": " 9: aload_0\\\\n        10: invokespecial #39                 // Method net/minecraft/world/entity/ai/goal/FloatGoal.\\\\\\\"<init>\\\\\\\":(Lnet/minecraft/world/entity/Mob;)V\\\\n        13: invokevirtual #42                 // Method net/m",
+    "target": "inecraft/world/entity/ai/goal/GoalSelector.addGoal:(ILnet/minecraft/world/entity/ai/goal/Goal;)V\\\\n        16: aload_0\\\\n        17: getfield      #33                 // Field goalSelector:Lnet/minecraft/world/entity/ai/goal/GoalSelector;\\\\n        20: iconst_1\\\\n        21: new           #48                 // class net/minecraft/world/entity/TamableAnimal$TamableAnimalPanicGoal\\\\n        24: dup\\\\n        25: aload_0\\\\n        26: ldc",
+    "after": "2_w        #50                 // double 1.5d\\\\n        29: getstatic     #52                 // Field net/minecraft/tags/DamageTypeTags.PANIC_ENVIRONMENTAL_CAUSES:Lnet/minecraft/tags/TagKey;\\\\n        32: invokespecial #58"
+  },
+  {
+    "sample_id": "case-08-27",
+    "tool_output_index": 8,
+    "start_token": 3099,
+    "end_token": 3227,
+    "before": "/GoalSelector.addGoal:(ILnet/minecraft/world/entity/ai/goal/Goal;)V\\\\n       138: aload_0\\\\n       139: getfield      #33                 // Field goalSelector:Lnet/minecraft/world/entity/ai/goal/GoalSelector;\\\\n       142",
+    "target": ": bipush        7\\\\n       144: new           #91                 // class net/minecraft/world/entity/ai/goal/BreedGoal\\\\n       147: dup\\\\n       148: aload_0\\\\n       149: dconst_1\\\\n       150: invokespecial #93                 // Method net/minecraft/world/entity/ai/goal/BreedGoal.\\\\\\\"<init>\\\\\\\":(Lnet/minecraft/world/entity/animal/Animal;D)V\\\\n       153: invokevirtual #42                 // Method net/minecraft/world/entity/ai/goal/GoalSelector",
+    "after": ".addGoal:(ILnet/minecraft/world/entity/ai/goal/Goal;)V\\\\n       156: aload_0\\\\n       157: getfield      #33                 // Field goalSelector:Lnet/minecraft/world/entity/ai/goal/GoalSelector;\\\\n       160: bipush"
+  },
+  {
+    "sample_id": "case-08-28",
+    "tool_output_index": 8,
+    "start_token": 5591,
+    "end_token": 5719,
+    "before": "/NonTameRandomTargetGoal.\\\\\\\"<init>\\\\\\\":(Lnet/minecraft/world/entity/TamableAnimal;Ljava/lang/Class;ZLnet/minecraft/world/entity/ai/targeting/TargetingConditions$Selector;)V\\\\n       360: invokevirtual #42                 // Method net",
+    "target": "/minecraft/world/entity/ai/goal/GoalSelector.addGoal:(ILnet/minecraft/world/entity/ai/goal/Goal;)V\\\\n       363: aload_0\\\\n       364: getfield      #117                // Field targetSelector:Lnet/minecraft/world/entity/ai/goal/GoalSelector;\\\\n       367: bipush        7\\\\n       369: new           #137                // class net/minecraft/world/entity/ai/goal/target/NearestAttackableTargetGoal\\\\n       372: dup\\\\n       373: aload_0\\\\n       ",
+    "after": "374: ldc           #162                // class net/minecraft/world/entity/monster/skeleton/AbstractSkeleton\\\\n       376: iconst_0\\\\n       377: invokespecial #164                // Method net/minecraft/world/entity/ai/goal/target/NearestAttackableTargetGoal.\\\\\\\""
+  },
+  {
+    "sample_id": "case-08-29",
+    "tool_output_index": 9,
+    "start_token": 797,
+    "end_token": 925,
+    "before": " 148: aload_0\\n       149: aload_0\\n       150: invokevirtual #137                // Method getMaxHealth:()F\\n       153: invokevirtual #141                // Method setHealth:(F)V\\n       156: aload_0\\n       157: aload_0\\n",
+    "target": "       158: invokevirtual #145                // Method createEquipment:()Lnet/minecraft/world/entity/EntityEquipment;\\n       139: invokestatic  #124                // Method net/minecraft/world/entity/ai/attributes/DefaultAttributes.getSupplier:(Lnet/minecraft/world/entity/EntityType;)Lnet/minecraft/world/entity/ai/attributes/AttributeSupplier;\\n       142: invokespecial #130                // Method net/minecraft/world/entity/ai/attributes/AttributeMap.\\\"<init>\\\":(Lnet/minecraft/world/entity/ai/attributes/AttributeSupplier;)V\\n       145: putfield",
+    "after": "      #133                // Field attributes:Lnet/minecraft/world/entity/ai/attributes/AttributeMap;\\n       148: aload_0\\n       149: aload_0\\n       150: invokevirtual #137                // Method getMaxHealth:()F\\n       153: invokevirtual #141                //"
+  },
+  {
+    "sample_id": "case-08-30",
+    "tool_output_index": 10,
+    "start_token": 1331,
+    "end_token": 1459,
+    "before": "/26.3/minecraft-extracted_server.jar\\\",\\n    \\\"jar_sha256\\\": \\\"a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6\\\",\\n    \\\"integrity\\\": \\\"matches",
+    "target": " server bundle SHA-256\\\"\\n  },\\n  \\\"decompiled\\\": {\\n    \\\"class\\\": \\\"net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal\\\",\\n    \\\"compiler\\\": \\\"1.12.0\\\",\\n    \\\"path\\\": \\\"<workspace>/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/07315896fa0b1bad",
+    "after": "fa08b35096d25ef93584f8541fb862239200c96e25e9969c/source.java\\\",\\n    \\\"warnings\\\": [],\\n    \\\"cache_hit\\\": false,\\n    \\\"view\\\": \\\"class\\\"\\n  },\\n  \\\"text\\\": \\\"package net.minecraft"
+  },
+  {
+    "sample_id": "case-08-31",
+    "tool_output_index": 12,
+    "start_token": 1922,
+    "end_token": 2050,
+    "before": "To = convertsTo;\\n    44\\t      this.conversionSound = conversionSound;\\n    45\\t      this.isAfflicted = isAfflicted;\\n    46\\t      this.afflictionTimeTag = afflictionTimeTag;\\n    47\\t      this.totalAfflictionTime = total",
+    "target": "AfflictionTime;\\n    48\\t      this.conversionTimeTag = conversionTimeTag;\\n    49\\t      this.totalConversionTime = totalConversionTime;\\n    50\\t      this.postConversionStep = postConversionStep;\\n    51\\t   }\\n    52\\t\\n    53\\t   public void tick() {\\n    54\\t      if (this.mob.level() instanceof ServerLevel serverLevel && this.mob.isAlive() && !this.mob.isNoAi()) {\\n    55\\t         if (this.isAfflicted.getAsBoolean()) {\\n    56\\t           ",
+    "after": " if (this.isConverting()) {\\n    57\\t               this.conversionTime--;\\n    58\\t               if (this.conversionTime < 0) {\\n    59\\t                  this.doConversion(serverLevel);\\n    60\\t               }\\n    61\\t            } else"
+  },
+  {
+    "sample_id": "case-08-32",
+    "tool_output_index": 12,
+    "start_token": 3051,
+    "end_token": 3179,
+    "before": ".addGoal(3, new Wolf.WolfAvoidEntityGoal<>(this, Llama.class, 24.0F, 1.5, 1.5));\\n     8\\t      this.goalSelector.addGoal(4, new LeapAtTargetGoal(this, 0.4F));\\",
+    "target": "n     9\\t      this.goalSelector.addGoal(5, new MeleeAttackGoal(this, 1.0, true));\\n    10\\t      this.goalSelector.addGoal(6, new FollowOwnerGoal(this, 1.0, 10.0F, 2.0F));\\n    11\\t      this.goalSelector.addGoal(7, new BreedGoal(this, 1.0));\\n    12\\t      this.goalSelector.addGoal(8, new WaterAvoidingRandomStrollGoal(this, 1.0));\\n    13\\t     ",
+    "after": " this.goalSelector.addGoal(9, new BegGoal(this, 8.0F));\\n    14\\t      this.goalSelector.addGoal(10, new LookAtPlayerGoal(this, Player.class, 8.0F));\\n    15\\t      this.goalSelector.addGoal(10"
+  }
+]

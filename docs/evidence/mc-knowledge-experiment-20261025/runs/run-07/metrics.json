@@ -1,0 +1,41 @@
+{
+  "id": "run-07",
+  "group": "A",
+  "repeat": 3,
+  "wave": 3,
+  "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-07/workspace",
+  "prompt_sha256": "b76bf54f353de34a3896d80b3da6b8ac8aee5a5eabc0a03789a1b3c6806379e0",
+  "state": "completed",
+  "exit_code": 0,
+  "elapsed_seconds": 255.265,
+  "thread_id": "01a171d2-b35e-7593-93ec-2354dc8e7895",
+  "usage": {
+    "input_tokens": 657297,
+    "cached_input_tokens": 591104,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 7215,
+    "reasoning_output_tokens": 1846
+  },
+  "first_input_tokens": 13375,
+  "peak_input_tokens": 80229,
+  "model_calls": 13,
+  "tool_responses": 12,
+  "tool_output_chars": 210793,
+  "tool_output_tokens_o200k": 61669,
+  "tool_output_unique_tokens_o200k": 61669,
+  "outer_output_truncations": 1,
+  "cli_item_counts": {
+    "agent_message": 4,
+    "command_execution": 33,
+    "web_search": 3
+  },
+  "command_failures": 1,
+  "initial_text_tokens_o200k": 2102,
+  "compactions": 0,
+  "model_configurations": [
+    {
+      "model": "gpt-6.1-sol",
+      "effort": "high"
+    }
+  ]
+}

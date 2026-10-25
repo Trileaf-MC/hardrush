@@ -1,0 +1,89 @@
+{
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "seed": 20261025,
+  "timeout_seconds": 1200,
+  "concurrency": 3,
+  "waves": 3,
+  "runs": [
+    {
+      "id": "run-01",
+      "group": "A",
+      "repeat": 1,
+      "wave": 1,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-01/workspace",
+      "prompt_sha256": "b76bf54f353de34a3896d80b3da6b8ac8aee5a5eabc0a03789a1b3c6806379e0"
+    },
+    {
+      "id": "run-02",
+      "group": "C",
+      "repeat": 1,
+      "wave": 1,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-02/workspace",
+      "prompt_sha256": "387f6ce768f8b239cffccf60728a03f939a9f6ba0750486574b1881a0bf3a8d4"
+    },
+    {
+      "id": "run-03",
+      "group": "B",
+      "repeat": 1,
+      "wave": 1,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-03/workspace",
+      "prompt_sha256": "bfdc677f86a54b928282455fc1cccb1a60c04968a393c5386d4d02604792ea70"
+    },
+    {
+      "id": "run-04",
+      "group": "B",
+      "repeat": 2,
+      "wave": 2,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-04/workspace",
+      "prompt_sha256": "bfdc677f86a54b928282455fc1cccb1a60c04968a393c5386d4d02604792ea70"
+    },
+    {
+      "id": "run-05",
+      "group": "C",
+      "repeat": 2,
+      "wave": 2,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-05/workspace",
+      "prompt_sha256": "387f6ce768f8b239cffccf60728a03f939a9f6ba0750486574b1881a0bf3a8d4"
+    },
+    {
+      "id": "run-06",
+      "group": "A",
+      "repeat": 2,
+      "wave": 2,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-06/workspace",
+      "prompt_sha256": "b76bf54f353de34a3896d80b3da6b8ac8aee5a5eabc0a03789a1b3c6806379e0"
+    },
+    {
+      "id": "run-07",
+      "group": "A",
+      "repeat": 3,
+      "wave": 3,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-07/workspace",
+      "prompt_sha256": "b76bf54f353de34a3896d80b3da6b8ac8aee5a5eabc0a03789a1b3c6806379e0"
+    },
+    {
+      "id": "run-08",
+      "group": "B",
+      "repeat": 3,
+      "wave": 3,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-08/workspace",
+      "prompt_sha256": "bfdc677f86a54b928282455fc1cccb1a60c04968a393c5386d4d02604792ea70"
+    },
+    {
+      "id": "run-09",
+      "group": "C",
+      "repeat": 3,
+      "wave": 3,
+      "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-09/workspace",
+      "prompt_sha256": "387f6ce768f8b239cffccf60728a03f939a9f6ba0750486574b1881a0bf3a8d4"
+    }
+  ],
+  "cache_policy": "Identical existing raw Gradle cache; empty per-run generated source/wiki cache. OS/page/network caches not reset.",
+  "common_instructions": "请用中文回答，并给出支持关键结论的可复核出处，明确版本与不确定性。\n本次只调查原版机制。不要读取既有调查报告、聊天历史、个人记忆或其他实验目录；不要启动子代理或游戏客户端/服务器。可在当前工作目录存放临时资料，其他本地文件只读。",
+  "source_hashes": {
+    ".agents/skills/minecraft-knowledge/SKILL.md": "747c8af80cdb40755846454b27d9b7e8637785fd13289e8797b339ceeabc3d7c",
+    "scripts/mc-knowledge.py": "fd52f164568c442ce86ff1396c9916df6aeb3409271777f76627262de79804c5",
+    "scripts/mc_knowledge_wiki.py": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87"
+  }
+}

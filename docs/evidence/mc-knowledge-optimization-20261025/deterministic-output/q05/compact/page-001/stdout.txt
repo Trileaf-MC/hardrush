@@ -1,0 +1,27 @@
+{"ok":true,"source":{"edition":"Java","minecraft_version":"26.3","kind":"vanilla-server","integrity":"matches server bundle SHA-256","jar_id":"sha256:a362163eec5d1612","side":"server"},"member":{"name":"<init>","descriptor":"(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V"},"warnings":["初始化方法以字节码返回，避免单方法反编译遗漏被提升到字段声明处的初始化；不指定 --member 可读取完整 Java 类。"],"class_name":"net.minecraft.world.entity.monster.skeleton.Skeleton","representation":"javap bytecode","total_lines":25,"total_chars":1972,"returned_range":{"start_line":1,"start_char":0,"end_line":26,"end_char":0},"truncated":false,"next":null,"evidence":{"path":"/private/tmp/hardrush-mc-optimization-20261025/deterministic-output/workspace/.local/mc-knowledge/evidence/7a761f94545f37f11681bb9e422aeb8794ef614bd323457293352c5b2378e13f.json","id":"sha256:7a761f94545f37f1"},"completeness":"complete","format":"compact","metrics":{"elapsed_ms":114.07,"body_chars":1972,"output_chars":2944}}
+  public net.minecraft.world.entity.monster.skeleton.Skeleton(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.monster.skeleton.Skeleton>, net.minecraft.world.level.Level);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+    Code:
+         0: aload_0
+         1: aload_1
+         2: aload_2
+         3: invokespecial #1                  // Method net/minecraft/world/entity/monster/skeleton/AbstractSkeleton."<init>":(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+         6: aload_0
+         7: new           #7                  // class net/minecraft/world/entity/ConversionTracker
+        10: dup
+        11: aload_0
+        12: getstatic     #9                  // Field DATA_STRAY_CONVERSION_ID:Lnet/minecraft/network/syncher/EntityDataAccessor;
+        15: invokedynamic #15,  0             // InvokeDynamic #0:get:()Ljava/util/function/Supplier;
+        20: invokedynamic #19,  0             // InvokeDynamic #1:get:()Ljava/util/function/Supplier;
+        25: aload_0
+        26: invokedynamic #20,  0             // InvokeDynamic #2:getAsBoolean:(Lnet/minecraft/world/entity/monster/skeleton/Skeleton;)Ljava/util/function/BooleanSupplier;
+        31: ldc           #24                 // String FreezingTime
+        33: sipush        140
+        36: ldc           #28                 // String StrayConversionTime
+        38: sipush        300
+        41: aconst_null
+        42: invokespecial #32                 // Method net/minecraft/world/entity/ConversionTracker."<init>":(Lnet/minecraft/world/entity/Mob;Lnet/minecraft/network/syncher/EntityDataAccessor;Ljava/util/function/Supplier;Ljava/util/function/Supplier;Ljava/util/function/BooleanSupplier;Ljava/lang/String;ILjava/lang/String;ILjava/util/function/BiConsumer;)V
+        45: putfield      #35                 // Field freezingTracker:Lnet/minecraft/world/entity/ConversionTracker;
+        48: return
+
+

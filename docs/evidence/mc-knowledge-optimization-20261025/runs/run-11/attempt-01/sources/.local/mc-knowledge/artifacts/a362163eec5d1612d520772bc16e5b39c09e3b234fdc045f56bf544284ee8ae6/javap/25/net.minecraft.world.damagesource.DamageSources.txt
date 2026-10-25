@@ -1,0 +1,210 @@
+Compiled from "DamageSources.java"
+public class net.minecraft.world.damagesource.DamageSources {
+  private final net.minecraft.core.Registry<net.minecraft.world.damagesource.DamageType> damageTypes;
+    descriptor: Lnet/minecraft/core/Registry;
+  private final net.minecraft.world.damagesource.DamageSource inFire;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource campfire;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource lightningBolt;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource onFire;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource lava;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource hotFloor;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource inWall;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource cramming;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource drown;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource starve;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource cactus;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource fall;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource enderPearl;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource flyIntoWall;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource fellOutOfWorld;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource generic;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource magic;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource wither;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource dragonBreath;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource dryOut;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource sweetBerryBush;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource freeze;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource stalagmite;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource outsideBorder;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  private final net.minecraft.world.damagesource.DamageSource genericKill;
+    descriptor: Lnet/minecraft/world/damagesource/DamageSource;
+  public net.minecraft.world.damagesource.DamageSources(net.minecraft.core.RegistryAccess);
+    descriptor: (Lnet/minecraft/core/RegistryAccess;)V
+
+  private net.minecraft.world.damagesource.DamageSource source(net.minecraft.resources.ResourceKey<net.minecraft.world.damagesource.DamageType>);
+    descriptor: (Lnet/minecraft/resources/ResourceKey;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  private net.minecraft.world.damagesource.DamageSource source(net.minecraft.resources.ResourceKey<net.minecraft.world.damagesource.DamageType>, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  private net.minecraft.world.damagesource.DamageSource source(net.minecraft.resources.ResourceKey<net.minecraft.world.damagesource.DamageType>, net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource inFire();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource campfire();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource lightningBolt();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource onFire();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource lava();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource hotFloor();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource inWall();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource cramming();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource drown();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource starve();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource cactus();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource fall();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource enderPearl();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource flyIntoWall();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource fellOutOfWorld();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource generic();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource magic();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource wither();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource dragonBreath();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource dryOut();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource sweetBerryBush();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource freeze();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource stalagmite();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource fallingBlock(net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource anvil(net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource fallingStalactite(net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource sting(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource mobAttack(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource noAggroMobAttack(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource playerAttack(net.minecraft.world.entity.player.Player);
+    descriptor: (Lnet/minecraft/world/entity/player/Player;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource arrow(net.minecraft.world.entity.projectile.arrow.AbstractArrow, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/projectile/arrow/AbstractArrow;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource trident(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource mobProjectile(net.minecraft.world.entity.Entity, net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/LivingEntity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource spit(net.minecraft.world.entity.Entity, net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/LivingEntity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource windCharge(net.minecraft.world.entity.Entity, net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/LivingEntity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource fireworks(net.minecraft.world.entity.projectile.FireworkRocketEntity, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/projectile/FireworkRocketEntity;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource fireball(net.minecraft.world.entity.projectile.hurtingprojectile.Fireball, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/projectile/hurtingprojectile/Fireball;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource witherSkull(net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/projectile/hurtingprojectile/WitherSkull;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource thrown(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource indirectMagic(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource thorns(net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource explosion(net.minecraft.world.level.Explosion);
+    descriptor: (Lnet/minecraft/world/level/Explosion;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource explosion(net.minecraft.world.entity.Entity, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource sonicBoom(net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource badRespawnPointExplosion(net.minecraft.world.phys.Vec3);
+    descriptor: (Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource outOfBorder();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource genericKill();
+    descriptor: ()Lnet/minecraft/world/damagesource/DamageSource;
+
+  public net.minecraft.world.damagesource.DamageSource mace(net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/damagesource/DamageSource;
+}

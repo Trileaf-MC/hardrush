@@ -1,0 +1,1168 @@
+{
+  "cases": [
+    {
+      "case_id": "case-01",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 69,
+          "reviewer_2": 72,
+          "difference_1_minus_2": -3
+        },
+        "total": {
+          "reviewer_1": 79,
+          "reviewer_2": 82,
+          "difference_1_minus_2": -3
+        }
+      }
+    },
+    {
+      "case_id": "case-02",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 88,
+          "reviewer_2": 90,
+          "difference_1_minus_2": -2
+        },
+        "total": {
+          "reviewer_1": 98,
+          "reviewer_2": 100,
+          "difference_1_minus_2": -2
+        }
+      }
+    },
+    {
+      "case_id": "case-03",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 88,
+          "reviewer_2": 90,
+          "difference_1_minus_2": -2
+        },
+        "total": {
+          "reviewer_1": 98,
+          "reviewer_2": 100,
+          "difference_1_minus_2": -2
+        }
+      }
+    },
+    {
+      "case_id": "case-04",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 72,
+          "reviewer_2": 72,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 82,
+          "reviewer_2": 82,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-05",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 88,
+          "reviewer_2": 90,
+          "difference_1_minus_2": -2
+        },
+        "total": {
+          "reviewer_1": 98,
+          "reviewer_2": 100,
+          "difference_1_minus_2": -2
+        }
+      }
+    },
+    {
+      "case_id": "case-06",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 86,
+          "reviewer_2": 90,
+          "difference_1_minus_2": -4
+        },
+        "total": {
+          "reviewer_1": 96,
+          "reviewer_2": 100,
+          "difference_1_minus_2": -4
+        }
+      }
+    },
+    {
+      "case_id": "case-07",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 75,
+          "reviewer_2": 75,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 85,
+          "reviewer_2": 85,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-08",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 75,
+          "reviewer_2": 72,
+          "difference_1_minus_2": 3
+        },
+        "total": {
+          "reviewer_1": 85,
+          "reviewer_2": 82,
+          "difference_1_minus_2": 3
+        }
+      }
+    },
+    {
+      "case_id": "case-09",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 90,
+          "reviewer_2": 90,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 100,
+          "reviewer_2": 100,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-10",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 86,
+          "reviewer_2": 90,
+          "difference_1_minus_2": -4
+        },
+        "total": {
+          "reviewer_1": 96,
+          "reviewer_2": 100,
+          "difference_1_minus_2": -4
+        }
+      }
+    },
+    {
+      "case_id": "case-11",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 90,
+          "reviewer_2": 90,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 100,
+          "reviewer_2": 100,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-12",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 72,
+          "reviewer_2": 74,
+          "difference_1_minus_2": -2
+        },
+        "total": {
+          "reviewer_1": 82,
+          "reviewer_2": 84,
+          "difference_1_minus_2": -2
+        }
+      }
+    },
+    {
+      "case_id": "case-13",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 90,
+          "reviewer_2": 90,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 100,
+          "reviewer_2": 100,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-14",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 90,
+          "reviewer_2": 90,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 100,
+          "reviewer_2": 100,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-15",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 90,
+          "reviewer_2": 90,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 100,
+          "reviewer_2": 100,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-16",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 72,
+          "reviewer_2": 72,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 82,
+          "reviewer_2": 82,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-17",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 75,
+          "reviewer_2": 75,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 85,
+          "reviewer_2": 85,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-18",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 77,
+          "reviewer_2": 77,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 87,
+          "reviewer_2": 87,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-19",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 90,
+          "reviewer_2": 90,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 100,
+          "reviewer_2": 100,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-20",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 89,
+          "reviewer_2": 89,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 99,
+          "reviewer_2": 99,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-21",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 89,
+          "reviewer_2": 89,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 99,
+          "reviewer_2": 99,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-22",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 90,
+          "reviewer_2": 90,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 100,
+          "reviewer_2": 100,
+          "difference_1_minus_2": 0
+        }
+      }
+    },
+    {
+      "case_id": "case-23",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 86,
+          "reviewer_2": 90,
+          "difference_1_minus_2": -4
+        },
+        "total": {
+          "reviewer_1": 96,
+          "reviewer_2": 100,
+          "difference_1_minus_2": -4
+        }
+      }
+    },
+    {
+      "case_id": "case-24",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 88,
+          "reviewer_2": 90,
+          "difference_1_minus_2": -2
+        },
+        "total": {
+          "reviewer_1": 98,
+          "reviewer_2": 100,
+          "difference_1_minus_2": -2
+        }
+      }
+    },
+    {
+      "case_id": "case-25",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 87,
+          "reviewer_2": 89,
+          "difference_1_minus_2": -2
+        },
+        "total": {
+          "reviewer_1": 97,
+          "reviewer_2": 99,
+          "difference_1_minus_2": -2
+        }
+      }
+    },
+    {
+      "case_id": "case-26",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 87,
+          "reviewer_2": 88,
+          "difference_1_minus_2": -1
+        },
+        "total": {
+          "reviewer_1": 97,
+          "reviewer_2": 98,
+          "difference_1_minus_2": -1
+        }
+      }
+    },
+    {
+      "case_id": "case-27",
+      "paired": true,
+      "dimensions": {
+        "evidence_quality": {
+          "reviewer_1": 10,
+          "reviewer_2": 10,
+          "difference_1_minus_2": 0
+        },
+        "factual_accuracy": {
+          "reviewer_1": 72,
+          "reviewer_2": 72,
+          "difference_1_minus_2": 0
+        },
+        "total": {
+          "reviewer_1": 82,
+          "reviewer_2": 82,
+          "difference_1_minus_2": 0
+        }
+      }
+    }
+  ],
+  "dimension_statistics": [
+    {
+      "topic": "T1",
+      "arm": "J",
+      "reviewer": 1,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T1",
+      "arm": "J",
+      "reviewer": 1,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 73,
+      "median": 75,
+      "min": 69,
+      "max": 75
+    },
+    {
+      "topic": "T1",
+      "arm": "J",
+      "reviewer": 1,
+      "dimension": "total",
+      "n": 3,
+      "mean": 83,
+      "median": 85,
+      "min": 79,
+      "max": 85
+    },
+    {
+      "topic": "T1",
+      "arm": "J",
+      "reviewer": 2,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T1",
+      "arm": "J",
+      "reviewer": 2,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 73,
+      "median": 72,
+      "min": 72,
+      "max": 75
+    },
+    {
+      "topic": "T1",
+      "arm": "J",
+      "reviewer": 2,
+      "dimension": "total",
+      "n": 3,
+      "mean": 83,
+      "median": 82,
+      "min": 82,
+      "max": 85
+    },
+    {
+      "topic": "T1",
+      "arm": "O",
+      "reviewer": 1,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T1",
+      "arm": "O",
+      "reviewer": 1,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 73.66666666666667,
+      "median": 72,
+      "min": 72,
+      "max": 77
+    },
+    {
+      "topic": "T1",
+      "arm": "O",
+      "reviewer": 1,
+      "dimension": "total",
+      "n": 3,
+      "mean": 83.66666666666667,
+      "median": 82,
+      "min": 82,
+      "max": 87
+    },
+    {
+      "topic": "T1",
+      "arm": "O",
+      "reviewer": 2,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T1",
+      "arm": "O",
+      "reviewer": 2,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 73.66666666666667,
+      "median": 72,
+      "min": 72,
+      "max": 77
+    },
+    {
+      "topic": "T1",
+      "arm": "O",
+      "reviewer": 2,
+      "dimension": "total",
+      "n": 3,
+      "mean": 83.66666666666667,
+      "median": 82,
+      "min": 82,
+      "max": 87
+    },
+    {
+      "topic": "T1",
+      "arm": "S",
+      "reviewer": 1,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T1",
+      "arm": "S",
+      "reviewer": 1,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 73,
+      "median": 72,
+      "min": 72,
+      "max": 75
+    },
+    {
+      "topic": "T1",
+      "arm": "S",
+      "reviewer": 1,
+      "dimension": "total",
+      "n": 3,
+      "mean": 83,
+      "median": 82,
+      "min": 82,
+      "max": 85
+    },
+    {
+      "topic": "T1",
+      "arm": "S",
+      "reviewer": 2,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T1",
+      "arm": "S",
+      "reviewer": 2,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 73.66666666666667,
+      "median": 74,
+      "min": 72,
+      "max": 75
+    },
+    {
+      "topic": "T1",
+      "arm": "S",
+      "reviewer": 2,
+      "dimension": "total",
+      "n": 3,
+      "mean": 83.66666666666667,
+      "median": 84,
+      "min": 82,
+      "max": 85
+    },
+    {
+      "topic": "T2",
+      "arm": "J",
+      "reviewer": 1,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T2",
+      "arm": "J",
+      "reviewer": 1,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 87.33333333333333,
+      "median": 86,
+      "min": 86,
+      "max": 90
+    },
+    {
+      "topic": "T2",
+      "arm": "J",
+      "reviewer": 1,
+      "dimension": "total",
+      "n": 3,
+      "mean": 97.33333333333333,
+      "median": 96,
+      "min": 96,
+      "max": 100
+    },
+    {
+      "topic": "T2",
+      "arm": "J",
+      "reviewer": 2,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T2",
+      "arm": "J",
+      "reviewer": 2,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 90,
+      "median": 90,
+      "min": 90,
+      "max": 90
+    },
+    {
+      "topic": "T2",
+      "arm": "J",
+      "reviewer": 2,
+      "dimension": "total",
+      "n": 3,
+      "mean": 100,
+      "median": 100,
+      "min": 100,
+      "max": 100
+    },
+    {
+      "topic": "T2",
+      "arm": "O",
+      "reviewer": 1,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T2",
+      "arm": "O",
+      "reviewer": 1,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 89.33333333333333,
+      "median": 90,
+      "min": 88,
+      "max": 90
+    },
+    {
+      "topic": "T2",
+      "arm": "O",
+      "reviewer": 1,
+      "dimension": "total",
+      "n": 3,
+      "mean": 99.33333333333333,
+      "median": 100,
+      "min": 98,
+      "max": 100
+    },
+    {
+      "topic": "T2",
+      "arm": "O",
+      "reviewer": 2,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T2",
+      "arm": "O",
+      "reviewer": 2,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 90,
+      "median": 90,
+      "min": 90,
+      "max": 90
+    },
+    {
+      "topic": "T2",
+      "arm": "O",
+      "reviewer": 2,
+      "dimension": "total",
+      "n": 3,
+      "mean": 100,
+      "median": 100,
+      "min": 100,
+      "max": 100
+    },
+    {
+      "topic": "T2",
+      "arm": "S",
+      "reviewer": 1,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T2",
+      "arm": "S",
+      "reviewer": 1,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 88.66666666666667,
+      "median": 90,
+      "min": 86,
+      "max": 90
+    },
+    {
+      "topic": "T2",
+      "arm": "S",
+      "reviewer": 1,
+      "dimension": "total",
+      "n": 3,
+      "mean": 98.66666666666667,
+      "median": 100,
+      "min": 96,
+      "max": 100
+    },
+    {
+      "topic": "T2",
+      "arm": "S",
+      "reviewer": 2,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T2",
+      "arm": "S",
+      "reviewer": 2,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 90,
+      "median": 90,
+      "min": 90,
+      "max": 90
+    },
+    {
+      "topic": "T2",
+      "arm": "S",
+      "reviewer": 2,
+      "dimension": "total",
+      "n": 3,
+      "mean": 100,
+      "median": 100,
+      "min": 100,
+      "max": 100
+    },
+    {
+      "topic": "T3",
+      "arm": "J",
+      "reviewer": 1,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T3",
+      "arm": "J",
+      "reviewer": 1,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 88.66666666666667,
+      "median": 89,
+      "min": 87,
+      "max": 90
+    },
+    {
+      "topic": "T3",
+      "arm": "J",
+      "reviewer": 1,
+      "dimension": "total",
+      "n": 3,
+      "mean": 98.66666666666667,
+      "median": 99,
+      "min": 97,
+      "max": 100
+    },
+    {
+      "topic": "T3",
+      "arm": "J",
+      "reviewer": 2,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T3",
+      "arm": "J",
+      "reviewer": 2,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 89.33333333333333,
+      "median": 89,
+      "min": 89,
+      "max": 90
+    },
+    {
+      "topic": "T3",
+      "arm": "J",
+      "reviewer": 2,
+      "dimension": "total",
+      "n": 3,
+      "mean": 99.33333333333333,
+      "median": 99,
+      "min": 99,
+      "max": 100
+    },
+    {
+      "topic": "T3",
+      "arm": "O",
+      "reviewer": 1,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T3",
+      "arm": "O",
+      "reviewer": 1,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 88,
+      "median": 88,
+      "min": 87,
+      "max": 89
+    },
+    {
+      "topic": "T3",
+      "arm": "O",
+      "reviewer": 1,
+      "dimension": "total",
+      "n": 3,
+      "mean": 98,
+      "median": 98,
+      "min": 97,
+      "max": 99
+    },
+    {
+      "topic": "T3",
+      "arm": "O",
+      "reviewer": 2,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T3",
+      "arm": "O",
+      "reviewer": 2,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 89,
+      "median": 89,
+      "min": 88,
+      "max": 90
+    },
+    {
+      "topic": "T3",
+      "arm": "O",
+      "reviewer": 2,
+      "dimension": "total",
+      "n": 3,
+      "mean": 99,
+      "median": 99,
+      "min": 98,
+      "max": 100
+    },
+    {
+      "topic": "T3",
+      "arm": "S",
+      "reviewer": 1,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T3",
+      "arm": "S",
+      "reviewer": 1,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 88.66666666666667,
+      "median": 88,
+      "min": 88,
+      "max": 90
+    },
+    {
+      "topic": "T3",
+      "arm": "S",
+      "reviewer": 1,
+      "dimension": "total",
+      "n": 3,
+      "mean": 98.66666666666667,
+      "median": 98,
+      "min": 98,
+      "max": 100
+    },
+    {
+      "topic": "T3",
+      "arm": "S",
+      "reviewer": 2,
+      "dimension": "evidence_quality",
+      "n": 3,
+      "mean": 10,
+      "median": 10,
+      "min": 10,
+      "max": 10
+    },
+    {
+      "topic": "T3",
+      "arm": "S",
+      "reviewer": 2,
+      "dimension": "factual_accuracy",
+      "n": 3,
+      "mean": 90,
+      "median": 90,
+      "min": 90,
+      "max": 90
+    },
+    {
+      "topic": "T3",
+      "arm": "S",
+      "reviewer": 2,
+      "dimension": "total",
+      "n": 3,
+      "mean": 100,
+      "median": 100,
+      "min": 100,
+      "max": 100
+    }
+  ],
+  "scoring_policy": "Preserve raw rubric numeric fields separately. No invented total, normalization, automatic adjudication or imputation."
+}

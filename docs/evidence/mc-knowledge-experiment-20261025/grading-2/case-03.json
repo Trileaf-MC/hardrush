@@ -1,0 +1,84 @@
+{
+  "case": "case-03",
+  "reviewer": 2,
+  "items": [
+    {
+      "id": "V1",
+      "points": 5,
+      "max_points": 5,
+      "reason": "明确限定Java 26.3正式版原版及静态代码核查，没有当成HardRush运行结果。"
+    },
+    {
+      "id": "S1",
+      "points": 5,
+      "max_points": 5,
+      "reason": "明确普通骷髅在细雪中转为流浪者。"
+    },
+    {
+      "id": "S2",
+      "points": 10,
+      "max_points": 10,
+      "reason": "4/4：140 tick前置阶段；4/4：300 tick设定的颤抖转化且明确301次递减才完成；2/2：约22秒、20 TPS换算，并限定441/442为相应初始状态下有效调用数，没有当成几何进入起的普遍精确时间。"
+    },
+    {
+      "id": "S3",
+      "points": 5,
+      "max_points": 5,
+      "reason": "明确离开会重置前置进度，再次进入须从头开始。"
+    },
+    {
+      "id": "S4",
+      "points": 10,
+      "max_points": 10,
+      "reason": "7/7：已发抖仍因离开细雪而取消；3/3：再次进入须重新经历前置累计，而非续算剩余倒计时。"
+    },
+    {
+      "id": "S5",
+      "points": 3,
+      "max_points": 5,
+      "reason": "3/3：明确服务端、存活且AI开启才推进；0/2：未明确转化颤抖期间仍可运行普通AI。"
+    },
+    {
+      "id": "S6",
+      "points": 10,
+      "max_points": 10,
+      "reason": "4/4：明确canFreeze返回false；2/2：明确转化使用独立计时器；2/2：明确骷髅不因该过程受到普通冻伤；2/2：达到前置门槛才发抖，即第二阶段颤抖。"
+    },
+    {
+      "id": "W1",
+      "points": 10,
+      "max_points": 10,
+      "reason": "7/7：野生狼主动选择流浪者，不以先受击为前提；3/3：AbstractSkeleton目标覆盖继承该类的Stray。"
+    },
+    {
+      "id": "W2",
+      "points": 10,
+      "max_points": 10,
+      "reason": "7/7：可行动的驯服狼无需主人攻击或受伤便主动攻击；3/3：区分骷髅类普通目标与其他猎物的NonTameRandomTargetGoal。"
+    },
+    {
+      "id": "W3",
+      "points": 4,
+      "max_points": 10,
+      "reason": "0/6：未说明主人被攻击时护主与主人攻击目标时协助这两条独立触发；4/4：明确实际攻击受距离、寻路或其他更高优先级行为制约，没有泛化为无条件攻击主人附近所有敌怪。"
+    },
+    {
+      "id": "W4",
+      "points": 5,
+      "max_points": 10,
+      "reason": "0/5：未明确命令坐下时两个主人协助目标不能启动、主人受击不保证起身护主；5/5：说明正常坐下阻止自主追逐攻击，未把坐下说成删除骷髅目标或关闭全部AI。"
+    },
+    {
+      "id": "E1",
+      "points": 10,
+      "max_points": 10,
+      "reason": "5/5：Skeleton、ConversionTracker等可识别的26.3类/方法或字节码引用支持骷髅主张；5/5：Wolf.registerGoals和Stray继承等引用支持狼主张。统一匿名路径不影响识别。"
+    }
+  ],
+  "factual_score": 77,
+  "evidence_score": 10,
+  "total": 87,
+  "major_errors": [],
+  "optional_errors": [],
+  "group_guess": "不知道；仅凭最终答案不猜分组。"
+}

@@ -1,0 +1,21 @@
+{
+  "state": "completed",
+  "exit_code": 0,
+  "start_unix": 1792910361.044468,
+  "end_unix": 1792910611.4049852,
+  "elapsed_seconds": 250.361,
+  "id": "run-01",
+  "group": "A",
+  "repeat": 1,
+  "wave": 1,
+  "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-01/workspace",
+  "prompt_sha256": "b76bf54f353de34a3896d80b3da6b8ac8aee5a5eabc0a03789a1b3c6806379e0",
+  "thread_id": "01a171c9-0356-75b0-9ba6-56e5052e7ffb",
+  "usage": {
+    "input_tokens": 728880,
+    "cached_input_tokens": 658816,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 7925,
+    "reasoning_output_tokens": 1624
+  }
+}

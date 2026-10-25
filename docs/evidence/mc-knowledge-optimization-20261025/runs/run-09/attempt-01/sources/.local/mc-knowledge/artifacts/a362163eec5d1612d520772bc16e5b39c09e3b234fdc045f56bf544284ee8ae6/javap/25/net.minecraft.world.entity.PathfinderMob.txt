@@ -1,0 +1,34 @@
+Compiled from "PathfinderMob.java"
+public abstract class net.minecraft.world.entity.PathfinderMob extends net.minecraft.world.entity.Mob {
+  protected static final float DEFAULT_WALK_TARGET_VALUE;
+    descriptor: F
+  protected net.minecraft.world.entity.PathfinderMob(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.PathfinderMob>, net.minecraft.world.level.Level);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+
+  public float getWalkTargetValue(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)F
+
+  public float getWalkTargetValue(net.minecraft.core.BlockPos, net.minecraft.world.level.LevelReader);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/LevelReader;)F
+
+  public boolean checkSpawnRules(net.minecraft.world.level.LevelAccessor, net.minecraft.world.entity.EntitySpawnReason);
+    descriptor: (Lnet/minecraft/world/level/LevelAccessor;Lnet/minecraft/world/entity/EntitySpawnReason;)Z
+
+  public boolean isPathFinding();
+    descriptor: ()Z
+
+  public boolean isPanicking();
+    descriptor: ()Z
+
+  protected boolean shouldStayCloseToLeashHolder();
+    descriptor: ()Z
+
+  public void closeRangeLeashBehaviour(net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;)V
+
+  public void whenLeashedTo(net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;)V
+
+  protected double followLeashSpeed();
+    descriptor: ()D
+}

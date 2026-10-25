@@ -1,0 +1,10 @@
+{
+  "class": "net.minecraft.world.level.BaseSpawner",
+  "member": "serverTick",
+  "descriptor": "(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;)V",
+  "compiler": "1.12.0",
+  "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+  "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-27/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2fb1d9a0328f316f36abf32b6d8de543661e3fab77eccb637b52681a4018882a/source.java",
+  "source_sha256": "e76de8f5ec36fd40108bea0dcf38f09b6ed839121f056f3a4b3f675e96d926b2",
+  "warnings": []
+}

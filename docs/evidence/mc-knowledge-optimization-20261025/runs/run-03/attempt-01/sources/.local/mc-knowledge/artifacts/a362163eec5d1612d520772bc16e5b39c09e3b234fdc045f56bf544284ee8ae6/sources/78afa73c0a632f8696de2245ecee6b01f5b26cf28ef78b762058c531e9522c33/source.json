@@ -1,0 +1,10 @@
+{
+  "class": "net.minecraft.world.entity.ai.goal.GoalSelector",
+  "member": "tick",
+  "descriptor": "()V",
+  "compiler": "1.12.0",
+  "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+  "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-03/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/78afa73c0a632f8696de2245ecee6b01f5b26cf28ef78b762058c531e9522c33/source.java",
+  "source_sha256": "5cdab4fc99bda905360ee4e4ef45f97b0f9718c1c439923bc2c4a30f5b82e9fc",
+  "warnings": []
+}

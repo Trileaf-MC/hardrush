@@ -1,0 +1,67 @@
+{
+  "case_id": "case-06",
+  "topic": "T2",
+  "assessable": true,
+  "rubric_scores": {
+    "factual_accuracy": 86,
+    "evidence_quality": 10,
+    "total": 96
+  },
+  "items": [
+    {
+      "id": "A1",
+      "earned": 12,
+      "maximum": 12,
+      "reason": "明确基础攻击属性15／15.0，并明确一次近战并非固定造成15点，8+4分均得。"
+    },
+    {
+      "id": "A2",
+      "earned": 24,
+      "maximum": 24,
+      "reason": "给出A/2.0F+nextInt((int)A)或等价7.5+k，k=0…14，明确7.5、8.5、…、21.5共15个离散值；公式、两端可取区间与间隔1的小数离散性质各8分。"
+    },
+    {
+      "id": "A3",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "明确简单为min(D/2+1,D)／本题等价D/2+1，最终4.75至11.75，6+8分均得。"
+    },
+    {
+      "id": "A4",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确普通不缩放、保持D，最终7.5至21.5，3+7分均得。"
+    },
+    {
+      "id": "A5",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "明确困难D×3/2，最终11.25至32.25，6+8分均得。"
+    },
+    {
+      "id": "A6",
+      "earned": 12,
+      "maximum": 16,
+      "reason": "明确先随机、Player.hurtServer随后缩放，且不能先改写属性15，得8分；明确mob_attack缩放类型及铁傀儡属于非玩家活体实体，得4分。没有明确无护甲条件下float直接扣玩家生命、不会作伤害整数舍入；表格的小数和随机阶段的离散值不能单独补全后续扣血处理，该4分缺失。"
+    },
+    {
+      "id": "E1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确Java26.3原版服务端JAR及对应出处，得2分；属性与公式定位IronGolem.createAttributes、doHurtTarget，得3分；mob_attack缩放条件与Player.hurtServer均可定位，得3分；保留无护甲／减伤等限制及静态核查、未实测边界，得2分。"
+    }
+  ],
+  "major_errors": [],
+  "omissions": [
+    "未说明通常无防御条件下浮点伤害直接扣玩家生命、没有伤害整数舍入。"
+  ],
+  "citations": [
+    "<workspace>/.local/iron-golem-26.3-evidence.txt:31",
+    "<workspace>/.local/iron-golem-26.3-evidence.txt:109",
+    "<workspace>/.local/iron-golem-26.3-evidence.txt:148",
+    "<workspace>/.local/iron-golem-26.3-evidence.txt:257",
+    "<workspace>/.local/iron-golem-26.3-evidence.txt:296",
+    "<workspace>/.local/iron-golem-26.3-evidence.txt:335"
+  ],
+  "notes": "仅按最终答案评分；15个离散小数值满足随机伤害性质，但不从后续扣血流程引用替答案补写float生命减法或不舍入这一独立处理结论。"
+}

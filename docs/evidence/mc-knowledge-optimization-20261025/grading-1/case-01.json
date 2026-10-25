@@ -1,0 +1,37 @@
+{
+  "case_id": "case-01",
+  "topic": "T1",
+  "assessable": true,
+  "rubric_scores": {"factual_accuracy": 69, "evidence_quality": 10, "total": 79},
+  "items": [
+    {"id": "V1", "earned": 5, "maximum": 5, "reason": "明确限定为“Java Edition 26.3 正式版原版服务端 JAR”，并说明静态核验、未实测，不外推其他版本。"},
+    {"id": "S1", "earned": 5, "maximum": 5, "reason": "明确普通骷髅在细雪中变成流浪者。"},
+    {"id": "S2", "earned": 10, "maximum": 10, "reason": "明确140 tick约7秒、300 tick设定的约15秒转化阶段及总约22秒，按20 TPS换算；精确边界限定为初值0或重置-1及有效计时检查，说明301次后续检查和441/442次有效检查，不声称从几何接触起固定440 tick。三个子项4+4+2均得分。"},
+    {"id": "S3", "earned": 5, "maximum": 5, "reason": "“任一阶段离开细雪，都会取消进度”，并说明前置计数设为-1、再次进入重新走完整过程。"},
+    {"id": "S4", "earned": 10, "maximum": 10, "reason": "明确“即使已经抖动，也不能移出细雪等待完成”，且再次进入重新走完整过程，分别满足取消转化7分和重走前置阶段3分。"},
+    {"id": "S5", "earned": 0, "maximum": 5, "reason": "最终答案未明确NoAI不推进／仅AI开启才处理，也未说明转化中普通AI仍运行。两个子项3分、2分均缺失；不能从引用的ConversionTracker为答案补全。"},
+    {"id": "S6", "earned": 8, "maximum": 10, "reason": "“这不是靠冻伤触发的”及Skeleton.canFreeze=false满足4分；“细雪接触标记与普通冻结伤害计时是分开的”结合专用转化计时满足机制分离2分；表格明确先前置、后开始抖动满足2分。未直接说明骷髅不会受到普通细雪冻结伤害，该2分不从canFreeze字段名推补。"},
+    {"id": "W1", "earned": 10, "maximum": 10, "reason": "明确未驯服狼会主动选中攻击、不必先受击，并以Wolf.registerGoals的AbstractSkeleton目标及Stray继承关系解释，7+3分均满足。"},
+    {"id": "W2", "earned": 7, "maximum": 10, "reason": "明确正常站立的驯服狼也会主动攻击、不需主人先动手，得7分。虽把普通动物捕猎的NonTameRandomTargetGoal列作对照，但没有明确说该动物捕猎只在未驯服状态启动；未驯服专属捕猎这一3分子项未完整表达。"},
+    {"id": "W3", "earned": 4, "maximum": 10, "reason": "末段明确目标搜索、距离、路径和更高优先级行为限制实际攻击，得限制条件4分；未分别说明主人受攻击触发护主与主人攻击目标触发协助，这6分缺失。"},
+    {"id": "W4", "earned": 5, "maximum": 10, "reason": "明确正在执行坐下时通常不会主动起身追击，坐下占用移动／跳跃控制，且区分选敌与实际攻击，得5分。没有说明两个主人协助目标在orderedToSit时均不能启动，也没有处理主人受击是否保证起身护主，该5分缺失。"},
+    {"id": "E1", "earned": 10, "maximum": 10, "reason": "骷髅结论定位到26.3的Skeleton、ConversionTracker.tick及字节码；狼结论定位到Wolf.registerGoals、Stray和SitWhenOrderedToGoal，类／成员与相关主张相符，两类证据各5分。"}
+  ],
+  "major_errors": [],
+  "omissions": [
+    "NoAI时不推进转化及转化中仍有普通AI。",
+    "明确不会受到普通细雪冻结伤害。",
+    "明确普通动物的NonTameRandomTargetGoal只允许未驯服状态。",
+    "主人受攻击和主人攻击目标这两条独立协助路线。",
+    "命令坐下会阻止两个主人协助目标启动，不能保证因主人受击而起身护主。"
+  ],
+  "citations": [
+    "<workspace>/.local/vanilla-26.3-evidence/Skeleton.java:20",
+    "<workspace>/.local/vanilla-26.3-evidence/ConversionTracker.java:53",
+    "<workspace>/.local/vanilla-26.3-evidence/ConversionTracker.javap.txt",
+    "<workspace>/.local/vanilla-26.3-evidence/Wolf-registerGoals.java:38",
+    "<workspace>/.local/vanilla-26.3-evidence/Stray.java:21",
+    "<workspace>/.local/vanilla-26.3-evidence/SitWhenOrderedToGoal.java:8"
+  ],
+  "notes": "仅按最终答案和冻结T1子项评分；未查看工具过程或分组。可选的装备、生命值和受伤解除坐下等扩展不增加必答分；未发现它们直接否定本次已评分必答事实。"
+}

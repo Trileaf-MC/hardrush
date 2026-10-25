@@ -1,0 +1,4660 @@
+{
+  "reviews": [
+    {
+      "reviewer": 1,
+      "run_id": "run-02",
+      "arm": "J",
+      "topic": "T1",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-01",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 69,
+          "evidence_quality": 10,
+          "total": 79
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确限定为“Java Edition 26.3 正式版原版服务端 JAR”，并说明静态核验、未实测，不外推其他版本。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪中变成流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确140 tick约7秒、300 tick设定的约15秒转化阶段及总约22秒，按20 TPS换算；精确边界限定为初值0或重置-1及有效计时检查，说明301次后续检查和441/442次有效检查，不声称从几何接触起固定440 tick。三个子项4+4+2均得分。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "“任一阶段离开细雪，都会取消进度”，并说明前置计数设为-1、再次进入重新走完整过程。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确“即使已经抖动，也不能移出细雪等待完成”，且再次进入重新走完整过程，分别满足取消转化7分和重走前置阶段3分。"
+          },
+          {
+            "id": "S5",
+            "earned": 0,
+            "maximum": 5,
+            "reason": "最终答案未明确NoAI不推进／仅AI开启才处理，也未说明转化中普通AI仍运行。两个子项3分、2分均缺失；不能从引用的ConversionTracker为答案补全。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "“这不是靠冻伤触发的”及Skeleton.canFreeze=false满足4分；“细雪接触标记与普通冻结伤害计时是分开的”结合专用转化计时满足机制分离2分；表格明确先前置、后开始抖动满足2分。未直接说明骷髅不会受到普通细雪冻结伤害，该2分不从canFreeze字段名推补。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确未驯服狼会主动选中攻击、不必先受击，并以Wolf.registerGoals的AbstractSkeleton目标及Stray继承关系解释，7+3分均满足。"
+          },
+          {
+            "id": "W2",
+            "earned": 7,
+            "maximum": 10,
+            "reason": "明确正常站立的驯服狼也会主动攻击、不需主人先动手，得7分。虽把普通动物捕猎的NonTameRandomTargetGoal列作对照，但没有明确说该动物捕猎只在未驯服状态启动；未驯服专属捕猎这一3分子项未完整表达。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "末段明确目标搜索、距离、路径和更高优先级行为限制实际攻击，得限制条件4分；未分别说明主人受攻击触发护主与主人攻击目标触发协助，这6分缺失。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "明确正在执行坐下时通常不会主动起身追击，坐下占用移动／跳跃控制，且区分选敌与实际攻击，得5分。没有说明两个主人协助目标在orderedToSit时均不能启动，也没有处理主人受击是否保证起身护主，该5分缺失。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "骷髅结论定位到26.3的Skeleton、ConversionTracker.tick及字节码；狼结论定位到Wolf.registerGoals、Stray和SitWhenOrderedToGoal，类／成员与相关主张相符，两类证据各5分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "NoAI时不推进转化及转化中仍有普通AI。",
+          "明确不会受到普通细雪冻结伤害。",
+          "明确普通动物的NonTameRandomTargetGoal只允许未驯服状态。",
+          "主人受攻击和主人攻击目标这两条独立协助路线。",
+          "命令坐下会阻止两个主人协助目标启动，不能保证因主人受击而起身护主。"
+        ],
+        "citations": [
+          "<workspace>/.local/vanilla-26.3-evidence/Skeleton.java:20",
+          "<workspace>/.local/vanilla-26.3-evidence/ConversionTracker.java:53",
+          "<workspace>/.local/vanilla-26.3-evidence/ConversionTracker.javap.txt",
+          "<workspace>/.local/vanilla-26.3-evidence/Wolf-registerGoals.java:38",
+          "<workspace>/.local/vanilla-26.3-evidence/Stray.java:21",
+          "<workspace>/.local/vanilla-26.3-evidence/SitWhenOrderedToGoal.java:8"
+        ],
+        "notes": "仅按最终答案和冻结T1子项评分；未查看工具过程或分组。可选的装备、生命值和受伤解除坐下等扩展不增加必答分；未发现它们直接否定本次已评分必答事实。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-24",
+      "arm": "S",
+      "topic": "T3",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-02",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 88,
+          "evidence_quality": 10,
+          "total": 98
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确普通笼无合格玩家就不生成，得6分；Delay暂停保留、回来续计而非重抽，得8分；明确范围内其他玩家仍可激活及／或持续方块实体tick、区块停止不后台生成的前提，得4分。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确普通笼默认16格得6分，正确限定方块中心距离、存活非旁观玩家且创造可激活，得2分。"
+          },
+          {
+            "id": "P3",
+            "earned": 14,
+            "maximum": 16,
+            "reason": "初始20 tick得3分；给出重设下界200，但没有明确默认MaxSpawnDelay配置值为800，Min／Max子项给2/4分；实际200…799明确且不含800得5分。Delay>0只减一、从1减0当tick不生成、下一tick尝试及Delay=-1重设均明确，推进4分。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确每轮最多4次生成尝试得5分，并说明不保证成功4只、条件失败可减少实际生成数量，得3分。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "默认附近同类上限6且达到上限结束本轮重设，得7分；以局部同Java类计数盒限定，而非全局自然刷怪上限，得3分。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通位置／碰撞／光照或生成规则失败、整轮无成功时保持0／到期并下个激活tick重试，得7分；至少成功一次轮末重设，得4分；附近上限与无效类型／加载／添加失败等可立即重设返回，得5分。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格探测得3分；已登记激活后走远本身不暂停，受tick、配置／生成条件及轮次限额约束，得6分；游戏时间戳／状态机和追踪并发／总配额明确区别普通笼，得3分；失败不执行成功更新时间、可重试，得2分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端及来源身份得2分；BaseSpawner默认值、serverTick和delay可定位得4分；试炼状态机／探测／计时类或成员可定位得3分；没有把静态推导冒充游戏实测或已知截断冒充完整得1分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "未明确默认MaxSpawnDelay配置值为800；已正确给出实际抽样200…799，未将799误当成可抽得800。"
+        ],
+        "citations": [
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:43",
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:95",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerConfig.java:109",
+          "<workspace>/.local/spawner-26.3-evidence/PlayerDetector.java:26",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerStateData.tryDetectPlayers.java:23",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerState.tickAndGetNext.java:38"
+        ],
+        "notes": "仅按最终答案评分。P3对缺失MaxSpawnDelay配置值800与已正确给出实际200…799分别处理，抽样子项不再扣分；其余次级视线／试炼配置等细节不额外要求。盲化路径和尖括号不妨碍出处识别。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-25",
+      "arm": "O",
+      "topic": "T3",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-03",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 88,
+          "evidence_quality": 10,
+          "total": 98
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确普通笼没有合格玩家就不生成，得6分；剩余Delay保留暂停、回来续计而非重抽，得8分；区分玩家范围与持续方块实体tick／仅加载不足，得4分。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确默认16格得6分；方块中心距离、活着的非旁观玩家及创造可激活等基本限定正确，得2分。"
+          },
+          {
+            "id": "P3",
+            "earned": 14,
+            "maximum": 16,
+            "reason": "初始20 tick得3分；重设下界200有说明，但未明确MaxSpawnDelay默认配置值800，Min／Max子项给2/4分；实际200…799正确得5分；Delay>0只减计时、进入tick时已0才尝试，以及Delay=-1先初始化延迟均明确，推进4分。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "每轮最多4次尝试得5分，并明确不保证成功4只，成功／失败影响实际数量，得3分。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "默认附近同类6，达到上限结束该轮并重设延迟，得7分；明确局部查询盒、相同Java类而非全球自然刷怪上限，得3分。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通位置／碰撞／光照／生成规则失败且整轮无成功时保持0／到期、下个有效tick重试，得7分；至少成功一次轮末重设，得4分；附近上限或无效类型、加载／加入世界失败存在立即重设返回，得5分。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格探测得3分；已激活登记后走远本身不暂停，受区块tick、配置／生成条件、本轮与并存限制，得6分；以状态／游戏时间或下次绝对时刻、追踪集合和本轮配额区别普通笼，得3分；失败不执行成功更新时间、下个就绪tick可重试，得2分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版及JAR来源身份，得2分；BaseSpawner默认值、serverTick与delay有可核对出处，得4分；试炼状态机、探测和计时成员有可核对出处，得3分；保留静态核查边界，未冒充运行验证或将已知截断当完整，得1分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "未明确普通笼MaxSpawnDelay默认配置值为800；实际200…799抽样范围正确。"
+        ],
+        "citations": [
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:43",
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:95",
+          "<workspace>/.local/spawner-26.3-evidence/EntityGetter-hasNearbyAlivePlayer.java:11",
+          "<workspace>/.local/spawner-26.3-evidence/PlayerDetector.java:26",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerConfig.java:109",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerState-tickAndGetNext.java:38",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerStateData.java:104"
+        ],
+        "notes": "仅按最终答案评分。与同标准处理一致：实际200…799抽样得满分，但不补出未写明的MaxSpawnDelay配置值800。未要求量表排除的试炼次级细节。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-07",
+      "arm": "S",
+      "topic": "T1",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-04",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 72,
+          "evidence_quality": 10,
+          "total": 82
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确Java26.3原版服务端JAR与静态代码／字节码核查，未运行游戏，不将结论直接当作模组运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪中转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确先140 tick约7秒，后300 tick设定约15秒转化，总约22秒并按20 TPS换算；说明倒计时至负数需要301次后续有效检查，精确总数有对应初始状态和接触时序限定。4+4+2分均得。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确第一阶段离开细雪会重置前置进度，再次进入重新累计。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经抖动也会取消转化，不能离开等待完成；重置前置后再次进入重新计时，不是续跑剩余倒计时，7+3分均得。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确只有AI未禁用／启用AI时才处理转化，得3分；未说明颤抖不会自动禁用普通AI、转化中仍可运行普通AI，另2分缺失。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确canFreeze=false且不是先受冻结伤害再转化，得4分；“转化计时独立运行”及细雪状态／冻结值分别处理的表述，得计时分离2分；表格明确第二阶段才开始抖动，得2分。没有直接说明不会受到普通细雪冻结伤害，该2分不从canFreeze字段名补全。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确野生狼主动选择／攻击流浪者、不需先受击，并用AbstractSkeleton目标覆盖Stray继承关系解释，7+3分均得。"
+          },
+          {
+            "id": "W2",
+            "earned": 7,
+            "maximum": 10,
+            "reason": "明确已驯服、可正常行动的狼仍主动攻击，不需主人先攻击，得7分；没有对照说明动物／幼龟捕猎属于未驯服专属规则，该3分缺失。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "明确目标有效性／搜索距离／路径或更高优先级行为等限制实际攻击，得4分；未区分主人被攻击触发护主与主人攻击目标触发协助，两条触发子项6分缺失。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "明确正常执行坐下时阻止普通追逐攻击，区分选敌与实际行动，且未声称坐下删除全部目标或AI，得5分；未说明orderedToSit阻止两个主人协助目标启动，也未说明主人受击不保证起身护主，另5分缺失。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "骷髅结论定位到目标版本Skeleton、ConversionTracker及关键字节码；狼结论定位到Wolf.registerGoals、Stray和坐下Goal，类／成员和对应主张相符，两类证据各5分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍可运行普通AI、颤抖不自动禁用AI。",
+          "明确不会受到普通细雪冻结伤害。",
+          "普通动物／幼龟的捕猎规则仅限未驯服，与骷髅类普通目标规则的区别。",
+          "主人受攻击护主与主人攻击目标时协助这两个独立触发。",
+          "坐下阻止两个主人协助目标启动，不保证因主人受击而起身护主。"
+        ],
+        "citations": [
+          "<workspace>/.local/mc-knowledge/verified-26.3/Skeleton.java:20",
+          "<workspace>/.local/mc-knowledge/verified-26.3/ConversionTracker.java:53",
+          "<workspace>/.local/mc-knowledge/verified-26.3/ConversionTracker.tick.bytecode.txt",
+          "<workspace>/.local/mc-knowledge/verified-26.3/Wolf.registerGoals.java",
+          "<workspace>/.local/mc-knowledge/verified-26.3/Stray.java:21",
+          "<workspace>/.local/mc-knowledge/verified-26.3/SitWhenOrderedToGoal.constructor.bytecode.txt"
+        ],
+        "notes": "仅按最终答案评分。442次检查的推导已限定为此前雪外更新导致前置值-1、两阶段持续细雪与有效检查，且说明接触更新边界，按冻结量表接受。额外装备／满血／皮革条件说明不加必答分。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-12",
+      "arm": "O",
+      "topic": "T2",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-05",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 88,
+          "evidence_quality": 10,
+          "total": 98
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确基础攻击属性15／15.0，并明确一次近战并非固定造成15点，8+4分均得。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出A/2.0F+nextInt((int)A)或等价7.5+k，k=0…14，明确7.5、8.5、…、21.5共15个离散值；公式、两端可取区间与间隔1的小数离散性质各8分。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确简单为min(D/2+1,D)／本题等价D/2+1，最终4.75至11.75，6+8分均得。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确普通不缩放、保持D，最终7.5至21.5，3+7分均得。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确困难D×3/2，最终11.25至32.25，6+8分均得。"
+          },
+          {
+            "id": "A6",
+            "earned": 14,
+            "maximum": 16,
+            "reason": "明确先读取属性并随机、再由Player.hurtServer对已抽得D缩放，得8分；明确mob_attack的when_caused_by_living_non_player及铁傀儡符合条件，得4分。说明随机结果“没有把结果取整”，并列出带小数的最终区间，浮点／无舍入子项给2/4分；未明确后续实际玩家生命扣除也保留float、不另做伤害整数舍入，故该子项另2分未得。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端JAR及对应出处，得2分；属性与公式定位IronGolem.createAttributes、doHurtTarget，得3分；mob_attack缩放条件与Player.hurtServer均可定位，得3分；保留无护甲／减伤等限制及静态核查、未实测边界，得2分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "未明确后续实际玩家生命扣除保留float、没有另一步整数舍入；仅明确随机计算结果不取整。"
+        ],
+        "citations": [
+          "IronGolem.createAttributes()属性证据",
+          "IronGolem.doHurtTarget()攻击方法证据",
+          "Player.hurtServer()玩家难度缩放证据",
+          "mob_attack伤害类型数据",
+          "DamageSource.scalesWithDifficulty()条件判断证据",
+          "扣血流程证据"
+        ],
+        "notes": "按T2允许部分分的规则，对随机结果不取整但未明确生命浮点扣除的最后4分子项给2分。其余公式、端点、顺序与目标版本证据满足量表；未从证据文件内容补全最终答案未写出的处理。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-10",
+      "arm": "J",
+      "topic": "T2",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-06",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 86,
+          "evidence_quality": 10,
+          "total": 96
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确基础攻击属性15／15.0，并明确一次近战并非固定造成15点，8+4分均得。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出A/2.0F+nextInt((int)A)或等价7.5+k，k=0…14，明确7.5、8.5、…、21.5共15个离散值；公式、两端可取区间与间隔1的小数离散性质各8分。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确简单为min(D/2+1,D)／本题等价D/2+1，最终4.75至11.75，6+8分均得。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确普通不缩放、保持D，最终7.5至21.5，3+7分均得。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确困难D×3/2，最终11.25至32.25，6+8分均得。"
+          },
+          {
+            "id": "A6",
+            "earned": 12,
+            "maximum": 16,
+            "reason": "明确先随机、Player.hurtServer随后缩放，且不能先改写属性15，得8分；明确mob_attack缩放类型及铁傀儡属于非玩家活体实体，得4分。没有明确无护甲条件下float直接扣玩家生命、不会作伤害整数舍入；表格的小数和随机阶段的离散值不能单独补全后续扣血处理，该4分缺失。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端JAR及对应出处，得2分；属性与公式定位IronGolem.createAttributes、doHurtTarget，得3分；mob_attack缩放条件与Player.hurtServer均可定位，得3分；保留无护甲／减伤等限制及静态核查、未实测边界，得2分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "未说明通常无防御条件下浮点伤害直接扣玩家生命、没有伤害整数舍入。"
+        ],
+        "citations": [
+          "<workspace>/.local/iron-golem-26.3-evidence.txt:31",
+          "<workspace>/.local/iron-golem-26.3-evidence.txt:109",
+          "<workspace>/.local/iron-golem-26.3-evidence.txt:148",
+          "<workspace>/.local/iron-golem-26.3-evidence.txt:257",
+          "<workspace>/.local/iron-golem-26.3-evidence.txt:296",
+          "<workspace>/.local/iron-golem-26.3-evidence.txt:335"
+        ],
+        "notes": "仅按最终答案评分；15个离散小数值满足随机伤害性质，但不从后续扣血流程引用替答案补写float生命减法或不舍入这一独立处理结论。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-16",
+      "arm": "S",
+      "topic": "T1",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-07",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 75,
+          "evidence_quality": 10,
+          "total": 85
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确Java26.3原版服务端制品、目标版本来源与静态核查范围，未将其当作HardRush或其他版本的运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪中转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确140 tick约7秒前置、300 tick设定的约15秒转化阶段及总约22秒，按20 TPS换算；精确调用数说明对应初值／重置状态与有效检查条件，不作几何接触起普遍精确440 tick断言，4+4+2分。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确第一阶段离开细雪前置计数重置为-1，重新进入要重计。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经抖动的转化阶段离开也取消，并且重新进入重走前置阶段而非暂停续跑，7+3分。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确只有AI未禁用／未设置NoAI时推进，得3分；没有明确转化中仍可运行普通AI、颤抖不会自动禁用AI，另2分缺失。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确Skeleton.canFreeze=false且不能把普通冻结进度当转化前提，得4分；将细雪接触状态／独立转化计时与普通冻结计时分离，得2分；明确前置不抖动、转化阶段才抖动或isShaking读取转化标志，得2分。未直接说明不会受到普通细雪冻结伤害，该2分不从字段名推补。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确野生狼主动选择／攻击流浪者、无需先受击，并说明AbstractSkeleton规则覆盖Stray继承关系，7+3分。"
+          },
+          {
+            "id": "W2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确正常站立的驯服狼同样主动攻击、无需主人先攻击，得7分；明确骷髅类普通Goal没有未驯服限制，而部分动物捕猎的NonTameRandomTargetGoal检查!isTame，得3分。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "明确实际攻击受搜索距离／目标条件／路径或更高优先级行为限制，得4分；没有区分主人受攻击时护主与主人攻击目标时协助，两条触发子项6分缺失。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "明确正常执行坐下时阻止追逐与近战，保留或区分主动选敌规则，没有声称坐下删除全部AI，得5分；未说明两个主人协助目标在命令坐下时不能启动、不保证主人受击后起身护主，另5分缺失。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "骷髅结论有本版本Skeleton、ConversionTracker及关键字节码定位；狼结论有Wolf.registerGoals、Stray和坐下Goal等定位，均支持核心主张，两类证据各5分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中普通AI仍可运行，颤抖不会自动关闭AI。",
+          "明确不会受到普通细雪冻结伤害。",
+          "主人受攻击与主人攻击目标这两个独立协助触发。",
+          "命令坐下阻止两个主人协助目标启动，不保证主人受击时起身护主。"
+        ],
+        "citations": [
+          "<workspace>/.local/minecraft-26.3-vanilla-evidence.md:37",
+          "<workspace>/.local/minecraft-26.3-vanilla-evidence.md:161",
+          "<workspace>/.local/minecraft-26.3-vanilla-evidence.md:289",
+          "<workspace>/.local/minecraft-26.3-vanilla-evidence.md:360",
+          "<workspace>/.local/minecraft-26.3-vanilla-evidence.md:499",
+          "<workspace>/.local/minecraft-26.3-vanilla-evidence.md:574"
+        ],
+        "notes": "仅按最终答案评分。301次后续有效更新和441／442总调用数均限定为对应计时初值、持续细雪和计时器更新，并注明接触标志时序；皮革靴及受伤解除坐下等额外说明不加必答分。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-17",
+      "arm": "J",
+      "topic": "T1",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-08",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 75,
+          "evidence_quality": 10,
+          "total": 85
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确Java26.3原版服务端制品、目标版本来源与静态核查范围，未将其当作HardRush或其他版本的运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪中转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确140 tick约7秒前置、300 tick设定的约15秒转化阶段及总约22秒，按20 TPS换算；精确调用数说明对应初值／重置状态与有效检查条件，不作几何接触起普遍精确440 tick断言，4+4+2分。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确第一阶段离开细雪前置计数重置为-1，重新进入要重计。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经抖动的转化阶段离开也取消，并且重新进入重走前置阶段而非暂停续跑，7+3分。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确只有AI未禁用／未设置NoAI时推进，得3分；没有明确转化中仍可运行普通AI、颤抖不会自动禁用AI，另2分缺失。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确Skeleton.canFreeze=false且不能把普通冻结进度当转化前提，得4分；将细雪接触状态／独立转化计时与普通冻结计时分离，得2分；明确前置不抖动、转化阶段才抖动或isShaking读取转化标志，得2分。未直接说明不会受到普通细雪冻结伤害，该2分不从字段名推补。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确野生狼主动选择／攻击流浪者、无需先受击，并说明AbstractSkeleton规则覆盖Stray继承关系，7+3分。"
+          },
+          {
+            "id": "W2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确驯服、可自由行动的狼也主动选流浪者，无需主人先攻击，得7分；明确普通NearestAttackableTargetGoal无未驯服限定，对照其他NonTameRandomTargetGoal才检查!isTame，已区分普通骷髅目标与未驯服专属目标，得3分，不额外强制列举动物种类。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "明确实际攻击受搜索距离／目标条件／路径或更高优先级行为限制，得4分；没有区分主人受攻击时护主与主人攻击目标时协助，两条触发子项6分缺失。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "明确正常执行坐下时阻止追逐与近战，保留或区分主动选敌规则，没有声称坐下删除全部AI，得5分；未说明两个主人协助目标在命令坐下时不能启动、不保证主人受击后起身护主，另5分缺失。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "骷髅结论有本版本Skeleton、ConversionTracker及关键字节码定位；狼结论有Wolf.registerGoals、Stray和坐下Goal等定位，均支持核心主张，两类证据各5分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中普通AI仍可运行，颤抖不会自动关闭AI。",
+          "明确不会受到普通细雪冻结伤害。",
+          "主人受攻击与主人攻击目标这两个独立协助触发。",
+          "命令坐下阻止两个主人协助目标启动，不保证主人受击时起身护主。"
+        ],
+        "citations": [
+          "<workspace>/.local/investigation-26.3/Skeleton.java:20",
+          "<workspace>/.local/investigation-26.3/ConversionTracker.java:53",
+          "<workspace>/.local/investigation-26.3/ConversionTracker.tick.bytecode.txt:1",
+          "<workspace>/.local/investigation-26.3/Wolf.registerGoals.java:18",
+          "<workspace>/.local/investigation-26.3/Stray.java:21",
+          "<workspace>/.local/investigation-26.3/NonTameRandomTargetGoal.java:16",
+          "<workspace>/.local/investigation-26.3/SitWhenOrderedToGoal.java:11"
+        ],
+        "notes": "仅按最终答案评分。精确441／442次有效检测给出前置初值／重置状态、两阶段持续细雪和外部测量起点限制，按冻结量表接受；没有把静态核对称为运行验证。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-05",
+      "arm": "J",
+      "topic": "T2",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-09",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确基础ATTACK_DAMAGE为15／15.0，并将固定属性与每次随机命中伤害区别，8+4分。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出A/2.0F+nextInt((int)A)或等价7.5+k，明确k=0…14、7.5至21.5两端可取及15个间隔1的离散小数值，公式、区间和离散性质各8分。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确简单为min(D/2+1,D)，最终4.75至11.75，公式6分、区间8分。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确普通保持随机结果D，最终7.5至21.5，不缩放3分、区间7分。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确困难为D×1.5／D×3/2，最终11.25至32.25，公式6分、区间8分。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确“读取攻击属性→随机化→按玩家所在难度缩放→减伤、吸收与扣血”，得8分；mob_attack的when_caused_by_living_non_player及铁傀儡满足条件，得4分；明确生命扣除使用浮点数、不会取整且Math.round只用于统计，得4分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端JAR及可定位证据文件，得2分；属性出处与IronGolem.doHurtTarget公式有具体片段，得3分；mob_attack缩放条件与Player.hurtServer有定位，得3分；保留无减伤／吸收／免伤窗口等条件，且明确静态核查、未实测，得2分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          ".local/iron-golem-26.3-evidence.md:45",
+          ".local/iron-golem-26.3-evidence.md:100",
+          ".local/iron-golem-26.3-evidence.md:31",
+          ".local/iron-golem-26.3-evidence.md:208",
+          ".local/iron-golem-26.3-evidence.md:275"
+        ],
+        "notes": "仅按最终答案评分；表格明确包含两端、步长及15个离散值。额外统计round与剩余生命限制说明不加分，且未与必答事实冲突。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-15",
+      "arm": "S",
+      "topic": "T2",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-10",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 86,
+          "evidence_quality": 10,
+          "total": 96
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确基础属性15／15.0，并区分它与每次随机命中伤害、不是固定15点，8+4分均得。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "公式等价于7.5+nextInt(15)，明确7.5、8.5、…、21.5的15个离散小数值、间隔1且两端可取，公式8分、范围8分、离散性质8分均得。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单公式min(D/2+1,D)或本题等价D/2+1正确，最终4.75至11.75，6+8分均得。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保留D、不缩放，最终7.5至21.5，3+7分均得。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难为D×1.5／D×3/2，最终11.25至32.25，6+8分均得。"
+          },
+          {
+            "id": "A6",
+            "earned": 12,
+            "maximum": 16,
+            "reason": "明确先随机、再由Player.hurtServer对D缩放，不能先缩放属性15，得8分；明确mob_attack数据when_caused_by_living_non_player和非玩家生物适用条件，得4分。未明确float直接用于玩家生命扣除、不会对伤害整数舍入，该独立4分子项缺失；不能仅从表格小数或随机阶段公式补全后续扣血行为。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版与可定位目标JAR来源，得2分；属性与公式具体定位IronGolem.createAttributes和doHurtTarget，得3分；mob_attack缩放条件与Player.hurtServer有对应出处，得3分；保留适用条件和静态核查、未运行验证边界，得2分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "没有明确通常条件下浮点伤害直接作用于玩家生命、无伤害整数舍入。"
+        ],
+        "citations": [
+          "IronGolem.createAttributes()属性初始化证据",
+          "IronGolem.doHurtTarget()攻击方法证据",
+          "Player.hurtServer()玩家难度处理证据",
+          "mob_attack伤害类型数据",
+          "DamageSource.scalesWithDifficulty()缩放判定代码",
+          "26.3原版JAR本地版本及完整性记录"
+        ],
+        "notes": "仅按最终答案评分；未把引用或表格数值替代未写出的浮点生命扣除结论。离散区间含两端、步长和公式均明确，不额外要求未问细节。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-06",
+      "arm": "S",
+      "topic": "T2",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-11",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确基础ATTACK_DAMAGE为15／15.0，并将固定属性与每次随机命中伤害区别，8+4分。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出A/2.0F+nextInt((int)A)或等价7.5+k，明确k=0…14、7.5至21.5两端可取及15个间隔1的离散小数值，公式、区间和离散性质各8分。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确简单为min(D/2+1,D)，最终4.75至11.75，公式6分、区间8分。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确普通保持随机结果D，最终7.5至21.5，不缩放3分、区间7分。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确困难为D×1.5／D×3/2，最终11.25至32.25，公式6分、区间8分。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确先读取属性和随机、再由Player.hurtServer缩放，且不能先缩放属性15再随机，得8分；解释mob_attack的非玩家活体实体缩放条件，得4分；明确Player.actuallyHurt浮点生命值减法、不按整点或半颗心取整，得4分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版且本地JAR通过服务端包SHA-256校验，得2分；点名IronGolem.createAttributes和doHurtTarget并引用各自证据，得3分；mob_attack、缩放条件及Player.hurtServer均有证据入口，得3分；说明条件和静态／未运行验证边界，得2分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes()及属性定义证据",
+          "IronGolem.doHurtTarget()及攻击计算证据",
+          "mob_attack伤害类型数据与缩放条件证据",
+          "Player.hurtServer()玩家难度公式证据",
+          "Player.actuallyHurt()玩家扣血实现证据"
+        ],
+        "notes": "仅按最终答案评分。“15（固定属性）”位于基础属性行，后文明示随机伤害，并未把15误称固定命中伤害。两端可取由列举7.5、8.5、…、21.5及nextInt范围明确表达。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-01",
+      "arm": "S",
+      "topic": "T1",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-12",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 72,
+          "evidence_quality": 10,
+          "total": 82
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确Java 26.3原版服务端JAR、静态检查且未运行验证，不外推基岩版或其他版本。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确骷髅在细雪中转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确140 tick约7秒前置、从300递减的约15秒转化阶段和20 TPS下总约22秒；进一步将441/442次有效更新限定于初值0／重置-1、连续满足条件，并说明实际接触时刻存在tick对齐，不作普遍精确440 tick断言。4+4+2分均得。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确任一有效更新发现离开细雪即把前置计数设为-1，重新进入需走完整流程。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确“即使已经颤抖，也不能离开后继续完成”，重新进入需重新走完整流程，取消转化7分与重走前置3分均得。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确“实体必须存活、AI未关闭，且持续获得服务端更新”，得AI开启才处理3分。没有说明颤抖／转化本身不禁用普通AI，另2分缺失。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确Skeleton.canFreeze=false、不要求先受冰冻伤害，得4分；明确不会因普通细雪冰冻而受伤，得2分；明确第二阶段才颤抖，得2分。没有明确将ConversionTracker／FreezingTime与TicksFrozen／完全冻结这一普通冻结计时作区分，计时分离子项2分未得；仅依据接触标记和不会冻伤不补出该计时区别。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确未驯服狼主动选流浪者、不需先受击，并引用AbstractSkeleton目标与Stray继承关系，7+3分均满足。"
+          },
+          {
+            "id": "W2",
+            "earned": 7,
+            "maximum": 10,
+            "reason": "明确已驯服、站立可行动时也会自主追咬，无需主人先攻击，得7分。没有说明羊兔狐狸／幼龟等普通动物的捕猎走未驯服专属NonTameRandomTargetGoal，此3分缺失。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "明确搜索范围、有效目标、更高优先级行为、寻路和近战条件等限制，得4分。未区分主人受攻击的护主与主人攻击目标的协助这两个触发，另6分缺失。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "明确坐下行为生效时通常不追咬，限制移动／跳跃但不移除骷髅类选敌规则，与站立状态区分，得5分。未说明orderedToSit阻止两条主人协助目标启动，也未讨论主人受击不保证起身护主，另5分缺失。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "骷髅有目标版本JAR、Skeleton及ConversionTracker.tick等可识别证据；狼有Wolf.registerGoals源码／字节码、Stray继承关系和SitWhenOrderedToGoal等定位，分别支持对应核心主张，5+5分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍可运行普通AI，颤抖不自动禁用AI。",
+          "明确区分转化计时与TicksFrozen／完全冻结的普通冻结计时。",
+          "普通动物捕猎的未驯服专属规则与骷髅类普通目标规则的对照。",
+          "主人受攻击和主人攻击目标两条独立协助路线。",
+          "坐下时两个主人协助目标不能启动，不保证主人受击后起身护主。"
+        ],
+        "citations": [
+          "<workspace>/.local/vanilla-26.3-evidence/Skeleton.java:20",
+          "<workspace>/.local/vanilla-26.3-evidence/ConversionTracker.java:53",
+          "<workspace>/.local/vanilla-26.3-evidence/Skeleton.java:63",
+          "<workspace>/.local/vanilla-26.3-evidence/Wolf.registerGoals.java:22",
+          "<workspace>/.local/vanilla-26.3-evidence/Wolf.registerGoals.bytecode.txt",
+          "<workspace>/.local/vanilla-26.3-evidence/Stray.java:21",
+          "<workspace>/.local/vanilla-26.3-evidence/SitWhenOrderedToGoal.java:13"
+        ],
+        "notes": "仅评分最终答案。精确调用次数有对应初始状态、连续有效更新和接触时序限定，按冻结量表接受；额外装备／皮革等扩展不加分。未查看工具过程或分组。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-13",
+      "arm": "O",
+      "topic": "T2",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-13",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确基础属性15／15.0，并区分它与每次随机命中伤害、不是固定15点，8+4分均得。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "公式等价于7.5+nextInt(15)，明确7.5、8.5、…、21.5的15个离散小数值、间隔1且两端可取，公式8分、范围8分、离散性质8分均得。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单公式min(D/2+1,D)或本题等价D/2+1正确，最终4.75至11.75，6+8分均得。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保留D、不缩放，最终7.5至21.5，3+7分均得。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难为D×1.5／D×3/2，最终11.25至32.25，6+8分均得。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确先随机、再Player.hurtServer缩放已随机结果，得8分；mob_attack的非玩家活体攻击者条件明确且铁傀儡满足，得4分；明确“伤害以浮点数进入扣血流程，不会先取整到整数或半颗心”，得4分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版与可定位目标JAR来源，得2分；属性与公式具体定位IronGolem.createAttributes和doHurtTarget，得3分；mob_attack缩放条件与Player.hurtServer有对应出处，得3分；保留适用条件和静态核查、未运行验证边界，得2分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes()属性源码证据",
+          "IronGolem.doHurtTarget()攻击方法证据",
+          "Player.hurtServer()难度缩放源码证据",
+          "mob_attack伤害类型数据及条件判断源码",
+          "玩家扣血源码证据",
+          "26.3服务端bundle SHA-256校验记录"
+        ],
+        "notes": "仅按最终答案评分。r=0…14和nextInt不包含15确定两端可取；每行15个离散值、相邻步长和浮点扣血均明确，未发现必答遗漏。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-23",
+      "arm": "J",
+      "topic": "T3",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-14",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确普通笼无合格玩家就不生成，得6分；Delay暂停保留、回来续计而非重抽，得8分；明确范围内其他玩家仍可激活及／或持续方块实体tick、区块停止不后台生成的前提，得4分。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确普通笼默认16格得6分，正确限定方块中心距离、存活非旁观玩家且创造可激活，得2分。"
+          },
+          {
+            "id": "P3",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "初始20 tick得3分；重设下界200、最大参数界800的表述得4分；明确200…799且800排除得5分；明确Delay>0递减、归零当tick不尝试、下一激活tick尝试及Delay=-1先重抽，得4分。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确每轮最多4次生成尝试得5分，并说明不保证成功4只、条件失败可减少实际生成数量，得3分。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "默认附近同类上限6且达到上限结束本轮重设，得7分；以局部同Java类计数盒限定，而非全局自然刷怪上限，得3分。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通位置／碰撞／光照或生成规则失败、整轮无成功时保持0／到期并下个激活tick重试，得7分；至少成功一次轮末重设，得4分；附近上限与无效类型／加载／添加失败等可立即重设返回，得5分。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格探测得3分；已登记激活后走远本身不暂停，受tick、配置／生成条件及轮次限额约束，得6分；游戏时间戳／状态机和追踪并发／总配额明确区别普通笼，得3分；失败不执行成功更新时间、可重试，得2分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端及来源身份得2分；BaseSpawner默认值、serverTick和delay可定位得4分；试炼状态机／探测／计时类或成员可定位得3分；没有把静态推导冒充游戏实测或已知截断冒充完整得1分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:43",
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:95",
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:201",
+          "<workspace>/.local/spawner-26.3-evidence/EntityGetter.hasNearbyAlivePlayer.java:11",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerConfig.java:109",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerState.tickAndGetNext.java:58",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawner.java:168"
+        ],
+        "notes": "仅按最终答案评分。全部冻结必答子项已有明确表达；没有因为未主动穷尽试炼／奖励／不祥等次级细节另行扣分。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-21",
+      "arm": "S",
+      "topic": "T3",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-15",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确所有合格玩家离开范围后普通笼不生成，得6分；剩余Delay暂停保留、回来续计而非重抽，得8分；说明玩家距离与持续方块实体tick／区块卸载条件，得4分。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确默认16格得6分，并正确限定方块中心三维距离、存活非旁观玩家且创造可激活，得2分。"
+          },
+          {
+            "id": "P3",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "初始Delay=20得3分；给出常规重置下界200、最大配置值800得4分；明确实际200…799且800排除得5分；明确Delay>0逐次减一、从1减0后下一活跃tick尝试，且Delay=-1先重抽得4分。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确一轮最多4次尝试，得5分，并明确不是保证生成4只、条件失败影响实际生成数，得3分。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确默认6且达到上限立即结束本轮并重设延迟，得7分；限定局部同类实体查询而非全局自然刷怪上限，得3分。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确普通位置／碰撞／光照或生成规则失败且整轮无成功时不重设，到期下个活跃tick重试，得7分；至少成功一次轮末重设，得4分；上限与无效类型／加载／加入世界失败等会立即重设并返回，得5分。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "试炼默认14格探测得3分；明确已激活登记后走远本身不取消／暂停，受持续tick、生成条件和轮次限额约束，得6分；用状态／绝对游戏时间和追踪并发、本轮配额区别普通笼，得3分；明确失败不更新成功间隔、可于下个就绪tick重试，得2分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版及JAR来源身份，得2分；普通BaseSpawner默认值、serverTick与delay可定位，得4分；试炼状态机、探测和计时有对应类／成员出处，得3分；限定静态查询，未冒充游戏实测或把已知截断当完整，得1分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:44",
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:95",
+          "<workspace>/.local/spawner-26.3-evidence/EntityGetter.hasNearbyAlivePlayer.java:12",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawner.java:395",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerStateData.java:124",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerState.tickAndGetNext.java:38"
+        ],
+        "notes": "仅按最终答案评分。次级的精确范围、视线、试炼自然配置及追踪清理扩展不额外加分，也不把未问细节作为扣分条件；全部必答子项已有明确表达。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-08",
+      "arm": "O",
+      "topic": "T1",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-16",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 72,
+          "evidence_quality": 10,
+          "total": 82
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确Java26.3原版服务端JAR与静态代码／字节码核查，未运行游戏，不将结论直接当作模组运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪中转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确先140 tick约7秒，后300 tick设定约15秒转化，总约22秒并按20 TPS换算；说明倒计时至负数需要301次后续有效检查，精确总数有对应初始状态和接触时序限定。4+4+2分均得。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确第一阶段离开细雪会重置前置进度，再次进入重新累计。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经抖动也会取消转化，不能离开等待完成；重置前置后再次进入重新计时，不是续跑剩余倒计时，7+3分均得。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确只有AI未禁用／启用AI时才处理转化，得3分；未说明颤抖不会自动禁用普通AI、转化中仍可运行普通AI，另2分缺失。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确canFreeze=false且转化条件不检查普通冻伤进度，得4分；“独立的转化计时”与普通冻伤进度分离，得2分；isShaking读取转化标志、第二阶段才开始抖动，得2分。没有明确说不会受到普通细雪冻结伤害，该2分不从canFreeze字段名推补。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确野生狼主动选择／攻击流浪者、不需先受击，并用AbstractSkeleton目标覆盖Stray继承关系解释，7+3分均得。"
+          },
+          {
+            "id": "W2",
+            "earned": 7,
+            "maximum": 10,
+            "reason": "明确已驯服站立可行动狼仍主动攻击，不需主人先攻击或受伤，得7分；未解释普通动物／幼龟的捕猎走未驯服专属NonTameRandomTargetGoal，对照子项3分缺失。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "明确目标有效性／搜索距离／路径或更高优先级行为等限制实际攻击，得4分；未区分主人被攻击触发护主与主人攻击目标触发协助，两条触发子项6分缺失。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "明确正常执行坐下时阻止普通追逐攻击，区分选敌与实际行动，且未声称坐下删除全部目标或AI，得5分；未说明orderedToSit阻止两个主人协助目标启动，也未说明主人受击不保证起身护主，另5分缺失。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "骷髅结论定位到目标版本Skeleton、ConversionTracker及关键字节码；狼结论定位到Wolf.registerGoals、Stray和坐下Goal，类／成员和对应主张相符，两类证据各5分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍可运行普通AI、颤抖不自动禁用AI。",
+          "明确不会受到普通细雪冻结伤害。",
+          "普通动物／幼龟捕猎的未驯服专属规则与骷髅类普通目标规则的对照。",
+          "主人受攻击护主与主人攻击目标时协助这两个独立触发。",
+          "坐下阻止两个主人协助目标启动，不保证因主人受击而起身护主。"
+        ],
+        "citations": [
+          ".local/mc-knowledge/verification-26.3/Skeleton.java:20",
+          ".local/mc-knowledge/verification-26.3/ConversionTracker.java:53",
+          ".local/mc-knowledge/verification-26.3/ConversionTracker.tick.javap.txt",
+          ".local/mc-knowledge/verification-26.3/Wolf.registerGoals.java:57",
+          ".local/mc-knowledge/verification-26.3/Stray.java:21",
+          ".local/mc-knowledge/verification-26.3/SitWhenOrderedToGoal.java:11"
+        ],
+        "notes": "仅按最终答案评分。精确441／442次有效更新给出初值0／重置-1及跟踪器读细雪状态的计时起点，并说明tick对齐，接受其边界推导。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-09",
+      "arm": "J",
+      "topic": "T1",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-17",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 75,
+          "evidence_quality": 10,
+          "total": 85
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确Java26.3原版服务端JAR与静态代码／字节码核查，未运行游戏，不将结论直接当作模组运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪中转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确先140 tick约7秒，后300 tick设定约15秒转化，总约22秒并按20 TPS换算；说明倒计时至负数需要301次后续有效检查，精确总数有对应初始状态和接触时序限定。4+4+2分均得。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确第一阶段离开细雪会重置前置进度，再次进入重新累计。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经抖动也会取消转化，不能离开等待完成；重置前置后再次进入重新计时，不是续跑剩余倒计时，7+3分均得。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确只有AI未禁用／启用AI时才处理转化，得3分；未说明颤抖不会自动禁用普通AI、转化中仍可运行普通AI，另2分缺失。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确Skeleton.canFreeze=false并将转化与冻结分为两套机制，不能视为普通冻伤驱动，得4分；直接说“转化计时与通常的冻结计数是两套机制”，得2分；表格前置时尚不抖动、第二阶段才抖动，得2分。没有直接说明不会受到普通细雪冻结伤害，该2分不从canFreeze字段名推补。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确野生狼主动选择／攻击流浪者、不需先受击，并用AbstractSkeleton目标覆盖Stray继承关系解释，7+3分均得。"
+          },
+          {
+            "id": "W2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确驯服后可自由行动时仍主动选流浪者、不需主人先攻击，得7分；将无未驯服限制的普通Goal与动物、小海龟的NonTameRandomTargetGoal对照，并以“未驯服限定的实际实现”明确描述后者限制，得3分。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "明确目标有效性／搜索距离／路径或更高优先级行为等限制实际攻击，得4分；未区分主人被攻击触发护主与主人攻击目标触发协助，两条触发子项6分缺失。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "明确正常执行坐下时阻止普通追逐攻击，区分选敌与实际行动，且未声称坐下删除全部目标或AI，得5分；未说明orderedToSit阻止两个主人协助目标启动，也未说明主人受击不保证起身护主，另5分缺失。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "骷髅结论定位到目标版本Skeleton、ConversionTracker及关键字节码；狼结论定位到Wolf.registerGoals、Stray和坐下Goal，类／成员和对应主张相符，两类证据各5分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍可运行普通AI、颤抖不自动禁用AI。",
+          "明确不会受到普通细雪冻结伤害。",
+          "主人受攻击护主与主人攻击目标时协助这两个独立触发。",
+          "坐下阻止两个主人协助目标启动，不保证因主人受击而起身护主。"
+        ],
+        "citations": [
+          "<workspace>/.local/vanilla-26.3-evidence/Skeleton.java:20",
+          "<workspace>/.local/vanilla-26.3-evidence/ConversionTracker.java:53",
+          "<workspace>/.local/vanilla-26.3-evidence/ConversionTracker-tick-bytecode.txt",
+          "<workspace>/.local/vanilla-26.3-evidence/Wolf-registerGoals.java:49",
+          "<workspace>/.local/vanilla-26.3-evidence/Stray.java:21",
+          "<workspace>/.local/vanilla-26.3-evidence/NonTameRandomTargetGoal.java:17",
+          "<workspace>/.local/vanilla-26.3-evidence/SitWhenOrderedToGoal.java:8"
+        ],
+        "notes": "仅按最终答案评分；441／442次后续有效检查有对应初始状态、两阶段持续细雪与实际接触时序限定，接受其边界说明。受伤解除坐下等扩展不增加必答分。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-03",
+      "arm": "O",
+      "topic": "T1",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-18",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 77,
+          "evidence_quality": 10,
+          "total": 87
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确Java 26.3原版服务端JAR、SHA-256核对及静态检查，未启动游戏，不将其当作HardRush运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确骷髅在细雪中创建流浪者并移除原骷髅。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确140 tick约7秒前置、300 tick设定约15秒转化及总约22秒，秒数按20 TPS。441/442次有效检查分别限定于初值0和重置-1，并说明碰撞／tick相位影响，未声称从几何接触起普遍精确440 tick。4+4+2分均得。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确离开细雪时将前置计数设为-1，重新进入需要重新计时，前置进度不是暂停保留。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确两个阶段均要求持续细雪，“即使已经颤抖，也会取消”；结合前置计数重置与重新进入重计，取消转化7分、重走前置3分均得。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确“NoAI骷髅不会推进这个过程”，得3分。未明确转化／颤抖不会自动禁用普通AI、期间仍可普通行动，另2分缺失。"
+          },
+          {
+            "id": "S6",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确canFreeze=false及“这不是冻伤累积”，得4分；将“独立的转化前置计时”与普通冻伤累积、直接细雪接触标记区别，得计时分离2分；明确不会承受通常冻结伤害，得2分；明确第二阶段开始颤抖且isShaking返回转化状态，得2分。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确未驯服狼会主动选择流浪者并尝试攻击、不需先受击，以AbstractSkeleton目标与Stray继承解释，7+3分。"
+          },
+          {
+            "id": "W2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确驯服站立狼也会自主攻击、无需主人先动手，得7分；明确骷髅目标无驯服检查，而部分动物的NonTameRandomTargetGoal才限制未驯服，得3分。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "明确距离、寻路、目标有效性和更高优先级行为限制实际动作，得4分。未分别说明主人受攻击护主与主人攻击目标时协助这两个触发，另6分缺失。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "明确按命令正常坐下时不会为附近流浪者主动起身，坐下优先于近战、占用移动资源，并区分选敌和实际攻击，得5分。未明确orderedToSit阻止两个主人协助目标启动，也未说明主人受击不保证起身护主，另5分缺失。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "在限定26.3的证据文件中定位Skeleton、ConversionTracker及字节码、Wolf.registerGoals、Stray、NonTameRandomTargetGoal与坐下Goal；类／成员与本版本核心主张相符。骷髅和狼各得5分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化／颤抖期间普通AI仍可运行，不是自动关闭AI。",
+          "主人受攻击与主人攻击目标这两条独立协助路线。",
+          "命令坐下阻止两个主人协助目标启动，不保证因主人受击而起身护主。"
+        ],
+        "citations": [
+          "<workspace>/.local/investigation-26.3/vanilla-evidence.txt:12",
+          "<workspace>/.local/investigation-26.3/vanilla-evidence.txt:130",
+          "<workspace>/.local/investigation-26.3/vanilla-evidence.txt:255",
+          "<workspace>/.local/investigation-26.3/vanilla-evidence.txt:323",
+          "<workspace>/.local/investigation-26.3/vanilla-evidence.txt:655",
+          "<workspace>/.local/investigation-26.3/vanilla-evidence.txt:890",
+          "<workspace>/.local/investigation-26.3/vanilla-evidence.txt:1053",
+          "<workspace>/.local/investigation-26.3/vanilla-evidence.txt:1228"
+        ],
+        "notes": "仅按最终答案与冻结子项评分；精确调用次数具备相应初始状态与有效检查限定，接受其边界说明。装备／生命值与受伤解除坐下属于可选扩展，不增加必答分。未查看工具过程或分组。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-04",
+      "arm": "O",
+      "topic": "T2",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-19",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确基础ATTACK_DAMAGE为15／15.0，并将固定属性与每次随机命中伤害区别，8+4分。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出A/2.0F+nextInt((int)A)或等价7.5+k，明确k=0…14、7.5至21.5两端可取及15个间隔1的离散小数值，公式、区间和离散性质各8分。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确简单为min(D/2+1,D)，最终4.75至11.75，公式6分、区间8分。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确普通保持随机结果D，最终7.5至21.5，不缩放3分、区间7分。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确困难为D×1.5／D×3/2，最终11.25至32.25，公式6分、区间8分。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确属性→随机→玩家难度缩放→后续结算，并说明Player.hurtServer对已随机得到的D处理，得8分；解释mob_attack的when_caused_by_living_non_player条件且铁傀儡满足，得4分；明确保留浮点数、不取整成整数或半颗心，并说明实际生命扣除受剩余生命限制，得4分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端JAR、bundle校验及可复核出处，得2分；属性与攻击公式具体定位IronGolem.createAttributes和doHurtTarget，得3分；mob_attack条件及Player.hurtServer各有出处，得3分；保留无护甲／抗性／吸收等假设，并明确静态核查、未运行验证，得2分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes()及属性证据",
+          "IronGolem.doHurtTarget()及攻击方法证据",
+          "mob_attack伤害类型数据",
+          "非玩家活体实体缩放条件代码",
+          "Player.hurtServer()玩家受伤代码"
+        ],
+        "notes": "仅按最终答案评分；不强制额外引用Player.actuallyHurt，因为题目要求的浮点／不取整处理已明确表达，且主要证据链可定位。区间端点由k=0…14与显式离散值列表确定。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-19",
+      "arm": "J",
+      "topic": "T3",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-20",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 89,
+          "evidence_quality": 10,
+          "total": 99
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确所有合格玩家离开范围后普通笼不生成，得6分；剩余Delay暂停保留、回来续计而非重抽，得8分；说明玩家距离与持续方块实体tick／区块卸载条件，得4分。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确默认16格得6分，并正确限定方块中心三维距离、存活非旁观玩家且创造可激活，得2分。"
+          },
+          {
+            "id": "P3",
+            "earned": 15,
+            "maximum": 16,
+            "reason": "初始20 tick得3分；明确MinSpawnDelay=200、MaxSpawnDelay=800得4分；实际200…799得5分。正值每tick递减且减到0后下一tick才尝试已说明，推进子项给3/4分；未说明Delay=-1先重设，另1分未得。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确一轮最多4次尝试，得5分，并明确不是保证生成4只、条件失败影响实际生成数，得3分。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确默认6且达到上限立即结束本轮并重设延迟，得7分；限定局部同类实体查询而非全局自然刷怪上限，得3分。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确普通位置／碰撞／光照或生成规则失败且整轮无成功时不重设，到期下个活跃tick重试，得7分；至少成功一次轮末重设，得4分；上限与无效类型／加载／加入世界失败等会立即重设并返回，得5分。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "试炼默认14格探测得3分；明确已激活登记后走远本身不取消／暂停，受持续tick、生成条件和轮次限额约束，得6分；用状态／绝对游戏时间和追踪并发、本轮配额区别普通笼，得3分；明确失败不更新成功间隔、可于下个就绪tick重试，得2分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版及JAR来源身份，得2分；普通BaseSpawner默认值、serverTick与delay可定位，得4分；试炼状态机、探测和计时有对应类／成员出处，得3分；限定静态查询，未冒充游戏实测或把已知截断当完整，得1分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "普通刷怪笼Delay=-1时先重设延迟的处理未说明。"
+        ],
+        "citations": [
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:43",
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:95",
+          "<workspace>/.local/spawner-26.3-evidence/EntityGetter-hasNearbyAlivePlayer.java:12",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerConfig.java:109",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawner.java:395",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerState.java:38",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerStateData.java:104"
+        ],
+        "notes": "仅按最终答案评分，按T3允许子项部分分，对推进处理已覆盖的常规倒计时／归零时序给3分，缺失-1重设扣该子项1分。试炼次级配置数值和官方包校验扩展不另加分。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-20",
+      "arm": "O",
+      "topic": "T3",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-21",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 89,
+          "evidence_quality": 10,
+          "total": 99
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确所有合格玩家离开范围后普通笼不生成，得6分；剩余Delay暂停保留、回来续计而非重抽，得8分；说明玩家距离与持续方块实体tick／区块卸载条件，得4分。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确默认16格得6分，并正确限定方块中心三维距离、存活非旁观玩家且创造可激活，得2分。"
+          },
+          {
+            "id": "P3",
+            "earned": 15,
+            "maximum": 16,
+            "reason": "初始20 tick得3分；重置下界200、最大配置值800的表述得4分；明确200…799且800不包含得5分。正值每激活tick减一、归零下一tick才尝试已明确，推进子项给3/4分；未说明Delay=-1先重设，另1分未得。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确一轮最多4次尝试，得5分，并明确不是保证生成4只、条件失败影响实际生成数，得3分。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确默认6且达到上限立即结束本轮并重设延迟，得7分；限定局部同类实体查询而非全局自然刷怪上限，得3分。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确普通位置／碰撞／光照或生成规则失败且整轮无成功时不重设，到期下个活跃tick重试，得7分；至少成功一次轮末重设，得4分；上限与无效类型／加载／加入世界失败等会立即重设并返回，得5分。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "试炼默认14格探测得3分；明确已激活登记后走远本身不取消／暂停，受持续tick、生成条件和轮次限额约束，得6分；用状态／绝对游戏时间和追踪并发、本轮配额区别普通笼，得3分；明确失败不更新成功间隔、可于下个就绪tick重试，得2分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版及JAR来源身份，得2分；普通BaseSpawner默认值、serverTick与delay可定位，得4分；试炼状态机、探测和计时有对应类／成员出处，得3分；限定静态查询，未冒充游戏实测或把已知截断当完整，得1分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "普通刷怪笼Delay=-1时先重设延迟的处理未说明。"
+        ],
+        "citations": [
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:42",
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:95",
+          "<workspace>/.local/spawner-26.3-evidence/PlayerDetector.java:26",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerStateData.java:124",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerConfig.java:59",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerState.tickAndGetNext.java:38"
+        ],
+        "notes": "仅按最终答案评分。出处里的<workspace>替换与额外尖括号不影响类／成员与行号辨识，不因此扣证据分。推进子项中常规倒计时和归零时序给3分，缺失-1重设扣1分；量表排除的次级机制不额外要求。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-11",
+      "arm": "S",
+      "topic": "T2",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-22",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确基础攻击属性15／15.0，并明确一次近战并非固定造成15点，8+4分均得。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出A/2.0F+nextInt((int)A)或等价7.5+k，k=0…14，明确7.5、8.5、…、21.5共15个离散值；公式、两端可取区间与间隔1的小数离散性质各8分。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确简单为min(D/2+1,D)／本题等价D/2+1，最终4.75至11.75，6+8分均得。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确普通不缩放、保持D，最终7.5至21.5，3+7分均得。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "明确困难D×3/2，最终11.25至32.25，6+8分均得。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确读取属性→随机→玩家受伤时缩放，且不能先缩放属性15再抽取，得8分；说明mob_attack的非玩家活体实体条件且铁傀儡符合，得4分；明确“扣血使用浮点数，小数不会统一取整”，得4分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端JAR及对应出处，得2分；属性与公式定位IronGolem.createAttributes、doHurtTarget，得3分；mob_attack缩放条件与Player.hurtServer均可定位，得3分；保留无护甲／减伤等限制及静态核查、未实测边界，得2分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes()的26.3属性证据",
+          "IronGolem.doHurtTarget()的26.3攻击方法证据",
+          "Player.hurtServer()的26.3难度计算证据",
+          "mob_attack伤害类型数据及条件判定代码",
+          "玩家扣血代码",
+          "26.3服务端制品校验证据"
+        ],
+        "notes": "仅按最终答案评分；区间含端点、15个离散值和相邻步长均明确。保留伤害量与剩余生命限制的区别，未将静态查询称作运行验证。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-14",
+      "arm": "J",
+      "topic": "T2",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-23",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 86,
+          "evidence_quality": 10,
+          "total": 96
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确基础属性15／15.0，并区分它与每次随机命中伤害、不是固定15点，8+4分均得。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "公式等价于7.5+nextInt(15)，明确7.5、8.5、…、21.5的15个离散小数值、间隔1且两端可取，公式8分、范围8分、离散性质8分均得。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单公式min(D/2+1,D)或本题等价D/2+1正确，最终4.75至11.75，6+8分均得。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保留D、不缩放，最终7.5至21.5，3+7分均得。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难为D×1.5／D×3/2，最终11.25至32.25，6+8分均得。"
+          },
+          {
+            "id": "A6",
+            "earned": 12,
+            "maximum": 16,
+            "reason": "明确属性→随机→玩家难度缩放→减伤扣血，并强调不能先改属性再随机，得8分；mob_attack定义由非玩家生物造成时缩放且铁傀儡符合，得4分。虽然引用Player.actuallyHurt并列出护甲、魔法减伤、吸收顺序，但没有写明float直接扣生命、不会做伤害整数舍入；该4分缺失，不能从引用内容补入最终答案。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版与可定位目标JAR来源，得2分；属性与公式具体定位IronGolem.createAttributes和doHurtTarget，得3分；mob_attack缩放条件与Player.hurtServer有对应出处，得3分；保留适用条件和静态核查、未运行验证边界，得2分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "没有明确玩家生命按浮点伤害扣除、不作伤害整数舍入。"
+        ],
+        "citations": [
+          "<workspace>/.local/iron-golem-26.3-evidence/IronGolem.createAttributes.java:12",
+          "<workspace>/.local/iron-golem-26.3-evidence/IronGolem.doHurtTarget.java:19",
+          "<workspace>/.local/iron-golem-26.3-evidence/mob_attack.json:4",
+          "<workspace>/.local/iron-golem-26.3-evidence/Player.hurtServer.java:40",
+          "<workspace>/.local/iron-golem-26.3-evidence/Player.actuallyHurt.java:25",
+          "<workspace>/.local/iron-golem-26.3-evidence/version.json:2"
+        ],
+        "notes": "仅按最终答案评分；数学式15/2结合明确7.5结果按实数运算理解，不误判为整数除法。未从Player.actuallyHurt引用补写答案缺少的浮点／无舍入处理。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-27",
+      "arm": "S",
+      "topic": "T3",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-24",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 88,
+          "evidence_quality": 10,
+          "total": 98
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确普通笼没有合格玩家就不生成，得6分；剩余Delay保留暂停、回来续计而非重抽，得8分；区分玩家范围与持续方块实体tick／仅加载不足，得4分。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确默认16格得6分；方块中心距离、活着的非旁观玩家及创造可激活等基本限定正确，得2分。"
+          },
+          {
+            "id": "P3",
+            "earned": 14,
+            "maximum": 16,
+            "reason": "初始20 tick得3分；重设下界200明确，但没有写MaxSpawnDelay默认配置值800，Min／Max子项给2/4分；实际200…799正确得5分；Delay>0减1、减到0当tick不生成而下一tick尝试、Delay=-1重设均明确，推进4分。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "每轮最多4次尝试得5分，并明确不保证成功4只，成功／失败影响实际数量，得3分。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "默认附近同类6，达到上限结束该轮并重设延迟，得7分；明确局部查询盒、相同Java类而非全球自然刷怪上限，得3分。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通位置／碰撞／光照／生成规则失败且整轮无成功时保持0／到期、下个有效tick重试，得7分；至少成功一次轮末重设，得4分；附近上限或无效类型、加载／加入世界失败存在立即重设返回，得5分。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格探测得3分；已激活登记后走远本身不暂停，受区块tick、配置／生成条件、本轮与并存限制，得6分；以状态／游戏时间或下次绝对时刻、追踪集合和本轮配额区别普通笼，得3分；失败不执行成功更新时间、下个就绪tick可重试，得2分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版及JAR来源身份，得2分；BaseSpawner默认值、serverTick与delay有可核对出处，得4分；试炼状态机、探测和计时成员有可核对出处，得3分；保留静态核查边界，未冒充运行验证或将已知截断当完整，得1分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "未明确普通笼MaxSpawnDelay默认配置值为800；已正确给出实际200…799。"
+        ],
+        "citations": [
+          "<workspace>/.local/mc-knowledge/spawner-26.3-evidence.md:34",
+          "<workspace>/.local/mc-knowledge/spawner-26.3-evidence.md:235",
+          "<workspace>/.local/mc-knowledge/spawner-26.3-evidence.md:353",
+          "<workspace>/.local/mc-knowledge/spawner-26.3-evidence.md:402",
+          "<workspace>/.local/mc-knowledge/spawner-26.3-evidence.md:623",
+          "<workspace>/.local/mc-knowledge/spawner-26.3-evidence.md:874",
+          "<workspace>/.local/mc-knowledge/spawner-26.3-evidence.md:1067"
+        ],
+        "notes": "仅按最终答案评分。没有把实际随机上界799判成错误，只对未说明配置Max800的子项缺失给部分分；配置示例、追踪细节等扩展不增加必答分。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-26",
+      "arm": "J",
+      "topic": "T3",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-25",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 87,
+          "evidence_quality": 10,
+          "total": 97
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确普通笼没有合格玩家就不生成，得6分；剩余Delay保留暂停、回来续计而非重抽，得8分；区分玩家范围与持续方块实体tick／仅加载不足，得4分。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确默认16格得6分；方块中心距离、活着的非旁观玩家及创造可激活等基本限定正确，得2分。"
+          },
+          {
+            "id": "P3",
+            "earned": 13,
+            "maximum": 16,
+            "reason": "初始20 tick得3分；重设下界200明确，但未写MaxSpawnDelay配置默认800，Min／Max子项给2/4分；实际200…799得5分。明确Delay>0每tick减一、从1减0当tick不生成而下一tick尝试，推进子项得3/4分；没有Delay=-1先重设的处理，另1分未得。文中的201…800指两轮尝试间隔，不当作MaxSpawnDelay字段说明。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "每轮最多4次尝试得5分，并明确不保证成功4只，成功／失败影响实际数量，得3分。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "默认附近同类6，达到上限结束该轮并重设延迟，得7分；明确局部查询盒、相同Java类而非全球自然刷怪上限，得3分。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通位置／碰撞／光照／生成规则失败且整轮无成功时保持0／到期、下个有效tick重试，得7分；至少成功一次轮末重设，得4分；附近上限或无效类型、加载／加入世界失败存在立即重设返回，得5分。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格探测得3分；已激活登记后走远本身不暂停，受区块tick、配置／生成条件、本轮与并存限制，得6分；以状态／游戏时间或下次绝对时刻、追踪集合和本轮配额区别普通笼，得3分；失败不执行成功更新时间、下个就绪tick可重试，得2分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版及JAR来源身份，得2分；BaseSpawner默认值、serverTick与delay有可核对出处，得4分；试炼状态机、探测和计时成员有可核对出处，得3分；保留静态核查边界，未冒充运行验证或将已知截断当完整，得1分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "未明确普通笼MaxSpawnDelay默认配置值800；实际200…799抽样范围正确。",
+          "未说明普通笼Delay=-1先重设延迟。"
+        ],
+        "citations": [
+          "<workspace>/.local/spawner-evidence-26.3/BaseSpawner.java:43",
+          "<workspace>/.local/spawner-evidence-26.3/BaseSpawner.java:95",
+          "<workspace>/.local/spawner-evidence-26.3/EntityGetter-hasNearbyAlivePlayer.java:11",
+          "<workspace>/.local/spawner-evidence-26.3/TrialSpawner.java:395",
+          "<workspace>/.local/spawner-evidence-26.3/PlayerDetector.java:26",
+          "<workspace>/.local/spawner-evidence-26.3/TrialSpawnerStateData.java:124",
+          "<workspace>/.local/spawner-evidence-26.3/TrialSpawnerState.java:83"
+        ],
+        "notes": "仅按最终答案评分。P3常规推进与-1处理沿用前批3+1分拆法；额外201…800的尝试间隔解释不与200…799字段取值混淆，不另扣分或加分。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-22",
+      "arm": "O",
+      "topic": "T3",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-26",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 87,
+          "evidence_quality": 10,
+          "total": 97
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确普通笼无合格玩家就不生成，得6分；Delay暂停保留、回来续计而非重抽，得8分；明确范围内其他玩家仍可激活及／或持续方块实体tick、区块停止不后台生成的前提，得4分。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确普通笼默认16格得6分，正确限定方块中心距离、存活非旁观玩家且创造可激活，得2分。"
+          },
+          {
+            "id": "P3",
+            "earned": 13,
+            "maximum": 16,
+            "reason": "初始20 tick得3分；重设下界200及最大参数界800得4分；明确200…799且800不包含得5分。说明Delay=-1重新抽取，推进子项得1/4分；未明确正Delay每tick减一，也未说明从1减0的同一tick不尝试而下一tick才进入生成，另3分缺失。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "明确每轮最多4次生成尝试得5分，并说明不保证成功4只、条件失败可减少实际生成数量，得3分。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "默认附近同类上限6且达到上限结束本轮重设，得7分；以局部同Java类计数盒限定，而非全局自然刷怪上限，得3分。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通位置／碰撞／光照或生成规则失败、整轮无成功时保持0／到期并下个激活tick重试，得7分；至少成功一次轮末重设，得4分；附近上限与无效类型／加载／添加失败等可立即重设返回，得5分。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格探测得3分；已登记激活后走远本身不暂停，受tick、配置／生成条件及轮次限额约束，得6分；游戏时间戳／状态机和追踪并发／总配额明确区别普通笼，得3分；失败不执行成功更新时间、可重试，得2分。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端及来源身份得2分；BaseSpawner默认值、serverTick和delay可定位得4分；试炼状态机／探测／计时类或成员可定位得3分；没有把静态推导冒充游戏实测或已知截断冒充完整得1分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "未明确普通笼正Delay每tick减一，以及从1减0后的下一激活tick才进入尝试的边界；已说明Delay=-1重设。"
+        ],
+        "citations": [
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:44",
+          "<workspace>/.local/spawner-26.3-evidence/BaseSpawner.java:95",
+          "<workspace>/.local/spawner-26.3-evidence/EntityGetter.hasNearbyAlivePlayer.java:11",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerStateData.java:112",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerState.tickAndGetNext.bytecode.txt:130",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerState.spawnSuccess.bytecode.txt:3",
+          "<workspace>/.local/spawner-26.3-evidence/TrialSpawnerState.tickAndGetNext.java:38"
+        ],
+        "notes": "仅按最终答案评分。推进子项与前批一致：常规递减及归零时序合计3分，-1重设1分；不从BaseSpawner引用补全未写出的正值／归零处理。其他试炼配置扩展不额外加分。"
+      }
+    },
+    {
+      "reviewer": 1,
+      "run_id": "run-18",
+      "arm": "O",
+      "topic": "T1",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-27",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 72,
+          "evidence_quality": 10,
+          "total": 82
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确Java26.3原版服务端制品、目标版本来源与静态核查范围，未将其当作HardRush或其他版本的运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪中转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确140 tick约7秒前置、300 tick设定的约15秒转化阶段及总约22秒，按20 TPS换算；精确调用数说明对应初值／重置状态与有效检查条件，不作几何接触起普遍精确440 tick断言，4+4+2分。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确第一阶段离开细雪前置计数重置为-1，重新进入要重计。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经抖动的转化阶段离开也取消，并且重新进入重走前置阶段而非暂停续跑，7+3分。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确只有AI未禁用／未设置NoAI时推进，得3分；没有明确转化中仍可运行普通AI、颤抖不会自动禁用AI，另2分缺失。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确Skeleton.canFreeze=false且不能把普通冻结进度当转化前提，得4分；将细雪接触状态／独立转化计时与普通冻结计时分离，得2分；明确前置不抖动、转化阶段才抖动或isShaking读取转化标志，得2分。未直接说明不会受到普通细雪冻结伤害，该2分不从字段名推补。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确野生狼主动选择／攻击流浪者、无需先受击，并说明AbstractSkeleton规则覆盖Stray继承关系，7+3分。"
+          },
+          {
+            "id": "W2",
+            "earned": 7,
+            "maximum": 10,
+            "reason": "明确正常活动的驯服狼仍会主动选流浪者，不需主人先动手，得7分；未提普通动物／幼龟捕猎的未驯服专属NonTameRandomTargetGoal，对照子项3分缺失。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "明确实际攻击受搜索距离／目标条件／路径或更高优先级行为限制，得4分；没有区分主人受攻击时护主与主人攻击目标时协助，两条触发子项6分缺失。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "明确正常执行坐下时阻止追逐与近战，保留或区分主动选敌规则，没有声称坐下删除全部AI，得5分；未说明两个主人协助目标在命令坐下时不能启动、不保证主人受击后起身护主，另5分缺失。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "骷髅结论有本版本Skeleton、ConversionTracker及关键字节码定位；狼结论有Wolf.registerGoals、Stray和坐下Goal等定位，均支持核心主张，两类证据各5分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中普通AI仍可运行，颤抖不会自动关闭AI。",
+          "明确不会受到普通细雪冻结伤害。",
+          "普通动物／幼龟捕猎的未驯服专属规则与骷髅类普通目标规则的对照。",
+          "主人受攻击与主人攻击目标这两个独立协助触发。",
+          "命令坐下阻止两个主人协助目标启动，不保证主人受击时起身护主。"
+        ],
+        "citations": [
+          "<workspace>/.local/vanilla-26.3-skeleton-wolf-evidence/Skeleton.java:20",
+          "<workspace>/.local/vanilla-26.3-skeleton-wolf-evidence/ConversionTracker.java:53",
+          "<workspace>/.local/vanilla-26.3-skeleton-wolf-evidence/Skeleton.java:63",
+          "<workspace>/.local/vanilla-26.3-skeleton-wolf-evidence/Wolf.registerGoals.java:50",
+          "<workspace>/.local/vanilla-26.3-skeleton-wolf-evidence/Stray.java:21",
+          "<workspace>/.local/vanilla-26.3-skeleton-wolf-evidence/SitWhenOrderedToGoal.java:11"
+        ],
+        "notes": "仅按最终答案评分。精确441／442次调用有对应初值0／重置-1、持续细雪与读取时序限定，接受其计时边界解释。狼规则不区分流浪者来源等额外说明不增加必答分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-02",
+      "arm": "J",
+      "topic": "T1",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-01",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 72,
+          "evidence_quality": 10,
+          "total": 82
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确限定Java 26.3原版服务端JAR静态检查，未称为HardRush或运行时验证。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪中转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "写出先140 tick约7秒、后300 tick设定约15秒及总计约22秒；交代20 TPS，并将441/442限定为初值0/重置-1和有效检查次数。三个子项4+4+2。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确任一阶段离开会取消进度，前置计数回到-1；重新进入重走完整过程。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经颤抖时离开也取消，不能移出后完成；重新进入重走完整过程。两个子项7+3。"
+          },
+          {
+            "id": "S5",
+            "earned": 0,
+            "maximum": 5,
+            "reason": "最终答案未说明NoAI停止推进，也未说明颤抖不会自动禁用普通AI。两个子项0+0。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "写明canFreeze=false、普通冻结计时与转化分离及颤抖发生于第二阶段，取得4+2+2；“不是靠冻伤触发”没有明确说不会受到普通细雪冻结伤害，该子项0/2。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确未驯服狼不需先被流浪者攻击便主动选敌；说明AbstractSkeleton目标覆盖Stray继承关系。两个子项7+3。"
+          },
+          {
+            "id": "W2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确驯服狼正常站立时仍主动攻击且不需主人先动手；指出骷髅目标没有未驯服条件，并将普通动物的NonTameRandomTargetGoal作为对照。两个子项7+3。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "没有区分主人被攻击时护主与主人攻击目标时协助，第一子项0/6；明确实际攻击受目标有效性、距离、优先级或寻路限制，未泛化为攻击主人附近所有敌怪，第二子项4/4。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "没有明确被命令坐下时两个主人协助目标均不能启动、不能保证因主人受击起身护主，第一子项0/5；明确正常坐下通常阻止自主追击且未删除骷髅选敌规则/关闭全部AI，第二子项5/5。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "骷髅部分定位Skeleton、ConversionTracker.tick及冻结实现；狼部分定位Wolf.registerGoals、Stray继承与坐下Goal，类/成员和静态26.3来源足以复核。两个子项5+5；<workspace>盲化路径不扣分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "NoAI不推进转化。",
+          "转化中仍保留普通AI，不因颤抖自动禁用。",
+          "未明确普通骷髅不受到普通细雪冻结伤害。",
+          "主人受击护主与主人攻击目标协助的两个独立触发。",
+          "命令坐下时两个主人协助目标均不能启动。"
+        ],
+        "citations": [
+          "Skeleton构造/转化参数与canFreeze",
+          "ConversionTracker.tick",
+          "Wolf.registerGoals",
+          "Stray extends AbstractSkeleton",
+          "SitWhenOrderedToGoal"
+        ],
+        "notes": "仅依据最终答案逐个冻结子项评分；未从查询过程补全遗漏。选做的装备、生命值、受伤解除坐下等不额外加分，也未用其代替护主启动条件。答案完整可评。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-24",
+      "arm": "S",
+      "topic": "T3",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-02",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确所有合格玩家离开普通笼范围后不生成，Delay暂停且保留、返回续计；同时区分区块持续执行tick与单纯加载，其他玩家仍在可维持激活。6+8+4。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "默认16格，以笼中心三维距离判断，活着非旁观玩家，创造玩家也有效；6+2。"
+          },
+          {
+            "id": "P3",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "初始Delay20；重设精确整数200…799，等价下界200及排除上界800；正Delay只减1，减到0当tick不生成、下一tick进入生成；Delay=-1先重设。3+4+5+4。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "每轮最多4次候选尝试，不保证成功4只，实际数量受失败与早退影响。5+3。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "默认6只局部同类；达到上限立即重设并结束本轮，计数区域/精确类不等同全局自然刷怪上限。7+3。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通碰撞/位置/规则整轮失败保持0、下个有效tick重试；至少一次成功后轮末重设；附近上限、实体无效/加载/加入世界失败存在立即重设返回的特殊分支。7+4+5。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格；已激活后离开不清除登记、不会仅因距离暂停，仍受tick、追踪并发与本轮总量/配置限制；使用绝对游戏时间和状态机，非普通4次/附近6/随机200…799；失败不执行成功回调计数及时间重设，下个符合条件tick可重试。3+6+3+2。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版制品及可定位来源；BaseSpawner初始化/默认值/serverTick/delay可复核；试炼探测、状态机及时间处理有类/成员出处；静态核查与运行实测区分。2+4+3+1。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "BaseSpawner默认字段/初始化",
+          "BaseSpawner.serverTick / delay",
+          "EntityGetter.hasNearbyAlivePlayer",
+          "TrialSpawnerConfig / TrialSpawnerStateData",
+          "TrialSpawnerState.tickAndGetNext / 成功回调"
+        ],
+        "notes": "按冻结T3逐项部分分标准，仅评分最终答案。数学等价的整数200…799足以表达重设范围；不要求固定字段名措辞。试炼自然预设、视线、47格、冷却等量表排除的次级细节不另设扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-25",
+      "arm": "O",
+      "topic": "T3",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-03",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确普通笼在所有合格玩家离开后停止生成、保留Delay不再递减，返回续计；区块必须持续执行方块实体tick，单纯加载不足。6+8+4。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "默认距笼中心16格的三维范围，存活非旁观玩家、创造可激活；限定正确。6+2。"
+          },
+          {
+            "id": "P3",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "初始20；后续精确整数200…799等价Min200/排除Max800；说明正Delay递减、进入tick已为0/减0后的下一tick才尝试、-1先重设。3+4+5+4。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "每批最多4次尝试，不保证成功4只；失败、上限、提前返回能影响实际数量。5+3。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "附近同类默认6，达到上限重设延迟并结束批次；局部9×9×9精确Java类统计，与全局自然刷怪上限区分。7+3。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通位置/碰撞/规则整轮失败保持到期/0、下个有效tick重试；至少一次成功轮末重设；上限、无效类型/加载/加入世界等特殊失败立即重设并结束。7+4+5。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格，激活登记后走远不取消登记/本轮，仍有tick、并发和总配额/配置限制；以生成时刻/游戏时间和状态机、本笼追踪实体数量推进，不套普通4次/附近6/200…799；失败不增加生成数、不推进成功间隔，下tick可重试。3+6+3+2。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端及可定位身份；BaseSpawner默认字段/serverTick/delay支持普通笼数值和流程；试炼配置、探测/状态/时间处理可定位；明确静态核查非游戏运行验证。2+4+3+1。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "BaseSpawner默认字段 / serverTick / delay",
+          "EntityGetter.hasNearbyAlivePlayer",
+          "TrialSpawner.FullConfig / PlayerDetector",
+          "TrialSpawnerState.ACTIVE",
+          "TrialSpawnerStateData生成资格 / 时间处理",
+          "TrialSpawnerConfig"
+        ],
+        "notes": "仅依据最终答案，按冻结T3逐项部分分规则。整数200…799视为等价边界表达，不强制Min/Max字段名；不对试炼配额/预设等量表明确排除的次级细节另设扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-07",
+      "arm": "S",
+      "topic": "T1",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-04",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 72,
+          "evidence_quality": 10,
+          "total": 82
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确Java26.3原版服务端JAR及静态核查边界，未外推为HardRush运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅处于细雪中可以转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "写出前置140 tick约7秒、转化倒计时设置300 tick约15秒、通常合计约22秒且按20 TPS；精确计数另限定初值/重置状态及有效更新，未声称普遍精确440 tick。4+4+2。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确离开细雪使前置进度重置，重新进入重新累计。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已进入抖动阶段离开也会取消，重新进入要重计完整过程，不是暂停后继续剩余倒计时。7+3。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确只有实体存活且AI启用时推进，或NoAI不推进，3/3；未明确转化中仍运行普通AI、不因颤抖自动禁用，0/2。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确canFreeze=false、转化计时与普通冻结机制分离、颤抖对应第二阶段，取得4+2+2；没有明确说普通骷髅不会受到普通细雪冻结伤害，该子项0/2。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确野生狼无需先受攻击便主动攻击流浪者，并以AbstractSkeleton目标规则及Stray继承说明覆盖关系。7+3。"
+          },
+          {
+            "id": "W2",
+            "earned": 7,
+            "maximum": 10,
+            "reason": "明确可正常行动的驯服狼仍自主攻击流浪者，无需主人先攻击，7/7；未对照动物/幼龟等未驯服专属捕猎与骷髅普通选敌规则，0/3。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "未区分主人受击护主与主人攻击目标协助的两种触发，0/6；指出目标/视线/路径或更高优先级等攻击限制，没有泛称攻击主人附近全部敌怪，4/4。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "未明确命令坐下时两个主人协助目标都不能启动，0/5；说明正常生效坐下阻止自主追击且目标规则仍保留，未称坐下删除全部AI，5/5。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "目标版本明确，可定位Skeleton/ConversionTracker与冻雪实现，以及Wolf.registerGoals/Stray/SitWhenOrderedToGoal等原版成员；来源支持相应机制，未称静态查阅为运行验证。5+5。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍保留普通AI，不因颤抖自动禁用。",
+          "未明确普通骷髅不会受到普通细雪冻结伤害。",
+          "动物/幼龟未驯服专属捕猎与骷髅普通选敌规则的对照。",
+          "主人受击护主与主人攻击目标协助的两个独立触发。",
+          "命令坐下时两个主人协助目标均不能启动。"
+        ],
+        "citations": [
+          "Skeleton初始化/canFreeze/isShaking",
+          "ConversionTracker.tick",
+          "Wolf.registerGoals",
+          "Stray extends AbstractSkeleton",
+          "SitWhenOrderedToGoal"
+        ],
+        "notes": "仅按最终答案与冻结T1子项评分；各子项全分或零分。canFreeze=false及非冻伤驱动转化不用于补造“不会受到普通冻伤”的独立必答表达；选做的装备/生命/受伤解除坐下等不额外加减分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-12",
+      "arm": "O",
+      "topic": "T2",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-05",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确ATTACK_DAMAGE=15.0/15，区分固定属性与每击非固定15的随机伤害；8+4。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出A/2+nextInt((int)A)及等价7.5+k，k=0…14，列出7.5、8.5…21.5共15个离散值；端点可取、步长1，未作连续或整数区间；8+8+8。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单公式min(D/2+1,D)，最终4.75…11.75；6+8。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保持D，最终7.5…21.5；3+7。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难D×3/2，最终11.25…32.25；6+8。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确先随机后难度缩放，mob_attack非玩家活体条件满足；写明结果没有取整，表中含四分之一点的最终结算伤害，并说明后续扣血及剩余生命限制；8+4+4。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端JAR及身份校验；引用IronGolem.createAttributes/doHurtTarget、mob_attack数据和缩放条件、Player.hurtServer与扣血流程；条件与静态核查边界均清楚；2+3+3+2。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes",
+          "IronGolem.doHurtTarget",
+          "data/minecraft/damage_type/mob_attack.json",
+          "DamageSource.scalesWithDifficulty",
+          "Player.hurtServer",
+          "玩家后续扣血流程"
+        ],
+        "notes": "仅依据最终答案评分；等价公式、离散数列及相同含义的后续结算表述可得分，不要求固定措辞。未读过程或其他评分，<workspace>路径盲化不扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-10",
+      "arm": "J",
+      "topic": "T2",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-06",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确ATTACK_DAMAGE=15.0/15，区分固定属性与每击非固定15的随机伤害；8+4。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出A/2+nextInt((int)A)及等价7.5+k，k=0…14，列出7.5、8.5…21.5共15个离散值；端点可取、步长1，未作连续或整数区间；8+8+8。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单公式min(D/2+1,D)，最终4.75…11.75；6+8。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保持D，最终7.5…21.5；3+7。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难D×3/2，最终11.25…32.25；6+8。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确先随机后Player.hurtServer缩放、mob_attack非玩家活体条件；列出含小数的最终伤害及各难度离散步长，并明确题设下后续减伤/吸收“不改变结果”，足以表达该小数伤害进入扣血而非再整数舍入；8+4+4。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端JAR及身份校验；引用IronGolem.createAttributes/doHurtTarget、mob_attack数据和缩放条件、Player.hurtServer与扣血流程；条件与静态核查边界均清楚；2+3+3+2。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes",
+          "IronGolem.doHurtTarget",
+          "data/minecraft/damage_type/mob_attack.json",
+          "DamageSource.scalesWithDifficulty",
+          "Player.hurtServer",
+          "玩家后续扣血流程"
+        ],
+        "notes": "仅依据最终答案评分；等价公式、离散数列及相同含义的后续结算表述可得分，不要求固定措辞。未读过程或其他评分，<workspace>路径盲化不扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-16",
+      "arm": "S",
+      "topic": "T1",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-07",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 75,
+          "evidence_quality": 10,
+          "total": 85
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "限定Java26.3原版服务端制品及静态源码/字节码调查，未称HardRush运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪条件下转为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确前置140 tick约7秒、转化倒计时设置300 tick约15秒及总计约22秒（或22.10秒），按20 TPS换算；301次及441/442次的精确说法明确有效更新与初值/重置状态。4+4+2。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确离开细雪将前置计数置-1、清除进度，重新进入重新准备。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经颤抖时离开也取消，重新进入需重新经历前置阶段而非续跑剩余转化倒计时。7+3。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确AI未禁用/未设置NoAI才推进转化，3/3；未明确颤抖不自动禁用普通AI、转化中仍能运行AI，0/2。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确canFreeze=false、独立转化计时与普通冻结值/计时分离，且颤抖是第二阶段，取得4+2+2；未明确不会受到普通细雪冻结伤害，0/2。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "野生狼主动攻击不需先受击；以AbstractSkeleton普通Goal和Stray继承解释覆盖关系。7+3。"
+          },
+          {
+            "id": "W2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确驯服狼自主攻击无需主人先攻击，且部分动物捕猎才用检查!isTame的NonTameRandomTargetGoal，与骷髅类普通Goal作对照。7+3。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "未区分主人受击护主和主人攻击目标协助的两种触发，0/6；明确搜索/目标筛选/优先级或路径限制，未泛称攻击主人附近所有敌怪，4/4。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "未明确命令坐下时两个主人协助目标均不能启动，0/5；明确正常坐下阻止主动追击，且未声称删除选敌/永久禁用全部AI，5/5。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确26.3原版来源，可定位Skeleton、ConversionTracker、冻雪实现与Wolf.registerGoals/Stray/SitWhenOrderedToGoal等支持机制的类/成员；静态与运行验证边界清楚。5+5。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍能运行普通AI，不因颤抖自动禁用。",
+          "未明确普通骷髅不会受到普通细雪冻结伤害。",
+          "主人受击护主与主人攻击目标协助的两个独立触发。",
+          "命令坐下时两个主人协助目标均不能启动。"
+        ],
+        "citations": [
+          "Skeleton参数/canFreeze/isShaking",
+          "ConversionTracker.tick",
+          "Wolf.registerGoals",
+          "Stray extends AbstractSkeleton",
+          "SitWhenOrderedToGoal"
+        ],
+        "notes": "仅依据最终答案评分；按冻结T1明确子项全分/零分，不从过程补全事实。可选精确计时已给起点条件，不因长度或可选细节额外加分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-17",
+      "arm": "J",
+      "topic": "T1",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-08",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 72,
+          "evidence_quality": 10,
+          "total": 82
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "限定Java26.3原版服务端制品及静态源码/字节码调查，未称HardRush运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪条件下转为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确前置140 tick约7秒、转化倒计时设置300 tick约15秒及总计约22秒（或22.10秒），按20 TPS换算；301次及441/442次的精确说法明确有效更新与初值/重置状态。4+4+2。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确离开细雪将前置计数置-1、清除进度，重新进入重新准备。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经颤抖时离开也取消，重新进入需重新经历前置阶段而非续跑剩余转化倒计时。7+3。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确AI未禁用/未设置NoAI才推进转化，3/3；未明确颤抖不自动禁用普通AI、转化中仍能运行AI，0/2。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确canFreeze=false、独立转化计时与普通冻结值/计时分离，且颤抖是第二阶段，取得4+2+2；未明确不会受到普通细雪冻结伤害，0/2。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "野生狼主动攻击不需先受击；以AbstractSkeleton普通Goal和Stray继承解释覆盖关系。7+3。"
+          },
+          {
+            "id": "W2",
+            "earned": 7,
+            "maximum": 10,
+            "reason": "明确驯服狼可自主选择流浪者无需主人先攻击，7/7；虽写“代码中其他部分”使用检查!isTame的NonTameRandomTargetGoal，但没有明确那是动物/幼龟等捕猎规则，未完成该指定对照，0/3。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "未区分主人受击护主和主人攻击目标协助的两种触发，0/6；明确搜索/目标筛选/优先级或路径限制，未泛称攻击主人附近所有敌怪，4/4。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "未明确命令坐下时两个主人协助目标均不能启动，0/5；明确正常坐下阻止主动追击，且未声称删除选敌/永久禁用全部AI，5/5。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确26.3原版来源，可定位Skeleton、ConversionTracker、冻雪实现与Wolf.registerGoals/Stray/SitWhenOrderedToGoal等支持机制的类/成员；静态与运行验证边界清楚。5+5。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍能运行普通AI，不因颤抖自动禁用。",
+          "未明确普通骷髅不会受到普通细雪冻结伤害。",
+          "动物/幼龟未驯服专属捕猎与骷髅普通选敌规则的明确对照。",
+          "主人受击护主与主人攻击目标协助的两个独立触发。",
+          "命令坐下时两个主人协助目标均不能启动。"
+        ],
+        "citations": [
+          "Skeleton参数/canFreeze/isShaking",
+          "ConversionTracker.tick",
+          "Wolf.registerGoals",
+          "Stray extends AbstractSkeleton",
+          "SitWhenOrderedToGoal"
+        ],
+        "notes": "仅依据最终答案评分；按冻结T1明确子项全分/零分，不从过程补全事实。可选精确计时已给起点条件，不因长度或可选细节额外加分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-05",
+      "arm": "J",
+      "topic": "T2",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-09",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确基础ATTACK_DAMAGE=15/15.0，并将其与随机命中伤害区分，非每击固定15；8+4。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出D=7.5+k且k∈0…14；表头明确区间包含两端，列出15个离散值与缩放前步长1，完整满足8+8+8。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单公式min(D/2+1,D)，最终4.75…11.75；6+8。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保持D，最终7.5…21.5；3+7。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难D×1.5或D×3/2，最终11.25…32.25；6+8。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确属性→随机→难度→减伤/吸收/扣血；mob_attack非玩家活体缩放条件适用；明确生命扣除用浮点、Math.round仅统计，不把伤害取整；8+4+4。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端JAR及来源；可定位IronGolem.createAttributes/doHurtTarget、mob_attack数据和缩放条件、Player.hurtServer；保留适用条件并明确静态核查非游戏实测；2+3+3+2。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes",
+          "IronGolem.doHurtTarget",
+          "data/minecraft/damage_type/mob_attack.json",
+          "DamageSource.scalesWithDifficulty / when_caused_by_living_non_player",
+          "Player.hurtServer"
+        ],
+        "notes": "仅依据最终答案评分。离散值公式/枚举已明确端点含义，无需额外列齐15值或重复声明每个端点。未从工具过程补全事实；<workspace>路径盲化不扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-15",
+      "arm": "S",
+      "topic": "T2",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-10",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确默认攻击属性15.0/15，并非每次固定造成15点伤害；8+4。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出属性/2+nextInt((int)属性)或7.5+k的正确随机公式，0…14整数带来7.5、8.5…21.5共15个离散值，两端可取且步长1；8+8+8。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单min(D/2+1,D)，得到4.75…11.75；6+8。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保持D，得到7.5…21.5；3+7。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难D×1.5或D×3/2，得到11.25…32.25；6+8。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确“先随机”、结果传入hurtServer后缩放，mob_attack非玩家生物条件适用；给出四分之一点的“最终伤害”和0.5/1/1.5离散步长，明确表中为该次结算伤害量及生命扣除受剩余生命限制，等价表明保留小数而非额外整数舍入；8+4+4。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端制品与可定位来源；属性与攻击公式对应IronGolem成员，mob_attack及Player.hurtServer支持缩放；条件明确，静态来源未冒充运行验证；2+3+3+2。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes",
+          "IronGolem.doHurtTarget",
+          "mob_attack.json / 非玩家生物缩放条件",
+          "Player.hurtServer",
+          "原版26.3制品校验记录"
+        ],
+        "notes": "仅依据最终答案评分，采用量表允许的同义表述及等价公式；明确作为最终伤害的小数结果不要求再逐字写float。未读取运行过程、分组或其他评分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-06",
+      "arm": "S",
+      "topic": "T2",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-11",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "表格分别列“15（固定属性）”和随机伤害7.5…21.5，并解释读取属性再随机，清楚区分属性与每击伤害；8+4。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出A/2+nextInt((int)A)或7.5+nextInt(15)，k为0…14；明确7.5…21.5两端可取，共15个离散小数值，步长1；8+8+8。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单公式min(D/2+1,D)，最终4.75…11.75；6+8。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保持D，最终7.5…21.5；3+7。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难D×1.5或D×3/2，最终11.25…32.25；6+8。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确先随机再Player.hurtServer按难度缩放；mob_attack的when_caused_by_living_non_player适用于铁傀儡；普通无额外防御玩家保留浮点伤害，不作整数/半心舍入；8+4+4。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端JAR及来源；可定位IronGolem.createAttributes/doHurtTarget、mob_attack数据和缩放条件、Player.hurtServer；保留适用条件并明确静态核查非游戏实测；2+3+3+2。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes",
+          "IronGolem.doHurtTarget",
+          "data/minecraft/damage_type/mob_attack.json",
+          "DamageSource.scalesWithDifficulty / when_caused_by_living_non_player",
+          "Player.hurtServer"
+        ],
+        "notes": "仅依据最终答案评分。离散值公式/枚举已明确端点含义，无需额外列齐15值或重复声明每个端点。未从工具过程补全事实；<workspace>路径盲化不扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-01",
+      "arm": "S",
+      "topic": "T1",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-12",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 74,
+          "evidence_quality": 10,
+          "total": 84
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确限定Java 26.3原版服务端JAR静态检查，未称为HardRush或运行时验证。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪中转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "写出先140 tick约7秒、后300 tick设定约15秒及总计约22秒；交代20 TPS，并将441/442限定为初值0/重置-1和有效检查次数。三个子项4+4+2。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确任一阶段离开会取消进度，前置计数回到-1；重新进入重走完整过程。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经颤抖时离开也取消，不能移出后完成；重新进入重走完整过程。两个子项7+3。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "“实体必须存活、AI未关闭”满足只有AI开启才处理，3/3；没有明确转化中仍运行普通AI，0/2。"
+          },
+          {
+            "id": "S6",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确canFreeze=false、不会因普通细雪冻结受伤、接触标记与转化专用计时，并把颤抖列为第二阶段。四子项4+2+2+2。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确未驯服狼不需先被流浪者攻击便主动选敌；说明AbstractSkeleton目标覆盖Stray继承关系。两个子项7+3。"
+          },
+          {
+            "id": "W2",
+            "earned": 7,
+            "maximum": 10,
+            "reason": "明确正常站立驯服狼仍自主选敌且无需主人先攻击，7/7；虽然指出骷髅Goal没有!isTame限制，但未说明羊兔狐狸/幼龟等动物捕猎使用未驯服专属规则，该对照子项0/3。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "没有区分主人被攻击时护主与主人攻击目标时协助，第一子项0/6；明确实际攻击受目标有效性、距离、优先级或寻路限制，未泛化为攻击主人附近所有敌怪，第二子项4/4。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "没有明确被命令坐下时两个主人协助目标均不能启动、不能保证因主人受击起身护主，第一子项0/5；明确正常坐下通常阻止自主追击且未删除骷髅选敌规则/关闭全部AI，第二子项5/5。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "骷髅部分定位Skeleton、ConversionTracker.tick及冻结实现；狼部分定位Wolf.registerGoals、Stray继承与坐下Goal，类/成员和静态26.3来源足以复核。两个子项5+5；<workspace>盲化路径不扣分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍保留普通AI，不因颤抖自动禁用。",
+          "动物捕猎中的未驯服专属规则与骷髅类普通选敌规则的对照。",
+          "主人受击护主与主人攻击目标协助的两个独立触发。",
+          "命令坐下时两个主人协助目标均不能启动。"
+        ],
+        "citations": [
+          "Skeleton构造/转化参数与canFreeze",
+          "ConversionTracker.tick",
+          "Wolf.registerGoals",
+          "Stray extends AbstractSkeleton",
+          "SitWhenOrderedToGoal"
+        ],
+        "notes": "仅依据最终答案逐个冻结子项评分；未从查询过程补全遗漏。选做的装备、生命值、受伤解除坐下等不额外加分，也未用其代替护主启动条件。答案完整可评。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-13",
+      "arm": "O",
+      "topic": "T2",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-13",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确默认攻击属性15.0/15，并非每次固定造成15点伤害；8+4。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出属性/2+nextInt((int)属性)或7.5+k的正确随机公式，0…14整数带来7.5、8.5…21.5共15个离散值，两端可取且步长1；8+8+8。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单min(D/2+1,D)，得到4.75…11.75；6+8。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保持D，得到7.5…21.5；3+7。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难D×1.5或D×3/2，得到11.25…32.25；6+8。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确读取属性→随机→Player.hurtServer缩放；mob_attack的非玩家活体条件满足；明确伤害以浮点数进入扣血，不取整到整数或半颗心；8+4+4。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端制品与可定位来源；属性与攻击公式对应IronGolem成员，mob_attack及Player.hurtServer支持缩放；条件明确，静态来源未冒充运行验证；2+3+3+2。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes",
+          "IronGolem.doHurtTarget",
+          "mob_attack.json / 非玩家生物缩放条件",
+          "Player.hurtServer",
+          "原版26.3制品校验记录"
+        ],
+        "notes": "仅依据最终答案评分，采用量表允许的同义表述及等价公式；明确作为最终伤害的小数结果不要求再逐字写float。未读取运行过程、分组或其他评分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-23",
+      "arm": "J",
+      "topic": "T3",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-14",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确所有合格玩家离开普通笼范围后不生成，Delay暂停且保留、返回续计；同时区分区块持续执行tick与单纯加载，其他玩家仍在可维持激活。6+8+4。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "默认16格，以笼中心三维距离判断，活着非旁观玩家，创造玩家也有效；6+2。"
+          },
+          {
+            "id": "P3",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "初始20，重设区间200…799（等价整数[200,800)的下/上界），800排除；正值每活跃tick减1、减到0的tick不生成、下一tick尝试，并说明-1重设。3+4+5+4。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "每轮最多4次候选尝试，不保证成功4只，实际数量受失败与早退影响。5+3。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "默认6只局部同类；达到上限立即重设并结束本轮，计数区域/精确类不等同全局自然刷怪上限。7+3。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通碰撞/位置/规则整轮失败保持0、下个有效tick重试；至少一次成功后轮末重设；附近上限、实体无效/加载/加入世界失败存在立即重设返回的特殊分支。7+4+5。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格；已激活后离开不清除登记、不会仅因距离暂停，仍受tick、追踪并发与本轮总量/配置限制；使用绝对游戏时间和状态机，非普通4次/附近6/随机200…799；失败不执行成功回调计数及时间重设，下个符合条件tick可重试。3+6+3+2。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版制品及可定位来源；BaseSpawner初始化/默认值/serverTick/delay可复核；试炼探测、状态机及时间处理有类/成员出处；静态核查与运行实测区分。2+4+3+1。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "BaseSpawner默认字段/初始化",
+          "BaseSpawner.serverTick / delay",
+          "EntityGetter.hasNearbyAlivePlayer",
+          "TrialSpawnerConfig / TrialSpawnerStateData",
+          "TrialSpawnerState.tickAndGetNext / 成功回调"
+        ],
+        "notes": "按冻结T3逐项部分分标准，仅评分最终答案。数学等价的整数200…799足以表达重设范围；不要求固定字段名措辞。试炼自然预设、视线、47格、冷却等量表排除的次级细节不另设扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-21",
+      "arm": "S",
+      "topic": "T3",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-15",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确所有合格玩家离开后普通笼不生成，Delay暂停保留、返回续计；要求所在区块持续方块实体tick，加载不能代替玩家条件。6+8+4。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "默认16格，明确以笼中心三维距离判定、存活非旁观者，创造可激活，限定不误导。6+2。"
+          },
+          {
+            "id": "P3",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "初始Delay20；常规下限200、最大配置800且排除800，实际200…799；明确正数递减、减为0后的下一活跃tick尝试，-1先重设。3+4+5+4。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "一轮最多4次尝试，明确并非保证成功4只，失败分支可改变成功数量。5+3。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "附近同类默认6，达到6立即结束批次并重抽；明确局部区域内同类计数，非全世界自然刷怪上限。7+3。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通碰撞/位置/生成条件导致整轮无成功且无提前退出时保持0、下一活跃tick重试；至少成功一次批末重设；达到附近上限或类型/加载/加入失败会立即重设返回。7+4+5。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格；已激活登记后走远不取消登记/暂停，且有tick、并发上限、本轮配额和配置限制；用状态机/游戏时间戳和本笼追踪数量，不能套普通4次/附近6/200…799；失败不推进成功计数或重设成功间隔，后续tick可再试。3+6+3+2。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端及制品来源；BaseSpawner默认值/serverTick/delay可定位；TrialSpawner/State/StateData/PlayerDetector或FullConfig支持试炼区别；明确静态核对未游戏实测。2+4+3+1。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "BaseSpawner字段/初始化",
+          "BaseSpawner.serverTick / delay",
+          "EntityGetter.hasNearbyAlivePlayer",
+          "TrialSpawner.FullConfig / TrialSpawnerConfig",
+          "TrialSpawnerState.ACTIVE",
+          "TrialSpawnerStateData.tryDetectPlayers / isReadyToSpawnNextMob"
+        ],
+        "notes": "仅依据最终答案逐项评分；试炼预设、47格追踪、冷却等次级细节不因篇幅加分，未要求量表排除的细节。P3推进子项允许部分分，明确两项而漏-1重设时给3/4；盲化<workspace>路径不扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-08",
+      "arm": "O",
+      "topic": "T1",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-16",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 72,
+          "evidence_quality": 10,
+          "total": 82
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确Java26.3原版服务端JAR及静态核查边界，未外推为HardRush运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅处于细雪中可以转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "写出前置140 tick约7秒、转化倒计时设置300 tick约15秒、通常合计约22秒且按20 TPS；精确计数另限定初值/重置状态及有效更新，未声称普遍精确440 tick。4+4+2。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确离开细雪使前置进度重置，重新进入重新累计。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已进入抖动阶段离开也会取消，重新进入要重计完整过程，不是暂停后继续剩余倒计时。7+3。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确只有实体存活且AI启用时推进，或NoAI不推进，3/3；未明确转化中仍运行普通AI、不因颤抖自动禁用，0/2。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确canFreeze=false、转化计时与普通冻结机制分离、颤抖对应第二阶段，取得4+2+2；没有明确说普通骷髅不会受到普通细雪冻结伤害，该子项0/2。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确野生狼无需先受攻击便主动攻击流浪者，并以AbstractSkeleton目标规则及Stray继承说明覆盖关系。7+3。"
+          },
+          {
+            "id": "W2",
+            "earned": 7,
+            "maximum": 10,
+            "reason": "明确可正常行动的驯服狼仍自主攻击流浪者，无需主人先攻击，7/7；未对照动物/幼龟等未驯服专属捕猎与骷髅普通选敌规则，0/3。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "未区分主人受击护主与主人攻击目标协助的两种触发，0/6；指出目标/视线/路径或更高优先级等攻击限制，没有泛称攻击主人附近全部敌怪，4/4。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "未明确命令坐下时两个主人协助目标都不能启动，0/5；说明正常生效坐下阻止自主追击且目标规则仍保留，未称坐下删除全部AI，5/5。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "目标版本明确，可定位Skeleton/ConversionTracker与冻雪实现，以及Wolf.registerGoals/Stray/SitWhenOrderedToGoal等原版成员；来源支持相应机制，未称静态查阅为运行验证。5+5。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍保留普通AI，不因颤抖自动禁用。",
+          "未明确普通骷髅不会受到普通细雪冻结伤害。",
+          "动物/幼龟未驯服专属捕猎与骷髅普通选敌规则的对照。",
+          "主人受击护主与主人攻击目标协助的两个独立触发。",
+          "命令坐下时两个主人协助目标均不能启动。"
+        ],
+        "citations": [
+          "Skeleton初始化/canFreeze/isShaking",
+          "ConversionTracker.tick",
+          "Wolf.registerGoals",
+          "Stray extends AbstractSkeleton",
+          "SitWhenOrderedToGoal"
+        ],
+        "notes": "仅按最终答案与冻结T1子项评分；各子项全分或零分。canFreeze=false及非冻伤驱动转化不用于补造“不会受到普通冻伤”的独立必答表达；选做的装备/生命/受伤解除坐下等不额外加减分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-09",
+      "arm": "J",
+      "topic": "T1",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-17",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 75,
+          "evidence_quality": 10,
+          "total": 85
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确Java26.3原版服务端JAR及静态核查边界，未外推为HardRush运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅处于细雪中可以转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "写出前置140 tick约7秒、转化倒计时设置300 tick约15秒、通常合计约22秒且按20 TPS；精确计数另限定初值/重置状态及有效更新，未声称普遍精确440 tick。4+4+2。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确离开细雪使前置进度重置，重新进入重新累计。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已进入抖动阶段离开也会取消，重新进入要重计完整过程，不是暂停后继续剩余倒计时。7+3。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确只有实体存活且AI启用时推进，或NoAI不推进，3/3；未明确转化中仍运行普通AI、不因颤抖自动禁用，0/2。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确canFreeze=false、转化计时与普通冻结机制分离、颤抖对应第二阶段，取得4+2+2；没有明确说普通骷髅不会受到普通细雪冻结伤害，该子项0/2。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确野生狼无需先受攻击便主动攻击流浪者，并以AbstractSkeleton目标规则及Stray继承说明覆盖关系。7+3。"
+          },
+          {
+            "id": "W2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确驯服狼自主选敌不需主人先攻击，并对照普通骷髅Goal无未驯服限制与动物/幼龟使用NonTameRandomTargetGoal未驯服限定。7+3。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "未区分主人受击护主与主人攻击目标协助的两种触发，0/6；指出目标/视线/路径或更高优先级等攻击限制，没有泛称攻击主人附近全部敌怪，4/4。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "未明确命令坐下时两个主人协助目标都不能启动，0/5；说明正常生效坐下阻止自主追击且目标规则仍保留，未称坐下删除全部AI，5/5。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "目标版本明确，可定位Skeleton/ConversionTracker与冻雪实现，以及Wolf.registerGoals/Stray/SitWhenOrderedToGoal等原版成员；来源支持相应机制，未称静态查阅为运行验证。5+5。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍保留普通AI，不因颤抖自动禁用。",
+          "未明确普通骷髅不会受到普通细雪冻结伤害。",
+          "主人受击护主与主人攻击目标协助的两个独立触发。",
+          "命令坐下时两个主人协助目标均不能启动。"
+        ],
+        "citations": [
+          "Skeleton初始化/canFreeze/isShaking",
+          "ConversionTracker.tick",
+          "Wolf.registerGoals",
+          "Stray extends AbstractSkeleton",
+          "SitWhenOrderedToGoal"
+        ],
+        "notes": "仅按最终答案与冻结T1子项评分；各子项全分或零分。canFreeze=false及非冻伤驱动转化不用于补造“不会受到普通冻伤”的独立必答表达；选做的装备/生命/受伤解除坐下等不额外加减分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-03",
+      "arm": "O",
+      "topic": "T1",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-18",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 77,
+          "evidence_quality": 10,
+          "total": 87
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确限定Java 26.3原版服务端JAR静态检查，未称为HardRush或运行时验证。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪中转化为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "写出先140 tick约7秒、后300 tick设定约15秒及总计约22秒；交代20 TPS，并将441/442限定为初值0/重置-1和有效检查次数。三个子项4+4+2。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确任一阶段离开会取消进度，前置计数回到-1；重新进入重走完整过程。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经颤抖时离开也取消，不能移出后完成；重新进入重走完整过程。两个子项7+3。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确“NoAI骷髅不会推进这个过程”，3/3；未明确转化中仍运行普通AI，0/2。"
+          },
+          {
+            "id": "S6",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确canFreeze=false、不承受通常冻结伤害、独立转化计时/接触标记，以及isShaking返回是否正在转化。四子项4+2+2+2。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确未驯服狼不需先被流浪者攻击便主动选敌；说明AbstractSkeleton目标覆盖Stray继承关系。两个子项7+3。"
+          },
+          {
+            "id": "W2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确正常站立驯服狼仍主动选敌且无需主人先动手；明确部分动物捕猎NonTameRandomTargetGoal才受未驯服限制，与骷髅普通Goal作对照。两个子项7+3。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "没有区分主人被攻击时护主与主人攻击目标时协助，第一子项0/6；明确实际攻击受目标有效性、距离、优先级或寻路限制，未泛化为攻击主人附近所有敌怪，第二子项4/4。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "没有明确被命令坐下时两个主人协助目标均不能启动、不能保证因主人受击起身护主，第一子项0/5；明确正常坐下通常阻止自主追击且未删除骷髅选敌规则/关闭全部AI，第二子项5/5。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "骷髅部分定位Skeleton、ConversionTracker.tick及冻结实现；狼部分定位Wolf.registerGoals、Stray继承与坐下Goal，类/成员和静态26.3来源足以复核。两个子项5+5；<workspace>盲化路径不扣分。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍保留普通AI，不因颤抖自动禁用。",
+          "主人受击护主与主人攻击目标协助的两个独立触发。",
+          "命令坐下时两个主人协助目标均不能启动。"
+        ],
+        "citations": [
+          "Skeleton构造/转化参数与canFreeze",
+          "ConversionTracker.tick",
+          "Wolf.registerGoals",
+          "Stray extends AbstractSkeleton",
+          "SitWhenOrderedToGoal"
+        ],
+        "notes": "仅依据最终答案逐个冻结子项评分；未从查询过程补全遗漏。选做的装备、生命值、受伤解除坐下等不额外加分，也未用其代替护主启动条件。答案完整可评。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-04",
+      "arm": "O",
+      "topic": "T2",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-19",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确基础ATTACK_DAMAGE=15/15.0，并将其与随机命中伤害区分，非每击固定15；8+4。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出A/2+nextInt((int)A)或7.5+nextInt(15)，k为0…14；明确7.5…21.5两端可取，共15个离散小数值，步长1；8+8+8。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单公式min(D/2+1,D)，最终4.75…11.75；6+8。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保持D，最终7.5…21.5；3+7。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难D×1.5或D×3/2，最终11.25…32.25；6+8。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确先随机，再由Player.hurtServer对已抽出的D缩放；mob_attack的非玩家活体条件适用铁傀儡；明确保留浮点、无整数或半心取整，说明实际生命扣除受剩余血量限制；8+4+4。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端JAR及来源；可定位IronGolem.createAttributes/doHurtTarget、mob_attack数据和缩放条件、Player.hurtServer；保留适用条件并明确静态核查非游戏实测；2+3+3+2。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes",
+          "IronGolem.doHurtTarget",
+          "data/minecraft/damage_type/mob_attack.json",
+          "DamageSource.scalesWithDifficulty / when_caused_by_living_non_player",
+          "Player.hurtServer"
+        ],
+        "notes": "仅依据最终答案评分。离散值公式/枚举已明确端点含义，无需额外列齐15值或重复声明每个端点。未从工具过程补全事实；<workspace>路径盲化不扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-19",
+      "arm": "J",
+      "topic": "T3",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-20",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 89,
+          "evidence_quality": 10,
+          "total": 99
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确所有合格玩家离开后普通笼不生成，Delay暂停保留、返回续计；要求所在区块持续方块实体tick，加载不能代替玩家条件。6+8+4。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "默认16格，明确以笼中心三维距离判定、存活非旁观者，创造可激活，限定不误导。6+2。"
+          },
+          {
+            "id": "P3",
+            "earned": 15,
+            "maximum": 16,
+            "reason": "初始20、后续Min200/Max800（或等价抽样界限），实际200…799且800不包含，取得3+4+5；正确说明正值递减与减到0后的下一tick尝试，但未说明Delay=-1重设，推进子项3/4。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "一轮最多4次尝试，明确并非保证成功4只，失败分支可改变成功数量。5+3。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "附近同类默认6，达到6立即结束批次并重抽；明确局部区域内同类计数，非全世界自然刷怪上限。7+3。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通碰撞/位置/生成条件导致整轮无成功且无提前退出时保持0、下一活跃tick重试；至少成功一次批末重设；达到附近上限或类型/加载/加入失败会立即重设返回。7+4+5。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格；已激活登记后走远不取消登记/暂停，且有tick、并发上限、本轮配额和配置限制；用状态机/游戏时间戳和本笼追踪数量，不能套普通4次/附近6/200…799；失败不推进成功计数或重设成功间隔，后续tick可再试。3+6+3+2。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端及制品来源；BaseSpawner默认值/serverTick/delay可定位；TrialSpawner/State/StateData/PlayerDetector或FullConfig支持试炼区别；明确静态核对未游戏实测。2+4+3+1。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "未说明普通刷怪笼Delay=-1时先调用delay重设。"
+        ],
+        "citations": [
+          "BaseSpawner字段/初始化",
+          "BaseSpawner.serverTick / delay",
+          "EntityGetter.hasNearbyAlivePlayer",
+          "TrialSpawner.FullConfig / TrialSpawnerConfig",
+          "TrialSpawnerState.ACTIVE",
+          "TrialSpawnerStateData.tryDetectPlayers / isReadyToSpawnNextMob"
+        ],
+        "notes": "仅依据最终答案逐项评分；试炼预设、47格追踪、冷却等次级细节不因篇幅加分，未要求量表排除的细节。P3推进子项允许部分分，明确两项而漏-1重设时给3/4；盲化<workspace>路径不扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-20",
+      "arm": "O",
+      "topic": "T3",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-21",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 89,
+          "evidence_quality": 10,
+          "total": 99
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确所有合格玩家离开后普通笼不生成，Delay暂停保留、返回续计；要求所在区块持续方块实体tick，加载不能代替玩家条件。6+8+4。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "默认16格，明确以笼中心三维距离判定、存活非旁观者，创造可激活，限定不误导。6+2。"
+          },
+          {
+            "id": "P3",
+            "earned": 15,
+            "maximum": 16,
+            "reason": "初始20、后续Min200/Max800（或等价抽样界限），实际200…799且800不包含，取得3+4+5；正确说明正值递减与减到0后的下一tick尝试，但未说明Delay=-1重设，推进子项3/4。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "一轮最多4次尝试，明确并非保证成功4只，失败分支可改变成功数量。5+3。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "附近同类默认6，达到6立即结束批次并重抽；明确局部区域内同类计数，非全世界自然刷怪上限。7+3。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通碰撞/位置/生成条件导致整轮无成功且无提前退出时保持0、下一活跃tick重试；至少成功一次批末重设；达到附近上限或类型/加载/加入失败会立即重设返回。7+4+5。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格；已激活登记后走远不取消登记/暂停，且有tick、并发上限、本轮配额和配置限制；用状态机/游戏时间戳和本笼追踪数量，不能套普通4次/附近6/200…799；失败不推进成功计数或重设成功间隔，后续tick可再试。3+6+3+2。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端及制品来源；BaseSpawner默认值/serverTick/delay可定位；TrialSpawner/State/StateData/PlayerDetector或FullConfig支持试炼区别；明确静态核对未游戏实测。2+4+3+1。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "未说明普通刷怪笼Delay=-1时先调用delay重设。"
+        ],
+        "citations": [
+          "BaseSpawner字段/初始化",
+          "BaseSpawner.serverTick / delay",
+          "EntityGetter.hasNearbyAlivePlayer",
+          "TrialSpawner.FullConfig / TrialSpawnerConfig",
+          "TrialSpawnerState.ACTIVE",
+          "TrialSpawnerStateData.tryDetectPlayers / isReadyToSpawnNextMob"
+        ],
+        "notes": "仅依据最终答案逐项评分；试炼预设、47格追踪、冷却等次级细节不因篇幅加分，未要求量表排除的细节。P3推进子项允许部分分，明确两项而漏-1重设时给3/4；盲化<workspace>路径不扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-11",
+      "arm": "S",
+      "topic": "T2",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-22",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确ATTACK_DAMAGE=15.0/15，区分固定属性与每击非固定15的随机伤害；8+4。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出A/2+nextInt((int)A)及等价7.5+k，k=0…14，列出7.5、8.5…21.5共15个离散值；端点可取、步长1，未作连续或整数区间；8+8+8。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单公式min(D/2+1,D)，最终4.75…11.75；6+8。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保持D，最终7.5…21.5；3+7。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难D×3/2，最终11.25…32.25；6+8。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确先随机、玩家受伤时再缩放，mob_attack非玩家活体条件满足；明确“扣血使用浮点数，小数不会统一取整”，且区分伤害量与剩余生命；8+4+4。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端JAR及身份校验；引用IronGolem.createAttributes/doHurtTarget、mob_attack数据和缩放条件、Player.hurtServer与扣血流程；条件与静态核查边界均清楚；2+3+3+2。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes",
+          "IronGolem.doHurtTarget",
+          "data/minecraft/damage_type/mob_attack.json",
+          "DamageSource.scalesWithDifficulty",
+          "Player.hurtServer",
+          "玩家后续扣血流程"
+        ],
+        "notes": "仅依据最终答案评分；等价公式、离散数列及相同含义的后续结算表述可得分，不要求固定措辞。未读过程或其他评分，<workspace>路径盲化不扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-14",
+      "arm": "J",
+      "topic": "T2",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-23",
+        "topic": "T2",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "A1",
+            "earned": 12,
+            "maximum": 12,
+            "reason": "明确默认攻击属性15.0/15，并非每次固定造成15点伤害；8+4。"
+          },
+          {
+            "id": "A2",
+            "earned": 24,
+            "maximum": 24,
+            "reason": "给出属性/2+nextInt((int)属性)或7.5+k的正确随机公式，0…14整数带来7.5、8.5…21.5共15个离散值，两端可取且步长1；8+8+8。"
+          },
+          {
+            "id": "A3",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "简单min(D/2+1,D)，得到4.75…11.75；6+8。"
+          },
+          {
+            "id": "A4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "普通保持D，得到7.5…21.5；3+7。"
+          },
+          {
+            "id": "A5",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "困难D×1.5或D×3/2，得到11.25…32.25；6+8。"
+          },
+          {
+            "id": "A6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "明确先随机再由Player.hurtServer缩放，非玩家生物mob_attack适用；Player.actuallyHurt后“上述条件下，表中结果就是最终伤害量”，表中保留4.75/11.25等小数，等价表达最终扣血不再整数舍入；8+4+4。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端制品与可定位来源；属性与攻击公式对应IronGolem成员，mob_attack及Player.hurtServer支持缩放；条件明确，静态来源未冒充运行验证；2+3+3+2。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "IronGolem.createAttributes",
+          "IronGolem.doHurtTarget",
+          "mob_attack.json / 非玩家生物缩放条件",
+          "Player.hurtServer",
+          "原版26.3制品校验记录"
+        ],
+        "notes": "仅依据最终答案评分，采用量表允许的同义表述及等价公式；明确作为最终伤害的小数结果不要求再逐字写float。未读取运行过程、分组或其他评分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-27",
+      "arm": "S",
+      "topic": "T3",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-24",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 90,
+          "evidence_quality": 10,
+          "total": 100
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确普通笼在所有合格玩家离开后停止生成、保留Delay不再递减，返回续计；区块必须持续执行方块实体tick，单纯加载不足。6+8+4。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "默认距笼中心16格的三维范围，存活非旁观玩家、创造可激活；限定正确。6+2。"
+          },
+          {
+            "id": "P3",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "初始20；后续精确整数200…799等价Min200/排除Max800；说明正Delay递减、进入tick已为0/减0后的下一tick才尝试、-1先重设。3+4+5+4。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "每批最多4次尝试，不保证成功4只；失败、上限、提前返回能影响实际数量。5+3。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "附近同类默认6，达到上限重设延迟并结束批次；局部9×9×9精确Java类统计，与全局自然刷怪上限区分。7+3。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通位置/碰撞/规则整轮失败保持到期/0、下个有效tick重试；至少一次成功轮末重设；上限、无效类型/加载/加入世界等特殊失败立即重设并结束。7+4+5。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格，激活登记后走远不取消登记/本轮，仍有tick、并发和总配额/配置限制；以生成时刻/游戏时间和状态机、本笼追踪实体数量推进，不套普通4次/附近6/200…799；失败不增加生成数、不推进成功间隔，下tick可重试。3+6+3+2。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端及可定位身份；BaseSpawner默认字段/serverTick/delay支持普通笼数值和流程；试炼配置、探测/状态/时间处理可定位；明确静态核查非游戏运行验证。2+4+3+1。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [],
+        "citations": [
+          "BaseSpawner默认字段 / serverTick / delay",
+          "EntityGetter.hasNearbyAlivePlayer",
+          "TrialSpawner.FullConfig / PlayerDetector",
+          "TrialSpawnerState.ACTIVE",
+          "TrialSpawnerStateData生成资格 / 时间处理",
+          "TrialSpawnerConfig"
+        ],
+        "notes": "仅依据最终答案，按冻结T3逐项部分分规则。整数200…799视为等价边界表达，不强制Min/Max字段名；不对试炼配额/预设等量表明确排除的次级细节另设扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-26",
+      "arm": "J",
+      "topic": "T3",
+      "repeat": 1,
+      "review": {
+        "case_id": "case-25",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 89,
+          "evidence_quality": 10,
+          "total": 99
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确普通笼在所有合格玩家离开后停止生成、保留Delay不再递减，返回续计；区块必须持续执行方块实体tick，单纯加载不足。6+8+4。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "默认距笼中心16格的三维范围，存活非旁观玩家、创造可激活；限定正确。6+2。"
+          },
+          {
+            "id": "P3",
+            "earned": 15,
+            "maximum": 16,
+            "reason": "初始20、后续精确200…799等价Min200/排除Max800，3+4+5；正Delay减1、减到0当tick不生成而下一tick尝试均正确，但未说明Delay=-1重设，推进子项3/4。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "每批最多4次尝试，不保证成功4只；失败、上限、提前返回能影响实际数量。5+3。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "附近同类默认6，达到上限重设延迟并结束批次；局部9×9×9精确Java类统计，与全局自然刷怪上限区分。7+3。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通位置/碰撞/规则整轮失败保持到期/0、下个有效tick重试；至少一次成功轮末重设；上限、无效类型/加载/加入世界等特殊失败立即重设并结束。7+4+5。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格，激活登记后走远不取消登记/本轮，仍有tick、并发和总配额/配置限制；以生成时刻/游戏时间和状态机、本笼追踪实体数量推进，不套普通4次/附近6/200…799；失败不增加生成数、不推进成功间隔，下tick可重试。3+6+3+2。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版服务端及可定位身份；BaseSpawner默认字段/serverTick/delay支持普通笼数值和流程；试炼配置、探测/状态/时间处理可定位；明确静态核查非游戏运行验证。2+4+3+1。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "未说明普通刷怪笼Delay=-1时先重设延迟。"
+        ],
+        "citations": [
+          "BaseSpawner默认字段 / serverTick / delay",
+          "EntityGetter.hasNearbyAlivePlayer",
+          "TrialSpawner.FullConfig / PlayerDetector",
+          "TrialSpawnerState.ACTIVE",
+          "TrialSpawnerStateData生成资格 / 时间处理",
+          "TrialSpawnerConfig"
+        ],
+        "notes": "仅依据最终答案，按冻结T3逐项部分分规则。整数200…799视为等价边界表达，不强制Min/Max字段名；不对试炼配额/预设等量表明确排除的次级细节另设扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-22",
+      "arm": "O",
+      "topic": "T3",
+      "repeat": 3,
+      "review": {
+        "case_id": "case-26",
+        "topic": "T3",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 88,
+          "evidence_quality": 10,
+          "total": 98
+        },
+        "items": [
+          {
+            "id": "P1",
+            "earned": 18,
+            "maximum": 18,
+            "reason": "明确所有合格玩家离开普通笼范围后不生成，Delay暂停且保留、返回续计；同时区分区块持续执行tick与单纯加载，其他玩家仍在可维持激活。6+8+4。"
+          },
+          {
+            "id": "P2",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "默认16格，以笼中心三维距离判断，活着非旁观玩家，创造玩家也有效；6+2。"
+          },
+          {
+            "id": "P3",
+            "earned": 14,
+            "maximum": 16,
+            "reason": "初始20；重设200…799且800排除，满足Min200/Max800和实际抽样界限，3+4+5；说明Delay=-1重抽及0延迟失败后的下一tick重试，但未说明正Delay逐tick递减以及从1降0当tick不生成的正常推进时序，推进子项2/4。"
+          },
+          {
+            "id": "P4",
+            "earned": 8,
+            "maximum": 8,
+            "reason": "每轮最多4次候选尝试，不保证成功4只，实际数量受失败与早退影响。5+3。"
+          },
+          {
+            "id": "P5",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "默认6只局部同类；达到上限立即重设并结束本轮，计数区域/精确类不等同全局自然刷怪上限。7+3。"
+          },
+          {
+            "id": "P6",
+            "earned": 16,
+            "maximum": 16,
+            "reason": "普通碰撞/位置/规则整轮失败保持0、下个有效tick重试；至少一次成功后轮末重设；附近上限、实体无效/加载/加入世界失败存在立即重设返回的特殊分支。7+4+5。"
+          },
+          {
+            "id": "P7",
+            "earned": 14,
+            "maximum": 14,
+            "reason": "默认14格；已激活后离开不清除登记、不会仅因距离暂停，仍受tick、追踪并发与本轮总量/配置限制；使用绝对游戏时间和状态机，非普通4次/附近6/随机200…799；失败不执行成功回调计数及时间重设，下个符合条件tick可重试。3+6+3+2。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确Java26.3原版制品及可定位来源；BaseSpawner初始化/默认值/serverTick/delay可复核；试炼探测、状态机及时间处理有类/成员出处；静态核查与运行实测区分。2+4+3+1。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "未明确普通笼正Delay每个激活tick递减1，以及从1减到0后下一活跃tick才生成的时序。"
+        ],
+        "citations": [
+          "BaseSpawner默认字段/初始化",
+          "BaseSpawner.serverTick / delay",
+          "EntityGetter.hasNearbyAlivePlayer",
+          "TrialSpawnerConfig / TrialSpawnerStateData",
+          "TrialSpawnerState.tickAndGetNext / 成功回调"
+        ],
+        "notes": "按冻结T3逐项部分分标准，仅评分最终答案。数学等价的整数200…799足以表达重设范围；不要求固定字段名措辞。试炼自然预设、视线、47格、冷却等量表排除的次级细节不另设扣分。"
+      }
+    },
+    {
+      "reviewer": 2,
+      "run_id": "run-18",
+      "arm": "O",
+      "topic": "T1",
+      "repeat": 2,
+      "review": {
+        "case_id": "case-27",
+        "topic": "T1",
+        "assessable": true,
+        "rubric_scores": {
+          "factual_accuracy": 72,
+          "evidence_quality": 10,
+          "total": 82
+        },
+        "items": [
+          {
+            "id": "V1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "限定Java26.3原版服务端制品及静态源码/字节码调查，未称HardRush运行结果。"
+          },
+          {
+            "id": "S1",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确普通骷髅在细雪条件下转为流浪者。"
+          },
+          {
+            "id": "S2",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确前置140 tick约7秒、转化倒计时设置300 tick约15秒及总计约22秒（或22.10秒），按20 TPS换算；301次及441/442次的精确说法明确有效更新与初值/重置状态。4+4+2。"
+          },
+          {
+            "id": "S3",
+            "earned": 5,
+            "maximum": 5,
+            "reason": "明确离开细雪将前置计数置-1、清除进度，重新进入重新准备。"
+          },
+          {
+            "id": "S4",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确已经颤抖时离开也取消，重新进入需重新经历前置阶段而非续跑剩余转化倒计时。7+3。"
+          },
+          {
+            "id": "S5",
+            "earned": 3,
+            "maximum": 5,
+            "reason": "明确AI未禁用/未设置NoAI才推进转化，3/3；未明确颤抖不自动禁用普通AI、转化中仍能运行AI，0/2。"
+          },
+          {
+            "id": "S6",
+            "earned": 8,
+            "maximum": 10,
+            "reason": "明确canFreeze=false、独立转化计时与普通冻结值/计时分离，且颤抖是第二阶段，取得4+2+2；未明确不会受到普通细雪冻结伤害，0/2。"
+          },
+          {
+            "id": "W1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "野生狼主动攻击不需先受击；以AbstractSkeleton普通Goal和Stray继承解释覆盖关系。7+3。"
+          },
+          {
+            "id": "W2",
+            "earned": 7,
+            "maximum": 10,
+            "reason": "明确驯服狼正常活动时可自主索敌无需主人先动手，7/7；未说明动物/幼龟等未驯服专属捕猎与骷髅普通规则的对照，0/3。"
+          },
+          {
+            "id": "W3",
+            "earned": 4,
+            "maximum": 10,
+            "reason": "未区分主人受击护主和主人攻击目标协助的两种触发，0/6；明确搜索/目标筛选/优先级或路径限制，未泛称攻击主人附近所有敌怪，4/4。"
+          },
+          {
+            "id": "W4",
+            "earned": 5,
+            "maximum": 10,
+            "reason": "未明确命令坐下时两个主人协助目标均不能启动，0/5；明确正常坐下阻止主动追击，且未声称删除选敌/永久禁用全部AI，5/5。"
+          },
+          {
+            "id": "E1",
+            "earned": 10,
+            "maximum": 10,
+            "reason": "明确26.3原版来源，可定位Skeleton、ConversionTracker、冻雪实现与Wolf.registerGoals/Stray/SitWhenOrderedToGoal等支持机制的类/成员；静态与运行验证边界清楚。5+5。"
+          }
+        ],
+        "major_errors": [],
+        "omissions": [
+          "转化中仍能运行普通AI，不因颤抖自动禁用。",
+          "未明确普通骷髅不会受到普通细雪冻结伤害。",
+          "动物/幼龟未驯服专属捕猎与骷髅普通选敌规则的明确对照。",
+          "主人受击护主与主人攻击目标协助的两个独立触发。",
+          "命令坐下时两个主人协助目标均不能启动。"
+        ],
+        "citations": [
+          "Skeleton参数/canFreeze/isShaking",
+          "ConversionTracker.tick",
+          "Wolf.registerGoals",
+          "Stray extends AbstractSkeleton",
+          "SitWhenOrderedToGoal"
+        ],
+        "notes": "仅依据最终答案评分；按冻结T1明确子项全分/零分，不从过程补全事实。可选精确计时已给起点条件，不因长度或可选细节额外加分。"
+      }
+    }
+  ],
+  "validation_errors": []
+}

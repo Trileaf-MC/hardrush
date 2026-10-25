@@ -1,0 +1,68 @@
+Compiled from "LevelAccessor.java"
+public interface net.minecraft.world.level.LevelAccessor extends net.minecraft.world.level.CommonLevelAccessor,net.minecraft.world.level.ScheduledTickAccess {
+  public abstract long nextSubTickCount();
+    descriptor: ()J
+
+  public default <T> net.minecraft.world.ticks.ScheduledTick<T> createTick(net.minecraft.core.BlockPos, T, int, net.minecraft.world.ticks.TickPriority);
+    descriptor: (Lnet/minecraft/core/BlockPos;Ljava/lang/Object;ILnet/minecraft/world/ticks/TickPriority;)Lnet/minecraft/world/ticks/ScheduledTick;
+
+  public default <T> net.minecraft.world.ticks.ScheduledTick<T> createTick(net.minecraft.core.BlockPos, T, int);
+    descriptor: (Lnet/minecraft/core/BlockPos;Ljava/lang/Object;I)Lnet/minecraft/world/ticks/ScheduledTick;
+
+  public abstract net.minecraft.world.level.storage.LevelData getLevelData();
+    descriptor: ()Lnet/minecraft/world/level/storage/LevelData;
+
+  public default long getGameTime();
+    descriptor: ()J
+
+  public abstract net.minecraft.server.MinecraftServer getServer();
+    descriptor: ()Lnet/minecraft/server/MinecraftServer;
+
+  public default net.minecraft.world.Difficulty getDifficulty();
+    descriptor: ()Lnet/minecraft/world/Difficulty;
+
+  public abstract net.minecraft.world.level.chunk.ChunkSource getChunkSource();
+    descriptor: ()Lnet/minecraft/world/level/chunk/ChunkSource;
+
+  public default boolean hasChunk(int, int);
+    descriptor: (II)Z
+
+  public abstract net.minecraft.util.RandomSource getRandom();
+    descriptor: ()Lnet/minecraft/util/RandomSource;
+
+  public default void updateNeighborsAt(net.minecraft.core.BlockPos, net.minecraft.world.level.block.Block);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Block;)V
+
+  public default void neighborShapeChanged(net.minecraft.core.Direction, net.minecraft.core.BlockPos, net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState, int, int);
+    descriptor: (Lnet/minecraft/core/Direction;Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;II)V
+
+  public default void playSound(net.minecraft.world.entity.Entity, net.minecraft.core.BlockPos, net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundSource);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/core/BlockPos;Lnet/minecraft/sounds/SoundEvent;Lnet/minecraft/sounds/SoundSource;)V
+
+  public abstract void playSound(net.minecraft.world.entity.Entity, net.minecraft.core.BlockPos, net.minecraft.sounds.SoundEvent, net.minecraft.sounds.SoundSource, float, float);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/core/BlockPos;Lnet/minecraft/sounds/SoundEvent;Lnet/minecraft/sounds/SoundSource;FF)V
+
+  public abstract void addParticle(net.minecraft.core.particles.ParticleOptions, double, double, double, double, double, double);
+    descriptor: (Lnet/minecraft/core/particles/ParticleOptions;DDDDDD)V
+
+  public abstract void levelEvent(net.minecraft.world.entity.Entity, int, net.minecraft.core.BlockPos, int);
+    descriptor: (Lnet/minecraft/world/entity/Entity;ILnet/minecraft/core/BlockPos;I)V
+
+  public default void levelEvent(int, net.minecraft.core.BlockPos, int);
+    descriptor: (ILnet/minecraft/core/BlockPos;I)V
+
+  public abstract void gameEvent(net.minecraft.core.Holder<net.minecraft.world.level.gameevent.GameEvent>, net.minecraft.world.phys.Vec3, net.minecraft.world.level.gameevent.GameEvent$Context);
+    descriptor: (Lnet/minecraft/core/Holder;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/level/gameevent/GameEvent$Context;)V
+
+  public default void gameEvent(net.minecraft.world.entity.Entity, net.minecraft.core.Holder<net.minecraft.world.level.gameevent.GameEvent>, net.minecraft.world.phys.Vec3);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/core/Holder;Lnet/minecraft/world/phys/Vec3;)V
+
+  public default void gameEvent(net.minecraft.world.entity.Entity, net.minecraft.core.Holder<net.minecraft.world.level.gameevent.GameEvent>, net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/core/Holder;Lnet/minecraft/core/BlockPos;)V
+
+  public default void gameEvent(net.minecraft.core.Holder<net.minecraft.world.level.gameevent.GameEvent>, net.minecraft.core.BlockPos, net.minecraft.world.level.gameevent.GameEvent$Context);
+    descriptor: (Lnet/minecraft/core/Holder;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/gameevent/GameEvent$Context;)V
+
+  public default void gameEvent(net.minecraft.resources.ResourceKey<net.minecraft.world.level.gameevent.GameEvent>, net.minecraft.core.BlockPos, net.minecraft.world.level.gameevent.GameEvent$Context);
+    descriptor: (Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/gameevent/GameEvent$Context;)V
+}

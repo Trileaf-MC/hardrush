@@ -1,0 +1,55 @@
+Compiled from "PowderSnowBlock.java"
+public class net.minecraft.world.level.block.PowderSnowBlock extends net.minecraft.world.level.block.Block implements net.minecraft.world.level.block.BucketPickup {
+  private static final float HORIZONTAL_PARTICLE_MOMENTUM_FACTOR;
+    descriptor: F
+  private static final float IN_BLOCK_HORIZONTAL_SPEED_MULTIPLIER;
+    descriptor: F
+  private static final float IN_BLOCK_VERTICAL_SPEED_MULTIPLIER;
+    descriptor: F
+  private static final float NUM_BLOCKS_TO_FALL_INTO_BLOCK;
+    descriptor: F
+  private static final net.minecraft.world.phys.shapes.VoxelShape FALLING_COLLISION_SHAPE;
+    descriptor: Lnet/minecraft/world/phys/shapes/VoxelShape;
+  private static final double MINIMUM_FALL_DISTANCE_FOR_SOUND;
+    descriptor: D
+  private static final double MINIMUM_FALL_DISTANCE_FOR_BIG_SOUND;
+    descriptor: D
+  public net.minecraft.world.level.block.PowderSnowBlock(net.minecraft.world.level.block.state.BlockBehaviour$Properties);
+    descriptor: (Lnet/minecraft/world/level/block/state/BlockBehaviour$Properties;)V
+
+  protected boolean skipRendering(net.minecraft.world.level.block.state.BlockState, net.minecraft.world.level.block.state.BlockState, net.minecraft.core.Direction);
+    descriptor: (Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/core/Direction;)Z
+
+  protected void entityInside(net.minecraft.world.level.block.state.BlockState, net.minecraft.world.level.Level, net.minecraft.core.BlockPos, net.minecraft.world.entity.Entity, net.minecraft.world.entity.InsideBlockEffectApplier, boolean);
+    descriptor: (Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/entity/InsideBlockEffectApplier;Z)V
+
+  public void fallOn(net.minecraft.world.level.Level, net.minecraft.world.level.block.state.BlockState, net.minecraft.core.BlockPos, net.minecraft.world.entity.Entity, double);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/Entity;D)V
+
+  protected net.minecraft.world.phys.shapes.VoxelShape getEntityInsideCollisionShape(net.minecraft.world.level.block.state.BlockState, net.minecraft.world.level.BlockGetter, net.minecraft.core.BlockPos, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/Entity;)Lnet/minecraft/world/phys/shapes/VoxelShape;
+
+  protected net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(net.minecraft.world.level.block.state.BlockState, net.minecraft.world.level.BlockGetter, net.minecraft.core.BlockPos, net.minecraft.world.phys.shapes.CollisionContext);
+    descriptor: (Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/phys/shapes/CollisionContext;)Lnet/minecraft/world/phys/shapes/VoxelShape;
+
+  protected net.minecraft.world.phys.shapes.VoxelShape getVisualShape(net.minecraft.world.level.block.state.BlockState, net.minecraft.world.level.BlockGetter, net.minecraft.core.BlockPos, net.minecraft.world.phys.shapes.CollisionContext);
+    descriptor: (Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/phys/shapes/CollisionContext;)Lnet/minecraft/world/phys/shapes/VoxelShape;
+
+  public static boolean canEntityWalkOnPowderSnow(net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/entity/Entity;)Z
+
+  public net.minecraft.world.item.ItemStack pickupBlock(net.minecraft.world.entity.LivingEntity, net.minecraft.world.level.LevelAccessor, net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/level/LevelAccessor;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/world/item/ItemStack;
+
+  public java.util.Optional<net.minecraft.sounds.SoundEvent> getPickupSound();
+    descriptor: ()Ljava/util/Optional;
+
+  protected boolean isPathfindable(net.minecraft.world.level.block.state.BlockState, net.minecraft.world.level.pathfinder.PathComputationType);
+    descriptor: (Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/pathfinder/PathComputationType;)Z
+
+  private static void lambda$entityInside$0(net.minecraft.world.level.Level, net.minecraft.core.BlockPos, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/entity/Entity;)V
+
+  static {};
+    descriptor: ()V
+}

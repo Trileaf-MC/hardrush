@@ -1,0 +1,17 @@
+Compiled from "ItemOwner.java"
+public interface net.minecraft.world.entity.ItemOwner {
+  public abstract net.minecraft.world.level.Level level();
+    descriptor: ()Lnet/minecraft/world/level/Level;
+
+  public abstract net.minecraft.world.phys.Vec3 position();
+    descriptor: ()Lnet/minecraft/world/phys/Vec3;
+
+  public abstract float getVisualRotationYInDegrees();
+    descriptor: ()F
+
+  public default net.minecraft.world.entity.LivingEntity asLivingEntity();
+    descriptor: ()Lnet/minecraft/world/entity/LivingEntity;
+
+  public static net.minecraft.world.entity.ItemOwner offsetFromOwner(net.minecraft.world.entity.ItemOwner, net.minecraft.world.phys.Vec3);
+    descriptor: (Lnet/minecraft/world/entity/ItemOwner;Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/entity/ItemOwner;
+}

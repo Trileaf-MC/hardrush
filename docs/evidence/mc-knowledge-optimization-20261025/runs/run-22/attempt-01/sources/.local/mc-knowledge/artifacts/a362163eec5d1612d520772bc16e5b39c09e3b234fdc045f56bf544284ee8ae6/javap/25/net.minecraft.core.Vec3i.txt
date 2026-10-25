@@ -1,0 +1,170 @@
+Compiled from "Vec3i.java"
+public class net.minecraft.core.Vec3i implements java.lang.Comparable<net.minecraft.core.Vec3i> {
+  public static final com.mojang.serialization.Codec<net.minecraft.core.Vec3i> CODEC;
+    descriptor: Lcom/mojang/serialization/Codec;
+  public static final net.minecraft.network.codec.StreamCodec<io.netty.buffer.ByteBuf, net.minecraft.core.Vec3i> STREAM_CODEC;
+    descriptor: Lnet/minecraft/network/codec/StreamCodec;
+  public static final net.minecraft.core.Vec3i ZERO;
+    descriptor: Lnet/minecraft/core/Vec3i;
+  private int x;
+    descriptor: I
+  private int y;
+    descriptor: I
+  private int z;
+    descriptor: I
+  public static com.mojang.serialization.Codec<net.minecraft.core.Vec3i> offsetCodec(int);
+    descriptor: (I)Lcom/mojang/serialization/Codec;
+
+  public net.minecraft.core.Vec3i(int, int, int);
+    descriptor: (III)V
+
+  public boolean equals(java.lang.Object);
+    descriptor: (Ljava/lang/Object;)Z
+
+  public int hashCode();
+    descriptor: ()I
+
+  public int compareTo(net.minecraft.core.Vec3i);
+    descriptor: (Lnet/minecraft/core/Vec3i;)I
+
+  public int getX();
+    descriptor: ()I
+
+  public int getY();
+    descriptor: ()I
+
+  public int getZ();
+    descriptor: ()I
+
+  protected net.minecraft.core.Vec3i setX(int);
+    descriptor: (I)Lnet/minecraft/core/Vec3i;
+
+  protected net.minecraft.core.Vec3i setY(int);
+    descriptor: (I)Lnet/minecraft/core/Vec3i;
+
+  protected net.minecraft.core.Vec3i setZ(int);
+    descriptor: (I)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i offset(int, int, int);
+    descriptor: (III)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i offset(net.minecraft.core.Vec3i);
+    descriptor: (Lnet/minecraft/core/Vec3i;)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i subtract(net.minecraft.core.Vec3i);
+    descriptor: (Lnet/minecraft/core/Vec3i;)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i multiply(int);
+    descriptor: (I)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i multiply(int, int, int);
+    descriptor: (III)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i above();
+    descriptor: ()Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i above(int);
+    descriptor: (I)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i below();
+    descriptor: ()Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i below(int);
+    descriptor: (I)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i north();
+    descriptor: ()Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i north(int);
+    descriptor: (I)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i south();
+    descriptor: ()Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i south(int);
+    descriptor: (I)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i west();
+    descriptor: ()Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i west(int);
+    descriptor: (I)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i east();
+    descriptor: ()Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i east(int);
+    descriptor: (I)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i relative(net.minecraft.core.Direction);
+    descriptor: (Lnet/minecraft/core/Direction;)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i relative(net.minecraft.core.Direction, int);
+    descriptor: (Lnet/minecraft/core/Direction;I)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i relative(net.minecraft.core.Direction$Axis, int);
+    descriptor: (Lnet/minecraft/core/Direction$Axis;I)Lnet/minecraft/core/Vec3i;
+
+  public net.minecraft.core.Vec3i cross(net.minecraft.core.Vec3i);
+    descriptor: (Lnet/minecraft/core/Vec3i;)Lnet/minecraft/core/Vec3i;
+
+  public boolean closerThan(net.minecraft.core.Vec3i, double);
+    descriptor: (Lnet/minecraft/core/Vec3i;D)Z
+
+  public boolean closerToCenterThan(net.minecraft.core.Position, double);
+    descriptor: (Lnet/minecraft/core/Position;D)Z
+
+  public double distSqr(net.minecraft.core.Vec3i);
+    descriptor: (Lnet/minecraft/core/Vec3i;)D
+
+  public double distToCenterSqr(net.minecraft.core.Position);
+    descriptor: (Lnet/minecraft/core/Position;)D
+
+  public double distToCenterSqr(double, double, double);
+    descriptor: (DDD)D
+
+  public double distToLowCornerSqr(double, double, double);
+    descriptor: (DDD)D
+
+  public int distManhattan(net.minecraft.core.Vec3i);
+    descriptor: (Lnet/minecraft/core/Vec3i;)I
+
+  public int distChessboard(net.minecraft.core.Vec3i);
+    descriptor: (Lnet/minecraft/core/Vec3i;)I
+
+  public boolean differsHorizontally(net.minecraft.core.Vec3i);
+    descriptor: (Lnet/minecraft/core/Vec3i;)Z
+
+  public int get(net.minecraft.core.Direction$Axis);
+    descriptor: (Lnet/minecraft/core/Direction$Axis;)I
+
+  public org.joml.Vector3i toMutable();
+    descriptor: ()Lorg/joml/Vector3i;
+
+  public java.lang.String toString();
+    descriptor: ()Ljava/lang/String;
+
+  public java.lang.String toShortString();
+    descriptor: ()Ljava/lang/String;
+
+  public int compareTo(java.lang.Object);
+    descriptor: (Ljava/lang/Object;)I
+
+  private static com.mojang.serialization.DataResult lambda$offsetCodec$0(int, net.minecraft.core.Vec3i);
+    descriptor: (ILnet/minecraft/core/Vec3i;)Lcom/mojang/serialization/DataResult;
+
+  private static java.lang.String lambda$offsetCodec$1(int, net.minecraft.core.Vec3i);
+    descriptor: (ILnet/minecraft/core/Vec3i;)Ljava/lang/String;
+
+  private static java.util.stream.IntStream lambda$static$2(net.minecraft.core.Vec3i);
+    descriptor: (Lnet/minecraft/core/Vec3i;)Ljava/util/stream/IntStream;
+
+  private static com.mojang.serialization.DataResult lambda$static$0(java.util.stream.IntStream);
+    descriptor: (Ljava/util/stream/IntStream;)Lcom/mojang/serialization/DataResult;
+
+  private static net.minecraft.core.Vec3i lambda$static$1(int[]);
+    descriptor: ([I)Lnet/minecraft/core/Vec3i;
+
+  static {};
+    descriptor: ()V
+}

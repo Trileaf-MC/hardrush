@@ -1,0 +1,14 @@
+Compiled from "LevelSimulatedReader.java"
+public interface net.minecraft.world.level.LevelSimulatedReader {
+  public abstract boolean isStateAtPosition(net.minecraft.core.BlockPos, java.util.function.Predicate<net.minecraft.world.level.block.state.BlockState>);
+    descriptor: (Lnet/minecraft/core/BlockPos;Ljava/util/function/Predicate;)Z
+
+  public abstract boolean isFluidAtPosition(net.minecraft.core.BlockPos, java.util.function.Predicate<net.minecraft.world.level.material.FluidState>);
+    descriptor: (Lnet/minecraft/core/BlockPos;Ljava/util/function/Predicate;)Z
+
+  public abstract <T extends net.minecraft.world.level.block.entity.BlockEntity> java.util.Optional<T> getBlockEntity(net.minecraft.core.BlockPos, net.minecraft.world.level.block.entity.BlockEntityType<T>);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/BlockEntityType;)Ljava/util/Optional;
+
+  public abstract net.minecraft.core.BlockPos getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap$Types, net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/world/level/levelgen/Heightmap$Types;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/core/BlockPos;
+}

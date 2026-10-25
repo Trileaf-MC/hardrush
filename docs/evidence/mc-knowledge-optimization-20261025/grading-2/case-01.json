@@ -1,0 +1,100 @@
+{
+  "case_id": "case-01",
+  "topic": "T1",
+  "assessable": true,
+  "rubric_scores": {
+    "factual_accuracy": 72,
+    "evidence_quality": 10,
+    "total": 82
+  },
+  "items": [
+    {
+      "id": "V1",
+      "earned": 5,
+      "maximum": 5,
+      "reason": "明确限定Java 26.3原版服务端JAR静态检查，未称为HardRush或运行时验证。"
+    },
+    {
+      "id": "S1",
+      "earned": 5,
+      "maximum": 5,
+      "reason": "明确普通骷髅在细雪中转化为流浪者。"
+    },
+    {
+      "id": "S2",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "写出先140 tick约7秒、后300 tick设定约15秒及总计约22秒；交代20 TPS，并将441/442限定为初值0/重置-1和有效检查次数。三个子项4+4+2。"
+    },
+    {
+      "id": "S3",
+      "earned": 5,
+      "maximum": 5,
+      "reason": "明确任一阶段离开会取消进度，前置计数回到-1；重新进入重走完整过程。"
+    },
+    {
+      "id": "S4",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确已经颤抖时离开也取消，不能移出后完成；重新进入重走完整过程。两个子项7+3。"
+    },
+    {
+      "id": "S5",
+      "earned": 0,
+      "maximum": 5,
+      "reason": "最终答案未说明NoAI停止推进，也未说明颤抖不会自动禁用普通AI。两个子项0+0。"
+    },
+    {
+      "id": "S6",
+      "earned": 8,
+      "maximum": 10,
+      "reason": "写明canFreeze=false、普通冻结计时与转化分离及颤抖发生于第二阶段，取得4+2+2；“不是靠冻伤触发”没有明确说不会受到普通细雪冻结伤害，该子项0/2。"
+    },
+    {
+      "id": "W1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确未驯服狼不需先被流浪者攻击便主动选敌；说明AbstractSkeleton目标覆盖Stray继承关系。两个子项7+3。"
+    },
+    {
+      "id": "W2",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确驯服狼正常站立时仍主动攻击且不需主人先动手；指出骷髅目标没有未驯服条件，并将普通动物的NonTameRandomTargetGoal作为对照。两个子项7+3。"
+    },
+    {
+      "id": "W3",
+      "earned": 4,
+      "maximum": 10,
+      "reason": "没有区分主人被攻击时护主与主人攻击目标时协助，第一子项0/6；明确实际攻击受目标有效性、距离、优先级或寻路限制，未泛化为攻击主人附近所有敌怪，第二子项4/4。"
+    },
+    {
+      "id": "W4",
+      "earned": 5,
+      "maximum": 10,
+      "reason": "没有明确被命令坐下时两个主人协助目标均不能启动、不能保证因主人受击起身护主，第一子项0/5；明确正常坐下通常阻止自主追击且未删除骷髅选敌规则/关闭全部AI，第二子项5/5。"
+    },
+    {
+      "id": "E1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "骷髅部分定位Skeleton、ConversionTracker.tick及冻结实现；狼部分定位Wolf.registerGoals、Stray继承与坐下Goal，类/成员和静态26.3来源足以复核。两个子项5+5；<workspace>盲化路径不扣分。"
+    }
+  ],
+  "major_errors": [],
+  "omissions": [
+    "NoAI不推进转化。",
+    "转化中仍保留普通AI，不因颤抖自动禁用。",
+    "未明确普通骷髅不受到普通细雪冻结伤害。",
+    "主人受击护主与主人攻击目标协助的两个独立触发。",
+    "命令坐下时两个主人协助目标均不能启动。"
+  ],
+  "citations": [
+    "Skeleton构造/转化参数与canFreeze",
+    "ConversionTracker.tick",
+    "Wolf.registerGoals",
+    "Stray extends AbstractSkeleton",
+    "SitWhenOrderedToGoal"
+  ],
+  "notes": "仅依据最终答案逐个冻结子项评分；未从查询过程补全遗漏。选做的装备、生命值、受伤解除坐下等不额外加分，也未用其代替护主启动条件。答案完整可评。"
+}

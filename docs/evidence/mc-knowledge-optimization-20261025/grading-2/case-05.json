@@ -1,0 +1,65 @@
+{
+  "case_id": "case-05",
+  "topic": "T2",
+  "assessable": true,
+  "rubric_scores": {
+    "factual_accuracy": 90,
+    "evidence_quality": 10,
+    "total": 100
+  },
+  "items": [
+    {
+      "id": "A1",
+      "earned": 12,
+      "maximum": 12,
+      "reason": "明确ATTACK_DAMAGE=15.0/15，区分固定属性与每击非固定15的随机伤害；8+4。"
+    },
+    {
+      "id": "A2",
+      "earned": 24,
+      "maximum": 24,
+      "reason": "给出A/2+nextInt((int)A)及等价7.5+k，k=0…14，列出7.5、8.5…21.5共15个离散值；端点可取、步长1，未作连续或整数区间；8+8+8。"
+    },
+    {
+      "id": "A3",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "简单公式min(D/2+1,D)，最终4.75…11.75；6+8。"
+    },
+    {
+      "id": "A4",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "普通保持D，最终7.5…21.5；3+7。"
+    },
+    {
+      "id": "A5",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "困难D×3/2，最终11.25…32.25；6+8。"
+    },
+    {
+      "id": "A6",
+      "earned": 16,
+      "maximum": 16,
+      "reason": "明确先随机后难度缩放，mob_attack非玩家活体条件满足；写明结果没有取整，表中含四分之一点的最终结算伤害，并说明后续扣血及剩余生命限制；8+4+4。"
+    },
+    {
+      "id": "E1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确Java26.3原版服务端JAR及身份校验；引用IronGolem.createAttributes/doHurtTarget、mob_attack数据和缩放条件、Player.hurtServer与扣血流程；条件与静态核查边界均清楚；2+3+3+2。"
+    }
+  ],
+  "major_errors": [],
+  "omissions": [],
+  "citations": [
+    "IronGolem.createAttributes",
+    "IronGolem.doHurtTarget",
+    "data/minecraft/damage_type/mob_attack.json",
+    "DamageSource.scalesWithDifficulty",
+    "Player.hurtServer",
+    "玩家后续扣血流程"
+  ],
+  "notes": "仅依据最终答案评分；等价公式、离散数列及相同含义的后续结算表述可得分，不要求固定措辞。未读过程或其他评分，<workspace>路径盲化不扣分。"
+}

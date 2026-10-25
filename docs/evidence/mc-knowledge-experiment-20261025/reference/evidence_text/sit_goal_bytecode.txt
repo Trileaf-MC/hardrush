@@ -1,0 +1,8 @@
+  public boolean canContinueToUse();
+    descriptor: ()Z
+    Code:
+         0: aload_0
+         1: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+         4: invokevirtual #32                 // Method net/minecraft/world/entity/TamableAnimal.isOrderedToSit:()Z
+         7: ireturn
+

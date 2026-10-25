@@ -1,0 +1,20 @@
+核查对象：Minecraft Java Edition 26.3 正式版原版程序包
+核查方法：下载、哈希校验、解压、用 Python jawa 解析 class 字节码；未运行 Minecraft 客户端或服务器。
+版本元数据：https://piston-meta.mojang.com/v1/packages/61fff1316bd50312624a858bbb5eb18fa45208ed/26.3.json
+发布时间：2026-09-15T11:23:02+00:00
+官方外层程序包：https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar
+官方外层程序包 SHA-1：33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c
+嵌套 jar 校验列表：a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6	26.3	26.3/server-26.3.jar
+本地嵌套 jar SHA-256：a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6
+
+字节码检查入口：
+Skeleton.<init> / isShaking / canFreeze / lambda$new$2
+ConversionTracker.tick / startConversion / doConversion
+Wolf.registerGoals / tryToTame / hurtServer
+Stray 类继承 AbstractSkeleton
+SitWhenOrderedToGoal.canUse / start
+InsideBlockEffectType.lambda$static$0
+ConversionType$1.convert
+
+每个 *.bytecode.txt 的数值前缀是该方法的字节码偏移；BRANCH 显示绝对目标及相对偏移。
+inspect_classes.py 只解析 zip 内的 class，不执行游戏代码。

@@ -1,0 +1,7 @@
+{
+  "findings": [],
+  "finding_count": 0,
+  "matched_values_exported": false,
+  "scope": "Only selected workspace text and original observable experiment files. No home scan or credential-file read.",
+  "limitations": "Pattern-based screening is not proof that all private content is absent."
+}

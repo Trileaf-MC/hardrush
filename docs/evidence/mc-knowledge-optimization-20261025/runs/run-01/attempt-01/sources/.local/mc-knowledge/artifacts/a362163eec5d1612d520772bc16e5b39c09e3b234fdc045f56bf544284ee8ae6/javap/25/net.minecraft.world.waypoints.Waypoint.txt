@@ -1,0 +1,10 @@
+Compiled from "Waypoint.java"
+public interface net.minecraft.world.waypoints.Waypoint {
+  public static final net.minecraft.world.entity.ai.attributes.AttributeModifier WAYPOINT_TRANSMIT_RANGE_HIDE_MODIFIER;
+    descriptor: Lnet/minecraft/world/entity/ai/attributes/AttributeModifier;
+  public static net.minecraft.world.item.Item$Properties addHideAttribute(net.minecraft.world.item.Item$Properties);
+    descriptor: (Lnet/minecraft/world/item/Item$Properties;)Lnet/minecraft/world/item/Item$Properties;
+
+  static {};
+    descriptor: ()V
+}

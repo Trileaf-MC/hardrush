@@ -1,0 +1,64 @@
+{
+  "case_id": "case-09",
+  "topic": "T2",
+  "assessable": true,
+  "rubric_scores": {
+    "factual_accuracy": 90,
+    "evidence_quality": 10,
+    "total": 100
+  },
+  "items": [
+    {
+      "id": "A1",
+      "earned": 12,
+      "maximum": 12,
+      "reason": "明确基础ATTACK_DAMAGE为15／15.0，并将固定属性与每次随机命中伤害区别，8+4分。"
+    },
+    {
+      "id": "A2",
+      "earned": 24,
+      "maximum": 24,
+      "reason": "给出A/2.0F+nextInt((int)A)或等价7.5+k，明确k=0…14、7.5至21.5两端可取及15个间隔1的离散小数值，公式、区间和离散性质各8分。"
+    },
+    {
+      "id": "A3",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "明确简单为min(D/2+1,D)，最终4.75至11.75，公式6分、区间8分。"
+    },
+    {
+      "id": "A4",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确普通保持随机结果D，最终7.5至21.5，不缩放3分、区间7分。"
+    },
+    {
+      "id": "A5",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "明确困难为D×1.5／D×3/2，最终11.25至32.25，公式6分、区间8分。"
+    },
+    {
+      "id": "A6",
+      "earned": 16,
+      "maximum": 16,
+      "reason": "明确“读取攻击属性→随机化→按玩家所在难度缩放→减伤、吸收与扣血”，得8分；mob_attack的when_caused_by_living_non_player及铁傀儡满足条件，得4分；明确生命扣除使用浮点数、不会取整且Math.round只用于统计，得4分。"
+    },
+    {
+      "id": "E1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确Java26.3原版服务端JAR及可定位证据文件，得2分；属性出处与IronGolem.doHurtTarget公式有具体片段，得3分；mob_attack缩放条件与Player.hurtServer有定位，得3分；保留无减伤／吸收／免伤窗口等条件，且明确静态核查、未实测，得2分。"
+    }
+  ],
+  "major_errors": [],
+  "omissions": [],
+  "citations": [
+    ".local/iron-golem-26.3-evidence.md:45",
+    ".local/iron-golem-26.3-evidence.md:100",
+    ".local/iron-golem-26.3-evidence.md:31",
+    ".local/iron-golem-26.3-evidence.md:208",
+    ".local/iron-golem-26.3-evidence.md:275"
+  ],
+  "notes": "仅按最终答案评分；表格明确包含两端、步长及15个离散值。额外统计round与剩余生命限制说明不加分，且未与必答事实冲突。"
+}

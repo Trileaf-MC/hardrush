@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "member": {
+    "name": "<init>",
+    "descriptor": "()V"
+  },
+  "warnings": [
+    "初始化方法以字节码返回，避免单方法反编译遗漏被提升到字段声明处的初始化；不指定 --member 可读取完整 Java 类。"
+  ],
+  "class_name": "net.minecraft.world.level.BaseSpawner",
+  "representation": "javap bytecode",
+  "cache_hit": false,
+  "text": "  public net.minecraft.world.level.BaseSpawner();\n    descriptor: ()V\n    Code:\n         0: aload_0\n         1: invokespecial #3                  // Method java/lang/Object.\"<init>\":()V\n         4: aload_0\n         5: bipush        20\n         7: putfield      #11                 // Field spawnDelay:I\n        10: aload_0\n        11: invokestatic  #15                 // Method net/minecraft/util/random/WeightedList.of:()Lnet/minecraft/util/random/WeightedList;\n        14: putfield      #21                 // Field spawnPotentials:Lnet/minecraft/util/random/WeightedList;\n        17: aload_0\n        18: sipush        200\n        21: putfield      #25                 // Field minSpawnDelay:I\n        24: aload_0\n        25: sipush        800\n        28: putfield      #28                 // Field maxSpawnDelay:I\n        31: aload_0\n        32: iconst_4\n        33: putfield      #31                 // Field spawnCount:I\n        36: aload_0\n        37: bipush        6\n        39: putfield      #34                 // Field maxNearbyEntities:I\n        42: aload_0\n        43: bipush        16\n        45: putfield      #37                 // Field requiredPlayerRange:I\n        48: aload_0\n        49: iconst_4\n        50: putfield      #40                 // Field spawnRange:I\n        53: return\n\n",
+  "total_lines": 31,
+  "total_chars": 1305,
+  "returned_range": {
+    "start_line": 1,
+    "start_char": 0,
+    "end_line": 32,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 357.63,
+    "body_chars": 1305,
+    "output_chars": 2260
+  }
+}

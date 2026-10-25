@@ -1,0 +1,99 @@
+Compiled from "TrialSpawnerState.java"
+public final class net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState extends java.lang.Enum<net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState> implements net.minecraft.util.StringRepresentable {
+  public static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState INACTIVE;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+  public static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState WAITING_FOR_PLAYERS;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+  public static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState ACTIVE;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+  public static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState WAITING_FOR_REWARD_EJECTION;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+  public static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState EJECTING_REWARD;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+  public static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState COOLDOWN;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+  private static final float DELAY_BEFORE_EJECT_AFTER_KILLING_LAST_MOB;
+    descriptor: F
+  private static final int TIME_BETWEEN_EACH_EJECTION;
+    descriptor: I
+  private final java.lang.String name;
+    descriptor: Ljava/lang/String;
+  private final int lightLevel;
+    descriptor: I
+  private final double spinningMobSpeed;
+    descriptor: D
+  private final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState$ParticleEmission particleEmission;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState$ParticleEmission;
+  private final boolean isCapableOfSpawning;
+    descriptor: Z
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState[] $VALUES;
+    descriptor: [Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+  public static net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState[] values();
+    descriptor: ()[Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+
+  public static net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState valueOf(java.lang.String);
+    descriptor: (Ljava/lang/String;)Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+
+  private net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState(java.lang.String, int, net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState$ParticleEmission, double, boolean);
+    descriptor: (Ljava/lang/String;ILjava/lang/String;ILnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState$ParticleEmission;DZ)V
+
+  net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState tickAndGetNext(net.minecraft.core.BlockPos, net.minecraft.world.level.block.entity.trialspawner.TrialSpawner, net.minecraft.server.level.ServerLevel);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;Lnet/minecraft/server/level/ServerLevel;)Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+
+  private void spawnOminousOminousItemSpawner(net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos, net.minecraft.world.level.block.entity.trialspawner.TrialSpawner);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;)V
+
+  private static java.util.Optional<net.minecraft.world.phys.Vec3> calculatePositionToSpawnSpawner(net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos, net.minecraft.world.level.block.entity.trialspawner.TrialSpawner, net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerStateData;)Ljava/util/Optional;
+
+  private static java.util.Optional<net.minecraft.world.phys.Vec3> calculatePositionAbove(net.minecraft.world.entity.Entity, net.minecraft.server.level.ServerLevel);
+    descriptor: (Lnet/minecraft/world/entity/Entity;Lnet/minecraft/server/level/ServerLevel;)Ljava/util/Optional;
+
+  private static net.minecraft.world.entity.Entity selectEntityToSpawnItemAbove(java.util.List<net.minecraft.world.entity.player.Player>, java.util.Set<java.util.UUID>, net.minecraft.world.level.block.entity.trialspawner.TrialSpawner, net.minecraft.core.BlockPos, net.minecraft.server.level.ServerLevel);
+    descriptor: (Ljava/util/List;Ljava/util/Set;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;Lnet/minecraft/core/BlockPos;Lnet/minecraft/server/level/ServerLevel;)Lnet/minecraft/world/entity/Entity;
+
+  private boolean timeToSpawnItemSpawner(net.minecraft.server.level.ServerLevel, net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerStateData;)Z
+
+  public int lightLevel();
+    descriptor: ()I
+
+  public double spinningMobSpeed();
+    descriptor: ()D
+
+  public boolean hasSpinningMob();
+    descriptor: ()Z
+
+  public boolean isCapableOfSpawning();
+    descriptor: ()Z
+
+  public void emitParticles(net.minecraft.world.level.Level, net.minecraft.core.BlockPos, boolean);
+    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Z)V
+
+  public java.lang.String getSerializedName();
+    descriptor: ()Ljava/lang/String;
+
+  private static net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState[] $values();
+    descriptor: ()[Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerState;
+
+  private static boolean lambda$selectEntityToSpawnItemAbove$0(net.minecraft.core.BlockPos, net.minecraft.world.level.block.entity.trialspawner.TrialSpawner, net.minecraft.world.entity.Entity);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;Lnet/minecraft/world/entity/Entity;)Z
+
+  private static boolean lambda$calculatePositionToSpawnSpawner$0(net.minecraft.core.BlockPos, net.minecraft.world.level.block.entity.trialspawner.TrialSpawner, net.minecraft.world.entity.player.Player);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;Lnet/minecraft/world/entity/player/Player;)Z
+
+  private static void lambda$spawnOminousOminousItemSpawner$0(net.minecraft.server.level.ServerLevel, net.minecraft.world.item.ItemStack, net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData, net.minecraft.world.level.block.entity.trialspawner.TrialSpawner, net.minecraft.world.phys.Vec3);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerStateData;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;Lnet/minecraft/world/phys/Vec3;)V
+
+  private static void lambda$tickAndGetNext$2(net.minecraft.world.level.block.entity.trialspawner.TrialSpawner, net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos, net.minecraft.resources.ResourceKey);
+    descriptor: (Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Lnet/minecraft/resources/ResourceKey;)V
+
+  private static void lambda$tickAndGetNext$0(net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData, net.minecraft.server.level.ServerLevel, net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig, net.minecraft.util.RandomSource, net.minecraft.world.level.block.entity.trialspawner.TrialSpawner, java.util.UUID);
+    descriptor: (Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerStateData;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig;Lnet/minecraft/util/RandomSource;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;Ljava/util/UUID;)V
+
+  private static void lambda$tickAndGetNext$1(net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData, net.minecraft.world.level.block.entity.trialspawner.TrialSpawner, net.minecraft.world.level.SpawnData);
+    descriptor: (Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerStateData;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;Lnet/minecraft/world/level/SpawnData;)V
+
+  static {};
+    descriptor: ()V
+}

@@ -1,0 +1,17 @@
+Compiled from "OwnerHurtByTargetGoal.java"
+public class net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal extends net.minecraft.world.entity.ai.goal.target.TargetGoal {
+  private final net.minecraft.world.entity.TamableAnimal tameAnimal;
+    descriptor: Lnet/minecraft/world/entity/TamableAnimal;
+  private net.minecraft.world.entity.LivingEntity ownerLastHurtBy;
+    descriptor: Lnet/minecraft/world/entity/LivingEntity;
+  private int timestamp;
+    descriptor: I
+  public net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal(net.minecraft.world.entity.TamableAnimal);
+    descriptor: (Lnet/minecraft/world/entity/TamableAnimal;)V
+
+  public boolean canUse();
+    descriptor: ()Z
+
+  public void start();
+    descriptor: ()V
+}

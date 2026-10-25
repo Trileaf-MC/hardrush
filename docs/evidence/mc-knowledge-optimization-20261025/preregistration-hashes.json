@@ -1,0 +1,8 @@
+{
+  "protocol.md": "80055ed6b09dca52e9bee876761fdd784028d1ec2ea972db6d942876fe61fde4",
+  "reference/T1-SHA256SUMS": "32f58f39bc31c6dc1ba3d4d2b843a086fa5bcde651d21c9943639f709fe2469c",
+  "reference/T1-answer.md": "08936578a94d0ab66e48d63b7949f4c791008a2db82dbe938f139148d1c6ff7f",
+  "reference/T1-provenance.json": "510218543593f29bf0591d4c2220b6da642973c260eb32615c444ca057c52edb",
+  "reference/T1-rubric.md": "2a0e7fbe300ce2d0a5636bfbb8e0200286f3ce1d2ca289d59847ab6a7765ca7a",
+  "reference/SHA256SUMS": "df4ab8ffbed0d1e6ab6217d784c34d0fc33a4037c029ba9f21dbeb17284bed1a"
+}

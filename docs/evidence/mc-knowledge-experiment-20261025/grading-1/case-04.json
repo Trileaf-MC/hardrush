@@ -1,0 +1,88 @@
+{
+  "case": "case-04",
+  "reviewer": 1,
+  "rubric_version": "1.0",
+  "items": [
+    {
+      "id": "V1",
+      "points": 5,
+      "max_points": 5,
+      "reason": "明确限定 Java 26.3 正式版原版及静态核查，未外推为 HardRush 运行验证。"
+    },
+    {
+      "id": "S1",
+      "points": 5,
+      "max_points": 5,
+      "reason": "明确普通骷髅在细雪中转化为流浪者。"
+    },
+    {
+      "id": "S2",
+      "points": 10,
+      "max_points": 10,
+      "reason": "明确 140 tick 约7秒、300设定约15秒和约22秒；说明20 TPS及301次后续递减、初值边界，未声称普遍精确440 tick。"
+    },
+    {
+      "id": "S3",
+      "points": 5,
+      "max_points": 5,
+      "reason": "明确离开细雪重置准备计时，再进入重新累计。"
+    },
+    {
+      "id": "S4",
+      "points": 10,
+      "max_points": 10,
+      "reason": "明确两个阶段均需细雪，即使已颤抖离开也取消；再进入重新计时。"
+    },
+    {
+      "id": "S5",
+      "points": 3,
+      "max_points": 5,
+      "reason": "明确计时要求未设置 NoAI，取得3分；未明确转化过程仍可运行普通 AI，2分子项缺失。"
+    },
+    {
+      "id": "S6",
+      "points": 8,
+      "max_points": 10,
+      "reason": "明确 Skeleton.canFreeze=false 4分、转化与普通冻结分离2分、颤抖为第二阶段2分；未明确说普通骷髅不会受到细雪冻结伤害，免冻伤2分子项不从代码判定额外推断。"
+    },
+    {
+      "id": "W1",
+      "points": 10,
+      "max_points": 10,
+      "reason": "明确野生狼无需先受挑衅便攻击流浪者，并以 AbstractSkeleton 目标及 Stray 继承关系解释。"
+    },
+    {
+      "id": "W2",
+      "points": 10,
+      "max_points": 10,
+      "reason": "明确可正常活动的驯服狼也自主攻击流浪者，并区分动物使用的未驯服专属目标。"
+    },
+    {
+      "id": "W3",
+      "points": 4,
+      "max_points": 10,
+      "reason": "主人被攻击时护主与主人攻击目标时协助，两种触发均未解释，6分子项不得分；明确索敌、可接近性或优先级等攻击条件，4分限制子项得分。"
+    },
+    {
+      "id": "W4",
+      "points": 5,
+      "max_points": 10,
+      "reason": "明确正常坐下阻止普通追击，取得行动差异5分；未说明坐下使两个主人协助目标不能启动，未明确区分主人受伤护主，另5分不得分。狼自身受伤解除坐下为准确例外，不据此扣分。"
+    },
+    {
+      "id": "E1",
+      "points": 10,
+      "max_points": 10,
+      "reason": "骷髅的 Skeleton／ConversionTracker 及狼的 Wolf.registerGoals／Stray 等原版出处均可识别，支持26.3关键主张；统一隐藏目录不影响类／成员引证有效性。"
+    }
+  ],
+  "factual_score": 75,
+  "factual_max": 90,
+  "evidence_score": 10,
+  "evidence_max": 10,
+  "total": 85,
+  "major_errors": [],
+  "optional_errors": [],
+  "group_guess": "不知道",
+  "notes": "缺失事实按冻结子项计0，不作为错误断言记录；未读取实验映射、metrics、其他评审或样本审计。可选细节不额外加分，标准未涵盖的旁支不作无证据判错。"
+}

@@ -1,0 +1,124 @@
+{
+  "id": "run-20",
+  "topic": "T3",
+  "arm": "O",
+  "repeat": 2,
+  "wave": 7,
+  "launch_position": 2,
+  "format_env": "compact",
+  "skill_variant": "baseline",
+  "prompt_sha256": "dbf5f117b94a534dabe4e0f5b40312ad333ba5538da751dabb9966069de4c494",
+  "workspace": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-20/attempt-01/workspace",
+  "attempt": "attempt-01",
+  "is_primary": true,
+  "state": "completed",
+  "exit_code": 0,
+  "elapsed_seconds": 231.467,
+  "thread_id": "01a1723c-3962-7021-9bed-9dce8a3a4c6d",
+  "native_rollout_found": true,
+  "native_rollout_sha256": "bd485ec6ad46ec2c9281b7277556cdd51244b69a135051c11e05b4c47e5f60dc",
+  "model_provider": "openai",
+  "cli_version": "0.163.0",
+  "native_model_configurations": [
+    {
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "cwd": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-20/attempt-01/workspace",
+      "approval_policy": "never",
+      "sandbox_policy": {
+        "type": "workspace-write",
+        "network_access": true,
+        "exclude_tmpdir_env_var": false,
+        "exclude_slash_tmp": false
+      }
+    }
+  ],
+  "model_effort_verified": true,
+  "workspace_verified": true,
+  "cli_cumulative_usage": {
+    "input_tokens": 565957,
+    "cached_input_tokens": 499072,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 6158,
+    "reasoning_output_tokens": 1124
+  },
+  "native_cumulative_usage": {
+    "input_tokens": 565957,
+    "cached_input_tokens": 499072,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 6158,
+    "reasoning_output_tokens": 1124,
+    "total_tokens": 572115
+  },
+  "native_per_request_sum": {
+    "input_tokens": 565957,
+    "cached_input_tokens": 499072,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 6158,
+    "reasoning_output_tokens": 1124,
+    "total_tokens": 572115
+  },
+  "native_cli_usage_equal": true,
+  "first_input_tokens": 13491,
+  "peak_input_tokens": 76179,
+  "model_calls": 12,
+  "compactions": 0,
+  "tool_responses": 11,
+  "tool_output_chars": 235048,
+  "tool_output_tokens_o200k": 68529,
+  "tool_output_unique_tokens_o200k": 68529,
+  "tool_token_scope": "Preserved original metric: native output strings, or stored JSON serialization of non-string outputs (including its escaping and wrappers). Storage-representation o200k estimate; not net model-visible body, not CLI-only stdout, not native billing.",
+  "tool_output_decoded_text_chars": 219120,
+  "tool_output_decoded_text_tokens_o200k": 58720,
+  "decoded_text_token_scope": "Supplemental: decoded native string/text parts, including tool wrappers. Tokens summed by text part. Does not replace preregistered storage-representation metric and is not net CLI body or billing.",
+  "outer_output_truncations": 1,
+  "cli_item_counts": {
+    "agent_message": 4,
+    "command_execution": 42,
+    "web_search": 2
+  },
+  "command_failures": 2,
+  "initial_context_audit": {
+    "messages": 3,
+    "memory_summary_mentions": 0,
+    "private_text_exported": false
+  },
+  "format_adoption": {
+    "identified_invocations": 2,
+    "unknown_candidates": 7,
+    "confirmed_visible_format": 0,
+    "unknown_visible_format": 2,
+    "explicit_format_count": 0,
+    "explicit_overrides_of_arm": 0,
+    "command_environment_overrides": 0,
+    "protocol_deviations": 0,
+    "confirmed_follows_arm_default": 0,
+    "confirmed_default_adoption_rate": null,
+    "adoption_rate_denominator": "Only invocations with unambiguous visible output; unknowns reported separately."
+  },
+  "cli_event_format_adoption": {
+    "identified_invocations": 34,
+    "unknown_candidates": 0,
+    "confirmed_visible_format": 34,
+    "unknown_visible_format": 0,
+    "explicit_format_count": 0,
+    "explicit_overrides_of_arm": 0,
+    "command_environment_overrides": 0,
+    "protocol_deviations": 0,
+    "confirmed_follows_arm_default": 34,
+    "confirmed_default_adoption_rate": 1.0,
+    "adoption_rate_denominator": "Confirmed eligible business formats only; unknowns and documented budget-error fallbacks excluded. All wire-format counts remain reported separately.",
+    "diagnostic_invocations_excluded": 3,
+    "all_event_invocations": 37,
+    "documented_budget_error_fallbacks": 0,
+    "adoption_eligible_invocations": 34,
+    "adoption_eligible_confirmed_visible_format": 34,
+    "denominator_policy": "Business invocations only. doctor/help excluded. Documented budget-error fallback JSON is counted separately and excluded from adoption-rate denominator. Complex commands and undecodable shells remain unknown."
+  },
+  "initial_input_integrity": {
+    "state": "verified",
+    "protocol_deviation": false,
+    "evaluated_files": 6,
+    "changed_paths": []
+  }
+}

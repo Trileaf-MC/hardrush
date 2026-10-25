@@ -1,0 +1,45 @@
+Compiled from "NearestAttackableTargetGoal.java"
+public class net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal<T extends net.minecraft.world.entity.LivingEntity> extends net.minecraft.world.entity.ai.goal.target.TargetGoal {
+  private static final int DEFAULT_RANDOM_INTERVAL;
+    descriptor: I
+  protected final java.lang.Class<T> targetType;
+    descriptor: Ljava/lang/Class;
+  protected final int randomInterval;
+    descriptor: I
+  protected net.minecraft.world.entity.LivingEntity target;
+    descriptor: Lnet/minecraft/world/entity/LivingEntity;
+  protected final net.minecraft.world.entity.ai.targeting.TargetingConditions targetConditions;
+    descriptor: Lnet/minecraft/world/entity/ai/targeting/TargetingConditions;
+  public net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal(net.minecraft.world.entity.Mob, java.lang.Class<T>, boolean);
+    descriptor: (Lnet/minecraft/world/entity/Mob;Ljava/lang/Class;Z)V
+
+  public net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal(net.minecraft.world.entity.Mob, java.lang.Class<T>, boolean, net.minecraft.world.entity.ai.targeting.TargetingConditions$Selector);
+    descriptor: (Lnet/minecraft/world/entity/Mob;Ljava/lang/Class;ZLnet/minecraft/world/entity/ai/targeting/TargetingConditions$Selector;)V
+
+  public net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal(net.minecraft.world.entity.Mob, java.lang.Class<T>, boolean, boolean);
+    descriptor: (Lnet/minecraft/world/entity/Mob;Ljava/lang/Class;ZZ)V
+
+  public net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal(net.minecraft.world.entity.Mob, java.lang.Class<T>, int, boolean, boolean, net.minecraft.world.entity.ai.targeting.TargetingConditions$Selector);
+    descriptor: (Lnet/minecraft/world/entity/Mob;Ljava/lang/Class;IZZLnet/minecraft/world/entity/ai/targeting/TargetingConditions$Selector;)V
+
+  public boolean canUse();
+    descriptor: ()Z
+
+  protected net.minecraft.world.phys.AABB getTargetSearchArea(double);
+    descriptor: (D)Lnet/minecraft/world/phys/AABB;
+
+  protected void findTarget();
+    descriptor: ()V
+
+  public void start();
+    descriptor: ()V
+
+  public void setTarget(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)V
+
+  private net.minecraft.world.entity.ai.targeting.TargetingConditions getTargetConditions();
+    descriptor: ()Lnet/minecraft/world/entity/ai/targeting/TargetingConditions;
+
+  private static boolean lambda$findTarget$0(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)Z
+}

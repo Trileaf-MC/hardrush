@@ -1,0 +1,10 @@
+{
+  "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawner",
+  "member": "tickServer",
+  "descriptor": "(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Z)V",
+  "compiler": "1.12.0",
+  "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+  "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-23/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.java",
+  "source_sha256": "a90741d7cead411f354d48646e8621c1f37b7376e9238302531174669a37eb1b",
+  "warnings": []
+}

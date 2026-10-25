@@ -1,0 +1,64 @@
+{
+  "case_id": "case-11",
+  "topic": "T2",
+  "assessable": true,
+  "rubric_scores": {
+    "factual_accuracy": 90,
+    "evidence_quality": 10,
+    "total": 100
+  },
+  "items": [
+    {
+      "id": "A1",
+      "earned": 12,
+      "maximum": 12,
+      "reason": "明确基础ATTACK_DAMAGE为15／15.0，并将固定属性与每次随机命中伤害区别，8+4分。"
+    },
+    {
+      "id": "A2",
+      "earned": 24,
+      "maximum": 24,
+      "reason": "给出A/2.0F+nextInt((int)A)或等价7.5+k，明确k=0…14、7.5至21.5两端可取及15个间隔1的离散小数值，公式、区间和离散性质各8分。"
+    },
+    {
+      "id": "A3",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "明确简单为min(D/2+1,D)，最终4.75至11.75，公式6分、区间8分。"
+    },
+    {
+      "id": "A4",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确普通保持随机结果D，最终7.5至21.5，不缩放3分、区间7分。"
+    },
+    {
+      "id": "A5",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "明确困难为D×1.5／D×3/2，最终11.25至32.25，公式6分、区间8分。"
+    },
+    {
+      "id": "A6",
+      "earned": 16,
+      "maximum": 16,
+      "reason": "明确先读取属性和随机、再由Player.hurtServer缩放，且不能先缩放属性15再随机，得8分；解释mob_attack的非玩家活体实体缩放条件，得4分；明确Player.actuallyHurt浮点生命值减法、不按整点或半颗心取整，得4分。"
+    },
+    {
+      "id": "E1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确Java26.3原版且本地JAR通过服务端包SHA-256校验，得2分；点名IronGolem.createAttributes和doHurtTarget并引用各自证据，得3分；mob_attack、缩放条件及Player.hurtServer均有证据入口，得3分；说明条件和静态／未运行验证边界，得2分。"
+    }
+  ],
+  "major_errors": [],
+  "omissions": [],
+  "citations": [
+    "IronGolem.createAttributes()及属性定义证据",
+    "IronGolem.doHurtTarget()及攻击计算证据",
+    "mob_attack伤害类型数据与缩放条件证据",
+    "Player.hurtServer()玩家难度公式证据",
+    "Player.actuallyHurt()玩家扣血实现证据"
+  ],
+  "notes": "仅按最终答案评分。“15（固定属性）”位于基础属性行，后文明示随机伤害，并未把15误称固定命中伤害。两端可取由列举7.5、8.5、…、21.5及nextInt范围明确表达。"
+}

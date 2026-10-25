@@ -1,0 +1,359 @@
+{
+  "archive": {
+    "path": "sources.tar.gz",
+    "sha256": "bad9b0960e8f92b6fc9f6ed8ecc6eac30e2a9bff4df85169fca63b3394f3f25f",
+    "files": 49,
+    "bytes_uncompressed": 265018
+  },
+  "files": [
+    {
+      "relative_path": ".agents/skills/minecraft-knowledge/SKILL.md",
+      "category": "other_workspace_text",
+      "bytes": 4362,
+      "sha256": "747c8af80cdb40755846454b27d9b7e8637785fd13289e8797b339ceeabc3d7c",
+      "initial_input": true
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSource.txt",
+      "category": "cli_cache",
+      "bytes": 3664,
+      "sha256": "03897452056106a845d541853c64db8cad3527227b626fd617a9cfdcaa66465d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.damagesource.DamageSources.txt",
+      "category": "cli_cache",
+      "bytes": 13877,
+      "sha256": "65292bc2491a63c81bc8b0f9f1aa0e5de4a1a071e13ca51190c1b9e2974c970a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.LivingEntity.txt",
+      "category": "cli_cache",
+      "bytes": 65815,
+      "sha256": "7040817d198f1cc644956fd6cd92b3a27245050cc3675228b98a9a5327a2e327",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.animal.golem.IronGolem.txt",
+      "category": "cli_cache",
+      "bytes": 5452,
+      "sha256": "99e2d2ad1124b350d067f5fdc0007c4f7e42177b59dc0fa816c24e1ea5ec17d0",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.entity.player.Player.txt",
+      "category": "cli_cache",
+      "bytes": 31744,
+      "sha256": "8cc4cd2dd389d6dba68d5744b54d9e477c401022eb6456e1a9e4a2886d50361f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.levelgen.XoroshiroRandomSource.txt",
+      "category": "cli_cache",
+      "bytes": 2758,
+      "sha256": "d846f78014defff87bbef7de7f95bc12ee124f4e9f2f118a8eeb5195ad7b363d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.java",
+      "category": "cli_cache",
+      "bytes": 2022,
+      "sha256": "f869b6f745f14d70fb3d517af232aa4cc2aa495f06c7334e71815ce41c15d58f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.json",
+      "category": "cli_cache",
+      "bytes": 688,
+      "sha256": "4de4641a8aae654ecf27a7934ebb4d349abfdffe02fa82ef9d187878965af335",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/0e97db6893d40fc54be32d5863d26d0bb1ea41c58d7e21b916b3a9d8ddf9e8b8/source.java",
+      "category": "cli_cache",
+      "bytes": 5773,
+      "sha256": "5ddedad96924b3873de31ddd3d2be07e4c55852e8e66adea7cd2141760b10e29",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/0e97db6893d40fc54be32d5863d26d0bb1ea41c58d7e21b916b3a9d8ddf9e8b8/source.json",
+      "category": "cli_cache",
+      "bytes": 685,
+      "sha256": "c77c382ff9c21dde28d80d39aae2eb7cd1a1ee24d04e61136f634fee64b24217",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.java",
+      "category": "cli_cache",
+      "bytes": 1835,
+      "sha256": "57768e741a282383829196777a111139eb39470feecd4b51d37d78082fc72860",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.json",
+      "category": "cli_cache",
+      "bytes": 686,
+      "sha256": "f115c302800d89ed4f986bc9928524baf169bc8335ec68d51232f30348ff9227",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.java",
+      "category": "cli_cache",
+      "bytes": 810,
+      "sha256": "71223359c2a3293d86aaf75ea0d725ebfff720ea3c988284187aa2d37f4bae40",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.json",
+      "category": "cli_cache",
+      "bytes": 680,
+      "sha256": "67df59ad9c83b0a5d5b32c51222cd53f085cf319dddb0ec60835428dbba9b5fb",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.java",
+      "category": "cli_cache",
+      "bytes": 3486,
+      "sha256": "09925083eda0357f59b71ea79d349a2fec81f5b598b7748343beeee90ec762f7",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/396d66bd699ef475c159478728dacdc62ed08c454a720963801f536e6dacb919/source.json",
+      "category": "cli_cache",
+      "bytes": 660,
+      "sha256": "1a5f97dc353de9c25aff5b256a3c24209b04e21c55d3181c2c84172580d1514b",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.java",
+      "category": "cli_cache",
+      "bytes": 583,
+      "sha256": "b179d754f733df04d1f5d2ecb39a9cf482b3a782bc61093a8cbb8450e8f4cf3d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.json",
+      "category": "cli_cache",
+      "bytes": 613,
+      "sha256": "82f752d92d66c44c6f2c639b0ae8b1230dc6c3a5e35db24caa5273d6b5b41f31",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.java",
+      "category": "cli_cache",
+      "bytes": 1615,
+      "sha256": "08e8c7a2f330604ffc887905f67fa3b68af9f3f72bcaeb2c8b8fa680af06888c",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.json",
+      "category": "cli_cache",
+      "bytes": 684,
+      "sha256": "aca0fa75d3cc2f67d63f7a80fa5a6b4646bb1b61cc6c9801c2b60afc72da0ab4",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.java",
+      "category": "cli_cache",
+      "bytes": 2123,
+      "sha256": "17b3f80df5682a7c90ff4e77b5c6b09322f44f678b43233c1ba92a8caea2a0e1",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/6b8d6971e8e30a4ac5bbabdd6a78d32205ee7dcef7e9e07fb7a035d1663bd0be/source.json",
+      "category": "cli_cache",
+      "bytes": 660,
+      "sha256": "2584b0b2307091e06b5f263eac2fcd522904d85b86f2efabaf1467127f41fe7b",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9ceab826a5a0d01ef1ce3c352208365363bd55d3d2a69a985cbd7ebd84c32ddc/source.java",
+      "category": "cli_cache",
+      "bytes": 979,
+      "sha256": "da544032ceb2332cd2f654c670e535a64e42dec431347bcb2000942983064868",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9ceab826a5a0d01ef1ce3c352208365363bd55d3d2a69a985cbd7ebd84c32ddc/source.json",
+      "category": "cli_cache",
+      "bytes": 612,
+      "sha256": "774fbd35e10887149d8ba626236b78c9ac2b0c01e6bb784f4b06cab98f998da0",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.java",
+      "category": "cli_cache",
+      "bytes": 485,
+      "sha256": "6692e161a10a89d0ad3f5cabc14950abcef26fc9cd99d8b5be7a60d8a1dd2b9d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.json",
+      "category": "cli_cache",
+      "bytes": 612,
+      "sha256": "5bf844b5e026abb3fb2c572a8b2cadb962957cc20a94f676d608c8795bce8b26",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.java",
+      "category": "cli_cache",
+      "bytes": 286,
+      "sha256": "a138f2aefd0c96a0b2e27ae04210dcc107f4784d8dc73f9a8e5081b6dc961660",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.json",
+      "category": "cli_cache",
+      "bytes": 690,
+      "sha256": "883af22bb4bec68fb9584cd2f8230bba13418ccf1fc27b7fce3a0c80b70c51ca",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/0dbd8ba7cdacad878737f1f4e2c3ee62db4628d285fe66ca69329f33df116bb5.json",
+      "category": "cli_cache",
+      "bytes": 3848,
+      "sha256": "0dbd8ba7cdacad878737f1f4e2c3ee62db4628d285fe66ca69329f33df116bb5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/189af6b3f7c71aec58a04e0ffa797d06b8bd947f54e8ceca686495b61cf81cf3.json",
+      "category": "cli_cache",
+      "bytes": 1247,
+      "sha256": "189af6b3f7c71aec58a04e0ffa797d06b8bd947f54e8ceca686495b61cf81cf3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/3245fe9f044f32e870049df7f6934c2cbb1fe35c6a56eeb8cb806a7e841b90d5.json",
+      "category": "cli_cache",
+      "bytes": 3530,
+      "sha256": "3245fe9f044f32e870049df7f6934c2cbb1fe35c6a56eeb8cb806a7e841b90d5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/3dfd49166d2756e595a39aa80693683007798479a9fe858147bc964146decc5f.json",
+      "category": "cli_cache",
+      "bytes": 2520,
+      "sha256": "3dfd49166d2756e595a39aa80693683007798479a9fe858147bc964146decc5f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/4e74b331801de1ad48038f2c8786bc610d4120bef3284c44de96d4cddbc6d4a9.json",
+      "category": "cli_cache",
+      "bytes": 3096,
+      "sha256": "4e74b331801de1ad48038f2c8786bc610d4120bef3284c44de96d4cddbc6d4a9",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/5b0b6cc633c5f009f80ff1a9589d1907e9b5af09b7a9842b161b17d6f021213d.json",
+      "category": "cli_cache",
+      "bytes": 2480,
+      "sha256": "5b0b6cc633c5f009f80ff1a9589d1907e9b5af09b7a9842b161b17d6f021213d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/61a386f148bc778f2856099b7579a20d1e6b3946934edf00fb9b52acd6f4c37c.json",
+      "category": "cli_cache",
+      "bytes": 4053,
+      "sha256": "61a386f148bc778f2856099b7579a20d1e6b3946934edf00fb9b52acd6f4c37c",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/6707467618c46348a3bf8f62f602f8d2752ae13f804b4c566e17209ca785af57.json",
+      "category": "cli_cache",
+      "bytes": 1511,
+      "sha256": "6707467618c46348a3bf8f62f602f8d2752ae13f804b4c566e17209ca785af57",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/789ed4bc4639503e26f08458dff6be0d64991f4894eb90d609cbe27fe90fab5f.json",
+      "category": "cli_cache",
+      "bytes": 3400,
+      "sha256": "789ed4bc4639503e26f08458dff6be0d64991f4894eb90d609cbe27fe90fab5f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/7eb0a4984104e7510ed3c18526d2e4ba0c446ef6dd2f67bb3603f37a64937978.json",
+      "category": "cli_cache",
+      "bytes": 1516,
+      "sha256": "7eb0a4984104e7510ed3c18526d2e4ba0c446ef6dd2f67bb3603f37a64937978",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/919de94631716fd6950a3fdbe7ab39ccff0879361a39c0e3e1ad8206b0d085d5.json",
+      "category": "cli_cache",
+      "bytes": 2359,
+      "sha256": "919de94631716fd6950a3fdbe7ab39ccff0879361a39c0e3e1ad8206b0d085d5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/c0a3668e1dcd369b8b1df74b478ccdd78ef8096f1fae35e3531d676a5f9ca256.json",
+      "category": "cli_cache",
+      "bytes": 6356,
+      "sha256": "c0a3668e1dcd369b8b1df74b478ccdd78ef8096f1fae35e3531d676a5f9ca256",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/c62f5e93c0025830f27f3369891e22eea3ca86398e0a61c3d176c212f76b52df.json",
+      "category": "cli_cache",
+      "bytes": 3351,
+      "sha256": "c62f5e93c0025830f27f3369891e22eea3ca86398e0a61c3d176c212f76b52df",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/d44008806478836c8893360fe43fd82abca07c57d6e5315a76709fd3fffcc80d.json",
+      "category": "cli_cache",
+      "bytes": 2787,
+      "sha256": "d44008806478836c8893360fe43fd82abca07c57d6e5315a76709fd3fffcc80d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/e855470a4dac547b6c9f6b53f774fd888ff578b8bb892af2d6958cbdeecd3ce3.json",
+      "category": "cli_cache",
+      "bytes": 2713,
+      "sha256": "e855470a4dac547b6c9f6b53f774fd888ff578b8bb892af2d6958cbdeecd3ce3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/toolchains/java-home.txt",
+      "category": "other_workspace_text",
+      "bytes": 93,
+      "sha256": "0761e9b251763354792a22da0b724cbd6d31bcd657174dd460b114d79579bc60",
+      "initial_input": true
+    },
+    {
+      "relative_path": "gradle.properties",
+      "category": "other_workspace_text",
+      "bytes": 241,
+      "sha256": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc-knowledge.py",
+      "category": "other_workspace_text",
+      "bytes": 35730,
+      "sha256": "c0447daec64d1af3e000bdc9ac036a9cdd98afd05ed0878963517904f53a100e",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc_knowledge_output.py",
+      "category": "other_workspace_text",
+      "bytes": 12627,
+      "sha256": "7c65e2302bd7da8a6e1f21a0202abb64b278cb31232f1e8ec4c54cb18dab6727",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc_knowledge_wiki.py",
+      "category": "other_workspace_text",
+      "bytes": 16621,
+      "sha256": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87",
+      "initial_input": true
+    }
+  ],
+  "skipped": [
+    {
+      "path": "scripts/__pycache__/mc_knowledge_output.cpython-314.pyc",
+      "reason": "credential_or_excluded_path_not_read"
+    }
+  ]
+}

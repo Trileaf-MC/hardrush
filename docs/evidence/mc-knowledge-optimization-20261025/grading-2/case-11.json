@@ -1,0 +1,64 @@
+{
+  "case_id": "case-11",
+  "topic": "T2",
+  "assessable": true,
+  "rubric_scores": {
+    "factual_accuracy": 90,
+    "evidence_quality": 10,
+    "total": 100
+  },
+  "items": [
+    {
+      "id": "A1",
+      "earned": 12,
+      "maximum": 12,
+      "reason": "表格分别列“15（固定属性）”和随机伤害7.5…21.5，并解释读取属性再随机，清楚区分属性与每击伤害；8+4。"
+    },
+    {
+      "id": "A2",
+      "earned": 24,
+      "maximum": 24,
+      "reason": "给出A/2+nextInt((int)A)或7.5+nextInt(15)，k为0…14；明确7.5…21.5两端可取，共15个离散小数值，步长1；8+8+8。"
+    },
+    {
+      "id": "A3",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "简单公式min(D/2+1,D)，最终4.75…11.75；6+8。"
+    },
+    {
+      "id": "A4",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "普通保持D，最终7.5…21.5；3+7。"
+    },
+    {
+      "id": "A5",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "困难D×1.5或D×3/2，最终11.25…32.25；6+8。"
+    },
+    {
+      "id": "A6",
+      "earned": 16,
+      "maximum": 16,
+      "reason": "明确先随机再Player.hurtServer按难度缩放；mob_attack的when_caused_by_living_non_player适用于铁傀儡；普通无额外防御玩家保留浮点伤害，不作整数/半心舍入；8+4+4。"
+    },
+    {
+      "id": "E1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确Java26.3原版服务端JAR及来源；可定位IronGolem.createAttributes/doHurtTarget、mob_attack数据和缩放条件、Player.hurtServer；保留适用条件并明确静态核查非游戏实测；2+3+3+2。"
+    }
+  ],
+  "major_errors": [],
+  "omissions": [],
+  "citations": [
+    "IronGolem.createAttributes",
+    "IronGolem.doHurtTarget",
+    "data/minecraft/damage_type/mob_attack.json",
+    "DamageSource.scalesWithDifficulty / when_caused_by_living_non_player",
+    "Player.hurtServer"
+  ],
+  "notes": "仅依据最终答案评分。离散值公式/枚举已明确端点含义，无需额外列齐15值或重复声明每个端点。未从工具过程补全事实；<workspace>路径盲化不扣分。"
+}

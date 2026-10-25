@@ -1,0 +1,93 @@
+Compiled from "TrialSpawnerConfigs.java"
+public class net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs {
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_BREEZE;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_MELEE_HUSK;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_MELEE_SPIDER;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_MELEE_ZOMBIE;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_RANGED_POISON_SKELETON;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_RANGED_SKELETON;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_RANGED_STRAY;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_SLOW_RANGED_POISON_SKELETON;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_SLOW_RANGED_SKELETON;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_SLOW_RANGED_STRAY;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_SMALL_MELEE_BABY_ZOMBIE;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_SMALL_MELEE_CAVE_SPIDER;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_SMALL_MELEE_SILVERFISH;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  private static final net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys TRIAL_CHAMBER_SMALL_MELEE_SLIME;
+    descriptor: Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;
+  public net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs();
+    descriptor: ()V
+
+  public static void bootstrap(net.minecraft.data.worldgen.BootstrapContext<net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig>);
+    descriptor: (Lnet/minecraft/data/worldgen/BootstrapContext;)V
+
+  private static <T extends net.minecraft.world.entity.Entity> net.minecraft.world.level.SpawnData spawnData(net.minecraft.world.entity.EntityType<T>);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;)Lnet/minecraft/world/level/SpawnData;
+
+  private static <T extends net.minecraft.world.entity.Entity> net.minecraft.world.level.SpawnData customSpawnData(net.minecraft.world.entity.EntityType<T>, java.util.function.Consumer<net.minecraft.nbt.CompoundTag>);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Ljava/util/function/Consumer;)Lnet/minecraft/world/level/SpawnData;
+
+  private static <T extends net.minecraft.world.entity.Entity> net.minecraft.world.level.SpawnData spawnDataWithEquipment(net.minecraft.world.entity.EntityType<T>, net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable>);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/resources/ResourceKey;)Lnet/minecraft/world/level/SpawnData;
+
+  private static <T extends net.minecraft.world.entity.Entity> net.minecraft.world.level.SpawnData customSpawnDataWithEquipment(net.minecraft.world.entity.EntityType<T>, java.util.function.Consumer<net.minecraft.nbt.CompoundTag>, net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable>);
+    descriptor: (Lnet/minecraft/world/entity/EntityType;Ljava/util/function/Consumer;Lnet/minecraft/resources/ResourceKey;)Lnet/minecraft/world/level/SpawnData;
+
+  private static void register(net.minecraft.data.worldgen.BootstrapContext<net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig>, net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfigs$Keys, net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig, net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig);
+    descriptor: (Lnet/minecraft/data/worldgen/BootstrapContext;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfigs$Keys;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig;)V
+
+  private static net.minecraft.resources.ResourceKey<net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig> registryKey(java.lang.String);
+    descriptor: (Ljava/lang/String;)Lnet/minecraft/resources/ResourceKey;
+
+  private static net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig$Builder trialChamberMeleeOminous();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig$Builder;
+
+  private static net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig$Builder trialChamberSlowRanged();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig$Builder;
+
+  private static net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig$Builder trialChamberBase();
+    descriptor: ()Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig$Builder;
+
+  private static net.minecraft.world.entity.EquipmentTable lambda$customSpawnDataWithEquipment$0(net.minecraft.resources.ResourceKey);
+    descriptor: (Lnet/minecraft/resources/ResourceKey;)Lnet/minecraft/world/entity/EquipmentTable;
+
+  private static void lambda$spawnDataWithEquipment$0(net.minecraft.nbt.CompoundTag);
+    descriptor: (Lnet/minecraft/nbt/CompoundTag;)V
+
+  private static void lambda$spawnData$0(net.minecraft.nbt.CompoundTag);
+    descriptor: (Lnet/minecraft/nbt/CompoundTag;)V
+
+  private static void lambda$bootstrap$5(net.minecraft.nbt.CompoundTag);
+    descriptor: (Lnet/minecraft/nbt/CompoundTag;)V
+
+  private static void lambda$bootstrap$4(net.minecraft.nbt.CompoundTag);
+    descriptor: (Lnet/minecraft/nbt/CompoundTag;)V
+
+  private static void lambda$bootstrap$3(net.minecraft.nbt.CompoundTag);
+    descriptor: (Lnet/minecraft/nbt/CompoundTag;)V
+
+  private static void lambda$bootstrap$2(net.minecraft.nbt.CompoundTag);
+    descriptor: (Lnet/minecraft/nbt/CompoundTag;)V
+
+  private static void lambda$bootstrap$1(net.minecraft.nbt.CompoundTag);
+    descriptor: (Lnet/minecraft/nbt/CompoundTag;)V
+
+  private static void lambda$bootstrap$0(net.minecraft.nbt.CompoundTag);
+    descriptor: (Lnet/minecraft/nbt/CompoundTag;)V
+
+  static {};
+    descriptor: ()V
+}

@@ -1,0 +1,38 @@
+**Java 版 26.3 中，骷髅在细雪中约需“7 秒前置阶段＋15 秒转化阶段”才会成为流浪者；野生狼和站立的驯服狼都会主动攻击流浪者。**
+
+版本已核实：这里的 **26.3 是 2026 年 9 月 15 日发布的 Java 正式版**。以下机制直接核对了该版官方程序包，并非仅根据旧版资料推测。[官方发布说明](https://www.minecraft.net/en-us/article/minecraft-java-edition-26-3)、[官方版本元数据及下载地址](https://piston-meta.mojang.com/v1/packages/61fff1316bd50312624a858bbb5eb18fa45208ed/26.3.json)。
+
+**1．骷髅转化为流浪者的完整过程**
+
+以下秒数按正常 **20 游戏刻／秒**换算，并假定实体持续获得更新、没有中途死亡或离开细雪。
+
+| 阶段 | 行为 | 代码中的时间参数 |
+|---|---|---|
+| 接触细雪 | 身体碰撞箱进入细雪，获得“处于细雪中”的标记；不要求头部完全埋入 | 开始累计 |
+| 前置阶段 | 仍是普通骷髅，累计在细雪中的时间 | 140 游戏刻，约 7 秒 |
+| 转化阶段 | 开始颤抖，继续保持骷髅形态并倒计时 | 300 游戏刻，约 15 秒 |
+| 完成 | 原骷髅被流浪者替换，原有装备转移到流浪者身上；非静音实体触发转化音效 | 合计约 22 秒 |
+
+直接依据是 26.3 的 `Skeleton` 构造器：它为转化追踪器设置了 **140、300** 两个参数；`isShaking()` 与“正在转化”状态绑定。可查看本次从官方包提取的 [Skeleton 字节码](/Users/leifwebber/projects/minecraft/hardrush/docs/evidence/mc-knowledge-experiment-20261025/runs/run-02/sources/01-Skeleton.bytecode.txt:3) 和 [ConversionTracker 字节码](/Users/leifwebber/projects/minecraft/hardrush/docs/evidence/mc-knowledge-experiment-20261025/runs/run-02/sources/02-ConversionTracker.bytecode.txt:41)。官方历史说明也明确写的是 **7 秒后开始转化**。[21w13a 官方说明](https://www.minecraft.net/en-us/article/minecraft-snapshot-21w13a)。
+
+还需注意：
+
+- **两个阶段都必须保持在细雪中。**离开后，前置计时重置，正在进行的转化也会取消；重新进入须重新计时。
+- **普通骷髅本身不受细雪冻结伤害。**转化使用独立计时，不要求先受到冻伤。
+- **皮革装备不会直接阻止转化。**皮靴可以让它站在细雪表面、避免陷入；但若身体仍进入细雪并触发上述标记，仍会转化。依据是条件只检查 `isInPowderSnow`，没有检查皮革装备或普通冻结进度。[Skeleton 的判定代码](/Users/leifwebber/projects/minecraft/hardrush/docs/evidence/mc-knowledge-experiment-20261025/runs/run-02/sources/01-Skeleton.bytecode.txt:79)、[细雪标记与普通冻结判定的先后关系](/Users/leifwebber/projects/minecraft/hardrush/docs/evidence/mc-knowledge-experiment-20261025/runs/run-02/sources/03-InsideBlockEffectType.bytecode.txt:56)。
+
+**精确到游戏刻时，“约 22 秒”不能写成严格 440 刻。**26.3 的后段倒计时从 300 开始，每次先减一，直到小于零才完成，因此实际经历 **301 次更新**。通常已经在细雪外更新过的骷髅，前置计数被置为 −1，需要 **141 次更新**达到 140；合计为 **442 次有效更新，约 22.10 秒**。新建实体的初始计数、接触细雪的时刻和更新边界会影响起算；卡顿或实体停止更新也会延长现实等待时间。此处是代码推导，未作游戏内计时实测。
+
+**2．野生狼和驯服狼会怎样对待流浪者？**
+
+| 狼的状态 | 未受挑衅时，是否主动攻击流浪者？ |
+|---|---|
+| 自然生成、未驯服 | **会。**不需要玩家先攻击流浪者，也不需要流浪者先伤害狼 |
+| 已驯服、站立且可正常行动 | **会。**无需主人下达攻击指令 |
+| 已驯服、奉命坐下并正常保持坐姿 | **通常不会主动起身追杀。**坐下行为阻止追击所需的移动和跳跃 |
+
+代码上的关键区别是：狼对某些动物使用带“未驯服”限制的 `NonTameRandomTargetGoal`，但对骷髅类使用的是普通的 **`NearestAttackableTargetGoal<AbstractSkeleton>`**，没有未驯服限制；而 **`Stray` 正是 `AbstractSkeleton` 的子类**。因此，该目标规则同时覆盖野生狼和驯服狼，也不区分流浪者是自然生成还是由骷髅转化而来。[Wolf.registerGoals](/Users/leifwebber/projects/minecraft/hardrush/docs/evidence/mc-knowledge-experiment-20261025/runs/run-02/sources/04-Wolf.bytecode.txt:22)、[Stray 的继承关系](/Users/leifwebber/projects/minecraft/hardrush/docs/evidence/mc-knowledge-experiment-20261025/runs/run-02/sources/05-Stray.bytecode.txt:1)。
+
+**刚被驯服的狼会自动被设为坐下**，所以刚喂骨头后没有追打附近流浪者，并不代表驯服狼没有这项主动攻击机制。另外，狼自身受到有效伤害时会解除坐下命令，可能起身反击；坐下并非绝对禁止战斗。[驯服后的状态设置](/Users/leifwebber/projects/minecraft/hardrush/docs/evidence/mc-knowledge-experiment-20261025/runs/run-02/sources/04-Wolf.bytecode.txt:1305)、[受伤处理](/Users/leifwebber/projects/minecraft/hardrush/docs/evidence/mc-knowledge-experiment-20261025/runs/run-02/sources/04-Wolf.bytecode.txt:984)。
+
+以上结论对 **Java 26.3 原版代码**有直接依据；具体多久发现目标、能否靠近并咬到，还取决于索敌范围、地形和其他行为的优先级。本次仅进行了公开资料检索和官方包静态检查，未启动游戏客户端／服务器；下载哈希及复核入口保存在 [核查来源记录](/Users/leifwebber/projects/minecraft/hardrush/docs/evidence/mc-knowledge-experiment-20261025/runs/run-02/sources/06-provenance.txt)。

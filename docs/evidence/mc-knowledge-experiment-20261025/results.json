@@ -1,0 +1,191 @@
+[
+  {
+    "state": "completed",
+    "exit_code": 0,
+    "start_unix": 1792910361.044468,
+    "end_unix": 1792910611.4049852,
+    "elapsed_seconds": 250.361,
+    "id": "run-01",
+    "group": "A",
+    "repeat": 1,
+    "wave": 1,
+    "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-01/workspace",
+    "prompt_sha256": "b76bf54f353de34a3896d80b3da6b8ac8aee5a5eabc0a03789a1b3c6806379e0",
+    "thread_id": "01a171c9-0356-75b0-9ba6-56e5052e7ffb",
+    "usage": {
+      "input_tokens": 728880,
+      "cached_input_tokens": 658816,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 7925,
+      "reasoning_output_tokens": 1624
+    }
+  },
+  {
+    "state": "completed",
+    "exit_code": 0,
+    "start_unix": 1792910361.0445051,
+    "end_unix": 1792910598.5888908,
+    "elapsed_seconds": 237.544,
+    "id": "run-02",
+    "group": "C",
+    "repeat": 1,
+    "wave": 1,
+    "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-02/workspace",
+    "prompt_sha256": "387f6ce768f8b239cffccf60728a03f939a9f6ba0750486574b1881a0bf3a8d4",
+    "thread_id": "01a171c9-0356-7a81-b017-d4ba4180c7ff",
+    "usage": {
+      "input_tokens": 711754,
+      "cached_input_tokens": 629504,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 7208,
+      "reasoning_output_tokens": 1517
+    }
+  },
+  {
+    "state": "completed",
+    "exit_code": 0,
+    "start_unix": 1792910361.044401,
+    "end_unix": 1792910618.723252,
+    "elapsed_seconds": 257.679,
+    "id": "run-03",
+    "group": "B",
+    "repeat": 1,
+    "wave": 1,
+    "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-03/workspace",
+    "prompt_sha256": "bfdc677f86a54b928282455fc1cccb1a60c04968a393c5386d4d02604792ea70",
+    "thread_id": "01a171c9-0356-77d2-91a4-aab621ad9f20",
+    "usage": {
+      "input_tokens": 745429,
+      "cached_input_tokens": 651264,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 7815,
+      "reasoning_output_tokens": 1106
+    }
+  },
+  {
+    "state": "completed",
+    "exit_code": 0,
+    "start_unix": 1792910618.7296891,
+    "end_unix": 1792910968.36901,
+    "elapsed_seconds": 349.639,
+    "id": "run-04",
+    "group": "B",
+    "repeat": 2,
+    "wave": 2,
+    "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-04/workspace",
+    "prompt_sha256": "bfdc677f86a54b928282455fc1cccb1a60c04968a393c5386d4d02604792ea70",
+    "thread_id": "01a171cc-f13e-7193-b53b-04e04df7903c",
+    "usage": {
+      "input_tokens": 1253556,
+      "cached_input_tokens": 1180032,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 10992,
+      "reasoning_output_tokens": 2066
+    }
+  },
+  {
+    "state": "completed",
+    "exit_code": 0,
+    "start_unix": 1792910618.729872,
+    "end_unix": 1792910996.0873542,
+    "elapsed_seconds": 377.357,
+    "id": "run-05",
+    "group": "C",
+    "repeat": 2,
+    "wave": 2,
+    "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-05/workspace",
+    "prompt_sha256": "387f6ce768f8b239cffccf60728a03f939a9f6ba0750486574b1881a0bf3a8d4",
+    "thread_id": "01a171cc-f13e-7ed2-9433-12b179884ca0",
+    "usage": {
+      "input_tokens": 873091,
+      "cached_input_tokens": 751616,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 11013,
+      "reasoning_output_tokens": 3372
+    }
+  },
+  {
+    "state": "completed",
+    "exit_code": 0,
+    "start_unix": 1792910618.730489,
+    "end_unix": 1792910873.0560799,
+    "elapsed_seconds": 254.326,
+    "id": "run-06",
+    "group": "A",
+    "repeat": 2,
+    "wave": 2,
+    "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-06/workspace",
+    "prompt_sha256": "b76bf54f353de34a3896d80b3da6b8ac8aee5a5eabc0a03789a1b3c6806379e0",
+    "thread_id": "01a171cc-f13e-7c62-915d-3f16c5023122",
+    "usage": {
+      "input_tokens": 560742,
+      "cached_input_tokens": 495744,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 7135,
+      "reasoning_output_tokens": 1855
+    }
+  },
+  {
+    "state": "completed",
+    "exit_code": 0,
+    "start_unix": 1792910996.096122,
+    "end_unix": 1792911251.3609989,
+    "elapsed_seconds": 255.265,
+    "id": "run-07",
+    "group": "A",
+    "repeat": 3,
+    "wave": 3,
+    "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-07/workspace",
+    "prompt_sha256": "b76bf54f353de34a3896d80b3da6b8ac8aee5a5eabc0a03789a1b3c6806379e0",
+    "thread_id": "01a171d2-b35e-7593-93ec-2354dc8e7895",
+    "usage": {
+      "input_tokens": 657297,
+      "cached_input_tokens": 591104,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 7215,
+      "reasoning_output_tokens": 1846
+    }
+  },
+  {
+    "state": "completed",
+    "exit_code": 0,
+    "start_unix": 1792910996.096243,
+    "end_unix": 1792911237.363314,
+    "elapsed_seconds": 241.267,
+    "id": "run-08",
+    "group": "B",
+    "repeat": 3,
+    "wave": 3,
+    "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-08/workspace",
+    "prompt_sha256": "bfdc677f86a54b928282455fc1cccb1a60c04968a393c5386d4d02604792ea70",
+    "thread_id": "01a171d2-b35e-7163-9cd8-aa27942e19df",
+    "usage": {
+      "input_tokens": 664978,
+      "cached_input_tokens": 596480,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 7965,
+      "reasoning_output_tokens": 1702
+    }
+  },
+  {
+    "state": "completed",
+    "exit_code": 0,
+    "start_unix": 1792910996.096172,
+    "end_unix": 1792911342.0412748,
+    "elapsed_seconds": 345.945,
+    "id": "run-09",
+    "group": "C",
+    "repeat": 3,
+    "wave": 3,
+    "workspace": "/private/tmp/hardrush-mc-experiment-20261025/run-09/workspace",
+    "prompt_sha256": "387f6ce768f8b239cffccf60728a03f939a9f6ba0750486574b1881a0bf3a8d4",
+    "thread_id": "01a171d2-b35e-76e0-9713-bb216207858d",
+    "usage": {
+      "input_tokens": 979384,
+      "cached_input_tokens": 889216,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 9517,
+      "reasoning_output_tokens": 2337
+    }
+  }
+]

@@ -1,0 +1,5 @@
+Compiled from "DebugValueSource.java"
+public interface net.minecraft.util.debug.DebugValueSource {
+  public abstract void registerDebugValues(net.minecraft.server.level.ServerLevel, net.minecraft.util.debug.DebugValueSource$Registration);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/util/debug/DebugValueSource$Registration;)V
+}

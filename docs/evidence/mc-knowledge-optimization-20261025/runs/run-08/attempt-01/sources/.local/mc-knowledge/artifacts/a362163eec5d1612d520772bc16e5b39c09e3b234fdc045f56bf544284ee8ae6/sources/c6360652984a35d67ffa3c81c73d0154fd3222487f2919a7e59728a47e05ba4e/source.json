@@ -1,0 +1,10 @@
+{
+  "class": "net.minecraft.world.entity.ai.targeting.TargetingConditions",
+  "member": null,
+  "descriptor": null,
+  "compiler": "1.12.0",
+  "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+  "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/c6360652984a35d67ffa3c81c73d0154fd3222487f2919a7e59728a47e05ba4e/source.java",
+  "source_sha256": "bbff01bdb3d5da357c84d7f936c91b9fee8b835c92a563b5015051f01107f8ba",
+  "warnings": []
+}

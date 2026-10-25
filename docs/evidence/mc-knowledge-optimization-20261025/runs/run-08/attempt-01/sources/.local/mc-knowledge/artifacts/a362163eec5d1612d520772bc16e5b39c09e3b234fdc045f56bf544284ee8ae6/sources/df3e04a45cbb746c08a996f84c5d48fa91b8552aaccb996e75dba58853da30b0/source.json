@@ -1,0 +1,10 @@
+{
+  "class": "net.minecraft.world.entity.ConversionParams",
+  "member": null,
+  "descriptor": null,
+  "compiler": "1.12.0",
+  "compiler_sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d",
+  "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-08/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/df3e04a45cbb746c08a996f84c5d48fa91b8552aaccb996e75dba58853da30b0/source.java",
+  "source_sha256": "0589524df2eabdf30cfa906dc6f71c8922c777f4a8a98a43295f0ee9d6f4773f",
+  "warnings": []
+}

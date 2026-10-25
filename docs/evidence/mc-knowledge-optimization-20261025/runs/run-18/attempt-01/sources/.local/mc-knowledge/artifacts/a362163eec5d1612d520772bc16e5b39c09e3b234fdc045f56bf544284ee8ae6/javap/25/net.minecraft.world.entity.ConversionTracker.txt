@@ -1,0 +1,63 @@
+Compiled from "ConversionTracker.java"
+public class net.minecraft.world.entity.ConversionTracker<M extends net.minecraft.world.entity.Mob> {
+  private static final int NOT_CONVERTING;
+    descriptor: I
+  private static final int DEFAULT_AFFLICTION_TIME;
+    descriptor: I
+  private final M mob;
+    descriptor: Lnet/minecraft/world/entity/Mob;
+  private final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Boolean> conversionId;
+    descriptor: Lnet/minecraft/network/syncher/EntityDataAccessor;
+  private final java.util.function.Supplier<net.minecraft.world.entity.EntityType<? extends M>> convertsTo;
+    descriptor: Ljava/util/function/Supplier;
+  private final java.util.function.Supplier<java.lang.Integer> conversionSound;
+    descriptor: Ljava/util/function/Supplier;
+  private final java.util.function.BooleanSupplier isAfflicted;
+    descriptor: Ljava/util/function/BooleanSupplier;
+  private final java.lang.String afflictionTimeTag;
+    descriptor: Ljava/lang/String;
+  private final int totalAfflictionTime;
+    descriptor: I
+  private final java.lang.String conversionTimeTag;
+    descriptor: Ljava/lang/String;
+  private final int totalConversionTime;
+    descriptor: I
+  private final java.util.function.BiConsumer<M, net.minecraft.server.level.ServerLevel> postConversionStep;
+    descriptor: Ljava/util/function/BiConsumer;
+  private int afflictionTime;
+    descriptor: I
+  private int conversionTime;
+    descriptor: I
+  public net.minecraft.world.entity.ConversionTracker(M, net.minecraft.network.syncher.EntityDataAccessor<java.lang.Boolean>, java.util.function.Supplier<net.minecraft.world.entity.EntityType<? extends M>>, java.util.function.Supplier<java.lang.Integer>, java.util.function.BooleanSupplier, java.lang.String, int, java.lang.String, int, java.util.function.BiConsumer<M, net.minecraft.server.level.ServerLevel>);
+    descriptor: (Lnet/minecraft/world/entity/Mob;Lnet/minecraft/network/syncher/EntityDataAccessor;Ljava/util/function/Supplier;Ljava/util/function/Supplier;Ljava/util/function/BooleanSupplier;Ljava/lang/String;ILjava/lang/String;ILjava/util/function/BiConsumer;)V
+
+  public void tick();
+    descriptor: ()V
+
+  public boolean isConverting();
+    descriptor: ()Z
+
+  private void setConverting(boolean);
+    descriptor: (Z)V
+
+  public void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueOutput;)V
+
+  public void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput);
+    descriptor: (Lnet/minecraft/world/level/storage/ValueInput;)V
+
+  private void doConversion(net.minecraft.server.level.ServerLevel);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;)V
+
+  public void startConversion(int);
+    descriptor: (I)V
+
+  public void setAfflictionTime(int);
+    descriptor: (I)V
+
+  public void setConversionTime(int);
+    descriptor: (I)V
+
+  private void lambda$doConversion$0(net.minecraft.server.level.ServerLevel, net.minecraft.world.entity.Mob);
+    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/Mob;)V
+}

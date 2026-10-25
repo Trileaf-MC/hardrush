@@ -1,0 +1,290 @@
+[
+  {
+    "sample_id": "case-03-01",
+    "tool_output_index": 1,
+    "start_token": 1749,
+    "end_token": 1877,
+    "before": " | Added sulfur cubes, which are immune to freezing only if they absorbed a block.\\nUpcoming Bedrock Edition\\n---\\n26.60ExperimentDrop 4 of 2026  | Preview 26.60.29  | Zombies and husks now convert into frostbites when standing in powder snow.\\",
+    "target": "n--------------------------------------------------------------------------------\\nMinecraft Java Edition 26.3 | Minecraft (https://www.minecraft.net/en-us/article/minecraft-java-edition-26-3)\\nciteturn0search2 [wordlim: 200] Published: last month; Crawled: 2 days ago; # Minecraft Java Edition 26.3\\n\\nImage: Efe is sitting on a cushion in front of a camp fire in an abandoned camp in a dappled forest.\\n\\nNews\\n\\nImage: Java Team\\n\\nWritten By\\n    Java Team\\nPublished\\n    9/15",
+    "after": "/26\\n\\n# Minecraft Java Edition 26.3\\n\\nMinecraft Java 26.3 Released\\n\\nWilderness Bound is out now in Minecraft Java Edition! Pack your supplies and set off on an expedition into the dappled forest where the trails end and adventure begins. Seek out abandoned camps, build out"
+  },
+  {
+    "sample_id": "case-03-02",
+    "tool_output_index": 1,
+    "start_token": 2974,
+    "end_token": 3102,
+    "before": " can no longer be zoomed out, neither in a Crafting Table nor at a Cartography Table\\n    * Buried Treasure Maps could previously be zoomed out at both\\n    * Explorer Maps could previously be zoomed out at a Cartography Table\\n    * Only maps in the #minecraft:extendable_maps",
+    "target": " tag can be zoomed out\\n  * Map and Empty Map have new icons\\n\\n### UI\\n\\n  * Removed the Raw Input mouse setting\\n    * Mouse input now always uses relative mouse mode while playing in-game\\n  * Key bindings now use physical keys instead of keyboard-layout-specific key codes\\n  * Borderless Fullscreen is now the default fullscreen mode\\n  * Switching between Borderless and Exclusive Fullscreen no longer requires restarting the game\\n  * The cursor is now confined to the window while Exclusive Fullscreen is active\\n  * The minimum window size is now 320 by 240 pixels\\n  * On mac",
+    "after": "OS, holding a key while entering text now displays the native accent and candidate popup\\n  * On Linux systems, the game will now use and prefer Wayland natively if available\\n  * Fixed an issue where Realm owners could not select automatic region preference as their Realm region\\n  * Added a \\\"Quit Shortcuts"
+  },
+  {
+    "sample_id": "case-03-03",
+    "tool_output_index": 1,
+    "start_token": 5593,
+    "end_token": 5721,
+    "before": " (https://www.reddit.com/r/Minecraft/comments/1wvi7c8/263_is_super_laggy_help/)\\nciteturn0reddit16 [wordlim: 200] Published: 3 weeks ago; 26.3 java has been",
+    "target": " super crazy laggy for me! ... * Upvote this comment if this is a good quality post that fits the purpose of r/Minecraft\\n--------------------------------------------------------------------------------\\n[PSA] [Java] Minecraft 26.3 Released! (https://www.reddit.com/r/MinecraftHelp/comments/1wh39m4/psa_java_minecraft_263_released/)\\nciteturn0reddit17 [wordlim: 200] Published: last month; A new version of Minecraft Java Edition is now available!**Version:** 26.3\\n--------------------------------------------------------------------------------\\nPersever",
+    "after": "ance - SMP JAVA 26.3 (https://www.reddit.com/r/MinecraftServer/comments/1xeuxud/perseverance_smp_java_263/)\\nciteturn0reddit18 [wordlim: 200] Published: today; it's all"
+  },
+  {
+    "sample_id": "case-03-04",
+    "tool_output_index": 1,
+    "start_token": 8163,
+    "end_token": 8291,
+    "before": "917,\"exit_code\":0,\"original_token_count\":211,\"output\":\"<workspace>\\n/Users/leifwebber/.gradle/caches/modules-2/files-2.1/org.vineflower/vineflower/1.",
+    "target": "12.0/85570609a0a5941a7d2918b6260b209de810f66f/vineflower-1.12.0.jar\\n/Users/leifwebber/.gradle/caches/modules-2/files-2.1/org.vineflower/vineflower/1.12.0/1ab075854a14a0d052979a991f7b234860bdb49a/vineflower-1.12.0.pom\\n/Users/leifwebber/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/m",
+    "after": "inecraft-merged-deobf/26.3/minecraft-merged-deobf-26.3.pom\\n/Users/leifwebber/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged-deobf/26.3/minecraft-merged-deobf"
+  },
+  {
+    "sample_id": "case-03-05",
+    "tool_output_index": 2,
+    "start_token": 1116,
+    "end_token": 1244,
+    "before": "L64:     * Minecraft Education\\nL65: \\nL66: Games\\nL67: ### Minecraft Education\\nL68: \\nL69: 【18†Minecraft Education Unlock a world of learning at school and home!†education.minecraft.net】\\nL70: \\nL71: 【",
+    "target": "19†Bring STEM to Life Try to survive while you explore five incredible biomes.†education.minecraft.net】\\nL72: \\nL73: 【20†Explore Online Safety Dive into digital citizenship skills with new worlds and learning resources.†aka.ms】\\nL74:       * 【21†Download Demo†education.minecraft.net】\\nL75:       * 【22†For Parents†education.minecraft.net】\\nL76:       * 【23†For Educators†education.minecraft.net】\\nL77:       * 【24†How to Buy†education.minecraft.net】\\nL78",
+    "after": ": \\nL79:     * 【25†Download Minecraft】\\nL80:     * 【26†Redeem a Gift Code】\\nL81: \\nL82:   * Shop\\nL83: \\nL84: Back\\nL85: ## Shop\\nL86: \\"
+  },
+  {
+    "sample_id": "case-03-06",
+    "tool_output_index": 2,
+    "start_token": 2811,
+    "end_token": 2939,
+    "before": "nL227:       * 【35†Realms Tutorials】\\nL228:       * 【65†How to Find Minecraft Servers】\\nL229:       * 【6†Try Minecraft Free】\\nL230: \\nL231:     * Follow Minecraft\\nL232: \\nL",
+    "target": "233: Community\\nL234: ### Follow Minecraft\\nL235: \\nL236: 【66†YouTube Subscribe to the official Minecraft YouTube channel for updates, original series, and more!†youtube.com】\\nL237: \\nL238: 【67†Discord Join the official Minecraft Discord server to share your creations, join build contests, and take part in community activities!†discordapp.com】\\nL239: \\nL240: 【68†TikTok Follow the official Minecraft TikTok for news, updates, and fan creations!†www.tiktok.com】\\nL241:      ",
+    "after": " * 【69†WhatsApp†aka.ms】\\nL242:       * 【70†Instagram†www.instagram.com】\\nL243:       * 【71†X†x.com】\\nL244:       * 【72†Spotify†open.spotify.com】\\nL245: \\n"
+  },
+  {
+    "sample_id": "case-03-07",
+    "tool_output_index": 2,
+    "start_token": 6061,
+    "end_token": 6189,
+    "before": "81†Image: Profile】\\nL491: \\nL492:     * 【82†Profile】\\nL493:     * 【83†Sign in】\\nL494:     * 【84†Create account†sisu.xboxlive.com】\\nL495:     * 【",
+    "target": "25†Download】\\nL496:     * 【26†Redeem】\\nL497:     * Sign out\\nL498:     * 【85†Image】\\nL499: \\nL500: -\\nL501: \\nL502: 【86†Image: Efe is sitting on a cushion in front of a camp fire in an abandoned camp in a dappled forest.】\\nL503: \\nL504: News\\nL505: \\nL506: 【87†Image: Java Team】\\nL507: \\nL508: Written By",
+    "after": "\\nL509:     Java Team\\nL510: Published\\nL511:     9/15/26\\nL512: # Minecraft Java Edition 26.3\\nL513: \\nL514: Minecraft Java 26.3 Released\\nL515: \\nL516: Wilderness Bound is out"
+  },
+  {
+    "sample_id": "case-03-08",
+    "tool_output_index": 2,
+    "start_token": 8035,
+    "end_token": 8163,
+    "before": " Forest\\nL638:   * Added maps for the following structures:\\nL639:     * Ancient City\\nL640:     * Trial Chambers\\nL641:     * Mineshaft\\nL642:     * Desert Pyramid\\nL643:     * Jungle Pyramid\\nL644:     * Warm Ocean Ruins",
+    "target": "\\nL645:     * Woodland Mansion\\nL646: ### Realms\\nL647:   * Realm owners can now create and manage Invite Codes\\nL648:     * Each Realm can have up to five Invite Codes\\nL649:     * Invite Codes can be configured to be active/inactive and deleted\\nL650:     * The expiration of an Invite Code can also be configured\\nL651:   * Players can now easily join a Realm by entering an Invite Code in a new \\\"Join Realm\\\" screen, found in the Realms main menu\\nL652:   * Added render distance and simulation distance sliders to the",
+    "after": " Realm configuration settings\\nL653:   * Added a new Realms introduction screen showcasing Realms key features\\nL654:     * Accessible from the \\\"Add Realm\\\" button\\nL655:     * Automatically shown when entering Realms if a trial is available\\nL656: 【89†Image】\\nL"
+  },
+  {
+    "sample_id": "case-03-09",
+    "tool_output_index": 2,
+    "start_token": 8769,
+    "end_token": 8897,
+    "before": "\\nL686:     * Desert Pyramid Map\\nL687:     * Abandoned Camp Map\\nL688:     * Warm Ocean Ruins Map\\nL689:   * These items cannot be obtained from the Creative inventory\\nL690:   * Existing Explorer Maps in old worlds are converted to the matching new item",
+    "target": " on load\\nL691:   * The following Explorer Maps have been renamed to have more consistent naming\\nL692:     * Ocean Monument Explorer Map → Ocean Monument Map\\nL693:     * Swamp Hut Explorer Map → Swamp Hut Map\\nL694:     * Trial Chambers Explorer Map → Buried Trial Chambers Map\\nL695:     * Woodland Mansion Explorer Map → Woodland Mansion Map\\nL696:     * Jungle Pyramid Explorer Map → Jungle Pyramid Map\\nL697:   * Explorer Maps can still be cloned in a Crafting Table, and the copies keep their own item type\\n\"}\n{\"i\":1,\"status",
+    "after": "\":\"fulfilled\",\"value\":{\"chunk_id\":\"5bbbb7\",\"wall_time_seconds\":2.417077833,\"exit_code\":1,\"original_token_count\":2180,\"output\":\"/Users/leifwebber/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged-deob"
+  },
+  {
+    "sample_id": "case-03-10",
+    "tool_output_index": 2,
+    "start_token": 11638,
+    "end_token": 11766,
+    "before": "be3ce3f4255b\\n/Users/leifwebber/.gradle/caches/fabric-loom/assets/objects/8e/8eaa122d6c96f2d5fef601926aa930cef0c5f81c\\n/Users/leifwebber/.",
+    "target": "gradle/caches/fabric-loom/assets/objects/8e/8e4ccaf6ce579b9951feacb9bfb8241ac1d94e48\\n/Users/leifwebber/.gradle/caches/fabric-loom/assets/objects/8e/8ea7441d6e84805615159a7d87f2aa01d9f4c1f1\\n/Users/leifwebber/.gradle/caches/fabric-loom/assets/objects/8e/8ee9d608f0bbb2d0513af7b",
+    "after": "fc1b55e591ada05ea\\n/Users/leifwebber/.gradle/caches/fabric-loom/assets/objects/8e/8edd840599bbd1e35f7fa3857d8a9f7d43e697d6\\n/Users/leifweb"
+  },
+  {
+    "sample_id": "case-03-11",
+    "tool_output_index": 3,
+    "start_token": 1191,
+    "end_token": 1319,
+    "before": " to another dimension by pushing them into the portal first.\n\nTamed wolves do not teleport if:\n\n  * The wolf has been ordered to sit.\n    * Exception: The wolf is likely to teleport if it is injured while sitting (it no longer sits after teleporting). An example is if a wolf that is sitting is",
+    "target": " hit by another player, it teleports to their owner.\n    * Exception: If the wolf is in a loaded chunk, and the player gets damaged by a mob, there's a chance for the wolf to stop sitting, causing them to teleport if the player is far away, then attack the player's attacker and sit down afterward.\n  * The wolf is angry, e.g. if it is chasing after a skeleton. This can lead to wolves standing and jumping in one place, such as over a cavern if a skeleton is near. The wolf teleports once the skeleton is killed.\n  * The wolf is in a minecart or a boat",
+    "after": ".\n  * The wolf has been attached to a fence post with a lead.\n  * The wolf is in an unloaded chunk, which can occur if the player moves away too quickly for the chunk to remain loaded (such as when flying with an elytra or travelling by boat on an ice highway).\n\nWolf teleportation"
+  },
+  {
+    "sample_id": "case-03-12",
+    "tool_output_index": 3,
+    "start_token": 2837,
+    "end_token": 2965,
+    "before": " equipped items. Tamed wolves are always passive to the player if the player is their owner, even if the player hits them or kills a tamed wolf on the same team. Tamed wolves teleport to the owner if they take damage.‌^{[JE only]} Mobs killed by tamed wolves give their owner",
+    "target": " kill credit, triggering advancements and updating statistics.\n\nA wolf becomes hostile to a player or other mob that attacks it unless the attacker is the wolf's owner, or is otherwise on the same team, or if killed in one hit. It also causes wild wolves and standing tamed wolves in a 33×21×33 cuboid centered on the attacked wolf to become hostile to the attacker, allowing coordination for attacks and team hunts (only in wild wolves).\n\nIn Java Edition, any tamed wolf attacked by a player/mob causes all standing wolves on that team to attack that player/mob who attacked the tamed wolf.\n\nSkeletons and",
+    "after": " their variants, foxes, baby turtles and passive rabbits actively avoid both tamed and wild wolves. Killer rabbits‌^{[JE only]} attack wolves actively. Sheep ignore wolves, but flee when attacked by one. Sheep ignore tamed wolves but also do not flee from them.\n\nWhen a player within 8 blocks holds"
+  },
+  {
+    "sample_id": "case-03-13",
+    "tool_output_index": 3,
+    "start_token": 6083,
+    "end_token": 6211,
+    "before": "amed wolves outside of my base. ... I have a bunch of two Star wolves and every time I come home to base I find wolf pelts lying around and less wolves.\n--------------------------------------------------------------------------------\nMinecraft® For Dummies® (https://filedn.com/lXdPRR7Cm4sS1CrBdrFaEk",
+    "target": "X/School/Zenith/Minecraft/minecraft-for-dummies-jacob-cordeiro-jesse-stay--annas-archive--libgenrs-nf-1333714.pdf)\nciteturn2search16 [wordlim: 200] Published: 1.4 years ago; A dog (which is a tamed wolf) is your noble companion. ... dog to kill a skeleton. ... Minecraft has 35 horse breeds (seven colors, five\n--------------------------------------------------------------------------------\nDo wolves become dogs? (https://www.reddit.com/r/Minecraft/comments/1inxq",
+    "after": "ky)\nciteturn2reddit17 [wordlim: 200] Published: 1.7 years ago; Crawled: 1.7 years ago; * Upvote this comment if this is a good quality post that fits the purpose of r/Minecraft ... That's"
+  },
+  {
+    "sample_id": "case-03-14",
+    "tool_output_index": 3,
+    "start_token": 7409,
+    "end_token": 7537,
+    "before": " finished a wither skeleton farm on a small server we both play on.My friend is the one who tamed the wolves and brought them to the farm location. ... It might be because it’s your friend’s wolf doing the killing.\n--------------------------------------------------------------------------------\nDamage in Minecraft represents harm caused by attacks or environmental factors. Health points are",
+    "target": " the vital energy of players and mobs, which decrease when they're injured. Each \"heart\" symbolizes a single health point, with players initially having 200 (20 × 10) but this can fluctuate based on status effects. Mobs, on the other hand, have varying (https://data.eklablog.com/1/27/94/10/20250212/ob_239e17_61250552241.pdf)\nciteturn2search27 [wordlim: 200] Published: 1.4 years ago; levels of health that aren't always visible to players",
+    "after": ", except in certain cases such as mounts, tamed wolves, or bosses like the Wither and Ender Dragon. ... 17.75 / 69 × 34.5 / 103.5 × 51.75 No damage * Wither Skull: 8 / 8 Wither II for "
+  },
+  {
+    "sample_id": "case-03-15",
+    "tool_output_index": 5,
+    "start_token": 2386,
+    "end_token": 2514,
+    "before": " false)  Tries harder to verify the validity of variable merges. If there are strange variable recompilation issues, this is a good place to start.\\n--verify-pre-post-merges                  [bool]    [Experimental] Verify Pre Post Variable Merges    : (default: false)  Will try to validate",
+    "target": " that code before and after variable merges is equivalent\\n--warn-inconsistent-inner-attributes      [bool]    Warn about inconsistent inner attributes          : (default: true)   Warn about inconsistent inner class attributes\\n\\n====== Options from Kotlin ======\\n--kt-collapse-string-concat               [bool]    Collapse string concatenation                     : (default: true)   Convert string concatenations to Kotlin string templates.\\n--kt-decompile-facades                    [bool]    Decompile facades                                 : (default: false)  Decompile multi-file facades into their wrapper-function classes.\\n--kt-enable                               [bool]   ",
+    "after": " Enable Kotlin plugin                              : (default: true)   Decompile Kotlin classes as Kotlin instead of Java\\n--kt-export-metadata                      [bool]    Always export metadata                            : (default: false)  If Kotlin decompilation is disabled, metadata will not be parsed. If enabled, this will always parse Kotlin"
+  },
+  {
+    "sample_id": "case-03-16",
+    "tool_output_index": 7,
+    "start_token": 65,
+    "end_token": 193,
+    "before": " completed\nWall time 0.1 seconds\nOutput:\n\n{\"chunk_id\":\"e1bed8\",\"wall_time_seconds\":0.000019209,\"exit_code\":0,\"original_token_count\":0,\"output\":\"\"}\n{\"chunk_id\":\"b41fbe\",\"wall_time_seconds\":0.000003042",
+    "target": ",\"exit_code\":0,\"original_token_count\":418,\"output\":\"investigation-26.3/sources/net/minecraft/client/renderer/entity/AbstractSkeletonRenderer.java\\ninvestigation-26.3/sources/net/minecraft/world/level/block/PowderSnowBlock.java\\ninvestigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/Stray.java\\ninvestigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/Skeleton.java\\ninvestigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java\\ninvestigation-26.3",
+    "after": "/sources/net/minecraft/world/entity/Entity.java\\ninvestigation-26.3/sources/net/minecraft/world/entity/animal/wolf/Wolf.java\\ninvestigation-26.3/sources/net/minecraft/world/entity/ConversionType.java\\ninvestigation-26.3/sources/net/minecraft/world/entity/"
+  },
+  {
+    "sample_id": "case-03-17",
+    "tool_output_index": 8,
+    "start_token": 2151,
+    "end_token": 2279,
+    "before": "n62-import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;\\n63-import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;\\n64:import net.minecraft.world.entity.ai.goal.target.NonTameRandomTargetGoal;\\n65-import net.minecraft.world.entity.ai.goal.target.OwnerHurt",
+    "target": "ByTargetGoal;\\n66-import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;\\n67-import net.minecraft.world.entity.ai.goal.target.ResetUniversalAngerTargetGoal;\\n68-import net.minecraft.world.entity.ai.targeting.TargetingConditions.Selector;\\n69-import net.minecraft.world.entity.animal.Animal;\\n70-import net.minecraft.world.entity.animal.equine.AbstractHorse;\\n71-import net.minecraft.world.entity.animal.equine.Llama;\\n72-import net.minecraft.world.entity.animal.turtle.Turtle;\\n73-import net.minecraft.world.entity.animal.wolf.WolfSoundVariant.WolfSoundSet;\\n",
+    "after": "74-import net.minecraft.world.entity.animal.wolf.WolfVariant.AssetInfo;\\n75-import net.minecraft.world.entity.decoration.ArmorStand;\\n76-import net.minecraft.world.entity.monster.Creeper;\\n77-import net.minecraft.world.entity.monster.Ghast;\\n78:import net.minecraft.world.entity"
+  },
+  {
+    "sample_id": "case-03-18",
+    "tool_output_index": 8,
+    "start_token": 4705,
+    "end_token": 4833,
+    "before": "/net/minecraft/world/entity/LivingEntity.java:3155:         if (!this.isInPowderSnow || !this.canFreeze()) {\\ninvestigation-26.3/sources/net/minecraft/world/entity/LivingEntity.java:3156:            this.setTicksFrozen(Math.max(0, this.getTicks",
+    "target": "Frozen() - 2));\\ninvestigation-26.3/sources/net/minecraft/world/entity/LivingEntity.java-3157-         }\\ninvestigation-26.3/sources/net/minecraft/world/entity/LivingEntity.java-3158-\\ninvestigation-26.3/sources/net/minecraft/world/entity/LivingEntity.java-3159-         this.removeFrost();\\ninvestigation-26.3/sources/net/minecraft/world/entity/LivingEntity.java-3160-         this.tryAddFrost();\\ninvestigation-26.3/sources/net/minecraft/world/entity/Living",
+    "after": "Entity.java:3161:         if (this.tickCount % 40 == 0 && this.isFullyFrozen() && this.canFreeze()) {\\ninvestigation-26.3/sources/net/minecraft/world/entity/LivingEntity.java:3162:            this.hurtServer(serverLevel, this.damageSources()."
+  },
+  {
+    "sample_id": "case-03-19",
+    "tool_output_index": 8,
+    "start_token": 5763,
+    "end_token": 5891,
+    "before": "Entity.java-4014-      return !this.level().isClientSide() && this.hasEffect(MobEffects.GLOWING) || super.isCurrentlyGlowing();\\ninvestigation-26.3/sources/net/minecraft/world/entity/LivingEntity.java-4015-   }\\npackage net.minecraft.world",
+    "target": ".entity.ai.goal.target;\\n\\nimport net.minecraft.world.entity.LivingEntity;\\nimport net.minecraft.world.entity.TamableAnimal;\\nimport net.minecraft.world.entity.ai.targeting.TargetingConditions.Selector;\\nimport org.jspecify.annotations.Nullable;\\n\\npublic class NonTameRandomTargetGoal<T extends LivingEntity> extends NearestAttackableTargetGoal<T> {\\n   private final TamableAnimal tamableMob;\\n\\n   public NonTameRandomTargetGoal(final TamableAnimal mob, final Class<T> targetType, final boolean mustSee, final @Nullable Selector subselector) {\\n      super(mob",
+    "after": ", targetType, 10, mustSee, false, subselector);\\n      this.tamableMob = mob;\\n   }\\n\\n   @Override\\n   public boolean canUse() {\\n      return !this.tamableMob.isTame() && super.canUse();\\n   }\\n"
+  },
+  {
+    "sample_id": "case-03-20",
+    "tool_output_index": 9,
+    "start_token": 2062,
+    "end_token": 2190,
+    "before": "\\t\\n    84\\t      BlockPos position = pos.immutable();\\n    85\\t      effectApplier.runBefore(\\n    86\\t         InsideBlockEffectType.EXTINGUISH,\\n    87\\t         e -> {\\n    88\\t            if (level instanceof Server",
+    "target": "Level serverLevel\\n    89\\t               && e.isOnFire()\\n    90\\t               && (serverLevel.getGameRules().get(GameRules.MOB_GRIEFING) || e instanceof Player)\\n    91\\t               && e.mayInteract(serverLevel, position)) {\\n    92\\t               level.destroyBlock(position, false);\\n    93\\t            }\\n    94\\t         }\\n    95\\t      );\\n    96\\t      effectApplier.apply(InsideBlockEffectType.FREEZE);\\n    97\\t      effectApplier.apply(InsideBlockEffect",
+    "after": "Type.EXTINGUISH);\\n    98\\t   }\\n    99\\t\\n   100\\t   @Override\\n   101\\t   public void fallOn(final Level level, final BlockState state, final BlockPos pos, final Entity entity, final double fallDistance) {\\n   "
+  },
+  {
+    "sample_id": "case-03-21",
+    "tool_output_index": 9,
+    "start_token": 3522,
+    "end_token": 3650,
+    "before": ";\\ninvestigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java-24-import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;\\ninvestigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java-25-import net.minecraft",
+    "target": ".world.entity.ai.goal.RandomLookAroundGoal;\\ninvestigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java-26-import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal;\\n--\\ninvestigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java-74-\\ninvestigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java-75-   @Override\\ninvestigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java-76-  ",
+    "after": " protected void registerGoals() {\\ninvestigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java-77-      this.goalSelector.addGoal(2, new RestrictSunGoal(this));\\ninvestigation-26.3/sources/net/minecraft/world/entity/monster"
+  },
+  {
+    "sample_id": "case-03-22",
+    "tool_output_index": 9,
+    "start_token": 6570,
+    "end_token": 6698,
+    "before": " 10\\timport net.minecraft.world.entity.monster.zombie.Zombie;\\n    11\\timport net.minecraft.world.item.ItemStack;\\n    12\\timport net.minecraft.world.scores.Scoreboard;\\n    13\\t\\n    14\\tpublic enum ConversionType {\\n    15\\t   SINGLE",
+    "target": "(true) {\\n    16\\t      @Override\\n    17\\t      public void convert(final Mob from, final Mob to, final ConversionParams params) {\\n    18\\t         Entity rootPassenger = from.getFirstPassenger();\\n    19\\t         to.copyPosition(from);\\n    20\\t         to.setDeltaMovement(from.getDeltaMovement());\\n    21\\t         if (rootPassenger != null) {\\n    22\\t            rootPassenger.stopRiding();\\n    23\\t            rootPassenger.boardingCooldown = 0;\\n    24\\t\\n    25",
+    "after": "\\t            for (Entity passenger : to.getPassengers()) {\\n    26\\t               passenger.stopRiding();\\n    27\\t               passenger.remove(Entity.RemovalReason.DISCARDED);\\n    28\\t            }\\n    29\\t\\n    30\\t            rootPassenger.startRiding"
+  },
+  {
+    "sample_id": "case-03-23",
+    "tool_output_index": 10,
+    "start_token": 67,
+    "end_token": 195,
+    "before": "Wall time 1.2 seconds\nOutput:\n\n{\"i\":0,\"status\":\"fulfilled\",\"value\":{\"chunk_id\":\"da60ea\",\"wall_time_seconds\":0.000002708,\"exit_code\":0,\"original_token_count\":4328,\"output\":\"     1\\tpackage net.minecraft.world.entity.ai.goal.target",
+    "target": ";\\n     2\\t\\n     3\\timport java.util.EnumSet;\\n     4\\timport net.minecraft.server.level.ServerLevel;\\n     5\\timport net.minecraft.server.level.ServerPlayer;\\n     6\\timport net.minecraft.world.entity.LivingEntity;\\n     7\\timport net.minecraft.world.entity.Mob;\\n     8\\timport net.minecraft.world.entity.ai.goal.Goal.Flag;\\n     9\\timport net.minecraft.world.entity.ai.targeting.TargetingConditions;\\n    10\\timport net.minecraft.world.entity.ai.targeting.TargetingConditions.Selector;\\n    11\\timport",
+    "after": " net.minecraft.world.entity.player.Player;\\n    12\\timport net.minecraft.world.phys.AABB;\\n    13\\timport org.jspecify.annotations.Nullable;\\n    14\\t\\n    15\\tpublic class NearestAttackableTargetGoal<T extends LivingEntity> extends TargetGoal {\\n    "
+  },
+  {
+    "sample_id": "case-03-24",
+    "tool_output_index": 10,
+    "start_token": 1835,
+    "end_token": 1963,
+    "before": " }\\n    46\\t\\n    47\\t      if (!this.mob.canAttack(target)) {\\n    48\\t         return false;\\n    49\\t      }\\n    50\\t\\n    51\\t      Team mobTeam = this.mob.getTeam();\\n    52\\t     ",
+    "target": " Team targetTeam = target.getTeam();\\n    53\\t      if (mobTeam != null && targetTeam == mobTeam) {\\n    54\\t         return false;\\n    55\\t      }\\n    56\\t\\n    57\\t      double within = this.getFollowDistance();\\n    58\\t      if (this.mob.distanceToSqr(target) > within * within) {\\n    59\\t         return false;\\n    60\\t      }\\n    61\\t\\n    62\\t      if (this.mustSee) {\\n    63\\t         if",
+    "after": " (this.mob.getSensing().hasLineOfSight(target)) {\\n    64\\t            this.unseenTicks = 0;\\n    65\\t         } else if (++this.unseenTicks > reducedTickDelay(this.unseenMemoryTicks)) {\\n    66\\t            return false;\\n   "
+  },
+  {
+    "sample_id": "case-03-25",
+    "tool_output_index": 10,
+    "start_token": 4950,
+    "end_token": 5078,
+    "before": ".convertTo(entityType, params, EntitySpawnReason.CONVERSION, afterConversion);\\n  1262\\t   }\\n  1263\\t\\n563-         this.spawnSprintParticle();\\n564-      }\\n565-\\n566-      this.wasInPowderSnow = this.isInPowder",
+    "target": "Snow;\\n567:      this.isInPowderSnow = false;\\n568-      this.wasEyeInWater = this.isEyeInFluid(FluidTags.WATER);\\n569-      this.updateFluidInteraction();\\n570-      this.updateSwimming();\\n571-      if (this.level() instanceof ServerLevel serverLevel) {\\n--\\n2251-            this.setCustomNameVisible(input.getBooleanOr(\\\"CustomNameVisible\\\", false));\\n2252-            this.setSilent(input.getBooleanOr(\\\"Silent\\\", false));\\n2253-            this.setNoGravity(input.getBooleanOr(\\\"",
+    "after": "NoGravity\\\", false));\\n2254-            this.setGlowingTag(input.getBooleanOr(\\\"Glowing\\\", false));\\n2255:            this.setTicksFrozen(input.getIntOr(\\\"TicksFrozen\\\", 0));\\n2256-            this.hasVisualFire = input.getBooleanOr(\\\"Has"
+  },
+  {
+    "sample_id": "case-03-26",
+    "tool_output_index": 11,
+    "start_token": 194,
+    "end_token": 322,
+    "before": "  \\\"releaseTime\\\": \\\"2026-09-15T11:23:02+00:00\\\",\\n  \\\"sha1\\\": \\\"61fff1316bd50312624a858bbb5eb18fa45208ed\\\",\\n  \\\"complianceLevel\\\": 1\\n}\\n{\\n ",
+    "target": " \\\"id\\\": \\\"26.3\\\",\\n  \\\"javaVersion\\\": {\\n    \\\"component\\\": \\\"java-runtime-epsilon\\\",\\n    \\\"majorVersion\\\": 25\\n  },\\n  \\\"downloads\\\": {\\n    \\\"client\\\": {\\n      \\\"sha1\\\": \\\"e877b6a07acd633fb3bb475002175cec036e7b87\\\",\\n      \\\"size\\\": 41483720,\\n      \\\"url\\\": \\\"https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client",
+    "after": ".jar\\\"\\n    },\\n    \\\"server\\\": {\\n      \\\"sha1\\\": \\\"33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c\\\",\\n      \\\"size\\\": 62294556,\\n      \\\"url\\\": \\\"https"
+  },
+  {
+    "sample_id": "case-03-27",
+    "tool_output_index": 11,
+    "start_token": 1513,
+    "end_token": 1641,
+    "before": "ang.com】 - Success messages for some commands include unaffected entities, unlike the command result\nL3097:   * 【126†MC-122731†bugs.mojang.com】 - Camera movement stutters when turning in a boat\nL3098:   * 【127†MC-127939†bugs",
+    "target": ".mojang.com】 - Several keys are displayed as \"scancode.number\" in the Key Binds menu\nL3099:   * 【128†MC-133407†bugs.mojang.com】 - Key binds switch when upgrading from before 1.13 if not using a QWERTY keyboard\nL3100:   * 【129†MC-148541†bugs.mojang.com】 - /spreadplayers can spread players to seagrass near the surface of the water\nL3101:   * 【130†MC-149058†bugs.mojang.com】 - Using hotkeys to",
+    "after": " move items into the anvil UI appends the character the used key types to the new item name\nL3102:   * 【131†MC-151857†bugs.mojang.com】 - The success message of /give when affecting multiple players uses the wrong string\nL3103:   * 【"
+  },
+  {
+    "sample_id": "case-03-28",
+    "tool_output_index": 11,
+    "start_token": 3614,
+    "end_token": 3742,
+    "before": "191†MC-259812†bugs.mojang.com】 - Block and item displays, beds, clouds, signs, shulker boxes, and semi-transparent blocks and entities don't render behind text displays\nL3163:   * 【192†MC-260780†bugs.mojang.com】 - Sh",
+    "target": "ulker bullets always push fireballs south\nL3164:   * 【193†MC-263100†bugs.mojang.com】 - Cave biomes interfere with relief on exploration maps\nL3165:   * 【194†MC-263708†bugs.mojang.com】 - The Key Binds screen renders keypad keys the same as regular keys\nL3166:   * 【195†MC-264003†bugs.mojang.com】 - Boats carrying players sometimes stop abruptly when sliding along ice\n--------------------------------------------------------------------------------\nMinecraft Java Edition 26.3 | Minecraft (https://minecraft.net/en-us/article/minecraft",
+    "after": "-java-edition-26-3)\nciteturn3view2 [wordlim: 200] Crawled: today; Content type: text/html; Source: find({\"ref_id\":\"turn1view3\",\"pattern\":\"conversion\"}); Redirected to URL: https://"
+  },
+  {
+    "sample_id": "case-03-29",
+    "tool_output_index": 13,
+    "start_token": 373,
+    "end_token": 501,
+    "before": "AbstractSkeleton.java-93-   @Override\\n--\\ninvestigation-26.3/sources/net/minecraft/world/entity/animal/wolf/Wolf.java-215-      }\\ninvestigation-26.3/sources/net/minecraft/world/entity/animal/wolf/Wolf.java-216-   }\\",
+    "target": "ninvestigation-26.3/sources/net/minecraft/world/entity/animal/wolf/Wolf.java-217-\\ninvestigation-26.3/sources/net/minecraft/world/entity/animal/wolf/Wolf.java:218:   public static Builder createAttributes() {\\ninvestigation-26.3/sources/net/minecraft/world/entity/animal/wolf/Wolf.java:219:      return Animal.createAnimalAttributes().add(Attributes.MOVEMENT_SPEED, 0.3F).add(Attributes.MAX_HEALTH, 8.0).add(Attributes.ATTACK_DAMAGE, 4.0);\\ninvest",
+    "after": "igation-26.3/sources/net/minecraft/world/entity/animal/wolf/Wolf.java-220-   }\\ninvestigation-26.3/sources/net/minecraft/world/entity/animal/wolf/Wolf.java-221-\\ninvestigation-26.3/sources/net/minecraft/world/entity/animal"
+  },
+  {
+    "sample_id": "case-03-30",
+    "tool_output_index": 13,
+    "start_token": 914,
+    "end_token": 1042,
+    "before": ".3/sources/net/minecraft/world/entity/animal/wolf/Wolf.java-440-   }\\ninvestigation-26.3/sources/net/minecraft/world/entity/animal/wolf/Wolf.java-441-\\n--\\ninvestigation-26.3/sources/net/minecraft/world/entity/Living",
+    "target": "Entity.java-295-   protected LivingEntity(final EntityType<? extends LivingEntity> type, final Level level) {\\ninvestigation-26.3/sources/net/minecraft/world/entity/LivingEntity.java-296-      super(type, level);\\ninvestigation-26.3/sources/net/minecraft/world/entity/LivingEntity.java-297-      this.attributes = new AttributeMap(DefaultAttributes.getSupplier(type));\\ninvestigation-26.3/sources/net/minecraft/world/entity/LivingEntity.java:298:      this.setHealth(this.getMaxHealth());\\ninvestigation-26.3/sources/net/m",
+    "after": "inecraft/world/entity/LivingEntity.java-299-      this.equipment = this.createEquipment();\\ninvestigation-26.3/sources/net/minecraft/world/entity/LivingEntity.java-300-      this.blocksBuilding = true;\\ninvestigation-26.3/sources/net/minecraft/world/entity/Living"
+  },
+  {
+    "sample_id": "case-03-31",
+    "tool_output_index": 13,
+    "start_token": 2942,
+    "end_token": 3070,
+    "before": " 39\\t\\n    40\\t      this.lastCanUseCheck = time;\\n    41\\t      LivingEntity target = this.mob.getTarget();\\n    42\\t      if (target == null) {\\n    43\\t         return false;\\n    44\\t      }\\n   ",
+    "target": " 45\\t\\n    46\\t      if (!target.isAlive()) {\\n    47\\t         return false;\\n    48\\t      }\\n    49\\t\\n    50\\t      this.path = this.mob.getNavigation().createPath(target, 0);\\n    51\\t      return this.path != null ? true : this.mob.isWithinMeleeAttackRange(target);\\n    52\\t   }\\n    53\\t\\n    54\\t   @Override\\n    55\\t   public boolean canContinueToUse() {\\n    56\\t      LivingEntity target = this.mob",
+    "after": ".getTarget();\\n    57\\t      if (target == null) {\\n    58\\t         return false;\\n    59\\t      } else if (!target.isAlive()) {\\n    60\\t         return false;\\n    61\\t      } else if (!this.followingTarget"
+  },
+  {
+    "sample_id": "case-03-32",
+    "tool_output_index": 16,
+    "start_token": 245,
+    "end_token": 373,
+    "before": " Flag.MOVE));\\n    14\\t   }\\n    15\\t\\n    16\\t   @Override\\n    17\\t   public boolean canContinueToUse() {\\n    18\\t      return this.mob.isOrderedToSit();\\n    19\\t   }\\n    ",
+    "target": "20\\t\\n    21\\t   @Override\\n    22\\t   public boolean canUse() {\\n    23\\t      boolean orderedToSit = this.mob.isOrderedToSit();\\n    24\\t      if (!orderedToSit && !this.mob.isTame()) {\\n    25\\t         return false;\\n    26\\t      } else if (this.mob.isInWater()) {\\n    27\\t         return false;\\n    28\\t      } else if (!this.mob.onGround()) {\\n    29\\t         return false;\\n    30\\t      }",
+    "after": " else {\\n    31\\t         LivingEntity owner = this.mob.getOwner();\\n    32\\t         if (owner == null || owner.level() != this.mob.level()) {\\n    33\\t            return true;\\n    34\\t         } else {\\n    35\\t            return"
+  }
+]

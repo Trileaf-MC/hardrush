@@ -1,0 +1,688 @@
+{
+  "archive": {
+    "path": "sources.tar.gz",
+    "sha256": "48b82b974b691afaa79057c54c8b4ba94a8b866cbd7c7e502ec64286b37ec567",
+    "files": 96,
+    "bytes_uncompressed": 517496
+  },
+  "files": [
+    {
+      "relative_path": ".agents/skills/minecraft-knowledge/SKILL.md",
+      "category": "other_workspace_text",
+      "bytes": 4362,
+      "sha256": "747c8af80cdb40755846454b27d9b7e8637785fd13289e8797b339ceeabc3d7c",
+      "initial_input": true
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.server.level.ServerLevel.txt",
+      "category": "cli_cache",
+      "bytes": 37848,
+      "sha256": "6ac337caa5817e848541afe5934fd4643df383c6939881d23d9808558faf3d13",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.BaseSpawner.txt",
+      "category": "cli_cache",
+      "bytes": 6278,
+      "sha256": "a67a289a19b1974cf348b690e8aa03e7d285f1bbf8f08e115dd574cae1b7c848",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.EntityGetter.txt",
+      "category": "cli_cache",
+      "bytes": 3196,
+      "sha256": "4e31fd3af5b7af40fcc1957e9bb73e749d61a04534425470f3dacb85fc6f4c75",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.TickingBlockEntity.txt",
+      "category": "cli_cache",
+      "bytes": 419,
+      "sha256": "4fbb2cc87d93020012a54902d08b949b67a505e87fd51b2b0959c1f46570e7c3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity.code.txt",
+      "category": "cli_cache",
+      "bytes": 14536,
+      "sha256": "a9f91e25ace0a4ac4943ab1c57ca76a56314b7f72e780b36b6bcac169f76ad61",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity.txt",
+      "category": "cli_cache",
+      "bytes": 2837,
+      "sha256": "195263f14a3da8a3096125cd4413c8c87cfbd4244c574beaf98c348c1f0a361f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawner.txt",
+      "category": "cli_cache",
+      "bytes": 9387,
+      "sha256": "58c6e97836f4766459ea2a5ccfb661a60e598335ab4715e797af22a43e87ac78",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerState.txt",
+      "category": "cli_cache",
+      "bytes": 9007,
+      "sha256": "0df37b16d78bb1004f7a1294f5fd2644f87dacb1beb8050584b8b92313cf90de",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData.txt",
+      "category": "cli_cache",
+      "bytes": 7342,
+      "sha256": "8c2b1cb0c6c76f25fb38b77933290d7d0ca1d2892380ebba52e7f92286275e80",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity.txt",
+      "category": "cli_cache",
+      "bytes": 1337,
+      "sha256": "26ab9d62625fcc34e35b19e08eabc524f7739a9fb0b68ebd7196fd6ca8f0e692",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.chunk.LevelChunk.txt",
+      "category": "cli_cache",
+      "bytes": 12897,
+      "sha256": "a901974c181925af6ea8c0ea8e1d4c503bd63dcf37703e9b311c37a524aec5a5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/javap/25/net.minecraft.world.level.entity.EntityTypeTest.txt",
+      "category": "cli_cache",
+      "bytes": 719,
+      "sha256": "7ecc235ae45c8a41bde0ecee4a0b4896a43745900f0392dd48a908833bc4db46",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/1f0a411b782d5d4c845ac5fc26eb25b3de142b202ed94bc531fff4ff6c9c5064/source.java",
+      "category": "cli_cache",
+      "bytes": 1868,
+      "sha256": "571676e0e8a2eaac6183b16cad1f8e234f256cbb2ccbec8bb02a17bd095a0398",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/1f0a411b782d5d4c845ac5fc26eb25b3de142b202ed94bc531fff4ff6c9c5064/source.json",
+      "category": "cli_cache",
+      "bytes": 752,
+      "sha256": "7ccab60af8e9dcee37791ed73fdc0259fab120836c60368ed02b9aac85adbffd",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/235bb4655f38d3ca26599c10446309873e0ad6672b198b96746c78782e530f09/source.java",
+      "category": "cli_cache",
+      "bytes": 1114,
+      "sha256": "da517806af158aff2778b69d1642372bed9fdfe599890b4a8c7e699189d3567e",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/235bb4655f38d3ca26599c10446309873e0ad6672b198b96746c78782e530f09/source.json",
+      "category": "cli_cache",
+      "bytes": 695,
+      "sha256": "2416b9ac54a509cd5532d200f8d470debabd48dd66c1d709ec3ffac7c10e32bd",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.java",
+      "category": "cli_cache",
+      "bytes": 7957,
+      "sha256": "1eccc27c61b483954c1aad907a336cf6502baf5a32f63875652cc85709051cc4",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/361444c6adcf1fb7a8d12d7ad0cb231fc20950d00dd05393142e0c6a16dd3c7e/source.json",
+      "category": "cli_cache",
+      "bytes": 619,
+      "sha256": "09b9ed12fd31734f6b73d7e0c161a18d90772a2f31cd59cb20f31171b74298e6",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/46c71c329aade341d37253ef4bed8beb24004dc6d1b1036ee26f678b664995f6/source.java",
+      "category": "cli_cache",
+      "bytes": 540,
+      "sha256": "acd11a6735eacc8011873d3c5f1108e532ed694376bc7494e1f8c14d9639d3fb",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/46c71c329aade341d37253ef4bed8beb24004dc6d1b1036ee26f678b664995f6/source.json",
+      "category": "cli_cache",
+      "bytes": 673,
+      "sha256": "3007cdf1e2ccfcfc9a51f7ab1ad014a409ca9dde2aa707f1a846ff0586911c3c",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/574b394f3a72e811d4e9e8d2c2efbdc86db8c1eb14216232b3d77087e1122792/source.java",
+      "category": "cli_cache",
+      "bytes": 772,
+      "sha256": "cb1715b1ec3509686675c91aebe49b3811751b842c96b228ddfac2b80d720d79",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/574b394f3a72e811d4e9e8d2c2efbdc86db8c1eb14216232b3d77087e1122792/source.json",
+      "category": "cli_cache",
+      "bytes": 652,
+      "sha256": "c724a3a960b5646f405bec2c1cd6f3d799d22392632590a1477f5f8ff6763040",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.java",
+      "category": "cli_cache",
+      "bytes": 19159,
+      "sha256": "19a19e692f52d6e3ee74436f48a54b25f3126cf13f980148a8310fa8aec18ecc",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c00ec93ea2c9bbe9513e171d38f5c59b8f3c0489865cafc1aee45b5292a425b/source.json",
+      "category": "cli_cache",
+      "bytes": 613,
+      "sha256": "dff24a40a3a3a3af23a7839559af31d4a83f70644fbb77608b00eb4a0679db95",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.java",
+      "category": "cli_cache",
+      "bytes": 2959,
+      "sha256": "c2f6740073505ae56adbce87c1f0d832b2178fb1676d0ff15861c461e9dcbcca",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5c85bb405dab58f5d509df824476fc0b4ffed9cbec2f3e976b35983427794608/source.json",
+      "category": "cli_cache",
+      "bytes": 618,
+      "sha256": "6bdaa51554436c728e75f87194cd391deea2c7ff3904fceff6bdac916aecc6cd",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.java",
+      "category": "cli_cache",
+      "bytes": 14757,
+      "sha256": "b8b590ee4be641d382a8a2d06783953a53df604b591fd5b706ed9075156232e3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/5cd5a7d3d6779472fe26e50335a56328690d70247253b82914fe0ca5b3156f39/source.json",
+      "category": "cli_cache",
+      "bytes": 622,
+      "sha256": "ca756d74e7655d957746f1811ed92f60903dc3698d450f52b47b3cba13ba4cf6",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.java",
+      "category": "cli_cache",
+      "bytes": 5227,
+      "sha256": "f23bf543a8d942720fe4ba2bb251ce6755f302cd7d3bbd7052faeffd553cc7c5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/820198e7b4eb06284cb1200f5962d9565d6e41e8ec2c7ff3b599a08ea2ca6cbc/source.json",
+      "category": "cli_cache",
+      "bytes": 836,
+      "sha256": "b0a86268f1fa8336b30b3630ac205c1731fb22080c33ed8462df603a4d3e7a77",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/89ee8b6d86d719bf50b29237a48077fc267dbc3df54fdddc4d121d29a8b58ce7/source.java",
+      "category": "cli_cache",
+      "bytes": 3110,
+      "sha256": "9c07f146ae08319ac702d7c4a7b9e982578e38b1613d914f5621b059df67169f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/89ee8b6d86d719bf50b29237a48077fc267dbc3df54fdddc4d121d29a8b58ce7/source.json",
+      "category": "cli_cache",
+      "bytes": 772,
+      "sha256": "35bb662ca60132f9bcdc0069f97fda0742a893262bf51990ee0af589bb9ff3fe",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.java",
+      "category": "cli_cache",
+      "bytes": 860,
+      "sha256": "079b8fcd1faf4f7f2dd946eccd5ecb26f5db1ba9f063bd3bd0fcf92c51834ed0",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/9c75c90800e1175bebafa43f3c4a303c1027272afb03f143b3d5059cb8d98fb0/source.json",
+      "category": "cli_cache",
+      "bytes": 610,
+      "sha256": "cfa771504c3311636dcc3a95f33bcc1b5c8c9b8ff81522323774cfc10437b440",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.java",
+      "category": "cli_cache",
+      "bytes": 1333,
+      "sha256": "d44047341e0242da0a8fdec1f2b7fbac04949595aa4b3eba26d241cc9f7ad036",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ac6721d091596418062c5e51eeadc6a95d278b6b29d53d28eb2c132e12fc2317/source.json",
+      "category": "cli_cache",
+      "bytes": 628,
+      "sha256": "15c5225a640854b4736bc8ceef73d95b2064d34c5315cf5a49074d9022316136",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.java",
+      "category": "cli_cache",
+      "bytes": 12944,
+      "sha256": "37b4edff9c35facf37c0efe62bcc5ebdb665c4f111f062bdb03038b4aa2d2454",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/b8c42f650b8563883b8db2189af78707063dde7056045dbf5a1327166b589beb/source.json",
+      "category": "cli_cache",
+      "bytes": 586,
+      "sha256": "699cf209ef178395c5827625e7f6961ed7aa008b0c7c030248917b33ba54f336",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.java",
+      "category": "cli_cache",
+      "bytes": 4615,
+      "sha256": "b614ed9947b18f42daecfd115950010be289e9d199b6accf1f95f674b1631ddc",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/cd449ca9775031332be71ea1a3b8b2983de4a9a2d51b9fdf583335bc7380f684/source.json",
+      "category": "cli_cache",
+      "bytes": 615,
+      "sha256": "a31258693b4d84f0d592093b05aa45e38b6b56b86ea3ffe92b8cd86a34517d81",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.java",
+      "category": "cli_cache",
+      "bytes": 1918,
+      "sha256": "77d6c92fe9c290462ba40da35652a3a7651fd87d97c5616801b48950891843bd",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8508f0f74bc2f8fa8ba4aa6b90b410d572cfac35bdd4f7ace841a9ca5d67d32/source.json",
+      "category": "cli_cache",
+      "bytes": 607,
+      "sha256": "6934725f388e76bf4ccb8ecc3086de1f74122dd8c91fa7c4cbc12892f7983dbf",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.java",
+      "category": "cli_cache",
+      "bytes": 1159,
+      "sha256": "a90741d7cead411f354d48646e8621c1f37b7376e9238302531174669a37eb1b",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d8a32dce74cdb34288c0f0d769ff91b081bf2a4c9caf56ac9dcd1952c754812f/source.json",
+      "category": "cli_cache",
+      "bytes": 692,
+      "sha256": "93aa5c54d2410e165909b9bc1e1b3bd647fa2a3c41cb043781b0cd1fabd3c64c",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/0704fc288db15bd45dc363dfd4dc5cd76a68a96069480f440f8d502d320230b4.json",
+      "category": "cli_cache",
+      "bytes": 6357,
+      "sha256": "0704fc288db15bd45dc363dfd4dc5cd76a68a96069480f440f8d502d320230b4",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/0dfd4b0d7cc60fc019d80a4ab94a9f9389a2402f6dfa10656efa4aac790fb6ca.json",
+      "category": "cli_cache",
+      "bytes": 1476,
+      "sha256": "0dfd4b0d7cc60fc019d80a4ab94a9f9389a2402f6dfa10656efa4aac790fb6ca",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/0e542700d0355946213ea09c3696f6195c02fbe64be3cb0b755c9d3cd76b8aad.json",
+      "category": "cli_cache",
+      "bytes": 1128,
+      "sha256": "0e542700d0355946213ea09c3696f6195c02fbe64be3cb0b755c9d3cd76b8aad",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/13dec0be735ad8837e3f51912b388888758d330f29ae63863f7e5cf55d28ad0a.json",
+      "category": "cli_cache",
+      "bytes": 4012,
+      "sha256": "13dec0be735ad8837e3f51912b388888758d330f29ae63863f7e5cf55d28ad0a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/1816599b6e1d519c31c998a2ac62b21df0f626fabb01fe8c7826da033a25bad0.json",
+      "category": "cli_cache",
+      "bytes": 1874,
+      "sha256": "1816599b6e1d519c31c998a2ac62b21df0f626fabb01fe8c7826da033a25bad0",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/1cc78cb2bdf92ef0465d32a2bd56b9068efaf2fac273b8fca34800a21d67d697.json",
+      "category": "cli_cache",
+      "bytes": 6333,
+      "sha256": "1cc78cb2bdf92ef0465d32a2bd56b9068efaf2fac273b8fca34800a21d67d697",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/2dcc5631e0b7229a0cf4a95f09e72a76ad4932e1a3b0b6fb7f6725c75c70adde.json",
+      "category": "cli_cache",
+      "bytes": 1204,
+      "sha256": "2dcc5631e0b7229a0cf4a95f09e72a76ad4932e1a3b0b6fb7f6725c75c70adde",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/2dfaa47f7c42a08adbaf376950580d6b83c15ca2db3b6eb2d50f49a85086683a.json",
+      "category": "cli_cache",
+      "bytes": 2811,
+      "sha256": "2dfaa47f7c42a08adbaf376950580d6b83c15ca2db3b6eb2d50f49a85086683a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/32baf270f6361631ce5c3b192860fd7c09173a186e85c8767b0ae5458318cb96.json",
+      "category": "cli_cache",
+      "bytes": 2876,
+      "sha256": "32baf270f6361631ce5c3b192860fd7c09173a186e85c8767b0ae5458318cb96",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/35afd9d1e8dffb8feaa5bd81b656baca320c2df5dfa82f8f6b9853742ff59e32.json",
+      "category": "cli_cache",
+      "bytes": 7374,
+      "sha256": "35afd9d1e8dffb8feaa5bd81b656baca320c2df5dfa82f8f6b9853742ff59e32",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/412da2dab9bf0dcaa86dbdecbe8674cb39931bf8845b1ee8393576e4948b5812.json",
+      "category": "cli_cache",
+      "bytes": 2698,
+      "sha256": "412da2dab9bf0dcaa86dbdecbe8674cb39931bf8845b1ee8393576e4948b5812",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/4665a9073bb35549df63fb30fd97519637e832878847b8843af4c02c991b81fe.json",
+      "category": "cli_cache",
+      "bytes": 8838,
+      "sha256": "4665a9073bb35549df63fb30fd97519637e832878847b8843af4c02c991b81fe",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/5c293361d0f689b8bb3a81e46d49b348288db969f0f9c4421f22e9cbee84411f.json",
+      "category": "cli_cache",
+      "bytes": 10365,
+      "sha256": "5c293361d0f689b8bb3a81e46d49b348288db969f0f9c4421f22e9cbee84411f",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/6751f1b6fc4909d8aed4fa34c3ad4dba4ab1517e333c9b198b17172e788a622d.json",
+      "category": "cli_cache",
+      "bytes": 2800,
+      "sha256": "6751f1b6fc4909d8aed4fa34c3ad4dba4ab1517e333c9b198b17172e788a622d",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/69177c422aa278e967e0adee521db51df466a6d845a7388fe0254c3c982d067e.json",
+      "category": "cli_cache",
+      "bytes": 2733,
+      "sha256": "69177c422aa278e967e0adee521db51df466a6d845a7388fe0254c3c982d067e",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/731d58556a94f67807ef6075422c7bc64bf24a74617396c368e1cbd5ea4d7ff9.json",
+      "category": "cli_cache",
+      "bytes": 2875,
+      "sha256": "731d58556a94f67807ef6075422c7bc64bf24a74617396c368e1cbd5ea4d7ff9",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/775994cb0b6eba1a3768b6987e3c7c56f01aa754e3b5bd9d2a2c2eec4367ebd2.json",
+      "category": "cli_cache",
+      "bytes": 21799,
+      "sha256": "775994cb0b6eba1a3768b6987e3c7c56f01aa754e3b5bd9d2a2c2eec4367ebd2",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/7d367fd19680d23234ec309947627f64f1a62b0a10cee4fab9fbeab9fb19885a.json",
+      "category": "cli_cache",
+      "bytes": 3049,
+      "sha256": "7d367fd19680d23234ec309947627f64f1a62b0a10cee4fab9fbeab9fb19885a",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/832a70614b85fadeb3d9e914747cba48882aa08b3bdff85d2676cc56066af796.json",
+      "category": "cli_cache",
+      "bytes": 6312,
+      "sha256": "832a70614b85fadeb3d9e914747cba48882aa08b3bdff85d2676cc56066af796",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/a18d2330a1adac6e6f5a2404fe4cf1ed79925a231ae5ef0472e126f929dbcc16.json",
+      "category": "cli_cache",
+      "bytes": 4913,
+      "sha256": "a18d2330a1adac6e6f5a2404fe4cf1ed79925a231ae5ef0472e126f929dbcc16",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/a299166fb0b3d359a03e2063eb462a770f8c1c7330f1cab27c42284c5e01b9bd.json",
+      "category": "cli_cache",
+      "bytes": 741,
+      "sha256": "a299166fb0b3d359a03e2063eb462a770f8c1c7330f1cab27c42284c5e01b9bd",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/a653f0e86c544fea20d5c2baf50b62495e6776fb8cc0cc0b04fb0f7551aacb87.json",
+      "category": "cli_cache",
+      "bytes": 2345,
+      "sha256": "a653f0e86c544fea20d5c2baf50b62495e6776fb8cc0cc0b04fb0f7551aacb87",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/ab0e798395eb83f56250143bd3f1c5c61f38057be7d862fb5668eb6a34097ec9.json",
+      "category": "cli_cache",
+      "bytes": 6910,
+      "sha256": "ab0e798395eb83f56250143bd3f1c5c61f38057be7d862fb5668eb6a34097ec9",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/b9e72754168a9b2a2e8fa9b4d30768c4258756b57d00c6573d59563283ff6ac6.json",
+      "category": "cli_cache",
+      "bytes": 1949,
+      "sha256": "b9e72754168a9b2a2e8fa9b4d30768c4258756b57d00c6573d59563283ff6ac6",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/cbbc10dc1fe032ce8f4dc6a31593417780bed5b8bf4bc7c79300590754ed6025.json",
+      "category": "cli_cache",
+      "bytes": 10108,
+      "sha256": "cbbc10dc1fe032ce8f4dc6a31593417780bed5b8bf4bc7c79300590754ed6025",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/d08b378b3abfe21b55056aaef0301f348219e6590a7b78c4ec1d47089fda3ac2.json",
+      "category": "cli_cache",
+      "bytes": 1787,
+      "sha256": "d08b378b3abfe21b55056aaef0301f348219e6590a7b78c4ec1d47089fda3ac2",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/d179c20b0ffe7db1d2ebc150755b36fa9320f18ebb7f3903215de4ab94ca9791.json",
+      "category": "cli_cache",
+      "bytes": 2699,
+      "sha256": "d179c20b0ffe7db1d2ebc150755b36fa9320f18ebb7f3903215de4ab94ca9791",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/d30c04e92805c0ef20110531cdb9edff77efd4c03e48191df45ac52ef53e3a7b.json",
+      "category": "cli_cache",
+      "bytes": 1529,
+      "sha256": "d30c04e92805c0ef20110531cdb9edff77efd4c03e48191df45ac52ef53e3a7b",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/d7f5d271f4d6fa275a106f8fbe1a862015bfefef07cb03c51ac4e83607b8fb59.json",
+      "category": "cli_cache",
+      "bytes": 2411,
+      "sha256": "d7f5d271f4d6fa275a106f8fbe1a862015bfefef07cb03c51ac4e83607b8fb59",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/de3de2f022fcc38f674774b6180309127164aec8bbef6b428d3cd77121c8e9be.json",
+      "category": "cli_cache",
+      "bytes": 1516,
+      "sha256": "de3de2f022fcc38f674774b6180309127164aec8bbef6b428d3cd77121c8e9be",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/f1a6d9afff0cd4233acc6da446d148f6932949ccbcbbff3fb1464ea8f00c43ac.json",
+      "category": "cli_cache",
+      "bytes": 1495,
+      "sha256": "f1a6d9afff0cd4233acc6da446d148f6932949ccbcbbff3fb1464ea8f00c43ac",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/f2ca1e279681f55e0e58bf323ea85a4e429b790ace073cefb0571ebb587b9c76.json",
+      "category": "cli_cache",
+      "bytes": 3691,
+      "sha256": "f2ca1e279681f55e0e58bf323ea85a4e429b790ace073cefb0571ebb587b9c76",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/f32b2ee593632ffea542f315e0ea4abfc71266658664e95b0f22f5b8afa17aab.json",
+      "category": "cli_cache",
+      "bytes": 13835,
+      "sha256": "f32b2ee593632ffea542f315e0ea4abfc71266658664e95b0f22f5b8afa17aab",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/f5d5f2552754d762c8e0fdc60e43d5d247526eaffdd136f8c1f6fc8e56f731b5.json",
+      "category": "cli_cache",
+      "bytes": 3521,
+      "sha256": "f5d5f2552754d762c8e0fdc60e43d5d247526eaffdd136f8c1f6fc8e56f731b5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/mc-knowledge/evidence/f8824c388020a1b03eec4df3de070597d8ad7aa702943492b9cf538f9e8289f1.json",
+      "category": "cli_cache",
+      "bytes": 1799,
+      "sha256": "f8824c388020a1b03eec4df3de070597d8ad7aa702943492b9cf538f9e8289f1",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/BaseSpawner.java",
+      "category": "other_workspace_text",
+      "bytes": 12944,
+      "sha256": "37b4edff9c35facf37c0efe62bcc5ebdb665c4f111f062bdb03038b4aa2d2454",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/EntityGetter.hasNearbyAlivePlayer.java",
+      "category": "other_workspace_text",
+      "bytes": 860,
+      "sha256": "079b8fcd1faf4f7f2dd946eccd5ecb26f5db1ba9f063bd3bd0fcf92c51834ed0",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/LevelChunk.isTicking.java",
+      "category": "other_workspace_text",
+      "bytes": 1333,
+      "sha256": "d44047341e0242da0a8fdec1f2b7fbac04949595aa4b3eba26d241cc9f7ad036",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/PlayerDetector.java",
+      "category": "other_workspace_text",
+      "bytes": 4615,
+      "sha256": "b614ed9947b18f42daecfd115950010be289e9d199b6accf1f95f674b1631ddc",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/TrialSpawner.java",
+      "category": "other_workspace_text",
+      "bytes": 19159,
+      "sha256": "19a19e692f52d6e3ee74436f48a54b25f3126cf13f980148a8310fa8aec18ecc",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/TrialSpawnerConfig.java",
+      "category": "other_workspace_text",
+      "bytes": 7957,
+      "sha256": "1eccc27c61b483954c1aad907a336cf6502baf5a32f63875652cc85709051cc4",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/TrialSpawnerState.tickAndGetNext.java",
+      "category": "other_workspace_text",
+      "bytes": 5227,
+      "sha256": "f23bf543a8d942720fe4ba2bb251ce6755f302cd7d3bbd7052faeffd553cc7c5",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/TrialSpawnerStateData.java",
+      "category": "other_workspace_text",
+      "bytes": 14757,
+      "sha256": "b8b590ee4be641d382a8a2d06783953a53df604b591fd5b706ed9075156232e3",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/provenance.json",
+      "category": "other_workspace_text",
+      "bytes": 10261,
+      "sha256": "0604d3a180f17b2414b1a05ac61ec8131f1621c849406c9a2278f05d45163dfb",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/trial-chamber-configs.json",
+      "category": "other_workspace_text",
+      "bytes": 15439,
+      "sha256": "50f6d2c68a25deb1170ede90e080b3e0ae8e201f1e3d55893a82e3d6acb66802",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/spawner-26.3-evidence/version.json",
+      "category": "other_workspace_text",
+      "bytes": 422,
+      "sha256": "70444a856374443fbd57e4b23e9acfdd50309b25906ced3e3cf658abf25dd3ae",
+      "initial_input": false
+    },
+    {
+      "relative_path": ".local/toolchains/java-home.txt",
+      "category": "other_workspace_text",
+      "bytes": 93,
+      "sha256": "0761e9b251763354792a22da0b724cbd6d31bcd657174dd460b114d79579bc60",
+      "initial_input": true
+    },
+    {
+      "relative_path": "gradle.properties",
+      "category": "other_workspace_text",
+      "bytes": 241,
+      "sha256": "43b997588ae5228a19804e7de7146d8c5544b0727917606429e38a227db22d0c",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc-knowledge.py",
+      "category": "other_workspace_text",
+      "bytes": 35730,
+      "sha256": "c0447daec64d1af3e000bdc9ac036a9cdd98afd05ed0878963517904f53a100e",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc_knowledge_output.py",
+      "category": "other_workspace_text",
+      "bytes": 12627,
+      "sha256": "7c65e2302bd7da8a6e1f21a0202abb64b278cb31232f1e8ec4c54cb18dab6727",
+      "initial_input": true
+    },
+    {
+      "relative_path": "scripts/mc_knowledge_wiki.py",
+      "category": "other_workspace_text",
+      "bytes": 16621,
+      "sha256": "1eebbbcd2213fee16226c6f46f5277b11a926e2433c0c45d483d122ee6f1bb87",
+      "initial_input": true
+    }
+  ],
+  "skipped": [
+    {
+      "path": "scripts/__pycache__/mc_knowledge_output.cpython-314.pyc",
+      "reason": "credential_or_excluded_path_not_read"
+    }
+  ]
+}

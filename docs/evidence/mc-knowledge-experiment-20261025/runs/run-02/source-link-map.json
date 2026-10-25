@@ -1,0 +1,8 @@
+{
+  "mc-26.3-research/Skeleton.bytecode.txt": "01-Skeleton.bytecode.txt",
+  "mc-26.3-research/ConversionTracker.bytecode.txt": "02-ConversionTracker.bytecode.txt",
+  "mc-26.3-research/InsideBlockEffectType.bytecode.txt": "03-InsideBlockEffectType.bytecode.txt",
+  "mc-26.3-research/Wolf.bytecode.txt": "04-Wolf.bytecode.txt",
+  "mc-26.3-research/Stray.bytecode.txt": "05-Stray.bytecode.txt",
+  "mc-26.3-research/provenance.txt": "06-provenance.txt"
+}

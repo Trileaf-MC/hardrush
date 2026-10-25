@@ -1,0 +1,3 @@
+Compiled from "LevelSimulatedRW.java"
+public interface net.minecraft.world.level.LevelSimulatedRW extends net.minecraft.world.level.LevelSimulatedReader,net.minecraft.world.level.LevelWriter {
+}

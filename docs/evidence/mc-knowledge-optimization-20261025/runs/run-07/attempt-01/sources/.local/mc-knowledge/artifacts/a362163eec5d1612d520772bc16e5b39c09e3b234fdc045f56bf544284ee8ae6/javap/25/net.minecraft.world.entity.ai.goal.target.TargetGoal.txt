@@ -1,0 +1,51 @@
+Compiled from "TargetGoal.java"
+public abstract class net.minecraft.world.entity.ai.goal.target.TargetGoal extends net.minecraft.world.entity.ai.goal.Goal {
+  private static final int EMPTY_REACH_CACHE;
+    descriptor: I
+  private static final int CAN_REACH_CACHE;
+    descriptor: I
+  private static final int CANT_REACH_CACHE;
+    descriptor: I
+  protected final net.minecraft.world.entity.Mob mob;
+    descriptor: Lnet/minecraft/world/entity/Mob;
+  protected final boolean mustSee;
+    descriptor: Z
+  private final boolean mustReach;
+    descriptor: Z
+  private int reachCache;
+    descriptor: I
+  private int reachCacheTime;
+    descriptor: I
+  private int unseenTicks;
+    descriptor: I
+  protected net.minecraft.world.entity.LivingEntity targetMob;
+    descriptor: Lnet/minecraft/world/entity/LivingEntity;
+  protected int unseenMemoryTicks;
+    descriptor: I
+  public net.minecraft.world.entity.ai.goal.target.TargetGoal(net.minecraft.world.entity.Mob, boolean);
+    descriptor: (Lnet/minecraft/world/entity/Mob;Z)V
+
+  public net.minecraft.world.entity.ai.goal.target.TargetGoal(net.minecraft.world.entity.Mob, boolean, boolean);
+    descriptor: (Lnet/minecraft/world/entity/Mob;ZZ)V
+
+  public boolean canContinueToUse();
+    descriptor: ()Z
+
+  protected double getFollowDistance();
+    descriptor: ()D
+
+  public void start();
+    descriptor: ()V
+
+  public void stop();
+    descriptor: ()V
+
+  protected boolean canAttack(net.minecraft.world.entity.LivingEntity, net.minecraft.world.entity.ai.targeting.TargetingConditions);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/ai/targeting/TargetingConditions;)Z
+
+  private boolean canReach(net.minecraft.world.entity.LivingEntity);
+    descriptor: (Lnet/minecraft/world/entity/LivingEntity;)Z
+
+  public net.minecraft.world.entity.ai.goal.target.TargetGoal setUnseenMemoryTicks(int);
+    descriptor: (I)Lnet/minecraft/world/entity/ai/goal/target/TargetGoal;
+}

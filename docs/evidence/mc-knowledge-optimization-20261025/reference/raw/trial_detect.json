@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "decompiled": {
+    "class": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerStateData",
+    "member": "tryDetectPlayers",
+    "descriptor": "(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/trialspawner/TrialSpawner;)V",
+    "compiler": "1.12.0",
+    "path": "/private/tmp/hardrush-mc-optimization-20261025/reference/cache/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/89ee8b6d86d719bf50b29237a48077fc267dbc3df54fdddc4d121d29a8b58ce7/source.java",
+    "warnings": [],
+    "cache_hit": false,
+    "view": "method"
+  },
+  "text": "public class TrialSpawnerStateData {\n   public void tryDetectPlayers(final ServerLevel level, final BlockPos pos, final TrialSpawner trialSpawner) {\n      boolean isThrottled = (pos.asLong() + level.getGameTime()) % 20L != 0L;\n      if (!isThrottled) {\n         if (!trialSpawner.getState().equals(TrialSpawnerState.COOLDOWN) || !trialSpawner.isOminous()) {\n            List<UUID> inLineOfSightPlayers = trialSpawner.getPlayerDetector()\n               .detect(level, trialSpawner.getEntitySelector(), pos, trialSpawner.getRequiredPlayerRange(), true);\n            boolean becameOminous;\n            if (!trialSpawner.isOminous() && !inLineOfSightPlayers.isEmpty()) {\n               Optional<Pair<Player, Holder<MobEffect>>> playerWithOminousEffect = findPlayerWithOminousEffect(level, inLineOfSightPlayers);\n               playerWithOminousEffect.ifPresent(playerAndEffect -> {\n                  Player player = (Player)playerAndEffect.getFirst();\n                  if (playerAndEffect.getSecond() == MobEffects.BAD_OMEN) {\n                     transformBadOmenIntoTrialOmen(player);\n                  }\n\n                  level.levelEvent(3020, BlockPos.containing(player.getEyePosition()), 0);\n                  trialSpawner.applyOminous(level, pos);\n               });\n               becameOminous = playerWithOminousEffect.isPresent();\n            } else {\n               becameOminous = false;\n            }\n\n            if (!trialSpawner.getState().equals(TrialSpawnerState.COOLDOWN) || becameOminous) {\n               boolean isSearchingForFirstPlayer = trialSpawner.getStateData().detectedPlayers.isEmpty();\n               List<UUID> foundPlayers = isSearchingForFirstPlayer\n                  ? inLineOfSightPlayers\n                  : trialSpawner.getPlayerDetector().detect(level, trialSpawner.getEntitySelector(), pos, trialSpawner.getRequiredPlayerRange(), false);\n               if (this.detectedPlayers.addAll(foundPlayers)) {\n                  this.nextMobSpawnsAt = Math.max(level.getGameTime() + 40L, this.nextMobSpawnsAt);\n                  if (!becameOminous) {\n                     int event = trialSpawner.isOminous() ? 3019 : 3013;\n                     level.levelEvent(event, pos, this.detectedPlayers.size());\n                  }\n               }\n            }\n         }\n      }\n   }\n}\n",
+  "total_lines": 62,
+  "total_chars": 3110,
+  "returned_range": {
+    "start_line": 22,
+    "start_char": 0,
+    "end_line": 63,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 674.52,
+    "body_chars": 2311,
+    "output_chars": 3639
+  }
+}

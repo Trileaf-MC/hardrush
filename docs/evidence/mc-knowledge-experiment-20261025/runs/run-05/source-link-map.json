@@ -1,0 +1,8 @@
+{
+  "mc26_3_static_check/Skeleton.bytecode.txt": "01-Skeleton.bytecode.txt",
+  "mc26_3_static_check/ConversionTracker.bytecode.txt": "02-ConversionTracker.bytecode.txt",
+  "mc26_3_static_check/evidence.md": "03-evidence.md",
+  "mc26_3_static_check/Wolf.bytecode.txt": "04-Wolf.bytecode.txt",
+  "mc26_3_static_check/Stray.bytecode.txt": "05-Stray.bytecode.txt",
+  "mc26_3_static_check/SitWhenOrderedToGoal.bytecode.txt": "06-SitWhenOrderedToGoal.bytecode.txt"
+}

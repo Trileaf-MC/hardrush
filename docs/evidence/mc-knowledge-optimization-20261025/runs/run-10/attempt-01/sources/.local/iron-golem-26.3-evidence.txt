@@ -1,0 +1,353 @@
+$ python3 scripts/mc-knowledge.py --version 26.3 doctor
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "class_count": 7744,
+  "cache_dir": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-10/attempt-01/workspace/.local/mc-knowledge",
+  "jdk": {
+    "java": "/Users/leifwebber/projects/minecraft/hardrush/.local/toolchains/jdk-25.0.4.1+1/Contents/Home/bin/java",
+    "javap": "/Users/leifwebber/projects/minecraft/hardrush/.local/toolchains/jdk-25.0.4.1+1/Contents/Home/bin/javap",
+    "major": 25
+  },
+  "vineflower": {
+    "path": "/Users/leifwebber/.gradle/caches/modules-2/files-2.1/org.vineflower/vineflower/1.12.0/85570609a0a5941a7d2918b6260b209de810f66f/vineflower-1.12.0.jar",
+    "version": "1.12.0",
+    "sha256": "1dfcfe974395734fa467ce620661c7623d05ba83670de0529b1fbd63ff548b9d"
+  },
+  "metrics": {
+    "elapsed_ms": 168.94,
+    "body_chars": 0,
+    "output_chars": 1146
+  }
+}
+
+$ python3 scripts/mc-knowledge.py --version 26.3 source net.minecraft.world.entity.animal.golem.IronGolem --member createAttributes
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "decompiled": {
+    "class": "net.minecraft.world.entity.animal.golem.IronGolem",
+    "member": "createAttributes",
+    "descriptor": "()Lnet/minecraft/world/entity/ai/attributes/AttributeSupplier$Builder;",
+    "compiler": "1.12.0",
+    "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-10/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/2eadb137f8f68cb422147b4554e4a7db842a188a7c29a9d3220de054777e8c71/source.java",
+    "warnings": [],
+    "cache_hit": true,
+    "view": "method"
+  },
+  "text": "public class IronGolem extends AbstractGolem implements NeutralMob {\n   public static Builder createAttributes() {\n      return Mob.createMobAttributes()\n         .add(Attributes.MAX_HEALTH, 100.0)\n         .add(Attributes.MOVEMENT_SPEED, 0.25)\n         .add(Attributes.KNOCKBACK_RESISTANCE, 1.0)\n         .add(Attributes.ATTACK_DAMAGE, 15.0)\n         .add(Attributes.STEP_HEIGHT, 1.0);\n   }\n}\n",
+  "total_lines": 20,
+  "total_chars": 810,
+  "returned_range": {
+    "start_line": 11,
+    "start_char": 0,
+    "end_line": 21,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 105.35,
+    "body_chars": 394,
+    "output_chars": 1633
+  }
+}
+
+$ python3 scripts/mc-knowledge.py --version 26.3 source net.minecraft.world.entity.animal.golem.IronGolem --member getAttackDamage
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "decompiled": {
+    "class": "net.minecraft.world.entity.animal.golem.IronGolem",
+    "member": "getAttackDamage",
+    "descriptor": "()F",
+    "compiler": "1.12.0",
+    "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-10/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/d55102175248340d66c9fc37b97087734ddc85a2b5cba711760fd857e04cd8fc/source.java",
+    "warnings": [],
+    "cache_hit": true,
+    "view": "method"
+  },
+  "text": "public class IronGolem extends AbstractGolem implements NeutralMob {\n   private float getAttackDamage() {\n      return (float)this.getAttributeValue(Attributes.ATTACK_DAMAGE);\n   }\n}\n",
+  "total_lines": 13,
+  "total_chars": 485,
+  "returned_range": {
+    "start_line": 9,
+    "start_char": 0,
+    "end_line": 14,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 109.88,
+    "body_chars": 183,
+    "output_chars": 1348
+  }
+}
+
+$ python3 scripts/mc-knowledge.py --version 26.3 source net.minecraft.world.entity.animal.golem.IronGolem --member doHurtTarget
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "decompiled": {
+    "class": "net.minecraft.world.entity.animal.golem.IronGolem",
+    "member": "doHurtTarget",
+    "descriptor": "(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/Entity;)Z",
+    "compiler": "1.12.0",
+    "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-10/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/67a4e59953dc7178f9fda7c94c6703c25a3493be5b339fc2d0a1a50a24be4c39/source.java",
+    "warnings": [],
+    "cache_hit": true,
+    "view": "method"
+  },
+  "text": "public class IronGolem extends AbstractGolem implements NeutralMob {\n   @Override\n   public boolean doHurtTarget(final ServerLevel level, final Entity target) {\n      this.attackAnimationTick = 10;\n      level.broadcastEntityEvent(this, (byte)4);\n      float attackDamage = this.getAttackDamage();\n      float damage = (int)attackDamage > 0 ? attackDamage / 2.0F + this.random.nextInt((int)attackDamage) : attackDamage;\n      DamageSource damageSource = this.damageSources().mobAttack(this);\n      boolean hurt = target.hurtServer(level, damageSource, damage);\n      if (hurt) {\n         double knockbackResistance = target instanceof LivingEntity livingEntity ? livingEntity.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE) : 0.0;\n         double scale = Math.max(0.0, 1.0 - knockbackResistance);\n         target.setDeltaMovement(target.getDeltaMovement().add(0.0, 0.4F * scale, 0.0));\n         EnchantmentHelper.doPostAttackEffects(level, target, damageSource);\n      }\n\n      this.playSound(SoundEvents.IRON_GOLEM_ATTACK, 1.0F, 1.0F);\n      return hurt;\n   }\n}\n",
+  "total_lines": 33,
+  "total_chars": 1615,
+  "returned_range": {
+    "start_line": 14,
+    "start_char": 0,
+    "end_line": 34,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 104.69,
+    "body_chars": 1066,
+    "output_chars": 2321
+  }
+}
+
+$ python3 scripts/mc-knowledge.py --version 26.3 source net.minecraft.world.damagesource.DamageSources --member mobAttack
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "decompiled": {
+    "class": "net.minecraft.world.damagesource.DamageSources",
+    "member": "mobAttack",
+    "descriptor": "(Lnet/minecraft/world/entity/LivingEntity;)Lnet/minecraft/world/damagesource/DamageSource;",
+    "compiler": "1.12.0",
+    "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-10/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/ef08e90e2a5040902e26e0b9c7ebe0d8461783b8a93d364e5fce84550dae8d92/source.java",
+    "warnings": [],
+    "cache_hit": true,
+    "view": "method"
+  },
+  "text": "public class DamageSources {\n   public DamageSource mobAttack(final LivingEntity mob) {\n      return this.source(DamageTypes.MOB_ATTACK, mob);\n   }\n}\n",
+  "total_lines": 10,
+  "total_chars": 286,
+  "returned_range": {
+    "start_line": 6,
+    "start_char": 0,
+    "end_line": 11,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 105.09,
+    "body_chars": 150,
+    "output_chars": 1393
+  }
+}
+
+$ python3 scripts/mc-knowledge.py --version 26.3 data damage_type/mob_attack
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "resource": "data/minecraft/damage_type/mob_attack.json",
+  "pointer": null,
+  "text": "{\n  \"exhaustion\": 0.1,\n  \"message_id\": \"mob\",\n  \"scaling\": \"when_caused_by_living_non_player\"\n}\n",
+  "total_lines": 5,
+  "total_chars": 96,
+  "returned_range": {
+    "start_line": 1,
+    "start_char": 0,
+    "end_line": 6,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 78.37,
+    "body_chars": 96,
+    "output_chars": 832
+  }
+}
+
+$ python3 scripts/mc-knowledge.py --version 26.3 source net.minecraft.world.damagesource.DamageSource --member scalesWithDifficulty
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "decompiled": {
+    "class": "net.minecraft.world.damagesource.DamageSource",
+    "member": "scalesWithDifficulty",
+    "descriptor": "()Z",
+    "compiler": "1.12.0",
+    "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-10/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/4bbd21dbc045143cdfe108980a125df995711ba3ae39695a317eab35ee021a73/source.java",
+    "warnings": [],
+    "cache_hit": true,
+    "view": "method"
+  },
+  "text": "public class DamageSource {\n   public boolean scalesWithDifficulty() {\n      return switch (this.type().scaling()) {\n         case NEVER -> false;\n         case WHEN_CAUSED_BY_LIVING_NON_PLAYER -> this.causingEntity instanceof LivingEntity && !(this.causingEntity instanceof Player);\n         case ALWAYS -> true;\n      };\n   }\n}\n",
+  "total_lines": 17,
+  "total_chars": 583,
+  "returned_range": {
+    "start_line": 9,
+    "start_char": 0,
+    "end_line": 18,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 115.13,
+    "body_chars": 330,
+    "output_chars": 1500
+  }
+}
+
+$ python3 scripts/mc-knowledge.py --version 26.3 source net.minecraft.world.entity.player.Player --member hurtServer
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "decompiled": {
+    "class": "net.minecraft.world.entity.player.Player",
+    "member": "hurtServer",
+    "descriptor": "(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;F)Z",
+    "compiler": "1.12.0",
+    "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-10/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/28f91b735ba1e2b6ab14449224a99c3a34d9b83a328fd34f3d7a61471efaf1c8/source.java",
+    "warnings": [],
+    "cache_hit": true,
+    "view": "method"
+  },
+  "text": "public abstract class Player extends Avatar implements ContainerUser {\n   @Override\n   public boolean hurtServer(final ServerLevel level, final DamageSource source, float damage) {\n      if (this.isInvulnerableTo(level, source)) {\n         return false;\n      }\n\n      if (this.abilities.invulnerable && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {\n         return false;\n      }\n\n      this.noActionTime = 0;\n      if (this.isDeadOrDying()) {\n         return false;\n      }\n\n      this.removeEntitiesOnShoulder();\n      if (source.scalesWithDifficulty()) {\n         if (level.getDifficulty() == Difficulty.PEACEFUL) {\n            damage = 0.0F;\n         }\n\n         if (level.getDifficulty() == Difficulty.EASY) {\n            damage = Math.min(damage / 2.0F + 1.0F, damage);\n         }\n\n         if (level.getDifficulty() == Difficulty.HARD) {\n            damage = damage * 3.0F / 2.0F;\n         }\n      }\n\n      return damage == 0.0F ? false : super.hurtServer(level, source, damage);\n   }\n}\n",
+  "total_lines": 56,
+  "total_chars": 1835,
+  "returned_range": {
+    "start_line": 23,
+    "start_char": 0,
+    "end_line": 57,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 111.05,
+    "body_chars": 1004,
+    "output_chars": 2275
+  }
+}
+
+$ python3 scripts/mc-knowledge.py --version 26.3 source net.minecraft.world.entity.player.Player --member actuallyHurt
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "decompiled": {
+    "class": "net.minecraft.world.entity.player.Player",
+    "member": "actuallyHurt",
+    "descriptor": "(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;F)V",
+    "compiler": "1.12.0",
+    "path": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-10/attempt-01/workspace/.local/mc-knowledge/artifacts/a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6/sources/034a5f734c5afeee15116d35e5bc11546efd7a16ab010758285300de54cd64e2/source.java",
+    "warnings": [],
+    "cache_hit": true,
+    "view": "method"
+  },
+  "text": "public abstract class Player extends Avatar implements ContainerUser {\n   @Override\n   protected void actuallyHurt(final ServerLevel level, final DamageSource source, float dmg) {\n      if (!this.isInvulnerableTo(level, source)) {\n         dmg = this.getDamageAfterArmorAbsorb(source, dmg);\n         dmg = this.getDamageAfterMagicAbsorb(source, dmg);\n         float originalDamage = dmg;\n         dmg = Math.max(dmg - this.getAbsorptionAmount(), 0.0F);\n         this.setAbsorptionAmount(this.getAbsorptionAmount() - (originalDamage - dmg));\n         float absorbedDamage = originalDamage - dmg;\n         if (absorbedDamage > 0.0F && absorbedDamage < 3.4028235E37F) {\n            this.awardStat(Stats.DAMAGE_ABSORBED, Math.round(absorbedDamage * 10.0F));\n         }\n\n         if (dmg != 0.0F) {\n            this.causeFoodExhaustion(source.getFoodExhaustion());\n            this.getCombatTracker().recordDamage(source, dmg);\n            this.setHealth(this.getHealth() - dmg);\n            if (dmg < 3.4028235E37F) {\n               this.awardStat(Stats.DAMAGE_TAKEN, Math.round(dmg * 10.0F));\n            }\n\n            this.gameEvent(GameEvent.ENTITY_DAMAGE);\n         }\n      }\n   }\n}\n",
+  "total_lines": 49,
+  "total_chars": 2022,
+  "returned_range": {
+    "start_line": 23,
+    "start_char": 0,
+    "end_line": 50,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 114.69,
+    "body_chars": 1184,
+    "output_chars": 2450
+  }
+}
+
+JAR version.json
+{
+    "id": "26.3",
+    "name": "26.3",
+    "world_version": 5023,
+    "series_id": "main",
+    "protocol_version": 777,
+    "pack_version": {
+        "resource_major": 97,
+        "resource_minor": 1,
+        "data_major": 121,
+        "data_minor": 0
+    },
+    "build_time": "2026-09-15T11:20:48+00:00",
+    "java_component": "java-runtime-epsilon",
+    "java_version": 25,
+    "stable": true,
+    "use_editor": false
+}

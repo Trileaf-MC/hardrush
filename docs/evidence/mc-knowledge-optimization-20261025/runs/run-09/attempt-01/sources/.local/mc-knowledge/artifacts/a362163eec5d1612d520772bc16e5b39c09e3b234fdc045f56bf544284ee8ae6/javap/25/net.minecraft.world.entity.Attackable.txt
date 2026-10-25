@@ -1,0 +1,5 @@
+Compiled from "Attackable.java"
+public interface net.minecraft.world.entity.Attackable {
+  public abstract net.minecraft.world.entity.LivingEntity getLastAttacker();
+    descriptor: ()Lnet/minecraft/world/entity/LivingEntity;
+}

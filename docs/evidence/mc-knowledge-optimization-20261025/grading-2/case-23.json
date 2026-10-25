@@ -1,0 +1,64 @@
+{
+  "case_id": "case-23",
+  "topic": "T2",
+  "assessable": true,
+  "rubric_scores": {
+    "factual_accuracy": 90,
+    "evidence_quality": 10,
+    "total": 100
+  },
+  "items": [
+    {
+      "id": "A1",
+      "earned": 12,
+      "maximum": 12,
+      "reason": "明确默认攻击属性15.0/15，并非每次固定造成15点伤害；8+4。"
+    },
+    {
+      "id": "A2",
+      "earned": 24,
+      "maximum": 24,
+      "reason": "给出属性/2+nextInt((int)属性)或7.5+k的正确随机公式，0…14整数带来7.5、8.5…21.5共15个离散值，两端可取且步长1；8+8+8。"
+    },
+    {
+      "id": "A3",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "简单min(D/2+1,D)，得到4.75…11.75；6+8。"
+    },
+    {
+      "id": "A4",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "普通保持D，得到7.5…21.5；3+7。"
+    },
+    {
+      "id": "A5",
+      "earned": 14,
+      "maximum": 14,
+      "reason": "困难D×1.5或D×3/2，得到11.25…32.25；6+8。"
+    },
+    {
+      "id": "A6",
+      "earned": 16,
+      "maximum": 16,
+      "reason": "明确先随机再由Player.hurtServer缩放，非玩家生物mob_attack适用；Player.actuallyHurt后“上述条件下，表中结果就是最终伤害量”，表中保留4.75/11.25等小数，等价表达最终扣血不再整数舍入；8+4+4。"
+    },
+    {
+      "id": "E1",
+      "earned": 10,
+      "maximum": 10,
+      "reason": "明确Java26.3原版服务端制品与可定位来源；属性与攻击公式对应IronGolem成员，mob_attack及Player.hurtServer支持缩放；条件明确，静态来源未冒充运行验证；2+3+3+2。"
+    }
+  ],
+  "major_errors": [],
+  "omissions": [],
+  "citations": [
+    "IronGolem.createAttributes",
+    "IronGolem.doHurtTarget",
+    "mob_attack.json / 非玩家生物缩放条件",
+    "Player.hurtServer",
+    "原版26.3制品校验记录"
+  ],
+  "notes": "仅依据最终答案评分，采用量表允许的同义表述及等价公式；明确作为最终伤害的小数结果不要求再逐字写float。未读取运行过程、分组或其他评分。"
+}

@@ -1,0 +1,147 @@
+[
+  {
+    "index": 1,
+    "query": [
+      "doctor"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 0,
+    "new_exit": 0
+  },
+  {
+    "index": 2,
+    "query": [
+      "find-class",
+      "Skeleton"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 0,
+    "new_exit": 0
+  },
+  {
+    "index": 3,
+    "query": [
+      "outline",
+      "Skeleton",
+      "--member",
+      "tick"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 0,
+    "new_exit": 0
+  },
+  {
+    "index": 4,
+    "query": [
+      "source",
+      "Skeleton",
+      "--member",
+      "tick"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 0,
+    "new_exit": 0
+  },
+  {
+    "index": 5,
+    "query": [
+      "source",
+      "Skeleton",
+      "--member",
+      "<init>"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 0,
+    "new_exit": 0
+  },
+  {
+    "index": 6,
+    "query": [
+      "source",
+      "Wolf",
+      "--member",
+      "registerGoals"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 0,
+    "new_exit": 0
+  },
+  {
+    "index": 7,
+    "query": [
+      "data",
+      "damage_type/mob_attack",
+      "--pointer",
+      "/scaling"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 0,
+    "new_exit": 0
+  },
+  {
+    "index": 8,
+    "query": [
+      "data",
+      "tags/entity_type/freeze_immune_entity_types"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 0,
+    "new_exit": 0
+  },
+  {
+    "index": 9,
+    "query": [
+      "source",
+      "Mob",
+      "--member",
+      "convertTo"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 1,
+    "new_exit": 1
+  },
+  {
+    "index": 10,
+    "query": [
+      "source",
+      "TamableAnimal",
+      "--member",
+      "reassessTameGoals"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 1,
+    "new_exit": 1
+  },
+  {
+    "index": 11,
+    "query": [
+      "source",
+      "DefinitelyMissingEntity"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 1,
+    "new_exit": 1
+  },
+  {
+    "index": 12,
+    "query": [
+      "search",
+      "ConversionTracker"
+    ],
+    "passed": true,
+    "error": null,
+    "old_exit": 0,
+    "new_exit": 0
+  }
+]

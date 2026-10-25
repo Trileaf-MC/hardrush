@@ -1,0 +1,15 @@
+  public net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal(net.minecraft.world.entity.TamableAnimal);
+    descriptor: (Lnet/minecraft/world/entity/TamableAnimal;)V
+    Code:
+         0: aload_0
+         1: invokespecial #1                  // Method net/minecraft/world/entity/ai/goal/Goal."<init>":()V
+         4: aload_0
+         5: aload_1
+         6: putfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;
+         9: aload_0
+        10: getstatic     #13                 // Field net/minecraft/world/entity/ai/goal/Goal$Flag.JUMP:Lnet/minecraft/world/entity/ai/goal/Goal$Flag;
+        13: getstatic     #19                 // Field net/minecraft/world/entity/ai/goal/Goal$Flag.MOVE:Lnet/minecraft/world/entity/ai/goal/Goal$Flag;
+        16: invokestatic  #22                 // Method java/util/EnumSet.of:(Ljava/lang/Enum;Ljava/lang/Enum;)Ljava/util/EnumSet;
+        19: invokevirtual #28                 // Method setFlags:(Ljava/util/EnumSet;)V
+        22: return
+

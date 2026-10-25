@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "member": {
+    "name": "canContinueToUse",
+    "descriptor": "()Z"
+  },
+  "class_name": "net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal",
+  "representation": "javap bytecode",
+  "cache_hit": false,
+  "text": "  public boolean canContinueToUse();\n    descriptor: ()Z\n    Code:\n         0: aload_0\n         1: getfield      #7                  // Field mob:Lnet/minecraft/world/entity/TamableAnimal;\n         4: invokevirtual #32                 // Method net/minecraft/world/entity/TamableAnimal.isOrderedToSit:()Z\n         7: ireturn\n\n",
+  "total_lines": 8,
+  "total_chars": 326,
+  "returned_range": {
+    "start_line": 1,
+    "start_char": 0,
+    "end_line": 9,
+    "end_char": 0
+  },
+  "truncated": false,
+  "next": null,
+  "metrics": {
+    "elapsed_ms": 1214.66,
+    "body_chars": 326,
+    "output_chars": 1191
+  }
+}

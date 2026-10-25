@@ -1,0 +1,47 @@
+[
+  {
+    "path": "answer.md",
+    "sha256": "6e1d0cdba65bf4fbf8f289d0bafd5e75cad53bf459c9a215f78decd792c1db02",
+    "bytes": 3528
+  },
+  {
+    "path": "prompt.txt",
+    "sha256": "20967ab46b102cdd78271a6a3db0c4905e89192247a6c96cea306ee7eb7588eb",
+    "bytes": 785
+  },
+  {
+    "path": "invocation.json",
+    "sha256": "3dd7d0ef77c482f547b2380d386d45d5f8d2091fdf09cc870d54cfb7c3b7664f",
+    "bytes": 3064
+  },
+  {
+    "path": "status.json",
+    "sha256": "ed04b57d847de6a066efc21e2b7c37625daa371141c6bf1720177a918f1cef25",
+    "bytes": 873
+  },
+  {
+    "path": "events.jsonl",
+    "sha256": "200d7bf00e4a51eba4140dec21c6845b98e15d3801f927e5499d58558d2a59fc",
+    "bytes": 61393
+  },
+  {
+    "path": "observable.jsonl",
+    "sha256": "d784d0c0e659157212807e15078578c7ecdd9a668cf2ffc13971ed61426f6bd9",
+    "bytes": 99928
+  },
+  {
+    "path": "transcript.md",
+    "sha256": "7bf801bb9bff54f0f1ad5231d5bc6d6126879d672b960f595cf1b1de53527452",
+    "bytes": 84889
+  },
+  {
+    "path": "tool-outputs.json",
+    "sha256": "bb4a8bf1df385b6e14574db3d425a8e30555757d63eceb0d344667e922f1c537",
+    "bytes": 92086
+  },
+  {
+    "path": "native-token-records.json",
+    "sha256": "241b8a466459caca2b9be62362bccf8b3c8865c861a5da05f2692c670fe81b6d",
+    "bytes": 5108
+  }
+]

@@ -1,0 +1,62 @@
+Compiled from "BlockGetter.java"
+public interface net.minecraft.world.level.BlockGetter extends net.minecraft.world.level.LevelHeightAccessor {
+  public abstract net.minecraft.world.level.block.entity.BlockEntity getBlockEntity(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/entity/BlockEntity;
+
+  public default <T extends net.minecraft.world.level.block.entity.BlockEntity> java.util.Optional<T> getBlockEntity(net.minecraft.core.BlockPos, net.minecraft.world.level.block.entity.BlockEntityType<T>);
+    descriptor: (Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/BlockEntityType;)Ljava/util/Optional;
+
+  public abstract net.minecraft.world.level.block.state.BlockState getBlockState(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;
+
+  public abstract net.minecraft.world.level.material.FluidState getFluidState(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/material/FluidState;
+
+  public default int getLightEmission(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)I
+
+  public default java.util.stream.Stream<net.minecraft.world.level.block.state.BlockState> getBlockStates(net.minecraft.world.phys.AABB);
+    descriptor: (Lnet/minecraft/world/phys/AABB;)Ljava/util/stream/Stream;
+
+  public default net.minecraft.world.phys.BlockHitResult isBlockInLine(net.minecraft.world.level.ClipBlockStateContext);
+    descriptor: (Lnet/minecraft/world/level/ClipBlockStateContext;)Lnet/minecraft/world/phys/BlockHitResult;
+
+  public default net.minecraft.world.phys.BlockHitResult clip(net.minecraft.world.level.ClipContext);
+    descriptor: (Lnet/minecraft/world/level/ClipContext;)Lnet/minecraft/world/phys/BlockHitResult;
+
+  public default net.minecraft.world.phys.BlockHitResult clipWithInteractionOverride(net.minecraft.world.phys.Vec3, net.minecraft.world.phys.Vec3, net.minecraft.core.BlockPos, net.minecraft.world.phys.shapes.VoxelShape, net.minecraft.world.level.block.state.BlockState);
+    descriptor: (Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/phys/shapes/VoxelShape;Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/world/phys/BlockHitResult;
+
+  public default double getBlockFloorHeight(net.minecraft.world.phys.shapes.VoxelShape, java.util.function.Supplier<net.minecraft.world.phys.shapes.VoxelShape>);
+    descriptor: (Lnet/minecraft/world/phys/shapes/VoxelShape;Ljava/util/function/Supplier;)D
+
+  public default double getBlockFloorHeight(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)D
+
+  public static <T, C> T traverseBlocks(net.minecraft.world.phys.Vec3, net.minecraft.world.phys.Vec3, C, java.util.function.BiFunction<C, net.minecraft.core.BlockPos, T>, java.util.function.Function<C, T>);
+    descriptor: (Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Ljava/lang/Object;Ljava/util/function/BiFunction;Ljava/util/function/Function;)Ljava/lang/Object;
+
+  public static boolean forEachBlockIntersectedBetween(net.minecraft.world.phys.Vec3, net.minecraft.world.phys.Vec3, net.minecraft.world.phys.AABB, net.minecraft.world.level.BlockGetter$BlockStepVisitor);
+    descriptor: (Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/AABB;Lnet/minecraft/world/level/BlockGetter$BlockStepVisitor;)Z
+
+  private static int addCollisionsAlongTravel(it.unimi.dsi.fastutil.longs.LongSet, net.minecraft.world.phys.Vec3, net.minecraft.world.phys.AABB, net.minecraft.world.level.BlockGetter$BlockStepVisitor);
+    descriptor: (Lit/unimi/dsi/fastutil/longs/LongSet;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/AABB;Lnet/minecraft/world/level/BlockGetter$BlockStepVisitor;)I
+
+  private static net.minecraft.core.Vec3i getFurthestCorner(net.minecraft.world.phys.Vec3);
+    descriptor: (Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/core/Vec3i;
+
+  private net.minecraft.world.phys.shapes.VoxelShape lambda$getBlockFloorHeight$0(net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/phys/shapes/VoxelShape;
+
+  private static net.minecraft.world.phys.BlockHitResult lambda$clip$1(net.minecraft.world.level.ClipContext);
+    descriptor: (Lnet/minecraft/world/level/ClipContext;)Lnet/minecraft/world/phys/BlockHitResult;
+
+  private net.minecraft.world.phys.BlockHitResult lambda$clip$0(net.minecraft.world.level.ClipContext, net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/world/level/ClipContext;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/phys/BlockHitResult;
+
+  private static net.minecraft.world.phys.BlockHitResult lambda$isBlockInLine$1(net.minecraft.world.level.ClipBlockStateContext);
+    descriptor: (Lnet/minecraft/world/level/ClipBlockStateContext;)Lnet/minecraft/world/phys/BlockHitResult;
+
+  private net.minecraft.world.phys.BlockHitResult lambda$isBlockInLine$0(net.minecraft.world.level.ClipBlockStateContext, net.minecraft.core.BlockPos);
+    descriptor: (Lnet/minecraft/world/level/ClipBlockStateContext;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/phys/BlockHitResult;
+}

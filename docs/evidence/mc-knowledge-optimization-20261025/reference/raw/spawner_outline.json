@@ -1,0 +1,32 @@
+{
+  "ok": true,
+  "source": {
+    "edition": "Java",
+    "minecraft_version": "26.3",
+    "kind": "vanilla-server",
+    "jar": "/Users/leifwebber/.gradle/caches/fabric-loom/26.3/minecraft-extracted_server.jar",
+    "jar_sha256": "a362163eec5d1612d520772bc16e5b39c09e3b234fdc045f56bf544284ee8ae6",
+    "integrity": "matches server bundle SHA-256"
+  },
+  "class_name": "net.minecraft.world.level.BaseSpawner",
+  "cache_hit": false,
+  "text": "Compiled from \"BaseSpawner.java\"\npublic abstract class net.minecraft.world.level.BaseSpawner {\n  private static final org.slf4j.Logger LOGGER;\n    descriptor: Lorg/slf4j/Logger;\n  private static final int SPAWNER_ENTITY_ID;\n    descriptor: I\n  public static final net.minecraft.world.entity.EntityProcessor SET_DISPLAY_ENTITY_ID;\n    descriptor: Lnet/minecraft/world/entity/EntityProcessor;\n  public static final java.lang.String SPAWN_DATA_TAG;\n    descriptor: Ljava/lang/String;\n  private static final int EVENT_SPAWN;\n    descriptor: I\n  private static final int DEFAULT_SPAWN_DELAY;\n    descriptor: I\n  private static final int DEFAULT_MIN_SPAWN_DELAY;\n    descriptor: I\n  private static final int DEFAULT_MAX_SPAWN_DELAY;\n    descriptor: I\n  private static final int DEFAULT_SPAWN_COUNT;\n    descriptor: I\n  private static final int DEFAULT_MAX_NEARBY_ENTITIES;\n    descriptor: I\n  private static final int DEFAULT_REQUIRED_PLAYER_RANGE;\n    descriptor: I\n  private static final int DEFAULT_SPAWN_RANGE;\n    descriptor: I\n  private int spawnDelay;\n    descriptor: I\n  private net.minecraft.util.random.WeightedList<net.minecraft.world.level.SpawnData> spawnPotentials;\n    descriptor: Lnet/minecraft/util/random/WeightedList;\n  private net.minecraft.world.level.SpawnData nextSpawnData;\n    descriptor: Lnet/minecraft/world/level/SpawnData;\n  private double spin;\n    descriptor: D\n  private double oSpin;\n    descriptor: D\n  private int minSpawnDelay;\n    descriptor: I\n  private int maxSpawnDelay;\n    descriptor: I\n  private int spawnCount;\n    descriptor: I\n  private net.minecraft.world.entity.Entity displayEntity;\n    descriptor: Lnet/minecraft/world/entity/Entity;\n  private int maxNearbyEntities;\n    descriptor: I\n  private int requiredPlayerRange;\n    descriptor: I\n  private int spawnRange;\n    descriptor: I\n  public net.minecraft.world.level.BaseSpawner();\n    descriptor: ()V\n\n  public void setEntityId(net.minecraft.world.entity.EntityType<?>, net.minecraft.world.level.Level, net.minecraft.util.RandomSource, net.minecraft.core.BlockPos);\n    descriptor: (Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;Lnet/minecraft/util/RandomSource;Lnet/minecraft/core/BlockPos;)V\n\n  public void setEntityData(net.minecraft.world.item.component.TypedEntityData<net.minecraft.world.entity.EntityType<?>>, net.minecraft.world.level.Level, net.minecraft.util.RandomSource, net.minecraft.core.BlockPos);\n    descriptor: (Lnet/minecraft/world/item/component/TypedEntityData;Lnet/minecraft/world/level/Level;Lnet/minecraft/util/RandomSource;Lnet/minecraft/core/BlockPos;)V\n\n  private boolean isNearPlayer(net.minecraft.world.level.Level, net.minecraft.core.BlockPos);\n    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;)Z\n\n  public void clientTick(net.minecraft.world.level.Level, net.minecraft.core.BlockPos);\n    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;)V\n\n  public void serverTick(net.minecraft.server.level.ServerLevel, net.minecraft.core.BlockPos);\n    descriptor: (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;)V\n\n  private void delay(net.minecraft.world.level.Level, net.minecraft.core.BlockPos);\n    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;)V\n\n  public void load(net.minecraft.world.level.Level, net.minecraft.core.BlockPos, net.minecraft.world.level.storage.ValueInput);\n    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/storage/ValueInput;)V\n\n  public void save(net.minecraft.world.level.storage.ValueOutput);\n    descriptor: (Lnet/minecraft/world/level/storage/ValueOutput;)V\n\n  public net.minecraft.world.entity.Entity getOrCreateDisplayEntity(net.minecraft.world.level.Level, net.minecraft.core.BlockPos);\n    descriptor: (Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/entity/Entity;\n\n",
+  "total_lines": 119,
+  "total_chars": 6278,
+  "returned_range": {
+    "start_line": 1,
+    "start_char": 0,
+    "end_line": 81,
+    "end_char": 0
+  },
+  "truncated": true,
+  "next": {
+    "start_line": 81,
+    "start_char": 0
+  },
+  "metrics": {
+    "elapsed_ms": 310.68,
+    "body_chars": 3942,
+    "output_chars": 4796
+  }
+}

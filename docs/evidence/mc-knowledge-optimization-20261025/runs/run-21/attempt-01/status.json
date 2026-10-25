@@ -1,0 +1,31 @@
+{
+  "id": "run-21",
+  "topic": "T3",
+  "arm": "S",
+  "repeat": 2,
+  "wave": 7,
+  "launch_position": 3,
+  "format_env": "compact",
+  "skill_variant": "final",
+  "prompt_sha256": "dbf5f117b94a534dabe4e0f5b40312ad333ba5538da751dabb9966069de4c494",
+  "workspace": "/private/tmp/hardrush-mc-optimization-20261025/runs/run-21/attempt-01/workspace",
+  "attempt": "attempt-01",
+  "state": "completed",
+  "start_unix": 1792917911.6599581,
+  "exit_code": 0,
+  "end_unix": 1792918193.5234408,
+  "elapsed_seconds": 281.863,
+  "event_capture": {
+    "discarded_private_events": 0,
+    "malformed_lines": 0,
+    "observable_events": 89
+  },
+  "thread_id": "01a1723c-3963-7bf0-a899-2acee8d0c851",
+  "cli_cumulative_usage": {
+    "input_tokens": 552746,
+    "cached_input_tokens": 487936,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 8055,
+    "reasoning_output_tokens": 2366
+  }
+}

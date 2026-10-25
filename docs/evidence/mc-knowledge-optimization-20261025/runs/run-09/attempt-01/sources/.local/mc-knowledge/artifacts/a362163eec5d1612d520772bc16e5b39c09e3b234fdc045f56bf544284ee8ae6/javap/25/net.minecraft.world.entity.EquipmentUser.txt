@@ -1,0 +1,23 @@
+Compiled from "EquipmentUser.java"
+public interface net.minecraft.world.entity.EquipmentUser {
+  public abstract void setItemSlot(net.minecraft.world.entity.EquipmentSlot, net.minecraft.world.item.ItemStack);
+    descriptor: (Lnet/minecraft/world/entity/EquipmentSlot;Lnet/minecraft/world/item/ItemStack;)V
+
+  public abstract net.minecraft.world.item.ItemStack getItemBySlot(net.minecraft.world.entity.EquipmentSlot);
+    descriptor: (Lnet/minecraft/world/entity/EquipmentSlot;)Lnet/minecraft/world/item/ItemStack;
+
+  public abstract void setDropChance(net.minecraft.world.entity.EquipmentSlot, float);
+    descriptor: (Lnet/minecraft/world/entity/EquipmentSlot;F)V
+
+  public default void equip(net.minecraft.world.entity.EquipmentTable, net.minecraft.world.level.storage.loot.LootParams);
+    descriptor: (Lnet/minecraft/world/entity/EquipmentTable;Lnet/minecraft/world/level/storage/loot/LootParams;)V
+
+  public default void equip(net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable>, net.minecraft.world.level.storage.loot.LootParams, java.util.Map<net.minecraft.world.entity.EquipmentSlot, java.lang.Float>);
+    descriptor: (Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/world/level/storage/loot/LootParams;Ljava/util/Map;)V
+
+  public default void equip(net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable>, net.minecraft.world.level.storage.loot.LootParams, long, java.util.Map<net.minecraft.world.entity.EquipmentSlot, java.lang.Float>);
+    descriptor: (Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/world/level/storage/loot/LootParams;JLjava/util/Map;)V
+
+  public default net.minecraft.world.entity.EquipmentSlot resolveSlot(net.minecraft.world.item.ItemStack, java.util.List<net.minecraft.world.entity.EquipmentSlot>);
+    descriptor: (Lnet/minecraft/world/item/ItemStack;Ljava/util/List;)Lnet/minecraft/world/entity/EquipmentSlot;
+}

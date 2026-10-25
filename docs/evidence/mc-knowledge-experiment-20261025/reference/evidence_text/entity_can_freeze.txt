@@ -1,0 +1,14 @@
+public abstract class Entity
+   implements Nameable,
+   EntityAccess,
+   ScoreHolder,
+   SyncedDataHolder,
+   DataComponentGetter,
+   ItemOwner,
+   SlotProvider,
+   DebugValueSource,
+   TypedInstance<EntityType<?>> {
+   public boolean canFreeze() {
+      return !this.is(EntityTypeTags.FREEZE_IMMUNE_ENTITY_TYPES);
+   }
+}
