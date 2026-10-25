@@ -18,3 +18,7 @@ case2: 玩家需要知道自己当前的“复生次数”。
 
 除非用户明确要求，否则禁止自行进行需要用 computer use 或者真实客户端游玩才能进行的测试
 复杂的、需要截图或者交互/游玩才能判断的客户端验证和测试应该交由人类用户手动测试，并把需要测试的内容放进 docs/人工客户端测试 里通知用户测试。
+
+## 原版机制查询
+
+如果开发内容涉及用到 minecraft 原版机制/数值/行为等，务必使用 [.agents/skills/minecraft-knowledge/SKILL.md](.agents/skills/minecraft-knowledge/SKILL.md) 来核实对应知识，而不是靠幻觉猜测。
