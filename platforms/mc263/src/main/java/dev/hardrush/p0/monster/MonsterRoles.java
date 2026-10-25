@@ -296,8 +296,6 @@ public final class MonsterRoles {
                 role.burstRemaining = 0; role.chargeTick = -1;
                 if (role.igniteAt != 0) {
                     role.igniteAt = 0; DisguiseProbe.setCreeperSwelling(player, false);
-                    double speed = role.model.getAttributeValue(Attributes.MOVEMENT_SPEED);
-                    player.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(speed * speed);
                 }
                 player.stopUsingItem(); continue;
             }
@@ -509,7 +507,6 @@ public final class MonsterRoles {
         if (role == null || !P2MonsterRuntime.canAct(player) || !player.isAlive() || role.kind != Kind.CREEPER || role.igniteAt != 0) return false;
         int fuse = (int)role.value("creeper.fuseTicks");
         role.igniteAt = player.level().getServer().getTickCount() + fuse;
-        player.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
         DisguiseProbe.setCreeperSwelling(player, true);
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.CREEPER_PRIMED, SoundSource.HOSTILE, 1, .5f);
         return true;
@@ -687,7 +684,8 @@ public final class MonsterRoles {
             if (slot == 0 && role.kind == Kind.CREEPER) {
                 wanted = named(Items.GUNPOWDER, role.igniteAt != 0 ? "苦力怕：正在引爆" : "苦力怕：右键引爆");
                 wanted.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
-                        Component.literal("普通苦力怕自爆，不破坏方块；开始引爆后不能归返取消"))));
+                        Component.literal("普通苦力怕自爆，不破坏方块"),
+                        Component.literal("引爆期间可正常行走；开始后不能归返取消"))));
             }
             if (slot == 7) {
                 wanted = named(Items.ECHO_SHARD, "归返营地 · 右键引导 5 秒");

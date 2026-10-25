@@ -269,9 +269,11 @@ public final class MonsterRoleGameTest {
         var floor=creeper.blockPosition().below(); float pigHealth=pig.getHealth();
         MonsterRoles.select(creeper,"creeper");
         test.runAfterDelay(80,()->{
+            double walkingSpeed=creeper.getAttributeValue(Attributes.MOVEMENT_SPEED);
             test.assertTrue(MonsterRoles.ignite(creeper),"Native creeper fuse starts");
             test.assertTrue(!MonsterRoles.ignite(creeper),"Repeated ignite cannot duplicate a blast");
-            test.assertValueEqual(creeper.getAttributeValue(Attributes.MOVEMENT_SPEED),0d,"Native swell stops movement");
+            test.assertTrue(walkingSpeed>0,"Creeper walking speed is positive");
+            test.assertValueEqual(creeper.getAttributeValue(Attributes.MOVEMENT_SPEED),walkingSpeed,"Priming and repeated ignition preserve normal walking speed");
             test.startSequence().thenWaitUntil(()->test.assertTrue(!creeper.isAlive(),"Blast ends the prototype body"))
                 .thenExecute(()->{
                     try {
