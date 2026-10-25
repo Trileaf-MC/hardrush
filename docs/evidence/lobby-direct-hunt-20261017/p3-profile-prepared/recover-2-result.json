@@ -1,9 +1,0 @@
-{
-  "operation": "recover",
-  "phase": "RUNNING",
-  "pid": 20684,
-  "scenario": "PROFILE",
-  "boundary": "PREPARED",
-  "roundId": "0749dbe3-aa60-414c-a8ee-28a34094b3c7",
-  "status": "PASS"
-}

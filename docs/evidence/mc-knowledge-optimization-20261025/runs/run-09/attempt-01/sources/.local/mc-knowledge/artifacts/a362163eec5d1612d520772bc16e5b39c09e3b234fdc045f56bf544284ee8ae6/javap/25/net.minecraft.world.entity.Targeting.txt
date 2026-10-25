@@ -1,5 +1,0 @@
-Compiled from "Targeting.java"
-public interface net.minecraft.world.entity.Targeting {
-  public abstract net.minecraft.world.entity.LivingEntity getTarget();
-    descriptor: ()Lnet/minecraft/world/entity/LivingEntity;
-}

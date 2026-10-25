@@ -1,1 +1,0 @@
-Run exactly one command using the shell tool: python3 scripts/mc-knowledge.py data damage_type/mob_attack --pointer /scaling . Do not set or override any environment variable or format flag. Then state whether stdout uses compact format based on the result. Do not browse or run any other query.

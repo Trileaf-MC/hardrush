@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="dev.hardrush.p1.P1RecordsSessionTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-15T01:04:57.126Z" hostname="LeifMacBookPro2023.local" time="0.185">
-  <properties/>
-  <testcase name="failedBookWriteCannotReceiveCleanStopMarkerBeforeItsCallbackRuns()" classname="dev.hardrush.p1.P1RecordsSessionTest" time="0.012"/>
-  <testcase name="tenSessionRoundsAndCleanReopensNeverMixStatisticsOrHistoricalBookClaims()" classname="dev.hardrush.p1.P1RecordsSessionTest" time="0.171"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

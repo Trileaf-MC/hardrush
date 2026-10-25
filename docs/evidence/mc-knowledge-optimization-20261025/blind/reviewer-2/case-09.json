@@ -1,9 +1,0 @@
-{
-  "case_id": "case-09",
-  "topic": "T2",
-  "execution_state": "completed",
-  "question": "Minecraft Java26.3中，铁傀儡对普通无护甲玩家一次近战的基础攻击属性、实际随机伤害区间，以及简单/普通/困难难度下的最终区间分别是什么？区分属性值与最终伤害并解释随机/难度缩放顺序。",
-  "answer": "**原版 Java 26.3 中，铁傀儡的基础攻击属性是 `15.0`；难度缩放前，一次近战的实际随机伤害为 `7.5～21.5` 点。** 属性值不代表每次固定造成 15 点伤害。[属性与取值代码](.local/iron-golem-26.3-evidence.md:45)\n\n以下假设玩家无护甲、无减伤或吸收效果、不格挡，且此次攻击未被受伤无敌时间影响；只计算近战本身，**2 点伤害＝1 颗心**。\n\n| 计算阶段／难度 | 精确伤害区间（包含两端） | 相邻可能值的间隔 |\n|---|---:|---:|\n| 难度缩放前 | **7.5～21.5** | 1 |\n| 简单 | **4.75～11.75** | 0.5 |\n| 普通 | **7.5～21.5** | 1 |\n| 困难 | **11.25～32.25** | 1.5 |\n\n顺序是 **读取攻击属性 → 随机化 → 按玩家所在难度缩放 → 减伤、吸收与扣血**：\n\n1. `IronGolem.doHurtTarget` 先计算：\n   ```text\n   D = A / 2 + nextInt((int) A)\n     = 7.5 + k，其中 k ∈ {0, 1, …, 14}\n   ```\n   `nextInt(15)` 不包含 15，所以这是 **15 个离散值**，最大为 **21.5**。[攻击实现与随机数端点](.local/iron-golem-26.3-evidence.md:100)\n\n2. 攻击使用 `mob_attack`，其缩放规则是 `when_caused_by_living_non_player`；铁傀儡满足条件。因此玩家的 `Player.hurtServer` 对已经抽出的 `D` 计算：\n   - 简单：`min(D / 2 + 1, D)`；这里始终等于 `D / 2 + 1`。\n   - 普通：`D`。\n   - 困难：`D × 3 / 2`。\n\n   **难度缩放作用于随机结果，不是先改变属性 15 再抽随机数。** [伤害类型与适用条件](.local/iron-golem-26.3-evidence.md:31)、[难度缩放代码](.local/iron-golem-26.3-evidence.md:208)\n\n3. 生命扣除使用浮点数，**不会把上述伤害取整**；代码中的 `Math.round` 用于统计记录。表中是结算伤害，若一击致死，可观察到的生命值减少量仍受剩余生命限制。[实际扣血代码](.local/iron-golem-26.3-evidence.md:275)\n\n版本依据为 [Java 26.3 官方版本页](https://www.minecraft.net/en-us/article/minecraft-java-edition-26-3)及本地目标服务端 JAR 的版本元数据。本次结论来自该 JAR 的数据和反编译代码，未启动游戏实测；未见反编译告警。完整 JAR SHA-256、原始片段和复核命令保存在[本次证据文件](.local/iron-golem-26.3-evidence.md:1)，结论不外推至其他版本或基岩版。",
-  "answer_present": true,
-  "partial_answer": false
-}

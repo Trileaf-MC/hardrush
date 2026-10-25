@@ -1,6 +1,0 @@
-P1 isolated restart evidence: /Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/a77f5c3b-8e79-4b31-83a0-873a1f1f083c
-COUNTDOWN/write: PASS (JVM 84529, exit 0, clean SQLite)
-COUNTDOWN/recover: PASS (JVM 84611, exit 0, clean SQLite)
-COUNTDOWN/recover-again: PASS (JVM 84675, exit 0, clean SQLite)
-FAIL: RUNNING/write: Missing SERVER_STOPPED fixture result; see /Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/a77f5c3b-8e79-4b31-83a0-873a1f1f083c/RUNNING/write.log
-Evidence retained at /Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/a77f5c3b-8e79-4b31-83a0-873a1f1f083c

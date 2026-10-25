@@ -1,8 +1,0 @@
-Compiled from "SlotProvider.java"
-public interface net.minecraft.world.entity.SlotProvider {
-  public abstract net.minecraft.world.entity.SlotAccess getSlot(int);
-    descriptor: (I)Lnet/minecraft/world/entity/SlotAccess;
-
-  public default net.minecraft.world.item.slot.SlotCollection getSlotsFromRange(it.unimi.dsi.fastutil.ints.IntList);
-    descriptor: (Lit/unimi/dsi/fastutil/ints/IntList;)Lnet/minecraft/world/item/slot/SlotCollection;
-}

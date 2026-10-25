@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="dev.hardrush.p1.P1MainThreadExecutorTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-17T08:03:53.049Z" hostname="LeifMacBookPro2023.local" time="0.041">
-  <properties/>
-  <testcase name="queuedCallbackRejectsWhenShutdownWinsTheRace()" classname="dev.hardrush.p1.P1MainThreadExecutorTest" time="0.033"/>
-  <testcase name="stoppedIoSubmissionsNeverEnterVanillaReentrantCounter()" classname="dev.hardrush.p1.P1MainThreadExecutorTest" time="0.007"/>
-  <testcase name="ownerBootstrapAndCloseDrainStillRunInline()" classname="dev.hardrush.p1.P1MainThreadExecutorTest" time="0.0"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
