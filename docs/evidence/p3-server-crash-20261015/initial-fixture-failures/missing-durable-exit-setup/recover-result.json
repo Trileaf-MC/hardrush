@@ -1,9 +1,0 @@
-{
-  "operation": "write",
-  "phase": "RUNNING",
-  "pid": 76278,
-  "scenario": "AWARD",
-  "boundary": "SNAPSHOT",
-  "status": "FAIL",
-  "error": "java.lang.AssertionError: only completed recovery may stop normally"
-}

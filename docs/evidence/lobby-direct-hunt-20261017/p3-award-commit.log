@@ -1,3 +1,0 @@
-P3 isolated crash evidence: /Users/leifwebber/projects/minecraft/hardrush/.local/p3-server-crash/282b1227-7a14-4863-aec6-7fdde5195b83
-AWARD/COMMIT/write: PASS (JVM 14193, exit -9)
-FAIL: Recovery fixture failed or mismatched: java.lang.AssertionError: only completed recovery may stop normally; evidence retained at /Users/leifwebber/projects/minecraft/hardrush/.local/p3-server-crash/282b1227-7a14-4863-aec6-7fdde5195b83

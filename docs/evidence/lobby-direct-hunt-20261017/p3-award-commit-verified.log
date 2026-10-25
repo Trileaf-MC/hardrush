@@ -1,4 +1,0 @@
-P3 isolated crash evidence: /Users/leifwebber/projects/minecraft/hardrush/.local/p3-server-crash/b04721a1-5650-435a-a8f2-f6d10a1560df
-AWARD/COMMIT/write: PASS (JVM 19714, exit -9)
-AWARD/COMMIT/recover-1: PASS (JVM 19888, exit 0)
-AWARD/COMMIT/recover-2: PASS (JVM 20000, exit 0)

@@ -1,4 +1,0 @@
-P1 isolated restart evidence: /Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/2241bf7b-4cda-4e08-abc8-190e995fefad
-RUNNING/write: PASS (JVM 87209, exit 0, clean SQLite)
-RUNNING/recover: PASS (JVM 87396, exit 0, clean SQLite)
-PASS: 1 independent-JVM normal-stop recoveries; /Users/leifwebber/projects/minecraft/hardrush/.local/p1-server-restart/2241bf7b-4cda-4e08-abc8-190e995fefad/result.json

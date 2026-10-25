@@ -1,9 +1,0 @@
-{
-  "investigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/Skeleton.java": "01-Skeleton.java",
-  "investigation-26.3/sources/ConversionTracker.java": "02-ConversionTracker.java",
-  "investigation-26.3/sources/net/minecraft/world/level/block/PowderSnowBlock.java": "03-PowderSnowBlock.java",
-  "investigation-26.3/sources/net/minecraft/world/entity/animal/wolf/Wolf.java": "04-Wolf.java",
-  "investigation-26.3/sources/net/minecraft/world/entity/monster/skeleton/Stray.java": "05-Stray.java",
-  "investigation-26.3/sources/net/minecraft/world/entity/ai/goal/SitWhenOrderedToGoal.java": "06-SitWhenOrderedToGoal.java",
-  "investigation-26.3/README.md": "07-README.md"
-}

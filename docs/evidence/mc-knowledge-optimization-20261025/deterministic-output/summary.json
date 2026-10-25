@@ -1,8 +1,0 @@
-{
-  "assigned_queries": 6,
-  "measured_queries": 6,
-  "failed_queries": [],
-  "all_complete_bodies_equal": true,
-  "model_calls": 0,
-  "causal_llm_benefit_claimed": false
-}

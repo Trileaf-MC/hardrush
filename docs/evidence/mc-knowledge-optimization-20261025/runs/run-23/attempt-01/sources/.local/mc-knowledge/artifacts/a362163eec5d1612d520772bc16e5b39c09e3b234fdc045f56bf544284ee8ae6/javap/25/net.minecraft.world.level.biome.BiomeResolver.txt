@@ -1,8 +1,0 @@
-Compiled from "BiomeResolver.java"
-public interface net.minecraft.world.level.biome.BiomeResolver {
-  public abstract net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> getNoiseBiome(int, int, int);
-    descriptor: (III)Lnet/minecraft/core/Holder;
-
-  public default java.util.Set<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>> getBiomesWithin(int, int, int, int);
-    descriptor: (IIII)Ljava/util/Set;
-}

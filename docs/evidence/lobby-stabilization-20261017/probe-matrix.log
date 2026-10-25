@@ -1,6 +1,0 @@
-Stabilization evidence: /Users/leifwebber/projects/minecraft/hardrush/.local/lobby-stabilization-matrix/b3fcf53c-daee-4b98-953f-de08214c47c7
-RUN stabilization
-PASS stabilization (29.697s)
-RUN restart
-PASS restart (133.948s)
-PASS matrix: /Users/leifwebber/projects/minecraft/hardrush/.local/lobby-stabilization-matrix/b3fcf53c-daee-4b98-953f-de08214c47c7/result.json

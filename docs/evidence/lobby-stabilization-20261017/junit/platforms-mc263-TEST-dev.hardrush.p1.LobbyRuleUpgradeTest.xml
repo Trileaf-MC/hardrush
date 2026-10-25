@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="dev.hardrush.p1.LobbyRuleUpgradeTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-17T08:03:51.377Z" hostname="LeifMacBookPro2023.local" time="0.243">
-  <properties/>
-  <testcase name="cleanLegacyCountdownCannotResumeOrJoinAndAuditedClosureAloneCreatesNewSemantics()" classname="dev.hardrush.p1.LobbyRuleUpgradeTest" time="0.243"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

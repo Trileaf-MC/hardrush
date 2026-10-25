@@ -1,9 +1,0 @@
-{
-  "operation": "recover",
-  "phase": "RUNNING",
-  "pid": 93394,
-  "scenario": "PROFILE",
-  "boundary": "PREPARED",
-  "status": "FAIL",
-  "error": "java.lang.AssertionError: only verified recovery stops normally"
-}
