@@ -199,18 +199,33 @@ public final class P2MonsterSkillsGameTest {
     }
 
     @GameTest(maxTicks = 400)
-    public void creeperFuseIsThirtyTicksAndDefeatCancelsPendingBlast(GameTestHelper test) {
+    public void creeperCanWalkDuringThirtyTickFuseAndDefeatCancelsPendingBlast(GameTestHelper test) {
         var f = new Fixture(test, 3);
         test.runAfterDelay(80, () -> {
             MonsterRoles.select(f.owner, "creeper"); MonsterRoles.select(f.target, "creeper");
             var victim = f.players.get(2);
             victim.teleportTo(f.target.getX() + 2, f.target.getY(), f.target.getZ());
+            double walkingSpeed = f.owner.getAttributeValue(Attributes.MOVEMENT_SPEED);
+            Vec3 origin = f.owner.position();
             test.assertTrue(MonsterRoles.ignite(f.owner) && MonsterRoles.ignite(f.target), "Both native fuses begin");
-            test.assertValueEqual(f.owner.getAttributeValue(Attributes.MOVEMENT_SPEED), 0d, "Priming removes voluntary walking speed");
+            test.assertTrue(walkingSpeed > 0, "The deployed creeper has a positive walking speed");
+            test.assertValueEqual(f.owner.getAttributeValue(Attributes.MOVEMENT_SPEED), walkingSpeed,
+                    "Priming preserves the creeper's normal walking speed");
+            f.owner.setDeltaMovement(Vec3.ZERO);
+            f.owner.setSpeed((float) f.owner.getAttributeValue(Attributes.MOVEMENT_SPEED));
+            f.owner.moveRelative(f.owner.getSpeed(), new Vec3(0, 0, 1));
+            f.owner.move(net.minecraft.world.entity.MoverType.SELF, f.owner.getDeltaMovement());
+            f.owner.setDeltaMovement(Vec3.ZERO);
+            test.assertTrue(f.owner.position().subtract(origin).horizontalDistanceSqr() > 0,
+                    "Native walking acceleration moves the body during its fuse");
             test.assertTrue(MonsterRoles.select(f.owner, "zombie").contains("引爆期间"), "Priming cannot switch species");
             f.target.hurtServer(f.level, f.level.damageSources().genericKill(), Float.MAX_VALUE);
-            test.runAfterDelay(29, () -> test.assertTrue(f.owner.isAlive() && MonsterRoles.isIgniting(f.owner),
-                    "No blast is allowed before all 30 native warning ticks"));
+            test.runAfterDelay(29, () -> {
+                test.assertTrue(f.owner.isAlive() && MonsterRoles.isIgniting(f.owner),
+                        "Walking does not cancel or shorten the 30-tick fuse");
+                test.assertValueEqual(f.owner.getAttributeValue(Attributes.MOVEMENT_SPEED), walkingSpeed,
+                        "Normal walking speed remains available throughout the fuse");
+            });
             test.runAfterDelay(31, () -> {
                 try {
                     test.assertFalse(f.owner.isAlive(), "The native 30-tick warning ends the igniting body");
