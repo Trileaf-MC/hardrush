@@ -4,7 +4,9 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import dev.hardrush.p0.monster.MonsterAiIdentity;
+import dev.hardrush.p0.monster.MonsterCompanions;
 import dev.hardrush.p0.monster.MonsterRoles;
+import dev.hardrush.p2.combat.P2CombatRuntime;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
@@ -16,6 +18,10 @@ public abstract class SpeciesTargetingConditionsMixin {
     @WrapMethod(method="test")
     private boolean realTarget(ServerLevel level, LivingEntity attacker, LivingEntity target, Operation<Boolean> original) {
         var real = MonsterAiIdentity.real(target);
+        // Filter before nearest-target selection: rejecting setTarget alone repeatedly chooses
+        // a closer owner and prevents the native goal from considering the legal human behind it.
+        if (MonsterCompanions.owner(attacker) != null && real != null
+                && (!MonsterCompanions.allowedTarget(attacker, real) || P2CombatRuntime.reject(attacker, real))) return false;
         return real != null && real.level() == level && original.call(level, attacker, real);
     }
 

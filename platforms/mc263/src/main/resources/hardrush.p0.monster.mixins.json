@@ -35,7 +35,24 @@
     "ai.SpeciesWitherMixin",
     "ai.SpeciesWolfMixin",
     "ai.SpeciesNeutralAngerMixin",
-    "ai.SpeciesUniversalAngerMixin"
+    "ai.SpeciesUniversalAngerMixin",
+    "MonsterSkeletonAccessor",
+    "MonsterContainerMixin",
+    "MonsterBoundDropMixin",
+    "MonsterCloudMixin",
+    "CreeperPoweredAccessor",
+    "MonsterCreeperFallMixin",
+    "MonsterCreeperLightningMixin",
+    "MonsterCreeperUseMixin",
+    "MonsterWeaponEntityAccessor",
+    "MonsterWeaponPiercingMixin",
+    "MonsterWeaponKineticMixin",
+    "MonsterWeaponStabMixin",
+    "MonsterWeaponTridentMixin",
+    "MonsterNativeBodyDamageMixin",
+    "CompanionSpawnAccessor",
+    "CompanionMobAccessor",
+    "CompanionConversionMixin"
   ],
   "injectors": {
     "defaultRequire": 1

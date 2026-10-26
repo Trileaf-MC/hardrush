@@ -2,6 +2,8 @@ package dev.hardrush.gametest;
 
 import dev.hardrush.p0.disguise.DisguiseProbe;
 import dev.hardrush.p0.monster.MonsterRoles;
+import dev.hardrush.p0.monster.MonsterItems;
+import dev.hardrush.p0.monster.MonsterCompanions;
 import java.util.List;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.ChannelFutureListener;
@@ -50,7 +52,7 @@ public final class MonsterRoleGameTest {
     private static final java.util.Map<ForcedChunk,Integer> FORCE_REFERENCES=new java.util.HashMap<>();
 
     @GameTest(maxTicks=200)
-    public void nativeStatsFixedLoadoutsAndHumanRestoration(GameTestHelper test) {
+    public void nativeStatsBoundBirthItemsAndHumanRestoration(GameTestHelper test) {
         var player=actor(test);
         player.getInventory().setItem(0,new ItemStack(Items.DIAMOND_SWORD));
         player.setItemSlot(EquipmentSlot.HEAD,new ItemStack(Items.DIAMOND_HELMET));
@@ -62,15 +64,17 @@ public final class MonsterRoleGameTest {
                 var model=MonsterRoles.nativeModel(player);
                 test.assertValueEqual(player.getMaxHealth(),model.getMaxHealth(),"Health is from native species");
                 test.assertValueEqual(player.getHealth(),model.getMaxHealth(),"Role starts with native health");
-                test.assertValueEqual(player.getAttribute(Attributes.ARMOR).getBaseValue(),model.getAttributeValue(Attributes.ARMOR),"Intrinsic armor is native, not equipment");
-                test.assertTrue(player.getItemBySlot(EquipmentSlot.HEAD).isEmpty() && player.getItemBySlot(EquipmentSlot.CHEST).isEmpty()
-                    && player.getOffhandItem().isEmpty(),"No normal armor or shield");
+                test.assertValueEqual(player.getAttribute(Attributes.ARMOR).getBaseValue(),model.getAttribute(Attributes.ARMOR).getBaseValue(),"Intrinsic armor is native, separate from equipment");
+                for (int slot=0;slot<player.getInventory().getContainerSize();slot++) {
+                    var item=player.getInventory().getItem(slot);
+                    test.assertTrue(item.isEmpty() || MonsterItems.owned(player,item),"Every generated item is bound to this body");
+                }
                 double speed=model.getAttributeValue(Attributes.MOVEMENT_SPEED);
                 test.assertTrue(Math.abs(player.getAttributeValue(Attributes.MOVEMENT_SPEED)-speed*speed)<.00001,"Native AI movement is translated to player input");
                 test.assertValueEqual(player.gameMode.getGameModeForPlayer(),GameType.ADVENTURE,"Role cannot use creative player abilities");
                 player.getInventory().setItem(0,new ItemStack(Items.ENDER_PEARL));
                 UseItemCallback.EVENT.invoker().interact(player,player.level(),InteractionHand.MAIN_HAND);
-                test.assertTrue(!player.getMainHandItem().is(Items.ENDER_PEARL),"Injected normal item never enters native use path");
+                test.assertTrue(player.getMainHandItem().is(Items.ENDER_PEARL) && !player.isUsingItem(),"World items remain in inventory without granting human item-use abilities");
                 player.stopUsingItem();
             }
             player.setHealth(7);
@@ -88,35 +92,35 @@ public final class MonsterRoleGameTest {
     }
 
     @GameTest(maxTicks=200)
-    public void inventoryPacketsDropsPickupsAndContainersAreBlocked(GameTestHelper test) {
+    public void inventoryPacketsKeepBoundEggsButAllowWorldPickupAndStorage(GameTestHelper test) {
         var player=actor(test);
         var floor=player.blockPosition().below();
         ItemEntity item=null;
         try {
             MonsterRoles.select(player,"zombie");
+            var egg=player.getInventory().getItem(1).copy();
             for(var action:List.of(ServerboundPlayerActionPacket.Action.DROP_ITEM,ServerboundPlayerActionPacket.Action.DROP_ALL_ITEMS,
-                    ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND,ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK)) {
+                    ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK)) {
                 player.getInventory().setSelectedSlot(1);
                 player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(action,floor,Direction.UP,0));
-                test.assertTrue(player.getInventory().getItem(1).is(Items.ROTTEN_FLESH) && player.getOffhandItem().isEmpty(),"Drop/swap cannot move fixed controls");
+                test.assertTrue(ItemStack.matches(player.getInventory().getItem(1),egg),"Bound birth eggs cannot be dropped");
                 test.assertTrue(player.level().getBlockState(floor).is(Blocks.SMOOTH_STONE),"Role cannot destroy floor");
             }
-            for(var input:ContainerInput.values()) {
-                player.connection.handleContainerClick(new ServerboundContainerClickPacket(0,player.inventoryMenu.getStateId(),(short)37,(byte)0,
-                    input,new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(),HashedStack.EMPTY));
-                test.assertTrue(player.getInventory().getItem(1).is(Items.ROTTEN_FLESH) && player.inventoryMenu.getCarried().isEmpty(),"All inventory input modes remain locked");
-            }
+            player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND,floor,Direction.UP,0));
+            test.assertTrue(ItemStack.matches(player.getOffhandItem(),egg),"Bound controls can move to the offhand");
+            player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND,floor,Direction.UP,0));
             player.connection.handleSetCreativeModeSlot(new ServerboundSetCreativeModeSlotPacket(36,new ItemStack(Items.BOW)));
-            test.assertTrue(player.getMainHandItem().is(Items.ROTTEN_FLESH),"Creative slot packet cannot inject a bow");
+            test.assertTrue(ItemStack.matches(player.getMainHandItem(),egg),"Creative slot packet cannot inject a bow");
             item=new ItemEntity(player.level(),player.getX(),player.getY(),player.getZ(),new ItemStack(Items.DIAMOND));
             player.level().addFreshEntity(item); item.setNoPickUpDelay(); item.playerTouch(player);
-            test.assertTrue(!item.isRemoved() && item.getItem().is(Items.DIAMOND),"Monster cannot pick up dropped items");
+            test.assertTrue(item.isRemoved(),"World items enter the real inventory");
             player.getInventory().setSelectedSlot(0);
             var chest=player.blockPosition().offset(2,0,0);
             player.level().setBlockAndUpdate(chest,Blocks.CHEST.defaultBlockState());
-            UseBlockCallback.EVENT.invoker().interact(player,player.level(),InteractionHand.MAIN_HAND,
+            player.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);
+            var interaction=UseBlockCallback.EVENT.invoker().interact(player,player.level(),InteractionHand.MAIN_HAND,
                 new BlockHitResult(Vec3.atCenterOf(chest),Direction.UP,chest,false));
-            test.assertTrue(player.containerMenu==player.inventoryMenu,"Container interaction does not open a chest");
+            test.assertTrue(interaction==net.minecraft.world.InteractionResult.PASS,"Storage containers use the vanilla interaction path");
             test.assertTrue(!MonsterRoles.burst(player),"Zombie cannot use skeleton arrows");
             test.assertTrue(player.level().getEntitiesOfClass(AbstractArrow.class,player.getBoundingBox().inflate(10)).isEmpty(),"Zombie has no ordinary bow path");
         } finally { if(item!=null)item.discard(); remove(player); }
@@ -124,12 +128,14 @@ public final class MonsterRoleGameTest {
     }
 
     @GameTest(maxTicks=300)
-    public void nativeMeleeHasOneTargetAndUsesActualAutomaticWeapon(GameTestHelper test) {
+    public void nativeMeleeHasOneTargetAndUsesSelectedRealWeapon(GameTestHelper test) {
         var zombie=actor(test); var human=actor(test);var expectedTarget=actor(test);
         human.teleportTo(zombie.getX(),zombie.getY(),zombie.getZ()+1.0);
         MonsterRoles.select(zombie,"zombie");
         drop(zombie,new ItemStack(Items.DIAMOND_SWORD)).playerTouch(zombie);
-        zombie.getInventory().setSelectedSlot(1);
+        zombie.getInventory().setItem(4,take(zombie,Items.DIAMOND_SWORD));
+        zombie.getInventory().setSelectedSlot(4);
+        MonsterRoles.syncNativeContext(zombie);
         expectedTarget.teleportTo(zombie.getX()-1,zombie.getY(),zombie.getZ());
         human.setGameMode(GameType.SURVIVAL);
         test.runAfterDelay(80,()->{
@@ -137,13 +143,9 @@ public final class MonsterRoleGameTest {
                 float before=human.getHealth();
                 var model=MonsterRoles.nativeModel(zombie);
                 model.doHurtTarget(zombie.level(),expectedTarget);
-                System.out.println("Monster melee diagnostic legal="+MonsterRoles.legalTarget(zombie.getUUID(),zombie.level(),human)
-                    +" owner="+zombie.position()+" target="+human.position()+" reach="+model.isWithinMeleeAttackRange(human)
-                    +" los="+zombie.hasLineOfSight(human)+" loaded="+human.connection.hasClientLoaded()
-                    +" invul="+human.isInvulnerableTo(human.level(),model.damageSources().mobAttack(model)));
                 test.assertTrue(MonsterRoles.attack(zombie,human),"Native zombie melee damages a human");
                 test.assertTrue(human.getHealth()<before,"Exactly the native attack is applied");
-                test.assertValueEqual(human.getHealth(),expectedTarget.getHealth(),"Actual weapon matches native damage while skill control is selected");
+                test.assertValueEqual(human.getHealth(),expectedTarget.getHealth(),"Selected real weapon matches native mob damage");
                 float after=human.getHealth();
                 test.assertTrue(!MonsterRoles.attack(zombie,human) && human.getHealth()==after,"Native 20-tick melee interval prevents spam");
                 var pig=EntityTypes.PIG.create(zombie.level(),net.minecraft.world.entity.EntitySpawnReason.COMMAND);
@@ -151,7 +153,7 @@ public final class MonsterRoleGameTest {
                 test.assertTrue(MonsterRoles.legalTarget(zombie.getUUID(),zombie.level(),pig),"Native animals are legal player-monster targets");
                 test.assertTrue(!MonsterRoles.attack(zombie,pig),"Changing to an animal target cannot bypass the melee cooldown"); pig.discard();
                 MonsterRoles.select(zombie,"skeleton");
-                test.assertTrue(!MonsterRoles.attack(zombie,human),"Fixed-bow skeleton cannot fall back to player melee");
+                test.assertTrue(!MonsterRoles.attack(zombie,human),"A bow-holding skeleton cannot fall back to player melee");
                 MonsterRoles.select(zombie,"creeper");
                 test.assertTrue(!MonsterRoles.attack(zombie,human),"Creeper cannot perform player melee");
             } finally {
@@ -163,29 +165,32 @@ public final class MonsterRoleGameTest {
     }
 
     @GameTest(maxTicks=200)
-    public void summonsAreTwoNativeBabiesAndCooldownSurvivesHumanSwitch(GameTestHelper test) {
-        var owner=actor(test); var human=actor(test);
+    public void consumedEggsRemainConsumedWhenTheSameBodyReconnects(GameTestHelper test) {
+        var owner=actor(test);
         MonsterRoles.select(owner,"zombie");
         var children=new java.util.ArrayList<Zombie>();
         test.runAfterDelay(10,()->{
         cleanArena(owner);
         try {
-            test.assertTrue(MonsterRoles.summon(owner),"Both safe positions spawn successfully");
+            owner.getInventory().setSelectedSlot(1);
+            var floor=owner.blockPosition().offset(2,-1,0);
+            test.assertTrue(MonsterCompanions.useOn(owner,InteractionHand.MAIN_HAND,new BlockHitResult(Vec3.atCenterOf(floor),Direction.UP,floor,false)),"One selected baby egg creates one native mob");
             for(var child:owner.level().getEntitiesOfClass(Zombie.class,owner.getBoundingBox().inflate(8))) {
                 if(owner.getUUID().equals(MonsterRoles.summonOwner(child))) children.add(child);
             }
-            test.assertValueEqual(children.size(),2,"Exactly two babies");
+            test.assertValueEqual(children.size(),1,"Exactly one baby from one egg");
             for(var child:children) {
                 test.assertTrue(child.isBaby() && !child.canPickUpLoot(),"Native baby, no equipment pickup");
                 test.assertValueEqual(child.getMaxHealth(),20f,"Native zombie health, not old custom 12HP");
                 child.setTarget(owner); test.assertTrue(child.getTarget()==null,"Cannot attack summoner");
-                child.setTarget(human); test.assertTrue(child.getTarget()==human,"Can target another human");
             }
-            test.assertTrue(!MonsterRoles.summon(owner),"Repeated skill does not spawn extra children");
-            MonsterRoles.clear(owner); MonsterRoles.select(owner,"zombie");
-            test.assertTrue(!MonsterRoles.summon(owner),"Human identity switch does not reset skill cooldown");
-            for(var child:children) { child.setTarget(owner); test.assertTrue(child.getTarget()!=owner,"Owner exclusion remains in persistent tags"); }
-        } finally { children.forEach(Entity::discard); remove(owner); remove(human); }
+            test.assertTrue(owner.getInventory().getItem(1).isEmpty(),"The successful egg is consumed");
+            var adult=owner.getInventory().getItem(2).copy();
+            MonsterRoles.onDisconnect(owner); MonsterRoles.onJoin(owner);
+            test.assertTrue(owner.getInventory().getItem(1).isEmpty(),"Reconnect cannot refill a consumed egg");
+            test.assertTrue(ItemStack.matches(owner.getInventory().getItem(2),adult),"Reconnect preserves the remaining adult egg");
+            test.assertTrue(children.stream().allMatch(child->!child.isAlive()),"Disconnect dismisses the old body's companions");
+        } finally { children.forEach(Entity::discard); remove(owner); }
         test.succeed();
         });
     }
@@ -250,7 +255,7 @@ public final class MonsterRoleGameTest {
                 try {
                     player.releaseUsingItem();
                     test.assertTrue(MonsterRoles.status(player).contains("arrowsFired=1"),"Native release hook makes exactly one role arrow");
-                    test.assertTrue(player.getInventory().getItem(8).getCount()==1,"Virtual ammo remains infinite");
+                    test.assertTrue(player.getInventory().getItem(8).isEmpty(),"Infinite default arrows do not create a hidden inventory ammo stack");
                 } finally {
                     for(var arrow:player.level().getEntitiesOfClass(AbstractArrow.class,player.getBoundingBox().inflate(50))) if(arrow.getOwner()==player)arrow.discard();
                     remove(player);
@@ -271,7 +276,7 @@ public final class MonsterRoleGameTest {
         test.runAfterDelay(80,()->{
             double walkingSpeed=creeper.getAttributeValue(Attributes.MOVEMENT_SPEED);
             test.assertTrue(MonsterRoles.ignite(creeper),"Native creeper fuse starts");
-            test.assertTrue(!MonsterRoles.ignite(creeper),"Repeated ignite cannot duplicate a blast");
+                test.assertTrue(MonsterRoles.ignite(creeper),"Repeated held input keeps the same native fuse active");
             test.assertTrue(walkingSpeed>0,"Creeper walking speed is positive");
             test.assertValueEqual(creeper.getAttributeValue(Attributes.MOVEMENT_SPEED),walkingSpeed,"Priming and repeated ignition preserve normal walking speed");
             test.startSequence().thenWaitUntil(()->test.assertTrue(!creeper.isAlive(),"Blast ends the prototype body"))
@@ -281,14 +286,14 @@ public final class MonsterRoleGameTest {
                         test.assertTrue(pig.getHealth()<pigHealth,"Native animals receive the native blast damage");
                         test.assertTrue(creeper.level().getBlockState(floor).is(Blocks.SMOOTH_STONE),"Blocks are preserved");
                         var loot=creeper.level().getEntitiesOfClass(ItemEntity.class,creeper.getBoundingBox().inflate(5));
-                        test.assertTrue(loot.stream().noneMatch(item -> item.getItem().is(Items.GUNPOWDER)),"Fixed role controls do not drop as loot");
+                        test.assertTrue(loot.stream().noneMatch(item -> item.getItem().is(Items.GUNPOWDER)),"Bound role controls do not drop as loot");
                     } finally { pig.discard(); remove(creeper); remove(human); }
                 }).thenSucceed();
         });
     }
 
     @GameTest(maxTicks=200)
-    public void automaticEquipmentUsesNativeComparisonAndConservesWorldItems(GameTestHelper test) {
+    public void realEquipmentMovesInternallyAndConservesWorldItems(GameTestHelper test) {
         var player=actor(test); var observer=actor(test);
         var items=new java.util.ArrayList<ItemEntity>();
         test.runAfterDelay(10,()->{
@@ -297,26 +302,26 @@ public final class MonsterRoleGameTest {
             MonsterRoles.select(player,"zombie");
             var sword=drop(player,new ItemStack(Items.DIAMOND_SWORD));items.add(sword);sword.playerTouch(player);
             test.assertTrue(sword.isRemoved(),"Accepted world weapon is consumed once");
-            test.assertTrue(MonsterRoles.actualEquipment(player,EquipmentSlot.MAINHAND).is(Items.DIAMOND_SWORD),"Native mob equips weapon immediately");
+            player.getInventory().setItem(4,take(player,Items.DIAMOND_SWORD)); player.getInventory().setSelectedSlot(4);
+            MonsterRoles.repairLoadout(player);
+            test.assertTrue(MonsterRoles.actualEquipment(player,EquipmentSlot.MAINHAND).is(Items.DIAMOND_SWORD),"Selected inventory weapon is the actual equipment");
             test.assertTrue(MonsterRoles.nativeModel(player).getAttributeValue(Attributes.ATTACK_DAMAGE)>3,"Native weapon modifiers apply to combat model");
             test.assertTrue(Math.abs(player.getAttributeValue(Attributes.ATTACK_SPEED)-1)<.00001,"Weapon modifiers cannot freeze melee indicator");
             var helmet=drop(player,new ItemStack(Items.IRON_HELMET));items.add(helmet);helmet.playerTouch(player);
-            test.assertTrue(player.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET),"Auto armor is mirrored to physical protection");
+            player.setItemSlot(EquipmentSlot.HEAD,take(player,Items.IRON_HELMET)); MonsterRoles.repairLoadout(player);
+            test.assertTrue(player.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET),"Explicitly equipped armor supplies physical protection");
             var worse=drop(player,new ItemStack(Items.LEATHER_HELMET));items.add(worse);worse.playerTouch(player);
-            test.assertTrue(!worse.isRemoved() && player.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET),"Native comparison rejects worse armor");
+            test.assertTrue(worse.isRemoved() && player.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET),"Picking up weaker armor stores it without changing the equipped helmet");
             player.getInventory().setSelectedSlot(1);
             var packet=new net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket(player.getId(),List.of(
                 com.mojang.datafixers.util.Pair.of(EquipmentSlot.MAINHAND,player.getMainHandItem())));
             MonsterRoles.repairLoadout(player);
             test.assertTrue(Math.abs(player.getAttributeValue(Attributes.ATTACK_SPEED)-1)<.00001,"Skill control preserves melee indicator");
             var rewritten=(net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket)DisguiseProbe.rewrite(observer,packet);
-            test.assertTrue(rewritten.getSlots().stream().anyMatch(pair->pair.getFirst()==EquipmentSlot.MAINHAND && pair.getSecond().is(Items.DIAMOND_SWORD)),"Observer sees actual weapon while owner selects skill control");
-            for(var input:ContainerInput.values()) {
-                player.connection.handleContainerClick(new ServerboundContainerClickPacket(0,player.inventoryMenu.getStateId(),(short)36,(byte)0,
-                    input,new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(),HashedStack.EMPTY));
-            }
-            test.assertTrue(MonsterRoles.actualEquipment(player,EquipmentSlot.MAINHAND).is(Items.DIAMOND_SWORD),"Inventory packets cannot change actual gear");
+            test.assertTrue(rewritten.getSlots().stream().anyMatch(pair->pair.getFirst()==EquipmentSlot.MAINHAND && ItemStack.matches(pair.getSecond(),player.getMainHandItem())),"Observer sees the selected real item including a moved control");
+            player.getInventory().setSelectedSlot(4); MonsterRoles.repairLoadout(player);
             MonsterRoles.onDisconnect(player);MonsterRoles.onJoin(player);
+            player.getInventory().setSelectedSlot(4);MonsterRoles.repairLoadout(player);
             test.assertTrue(player.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET) && MonsterRoles.actualEquipment(player,EquipmentSlot.MAINHAND).is(Items.DIAMOND_SWORD),"Gear survives model rebinding");
             MonsterRoles.dropRoleEquipment(player,true);MonsterRoles.dropRoleEquipment(player,true);
             var returned=player.level().getEntitiesOfClass(ItemEntity.class,player.getBoundingBox().inflate(2));
@@ -332,20 +337,22 @@ public final class MonsterRoleGameTest {
     }
 
     @GameTest(maxTicks=200)
-    public void skeletonPrefersBowAndUsesActualEnchantedWeapon(GameTestHelper test) {
+    public void skeletonStoresWorldWeaponsAndUsesSelectedEnchantedBow(GameTestHelper test) {
         var player=actor(test);var items=new java.util.ArrayList<ItemEntity>();
         MonsterRoles.select(player,"skeleton");
         test.runAfterDelay(10,()->{
         cleanArena(player);
         try {
             var sword=drop(player,new ItemStack(Items.NETHERITE_SWORD));items.add(sword);sword.playerTouch(player);
-            test.assertTrue(!sword.isRemoved() && MonsterRoles.actualEquipment(player,EquipmentSlot.MAINHAND).is(Items.BOW),"Native bow preference prevents sword switching");
+            test.assertTrue(sword.isRemoved() && MonsterRoles.actualEquipment(player,EquipmentSlot.MAINHAND).is(Items.BOW),"Picking up a sword stores it and preserves the selected bow");
             var bow=new ItemStack(Items.BOW);
             bow.enchant(player.level().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
                 .getOrThrow(net.minecraft.world.item.enchantment.Enchantments.POWER),3);
             var expectedBow=bow.copy();
             var enchanted=drop(player,bow);items.add(enchanted);enchanted.playerTouch(player);
-            test.assertTrue(enchanted.isRemoved(),"Native comparison upgrades enchanted bow");
+            test.assertTrue(enchanted.isRemoved(),"The world bow enters the real inventory");
+            for(int slot=0;slot<36;slot++) if (ItemStack.matches(player.getInventory().getItem(slot),expectedBow)) player.getInventory().setSelectedSlot(slot);
+            MonsterRoles.repairLoadout(player);
             MonsterRoles.burst(player);
             var arrows=player.level().getEntitiesOfClass(AbstractArrow.class,player.getBoundingBox().inflate(3));
             test.assertTrue(arrows.stream().anyMatch(a->a.getOwner()==player && ItemStack.matches(a.getWeaponItem(),expectedBow)),"Native arrow carries real enchanted weapon");
@@ -406,6 +413,7 @@ public final class MonsterRoleGameTest {
             test.assertTrue(player.level().canSeeSky(player.blockPosition()), "The daylight control is exposed to the sky");
             for(String kind:List.of("zombie","skeleton","creeper")) {
                 MonsterRoles.select(player,kind);
+                for(var slot:List.of(EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET))player.setItemSlot(slot,ItemStack.EMPTY);
                 player.clearFire();
                 for(int i=0;i<500;i++)MonsterRoles.updateEnvironment(player);
                 test.assertTrue(!player.isOnFire(), "Bareheaded player role never ignites in sunlight: "+kind);
@@ -416,6 +424,7 @@ public final class MonsterRoleGameTest {
                     var helmet=drop(player,stack);
                     try {
                         helmet.playerTouch(player);
+                        player.setItemSlot(EquipmentSlot.HEAD,take(player,Items.IRON_HELMET));
                         test.assertTrue(player.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET), "Control helmet is equipped");
                         for(int i=0;i<1500;i++)MonsterRoles.updateEnvironment(player);
                         var equipped=player.getItemBySlot(EquipmentSlot.HEAD);
@@ -456,6 +465,7 @@ public final class MonsterRoleGameTest {
             cleanArena(player);
             try {
                 drop(player,new ItemStack(Items.IRON_HELMET)).playerTouch(player);
+                player.setItemSlot(EquipmentSlot.HEAD,take(player,Items.IRON_HELMET));
                 test.assertTrue(player.getAttributeValue(Attributes.ARMOR)>=2,"Native intrinsic armor remains");
                 // Equipment synchronization is normally performed by the next
                 // entity tick; let native Player update its physical attributes.
@@ -468,6 +478,7 @@ public final class MonsterRoleGameTest {
                         test.assertTrue(player.getHealth()<before && player.getHealth()>before-6,"Actual vanilla armor reduces damage");
                         test.assertValueEqual(player.getItemBySlot(EquipmentSlot.HEAD).getDamageValue(),wear,"Mob armor avoids player impact wear");
                         drop(player,new ItemStack(Items.ELYTRA)).playerTouch(player);
+                        player.setItemSlot(EquipmentSlot.CHEST,take(player,Items.ELYTRA));
                         test.assertTrue(player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA),"Native zombie can wear elytra as gear");
                         player.setOnGround(false);player.setDeltaMovement(0,-.5,0);
                         test.assertTrue(!player.tryToStartFallFlying(),"Equipping elytra does not grant monster flight");
@@ -504,7 +515,13 @@ public final class MonsterRoleGameTest {
         item.setNoPickUpDelay();player.level().addFreshEntity(item);return item;
     }
 
-    static ServerPlayer actor(GameTestHelper test) {
+    private static ItemStack take(ServerPlayer player,net.minecraft.world.item.Item item) {
+        for(int slot=0;slot<36;slot++) if(player.getInventory().getItem(slot).is(item) && !MonsterItems.bound(player.getInventory().getItem(slot)))
+            return player.getInventory().removeItemNoUpdate(slot);
+        throw new IllegalStateException("Missing picked-up item "+item);
+    }
+
+    public static ServerPlayer actor(GameTestHelper test) {
         int center=1000+ARENA.getAndIncrement()*24;
         var server=test.getLevel().getServer();
         var profile=new GameProfile(java.util.UUID.randomUUID(),"HRRole"+center);
@@ -530,7 +547,7 @@ public final class MonsterRoleGameTest {
         player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
         return player;
     }
-    static void remove(ServerPlayer player) {
+    public static void remove(ServerPlayer player) {
         MonsterRoles.clear(player); DisguiseProbe.clear(player);
         player.level().getServer().getPlayerList().remove(player);
         var channel=CHANNELS.remove(player.getUUID()); if(channel!=null)channel.finishAndReleaseAll();

@@ -51,6 +51,8 @@ public final class DisguiseProbe {
         String kind = requestedType.toLowerCase(Locale.ROOT);
         EntityType<? extends Mob> type = switch (kind) {
             case "zombie" -> EntityTypes.ZOMBIE;
+            case "drowned" -> EntityTypes.DROWNED;
+            case "stray" -> EntityTypes.STRAY;
             case "skeleton" -> EntityTypes.SKELETON;
             case "creeper" -> EntityTypes.CREEPER;
             default -> null;
@@ -208,6 +210,16 @@ public final class DisguiseProbe {
                 sendRaw(observer, new ClientboundSetEntityDataPacket(player.getId(), selection.state.metadata));
             }
         }
+    }
+
+    public static void setCreeperState(ServerPlayer player, int direction, boolean charged) {
+        Selection selection = SELECTED.get(player.getUUID());
+        if (selection == null || selection.state == null || !(selection.state.model instanceof net.minecraft.world.entity.monster.Creeper creeper)) return;
+        creeper.setSwellDir(direction);
+        creeper.getEntityData().set(dev.hardrush.p0.monster.mixin.CreeperPoweredAccessor.hardrush$poweredData(), charged);
+        selection.state.updateModel();
+        for (ServerPlayer observer : PlayerLookup.tracking(player))
+            sendRaw(observer, new ClientboundSetEntityDataPacket(player.getId(), selection.state.metadata));
     }
 
     private static State externalState(ServerPlayer observer, int entityId) {

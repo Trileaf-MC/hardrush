@@ -48,7 +48,13 @@
       "dev.hardrush.gametest.P1FullFlowGameTest",
       "dev.hardrush.gametest.P1StabilizationGameTest",
       "dev.hardrush.gametest.MonsterAiIdentityGameTest",
-      "dev.hardrush.gametest.DawnPactGameTest"
+      "dev.hardrush.gametest.DawnPactGameTest",
+      "dev.hardrush.p0.monster.MonsterSpawnEquipmentGameTest",
+      "dev.hardrush.p0.monster.MonsterNativeWeaponsGameTest",
+      "dev.hardrush.p0.monster.MonsterCreeperGameTest",
+      "dev.hardrush.gametest.MonsterCompanionGameTest",
+      "dev.hardrush.gametest.MonsterCloudGameTest",
+      "dev.hardrush.p0.monster.MonsterInventoryFormGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"

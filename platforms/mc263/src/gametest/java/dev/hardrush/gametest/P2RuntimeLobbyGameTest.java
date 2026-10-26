@@ -137,31 +137,13 @@ public final class P2RuntimeLobbyGameTest {
                     f.assertDeployment(1);
                     f.assertMenuDoesNotUnlockRoleDrops();
                     f.equipWorldSword();
-                    f.test.assertTrue(MonsterRoles.summon(f.monster.player), "Safe preflight accepts the formal summon for durable admission");
-                    f.test.assertTrue(P2MonsterRuntime.casting(f.monster.player), "The accepted cast remains pending before the SQLite callback");
-                    f.blockSummonRing();
-                    f.test.assertValueEqual(f.summons(), 0, "A pending cast never creates children before the safe-point recheck");
-                })
-                .thenWaitUntil(() -> f.awaitSkillEffect(!P2MonsterRuntime.casting(f.monster.player) && !f.session.mutationPending()
-                        && !f.monster.participant().monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON),
-                        "Changed safe points refund the committed skill cooldown through real SQLite compensation"))
-                .thenExecute(() -> {
-                    f.test.assertValueEqual(f.summons(), 0, "Failed post-commit safety revalidation never emits a partial summon pair");
-                    f.test.assertFalse(MonsterRoles.summon(f.monster.player), "A fully blocked ring fails preflight immediately");
-                    f.test.assertFalse(P2MonsterRuntime.casting(f.monster.player), "Failed preflight never reserves a cast");
-                    f.test.assertFalse(f.monster.participant().monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON),
-                            "Failed preflight leaves the durable cooldown unused");
-                    f.restoreSummonRing();
+                    f.test.assertFalse(MonsterRoles.summon(f.monster.player), "Historical summon action remains retired");
+                    f.spawnEgg(1, 2);
+                    f.spawnEgg(2, -2);
+                    f.test.assertValueEqual(f.summons(), 2, "The formal outing owns one adult and one baby from its eggs");
+                    f.test.assertFalse(f.monster.participant().monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON), "Egg use does not create retired cooldown state");
                     f.monster.command("hardrush skill");
-                    f.monster.command("hardrush skill");
-                    f.test.assertValueEqual(f.summons(), 0, "Pending skill requests emit no children before SQLite commits");
-                })
-                .thenWaitUntil(() -> f.awaitSkillEffect(f.summons() == 2 && !f.session.mutationPending(), "Exactly one durable summon produces two native babies"))
-                .thenExecute(() -> {
-                    f.summonReadyAt = f.monster.participant().monsterSkillReadyAtMillis().get(MonsterSkill.ZOMBIE_SUMMON);
-                    f.test.assertTrue(f.summonReadyAt > System.currentTimeMillis(), "The successful summon persists its real epoch cooldown");
-                    f.monster.command("hardrush skill");
-                    f.test.assertValueEqual(f.summons(), 2, "Repeated command while cooling down cannot create another summon pair");
+                    f.test.assertValueEqual(f.summons(), 2, "Retired skill command cannot add companions");
                     f.monster.command("hardrush return");
                     f.test.assertTrue(P2LobbyRuntime.channeling(f.monster.player), "Native return command begins a channel");
                     f.monster.move(f.monster.player.position().add(.2, 0, 0));
@@ -180,7 +162,7 @@ public final class P2RuntimeLobbyGameTest {
                     f.test.assertTrue(f.monster.player == f.voluntaryReturnBody,
                             "Successful voluntary return preserves the same native player body instead of accepting an incidental defeat");
                     f.test.assertValueEqual(f.worldSwords(), 1, "The picked-up world sword returns exactly once on leaving the body");
-                    f.test.assertValueEqual(f.summons(), 2, "Returning to the lobby keeps both owned summons alive");
+                    f.test.assertValueEqual(f.summons(), 0, "Returning to the lobby dismisses the entire owned lineage");
                     f.assertSkillCooldowns();
                     f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Voluntary return starts another 30-second wait");
                     P2HuntFixtures.role(f.monster.player, "skeleton");
@@ -250,17 +232,46 @@ public final class P2RuntimeLobbyGameTest {
                     .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_DEPLOYED
                             && MonsterRoles.isMonster(hunter.player) && !f.session.mutationPending(), "Cycle formal deployment " + iteration))
                     .thenExecute(() -> {
+                        if (iteration == 0) {
+                            // Combat starts after the first sunrise; do not bypass the production pact gate.
+                            dev.hardrush.p1.pact.DawnPactRuntime.tick(f.server);
+                            var daylight = f.level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
+                                    .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+                            f.level.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DawnPact.SUNRISE_TICKS + 18_000);
+                            dev.hardrush.p1.pact.DawnPactRuntime.tick(f.server);
+                        }
                         hunter.move(prey.player.position().add(1, 0, 0));
                         prey.player.setHealth(1);
                         prey.player.setInvulnerableTime(0);
-                        f.test.assertTrue(MonsterRoles.attack(hunter.player, prey.player), "Native zombie melee accepts the legal human");
+                        // Random birth gear may be a spear, whose native STAB input has its own suite.
+                        hunter.player.getInventory().setItem(8, ItemStack.EMPTY);
+                        hunter.player.getInventory().setSelectedSlot(8);
+                        MonsterRoles.repairLoadout(hunter.player);
+                        boolean landed = MonsterRoles.attack(hunter.player, prey.player);
+                        f.test.assertTrue(landed, "Native zombie melee accepts the legal human: cycle=" + iteration
+                                + ", role=" + hunter.participant().role() + ", phase=" + f.round().phase()
+                                + ", targetHp=" + prey.player.getHealth() + ", targetRole=" + prey.participant().role()
+                                + ", canAct=" + P2MonsterRuntime.canAct(hunter.player)
+                                + ", legal=" + MonsterRoles.legalTarget(hunter.profile.id(), f.level, prey.player)
+                                + ", locked=" + P1PlayerProfiles.isLocked(prey.player)
+                                + ", protected=" + P2ProtectionRuntime.protectedEntity(prey.player)
+                                + ", invulnerable=" + prey.player.getAbilities().invulnerable
+                                + ", distance=" + hunter.player.distanceTo(prey.player)
+                                + ", los=" + hunter.player.hasLineOfSight(prey.player)
+                                + ", pact=" + dev.hardrush.p1.pact.DawnPactRuntime.reject(hunter.player, prey.player)
+                                + ", sourceRejected=" + dev.hardrush.p2.combat.P2CombatRuntime.reject(MonsterRoles.nativeModel(hunter.player), prey.player)
+                                + ", actor=" + MonsterRoles.status(hunter.player));
                         f.test.assertTrue(prey.player.isDeadOrDying(), "Actual native attack creates the lethal event");
                     })
                     .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RESCUE && hunter.participant().revivalEntitled()
                             && prey.current() != null && prey.current().isAlive() && prey.current().level() == P1LobbyWorld.open(f.server).holdingLevel()
                             && f.profiles.isReady(prey.profile.id(), f.round()) && !f.session.mutationPending(), "Cycle all deaths and reward reach rescue atomically " + iteration))
                     .thenExecute(() -> {
-                        hunter.command("hardrush return");
+                        var returnItem = hunter.player.getInventory().getItem(7);
+                        hunter.player.getInventory().setItem(7, ItemStack.EMPTY);
+                        hunter.player.setItemSlot(EquipmentSlot.OFFHAND, returnItem);
+                        f.test.assertTrue(MonsterRoles.useControl(hunter.player, net.minecraft.world.InteractionHand.OFF_HAND),
+                                "A moved bound return item works from the offhand even while combat is frozen in rescue");
                         f.ageReturnChannel(hunter);
                     })
                     .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_LOBBY
@@ -452,8 +463,8 @@ public final class P2RuntimeLobbyGameTest {
         void assertDeployment(int sequence) {
             test.assertTrue(PlayerLocator.hideFrom(monster.player, target.player), "Formal deployed monster is hidden from a human locator");
             test.assertFalse(PlayerLocator.hideFrom(target.player, monster.player), "Formal monster still receives human locations");
-            test.assertValueEqual(monster.player.gameMode.getGameModeForPlayer(), net.minecraft.world.level.GameType.SURVIVAL,
-                    "A successful monster sortie restores survival mode");
+            test.assertValueEqual(monster.player.gameMode.getGameModeForPlayer(), net.minecraft.world.level.GameType.ADVENTURE,
+                    "A successful monster sortie restricts block editing through adventure mode");
             test.assertValueEqual(monster.participant().monsterDeploymentSequence(), sequence, "Exactly one persisted sortie is admitted");
             double horizontal = monster.player.position().subtract(target.player.position()).horizontalDistance();
             test.assertTrue(horizontal >= 24 && horizontal <= 40, "Actual native monster spawns in the target's 24-40 block ring");
@@ -474,7 +485,7 @@ public final class P2RuntimeLobbyGameTest {
             test.assertValueEqual(monster.player.getAttribute(Attributes.ARMOR).getBaseValue(), values.get(key + ".armor"), "Formal intrinsic armor uses the round snapshot");
             test.assertValueEqual(monster.player.getFoodData().getFoodLevel(), 6, "The role body has no hunger or player sprint input");
             test.assertTrue(monster.player.getInventory().getItem(kind == MonsterRole.CREEPER ? 0 : 1).is(switch (kind) {
-                case ZOMBIE -> Items.ROTTEN_FLESH;
+                case ZOMBIE -> Items.ZOMBIE_SPAWN_EGG;
                 case SKELETON -> Items.BONE;
                 case CREEPER -> Items.GUNPOWDER;
             }), "Only the selected role's fixed skill control is equipped");
@@ -502,38 +513,32 @@ public final class P2RuntimeLobbyGameTest {
             var sword = new ItemEntity(level, monster.player.getX(), monster.player.getY(), monster.player.getZ(), new ItemStack(Items.DIAMOND_SWORD));
             sword.setNoPickUpDelay(); level.addFreshEntity(sword); sword.playerTouch(monster.player);
             test.assertTrue(sword.isRemoved(), "A formal zombie automatically equips the world weapon through the native pickup hook");
-            test.assertTrue(MonsterRoles.actualEquipment(monster.player, EquipmentSlot.MAINHAND).is(Items.DIAMOND_SWORD), "Actual species gear remains separate from the selected skill slot");
+            for (int i=0;i<36;i++) if(monster.player.getInventory().getItem(i).is(Items.DIAMOND_SWORD)) monster.player.getInventory().setSelectedSlot(i);
+            MonsterRoles.repairLoadout(monster.player);
+            test.assertTrue(MonsterRoles.actualEquipment(monster.player, EquipmentSlot.MAINHAND).is(Items.DIAMOND_SWORD), "Selecting the picked-up world weapon equips the native model");
             test.assertValueEqual(worldSwords(), 0, "Exactly one sword transfers from the world into the monster body");
         }
-        void blockSummonRing() {
-            var center = monster.player.blockPosition();
-            for (int dx = -4; dx <= 4; dx++) for (int dz = -4; dz <= 4; dz++) {
-                int distanceSquared = dx * dx + dz * dz;
-                if (distanceSquared < 4 || distanceSquared > 16) continue;
-                var feet = center.offset(dx, 0, dz);
-                summonRing.put(feet, level.getBlockState(feet));
-                test.assertTrue(level.setBlock(feet, Blocks.SMOOTH_STONE.defaultBlockState(), 2),
-                        "The fixture blocks every prepared summon foot position before the commit callback");
-            }
+        void spawnEgg(int slot, int dx) {
+            monster.player.getInventory().setSelectedSlot(slot);
+            var floor = monster.player.blockPosition().offset(dx,-1,0);
+            level.setBlockAndUpdate(floor,Blocks.SMOOTH_STONE.defaultBlockState());
+            for(int y=1;y<=3;y++) level.setBlockAndUpdate(floor.above(y),Blocks.AIR.defaultBlockState());
+            var hit = new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(floor).add(0,.5,0),Direction.UP,floor,false);
+            test.assertTrue(dev.hardrush.p0.monster.MonsterCompanions.useOn(monster.player,net.minecraft.world.InteractionHand.MAIN_HAND,hit), "Bound egg spawns at a safe block");
+            test.assertTrue(monster.player.getInventory().getItem(slot).isEmpty(), "Successful egg use consumes exactly its one charge");
         }
-        void restoreSummonRing() {
-            summonRing.forEach((position, state) -> level.setBlock(position, state, 2));
-            summonRing.clear();
-        }
+        void restoreSummonRing() { }
         int worldSwords() {
             return level.getEntitiesOfClass(ItemEntity.class, worldGearDrops).stream().map(ItemEntity::getItem)
                     .filter(stack -> stack.is(Items.DIAMOND_SWORD)).mapToInt(ItemStack::getCount).sum();
         }
         int summons() {
             return level.getEntitiesOfClass(Zombie.class, new AABB(BlockPos.containing(anchor)).inflate(150)).stream()
-                    .filter(child -> monster.profile.id().equals(MonsterRoles.summonOwner(child))).mapToInt(child -> {
-                        test.assertTrue(child.isBaby(), "Formal summon retains the native baby body");
-                        return 1;
-                    }).sum();
+                    .filter(child -> child.isAlive() && monster.profile.id().equals(MonsterRoles.summonOwner(child))).mapToInt(child -> 1).sum();
         }
         void assertSkillCooldowns() {
             var cooldowns = monster.participant().monsterSkillReadyAtMillis();
-            if (summonReadyAt != 0) test.assertValueEqual(cooldowns.get(MonsterSkill.ZOMBIE_SUMMON), summonReadyAt, "Summon deadline survives role changes, defeat, lobby and reconnect");
+            test.assertFalse(cooldowns.containsKey(MonsterSkill.ZOMBIE_SUMMON), "Retired skill never creates a new deadline");
             if (burstReadyAt != 0) test.assertValueEqual(cooldowns.get(MonsterSkill.SKELETON_BURST), burstReadyAt, "Burst deadline survives role changes, defeat, lobby and reconnect");
         }
         void assertLobby(boolean replaced) {
@@ -613,7 +618,7 @@ public final class P2RuntimeLobbyGameTest {
                 test.assertValueEqual(saved.monsterDimension(), MonsterDimension.OVERWORLD, "Real SQLite retains the historical compatibility field across reconnect");
                 test.assertValueEqual(saved.monsterDeploymentSequence(), 3, "Real SQLite retains sortie label across reconnect");
                 test.assertValueEqual(saved.lifeSequence(), 1, "Real SQLite never revives the human through a monster respawn");
-                test.assertValueEqual(saved.monsterSkillReadyAtMillis().get(MonsterSkill.ZOMBIE_SUMMON), summonReadyAt, "Real SQLite retains the original summon deadline");
+                test.assertFalse(saved.monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON), "Real SQLite never receives a new retired skill deadline");
                 test.assertValueEqual(saved.monsterSkillReadyAtMillis().get(MonsterSkill.SKELETON_BURST), burstReadyAt, "Real SQLite retains the original burst deadline");
                 var record = store.participantRecord(round().roundId(), monster.profile.id()).orElseThrow();
                 test.assertValueEqual(record.revivalCount(), 0, "Neither defeat nor reconnect consumes/grants a human revival");

@@ -10,9 +10,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MonsterPickupMixin {
     @Inject(method="playerTouch", at=@At("HEAD"), cancellable=true)
     private void noPickup(Player player, CallbackInfo callback) {
-        if (MonsterRoles.isMonster(player)) {
-            if (player instanceof net.minecraft.server.level.ServerPlayer owner) MonsterRoles.pickUpEquipment(owner,(ItemEntity)(Object)this);
-            callback.cancel();
-        }
+        if (player instanceof net.minecraft.server.level.ServerPlayer owner && MonsterRoles.isMonster(owner)
+                && (!owner.isAlive() || !dev.hardrush.p2.monster.P2MonsterRuntime.canAct(owner)
+                || dev.hardrush.p0.monster.MonsterItems.bound(((ItemEntity)(Object)this).getItem()))) callback.cancel();
+    }
+    @Inject(method="playerTouch", at=@At("RETURN"))
+    private void refreshEquipment(Player player, CallbackInfo callback) {
+        if (player instanceof net.minecraft.server.level.ServerPlayer owner && MonsterRoles.isMonster(owner)) MonsterRoles.repairLoadout(owner);
     }
 }

@@ -425,6 +425,7 @@ public final class RoundEngine {
     public RoundTransition proposeMonsterSkill(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence, MonsterSkill skill, long nowEpochMillis) {
         Objects.requireNonNull(skill);
+        if (skill.retired()) throw new IllegalStateException("僵尸召唤技能已退役，不能预约新的召唤。");
         if (nowEpochMillis < 0) throw new IllegalArgumentException("Invalid epoch millis");
         RoundSnapshot before = capture();
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence,

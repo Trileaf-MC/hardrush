@@ -248,9 +248,9 @@ public final class P2LobbyRuntime {
                 tell(player, "请在正式出场后使用技能。"); return;
             }
             boolean accepted = switch (participant.monsterRole()) {
-                case ZOMBIE -> MonsterRoles.summon(player);
+                case ZOMBIE -> false;
                 case SKELETON -> MonsterRoles.burst(player);
-                case CREEPER -> MonsterRoles.ignite(player);
+                case CREEPER -> false;
             };
             if (!accepted) tell(player, "技能尚在冷却、正在施放，或安全条件不足。");
             return;
@@ -506,7 +506,11 @@ public final class P2LobbyRuntime {
         if (origin == null) return true; // Operator-only P0 fixtures retain their independent scope.
         return round.phase() == RoundPhase.RUNNING && !b.session.competitionLocked()
                 && origin.lifeSequence() > 0 && !owner.equals(target.getUUID())
-                && target instanceof ServerPlayer player && !dimension(b, level).equals("lobby") && validTarget(b, player, level);
+                && target instanceof ServerPlayer player && !dimension(b, level).equals("lobby")
+                && player.level() == level && player.isAlive() && !P1PlayerProfiles.isLocked(player)
+                && !P2ProtectionRuntime.protectedEntity(player)
+                && Optional.ofNullable(round.participants().get(player.getUUID()))
+                    .filter(p -> p.online() && (p.role() == ParticipantRole.HUMAN_ACTIVE || p.role() == ParticipantRole.MONSTER_DEPLOYED)).isPresent();
     }
     public static void onCommitted(MinecraftServer server, RoundSnapshot before, RoundSnapshot after) {
         var b = BINDINGS.get(server); if (b == null) return;
@@ -590,7 +594,7 @@ public final class P2LobbyRuntime {
         b.session.requestMonsterRole(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), role, reply -> {
             b.committing.remove(p.id());
             if (current(player, b)) tell(player, reply.success() ? "已选择 " + kindName(role) + " ✓ · " + switch (role) {
-                case ZOMBIE -> "技能：召唤两只幼年僵尸"; case SKELETON -> "技能：三连射"; case CREEPER -> "技能：引爆";
+                case ZOMBIE -> "补给：成年／幼年僵尸蛋各一枚；浸水可转化"; case SKELETON -> "三连射；粉雪可转化为流浪者"; case CREEPER -> "引爆器：按住膨胀，松开消退";
             } : reply.message());
         });
     }

@@ -120,10 +120,10 @@ public final class P2CombatWhitelistGameTest {
             MonsterRoles.configureSummon(child);
             child.setTarget(cow);
             test.assertTrue(child.getTarget() == null && P2CombatRuntime.reject(child, cow), "Summons still reject native mobs");
-            test.assertTrue(P2CombatRuntime.reject(model, child), "Player monsters cannot damage owned summons");
+            test.assertFalse(P2CombatRuntime.reject(model, child), "Player monsters can damage their own companions");
             test.assertTrue(P2CombatRuntime.reject(model, f.owner), "Owner remains excluded");
             f.participants.put(f.human.getUUID(), f.participants.get(f.human.getUUID()).withRole(ParticipantRole.MONSTER_DEPLOYED));
-            test.assertTrue(P2CombatRuntime.reject(model, f.human), "Monster teammates remain excluded");
+            test.assertFalse(P2CombatRuntime.reject(model, f.human), "Other deployed monster players are legal targets");
             f.round = UUID.randomUUID();
             test.assertTrue(P2CombatRuntime.reject(model, cow), "Opening mob combat cannot admit an old-round attack");
             model.discard(); cow.discard(); child.discard();

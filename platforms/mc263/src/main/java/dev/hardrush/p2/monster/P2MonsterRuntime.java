@@ -31,6 +31,12 @@ public final class P2MonsterRuntime {
         return b == null ? Optional.empty() : b.session.snapshot()
                 .filter(r -> r.participants().containsKey(player.getUUID())).map(RoundSnapshot::rules);
     }
+    public static String identity(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        var r = b == null ? null : b.session.snapshot().orElse(null);
+        var p = r == null ? null : r.participants().get(player.getUUID());
+        return p == null ? "prototype:" + player.getUUID() : r.roundId() + ":" + p.lifeSequence() + ":" + p.monsterDeploymentSequence();
+    }
     public static boolean canAct(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);

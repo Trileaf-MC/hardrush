@@ -26,9 +26,22 @@ class RulesConfigTest {
         assertEquals(30_000, rules.failureDisplayMillis());
         assertEquals(20, rules.combatValues().get("zombie.maxHealth"));
         assertEquals(20, rules.combatValues().get("skeleton.maxHealth"));
-        assertEquals(2, rules.combatValues().get("zombie.summonCount"));
         assertEquals(30, rules.combatValues().get("creeper.fuseTicks"));
-        assertEquals(90_000, rules.combatValues().get("zombie.summonCooldownMillis"));
+        assertTrue(rules.combatValues().keySet().stream().noneMatch(key -> key.startsWith("zombie.summon")));
+        assertEquals(20_000, rules.combatValues().get("skeleton.burstCooldownMillis"));
+    }
+
+    @Test void retiredSummonRuleKeysStillDecodeAndRoundTripFromHistoricalSnapshots() throws IOException {
+        try (var input = getClass().getResourceAsStream("/legacy-vote-rules.properties")) {
+            assertNotNull(input);
+            var legacy = RulesConfig.decode(new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            assertEquals(2, legacy.combatValues().get("zombie.summonCount"));
+            assertEquals(90_000, legacy.combatValues().get("zombie.summonCooldownMillis"));
+            assertEquals(2, legacy.combatValues().get("zombie.summonMinDistance"));
+            assertEquals(4, legacy.combatValues().get("zombie.summonMaxDistance"));
+            assertEquals(legacy, RulesConfig.decode(legacy.encode()));
+            assertEquals(legacy.fingerprint(), RulesConfig.decode(legacy.encode()).fingerprint());
+        }
     }
 
     @Test void roundsRetainIndependentImmutableSnapshotsWhenPendingConfigChanges() {
