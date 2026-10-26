@@ -66,7 +66,7 @@ def main():
                     "  } }\n"
                     "}\n")
     launch_spec = run / 'launch-spec.json'
-    command = [str(ROOT / 'scripts/p0-gradle.sh'), '--init-script', str(init),
+    command = [str(ROOT / 'gradlew'), '--init-script', str(init),
                ':platforms:mc263:writeP1RestartLaunchSpec',
                f'-PhardrushP1RestartLaunchSpec={launch_spec}', '--console=plain']
     if arguments.launch_spec:

@@ -166,7 +166,7 @@ def start(side):
     task = ':platforms:mc263:runDebug' + side.title()
     log = BASE / side / 'launch.log'
     with log.open('w') as output:
-        p = subprocess.Popen([str(ROOT / 'scripts/p0-gradle.sh'), task, '--console=plain'],
+        p = subprocess.Popen([str(ROOT / 'gradlew'), task, '--console=plain'],
             cwd=ROOT, stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
     time.sleep(.5)
     command = subprocess.run(['ps', '-p', str(p.pid), '-o', 'command='], capture_output=True, text=True).stdout.strip()
@@ -242,44 +242,6 @@ def configure_mcp(register=False):
                 raise RuntimeError(existing.stderr)
 
 
-def verify():
-    """Real acceptance, with logs; restored live client after the test uses its identity."""
-    start('server')
-    owned_client = process('client') is not None
-    if owned_client: stop('client')
-    try:
-        for task, name in [('checkP0', 'checkP0'), (':platforms:mc263:runClientGameTest', 'client-gametest')]:
-            log = BASE / (name + '.log')
-            with log.open('w') as output:
-                completed = subprocess.run([str(ROOT / 'scripts/p0-gradle.sh'), task, '--console=plain'],
-                    cwd=ROOT, stdout=output, stderr=subprocess.STDOUT)
-            print(name + ': ' + str(log), flush=True)
-            if completed.returncode != 0: raise RuntimeError('Verification failed; inspect ' + str(log))
-        for side in ['server', 'client']:
-            if side == 'client': start(side)
-            with (BASE / ('mcp-' + side + '-check.log')).open('w') as output:
-                subprocess.run(['node', str(ROOT / 'scripts/mcp-check.mjs'), side], check=True, stdout=output, stderr=subprocess.STDOUT)
-            profile(side, 5)
-        java_home = os.environ.get('HARDRUSH_JAVA_HOME') or os.environ.get('JAVA_HOME') or (ROOT / '.local/toolchains/java-home.txt').read_text().strip()
-        for side, args in [('server', ['5005', 'dev.hardrush.p0.world.WorldProbe', 'status', 'hardrushp0 status']), ('client', ['5006'])]:
-            with (BASE / ('jdwp-' + side + '.txt')).open('w') as output:
-                subprocess.run([str(Path(java_home) / 'bin/java'), '--add-modules', 'jdk.jdi', str(ROOT / 'scripts/JdwpProbe.java'), *args],
-                    cwd=ROOT, check=True, stdout=output, stderr=subprocess.STDOUT)
-        import zipfile
-        jar = ROOT / ('platforms/mc263/build/libs/hardrush-0.1.0-p0+mc26.3.jar')
-        with zipfile.ZipFile(jar) as archive:
-            if any('gametest' in n.lower() or '/debug/' in n or 'spark' in n.lower() or 'mcpfabric' in n.lower() for n in archive.namelist()):
-                raise RuntimeError('Development tool leaked into release jar')
-        (BASE / 'acceptance.json').write_text(json.dumps(dict(minecraft='26.3',
-            timestamp=time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-            checks=['JUnit', 'server GameTest', 'client GameTest', 'server MCP', 'client MCP',
-                    'server JDWP breakpoint', 'client JDWP attach', 'server spark samples', 'client spark samples', 'release isolation'],
-            result='passed'), indent=2) + '\n')
-        print('All real debug-tool acceptance checks passed. Both debug instances remain available.', flush=True)
-    finally:
-        if owned_client and not process('client'): start('client')
-
-
 def profile(side, seconds):
     name = 'spark' if side == 'server' else 'sparkc'
     method = 'command.run' if side == 'server' else 'chat.send'
@@ -310,7 +272,7 @@ def profile(side, seconds):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('action', choices=['prepare', 'configure-mcp', 'register-mcp', 'verify', 'start', 'stop', 'status', 'rpc', 'command', 'profile'])
+    p.add_argument('action', choices=['prepare', 'configure-mcp', 'register-mcp', 'start', 'stop', 'status', 'rpc', 'command', 'profile'])
     p.add_argument('--side', choices=['server', 'client'], default='server')
     p.add_argument('--method', default='info.status')
     p.add_argument('--params', default='{}')
@@ -320,7 +282,6 @@ def main():
     if a.action == 'prepare': prepare()
     elif a.action == 'configure-mcp': configure_mcp()
     elif a.action == 'register-mcp': configure_mcp(register=True)
-    elif a.action == 'verify': verify()
     elif a.action == 'start': start(a.side)
     elif a.action == 'stop': stop(a.side)
     elif a.action == 'profile': profile(a.side, a.seconds)

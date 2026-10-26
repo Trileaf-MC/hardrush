@@ -5,7 +5,7 @@
 使用仓库中同一 Java 25 和 Gradle Wrapper：
 
 ```bash
-scripts/p0-gradle.sh -p probes/p0b checkP0bDependencies --console=plain
+./gradlew -p probes/p0b checkP0bDependencies --console=plain
 ```
 
 按 `mc2612 → mc262 → mc263` 顺序在各自 `build/run/gameTest` 中运行无图形界面的真实服务端。每版有 3 项项目测试及 1 项 Fabric 框架测试：Fantasy 服务端钩子加载、SQLite 原生 WAL／迁移回滚／双连接写锁／重开，以及 SGui 原版菜单出站包、点击和关闭入口。网络连接由 EmbeddedChannel 模拟；不能当作实际原版客户端画面、网络登录、完整世界路由或正式 GUI 安全验收。
@@ -15,7 +15,7 @@ scripts/p0-gradle.sh -p probes/p0b checkP0bDependencies --console=plain
 `versions.json`、三个 `gradle.lockfile` 和 `gradle/verification-metadata.xml` 锁定直接／传递依赖及工具解析的 SHA-256；正常复验不得附带更新锁的参数。有意更新依赖时才使用：
 
 ```bash
-scripts/p0-gradle.sh -p probes/p0b checkP0bDependencies \
+./gradlew -p probes/p0b checkP0bDependencies \
   --write-locks --write-verification-metadata sha256 --console=plain
 ```
 

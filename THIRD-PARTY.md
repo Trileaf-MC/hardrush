@@ -17,7 +17,7 @@ HardRush 自身代码采用 [MIT License](LICENSE)。本文件记录原型使用
 
 Fantasy 的嵌入项保持独立 JAR，不复制或改写其源代码；固定版本源码可从上表取得。构建脚本显式声明该依赖，开发者可以替换为兼容的修改版本并重新构建。正式分发前仍须完成全部依赖和分发材料审查。
 
-Minecraft 客户端、服务端及 JDK 均只保存在忽略的本地测试目录／构建缓存中，不属于 HardRush 发布内容。客户端准备脚本只从 Mojang 官方地址取得文件并验证官方清单校验值；测试须遵守 Minecraft EULA。
+Minecraft 客户端、服务端及 JDK 均只保存在忽略的本地测试目录／构建缓存中，不属于 HardRush 发布内容；测试须遵守 Minecraft EULA。
 
 `scripts/demo.py` 从 Fabric 官方 Meta 服务取得固定的 **Fabric Installer 1.1.2 服务端启动器**（[源码／Apache 2.0](https://github.com/FabricMC/fabric-installer/tree/1.1.2)），版本及 SHA-256 见 `scripts/demo.lock.json`。启动器、Fabric API、HardRush 与许可证保存在忽略的 `.local/demo` 制品中；Minecraft 及运行库由上游启动器在实例目录下载，不打入 HardRush JAR 或 Git。该本地演示入口不代表已完成 P4 分发审查。
 

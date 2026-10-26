@@ -29,8 +29,8 @@ HardRush 是面向原版客户端的多人速通挑战模组。主要特性如�
 
 `assemble` 只打包，不运行测试或启动游戏；`build` 还会执行项目注册的检查，集成测试需要额外的测试环境。首次使用 Wrapper 或缺少依赖缓存时需要联网，重复构建会复用 Gradle 增量缓存。
 
-本机若已有旧开发脚本准备的 JDK，可先在 macOS 当前终端设置一次 `export JAVA_HOME="$(cat .local/toolchains/java-home.txt)"`，随后使用上面的标准命令。`HARDRUSH_JAVA_HOME` 和此本地配置文件仅供旧开发脚本读取，Gradle Wrapper 本身使用标准的 `JAVA_HOME` / `PATH`。
+本机若已有 `.local/toolchains` 下的 JDK，可先在 macOS 当前终端设置一次 `export JAVA_HOME="$(cat .local/toolchains/java-home.txt)"`，随后使用上面的标准命令。辅助脚本也直接调用 Gradle Wrapper，构建时统一使用标准的 `JAVA_HOME` / `PATH`。
 
 GitHub Actions 的 [构建检查](.github/workflows/build.yml) 会在 macOS 和 Windows 上分别调用标准 Wrapper 构建；验证针对打包流程，不运行游戏或客户端。IntelliJ IDEA 用户也可将 Gradle JVM 设为 Java 25，再在 Gradle 面板中运行 `assemble` 或 `build`。
 
-安装时将生成的 HardRush JAR 和匹配 Minecraft 版本的 Fabric API 放入 Fabric 服务端的 `mods` 目录。完整演示包的构建与启动方式见 [本地演示说明](docs/mvp-demo.md)。
+安装时将生成的 HardRush JAR 和匹配 Minecraft 版本的 Fabric API 放入 Fabric 服务端的 `mods` 目录。本地演示可用 `python3 scripts/demo.py prepare` 创建独立实例，再用 `python3 scripts/demo.py run <实例 UUID>` 启动；操作清单见 [MVP 演示人工检查](docs/人工客户端测试/MVP演示.md)。

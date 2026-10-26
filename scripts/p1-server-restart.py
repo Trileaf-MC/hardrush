@@ -90,7 +90,7 @@ def cleanup_failed_process(process):
 
 def build_launch(run, timeout):
     spec_path = run / 'launch-spec.json'
-    command = [str(ROOT / 'scripts/p0-gradle.sh'), ':platforms:mc263:writeP1RestartLaunchSpec',
+    command = [str(ROOT / 'gradlew'), ':platforms:mc263:writeP1RestartLaunchSpec',
                f'-PhardrushP1RestartLaunchSpec={spec_path}', '--console=plain']
     evidence = {'command': command, 'log': 'build.log', 'status': 'RUNNING'}
     write_json(run / 'build-result.json', evidence)
