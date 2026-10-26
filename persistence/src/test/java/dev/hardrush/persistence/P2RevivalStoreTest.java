@@ -71,7 +71,13 @@ class P2RevivalStoreTest {
     }
 
     @Test void twentyRewardAndRevivalCyclesKeepExactCountsProgressAndCooldownsAcrossSqliteReopen() throws Exception {
-        try (var fixture = new Fixture(directory.toRealPath().resolve("revival.sqlite"))) {
+        var base = RulesConfig.defaults();
+        var values = new java.util.LinkedHashMap<>(base.combatValues());
+        values.put("skeleton.burstCooldownMillis", 90_000.0);
+        var rules = new RulesConfig(base.schemaVersion(), base.mode(), base.minecraftVersion(), base.difficulty(),
+                base.generationRule(), values, base.protectionRadius(), base.startCountdownMillis(),
+                base.successCelebrationMillis(), base.failureDisplayMillis());
+        try (var fixture = new Fixture(directory.toRealPath().resolve("revival.sqlite"), rules)) {
             fixture.start();
             // Bob's first actual death opens his monster life; Alice keeps this initial batch running.
             fixture.commit(fixture.engine.proposeDeathBatch(UUID.randomUUID(), fixture.round(),
@@ -85,13 +91,18 @@ class P2RevivalStoreTest {
                 fixture.clock.millis(30_000);
                 fixture.commit(fixture.engine.proposeTick(UUID.randomUUID()));
                 Participant attacker = fixture.player(monster);
+                if (attacker.monsterRole() != MonsterRole.SKELETON) {
+                    fixture.commit(fixture.engine.proposeMonsterRole(UUID.randomUUID(), fixture.round(), monster,
+                            attacker.lifeSequence(), attacker.monsterDeploymentSequence(), MonsterRole.SKELETON));
+                    attacker = fixture.player(monster);
+                }
                 fixture.commit(fixture.engine.proposeMonsterDeploy(UUID.randomUUID(), fixture.round(), monster,
                         attacker.lifeSequence(), attacker.monsterDeploymentSequence()));
                 attacker = fixture.player(monster);
                 if (!skillDeadlines.containsKey(monster)) {
                     fixture.commit(fixture.engine.proposeMonsterSkill(UUID.randomUUID(), fixture.round(), monster,
-                            attacker.lifeSequence(), attacker.monsterDeploymentSequence(), MonsterSkill.ZOMBIE_SUMMON, 1_000));
-                    skillDeadlines.put(monster, fixture.player(monster).monsterSkillReadyAtMillis().get(MonsterSkill.ZOMBIE_SUMMON));
+                            attacker.lifeSequence(), attacker.monsterDeploymentSequence(), MonsterSkill.SKELETON_BURST, 1_000));
+                    skillDeadlines.put(monster, fixture.player(monster).monsterSkillReadyAtMillis().get(MonsterSkill.SKELETON_BURST));
                 }
                 fixture.clock.millis(1_000);
                 fixture.commit(fixture.engine.proposeCheckpoint(UUID.randomUUID(), false));
@@ -136,7 +147,7 @@ class P2RevivalStoreTest {
                 assertFalse(revived.online(), "Native admission must finish before human time runs");
                 assertFalse(revived.revivalEntitled());
                 assertFalse(revived.hasLeftProtection());
-                assertEquals(skillDeadlines.get(monster), revived.monsterSkillReadyAtMillis().get(MonsterSkill.ZOMBIE_SUMMON));
+                assertEquals(skillDeadlines.get(monster), revived.monsterSkillReadyAtMillis().get(MonsterSkill.SKELETON_BURST));
                 final UUID consumedBy = monster;
                 assertThrows(IllegalStateException.class, () -> fixture.engine.proposeAdmissionRevival(UUID.randomUUID(),
                         fixture.round(), consumedBy, oldLife, oldDeployment));
@@ -242,9 +253,12 @@ class P2RevivalStoreTest {
         SqliteRoundStore store;
         RoundEngine engine;
         Fixture(Path path) throws Exception {
+            this(path, RulesConfig.defaults());
+        }
+        Fixture(Path path, RulesConfig rules) throws Exception {
             this.path = path;
             store = new SqliteRoundStore(path);
-            engine = RoundEngine.create(UUID.randomUUID(), 1, 123, RulesConfig.defaults(), clock);
+            engine = RoundEngine.create(UUID.randomUUID(), 1, 123, rules, clock);
             assertEquals(CommitResult.APPLIED, store.commit(new SnapshotWrite(round(), -1, 0,
                     RoundSnapshotCodec.encode(engine.committed()), UUID.randomUUID(), "ROUND_CREATED")));
         }

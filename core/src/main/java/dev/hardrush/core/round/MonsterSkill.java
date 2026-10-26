@@ -5,6 +5,7 @@ import java.util.Objects;
 
 /** Stable persisted skill IDs; cooldown values come from this round's immutable rules. */
 public enum MonsterSkill {
+    // Historical snapshots retain this stable ID and any already recorded deadline.
     ZOMBIE_SUMMON("zombie.summon", MonsterRole.ZOMBIE, "zombie.summonCooldownMillis"),
     SKELETON_BURST("skeleton.burst", MonsterRole.SKELETON, "skeleton.burstCooldownMillis");
 
@@ -18,6 +19,7 @@ public enum MonsterSkill {
 
     public String id() { return id; }
     public MonsterRole role() { return role; }
+    public boolean retired() { return this == ZOMBIE_SUMMON; }
 
     public long cooldownMillis(RulesConfig rules) {
         Double value = Objects.requireNonNull(rules).combatValues().get(cooldownKey);

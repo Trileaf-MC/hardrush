@@ -90,7 +90,8 @@ public final class P2CombatRuntime {
         var action = current();
         if (!effect.getEffect().value().isBeneficial()
                 && dev.hardrush.p1.pact.DawnPactRuntime.reject(action != null ? action : source, target)) return true;
-        if (action instanceof AbstractArrow && (source(action).isPresent() || capturedHuman(action))) {
+        if ((action instanceof AbstractArrow || action instanceof net.minecraft.world.entity.AreaEffectCloud)
+                && (source(action).isPresent() || capturedHuman(action))) {
             return rejectMonster(action, target);
         }
         return rejectMonster(source != null ? source : action, target);
@@ -111,6 +112,8 @@ public final class P2CombatRuntime {
         var frozen = source(entity).orElse(null);
         if (frozen != null && target.level() instanceof ServerLevel level
                 && dev.hardrush.p1.participation.P1ParticipationControl.disabled(level.getServer(), frozen.ownerId())) return true;
+        if (dev.hardrush.p0.monster.MonsterRoles.summonOwner(entity) != null
+                && !dev.hardrush.p0.monster.MonsterCompanions.allowedTarget(entity, target)) return true;
         if (frozen == null) return formalMonsterPlayer(entity); // Only the stamped native model may attack.
         if (!(target.level() instanceof ServerLevel level) || entity.level() != level) return true;
         var access = BINDINGS.get(level.getServer());
@@ -118,10 +121,8 @@ public final class P2CombatRuntime {
         if (!frozen.admitted() || round == null || !round.roundId().equals(frozen.roundId())
                 || round.phase() != RoundPhase.RUNNING || access.competitionLocked() || !access.formalLevel(level)) return true;
         if (target instanceof net.minecraft.world.entity.Mob mob) {
-            return dev.hardrush.p0.monster.MonsterRoles.summonOwner(entity) != null
-                    || mob instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon
+            return mob instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon
                     || dev.hardrush.p0.monster.MonsterRoles.isNativeBody(mob)
-                    || dev.hardrush.p0.monster.MonsterRoles.summonOwner(mob) != null
                     || frozen.ownerId().equals(mob.getUUID()) || !mob.isAlive() || mob.isRemoved() || mob.isInvulnerable()
                     || P2ProtectionRuntime.protectedEntity(mob) || P2ProtectionRuntime.protectedEntity(entity);
         }
@@ -131,6 +132,6 @@ public final class P2CombatRuntime {
                 || frozen.ownerId().equals(player.getUUID()) || P2ProtectionRuntime.protectedEntity(target)
                 || P2ProtectionRuntime.protectedEntity(entity)) return true;
         return Optional.ofNullable(round.participants().get(player.getUUID()))
-                .filter(p -> p.online() && p.role() == ParticipantRole.HUMAN_ACTIVE).isEmpty();
+                .filter(p -> p.online() && (p.role() == ParticipantRole.HUMAN_ACTIVE || p.role() == ParticipantRole.MONSTER_DEPLOYED)).isEmpty();
     }
 }

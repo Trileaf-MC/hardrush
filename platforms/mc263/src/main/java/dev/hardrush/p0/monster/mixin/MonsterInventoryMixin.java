@@ -1,5 +1,6 @@
 package dev.hardrush.p0.monster.mixin;
 import dev.hardrush.p0.monster.MonsterRoles;
+import dev.hardrush.p0.monster.MonsterItems;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
@@ -33,7 +34,8 @@ public abstract class MonsterInventoryMixin {
     @Inject(method="handleContainerClick", at=@At("HEAD"), cancellable=true)
     private void lockClick(ServerboundContainerClickPacket packet, CallbackInfo callback) {
         serverThread(packet);
-        if (!dev.hardrush.p2.lobby.P2LobbyUi.isMenu(player)) lockInventory(callback);
+        // The menu itself validates item destinations, including internal moves.
+        // Lobby menus retain their independent action routing.
     }
     @Inject(method="handleContainerButtonClick", at=@At("HEAD"), cancellable=true)
     private void lockButton(ServerboundContainerButtonClickPacket packet, CallbackInfo callback) { serverThread(packet); lockInventory(callback); }
@@ -50,7 +52,10 @@ public abstract class MonsterInventoryMixin {
             default -> {}
         }
         switch (packet.getAction()) {
-            case DROP_ITEM, DROP_ALL_ITEMS, SWAP_ITEM_WITH_OFFHAND, START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> {
+            case DROP_ITEM, DROP_ALL_ITEMS -> {
+                if (MonsterItems.bound(player.getMainHandItem())) lockInventory(callback);
+            }
+            case START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> {
                 player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.getPos()));
                 lockInventory(callback);
             }

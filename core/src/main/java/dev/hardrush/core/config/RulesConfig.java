@@ -84,7 +84,7 @@ public record RulesConfig(
         requireDuration(failureDisplayMillis, "failureDisplayMillis");
     }
 
-    /** Current defaults follow the 2026-10-14 native-role rules, not the retired custom HP/damage table. */
+    /** New rounds use the current native roles; retired summon keys remain valid when reading older rounds. */
     public static RulesConfig defaults() {
         return new RulesConfig(CURRENT_SCHEMA_VERSION, GameMode.HARDCORE, "26.3", Difficulty.HARD,
                 "normal", Map.ofEntries(
@@ -93,10 +93,6 @@ public record RulesConfig(
                 Map.entry("zombie.armor", 2.0),
                 Map.entry("zombie.baseMeleeDamage", 3.0),
                 Map.entry("zombie.meleeIntervalTicks", 20.0),
-                Map.entry("zombie.summonCount", 2.0),
-                Map.entry("zombie.summonCooldownMillis", 90_000.0),
-                Map.entry("zombie.summonMinDistance", 2.0),
-                Map.entry("zombie.summonMaxDistance", 4.0),
                 Map.entry("skeleton.maxHealth", 20.0),
                 Map.entry("skeleton.movementAttribute", 0.25),
                 Map.entry("skeleton.armor", 0.0),

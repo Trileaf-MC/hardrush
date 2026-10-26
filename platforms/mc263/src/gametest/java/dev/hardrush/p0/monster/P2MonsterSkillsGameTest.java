@@ -61,94 +61,141 @@ public final class P2MonsterSkillsGameTest {
     }
 
     @GameTest(maxTicks = 400)
-    public void summonPairSaveLoadKeepsOneEventAndNativeDespawnWithoutLoot(GameTestHelper test) {
+    public void eggsSaveLoadKeepNativeStateAndOldSortiesDieWithoutLoot(GameTestHelper test) {
         var f = new Fixture(test, 2);
         test.runAfterDelay(80, () -> {
             var children = new ArrayList<Zombie>();
+            var unloaded = new ArrayList<Zombie>();
             try (var ignored = f.installCombat()) {
                 MonsterRoles.select(f.owner, "zombie");
-                test.assertTrue(MonsterRoles.summon(f.owner), "A safe native arena accepts one summon pair");
+                for (boolean baby : List.of(true, false)) {
+                    f.owner.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(f.owner, baby, false));
+                    var floor = f.owner.blockPosition().offset(baby ? 2 : -2, -1, 0);
+                    test.assertTrue(MonsterCompanions.useOn(f.owner, InteractionHand.MAIN_HAND,
+                            new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(floor).add(0, .5, 0),
+                                    net.minecraft.core.Direction.UP, floor, false)), "One egg spawns one native companion");
+                }
                 children.addAll(f.level.getEntitiesOfClass(Zombie.class, f.owner.getBoundingBox().inflate(8)).stream()
-                        .filter(child -> f.owner.getUUID().equals(MonsterRoles.summonOwner(child))).toList());
-                test.assertValueEqual(children.size(), 2, "A single admitted summon creates exactly two children");
-                UUID event = MonsterRoles.summonEvent(children.getFirst());
-                test.assertTrue(event != null, "A summon has a persistent event ID");
+                        .filter(child -> f.owner.getUUID().equals(MonsterCompanions.owner(child))).toList());
+                test.assertValueEqual(children.size(), 2, "Two eggs create exactly two companions");
+                test.assertValueEqual(children.stream().filter(Zombie::isBaby).count(), 1L, "One child is young and the other is adult");
+                test.assertTrue(!MonsterCompanions.event(children.getFirst()).equals(MonsterCompanions.event(children.getLast())),
+                        "Each consumed egg gets its own creation event");
                 for (var child : children) {
-                    test.assertValueEqual(MonsterRoles.summonEvent(child), event, "Both children share the same summon event");
-                    test.assertTrue(child.isBaby() && !child.canPickUpLoot() && !child.canBreakDoors(),
-                            "Native baby locomotion retains the equipment and door restrictions");
                     test.assertTrue(!child.isPersistenceRequired() && !child.requiresCustomPersistence(),
-                            "Neither ownership nor combat provenance makes a child permanent");
-                    test.assertValueEqual(child.getAttributeValue(Attributes.SPAWN_REINFORCEMENTS_CHANCE), 0d,
-                            "Owned children cannot spawn unowned reinforcements");
+                            "Ownership does not disable natural despawn");
                     var frozen = P2CombatRuntime.source(child).orElseThrow();
                     var saved = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, f.level.registryAccess());
                     child.saveWithoutId(saved);
                     var restored = EntityTypes.ZOMBIE.create(f.level, EntitySpawnReason.LOAD);
                     restored.load(TagValueInput.create(ProblemReporter.DISCARDING, f.level.registryAccess(), saved.buildResult()));
-                    MonsterRoles.configureSummon(restored);
-                    test.assertValueEqual(MonsterRoles.summonEvent(restored), event, "Native entity save/load retains the summon event");
-                    test.assertValueEqual(MonsterRoles.summonOwner(restored), f.owner.getUUID(), "Native entity save/load retains the owner");
+                    MonsterCompanions.configure(restored);
+                    test.assertValueEqual(MonsterCompanions.event(restored), MonsterCompanions.event(child), "Native save/load retains the creation event");
+                    test.assertValueEqual(MonsterCompanions.owner(restored), f.owner.getUUID(), "Native save/load retains the owner");
                     test.assertValueEqual(P2CombatRuntime.source(restored).orElseThrow(), frozen,
-                            "Native save/load retains the creation round, owner life and sortie");
-                    test.assertTrue(restored.isBaby() && !restored.isPersistenceRequired(), "Reload keeps the native child and natural despawn policy");
-                    f.participants.put(f.owner.getUUID(), f.participants.get(f.owner.getUUID())
-                            .withRole(ParticipantRole.HUMAN_ACTIVE).withSession("revived-offline", false));
-                    MonsterRoles.clear(f.owner);
+                            "Native save/load retains round, owner life and sortie");
+                    test.assertValueEqual(restored.isBaby(), child.isBaby(), "Native save/load retains exact age");
+                    test.assertValueEqual(restored.getAttributeValue(Attributes.SPAWN_REINFORCEMENTS_CHANCE),
+                            child.getAttributeValue(Attributes.SPAWN_REINFORCEMENTS_CHANCE), "Reload preserves native reinforcement chance");
+                    for (var slot : EquipmentSlot.values()) test.assertTrue(ItemStack.matches(restored.getItemBySlot(slot), child.getItemBySlot(slot)),
+                            "Reload preserves randomized native equipment");
                     restored.setTarget(f.owner);
-                    test.assertTrue(restored.getTarget() == null, "Revived/offline owner remains excluded by frozen ownership");
-                    restored.setTarget(f.target);
-                    test.assertTrue(restored.getTarget() == f.target && !P2CombatRuntime.reject(restored, f.target),
-                            "Same-round child remains able to attack a legal human after its owner revives/offlines");
-                    restored.setTarget(null);
-                    restored.setPosRaw(f.owner.getX() + 10000, f.owner.getY(), f.owner.getZ());
-                    restored.checkDespawn();
-                    test.assertTrue(restored.isRemoved(), "The native far-distance despawn path removes an owned child");
+                    test.assertTrue(restored.getTarget() == null, "The owner is never a legal target");
+                    unloaded.add(restored);
+                    var natural = EntityTypes.ZOMBIE.create(f.level, EntitySpawnReason.LOAD);
+                    natural.load(TagValueInput.create(ProblemReporter.DISCARDING, f.level.registryAccess(), saved.buildResult()));
+                    natural.setPosRaw(f.owner.getX() + 10000, f.owner.getY(), f.owner.getZ());
+                    natural.checkDespawn();
+                    test.assertTrue(natural.isRemoved(), "Native far-distance despawn still removes an owned companion");
                 }
                 var lootArea = f.owner.getBoundingBox().inflate(12);
+                var ordinary = children.getFirst();
+                ordinary.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_SWORD));
+                ordinary.setGuaranteedDrop(EquipmentSlot.MAINHAND);
+                ordinary.hurtServer(f.level, f.level.damageSources().playerAttack(f.target), 1000);
+                test.assertTrue(f.level.getEntitiesOfClass(ItemEntity.class, lootArea).stream()
+                        .anyMatch(item -> item.getItem().is(Items.DIAMOND_SWORD)), "Ordinary combat death restores native equipment drops");
                 int items = f.level.getEntitiesOfClass(ItemEntity.class, lootArea).size();
                 int xp = f.level.getEntitiesOfClass(ExperienceOrb.class, lootArea).size();
-                for (var child : children) child.hurtServer(f.level, f.level.damageSources().playerAttack(f.target), 1000);
-                test.assertValueEqual(f.level.getEntitiesOfClass(ItemEntity.class, lootArea).size(), items, "Owned children emit no native loot");
-                test.assertValueEqual(f.level.getEntitiesOfClass(ExperienceOrb.class, lootArea).size(), xp, "Owned children emit no native XP");
-            } finally { children.forEach(Entity::discard); f.close(); }
+                var dismissed = children.getLast();
+                dismissed.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.NETHERITE_SWORD));
+                dismissed.setGuaranteedDrop(EquipmentSlot.MAINHAND);
+                f.participants.put(f.owner.getUUID(), f.participants.get(f.owner.getUUID())
+                        .withRole(ParticipantRole.HUMAN_ACTIVE).withSession("revived-offline", false));
+                MonsterRoles.clear(f.owner);
+                test.assertTrue(dismissed.isDeadOrDying() && MonsterCompanions.isDismissing(dismissed), "Leaving the sortie kills loaded companions");
+                test.assertValueEqual(f.level.getEntitiesOfClass(ItemEntity.class, lootArea).size(), items, "Dismissal creates no new loot");
+                test.assertValueEqual(f.level.getEntitiesOfClass(ExperienceOrb.class, lootArea).size(), xp, "Dismissal creates no new XP");
+                children.forEach(Entity::discard);
+                for (var restored : unloaded) {
+                    f.level.addFreshEntity(restored);
+                    test.assertTrue(restored.isDeadOrDying() && MonsterCompanions.isDismissing(restored), "An old saved outing is rejected on entity load");
+                    restored.setTarget(f.target);
+                    test.assertTrue(restored.getTarget() == null, "An invalid old sortie cannot regain a target");
+                }
+            } finally {
+                children.forEach(Entity::discard); unloaded.forEach(Entity::discard);
+                f.level.getEntitiesOfClass(ItemEntity.class, f.owner.getBoundingBox().inflate(12)).forEach(Entity::discard);
+                f.close();
+            }
             test.succeed();
         });
     }
 
-    @GameTest(maxTicks = 1000)
+    @GameTest(maxTicks = 200)
     public void nativeBabyNavigationPursuesLegalHumanWithoutAttackingItsOwner(GameTestHelper test) {
         var f = new Fixture(test, 2);
-        var children = new ArrayList<Zombie>();
-        var origins = new HashMap<UUID, Vec3>();
         test.runAfterDelay(80, () -> {
-            // Keep this AI scenario under a roof; sunlight damage has its own native
-            // environmental regression and must not shorten the pathfinding sample.
-            for (int dx = -8; dx <= 8; dx++) for (int dz = -8; dz <= 8; dz++)
-                f.level.setBlockAndUpdate(BlockPos.containing(f.center).offset(dx, 3, dz), Blocks.STONE.defaultBlockState());
-            f.target.teleportTo(f.center.x, f.center.y, f.center.z + 6);
-            f.target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000); f.target.setHealth(1000);
-            MonsterRoles.select(f.owner, "zombie");
-            test.assertTrue(MonsterRoles.summon(f.owner), "The two safe native babies spawn under a roof");
-            children.addAll(f.level.getEntitiesOfClass(Zombie.class, f.owner.getBoundingBox().inflate(8)).stream()
-                    .filter(child -> f.owner.getUUID().equals(MonsterRoles.summonOwner(child))).toList());
-            test.assertValueEqual(children.size(), 2, "The AI sample has exactly two real native babies");
-            for (var child : children) {
-                test.assertFalse(child.isNoAi(), "The navigation sample retains native zombie AI");
-                origins.put(child.getUUID(), child.position());
-            }
-            test.startSequence().thenWaitUntil(() -> {
-                test.assertTrue(children.stream().anyMatch(child -> child.getTarget() == f.target
-                                && child.getNavigation().isInProgress()
-                                && child.position().subtract(origins.get(child.getUUID())).horizontalDistanceSqr() > 1),
-                        "Native target selection and navigation move a child toward the legal human");
-            }).thenExecute(() -> {
+            var children = new ArrayList<Zombie>();
+            var origins = new HashMap<UUID, Vec3>();
+            // Keep native entity ticks within this temporary round so unrelated test commits
+            // cannot clear the owner. Native melee retry cooldowns also need advancing world time.
+            try (var ignored = f.installCombat()) {
+                for (int dx = -8; dx <= 8; dx++) for (int dz = -8; dz <= 8; dz++)
+                    f.level.setBlockAndUpdate(BlockPos.containing(f.center).offset(dx, 3, dz), Blocks.STONE.defaultBlockState());
+                f.target.teleportTo(f.center.x, f.center.y, f.center.z + 60);
+                f.target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000); f.target.setHealth(1000);
+                MonsterRoles.select(f.owner, "zombie");
+                for (boolean baby : List.of(true, false)) {
+                    f.owner.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(f.owner, baby, false));
+                    var floor = f.owner.blockPosition().offset(baby ? 2 : -2, -1, 0);
+                    test.assertTrue(MonsterCompanions.useOn(f.owner, InteractionHand.MAIN_HAND,
+                            new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(floor).add(0, .5, 0),
+                                    net.minecraft.core.Direction.UP, floor, false)), "The adult and baby spawn under a roof");
+                }
+                children.addAll(f.level.getEntitiesOfClass(Zombie.class, f.owner.getBoundingBox().inflate(8)).stream()
+                        .filter(child -> f.owner.getUUID().equals(MonsterCompanions.owner(child))).toList());
+                test.assertValueEqual(children.size(), 2, "The AI sample has two real native companions");
+                for (var child : children) {
+                    test.assertFalse(child.isNoAi(), "The sample retains native zombie AI");
+                    origins.put(child.getUUID(), child.position());
+                }
+                boolean pursued = false;
+                var clock = (net.minecraft.world.level.storage.ServerLevelData) f.level.getLevelData();
+                long savedTime = clock.getGameTime();
                 try {
-                    for (var child : children) test.assertTrue(child.getTarget() != f.owner,
-                            "Native AI never selects its owner even when the owner is closer");
-                    test.assertValueEqual(f.owner.getHealth(), f.owner.getMaxHealth(), "The owner receives no native child melee damage");
-                } finally { children.forEach(Entity::discard); f.close(); }
-            }).thenSucceed();
+                    for (int tick = 0; tick < 200 && !pursued; tick++) {
+                        clock.setGameTime(savedTime + tick + 1);
+                        test.assertValueEqual(f.level.getGameTime(), savedTime + tick + 1,
+                                "The isolated AI step advances the native 20-tick melee retry clock");
+                        // First let native melee record a no-target check, then introduce the human.
+                        // This deterministically exercises its retry clock instead of depending on random goal order.
+                        if (tick == 5) f.target.teleportTo(f.center.x, f.center.y, f.center.z + 6);
+                        for (var child : children) f.level.tickNonPassenger(child);
+                        pursued = children.stream().anyMatch(child -> child.getTarget() == f.target
+                                && child.getNavigation().isInProgress()
+                                && ((dev.hardrush.p0.monster.mixin.MonsterMobAccessor) child).hardrush$goalSelector().getAvailableGoals().stream()
+                                    .anyMatch(goal -> goal.isRunning() && goal.getGoal() instanceof net.minecraft.world.entity.ai.goal.MeleeAttackGoal)
+                                && child.distanceToSqr(f.target) < origins.get(child.getUUID()).distanceToSqr(f.target.position())
+                                && child.position().subtract(origins.get(child.getUUID())).horizontalDistanceSqr() > 1);
+                    }
+                } finally { clock.setGameTime(savedTime); }
+                test.assertTrue(pursued, "Native target selection and navigation pursue the legal human");
+                for (var child : children) test.assertTrue(child.getTarget() != f.owner,
+                        "Native AI never selects its owner even when the owner is closer");
+                test.assertValueEqual(f.owner.getHealth(), f.owner.getMaxHealth(), "The owner receives no native companion melee damage");
+            } finally { children.forEach(Entity::discard); f.close(); }
+            test.succeed();
         });
     }
 
@@ -218,7 +265,7 @@ public final class P2MonsterSkillsGameTest {
             f.owner.setDeltaMovement(Vec3.ZERO);
             test.assertTrue(f.owner.position().subtract(origin).horizontalDistanceSqr() > 0,
                     "Native walking acceleration moves the body during its fuse");
-            test.assertTrue(MonsterRoles.select(f.owner, "zombie").contains("引爆期间"), "Priming cannot switch species");
+            test.assertTrue(MonsterRoles.select(f.owner, "zombie").contains("膨胀期间"), "Priming cannot switch species");
             f.target.hurtServer(f.level, f.level.damageSources().genericKill(), Float.MAX_VALUE);
             test.runAfterDelay(29, () -> {
                 test.assertTrue(f.owner.isAlive() && MonsterRoles.isIgniting(f.owner),

@@ -12,6 +12,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(LivingEntity.class)
 public abstract class MonsterLivingMixin {
+    @Inject(method="checkTotemDeathProtection", at=@At("HEAD"), cancellable=true)
+    private void noCreeperEquipmentProtection(DamageSource source, CallbackInfoReturnable<Boolean> callback) {
+        if ((Object)this instanceof ServerPlayer player
+                && MonsterRoles.currentForm(player) == dev.hardrush.p0.monster.MonsterForm.CREEPER) callback.setReturnValue(false);
+    }
     @Inject(method="canBreatheUnderwater", at=@At("HEAD"), cancellable=true)
     private void undeadBreathing(CallbackInfoReturnable<Boolean> callback) {
         if ((Object)this instanceof ServerPlayer player && MonsterRoles.isUndead(player)) callback.setReturnValue(true);
@@ -19,12 +24,19 @@ public abstract class MonsterLivingMixin {
     @Inject(method="releaseUsingItem", at=@At("HEAD"), cancellable=true)
     private void roleBow(CallbackInfo callback) {
         if ((Object)this instanceof ServerPlayer player && MonsterRoles.isMonster(player)) {
-            MonsterRoles.releaseBow(player); callback.cancel();
+            MonsterRoles.releaseUsingItem(player); callback.cancel();
         }
     }
     @Inject(method="isInvertedHealAndHarm", at=@At("HEAD"), cancellable=true)
     private void undeadHealing(CallbackInfoReturnable<Boolean> callback) {
         if ((Object)this instanceof ServerPlayer player && MonsterRoles.isUndead(player)) callback.setReturnValue(true);
+    }
+    @Inject(method="canFreeze", at=@At("HEAD"), cancellable=true)
+    private void nativeFreezing(CallbackInfoReturnable<Boolean> callback) {
+        if ((Object)this instanceof ServerPlayer player && MonsterRoles.isMonster(player)) {
+            var model = MonsterRoles.nativeModel(player);
+            if (model != null) callback.setReturnValue(model.canFreeze());
+        }
     }
     @Inject(method="canBeAffected", at=@At("HEAD"), cancellable=true)
     private void nativeEffects(MobEffectInstance effect, CallbackInfoReturnable<Boolean> callback) {
@@ -39,6 +51,6 @@ public abstract class MonsterLivingMixin {
         if (MonsterRoles.isMonster(entity)) {
             MonsterRoles.dropRoleEquipment((ServerPlayer)entity,true);
             callback.cancel();
-        } else if (MonsterRoles.summonOwner(entity)!=null) callback.cancel();
+        } else if (dev.hardrush.p0.monster.MonsterCompanions.isDismissing(entity)) callback.cancel();
     }
 }
