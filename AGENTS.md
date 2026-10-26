@@ -22,3 +22,11 @@ case2: 玩家需要知道自己当前的“复生次数”。
 ## 原版机制查询
 
 如果开发内容涉及用到 minecraft 原版机制/数值/行为等，务必使用 [.agents/skills/minecraft-knowledge/SKILL.md](.agents/skills/minecraft-knowledge/SKILL.md) 来核实对应知识，而不是靠幻觉猜测。
+
+## 玩家怪物差异文档
+
+修改玩家怪物的行为、数值、装备、背包、形态、随从、战斗边界或生命周期时，必须在同次改动中同步更新 [docs/玩家怪物与原版差异.md](docs/玩家怪物与原版差异.md)。
+
+## GitHub Issue
+
+创建、改写、维护或根据 GitHub Issue 开发，以及调整相关模板或贡献指南时，阅读 [Issue 工作流](docs/ai/issue-workflow.md)。
