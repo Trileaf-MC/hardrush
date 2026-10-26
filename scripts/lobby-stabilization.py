@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location('restart_cleanup', ROOT / 'scripts/p1-server-restart.py')
 RESTART = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(RESTART)
-GRADLE = [str(ROOT / 'scripts/p0-gradle.sh')]
+GRADLE = [str(ROOT / 'gradlew')]
 GAME = GRADLE + [':platforms:mc263:runGameTest', '-PhardrushP1=true']
 CHECKS = {
     'base': GRADLE + ['checkP3', '-PhardrushP1=true', '--rerun-tasks', '--console=plain'],

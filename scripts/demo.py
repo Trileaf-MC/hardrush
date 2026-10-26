@@ -97,7 +97,7 @@ def launcher():
 
 def build():
     # Build through Gradle, but never use Loom to launch the demo server.
-    subprocess.run([str(ROOT / 'scripts/p0-gradle.sh'), ':platforms:mc263:stageDemoMods',
+    subprocess.run([str(ROOT / 'gradlew'), ':platforms:mc263:stageDemoMods',
                     '--console=plain'], cwd=ROOT, check=True)
     staged = ROOT / 'platforms/mc263/build/demo-mods'
     mods = sorted(staged.glob('*.jar'))
