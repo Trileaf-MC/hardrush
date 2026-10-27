@@ -50,7 +50,7 @@ public final class FullCheckpoint {
 
     public Path database(Path pending) throws IOException {
         requireImagePath(pending);
-        Path path = pending.resolve("data/hardrush/p1.sqlite");
+        Path path = pending.resolve("data/" + dev.hardrush.storage.RoundStoragePaths.DATABASE);
         Files.createDirectories(path.getParent());
         return path;
     }
@@ -85,7 +85,7 @@ public final class FullCheckpoint {
         for (String name : roots) {
             Path source = root.resolve(name);
             Path target = pending.resolve("data").resolve(name);
-            if (!name.equals("hardrush/p1.sqlite")) {
+            if (!name.equals(dev.hardrush.storage.RoundStoragePaths.DATABASE)) {
                 if (!Files.exists(source, LinkOption.NOFOLLOW_LINKS)) throw new IOException("完整保存点缺少 " + name);
                 copyTree(source, target, deadlineNanos);
             }
@@ -131,7 +131,7 @@ public final class FullCheckpoint {
             boolean interrupted = Files.exists(transaction, LinkOption.NOFOLLOW_LINKS);
             RoundSnapshot current = null;
             if (!interrupted) {
-                Path database = root.resolve("hardrush/p1.sqlite");
+                Path database = root.resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE);
                 if (!Files.exists(database, LinkOption.NOFOLLOW_LINKS)) {
                     return Files.exists(directory.resolve("latest"))
                             ? new Recovery(false, "比赛数据库缺失，已保留保存点并关闭参赛入口") : Recovery.none();
@@ -201,7 +201,7 @@ public final class FullCheckpoint {
         // An interrupted replacement has mixed live paths; the pre-attempt session remains the authority.
         // Otherwise read durable decisions too: a successful commit may have lost its callback.
         if (Files.exists(directory.resolve("restoring"), LinkOption.NOFOLLOW_LINKS)) return null;
-        Path database = root.resolve("hardrush/p1.sqlite");
+        Path database = root.resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE);
         return SqliteRoundStore.inspectLatest(database).orElseThrow(() -> new IOException("原数据库缺少可核验的轮次"));
     }
 
@@ -281,7 +281,7 @@ public final class FullCheckpoint {
             }
         }
         if (!expected.isEmpty()) throw new IOException("保存点不完整");
-        var snapshot = SqliteRoundStore.inspectLatest(data.resolve("hardrush/p1.sqlite")).orElseThrow();
+        var snapshot = SqliteRoundStore.inspectLatest(data.resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE)).orElseThrow();
         if (!snapshot.roundId().equals(roundId) || snapshot.sequence() != sequence || snapshot.version() != version
                 || snapshot.phase() != RoundPhase.RUNNING || snapshot.result() != null
                 || dev.hardrush.core.round.RoundEngine.requiresLegacyClosure(snapshot)) throw new IOException("保存点数据库与清单不一致");
@@ -303,9 +303,9 @@ public final class FullCheckpoint {
         atomicWrite(directory.resolve("restoring"), (image.id() + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
         var paths = new ArrayList<>(image.roots());
         // A standalone SQLite image must never meet the crashed database's old WAL/SHM/journal.
-        paths.addFirst("hardrush/p1.sqlite-journal");
-        paths.addFirst("hardrush/p1.sqlite-shm");
-        paths.addFirst("hardrush/p1.sqlite-wal");
+        paths.addFirst(dev.hardrush.storage.RoundStoragePaths.DATABASE + "-journal");
+        paths.addFirst(dev.hardrush.storage.RoundStoragePaths.DATABASE + "-shm");
+        paths.addFirst(dev.hardrush.storage.RoundStoragePaths.DATABASE + "-wal");
         for (String name : paths) checked(root.resolve(name), !name.endsWith(".json") && !name.contains(".sqlite"));
         for (String name : paths) {
             Path target = root.resolve(name);
@@ -334,7 +334,7 @@ public final class FullCheckpoint {
         names.add(portable(root.relativize(RoundWorldPaths.manifest(root, round))));
         names.add("hardrush/profiles");
         names.add("players");
-        names.add("hardrush/p1.sqlite");
+        names.add(dev.hardrush.storage.RoundStoragePaths.DATABASE);
         return names;
     }
 

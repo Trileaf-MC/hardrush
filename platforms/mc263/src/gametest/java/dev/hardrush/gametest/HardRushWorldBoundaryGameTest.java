@@ -296,7 +296,7 @@ public final class HardRushWorldBoundaryGameTest {
             overworld.getDataStorage().saveAndJoin();
             var folder = DimensionType.getStorageFolder(overworld.dimension(), server.getWorldPath(LevelResource.ROOT)).resolve("data");
             var ops = RegistryOps.create(NbtOps.INSTANCE, server.registryAccess());
-            var clockFile = NbtIo.readCompressed(folder.resolve("hardrush/p0_clocks.dat"), NbtAccounter.unlimitedHeap());
+            var clockFile = NbtIo.readCompressed(folder.resolve("hardrush/development_clocks.dat"), NbtAccounter.unlimitedHeap());
             var reloadedClock = PackedClockStates.CODEC.parse(ops, clockFile.getCompoundOrEmpty("data")).getOrThrow();
             test.assertValueEqual(reloadedClock.clocks().get(clock).totalTicks(), 17000L, "Clock persisted to owned dimension file");
             var weatherFile = NbtIo.readCompressed(folder.resolve("minecraft/weather.dat"), NbtAccounter.unlimitedHeap());

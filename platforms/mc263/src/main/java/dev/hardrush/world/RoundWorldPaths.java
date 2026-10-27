@@ -11,17 +11,17 @@ public final class RoundWorldPaths {
     private RoundWorldPaths() {}
 
     public static Path manifest(Path root, UUID round) {
-        return root.toAbsolutePath().normalize().resolve("hardrush/p1-worlds/" + round + ".json");
+        return root.toAbsolutePath().normalize().resolve("hardrush/round-worlds/" + round + ".json");
     }
 
     public static String identifier(UUID round, String dimension) {
         requireDimension(dimension);
-        return "hardrush:p1_" + round.toString().replace("-", "") + "/" + dimension;
+        return "hardrush:round_" + round.toString().replace("-", "") + "/" + dimension;
     }
 
     public static Path world(Path root, UUID round, String dimension) {
         requireDimension(dimension);
-        return root.toAbsolutePath().normalize().resolve("dimensions/hardrush/p1_"
+        return root.toAbsolutePath().normalize().resolve("dimensions/hardrush/round_"
                 + round.toString().replace("-", "") + "/" + dimension);
     }
 

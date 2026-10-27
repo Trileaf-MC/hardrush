@@ -38,7 +38,7 @@ final class DevelopmentWorldManifest {
 
     String identifier(String dimension) {
         requireDimension(dimension);
-        return "hardrush:p0_" + roundId.toString().replace("-", "") + "/" + dimension;
+        return "hardrush:development_" + roundId.toString().replace("-", "") + "/" + dimension;
     }
 
     DevelopmentWorldManifest withSpawn(BlockPos position) {

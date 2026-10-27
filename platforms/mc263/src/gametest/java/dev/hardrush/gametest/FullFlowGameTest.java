@@ -276,7 +276,7 @@ public final class FullFlowGameTest {
             catch(ReflectiveOperationException e){throw new IllegalStateException(e);}
         }
         void revivalFault(){
-            var db=f.server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("hardrush/p1.sqlite");
+            var db=f.server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE);
             io=java.util.concurrent.CompletableFuture.runAsync(()->{
                 try(var connection=java.sql.DriverManager.getConnection("jdbc:sqlite:"+db);var sql=connection.createStatement()){
                     sql.execute("CREATE TRIGGER full_flow_revival_failure BEFORE INSERT ON store_events WHEN NEW.event_type='REVIVAL' BEGIN SELECT RAISE(ABORT,'controlled altar SQLite failure'); END");
@@ -284,7 +284,7 @@ public final class FullFlowGameTest {
             });
         }
         void assertBookClaim(UUID player,boolean delivered){
-            var db=f.server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("hardrush/p1.sqlite");
+            var db=f.server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE);
             try(var connection=java.sql.DriverManager.getConnection("jdbc:sqlite:"+db);var statement=connection.prepareStatement(
                     "SELECT delivery.volume,delivery.delivered FROM book_deliveries delivery JOIN history_rounds history USING(round_id) WHERE history.round_sequence=121 AND delivery.player_id=? AND delivery.volume=2")){
                 statement.setString(1,player.toString());
@@ -296,7 +296,7 @@ public final class FullFlowGameTest {
             }catch(java.sql.SQLException error){throw new IllegalStateException(error);}
         }
         void seedHistory(){
-            var db=f.server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("hardrush/p1.sqlite");
+            var db=f.server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE);
             var rules=f.round().rules();
             io=java.util.concurrent.CompletableFuture.runAsync(()->{
                 try(var store=new dev.hardrush.persistence.SqliteRoundStore(db)){

@@ -41,7 +41,7 @@ final class RoundSessionTest {
 
     @Test
     void createsPreparingRoundAndRestoresSameIdAfterCleanStopWithoutDowntime() throws Exception {
-        var database = directory.resolve("hardrush/p1.sqlite");
+        var database = directory.resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE);
         var clock = new AtomicLong(5_000_000_000L);
         var callbacks = new LinkedBlockingQueue<Runnable>();
         UUID roundId;
@@ -239,7 +239,7 @@ final class RoundSessionTest {
         var parentFile = directory.resolve("regular-file");
         Files.writeString(parentFile, "do not replace");
         var callbacks = new LinkedBlockingQueue<Runnable>();
-        try (var session = new RoundSession(parentFile.resolve("p1.sqlite"), () -> 0, callbacks::add)) {
+        try (var session = new RoundSession(parentFile.resolve("rounds.sqlite"), () -> 0, callbacks::add)) {
             pumpUntil(callbacks, () -> session.state() != RoundSession.State.OPENING);
             assertEquals(RoundSession.State.FAILED, session.state());
             assertTrue(session.snapshot().isEmpty());

@@ -384,7 +384,7 @@ public final class PersonalHuntGameTest {
         }
         void prepareFault() {
             if(!System.getProperty(TestProperties.PERSONAL_HUNT_FAULT,"adapter").equals("storage")) { ioTask=java.util.concurrent.CompletableFuture.completedFuture(null); return; }
-            var database=server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("hardrush/p1.sqlite");
+            var database=server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE);
             ioTask=java.util.concurrent.CompletableFuture.runAsync(() -> {
                 try(var connection=java.sql.DriverManager.getConnection("jdbc:sqlite:"+database);var sql=connection.createStatement()) {
                     sql.execute("CREATE TRIGGER fail_personal_hunt BEFORE INSERT ON store_events WHEN NEW.event_type='MONSTER_DEPLOY' BEGIN SELECT RAISE(ABORT,'controlled personal hunt storage failure'); END");

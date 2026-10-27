@@ -169,7 +169,7 @@ def read_snapshot_header(payload):
 
 def storage_evidence(directory, fixture):
     world = directory / 'world'
-    database = world / 'hardrush/p1.sqlite'
+    database = world / 'hardrush/rounds.sqlite'
     if not database.is_file() or database.is_symlink():
         raise RuntimeError('Fixture did not produce an owned P1 SQLite database')
     # Read-only mode cannot silently create a missing database. Both JVMs have exited.
@@ -199,7 +199,7 @@ def storage_evidence(directory, fixture):
                            'revision': row[3], 'payloadSha256': digest.hex(), 'snapshot': snapshot}
 
     manifests = []
-    manifest_directory = world / 'hardrush/p1-worlds'
+    manifest_directory = world / 'hardrush/round-worlds'
     for path in sorted(manifest_directory.glob('*.json')):
         if path.is_symlink() or not path.is_file():
             raise RuntimeError(f'Unsafe manifest: {path}')

@@ -194,7 +194,7 @@ public final class FullCheckpointRegression implements ModInitializer {
                 FullCheckpointRuntime.tick(server, session, worlds, profiles);
                 try {
                     var saved = root.resolve("hardrush/full-checkpoints").resolve(Files.readString(root.resolve("hardrush/full-checkpoints/latest")).strip());
-                    expected = SqliteRoundStore.inspectLatest(saved.resolve("data/hardrush/p1.sqlite")).orElseThrow();
+                    expected = SqliteRoundStore.inspectLatest(saved.resolve("data/" + dev.hardrush.storage.RoundStoragePaths.DATABASE)).orElseThrow();
                     require(expected.roundId().equals(round().roundId()), "actual automatic checkpoint belongs to current round");
                     require(expected.version() == round().version(), "new full checkpoint, not an older admission checkpoint");
                 } catch (Exception error) { throw new IllegalStateException(error); }

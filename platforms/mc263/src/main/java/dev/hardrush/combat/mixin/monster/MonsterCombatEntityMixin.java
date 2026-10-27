@@ -24,11 +24,11 @@ public abstract class MonsterCombatEntityMixin implements MonsterSourceHolder {
     }
     @Inject(method="saveWithoutId", at=@At("TAIL"))
     private void save(ValueOutput output, CallbackInfo ci) {
-        if (hardrush$monsterSource != null) output.putString("hardrush_p2_monster_source", hardrush$monsterSource.encode());
+        if (hardrush$monsterSource != null) output.putString("hardrush_monster_source", hardrush$monsterSource.encode());
     }
     @Inject(method="load", at=@At("TAIL"))
     private void load(ValueInput input, CallbackInfo ci) {
-        var encoded = input.getStringOr("hardrush_p2_monster_source", "");
+        var encoded = input.getStringOr("hardrush_monster_source", "");
         if (!encoded.isEmpty()) hardrush$monsterSource = FrozenMonsterSource.decode(encoded)
                 .orElse(new FrozenMonsterSource(new UUID(0, 0), new UUID(0, 0), 0, 0, false));
     }

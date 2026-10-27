@@ -100,7 +100,7 @@ public final class RoundRuntime {
             ADMITTED.put(server, new java.util.HashMap<>());
             var reference = new RoundSession[1];
             var bootstrapCallbacks = new ArrayDeque<Runnable>();
-            var session = new RoundSession(server.getWorldPath(LevelResource.ROOT).resolve("hardrush/p1.sqlite"),
+            var session = new RoundSession(server.getWorldPath(LevelResource.ROOT).resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE),
                     MonotonicClock.system(), task -> MainThreadExecutor.forServer(server).execute(() -> {
                         // The queue never enters vanilla's non-thread-safe reentrant executor on IO.
                         // close() drains durable futures; the owner thread may apply bootstrap inline if

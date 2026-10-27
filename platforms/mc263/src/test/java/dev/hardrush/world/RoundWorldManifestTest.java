@@ -76,7 +76,7 @@ final class RoundWorldManifestTest {
             var entry = document.getAsJsonObject("dimensions").getAsJsonObject(dimension);
             assertEquals(RoundWorldPaths.identifier(ROUND, dimension), entry.get("id").getAsString());
             assertEquals(RoundWorldPaths.world(root, ROUND, dimension), root.resolve(entry.get("ownedPath").getAsString()));
-            assertFalse(entry.get("id").getAsString().contains("p0_"));
+            assertFalse(entry.get("id").getAsString().contains("development_"));
         }
     }
 
@@ -156,7 +156,7 @@ final class RoundWorldManifestTest {
 
     @Test void cleanupCandidatesCannotNameLobbyRootP0OrAnotherRound() throws IOException {
         Path root = temporary.toRealPath();
-        for (Path foreign : List.of(root, root.resolve("DIM-1"), root.resolve("hardrush-p0"),
+        for (Path foreign : List.of(root, root.resolve("DIM-1"), root.resolve("hardrush-development"),
                 RoundWorldPaths.world(root, UUID.randomUUID(), "overworld"), root.resolve("../escaped"))) {
             assertThrows(IOException.class, () -> RoundWorldPaths.validate(root, ROUND, "overworld", foreign));
         }

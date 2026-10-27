@@ -24,7 +24,7 @@ class FullCheckpointTest {
 
     @BeforeEach void prepare() throws Exception {
         root = root.toRealPath();
-        database = root.resolve("hardrush/p1.sqlite");
+        database = root.resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE);
         checkpoints = new FullCheckpoint(root);
         initial = snapshot(round, 0, false, null);
         for (String dimension : java.util.List.of("overworld", "nether", "end")) {

@@ -20,7 +20,7 @@ class FullCheckpointSessionTest {
 
     @Test void verifiedRollbackWaitsForAdaptersAndDurableUncertaintyBeforeOpeningPlay() throws Exception {
         root = root.toRealPath();
-        var database = root.toRealPath().resolve("p1.sqlite");
+        var database = root.toRealPath().resolve("rounds.sqlite");
         var player = UUID.randomUUID(); var round = running(player, false);
         try (var store = new SqliteRoundStore(database)) { write(store, round); }
         var callbacks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
@@ -56,7 +56,7 @@ class FullCheckpointSessionTest {
     }
 
     @Test void failedRestoreReasonCannotAccidentallyUnlockEvenACleanPartialReplacement() throws Exception {
-        var database = root.toRealPath().resolve("p1.sqlite"); var round = running(UUID.randomUUID(), true);
+        var database = root.toRealPath().resolve("rounds.sqlite"); var round = running(UUID.randomUUID(), true);
         try (var store = new SqliteRoundStore(database)) { write(store, round); }
         var callbacks = new LinkedBlockingQueue<Runnable>();
         try (var session = new RoundSession(database, () -> 0, callbacks::add, (message, error) -> {}, false, "保存点文件损坏")) {
@@ -69,7 +69,7 @@ class FullCheckpointSessionTest {
     }
 
     @Test void onlineReloadKeepsSessionBindingsAndPersistsRecoveryAuditBeforeUnlock() throws Exception {
-        var database = root.toRealPath().resolve("p1.sqlite"); var round = running(UUID.randomUUID(), false);
+        var database = root.toRealPath().resolve("rounds.sqlite"); var round = running(UUID.randomUUID(), false);
         try (var store = new SqliteRoundStore(database)) { write(store, round); }
         var callbacks = new LinkedBlockingQueue<Runnable>();
         try (var session = new RoundSession(database, () -> 0, callbacks::add)) {
