@@ -252,7 +252,7 @@ public final class IdentityRuntimeGameTest {
         }
 
         void assertStoredIdentity() {
-            try (var store = new SqliteRoundStore(server.getWorldPath(LevelResource.ROOT).resolve("hardrush/p1.sqlite"))) {
+            try (var store = new SqliteRoundStore(server.getWorldPath(LevelResource.ROOT).resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE))) {
                 var saved = RoundSnapshotCodec.decode(store.load(round().roundId()).orElseThrow().payload()).participants().get(profile.id());
                 test.assertValueEqual(saved.role(), ParticipantRole.MONSTER_LOBBY, "The real SQLite snapshot stores the monster role");
                 test.assertTrue(!saved.hasLeftProtection() && saved.lifeSequence() == 1, "The real SQLite snapshot preserves identity without requiring a spawn exit");

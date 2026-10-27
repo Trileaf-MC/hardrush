@@ -237,7 +237,7 @@ def smoke_session(run, attempt, timeout):
             contents = log.read_text(errors='replace')
             if re.search(r'\bERROR\b|Failed to save|Could not save|Exception closing', contents):
                 raise RuntimeError('服务端日志存在错误，保留现场待检查。')
-            database = run / 'world/hardrush/p1.sqlite'
+            database = run / 'world/hardrush/rounds.sqlite'
             with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
                 if connection.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
                     raise RuntimeError('SQLite 完整性检查失败。')

@@ -122,7 +122,7 @@ final class DevelopmentWorldManifestTest {
         Path target = targetDirectory.resolve("world-manifest.json");
         manifest().write(target);
         String before = Files.readString(target);
-        Path link = directory.resolve("hardrush-p0");
+        Path link = directory.resolve("hardrush-development");
         Files.createSymbolicLink(link, targetDirectory);
         Path linkedManifest = link.resolve("world-manifest.json");
 

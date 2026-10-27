@@ -29,7 +29,7 @@ BASE = RESTART.ROOT / '.local/server-crash'
 def retained(directory):
     world = directory / 'world'
     result = {}
-    for relative in ('hardrush/p1-worlds', 'hardrush/profiles', 'dimensions/hardrush'):
+    for relative in ('hardrush/round-worlds', 'hardrush/profiles', 'dimensions/hardrush'):
         candidate = world / relative
         for ancestor in (candidate, *candidate.parents):
             if ancestor.is_symlink():
@@ -61,7 +61,7 @@ def retained(directory):
 
 
 def database_evidence(directory, marker):
-    database = directory / 'world/hardrush/p1.sqlite'
+    database = directory / 'world/hardrush/rounds.sqlite'
     with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
         integrity = connection.execute('PRAGMA integrity_check').fetchall()
         if integrity != [('ok',)] or connection.execute('PRAGMA foreign_key_check').fetchall():

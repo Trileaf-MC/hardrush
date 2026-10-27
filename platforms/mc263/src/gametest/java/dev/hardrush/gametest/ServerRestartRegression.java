@@ -630,7 +630,7 @@ public final class ServerRestartRegression implements ModInitializer {
                 if (failure != null) throw new IllegalStateException(failure);
                 require(stopping && steps.isEmpty(), "all scenario steps completed before normal shutdown");
                 require(!escapedCallbacks.get(), "all committed/profile effects remain on the server thread through stop");
-                try (var store = new SqliteRoundStore(root.resolve("hardrush/p1.sqlite"))) {
+                try (var store = new SqliteRoundStore(root.resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE))) {
                     var saved = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload());
                     require(saved.cleanShutdown() && !saved.timingUncertain(), "normal production stop must persist clean trusted checkpoint");
                     if (operation.equals("write")) {

@@ -61,7 +61,7 @@ public final class ServerCrashRegression implements ModInitializer {
 
         CrashFixture(MinecraftServer server) {
             super(server, false);
-            database = root.resolve("hardrush/p1.sqlite");
+            database = root.resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE);
             require(Set.of("AWARD", "CONSUME", "TERMINAL").contains(scenario), "known crash scenario");
             require(Set.of("SNAPSHOT", "INDEX", "COMMIT").contains(boundary), "known crash boundary");
             details.addProperty("scenario", scenario); details.addProperty("boundary", boundary);
@@ -185,14 +185,14 @@ public final class ServerCrashRegression implements ModInitializer {
                         sql.execute("CREATE TEMP TRIGGER fault_server_boundary " + target + " BEGIN INSERT INTO crash_spill VALUES(zeroblob(262144)); SELECT server_crash(); END");
                     }
                 }
-                baselineWalBytes = Files.size(database.resolveSibling("p1.sqlite-wal"));
+                baselineWalBytes = Files.size(database.resolveSibling(database.getFileName() + "-wal"));
                 armed.set(true);
             } catch (Exception error) { throw new CompletionException(error); }
         }
 
         void reached(SqliteRoundStore store) {
             try {
-                long walBytes = Files.size(database.resolveSibling("p1.sqlite-wal"));
+                long walBytes = Files.size(database.resolveSibling(database.getFileName() + "-wal"));
                 require(walBytes > baselineWalBytes, "real committed or uncommitted WAL frames reached disk");
                 details.addProperty("walBytesBefore", baselineWalBytes); details.addProperty("walBytesAtKill", walBytes);
                 // A separate read connection sees only committed data, including within a blocked trigger.

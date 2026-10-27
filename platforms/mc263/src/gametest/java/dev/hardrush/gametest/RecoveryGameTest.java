@@ -113,7 +113,7 @@ public final class RecoveryGameTest {
         List<ServerLevel> oldLevels, closedLevels; BlockPos marker; CompletableFuture<?> task;
         Fixture(GameTestHelper test) {
             this.test = test; server = test.getLevel().getServer();
-            root = server.getWorldPath(LevelResource.ROOT); database = root.resolve("hardrush/p1.sqlite");
+            root = server.getWorldPath(LevelResource.ROOT); database = root.resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE);
         }
         RoundSnapshot round() { return session.snapshot().orElseThrow(); }
         boolean awaitReady(long sequence) {

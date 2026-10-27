@@ -321,7 +321,7 @@ public final class LobbyRuntimeGameTest {
                     });
         }
         sequence.thenExecute(() -> {
-                    try (var store = new SqliteRoundStore(f.server.getWorldPath(LevelResource.ROOT).resolve("hardrush/p1.sqlite"))) {
+                    try (var store = new SqliteRoundStore(f.server.getWorldPath(LevelResource.ROOT).resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE))) {
                         var first = store.participantRecord(f.round().roundId(), f.monster.profile.id()).orElseThrow();
                         var second = store.participantRecord(f.round().roundId(), f.target.profile.id()).orElseThrow();
                         f.test.assertValueEqual(first.revivalCount(), 10, "Real runtime records ten revivals for the first peer");
@@ -612,7 +612,7 @@ public final class LobbyRuntimeGameTest {
                                 + ",stack=" + item.getItem() + ",lookup=" + level.getEntity(item.getUUID())).toList();
         }
         void assertStored() {
-            try (var store = new SqliteRoundStore(server.getWorldPath(LevelResource.ROOT).resolve("hardrush/p1.sqlite"))) {
+            try (var store = new SqliteRoundStore(server.getWorldPath(LevelResource.ROOT).resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE))) {
                 var saved = RoundSnapshotCodec.decode(store.load(round().roundId()).orElseThrow().payload()).participants().get(monster.profile.id());
                 test.assertValueEqual(saved.role(), ParticipantRole.MONSTER_LOBBY, "Real SQLite stores the returned lobby identity");
                 test.assertValueEqual(saved.monsterRole(), MonsterRole.CREEPER, "Real SQLite retains role choice across reconnect");

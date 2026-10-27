@@ -32,7 +32,7 @@ public final class RoundRuntimeLevel extends RuntimeLevel implements dev.hardrus
         this.owner = owner;
         if (overworld.roundClocks == null) {
             BooleanSupplier advance = () -> overworld.getGameRules().get(GameRules.ADVANCE_TIME);
-            var type = new SavedDataType<>(Identifier.parse("hardrush:p1_clocks"),
+            var type = new SavedDataType<>(Identifier.parse("hardrush:round_clocks"),
                     () -> new RuntimeClockManager(PackedClockStates.EMPTY, advance),
                     PackedClockStates.CODEC.xmap(states -> new RuntimeClockManager(states, advance), RuntimeClockManager::packState), null);
             overworld.roundClocks = overworld.getDataStorage().computeIfAbsent(type);

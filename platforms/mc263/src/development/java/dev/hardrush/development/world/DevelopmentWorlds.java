@@ -49,7 +49,7 @@ public final class DevelopmentWorlds {
 
     public static void initialize(MinecraftServer server) {
         requireMainThread(server);
-        context = new Context(server, server.getWorldPath(LevelResource.ROOT).resolve("hardrush-p0/world-manifest.json"));
+        context = new Context(server, server.getWorldPath(LevelResource.ROOT).resolve("hardrush-development/world-manifest.json"));
         if (!Files.exists(context.path)) {
             lastStatus = "尚无 P0 轮次；create 将创建三个持久维度";
             return;

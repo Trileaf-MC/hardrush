@@ -176,7 +176,7 @@ public final class ProfileCrashRegression implements ModInitializer {
                 require(!escapedCallbacks.get(), "profile callbacks stay on server thread");
                 for (var actor : List.of(a, b)) require(PlayerProfiles.isLocked(actor.player), "no recovery unlock");
                 verifyJournal();
-                try (var store = new SqliteRoundStore(root.resolve("hardrush/p1.sqlite"))) {
+                try (var store = new SqliteRoundStore(root.resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE))) {
                     store.checkIntegrity();
                     require(Arrays.equals(RoundSnapshotCodec.encode(expected), store.latest().orElseThrow().payload()), "original dirty checkpoint is immutable");
                     require(store.history(10, 0).isEmpty(), "conversion cannot invent a terminal");
