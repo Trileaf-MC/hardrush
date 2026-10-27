@@ -168,9 +168,11 @@ public final class FullFlowGameTest {
                 .thenWaitUntil(()->f.await(f.target.participant().role()==ParticipantRole.MONSTER_DEPLOYED&&MonsterRoles.isMonster(f.target.player)&&!f.session.mutationPending(),"Creeper deployed via model"))
                 .thenExecute(()->{
                     f.target.move(f.monster.player.position().add(1,0,0)); f.monster.player.setHealth(1); f.monster.player.setInvulnerableTime(0);
-                    state.use(f.target.player,0);test.assertTrue(MonsterRoles.isIgniting(f.target.player),"Item ignites native creeper");
-                    state.use(f.target.player,7);test.assertFalse(LobbyRuntime.channeling(f.target.player),"Ignited creeper cannot channel return");
-                    test.assertTrue(MonsterRoles.isIgniting(f.target.player),"Return cannot cancel the fuse");
+                    state.use(f.target.player,0);test.assertTrue(MonsterRoles.isIgniting(f.target.player),"Held igniter starts native creeper swelling");
+                    state.use(f.target.player,7);test.assertFalse(LobbyRuntime.channeling(f.target.player),"Swelling creeper cannot channel return");
+                    test.assertFalse(f.target.player.isUsingItem(),"Changing the held slot releases the igniter input");
+                    state.use(f.target.player,0);
+                    test.assertTrue(f.target.player.isUsingItem() && MonsterRoles.isIgniting(f.target.player),"Holding the igniter again sustains swelling until explosion");
                 })
                 .thenWaitUntil(()->f.await(f.round().phase()==RoundPhase.RESCUE&&f.target.participant().revivalEntitled()
                         && f.target.participant().role()==ParticipantRole.MONSTER_LOBBY&&f.target.current().isAlive()&&!f.session.mutationPending(),"Explosion award and self return precede wipe adjudication"))
