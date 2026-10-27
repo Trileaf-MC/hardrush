@@ -29,7 +29,7 @@ FORBIDDEN = ('mcpfabric', 'spark', 'hardrush-gametest', 'hardrush-debug-tools',
 FORBIDDEN_CLASS_MARKERS = (b'runUnmanagedFixture', b'UNMANAGED_FIXTURE_DEPTH', b'temporaryConfiguration')
 
 # Reuse the independently checked snapshot prefix parser; it never starts a fixture.
-snapshot_spec = importlib.util.spec_from_file_location('demo_snapshot', ROOT / 'scripts/p1-server-restart.py')
+snapshot_spec = importlib.util.spec_from_file_location('demo_snapshot', ROOT / 'scripts/server-restart.py')
 snapshot_reader = importlib.util.module_from_spec(snapshot_spec)
 snapshot_spec.loader.exec_module(snapshot_reader)
 
@@ -147,7 +147,7 @@ def prepare(bundle, mode, port, bind='127.0.0.1'):
     shutil.copyfile(bundle / 'fabric-server.jar', run / 'fabric-server.jar')
     shutil.copytree(bundle / 'mods', run / 'mods')
     # Reuse only an existing human acceptance. Never infer or create eula=true.
-    existing_eula = ROOT / '.local/server-p0/eula.txt'
+    existing_eula = ROOT / '.local/server/eula.txt'
     eula = '# Review https://aka.ms/MinecraftEULA\neula=false\n'
     if existing_eula.is_file() and not existing_eula.is_symlink():
         contents = existing_eula.read_text()
@@ -199,7 +199,7 @@ def launch_command(run):
     if 'eula=true' not in [line.strip() for line in (run / 'eula.txt').read_text().splitlines()]:
         raise RuntimeError(f'请阅读 EULA 并在 {run / "eula.txt"} 中自行确认。')
     return [java(), '-Xms512M', '-Xmx2G', '--enable-native-access=ALL-UNNAMED',
-            '-Dhardrush.p1.enabled=true', '-Dhardrush.p1.initialMode=' + config['initialMode'],
+            '-Dhardrush.competition.enabled=true', '-Dhardrush.round.initialMode=' + config['initialMode'],
             '-jar', 'fabric-server.jar', 'nogui']
 
 

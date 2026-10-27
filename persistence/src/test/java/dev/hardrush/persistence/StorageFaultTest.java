@@ -33,7 +33,7 @@ final class StorageFaultTest {
                     int pages;
                     try (var row = sql.executeQuery("PRAGMA page_count")) { assertTrue(row.next()); pages = row.getInt(1); }
                     sql.execute("PRAGMA max_page_count=" + pages);
-                    sql.execute("CREATE TEMP TRIGGER fail_full AFTER UPDATE ON round_snapshots BEGIN INSERT INTO p3_fault_payload VALUES (zeroblob(262144)); END");
+                    sql.execute("CREATE TEMP TRIGGER fail_full AFTER UPDATE ON round_snapshots BEGIN INSERT INTO fault_payload VALUES (zeroblob(262144)); END");
                 }
                 case INDEX_ABORT -> sql.execute("CREATE TEMP TRIGGER fail_index " + StorageFaultFixture.lateTrigger(scenario)
                         + " BEGIN SELECT RAISE(ABORT, 'p3 injected index failure'); END");
@@ -46,7 +46,7 @@ final class StorageFaultTest {
                 case FULL -> { sql.execute("PRAGMA max_page_count=1073741823"); sql.execute("DROP TRIGGER fail_full"); }
                 case INDEX_ABORT -> sql.execute("DROP TRIGGER fail_index");
             }
-            try (var row = sql.executeQuery("SELECT COUNT(*) FROM p3_fault_payload")) { assertTrue(row.next()); assertEquals(0, row.getInt(1)); }
+            try (var row = sql.executeQuery("SELECT COUNT(*) FROM fault_payload")) { assertTrue(row.next()); assertEquals(0, row.getInt(1)); }
             assertEquals(CommitResult.APPLIED, request.commit(store));
             assertEquals(CommitResult.DUPLICATE, request.commit(store));
             StorageFaultFixture.verify(store, database, scenario, true);

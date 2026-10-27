@@ -1,5 +1,6 @@
 package dev.hardrush.player;
 
+import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.core.round.RoundPhase;
@@ -59,7 +60,7 @@ import org.slf4j.LoggerFactory;
 
 /** Main-thread player quarantine with a separate archive worker and generation-tagged callbacks. */
 public final class PlayerProfiles implements AutoCloseable {
-    private static final Logger LOGGER = LoggerFactory.getLogger("hardrush-p1-profiles");
+    private static final Logger LOGGER = LoggerFactory.getLogger("hardrush-profiles");
     private static final Map<MinecraftServer, PlayerProfiles> SERVICES = new IdentityHashMap<>();
     private static final ThreadLocal<PlayerProfiles> MONSTER_RESPAWN = new ThreadLocal<>();
     private static final ThreadLocal<Boolean> CELEBRATION_RESPAWN = ThreadLocal.withInitial(() -> false);
@@ -90,7 +91,7 @@ public final class PlayerProfiles implements AutoCloseable {
         this.lobbySpawn = lobbySpawn;
         this.callbacks = java.util.Objects.requireNonNull(callbacks);
         io = Executors.newSingleThreadExecutor(task -> {
-            var thread = new Thread(task, "hardrush-p1-profiles");
+            var thread = new Thread(task, "hardrush-profiles");
             thread.setDaemon(true);
             return thread;
         });
@@ -105,7 +106,7 @@ public final class PlayerProfiles implements AutoCloseable {
 
     /** HEAD of placeNewPlayer: before the login packet and before player/world tick or gameplay packets. */
     public static void beforeLogin(ServerPlayer player) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) return;
+        if (!HardRushProperties.competitionEnabled()) return;
         var service = SERVICES.get(player.level().getServer());
         if (service != null) service.onLogin(player);
         else {
@@ -128,7 +129,7 @@ public final class PlayerProfiles implements AutoCloseable {
     public static boolean isLocked(ServerPlayer player) {
         if (dev.hardrush.participation.ParticipationControl.pending(player)) return true;
         if (dev.hardrush.storage.FullCheckpointRuntime.saving(player.level().getServer())) return true;
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) return false;
+        if (!HardRushProperties.competitionEnabled()) return false;
         var service = SERVICES.get(player.level().getServer());
         var entry = service == null ? null : service.players.get(player.getUUID());
         if (entry == null || entry.player != player) return ((ProfileTagged) player).hardrush$isolated();
@@ -193,7 +194,7 @@ public final class PlayerProfiles implements AutoCloseable {
 
     /** Preserve vanilla command permission checks and feedback while keeping admission sealed. */
     public static Optional<Boolean> administrativeGameMode(CommandSourceStack source, ServerPlayer player, GameType mode) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) return Optional.empty();
+        if (!HardRushProperties.competitionEnabled()) return Optional.empty();
         var service = SERVICES.get(player.level().getServer());
         var entry = service == null ? null : service.players.get(player.getUUID());
         if (entry == null || entry.player != player || mode != GameType.SPECTATOR && !entry.adminSpectating) return Optional.empty();
@@ -233,7 +234,7 @@ public final class PlayerProfiles implements AutoCloseable {
 
     /** Before durable suspension exists, retain vanilla player/advancement files rather than saving lobby coordinates. */
     public static boolean allowVanillaSave(ServerPlayer player) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) return true;
+        if (!HardRushProperties.competitionEnabled()) return true;
         var service = SERVICES.get(player.level().getServer());
         if (service != null && service.recoveryPaused) return false;
         var entry = service == null ? null : service.players.get(player.getUUID());
@@ -242,7 +243,7 @@ public final class PlayerProfiles implements AutoCloseable {
     }
 
     public static boolean isRespawnAllowed(ServerPlayer player) {
-        return Boolean.getBoolean("hardrush.p1.enabled") && ((ProfileTagged) player).hardrush$respawnPermitted()
+        return HardRushProperties.competitionEnabled() && ((ProfileTagged) player).hardrush$respawnPermitted()
                 && isLocked(player);
     }
 

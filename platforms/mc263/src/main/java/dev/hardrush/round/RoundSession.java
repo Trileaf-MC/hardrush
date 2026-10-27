@@ -1,5 +1,6 @@
 package dev.hardrush.round;
 
+import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
@@ -132,7 +133,7 @@ public final class RoundSession implements AutoCloseable {
         this.restoredFullCheckpoint = restoredFullCheckpoint;
         this.startupRecoveryMessage = Objects.requireNonNull(startupRecoveryMessage);
         this.io = Executors.newSingleThreadExecutor(task -> {
-            var thread = new Thread(task, "hardrush-p1-sqlite");
+            var thread = new Thread(task, "hardrush-round-sqlite");
             thread.setDaemon(true);
             return thread;
         });
@@ -151,7 +152,7 @@ public final class RoundSession implements AutoCloseable {
                 ? RulesConfig.decode(new String(pending.get(), StandardCharsets.UTF_8)).forNewRound()
                 : RulesConfig.defaults();
         if (pending.isEmpty()) {
-            String initialMode = System.getProperty("hardrush.p1.initialMode", "hardcore");
+            String initialMode = HardRushProperties.initialMode();
             if (!initialMode.equals("normal") && !initialMode.equals("hardcore")) {
                 throw new IllegalArgumentException("首次开发模式只接受 normal 或 hardcore");
             }

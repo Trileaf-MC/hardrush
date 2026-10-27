@@ -37,7 +37,7 @@ import net.minecraft.world.level.storage.LevelResource;
 public final class ParticipationExitGameTest {
     @GameTest(maxTicks = 60000)
     public void durableExitsKeepObservationSeparateFromEligibility(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.lobby.testParticipationExit")) { test.succeed(); return; }
+        if (!Boolean.getBoolean(TestProperties.PARTICIPATION_EXIT)) { test.succeed(); return; }
         var f = new HumanEntryGameTest.Fixture(test); var c = f.new Peer("CampHumanC");
         var arrow = new Arrow[1]; var archive = new Path[1]; var sealed = new byte[1][];
         test.onEachTick(() -> { f.drain(); f.a.tickConnection(); f.b.tickConnection(); c.tickConnection(); });

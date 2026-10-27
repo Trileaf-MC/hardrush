@@ -49,7 +49,7 @@ import net.minecraft.world.phys.Vec3;
 public final class LobbyMovementGameTest {
     @GameTest(maxTicks = 60000)
     public void sharedAdventureLobbyTracksMovementAndKeepsRecoveryAndCompetitionIsolated(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.lobby.testMovement")) { test.succeed(); return; }
+        if (!Boolean.getBoolean(TestProperties.LOBBY_MOVEMENT)) { test.succeed(); return; }
         var f = new Fixture(test);
         test.onEachTick(() -> { f.clock.accumulateAndGet(System.nanoTime(), Math::max); f.a.tickConnection(); f.b.tickConnection(); });
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(

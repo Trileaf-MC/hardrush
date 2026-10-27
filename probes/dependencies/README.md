@@ -5,17 +5,17 @@
 使用仓库中同一 Java 25 和 Gradle Wrapper：
 
 ```bash
-./gradlew -p probes/p0b checkP0bDependencies --console=plain
+./gradlew -p probes/dependencies checkDependencyProbes --console=plain
 ```
 
 按 `mc2612 → mc262 → mc263` 顺序在各自 `build/run/gameTest` 中运行无图形界面的真实服务端。每版有 3 项项目测试及 1 项 Fabric 框架测试：Fantasy 服务端钩子加载、SQLite 原生 WAL／迁移回滚／双连接写锁／重开，以及 SGui 原版菜单出站包、点击和关闭入口。网络连接由 EmbeddedChannel 模拟；不能当作实际原版客户端画面、网络登录、完整世界路由或正式 GUI 安全验收。
 
-只复制 `.local/server-p0/eula.txt` 中已有的接受记录，不自动接受 EULA；原始文件未接受时任务会停止。测试数据库是临时文件，不访问 P0 世界或未来正式数据库。探针 JAR 在 `mc*/build/libs/`，只作依赖核查制品。
+只复制 `.local/server/eula.txt` 中已有的接受记录，不自动接受 EULA；原始文件未接受时任务会停止。测试数据库是临时文件，不访问 P0 世界或未来正式数据库。探针 JAR 在 `mc*/build/libs/`，只作依赖核查制品。
 
 `versions.json`、三个 `gradle.lockfile` 和 `gradle/verification-metadata.xml` 锁定直接／传递依赖及工具解析的 SHA-256；正常复验不得附带更新锁的参数。有意更新依赖时才使用：
 
 ```bash
-./gradlew -p probes/p0b checkP0bDependencies \
+./gradlew -p probes/dependencies checkDependencyProbes \
   --write-locks --write-verification-metadata sha256 --console=plain
 ```
 

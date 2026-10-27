@@ -11,29 +11,29 @@ import time
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location('restart_cleanup', ROOT / 'scripts/p1-server-restart.py')
+SPEC = importlib.util.spec_from_file_location('restart_cleanup', ROOT / 'scripts/server-restart.py')
 RESTART = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(RESTART)
 GRADLE = [str(ROOT / 'gradlew')]
-GAME = GRADLE + [':platforms:mc263:runGameTest', '-PhardrushP1=true']
+GAME = GRADLE + [':platforms:mc263:runGameTest', '-PhardrushCompetition=true']
 CHECKS = {
-    'base': GRADLE + ['checkP3', '-PhardrushP1=true', '--rerun-tasks', '--console=plain'],
+    'base': GRADLE + ['build', '-PhardrushCompetition=true', '--rerun-tasks', '--console=plain'],
     'stabilization': GAME + ['-PhardrushStabilization=true', '--console=plain'],
     'full-flow': GAME + ['-PhardrushFullFlow=true', '--console=plain'],
     'revival-fault': GAME + ['-PhardrushFullFlow=true', '-PhardrushFullFlowFault=revival', '--console=plain'],
     'personal': GAME + ['-PhardrushPersonalHunt=true', '--console=plain'],
-    'personal-storage': GAME + ['-PhardrushPersonalHunt=true', '-PhardrushPersonalFault=storage', '--console=plain'],
+    'personal-storage': GAME + ['-PhardrushPersonalHunt=true', '-PhardrushPersonalHuntFault=storage', '--console=plain'],
     'foundation': GAME + ['-PhardrushLobbyFoundation=true', '--console=plain'],
     'human': GAME + ['-PhardrushHumanEntry=true', '--console=plain'],
     'movement': GAME + ['-PhardrushLobbyMovement=true', '--console=plain'],
-    'p2': GAME + ['-PhardrushP2Lobby=true', '--console=plain'],
+    'lobby-runtime': GAME + ['-PhardrushLobbyRuntime=true', '--console=plain'],
     'celebration': GAME + ['-PhardrushCelebration=true', '--console=plain'],
-    'ten-rounds': GAME + ['-PhardrushP1TenRounds=true', '--console=plain'],
-    'recovery': GAME + ['-PhardrushP3Recovery=true', '--console=plain'],
-    'storage': GRADLE + [':platforms:mc263:runGameTest', '-PhardrushP3Storage=true', '--console=plain'],
-    'restart': [sys.executable, str(ROOT / 'scripts/p1-server-restart.py'), '--phase', 'COUNTDOWN',
+    'ten-rounds': GAME + ['-PhardrushTenRounds=true', '--console=plain'],
+    'recovery': GAME + ['-PhardrushRecovery=true', '--console=plain'],
+    'storage': GRADLE + [':platforms:mc263:runGameTest', '-PhardrushStorageReserve=true', '--console=plain'],
+    'restart': [sys.executable, str(ROOT / 'scripts/server-restart.py'), '--phase', 'COUNTDOWN',
                 '--phase', 'RUNNING', '--phase', 'RESCUE', '--phase', 'CELEBRATING', '--phase', 'ROTATING'],
-    'profile-crash': [sys.executable, str(ROOT / 'scripts/p3-server-crash.py'), '--scenario', 'PROFILE', '--boundary', 'PREPARED'],
+    'profile-crash': [sys.executable, str(ROOT / 'scripts/server-crash.py'), '--scenario', 'PROFILE', '--boundary', 'PREPARED'],
     'python': [sys.executable, '-m', 'unittest', 'discover', '-s', 'scripts', '-p', 'test_*.py', '-v'],
 }
 

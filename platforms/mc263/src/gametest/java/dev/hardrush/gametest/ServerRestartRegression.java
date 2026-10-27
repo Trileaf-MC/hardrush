@@ -70,10 +70,10 @@ public final class ServerRestartRegression implements ModInitializer {
     public static long observationTime() { return CLOCK.get(); }
 
     @Override public void onInitialize() {
-        if (System.getProperty("hardrush.p1.restart.operation") == null
-                || System.getProperty("hardrush.p3.crash.scenario") != null
-                || System.getProperty("hardrush.p1.fullCheckpoint.test") != null
-                || System.getProperty("hardrush.p3.profile.boundary") != null) return;
+        if (System.getProperty(TestProperties.RESTART_OPERATION) == null
+                || System.getProperty(TestProperties.CRASH_SCENARIO) != null
+                || System.getProperty(TestProperties.FULL_CHECKPOINT) != null
+                || System.getProperty(TestProperties.PROFILE_CRASH_BOUNDARY) != null) return;
         // Register the production listeners before this observer, independent of mod iteration order.
         RoundRuntime.initialize();
         var current = new Fixture[1];
@@ -86,12 +86,12 @@ public final class ServerRestartRegression implements ModInitializer {
     private record Step(String name, BooleanSupplier work) {}
     static class Fixture {
         final MinecraftServer server;
-        final RoundPhase target = RoundPhase.valueOf(System.getProperty("hardrush.p1.restart.phase"));
-        final String operation = System.getProperty("hardrush.p1.restart.operation");
-        final Path directory = Path.of(System.getProperty("hardrush.p1.restart.directory"));
+        final RoundPhase target = RoundPhase.valueOf(System.getProperty(TestProperties.RESTART_PHASE));
+        final String operation = System.getProperty(TestProperties.RESTART_OPERATION);
+        final Path directory = Path.of(System.getProperty(TestProperties.RESTART_DIRECTORY));
         final Path root;
         final ArrayDeque<Step> steps = new ArrayDeque<>();
-        final Actor a = new Actor("P1RestartA"), b = new Actor("P1RestartB"), visitor = new Actor("P1RestartVisitor");
+        final Actor a = new Actor("RestartA"), b = new Actor("RestartB"), visitor = new Actor("RestartVisitor");
         final JsonObject details = new JsonObject();
         final java.util.concurrent.atomic.AtomicBoolean escapedCallbacks = new java.util.concurrent.atomic.AtomicBoolean();
         final long started = System.nanoTime();
@@ -464,7 +464,7 @@ public final class ServerRestartRegression implements ModInitializer {
                     end.getChunk(new BlockPos(0, 68, 0));
                     end.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL, new ChunkPos(0, 0), 3);
                     var restored = end.getDragonFight();
-                    LoggerFactory.getLogger("hardrush-p1-server-restart").info("Restored native dragon: expected={}, fight={}, killed={}, entity={}",
+                    LoggerFactory.getLogger("hardrush-round-server-restart").info("Restored native dragon: expected={}, fight={}, killed={}, entity={}",
                             nativeDragonId, restored.dragonUUID(), restored.hasPreviouslyKilledDragon(), end.getEntity(nativeDragonId));
                 });
                 waitFor("original dying dragon entity loaded", () -> worlds.level(Level.END).getDragonFight().hasPreviouslyKilledDragon()
@@ -671,7 +671,7 @@ public final class ServerRestartRegression implements ModInitializer {
             } catch (Throwable error) { details.addProperty("status", "FAIL"); details.addProperty("error", error.toString()); error.printStackTrace(); }
             try { Files.writeString(directory.resolve(operation + "-result.json"), new GsonBuilder().setPrettyPrinting().create().toJson(details) + "\n"); }
             catch (Exception error) { throw new IllegalStateException(error); }
-            LoggerFactory.getLogger("hardrush-p1-server-restart").info("{} {} {} pid={}", details.get("status").getAsString(), operation, target, ProcessHandle.current().pid());
+            LoggerFactory.getLogger("hardrush-round-server-restart").info("{} {} {} pid={}", details.get("status").getAsString(), operation, target, ProcessHandle.current().pid());
         }
         void tick() {
             if (stopping) return;
@@ -681,7 +681,7 @@ public final class ServerRestartRegression implements ModInitializer {
                 if (!operation.equals("online")) require(RoundRuntime.sessionState(server).filter(s -> s == RoundSession.State.FAILED).isEmpty(), RoundRuntime.status(server));
                 acknowledge(a); acknowledge(b);
                 var step = steps.peek();
-                if (step != null && step.work().getAsBoolean()) { steps.remove(); stepStarted = System.nanoTime(); LoggerFactory.getLogger("hardrush-p1-server-restart").info("Step passed: {}", step.name()); }
+                if (step != null && step.work().getAsBoolean()) { steps.remove(); stepStarted = System.nanoTime(); LoggerFactory.getLogger("hardrush-round-server-restart").info("Step passed: {}", step.name()); }
             } catch (Throwable error) { failure = error; error.printStackTrace(); stopping = true; server.halt(false); }
         }
         boolean idle() { return session != null && !session.mutationPending(); }

@@ -1,5 +1,6 @@
 package dev.hardrush.gametest;
 
+import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.round.RoundRuntime;
@@ -25,7 +26,7 @@ public final class RoundLifecycleGameTest {
         }
         test.assertValueEqual(dispatch(server.createCommandSourceStack(), "hardrush status"), 1,
                 "Read-only status dispatches on a real server");
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) {
+        if (!HardRushProperties.competitionEnabled()) {
             test.assertTrue(RoundRuntime.sessionState(server).isEmpty(), "Default runtime is disabled");
             test.assertTrue(RoundRuntime.snapshot(server).isEmpty(), "Disabled runtime has no competition round");
             test.assertTrue(RoundRuntime.status(server).contains("默认关闭"), "Disabled status is explicit");

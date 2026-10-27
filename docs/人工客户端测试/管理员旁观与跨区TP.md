@@ -30,6 +30,6 @@
 
 ## 自动检查
 
-`./gradlew :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushAdminSpectator=true --console=plain`
+`./gradlew :platforms:mc263:runGameTest -PhardrushCompetition=true -PhardrushAdminSpectator=true --console=plain`
 
 测试在新建 `.local/admin-spectator/<UUID>` 中执行，只复制已有的 EULA 接受记录，不使用日常服务端存档，不启动真实客户端。

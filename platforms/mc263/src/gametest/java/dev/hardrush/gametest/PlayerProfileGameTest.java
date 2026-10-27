@@ -1,5 +1,6 @@
 package dev.hardrush.gametest;
 
+import dev.hardrush.HardRushProperties;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
@@ -51,7 +52,7 @@ public final class PlayerProfileGameTest {
     }
 
     private static void temporaryCelebration(GameTestHelper test, boolean monster, boolean dead) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var body = new ServerPlayer[]{player};
@@ -134,7 +135,7 @@ public final class PlayerProfileGameTest {
     }
 
     private static void recoverPersistedReset(GameTestHelper test, ProfileJournal.Phase phase) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
@@ -190,7 +191,7 @@ public final class PlayerProfileGameTest {
 
     @GameTest(maxTicks = 1000)
     public void preparedConversionWithoutTargetSnapshotRetainsQuarantineAndOldInventory(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
@@ -224,7 +225,7 @@ public final class PlayerProfileGameTest {
 
     @GameTest(maxTicks = 100)
     public void connectedSuspensionMovesNativePlayerMembershipBeforeWorldRelease(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var previous = server.getLevel(net.minecraft.world.level.Level.NETHER);
@@ -252,7 +253,7 @@ public final class PlayerProfileGameTest {
 
     @GameTest(maxTicks = 100)
     public void shutdownRejectsAProfileWriteFailureBeforeItsMainThreadCallback(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
@@ -286,7 +287,7 @@ public final class PlayerProfileGameTest {
 
     @GameTest(maxTicks = 1000)
     public void celebrationReconnectRestoresOneSuspensionAndClosesTheOldContainer(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var lobby = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
@@ -344,7 +345,7 @@ public final class PlayerProfileGameTest {
 
     @GameTest(maxTicks = 1200)
     public void resetSuspensionReconnectAndThreeOfflineRounds(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var lobbyPosition = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
@@ -446,7 +447,7 @@ public final class PlayerProfileGameTest {
 
     @GameTest(maxTicks = 100)
     public void loginCaptureBeforeConnectionHasNoNetworkingDependency(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = new ServerPlayer(server, test.getLevel(), new GameProfile(UUID.randomUUID(), "profile-login-test"), ClientInformation.createDefault());
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
@@ -469,7 +470,7 @@ public final class PlayerProfileGameTest {
 
     @GameTest(maxTicks = 1000)
     public void suspendedStopRestoresLatestStateInsteadOfOlderVanillaFile(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
@@ -512,7 +513,7 @@ public final class PlayerProfileGameTest {
 
     @GameTest(maxTicks = 1000)
     public void normalRespawnWaitsForCommittedLifeAndKeepsVanillaDestination(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = new ServerPlayer[]{test.makeMockServerPlayerInLevel()};
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
@@ -561,7 +562,7 @@ public final class PlayerProfileGameTest {
 
     @GameTest(maxTicks = 1000)
     public void deadHumanReconnectAllowsOnlyNativeRespawnThenWaitsForNewLife(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = new ServerPlayer[]{test.makeMockServerPlayerInLevel()};
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
@@ -611,7 +612,7 @@ public final class PlayerProfileGameTest {
 
     @GameTest(maxTicks = 1000)
     public void persistedNativeNewbornFinishesExistingLifeWithoutRespawningAgain(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = new ServerPlayer[]{test.makeMockServerPlayerInLevel()};
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
@@ -653,7 +654,7 @@ public final class PlayerProfileGameTest {
 
     @GameTest(maxTicks = 1000)
     public void preConnectionFallbackRetainsSavedDimensionPositionAndRotation(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var identity = UUID.randomUUID();
         var profile = new GameProfile(identity, "profile-pending-world");

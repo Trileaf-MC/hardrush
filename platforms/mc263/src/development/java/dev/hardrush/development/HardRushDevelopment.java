@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 /** Operator-only technical probes. This is not the competition implementation. */
 public final class HardRushDevelopment implements ModInitializer {
-    public static final Logger LOGGER = LoggerFactory.getLogger("hardrush-p0");
+    public static final Logger LOGGER = LoggerFactory.getLogger("hardrush-development");
 
     @Override
     public void onInitialize() {
@@ -39,7 +39,7 @@ public final class HardRushDevelopment implements ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPING.register(DevelopmentWorlds::close);
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
-                dispatcher.register(Commands.literal("hardrushp0")
+                dispatcher.register(Commands.literal("hardrushdev")
                         .requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
                         .executes(context -> reply(context.getSource(),
                                 "HardRush P0：角色行为原型。命令：status、world create <seed>、world enter <player> <overworld|nether|end>、disguise <player> <zombie|skeleton|creeper>、skill <player>、clear <player>。disguise 进入真实角色；appearance 仅供外观诊断，不改变玩法身份。"))

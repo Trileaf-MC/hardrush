@@ -22,7 +22,7 @@ public final class StoreCrashProcessFixture {
                 boolean committed = boundary == Boundary.HALT_AFTER_COMMIT;
                 StorageFaultFixture.verify(store, database, scenario, committed);
                 try (var sql = StorageFaultFixture.connection(store).createStatement();
-                     var row = sql.executeQuery("SELECT COUNT(*) FROM p3_fault_payload")) {
+                     var row = sql.executeQuery("SELECT COUNT(*) FROM fault_payload")) {
                     StorageFaultFixture.require(row.next() && row.getInt(1) == 0, "uncommitted spill rows must roll back");
                 }
                 StorageFaultFixture.require(request.commit(store) == (committed ? CommitResult.DUPLICATE : CommitResult.APPLIED), "same event recovery");
@@ -46,7 +46,7 @@ public final class StoreCrashProcessFixture {
             sql.execute("PRAGMA cache_spill=ON");
         }
         if (boundary != Boundary.HALT_AFTER_COMMIT) {
-            Function.create(connection, "p3_crash_boundary", new Function() {
+            Function.create(connection, "crash_boundary", new Function() {
                 @Override protected void xFunc() throws SQLException {
                     try {
                         reached(database, scenario, boundary);
@@ -65,8 +65,8 @@ public final class StoreCrashProcessFixture {
             String trigger = boundary == Boundary.HALT_AFTER_SNAPSHOT ? "AFTER UPDATE ON round_snapshots"
                     : StorageFaultFixture.lateTrigger(scenario);
             try (var sql = connection.createStatement()) {
-                sql.execute("CREATE TEMP TRIGGER p3_crash " + trigger + " BEGIN "
-                        + "INSERT INTO p3_fault_payload VALUES (zeroblob(262144)); SELECT p3_crash_boundary(); END");
+                sql.execute("CREATE TEMP TRIGGER crash " + trigger + " BEGIN "
+                        + "INSERT INTO fault_payload VALUES (zeroblob(262144)); SELECT crash_boundary(); END");
             }
         }
         StorageFaultFixture.require(request.commit(store) == CommitResult.APPLIED, "writer must commit exactly once");

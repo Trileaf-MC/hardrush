@@ -112,7 +112,7 @@ public final class RoundWorldBundle implements AutoCloseable {
         root = server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
         manifestPath = RoundWorldPaths.manifest(root, snapshot.roundId());
         io = Executors.newSingleThreadExecutor(task -> {
-            var thread = new Thread(task, "hardrush-p1-world-manifest");
+            var thread = new Thread(task, "hardrush-world-manifest");
             thread.setDaemon(true);
             return thread;
         });

@@ -22,6 +22,6 @@ public final class HardRush implements ModInitializer {
         ServerPlayConnectionEvents.DISCONNECT.register((handler,server)->{MonsterRoles.onDisconnect(handler.player);MonsterDisguise.onDisconnect(handler.player);});
         ServerPlayConnectionEvents.JOIN.register((handler,sender,server)->{MonsterRoles.onJoin(handler.player);MonsterDisguise.onJoin(handler.player);});
         ServerLifecycleEvents.SERVER_STOPPING.register(server->{MonsterRoles.stop(server);MonsterDisguise.stop(server);PlayerLocator.stop(server);});
-        org.slf4j.LoggerFactory.getLogger("hardrush").info("HardRush production runtime; competition enabled={}",Boolean.getBoolean("hardrush.p1.enabled"));
+        org.slf4j.LoggerFactory.getLogger("hardrush").info("HardRush production runtime; competition enabled={}",HardRushProperties.competitionEnabled());
     }
 }

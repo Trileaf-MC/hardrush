@@ -1,5 +1,6 @@
 package dev.hardrush.player.mixin;
 
+import dev.hardrush.HardRushProperties;
 import dev.hardrush.player.ProfileJournal;
 import dev.hardrush.player.ProfileTagged;
 import java.util.Optional;
@@ -43,7 +44,7 @@ public abstract class PlayerProfileTagMixin implements ProfileTagged {
         hardrush$suspensionId = input.getStringOr("hardrush_suspension_id", "");
         hardrush$lifeSequence = Math.max(0, input.getIntOr("hardrush_life_sequence", 0));
         hardrush$respawnPermitted = false;
-        hardrush$loadedProfile = Boolean.getBoolean("hardrush.p1.enabled") && input instanceof PlayerProfileInputAccessor accessor
+        hardrush$loadedProfile = HardRushProperties.competitionEnabled() && input instanceof PlayerProfileInputAccessor accessor
                 ? accessor.hardrush$input().copy() : null;
         var id = input.getString("hardrush_round_id");
         long sequence = input.getLongOr("hardrush_generation", 0);

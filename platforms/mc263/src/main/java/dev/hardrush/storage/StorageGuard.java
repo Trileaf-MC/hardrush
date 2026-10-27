@@ -1,5 +1,6 @@
 package dev.hardrush.storage;
 
+import dev.hardrush.HardRushProperties;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -11,7 +12,7 @@ import dev.hardrush.world.RoundWorldPaths;
 /** A preparation admission check, never a promise that later native writes cannot fail. */
 public final class StorageGuard {
     public static final long DEFAULT_MINIMUM_FREE_BYTES = 512L * 1024 * 1024;
-    public static final String MINIMUM_FREE_PROPERTY = "hardrush.p1.minimumFreeBytes";
+    public static final String MINIMUM_FREE_PROPERTY = HardRushProperties.STORAGE_MINIMUM_FREE_BYTES;
 
     private StorageGuard() {}
 
@@ -38,7 +39,7 @@ public final class StorageGuard {
     }
 
     public static void requireCapacity(Path root) throws IOException {
-        requireCapacity(root, minimumFreeBytes(System.getProperty(MINIMUM_FREE_PROPERTY)), path -> {
+        requireCapacity(root, minimumFreeBytes(HardRushProperties.minimumFreeBytes()), path -> {
             var store = Files.getFileStore(path);
             return new Capacity(store.getUsableSpace(), store.isReadOnly());
         });

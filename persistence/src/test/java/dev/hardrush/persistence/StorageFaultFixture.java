@@ -81,7 +81,7 @@ final class StorageFaultFixture {
             Files.write(sidecar(database, "after"), RoundSnapshotCodec.encode(target.after()));
             if (evidence != null) Files.write(sidecar(database, "evidence"), CombatEventCodec.encode(evidence));
             // A test-only payload forces dirty page spill before abrupt termination/full-disk failure.
-            try (var sql = connection(store).createStatement()) { sql.execute("CREATE TABLE p3_fault_payload(payload BLOB)"); }
+            try (var sql = connection(store).createStatement()) { sql.execute("CREATE TABLE fault_payload(payload BLOB)"); }
         }
     }
 
