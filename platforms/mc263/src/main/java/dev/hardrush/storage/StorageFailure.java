@@ -14,8 +14,8 @@ public final class StorageFailure {
             if (cause instanceof SQLException sql) {
                 // SQLite extended result codes retain the primary result in the low byte.
                 switch (sql.getErrorCode() & 0xff) {
-                    case 5, 6: return "检查其他占用同一 SQLite 的进程并释放写锁；修复后由 OP3 申请 recheck-storage 或正常停服重启核验，比赛继续隔离。";
-                    case 8: return "检查数据库及 WAL/SHM 所在目录的写权限和只读挂载；修复后由 OP3 申请 recheck-storage 或正常停服重启核验，比赛继续隔离。";
+                    case 5, 6: return "检查其他占用同一 SQLite 的进程并释放写锁；修复后由权限等级 3 的管理员申请 recheck-storage 或正常停服重启核验，比赛继续隔离。";
+                    case 8: return "检查数据库及 WAL/SHM 所在目录的写权限和只读挂载；修复后由权限等级 3 的管理员申请 recheck-storage 或正常停服重启核验，比赛继续隔离。";
                     case 13: return "扩容或移走经确认可迁移的其他资料；不要删除数据库、WAL、世界或录像；修复后申请 recheck-storage 或正常停服重启核验。";
                     case 10, 11, 26: return "保留数据库及 WAL/SHM 和世界清单，检查存储介质；在副本核验完整性，禁止删除原库重新开局。";
                     default: break;

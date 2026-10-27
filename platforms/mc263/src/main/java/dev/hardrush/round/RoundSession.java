@@ -764,20 +764,20 @@ public final class RoundSession implements AutoCloseable {
     }
 
     public String status() {
-        if (state == State.OPENING) return "P1 基础正在打开轮次数据库，请稍后查询。";
+        if (state == State.OPENING) return "比赛模式正在打开轮次数据库，请稍后查询。";
         if (state == State.RECHECKING) return "正在重新核验原数据库并写入恢复审计；比赛继续隔离。";
-        if (state == State.FAILED) return "P1 基础已停止状态变更：" + problem
+        if (state == State.FAILED) return "比赛模式已停止状态变更：" + problem
                 + (engine == null ? "" : "轮次 " + engine.committed().roundId() + "，版本 " + engine.committed().version()
-                    + "。存储修复后 OP3 可申请 /hardrush admin recheck-storage <原因>；核验后仍留厅隔离。");
-        if (state == State.CLOSED) return "P1 基础已停止。";
+                    + "。存储修复后，权限等级 3 的管理员可申请 /hardrush admin recheck-storage <原因>；核验后仍留厅隔离。");
+        if (state == State.CLOSED) return "比赛模式已停止。";
         var round = engine.committed();
-        return "P1 轮次 " + round.sequence() + "（" + round.roundId() + "），阶段 " + round.phase()
+        return "轮次 " + round.sequence() + "（" + round.roundId() + "），阶段 " + round.phase()
                 + "，本轮模式 " + modeName(round.rules().mode()) + "，下轮模式 " + modeName(nextRules.mode())
                 + "，已持久化版本 " + round.version() + "，规则 " + round.rules().fingerprint()
                 + "。" + (mutationPending() ? "正在提交状态。" : "")
                 + (startupRecoveryMessage().isEmpty() ? "" : startupRecoveryMessage() + "。")
                 + (round.phase() == RoundPhase.RECOVERY_REQUIRED
-                    ? "恢复隔离中；全员留在大厅。OP4 可用 /hardrush admin recovery 检查并确认在线续局，或用 /hardrush admin close-recovery 放弃故障轮并开始新轮。" : "")
+                    ? "恢复隔离中；全员留在大厅。权限等级 4 的管理员可用 /hardrush admin recovery 检查并确认在线续局，或用 /hardrush admin close-recovery 放弃故障轮并开始新轮。" : "")
                 + (recoveringCountdown ? "正常重启倒计时已暂挂，等待原已就绪玩家完成档案核验。" : "")
                 + (adaptersReady ? "有效挑战 " + engine.view().challengeMillis() + " ms，在线活人 "
                     + engine.view().onlineHumans() + "，暂停原因 " + engine.view().pauseReason() + "。"
@@ -1278,7 +1278,7 @@ public final class RoundSession implements AutoCloseable {
             io.shutdown();
             state = State.CLOSED;
         }
-        if (failure != null) throw new IllegalStateException("P1 正常停服保存未完成，请保留数据库并检查日志", failure);
+        if (failure != null) throw new IllegalStateException("比赛正常停服保存未完成，请保留数据库并检查日志", failure);
     }
 
     /** Capture the stop time before the platform drains profile, recording and world IO. */

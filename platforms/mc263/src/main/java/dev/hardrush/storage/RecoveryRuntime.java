@@ -75,13 +75,13 @@ public final class RecoveryRuntime implements AutoCloseable {
     public static int closeRecovery(CommandSourceStack source, RoundSession target, String reason) {
         var service = SERVICES.get(source.getServer());
         if (service == null || service.session != target) {
-            if (!Commands.hasPermission(Commands.LEVEL_OWNERS).test(source)) return failure(source, "结束故障轮需要 OP4 权限。");
+            if (!Commands.hasPermission(Commands.LEVEL_OWNERS).test(source)) return failure(source, "结束故障轮需要管理员权限等级 4。");
             target.closeRecovery(owner(source), reason, result -> {
                 if (result.success()) say(source, result.message()); else failure(source, result.message());
             });
             return 1;
         }
-        if (!authorized(source)) return failure(source, "结束故障轮需要 OP4 权限。");
+        if (!authorized(source)) return failure(source, "结束故障轮需要管理员权限等级 4。");
         if (busy(source.getServer()) || service.stage == Stage.SEARCH) return failure(source, "请等待正在进行的恢复操作完成。");
         service.ticket = null; service.stage = Stage.IDLE;
         Consumer<RoundSession.Reply> reply = result -> {
@@ -121,7 +121,7 @@ public final class RecoveryRuntime implements AutoCloseable {
     }
 
     private int find(CommandSourceStack source, boolean fresh) {
-        if (!authorized(source)) return failure(source, "在线恢复需要 OP4 权限。");
+        if (!authorized(source)) return failure(source, "在线恢复需要管理员权限等级 4。");
         if (closed || stage == Stage.SEARCH || busy(server)) return failure(source, "恢复检查或恢复操作正在进行，请稍候。");
         if (!session.canRetryRecovery()) return failure(source, "仅可在故障隔离状态重试；请等待已受理的写入排空。");
         requester = source;
@@ -151,7 +151,7 @@ public final class RecoveryRuntime implements AutoCloseable {
     }
 
     private int confirm(CommandSourceStack source, String answer, String token) {
-        if (!authorized(source)) return failure(source, "在线恢复需要 OP4 权限。");
+        if (!authorized(source)) return failure(source, "在线恢复需要管理员权限等级 4。");
         if (stage != Stage.OFFER || ticket == null || !ticket.toString().equals(token)
                 || !owner(source).equals(owner(requester)) || !currentRequester()
                 || System.nanoTime() - expires >= 0 || !unchanged()) {

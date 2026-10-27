@@ -35,8 +35,8 @@ public final class MonsterCombatRuntime {
         var stamped = entity instanceof MonsterSourceHolder holder ? holder.hardrush$monsterSource()
                 : Optional.<FrozenMonsterSource>empty();
         if (stamped.isPresent()) return stamped;
-        // Existing P1 entity provenance remains authoritative after upgrades. A historical hostile
-        // arrow must not regain permission merely because the P2-specific field did not yet exist.
+        // Existing combat entity provenance remains authoritative after upgrades. A historical hostile
+        // arrow must not regain permission merely because the monster-specific field did not yet exist.
         return CombatRuntime.originOf(entity)
                 .filter(origin -> origin.actor().identity() == ParticipantRole.MONSTER_DEPLOYED)
                 .map(origin -> new FrozenMonsterSource(origin.roundId(), origin.actor().playerId(),
@@ -49,7 +49,7 @@ public final class MonsterCombatRuntime {
         var access = BINDINGS.get(owner.level().getServer());
         var round = access == null ? null : access.snapshot().orElse(null);
         var actor = round == null ? null : round.participants().get(owner.getUUID());
-        if (actor == null || !actor.role().isMonster()) return; // Isolated P0 prototypes retain their own scope.
+        if (actor == null || !actor.role().isMonster()) return; // Isolated development fixtures retain their own scope.
         boolean admitted = actor.role() == ParticipantRole.MONSTER_DEPLOYED && actor.monsterDeploymentSequence() > 0
                 && actor.online() && owner.isAlive()
                 && round.phase() == RoundPhase.RUNNING && !access.competitionLocked() && access.formalLevel(owner.level())

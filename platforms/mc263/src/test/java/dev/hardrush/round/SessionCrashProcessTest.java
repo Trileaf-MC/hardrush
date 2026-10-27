@@ -49,7 +49,7 @@ final class SessionCrashProcessTest {
                 assertTrue(reader.waitFor(20, TimeUnit.SECONDS), () -> "Recovery exceeded timeout:\n" + read(readerLog));
                 assertEquals(0, reader.exitValue(), () -> read(readerLog));
                 assertTrue(read(readerLog).contains("PASS recover " + boundary), () -> read(readerLog));
-                System.out.println("P3 forced recovery " + boundary + ": writerPid=" + writer.pid()
+                System.out.println("Session forced recovery " + boundary + ": writerPid=" + writer.pid()
                         + ", forcedExit=" + writer.exitValue() + ", readerPid=" + reader.pid() + ", recovery=PASS");
             } finally {
                 if (reader.isAlive()) {

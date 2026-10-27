@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 
-/** The P0 never rotates or deletes a manifest; repeated creation reopens this identity. */
+/** Development tooling never rotates or deletes a manifest; repeated creation reopens this identity. */
 final class DevelopmentWorldManifest {
     private static final Gson JSON = new GsonBuilder().setPrettyPrinting().create();
     static final String[] DIMENSIONS = {"overworld", "nether", "end"};

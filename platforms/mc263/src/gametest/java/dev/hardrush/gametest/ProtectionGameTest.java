@@ -189,7 +189,7 @@ public final class ProtectionGameTest {
             player.setRemainingFireTicks(80); player.setDeltaMovement(new Vec3(0, -3, 0));
             ProtectionRuntime.tick(fixture.level.getServer());
             test.assertTrue(!ProtectionRuntime.protectedEntity(player), "Raw load or reconnect inside cannot bypass the persisted leave flag");
-            test.assertTrue(P1Safe(player), "Illegal entry returns to a real safe loaded standing position");
+            test.assertTrue(standingPositionSafe(player), "Illegal entry returns to a real safe loaded standing position");
             test.assertValueEqual(player.getDeltaMovement(), Vec3.ZERO, "Safe return removes residual fall/knockback velocity");
             fixture.participants.put(player.getUUID(), new Participant(player.getUUID(), player.getScoreboardName(), ParticipantRole.MONSTER_DEPLOYED,
                     true, false, 0, 0, 2, false, true));
@@ -204,7 +204,7 @@ public final class ProtectionGameTest {
                 menu.containerId, menu.getStateId(), (short)slot, (byte)button, input,
                 new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(), net.minecraft.network.HashedStack.EMPTY));
     }
-    private static boolean P1Safe(ServerPlayer player) {
+    private static boolean standingPositionSafe(ServerPlayer player) {
         return dev.hardrush.world.RoundWorldBundle.safeStanding(player.level(), player.blockPosition());
     }
     private static Participant human(ServerPlayer player, boolean exited, int life) {

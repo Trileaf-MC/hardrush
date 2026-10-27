@@ -20,9 +20,9 @@ public final class RoundLifecycleGameTest {
     public void lobbyLifecycleAndDurableCommands(GameTestHelper test) {
         var server = test.getLevel().getServer();
         var command = server.getCommands().getDispatcher().getRoot().getChild("hardrush");
-        test.assertTrue(command != null, "P1 command registered by mod initialization");
+        test.assertTrue(command != null, "Competition command registered by mod initialization");
         for (String entry : new String[]{"status", "join", "ready", "unready", "config"}) {
-            test.assertTrue(command.getChild(entry) != null, "P1 command entry exists: " + entry);
+            test.assertTrue(command.getChild(entry) != null, "Competition command entry exists: " + entry);
         }
         test.assertValueEqual(dispatch(server.createCommandSourceStack(), "hardrush status"), 1,
                 "Read-only status dispatches on a real server");

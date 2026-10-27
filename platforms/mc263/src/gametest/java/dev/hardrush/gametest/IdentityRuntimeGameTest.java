@@ -56,7 +56,7 @@ public final class IdentityRuntimeGameTest {
         if (!Boolean.getBoolean(TestProperties.IDENTITY_RUNTIME)) { test.succeed(); return; }
         test.assertTrue(HardRushProperties.competitionEnabled(), "The dedicated run requires the real enabled runtime");
         var fixture = new Fixture(test);
-        var offlineHuman = new Fixture(test, "P2OfflineHuman");
+        var offlineHuman = new Fixture(test, "IdentityOffline");
         test.onEachTick(() -> {
             if (fixture.clock != null) fixture.clock.accumulateAndGet(System.nanoTime(), Math::max);
             fixture.acknowledge();
@@ -129,7 +129,7 @@ public final class IdentityRuntimeGameTest {
         Vec3 outside;
         AABB drops;
         int acknowledged = Integer.MIN_VALUE;
-        Fixture(GameTestHelper test) { this(test, "P2RuntimeHuman"); }
+        Fixture(GameTestHelper test) { this(test, "IdentityHuman"); }
         Fixture(GameTestHelper test, String name) {
             this.test = test; server = test.getLevel().getServer();
             profile = new GameProfile(UUID.randomUUID(), name);
@@ -288,7 +288,7 @@ public final class IdentityRuntimeGameTest {
         }
         void disconnect() {
             if (player == null) return;
-            connection.disconnect(Component.literal("P2 headless native reconnect")); connection.handleDisconnection();
+            connection.disconnect(Component.literal("Identity headless native reconnect")); connection.handleDisconnection();
             var listed = server.getPlayerList().getPlayer(profile.id());
             boolean managed = profiles.manages(player);
             String details = ": listed=" + identity(listed) + ",expected=" + identity(player)

@@ -73,7 +73,7 @@ public final class ProfileCrashRegression implements ModInitializer {
                     player.getInventory().setItem(4, new ItemStack(Items.DIAMOND, 13));
                     player.getEnderChestInventory().setItem(0, new ItemStack(Items.GOLD_INGOT, 17));
                     player.totalExperience = 100; player.experienceLevel = 7;
-                    a.connection.disconnect(net.minecraft.network.chat.Component.literal("P3 native baseline fixture"));
+                    a.connection.disconnect(net.minecraft.network.chat.Component.literal("Profile crash native baseline fixture"));
                     a.connection.handleDisconnection(); a.channel.finishAndReleaseAll(); a.player = null;
                     var loaded = server.getPlayerList().loadPlayerData(new NameAndId(a.profile)).orElseThrow();
                     require(loaded.getListOrEmpty("Inventory").size() == 1 && loaded.getIntOr("XpTotal", 0) == 100,

@@ -88,7 +88,7 @@ public final class RoundSnapshotCodec {
                 long humanNanos = in.readLong(), joinedAt = in.readLong();
                 int lifeSequence = in.readInt();
                 int revivalCharges = schema >= 6 ? in.readInt() : (in.readBoolean() ? 1 : 0);
-                // P1 had no formal protection rule or exit record. Its existing lives receive
+                // Schema-1 snapshots had no formal protection rule or exit record. Their existing lives receive
                 // the initial permission on upgrade; every later exit is durably recorded.
                 boolean hasLeftProtection = schema >= 2 && in.readBoolean();
                 MonsterRole monsterRole = schema >= 3 ? MonsterRole.valueOf(readText(in, 64)) : MonsterRole.ZOMBIE;

@@ -59,7 +59,7 @@ public final class ProgressGameTest {
 
     @GameTest(maxTicks = 100)
     public void isolationAndProfileRestorationDoNotCreateProgressAndCelebrationCannotWrite(GameTestHelper test) {
-        // Profile quarantine is deliberately disabled with P1; the enabled suite exercises this gate.
+        // Profile quarantine is deliberately disabled with competition mode; the enabled suite exercises this gate.
         if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();

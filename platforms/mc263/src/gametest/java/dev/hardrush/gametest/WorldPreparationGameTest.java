@@ -55,7 +55,7 @@ public final class WorldPreparationGameTest {
                 })
                 .thenExecute(() -> {
                     partialOverworld[0] = server.getLevel(overworldKey);
-                    test.assertTrue(partialOverworld[0] instanceof RoundRuntimeLevel, "First dimension is a real P1 runtime level");
+                    test.assertTrue(partialOverworld[0] instanceof RoundRuntimeLevel, "First dimension is a real round runtime level");
                     test.assertTrue(server.getLevel(endKey) == null, "End has not opened yet");
                     bundle.save();
                     try {
@@ -71,7 +71,7 @@ public final class WorldPreparationGameTest {
                             .setLevelConstructor(DevelopmentRuntimeLevel::new);
                     occupiedEnd[0] = Fantasy.get(server).getOrOpenPersistentLevel(endKey.identifier(), config);
                     test.assertTrue(occupiedEnd[0].asLevel() instanceof DevelopmentRuntimeLevel, "Fixture occupies End using the legacy runtime implementation");
-                    test.assertFalse(RoundWorldBundle.owns(occupiedEnd[0].asLevel()), "P1 cannot claim the foreign implementation");
+                    test.assertFalse(RoundWorldBundle.owns(occupiedEnd[0].asLevel()), "The round bundle cannot claim the foreign implementation");
                 })
                 .thenWaitUntil(() -> {
                     bundle.tick();
@@ -94,7 +94,7 @@ public final class WorldPreparationGameTest {
                         test.assertValueEqual(java.nio.file.Files.readString(bundle.manifestPath()), manifestBeforeFailure[0],
                                 "Opening failure preserves the original identity and generator manifest");
                     } catch (java.io.IOException error) { throw new IllegalStateException(error); }
-                    org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("P1 W05 single-dimension open failure: {}", bundle.diagnostics());
+                    org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("Round world single-dimension open failure: {}", bundle.diagnostics());
                     occupiedEnd[0].unload();
                 })
                 .thenWaitUntil(() -> {
@@ -120,13 +120,13 @@ public final class WorldPreparationGameTest {
                     for (var semantic : java.util.List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
                         var level = bundle.level(semantic);
                         openedLevels.add(level);
-                        test.assertTrue(level instanceof RoundRuntimeLevel, "All ready dimensions use the authoritative P1 implementation");
+                        test.assertTrue(level instanceof RoundRuntimeLevel, "All ready dimensions use the authoritative round implementation");
                         test.assertValueEqual(level.getSeed(), snapshot.seed(), "Retry retains the same native seed in every dimension");
                         test.assertTrue(level.players().isEmpty(), "Retry has no fixture player references");
                     }
                     test.assertTrue(RoundWorldBundle.portalDestination(partialOverworld[0], Level.END) == bundle.level(Level.END),
-                            "Ready routing opens only the replacement P1 End in the same round");
-                    org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("P1 W05 single-dimension retry metrics: {}", bundle.metrics());
+                            "Ready routing opens only the replacement round End in the same round");
+                    org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("Round world single-dimension retry metrics: {}", bundle.metrics());
                     closed[0] = bundle.saveAndClose().toCompletableFuture();
                 })
                 .thenWaitUntil(() -> {
@@ -181,8 +181,8 @@ public final class WorldPreparationGameTest {
                     var end = bundle.level(Level.END);
                     for (var level : java.util.List.of(overworld, nether, end)) {
                         initialLevels.add(level);
-                        test.assertTrue(RoundWorldBundle.owns(level), "P1 has exact dimension ownership");
-                        test.assertFalse(DevelopmentWorlds.owns(level), "P1 never reuses the P0 world bundle");
+                        test.assertTrue(RoundWorldBundle.owns(level), "The round bundle has exact dimension ownership");
+                        test.assertFalse(DevelopmentWorlds.owns(level), "The round runtime never reuses the development world bundle");
                         test.assertValueEqual(level.getSeed(), snapshot.seed(), "All dimensions share this round's seed");
                     }
                     test.assertTrue(RoundWorldBundle.portalDestination(overworld, Level.NETHER) == nether, "Nether route binds to the same round");
@@ -199,7 +199,7 @@ public final class WorldPreparationGameTest {
                     }
                     test.assertTrue(bundle.metrics().changedBlocks() <= 100, "Only vanilla's 5x5 End arrival platform may be prepared");
                     test.assertTrue(bundle.metrics().candidates() > 0, "Native surface candidates were measured");
-                    org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("P1 initial preparation metrics: {}", bundle.metrics());
+                    org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("Round world initial preparation metrics: {}", bundle.metrics());
                     building[0] = bundle.spawn().offset(3, 0, 3);
                     overworld.setBlockAndUpdate(building[0], Blocks.CHEST.defaultBlockState());
                     var player = test.makeMockServerPlayerInLevel();
@@ -269,7 +269,7 @@ public final class WorldPreparationGameTest {
                     test.assertValueEqual(recovered[0].metrics().changedBlocks(), 0, "Restoring a ready manifest performs no world edits");
                     test.assertValueEqual(recovered[0].roundId(), snapshot.roundId(), "Restore keeps the same round identity");
                     test.assertValueEqual(overworld.getSeed(), snapshot.seed(), "Restore keeps the same seed");
-                    org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("P1 ready-world recovery metrics: {}", recovered[0].metrics());
+                    org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("Round world ready-world recovery metrics: {}", recovered[0].metrics());
                     test.assertTrue(initialLevels.stream().noneMatch(level -> level == recovered[0].level(Level.OVERWORLD)),
                             "Recovery acquires a fresh native handle after releasing old region IO");
                     closed[0] = recovered[0].saveAndClose().toCompletableFuture();
@@ -319,7 +319,7 @@ public final class WorldPreparationGameTest {
                     test.assertValueEqual(readFailure[0].exits().size(), 2, "Legacy exit metadata remains readable without rebuilding or validating corridors");
                     test.assertTrue(overworld.getBlockState(building[0]).is(Blocks.CHEST), "Retry preserves player building files");
                     test.assertValueEqual(readFailure[0].metrics().changedBlocks(), 0, "Retry never regenerates ready world terrain");
-                    org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("P1 same-round retry metrics: {}", readFailure[0].metrics());
+                    org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("Round world same-round retry metrics: {}", readFailure[0].metrics());
                     overworld.setBlockAndUpdate(readFailure[0].spawn().below(), Blocks.LAVA.defaultBlockState());
                     closed[0] = readFailure[0].saveAndClose().toCompletableFuture();
                 })
@@ -378,7 +378,7 @@ public final class WorldPreparationGameTest {
     private static void paceAndDiagnose(GameTestHelper test, RoundWorldBundle bundle, long started, long[] lastDiagnostic) {
         long now = System.nanoTime();
         if (now - lastDiagnostic[0] >= java.util.concurrent.TimeUnit.SECONDS.toNanos(1)) {
-            org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("P1 preparation progress: {}", bundle.diagnostics());
+            org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("Round world preparation progress: {}", bundle.diagnostics());
             lastDiagnostic[0] = now;
         }
         test.assertTrue(now - started < java.util.concurrent.TimeUnit.SECONDS.toNanos(120),

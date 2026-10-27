@@ -15,7 +15,7 @@ import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Operator-only technical probes. This is not the competition implementation. */
+/** Operator-only development tooling for world and role diagnostics. */
 public final class HardRushDevelopment implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("hardrush-development");
 
@@ -31,9 +31,9 @@ public final class HardRushDevelopment implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             try {
                 DevelopmentWorlds.initialize(server);
-                LOGGER.info("HardRush P0 worlds: {}", DevelopmentWorlds.status());
+                LOGGER.info("HardRush development worlds: {}", DevelopmentWorlds.status());
             } catch (Exception error) {
-                LOGGER.error("P0 world recovery failed; inspect the manifest before retrying", error);
+                LOGGER.error("Development world recovery failed; inspect the manifest before retrying", error);
             }
         });
         ServerLifecycleEvents.SERVER_STOPPING.register(DevelopmentWorlds::close);
@@ -42,7 +42,7 @@ public final class HardRushDevelopment implements ModInitializer {
                 dispatcher.register(Commands.literal("hardrushdev")
                         .requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
                         .executes(context -> reply(context.getSource(),
-                                "HardRush P0：角色行为原型。命令：status、world create <seed>、world enter <player> <overworld|nether|end>、disguise <player> <zombie|skeleton|creeper>、skill <player>、clear <player>。disguise 进入真实角色；appearance 仅供外观诊断，不改变玩法身份。"))
+                                "HardRush 开发工具：角色行为与世界诊断。命令：status、world create <seed>、world enter <player> <overworld|nether|end>、disguise <player> <zombie|skeleton|creeper>、skill <player>、clear <player>。disguise 进入真实角色；appearance 仅供外观诊断，不改变玩法身份。"))
                         .then(Commands.literal("status").executes(context ->
                                 reply(context.getSource(), DevelopmentWorlds.status()))
                                 .then(Commands.argument("player", EntityArgument.player())
@@ -109,18 +109,18 @@ public final class HardRushDevelopment implements ModInitializer {
         return 1;
     }
 
-    private static int attempt(CommandSourceStack source, ProbeAction action) {
+    private static int attempt(CommandSourceStack source, DevelopmentAction action) {
         try {
             return reply(source, action.run());
         } catch (Exception error) {
-            LOGGER.warn("P0 command failed", error);
-            source.sendFailure(Component.literal("P0 操作失败：" + error.getMessage()));
+            LOGGER.warn("Development command failed", error);
+            source.sendFailure(Component.literal("开发工具操作失败：" + error.getMessage()));
             return 0;
         }
     }
 
     @FunctionalInterface
-    private interface ProbeAction {
+    private interface DevelopmentAction {
         String run() throws Exception;
     }
 }

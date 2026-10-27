@@ -153,7 +153,7 @@ final class StorageFaultFixture {
 
     static Path sidecar(Path database, String suffix) { return database.resolveSibling(database.getFileName() + "." + suffix); }
     static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
-    private static UUID id(String value) { return UUID.nameUUIDFromBytes(("p3-" + value).getBytes(StandardCharsets.UTF_8)); }
+    private static UUID id(String value) { return UUID.nameUUIDFromBytes(("fault-" + value).getBytes(StandardCharsets.UTF_8)); }
     private static UUID event(Scenario scenario) { return id("event-" + scenario); }
     private static RoundDeath death(Participant participant, Optional<CombatEvent> cause) {
         return new RoundDeath(participant.id(), participant.lifeSequence(), participant.monsterDeploymentSequence(), cause);

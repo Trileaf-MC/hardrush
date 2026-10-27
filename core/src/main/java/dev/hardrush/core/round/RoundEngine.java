@@ -124,7 +124,7 @@ public final class RoundEngine {
                 || !base.cleanShutdown() && elapsed >= base.remainingPhaseNanos();
     }
 
-    /** Only a verified world/profile adapter may supply this event; no admin bypass in the P1 lobby. */
+    /** Only a verified world/profile adapter may supply this event; no administrative bypass in the competition lobby. */
     public RoundTransition proposeWorldReady(UUID eventId) {
         RoundSnapshot before = capture();
         requirePhase(before, RoundPhase.PREPARING);

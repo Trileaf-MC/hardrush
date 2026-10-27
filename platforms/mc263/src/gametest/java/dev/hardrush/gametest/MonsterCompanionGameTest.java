@@ -157,9 +157,9 @@ public final class MonsterCompanionGameTest {
                 ((CombatOriginHolder) zombie).hardrush$sealCombatOrigin(Optional.of(origin));
                 var drowned = zombie.convertTo(EntityTypes.DROWNED, ConversionParams.single(zombie, true, true), ignored -> {});
                 test.assertTrue(drowned != null && owner.getUUID().equals(MonsterCompanions.owner(drowned)), "Water conversion retains owner");
-                test.assertTrue(MonsterCombatRuntime.source(drowned).orElseThrow().equals(frozen), "Conversion preserves frozen P2 source");
+                test.assertTrue(MonsterCombatRuntime.source(drowned).orElseThrow().equals(frozen), "Conversion preserves frozen monster combat source");
                 var childOrigin = CombatRuntime.originOf(drowned).orElseThrow();
-                test.assertTrue(childOrigin.actor().equals(origin.actor()) && childOrigin.directEntityId().orElseThrow().equals(drowned.getUUID()), "Converted P1 source keeps identity and binds its new entity ID");
+                test.assertTrue(childOrigin.actor().equals(origin.actor()) && childOrigin.directEntityId().orElseThrow().equals(drowned.getUUID()), "Converted combat source keeps identity and binds its new entity ID");
                 var villager = EntityTypes.VILLAGER.create(owner.level(), EntitySpawnReason.COMMAND);
                 villager.snapTo(owner.getX(), owner.getY(), owner.getZ() + 2, 0, 0);
                 owner.level().addFreshEntity(villager);
@@ -167,7 +167,7 @@ public final class MonsterCompanionGameTest {
                 var infected = owner.level().getEntitiesOfClass(ZombieVillager.class, owner.getBoundingBox().inflate(8)).stream()
                         .filter(mob -> owner.getUUID().equals(MonsterCompanions.owner(mob))).findFirst().orElseThrow();
                 test.assertTrue(MonsterCombatRuntime.source(infected).orElseThrow().equals(frozen), "Infection inherits the attacker's immutable source");
-                test.assertTrue(CombatRuntime.originOf(infected).orElseThrow().actor().equals(origin.actor()), "Infection preserves P1 actor");
+                test.assertTrue(CombatRuntime.originOf(infected).orElseThrow().actor().equals(origin.actor()), "Infection preserves combat actor");
                 var cured = infected.convertTo(EntityTypes.VILLAGER, ConversionParams.single(infected, true, true), ignored -> {});
                 try {
                     test.assertTrue(cured != null && MonsterCompanions.owner(cured) == null
