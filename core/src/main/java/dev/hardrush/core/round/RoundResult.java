@@ -3,7 +3,7 @@ package dev.hardrush.core.round;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Terminal event contract; causal dragon attribution is connected in P1-06/07. */
+/** Terminal event contract; causal dragon attribution is supplied by platform dev.hardrush.combat.CombatRuntime. */
 public record RoundResult(Kind kind, UUID winner, String reason) {
     public enum Kind { COMPLETED, FAILED, ABORTED }
     public RoundResult {

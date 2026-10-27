@@ -59,7 +59,7 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(25, active.joinedAtChallengeNanos());
         assertEquals(3, active.lifeSequence());
         assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
-        assertFalse(active.hasLeftProtection(), "P1 had no exit record; upgrading must not force a waiting human out of protection");
+        assertFalse(active.hasLeftProtection(), "Schema-1 snapshots had no exit record; upgrading must not force a waiting human out of protection");
         assertFalse(migrated.participants().get(RESPAWNING).hasLeftProtection());
         assertFalse(migrated.participants().get(LOBBY).hasLeftProtection());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
@@ -160,7 +160,7 @@ class RoundSnapshotCodecMigrationTest {
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(bytes));
     }
 
-    /** The exact P1 wire layout, independent of the current encoder's schema and added fields. */
+    /** The exact schema-1 wire layout, independent of the current encoder's schema and added fields. */
     private static byte[] schemaOneFixture() throws Exception {
         var bytes = new ByteArrayOutputStream();
         var out = new DataOutputStream(bytes);

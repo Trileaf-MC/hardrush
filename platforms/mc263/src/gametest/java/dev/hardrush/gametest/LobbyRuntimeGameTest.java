@@ -338,7 +338,7 @@ public final class LobbyRuntimeGameTest {
     static final class Fixture {
         final GameTestHelper test;
         final MinecraftServer server;
-        final Peer monster = new Peer("P2LobbyMonster"), target = new Peer("P2LobbyTarget");
+        final Peer monster = new Peer("LobbyMonster"), target = new Peer("LobbyTarget");
         RoundSession session;
         PlayerProfiles profiles;
         AtomicLong clock;
@@ -375,7 +375,7 @@ public final class LobbyRuntimeGameTest {
         void await(boolean condition, String message) {
             if (!message.equals(lastStage)) {
                 lastStage = message;
-                System.out.println("P2 lobby stage: " + message + "; tick=" + server.getTickCount());
+                System.out.println("Lobby runtime stage: " + message + "; tick=" + server.getTickCount());
             }
             if (!condition && message.equals("Completed return channel durably enters lobby")
                     && monster.participant().role() == ParticipantRole.MONSTER_DEPLOYED
@@ -584,7 +584,7 @@ public final class LobbyRuntimeGameTest {
             int count = level.getEntitiesOfClass(ItemEntity.class, humanDrops.inflate(128)).stream().map(ItemEntity::getItem)
                     .filter(stack -> stack.is(Items.DIAMOND)).mapToInt(ItemStack::getCount).sum();
             if (count != 3 && !humanDropEntities.isEmpty()) {
-                System.out.println("P2 loot conservation diagnostics: " + lootDiagnostic());
+                System.out.println("Lobby loot conservation diagnostics: " + lootDiagnostic());
             }
             return count;
         }
@@ -596,7 +596,7 @@ public final class LobbyRuntimeGameTest {
             if (visible) { lootUnavailableSince = -1; return true; }
             if (lootUnavailableSince < 0) {
                 lootUnavailableSince = server.getTickCount();
-                System.out.println("P2 waiting for original loot section visibility: " + lootDiagnostic());
+                System.out.println("Lobby waiting for original loot section visibility: " + lootDiagnostic());
             }
             if (server.getTickCount() - lootUnavailableSince >= 200) {
                 throw new IllegalStateException("Original death loot UUIDs must become visible in an entity-ticking chunk within 200 ticks: "
@@ -680,7 +680,7 @@ public final class LobbyRuntimeGameTest {
                         });
             }
             void disconnect() {
-                connection.disconnect(Component.literal("P2 lobby native reconnect")); connection.handleDisconnection();
+                connection.disconnect(Component.literal("Lobby native reconnect")); connection.handleDisconnection();
                 test.assertTrue(current() == null && !profiles.manages(player), "Native disconnect releases both PlayerList and the profile binding");
                 channel.finishAndReleaseAll(); player = null;
             }

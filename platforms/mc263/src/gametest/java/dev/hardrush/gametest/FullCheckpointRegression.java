@@ -74,7 +74,7 @@ public final class FullCheckpointRegression implements ModInitializer {
             waitFor("fault body isolated", () -> LobbyWorld.isLobby(a.player.level()) && idle());
             act("recovery preflight command", () -> {
                 var admin = server.createCommandSourceStack().withPermission(net.minecraft.server.permissions.LevelBasedPermissionSet.forLevel(net.minecraft.server.permissions.PermissionLevel.ADMINS));
-                require(RecoveryRuntime.request(admin) == 0, "OP3 cannot request a rollback");
+                require(RecoveryRuntime.request(admin) == 0, "A level-3 operator cannot request a rollback");
                 command(a, "hardrush admin recovery");
             });
             waitFor("newest point confirmation", () -> get(recoveryService, "ticket") != null);

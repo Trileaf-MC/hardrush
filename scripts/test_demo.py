@@ -57,11 +57,11 @@ class DemoTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, '开发工具'):
             demo.audit_jar(bad, 'hardrush.jar')
 
-    def test_operator_probe_code_is_rejected_even_without_a_development_mod_id(self):
+    def test_operator_development_code_is_rejected_even_without_a_development_mod_id(self):
         for path in ('dev/hardrush/development/HardRushDevelopment.class', 'dev/hardrush/development/world/DevelopmentWorlds.class',
                      'dev/hardrush/development/world/DevelopmentWorldManifest.class', 'dev/hardrush/development/world/DevelopmentRuntimeLevel.class'):
             with self.subTest(path=path), self.assertRaisesRegex(RuntimeError, '开发工具'):
-                demo.audit_jar(mod_jar('hardrush', {path: b'probe'}), 'hardrush.jar')
+                demo.audit_jar(mod_jar('hardrush', {path: b'development'}), 'hardrush.jar')
 
     def test_nested_class_cannot_retain_mock_login_or_temporary_binding_entrypoints(self):
         for marker in demo.FORBIDDEN_CLASS_MARKERS:

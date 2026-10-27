@@ -35,7 +35,7 @@ import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
-/** P2-08 native server hooks; no client, screenshots or computer use. */
+/** Monster combat native server hooks; no client, screenshots or computer use. */
 public final class MonsterCombatWhitelistGameTest {
     @GameTest(maxTicks=200)
     public void nativeMonsterWhitelistRejectsProtectedTargetsBeforeEverySideEffect(GameTestHelper test) {

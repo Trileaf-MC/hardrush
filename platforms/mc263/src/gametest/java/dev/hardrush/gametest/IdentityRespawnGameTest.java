@@ -209,7 +209,7 @@ public final class IdentityRespawnGameTest {
         var lootArea = new AABB(deathPos).inflate(4);
         var lootChunk = new ChunkPos(deathPos.getX() >> 4, deathPos.getZ() >> 4);
         overworld.getChunkSource().addTicketWithRadius(LOOT_FIXTURE, lootChunk, 2);
-        var dropMarker = Component.literal("p2-native-death-" + UUID.randomUUID());
+        var dropMarker = Component.literal("identity-native-death-" + UUID.randomUUID());
         var staleLivingCheckpoint = new net.minecraft.nbt.CompoundTag[1];
         fixture.profiles.onLogin(fixture.player);
         fixture.profiles.tick(first);

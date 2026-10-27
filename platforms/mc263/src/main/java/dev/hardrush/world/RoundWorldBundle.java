@@ -53,7 +53,7 @@ import xyz.nucleoid.fantasy.mixin.MinecraftServerAccess;
 
 /**
  * Main-thread world preparation with asynchronous native chunk generation and manifest IO.
- * No getChunk/getChunkFuture, worker-thread world edits, deletion, or P0 world reuse.
+ * No getChunk/getChunkFuture, worker-thread world edits, deletion, or development world reuse.
  */
 public final class RoundWorldBundle implements AutoCloseable {
     public static void verifyCheckpoint(Path root, RoundSnapshot round) throws java.io.IOException {

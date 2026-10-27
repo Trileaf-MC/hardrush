@@ -67,7 +67,7 @@ public final class MonsterRoundRuntime {
         var b = BINDINGS.get(player.level().getServer());
         return b != null && b.casting.contains(player.getUUID());
     }
-    /** Empty means a standalone P0 probe. A present result means the formal request was handled. */
+    /** Empty means standalone development tooling. A present result means the formal request was handled. */
     public static Optional<Boolean> cast(ServerPlayer player, MonsterSkill skill, BooleanSupplier effect) {
         var server = player.level().getServer();
         var b = BINDINGS.get(server);
@@ -99,7 +99,7 @@ public final class MonsterRoundRuntime {
             } catch (RuntimeException failure) {
                 // An unknown partially-applied effect cannot safely be replayed or refunded.
                 b.casting.remove(p.id());
-                LoggerFactory.getLogger(MonsterRoundRuntime.class).error("P2 skill effect failed for " + p.id() + "/" + skill.id(), failure);
+                LoggerFactory.getLogger(MonsterRoundRuntime.class).error("Monster skill effect failed for " + p.id() + "/" + skill.id(), failure);
                 tell(player, "技能执行异常，已记录日志并保留冷却，请联系管理员。"); return;
             }
             // A prepared effect whose safe positions changed must not spend a skill cooldown.

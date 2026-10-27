@@ -53,7 +53,7 @@ public final class HistoryCommands {
 
     private static RoundSession session(CommandSourceStack source, Function<MinecraftServer, RoundSession> sessions) {
         var session = sessions.apply(source.getServer());
-        if (session == null) source.sendFailure(Component.literal("P1 尚未启用。"));
+        if (session == null) source.sendFailure(Component.literal("比赛模式尚未启用。"));
         return session;
     }
     private static int recent(CommandSourceStack source, Function<MinecraftServer, RoundSession> sessions, int page) {

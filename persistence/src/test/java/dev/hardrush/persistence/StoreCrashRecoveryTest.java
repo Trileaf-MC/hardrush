@@ -53,7 +53,7 @@ final class StoreCrashRecoveryTest {
             assertTrue(reader.waitFor(25, TimeUnit.SECONDS), () -> "Reader did not finish\n" + readLog(readerLog));
             assertEquals(0, reader.exitValue(), () -> readLog(readerLog));
             assertTrue(readLog(readerLog).contains("PASS read " + scenario + " " + boundary), () -> readLog(readerLog));
-            System.out.println("P3 SQLite crash " + scenario + " " + boundary + ": writerPid=" + writer.pid()
+            System.out.println("SQLite store crash " + scenario + " " + boundary + ": writerPid=" + writer.pid()
                     + " writerExit=" + writer.exitValue() + " readerPid=" + reader.pid() + " readerExit=0; "
                     + readLog(writerLog).strip());
         } finally {

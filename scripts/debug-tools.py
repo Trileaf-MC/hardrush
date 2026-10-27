@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproducible local Minecraft debug tools. Never touches the P0 running instances."""
+"""Reproducible local Minecraft debug tools. Never touches running gameplay instances."""
 from pathlib import Path
 import argparse
 import hashlib
@@ -94,7 +94,7 @@ def prepare():
             'view-distance=4', 'simulation-distance=4', 'pause-when-empty-seconds=0',
             'motd=HardRush isolated debug', '']))
     identities = [dict(name=name, uuid=str(uuid.UUID(bytes=hashlib.md5(('OfflinePlayer:' + name).encode()).digest(), version=3)))
-                  for name in ('HRDebug', 'HRProbeA', 'HRProbeB')]
+                  for name in ('HRDebug', 'HRDevA', 'HRDevB')]
     for name in ('whitelist.json', 'ops.json'):
         path = server / name
         existing = json.loads(path.read_text()) if path.exists() else []
@@ -102,7 +102,7 @@ def prepare():
             matches = [entry for entry in existing if entry['uuid'] == identity['uuid'] or entry['name'] == identity['name']]
             if matches:
                 if any(entry['uuid'] != identity['uuid'] or entry['name'] != identity['name'] for entry in matches):
-                    raise RuntimeError('Unexpected isolated probe identity in ' + name)
+                    raise RuntimeError('Unexpected isolated development identity in ' + name)
                 continue
             existing.append(identity if name == 'whitelist.json' else dict(identity, level=4, bypassesPlayerLimit=False))
         path.write_text(json.dumps(existing, indent=2) + '\n')

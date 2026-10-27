@@ -39,7 +39,7 @@ import xyz.nucleoid.fantasy.Fantasy;
 import xyz.nucleoid.fantasy.RuntimeLevelConfig;
 import xyz.nucleoid.fantasy.RuntimeLevelHandle;
 
-/** Operator-only P0: one durable three-dimension bundle, without rotation or deletion. */
+/** Operator-only development tooling: one durable three-dimension bundle, without rotation or deletion. */
 public final class DevelopmentWorlds {
     private static final Logger LOGGER = LoggerFactory.getLogger(DevelopmentWorlds.class);
     private static Context context;
@@ -51,7 +51,7 @@ public final class DevelopmentWorlds {
         requireMainThread(server);
         context = new Context(server, server.getWorldPath(LevelResource.ROOT).resolve("hardrush-development/world-manifest.json"));
         if (!Files.exists(context.path)) {
-            lastStatus = "尚无 P0 轮次；create 将创建三个持久维度";
+            lastStatus = "尚无开发轮次；create 将创建三个持久维度";
             return;
         }
         try {
@@ -81,7 +81,7 @@ public final class DevelopmentWorlds {
                 // Save identity before any world is created; partial creation reuses the same identity.
                 current.manifest.write(current.path);
             } else if (current.manifest.seed != seed) {
-                throw new IllegalArgumentException("已有 P0 轮次 seed=" + current.manifest.seed + "；不会换种子或覆盖存档");
+                throw new IllegalArgumentException("已有开发轮次 seed=" + current.manifest.seed + "；不会换种子或覆盖存档");
             }
             openBundle(current);
             return lastStatus;
@@ -135,7 +135,7 @@ public final class DevelopmentWorlds {
             var source = overworld.getChunkSource();
             var origin = source.getGenerator().getOrigin(source.randomState());
             BlockPos spawn = findSafeSurface(overworld, origin.getMinBlockX() + 8, origin.getMinBlockZ() + 8);
-            if (spawn == null) throw new IllegalStateException("P0 主世界附近未找到安全出生点，未开放进入");
+            if (spawn == null) throw new IllegalStateException("开发主世界附近未找到安全出生点，未开放进入");
             current.manifest = current.manifest.withSpawn(spawn);
             current.manifest.write(current.path);
         }
@@ -182,7 +182,7 @@ public final class DevelopmentWorlds {
         for (RuntimeLevelHandle handle : new ArrayList<>(context.handles.values())) {
             handle.asLevel().save(null, true, false);
         }
-        LOGGER.info("P0 世界已保存；未删除或替换任何世界文件");
+        LOGGER.info("开发世界已保存；未删除或替换任何世界文件");
     }
 
     public static boolean owns(ServerLevel level) {
@@ -221,7 +221,7 @@ public final class DevelopmentWorlds {
         if (!owns(player.level()) || owns(original.newLevel())) return original;
         ServerLevel destination = portalDestination(player.level(), Level.OVERWORLD);
         if (destination == null || context.manifest.spawn == null) {
-            throw new IllegalStateException("P0 本轮主世界未就绪，拒绝回退至大厅存档");
+            throw new IllegalStateException("开发轮次主世界未就绪，拒绝回退至大厅存档");
         }
         BlockPos spawn = context.manifest.spawn;
         if (!safeStanding(destination, spawn)) spawn = findSafeSurface(destination, spawn.getX(), spawn.getZ());
@@ -231,7 +231,7 @@ public final class DevelopmentWorlds {
     }
 
     private static BlockPos findSafeSurface(ServerLevel level, int centerX, int centerZ) {
-        // Deliberately bounded operator probe; production spawn preparation will be budgeted across ticks.
+        // Development tooling uses a bounded spawn scan; competition spawn preparation is budgeted across ticks.
         int centerChunkX = centerX >> 4;
         int centerChunkZ = centerZ >> 4;
         for (int radius = 0; radius <= 8; radius++) {
@@ -283,7 +283,7 @@ public final class DevelopmentWorlds {
     }
 
     private static String describe(Context current) {
-        StringBuilder text = new StringBuilder("P0 世界就绪；round=").append(current.manifest.roundId)
+        StringBuilder text = new StringBuilder("开发世界就绪；round=").append(current.manifest.roundId)
                 .append("；seed=").append(current.manifest.seed)
                 .append("；spawn=").append(current.manifest.spawn.toShortString());
         for (String dimension : DevelopmentWorldManifest.DIMENSIONS) {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""P1 normal-stop recovery matrix using separate, headless dedicated-server JVMs.
+"""Normal-stop recovery matrix using separate, headless dedicated-server JVMs.
 
 The fixture owns its assertions and requests a normal server stop. A zero JVM
 exit and its SERVER_STOPPED PASS result are both required before storage checks.
@@ -53,14 +53,14 @@ def prepare_scenario(directory, eula):
     directory.mkdir()
     (directory / 'eula.txt').write_text(eula, encoding='utf-8')
     (directory / 'server.properties').write_text('\n'.join((
-        '# Isolated headless HardRush P1 restart regression; loopback only.',
+        '# Isolated headless HardRush restart regression; loopback only.',
         'server-ip=127.0.0.1', 'server-port=0', 'online-mode=false',
         'enforce-secure-profile=false', 'white-list=true', 'enforce-whitelist=true',
         'enable-rcon=false', 'enable-query=false', 'level-name=world',
         'level-seed=12345', 'gamemode=survival', 'difficulty=normal',
         'max-players=1', 'spawn-protection=0', 'view-distance=2',
         'simulation-distance=2', 'pause-when-empty-seconds=0',
-        'motd=HardRush isolated P1 restart regression', '',
+        'motd=HardRush isolated restart regression', '',
     )), encoding='utf-8')
     (directory / 'whitelist.json').write_text('[]\n', encoding='utf-8')
 
@@ -171,7 +171,7 @@ def storage_evidence(directory, fixture):
     world = directory / 'world'
     database = world / 'hardrush/rounds.sqlite'
     if not database.is_file() or database.is_symlink():
-        raise RuntimeError('Fixture did not produce an owned P1 SQLite database')
+        raise RuntimeError('Fixture did not produce an owned round SQLite database')
     # Read-only mode cannot silently create a missing database. Both JVMs have exited.
     with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as connection:
         integrity = [row[0] for row in connection.execute('PRAGMA integrity_check')]
@@ -310,7 +310,7 @@ def main():
                'phases': phases, 'scenarios': [], 'verification': 'Independent headless dedicated-server JVMs; no real clients.'}
     summary_path = run / 'result.json'
     write_json(summary_path, summary)
-    print(f'P1 isolated restart evidence: {run}', flush=True)
+    print(f'Isolated server restart evidence: {run}', flush=True)
     try:
         spec = build_launch(run, arguments.timeout)
         for phase in phases:

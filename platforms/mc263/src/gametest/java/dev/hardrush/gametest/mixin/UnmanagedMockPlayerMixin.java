@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-/** Existing P0 fixtures are deliberate unmanaged players, not real connections entering a P1 round. */
+/** Development fixtures deliberately use unmanaged players outside the competition round lifecycle. */
 @Mixin(GameTestHelper.class)
 public abstract class UnmanagedMockPlayerMixin {
     @Redirect(method = "makeMockServerPlayerInLevel", at = @At(value = "INVOKE",

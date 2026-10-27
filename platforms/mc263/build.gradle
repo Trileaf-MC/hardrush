@@ -101,10 +101,10 @@ def restartBase = rootProject.file('.local/server-restart').toPath().toAbsoluteP
 def restartDirectory = rootProject.file(providers.gradleProperty('hardrushRestartDirectory')
         .orElse('.local/server-restart/launch-template').get()).toPath().toAbsolutePath().normalize()
 if (!restartPhases.contains(restartPhase) || !['write', 'recover'].contains(restartOperation)) {
-    throw new GradleException('Invalid P1 restart phase or operation')
+    throw new GradleException('Invalid restart phase or operation')
 }
 if (!restartDirectory.startsWith(restartBase) || restartDirectory == restartBase) {
-    throw new GradleException('P1 restart storage must be a scenario below .local/server-restart')
+    throw new GradleException('Restart storage must be a scenario below .local/server-restart')
 }
 loom {
     runs {
@@ -136,7 +136,7 @@ tasks.named('runRestartServer') {
 // across the matrix, starts Java directly, and checks each fixture's actual process ID.
 tasks.register('writeRestartLaunchSpec') {
     group = 'verification'
-    description = 'Build a headless P1 restart fixture launch specification without starting a server.'
+    description = 'Build a headless restart fixture launch specification without starting a server.'
     def launchTask = tasks.named('runRestartServer')
     dependsOn { launchTask.get().taskDependencies.getDependencies(launchTask.get()) }
     dependsOn sourceSets.gametest.runtimeClasspath
@@ -156,7 +156,7 @@ tasks.register('writeRestartLaunchSpec') {
                     environment: run.environmentVars.get()]
         target.parentFile.mkdirs()
         target.text = JsonOutput.prettyPrint(JsonOutput.toJson(spec)) + '\n'
-        logger.lifecycle("P1 restart launch specification: ${target}")
+        logger.lifecycle("Restart launch specification: ${target}")
     }
 }
 
@@ -165,7 +165,7 @@ loom.runs.named('clientGameTest') {
     vmArg "-Dhardrush.root=${rootProject.projectDir}"
 }
 
-// Explicit opt-in for the server-only P1 foundation; never enables a graphical test client.
+// Explicit opt-in for the server-only competition runtime; never enables a graphical test client.
 ['server', 'debugServer', 'gameTest'].each { name ->
     loom.runs.named(name) {
         if (providers.gradleProperty('hardrushCompetition').orNull == 'true') {
@@ -192,7 +192,7 @@ tasks.named('runGameTest') {
     }
 }
 
-// Run the production P1 lifecycle alone: other GameTests intentionally mutate the shared lobby.
+// Run the production round lifecycle alone: other GameTests intentionally mutate the shared lobby.
 def tenRoundsRunDir = rootProject.file(".local/ten-rounds/${UUID.randomUUID()}")
 def celebrationRunDir = rootProject.file(".local/celebration-regression/${UUID.randomUUID()}")
 loom.runs.named('gameTest') {
@@ -236,7 +236,7 @@ tasks.named('runGameTest') {
                 from acceptedEula
                 into tenRoundsRunDir
             }
-            logger.lifecycle("Isolated P1 ten-round storage: ${tenRoundsRunDir}")
+            logger.lifecycle("Isolated ten-round storage: ${tenRoundsRunDir}")
         }
     }
 }
@@ -247,7 +247,7 @@ loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushStorageReserve').orNull == 'true') {
         if (['hardrushCompetition', 'hardrushTenRounds', 'hardrushIdentityRuntime', 'hardrushLobbyRuntime'].any {
             providers.gradleProperty(it).orNull == 'true'
-        }) throw new GradleException('P3 storage admission requires its own isolated run without -PhardrushCompetition=true')
+        }) throw new GradleException('Storage reserve admission requires its own isolated run without -PhardrushCompetition=true')
         vmArg '-Dhardrush.test.storageReserve=true'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:storage_reserve_game_test*'
         runDir storageReserveRunDir.absolutePath
@@ -261,7 +261,7 @@ tasks.named('runGameTest') {
                 from acceptedEula
                 into storageReserveRunDir
             }
-            logger.lifecycle("Isolated P3 storage admission: ${storageReserveRunDir}")
+            logger.lifecycle("Isolated storage reserve admission: ${storageReserveRunDir}")
         }
     }
 }
@@ -273,7 +273,7 @@ loom.runs.named('gameTest') {
         if (providers.gradleProperty('hardrushCompetition').orNull != 'true'
                 || ['hardrushTenRounds', 'hardrushIdentityRuntime', 'hardrushLobbyRuntime', 'hardrushStorageReserve'].any {
                     providers.gradleProperty(it).orNull == 'true'
-                }) throw new GradleException('P3 recovery requires -PhardrushCompetition=true and its own isolated run')
+                }) throw new GradleException('Recovery requires -PhardrushCompetition=true and its own isolated run')
         vmArg '-Dhardrush.test.recovery=true'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:recovery_game_test*'
         runDir recoveryRunDir.absolutePath
@@ -284,18 +284,18 @@ tasks.named('runGameTest') {
         doFirst {
             recoveryRunDir.mkdirs()
             copy { from acceptedEula; into recoveryRunDir }
-            logger.lifecycle("Isolated P3 recovery: ${recoveryRunDir}")
+            logger.lifecycle("Isolated recovery: ${recoveryRunDir}")
         }
     }
 }
 
-// The formal P2 listener/SQLite/profile flow needs a fresh runtime, separate from legacy lobby fixtures.
+// The formal identity listener/SQLite/profile flow needs a fresh runtime, separate from legacy lobby fixtures.
 def identityRuntimeRunDir = rootProject.file(".local/identity-runtime/${UUID.randomUUID()}")
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushIdentityRuntime').orNull == 'true') {
         if (providers.gradleProperty('hardrushCompetition').orNull != 'true'
                 || providers.gradleProperty('hardrushTenRounds').orNull == 'true') {
-            throw new GradleException('P2 identity regression requires -PhardrushCompetition=true and its own run')
+            throw new GradleException('Identity runtime regression requires -PhardrushCompetition=true and its own run')
         }
         vmArg '-Dhardrush.test.identityRuntime=true'
         vmArg '-Dhardrush.round.initialMode=hardcore'
@@ -311,7 +311,7 @@ tasks.named('runGameTest') {
                 from acceptedEula
                 into identityRuntimeRunDir
             }
-            logger.lifecycle("Isolated P2 identity storage: ${identityRuntimeRunDir}")
+            logger.lifecycle("Isolated identity runtime storage: ${identityRuntimeRunDir}")
         }
     }
 }
@@ -361,7 +361,7 @@ tasks.named('jar') {
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushDawnPact').orNull == 'true') {
         if (providers.gradleProperty('hardrushCompetition').orNull == 'true')
-            throw new GradleException('Dawn pact fixtures require their own run without the formal P1 runtime');
+            throw new GradleException('Dawn pact fixtures require their own run without the competition runtime');
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:dawn_pact_game_test*'
     }
 }
@@ -379,14 +379,14 @@ tasks.register('stageDemoMods', Sync) {
 }
 
 
-// Formal P2 lobby/sortie lifecycle, isolated from legacy fixtures and other dedicated matrices.
+// Formal lobby/sortie lifecycle, isolated from legacy fixtures and other dedicated matrices.
 def lobbyRuntimeRunDir = rootProject.file(".local/lobby-runtime/${UUID.randomUUID()}")
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushLobbyRuntime').orNull == 'true') {
         if (providers.gradleProperty('hardrushCompetition').orNull != 'true'
                 || providers.gradleProperty('hardrushTenRounds').orNull == 'true'
                 || providers.gradleProperty('hardrushIdentityRuntime').orNull == 'true') {
-            throw new GradleException('P2 lobby regression requires -PhardrushCompetition=true and its own run')
+            throw new GradleException('Lobby runtime regression requires -PhardrushCompetition=true and its own run')
         }
         vmArg '-Dhardrush.test.lobbyRuntime=true'
         vmArg '-Dhardrush.round.initialMode=hardcore'
@@ -402,7 +402,7 @@ tasks.named('runGameTest') {
                 from acceptedEula
                 into lobbyRuntimeRunDir
             }
-            logger.lifecycle("Isolated P2 lobby storage: ${lobbyRuntimeRunDir}")
+            logger.lifecycle("Isolated lobby runtime storage: ${lobbyRuntimeRunDir}")
         }
     }
 }
@@ -439,7 +439,7 @@ loom.runs.named('gameTest') {
                 || ['hardrushTenRounds', 'hardrushIdentityRuntime', 'hardrushLobbyRuntime', 'hardrushRecovery',
                     'hardrushStorageReserve', 'hardrushLobbyMovement', 'hardrushCelebration'].any {
                     providers.gradleProperty(it).orNull == 'true'
-                }) throw new GradleException('Lobby foundation requires P1 and its own isolated run')
+                }) throw new GradleException('Lobby foundation requires competition mode and its own isolated run')
         vmArg '-Dhardrush.test.lobbyFoundation=true'
         vmArg '-Dhardrush.round.initialMode=normal'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:lobby_foundation_game_test*'
@@ -463,7 +463,7 @@ loom.runs.named('gameTest') {
         if (providers.gradleProperty('hardrushCompetition').orNull != 'true' || ['hardrushTenRounds', 'hardrushIdentityRuntime',
                 'hardrushLobbyRuntime', 'hardrushRecovery', 'hardrushStorageReserve', 'hardrushLobbyMovement', 'hardrushCelebration',
                 'hardrushLobbyFoundation'].any { providers.gradleProperty(it).orNull == 'true' })
-            throw new GradleException('Human entry requires P1 and its own isolated run')
+            throw new GradleException('Human entry requires competition mode and its own isolated run')
         vmArg '-Dhardrush.test.humanEntry=true'
         vmArg '-Dhardrush.round.initialMode=normal'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:human_entry_game_test*'
@@ -528,7 +528,7 @@ tasks.named('runGameTest') {
 def personalHuntRunDir = rootProject.file(".local/personal-hunt/${UUID.randomUUID()}")
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushPersonalHunt').orNull == 'true') {
-        if (providers.gradleProperty('hardrushCompetition').orNull != 'true') throw new GradleException('Personal hunt requires P1')
+        if (providers.gradleProperty('hardrushCompetition').orNull != 'true') throw new GradleException('Personal hunt requires competition mode')
         vmArg '-Dhardrush.test.personalHunt=true'
         def fault = providers.gradleProperty('hardrushPersonalHuntFault').orElse('adapter').get()
         if (!['adapter', 'storage'].contains(fault)) throw new GradleException('Unknown personal hunt fault scenario')
@@ -550,7 +550,7 @@ tasks.named('runGameTest') {
 def fullFlowRunDir = rootProject.file(".local/lobby-full-flow/${UUID.randomUUID()}")
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushFullFlow').orNull == 'true') {
-        if (providers.gradleProperty('hardrushCompetition').orNull != 'true') throw new GradleException('Full flow requires P1')
+        if (providers.gradleProperty('hardrushCompetition').orNull != 'true') throw new GradleException('Full flow requires competition mode')
         vmArg '-Dhardrush.test.fullFlow=true'
         def fault = providers.gradleProperty('hardrushFullFlowFault').orElse('none').get()
         if (!['none','revival'].contains(fault)) throw new GradleException('Unknown full-flow fault')
@@ -572,7 +572,7 @@ tasks.named('runGameTest') {
 def stabilizationRunDir = rootProject.file(".local/lobby-stabilization/${UUID.randomUUID()}")
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushStabilization').orNull == 'true') {
-        if (providers.gradleProperty('hardrushCompetition').orNull != 'true') throw new GradleException('Stabilization requires P1')
+        if (providers.gradleProperty('hardrushCompetition').orNull != 'true') throw new GradleException('Stabilization requires competition mode')
         vmArg '-Dhardrush.test.stabilization=true'
         vmArg '-Dhardrush.round.initialMode=hardcore'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:stabilization_game_test*'

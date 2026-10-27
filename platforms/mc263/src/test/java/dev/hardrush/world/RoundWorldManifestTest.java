@@ -154,7 +154,7 @@ final class RoundWorldManifestTest {
         assertEquals("{partial", Files.readString(file));
     }
 
-    @Test void cleanupCandidatesCannotNameLobbyRootP0OrAnotherRound() throws IOException {
+    @Test void cleanupCandidatesCannotNameLobbyRootDevelopmentOrAnotherRound() throws IOException {
         Path root = temporary.toRealPath();
         for (Path foreign : List.of(root, root.resolve("DIM-1"), root.resolve("hardrush-development"),
                 RoundWorldPaths.world(root, UUID.randomUUID(), "overworld"), root.resolve("../escaped"))) {

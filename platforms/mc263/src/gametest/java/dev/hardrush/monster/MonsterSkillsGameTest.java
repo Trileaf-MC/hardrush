@@ -359,7 +359,7 @@ public final class MonsterSkillsGameTest {
                 for (int y = 0; y < 5; y++) level.setBlockAndUpdate(pos.above(y), Blocks.AIR.defaultBlockState());
             }
             for (int index = 0; index < count; index++) {
-                var profile = new GameProfile(UUID.randomUUID(), "HRP2Skill" + ARENAS.get() + index);
+                var profile = new GameProfile(UUID.randomUUID(), "HRSkill" + ARENAS.get() + index);
                 var player = new ServerPlayer(level.getServer(), level, profile, ClientInformation.createDefault());
                 var connection = new SinkConnection(); channels.add(new EmbeddedChannel(connection));
                 dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> level.getServer().getPlayerList().placeNewPlayer(connection, player,

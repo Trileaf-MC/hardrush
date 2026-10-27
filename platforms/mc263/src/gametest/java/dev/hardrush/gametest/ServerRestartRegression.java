@@ -604,7 +604,7 @@ public final class ServerRestartRegression implements ModInitializer {
             if (worlds != null && worlds.ready()) details.addProperty("worldClock", worlds.level(Level.OVERWORLD).getOverworldClockTime());
             if (fight != null) details.addProperty("nativeDragonId", fight.dragonUUID().toString());
             stopping = true;
-            // Same production halt path as the console stop command; do not pre-close any P1 service.
+            // Same production halt path as the console stop command; do not pre-close any competition service.
             server.halt(false);
         }
         void stoppedNativeCallbacks() {

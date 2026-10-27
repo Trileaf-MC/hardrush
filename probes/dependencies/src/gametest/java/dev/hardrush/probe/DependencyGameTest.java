@@ -116,7 +116,7 @@ public final class DependencyGameTest {
         var gui = new SimpleGui(MenuType.GENERIC_9x3, player, false);
         try {
             player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));
-            gui.setTitle(Component.literal("HardRush P0b"));
+            gui.setTitle(Component.literal("HardRush dependencies"));
             gui.setSlot(13, new GuiElementBuilder(Items.COMPASS).setCallback((index, type, action, screen) -> clicks.incrementAndGet()).build());
             test.assertTrue(gui.open(), "SGui opens on a server player without client mod");
             test.assertTrue(player.containerMenu.getType() == MenuType.GENERIC_9x3, "Uses vanilla chest menu ID");

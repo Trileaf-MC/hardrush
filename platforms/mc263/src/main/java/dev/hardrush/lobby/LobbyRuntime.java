@@ -501,7 +501,7 @@ public final class LobbyRuntime {
         if (b == null) return true;
         var round = b.session.snapshot().orElse(null);
         var origin = round == null ? null : round.participants().get(owner);
-        if (origin == null) return true; // Operator-only P0 fixtures retain their independent scope.
+        if (origin == null) return true; // Operator-only development fixtures retain their independent scope.
         return round.phase() == RoundPhase.RUNNING && !b.session.competitionLocked()
                 && origin.lifeSequence() > 0 && !owner.equals(target.getUUID())
                 && target instanceof ServerPlayer player && !dimension(b, level).equals("lobby")

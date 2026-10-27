@@ -259,7 +259,7 @@ def main():
     summary = {'schema': 1, 'status': 'RUNNING', 'runDirectory': str(run), 'scenarios': [],
                'verification': 'Headless dedicated servers, embedded native connections, actual parent SIGKILL; no real client.'}
     RESTART.write_json(run / 'result.json', summary)
-    print(f'P3 isolated crash evidence: {run}', flush=True)
+    print(f'Isolated server crash evidence: {run}', flush=True)
     try:
         spec = RESTART.build_launch(run, args.timeout)
         sources = [Path(__file__).resolve(), Path(__file__).with_name('server-restart.py').resolve(),

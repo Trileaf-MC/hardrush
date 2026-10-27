@@ -38,7 +38,7 @@ public final class RecoveryGameTest {
                 f.oldLevels = List.of(f.first.level(Level.OVERWORLD), f.first.level(Level.NETHER), f.first.level(Level.END));
                 f.marker = f.first.spawn().offset(2, 1, 2);
                 f.first.level(Level.OVERWORLD).setBlockAndUpdate(f.marker, Blocks.GOLD_BLOCK.defaultBlockState());
-                f.task = f.sql("CREATE TRIGGER fault_refuse_audit BEFORE INSERT ON admin_audits BEGIN SELECT RAISE(ABORT,'P3 storage failure'); END");
+                f.task = f.sql("CREATE TRIGGER fault_refuse_audit BEFORE INSERT ON admin_audits BEGIN SELECT RAISE(ABORT,'Injected recovery storage failure'); END");
             })
             .thenWaitUntil(() -> f.awaitIo())
             .thenExecute(() -> f.session.updateNextMode(f.old.rules().mode(), "fixture", "注入真实SQLite写入故障", f.reply::set))

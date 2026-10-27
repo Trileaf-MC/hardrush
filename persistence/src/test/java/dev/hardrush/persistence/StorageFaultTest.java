@@ -36,7 +36,7 @@ final class StorageFaultTest {
                     sql.execute("CREATE TEMP TRIGGER fail_full AFTER UPDATE ON round_snapshots BEGIN INSERT INTO fault_payload VALUES (zeroblob(262144)); END");
                 }
                 case INDEX_ABORT -> sql.execute("CREATE TEMP TRIGGER fail_index " + StorageFaultFixture.lateTrigger(scenario)
-                        + " BEGIN SELECT RAISE(ABORT, 'p3 injected index failure'); END");
+                        + " BEGIN SELECT RAISE(ABORT, 'injected index storage failure'); END");
             }
             SQLException failure = assertThrows(SQLException.class, () -> request.commit(store));
             assertEquals(switch (fault) { case READ_ONLY -> 8; case FULL -> 13; case INDEX_ABORT -> 19; }, failure.getErrorCode(), failure::toString);

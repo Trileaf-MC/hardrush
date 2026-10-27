@@ -58,7 +58,7 @@ import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Explicitly enabled formal round adapter; competition state stays separate from P0 probes. */
+/** Explicitly enabled formal round adapter; competition state stays separate from development tooling. */
 public final class RoundRuntime {
     private static final Logger LOGGER = LoggerFactory.getLogger("hardrush-round");
     private static final Map<MinecraftServer, RoundSession> SESSIONS = new IdentityHashMap<>();
@@ -223,7 +223,7 @@ public final class RoundRuntime {
                 session.recordEvidence(new EvidenceWrite(event.roundId(), event.eventId(), "COMBAT", CombatEventCodec.encode(event)));
             });
             while (!bootstrapCallbacks.isEmpty()) bootstrapCallbacks.remove().run();
-            LOGGER.info("P1 enabled; independent world preparation and player profile isolation gate participation");
+            LOGGER.info("Competition enabled; independent world preparation and player profile isolation gate participation");
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             var session = SESSIONS.get(server);
@@ -426,7 +426,7 @@ public final class RoundRuntime {
             RECORDINGS.remove(server);
             REPLAY_FLUSHES.remove(server);
             try { session.close(); }
-            catch (Exception error) { LOGGER.error("P1 stop flush failed; retain database and inspect diagnostics", error); }
+            catch (Exception error) { LOGGER.error("Round stop flush failed; retain database and inspect diagnostics", error); }
             SESSIONS.remove(server);
             dev.hardrush.participation.ParticipationControl.close(server);
             dev.hardrush.storage.FullCheckpointRuntime.close(server);
@@ -822,7 +822,7 @@ public final class RoundRuntime {
         var completion = new CompletableFuture<Void>();
         RELEASES.put(server, completion);
         var recorder = RECORDINGS.get(server);
-        if (recorder == null) LOGGER.info("P1 round {}: replay integration is disabled; no recording is claimed", round.roundId());
+        if (recorder == null) LOGGER.info("Round {}: replay integration is disabled; no recording is claimed", round.roundId());
         var tag = new OperationTag(round.roundId(), UUID.randomUUID(), round.version());
         var recordingBarrier = recorder == null ? CompletableFuture.<Void>completedFuture(null)
                 : RoundRelease.stopRecordings(recorder, tag).toCompletableFuture();
@@ -848,6 +848,6 @@ public final class RoundRuntime {
 
     private static RoundSession.Reply disabled() {
         return new RoundSession.Reply(false,
-                "P1 默认关闭；服务端启动参数 -Dhardrush.competition.enabled=true 可启用独立世界／档案与普通模式开发入口。");
+                "比赛模式默认关闭；服务端启动参数 -Dhardrush.competition.enabled=true 可启用独立世界／档案与普通模式开发入口。");
     }
 }

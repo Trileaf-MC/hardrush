@@ -233,7 +233,7 @@ public final class AdminCommands {
     }
     private RoundSession session(CommandSourceStack source) {
         var session = sessions.apply(source.getServer());
-        if (session == null) failure(source, "P1 尚未启用。");
+        if (session == null) failure(source, "比赛模式尚未启用。");
         return session;
     }
     private static AdminActor actor(CommandSourceStack source) {

@@ -211,7 +211,7 @@ public final class FullFlowGameTest {
                 .thenExecute(()->state.click(visitor.player,"第 1 轮"))
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"参赛名单"),"History details loaded without UUID input"))
                 .thenExecute(()->state.click(visitor.player,"参赛名单"))
-                .thenWaitUntil(()->f.await(state.has(visitor.player,"P2LobbyMonster"),"Participants page from shared query service"))
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"LobbyMonster"),"Participants page from shared query service"))
                 .thenExecute(()->state.click(visitor.player,"返回本轮详情"))
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"选择分卷"),"Book selection ready"))
                 .thenExecute(()->state.click(visitor.player,"选择分卷"))

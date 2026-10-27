@@ -179,8 +179,8 @@ public final class TenRoundGameTest {
     private static final class Fixture {
         final GameTestHelper test;
         final MinecraftServer server;
-        final Actor first = new Actor("P1TenA");
-        final Actor offline = new Actor("P1TenB");
+        final Actor first = new Actor("TenRoundA");
+        final Actor offline = new Actor("TenRoundB");
         final ArrayList<UUID> ids = new ArrayList<>();
         final HashSet<Long> seeds = new HashSet<>();
         final ArrayList<net.minecraft.resources.ResourceKey<Level>> releasedKeys = new ArrayList<>();
@@ -288,7 +288,7 @@ public final class TenRoundGameTest {
         void disconnect(Actor actor) {
             if (actor.player == null) return;
             // Fabric's DISCONNECT event is hooked on Connection.handleDisconnection, before the listener.
-            actor.connection.disconnect(Component.literal("P1 headless reconnect fixture"));
+            actor.connection.disconnect(Component.literal("Ten-round headless reconnect fixture"));
             actor.connection.handleDisconnection();
             test.assertTrue(server.getPlayerList().getPlayer(actor.profile.id()) == null, "Native listener removes the UUID");
             test.assertFalse(profiles.manages(actor.player), "Fabric disconnect releases the profile entry");
@@ -423,10 +423,10 @@ public final class TenRoundGameTest {
                     .thenExecute(() -> {
                         checked.join();
                         test.assertTrue(first.connection.packets.stream().filter(ClientboundTabListPacket.class::isInstance)
-                                .map(ClientboundTabListPacket.class::cast).anyMatch(packet -> packet.footer().getString().contains("尾刀：P1TenA")),
+                                .map(ClientboundTabListPacket.class::cast).anyMatch(packet -> packet.footer().getString().contains("尾刀：TenRoundA")),
                                 "Actual runtime publishes the winner through native TAB packets");
                         // A delayed previous progress callback must never count toward the next round.
-                        var stale = new ProgressWrite(round().roundId(), UUID.randomUUID(), first.profile.id(), "P1TenA",
+                        var stale = new ProgressWrite(round().roundId(), UUID.randomUUID(), first.profile.id(), "TenRoundA",
                                 Set.of("minecraft:story/upgrade_tools"), "a".repeat(64), true, frozenTime);
                         first.stale = stale;
                         advance(601);
@@ -442,7 +442,7 @@ public final class TenRoundGameTest {
                         assertReleased(worlds);
                         session.recordProgress(first.stale);
                         org.slf4j.LoggerFactory.getLogger("hardrush-round-ten-rounds").info(
-                                "P1 native round {} released: id={}, seed={}, resultMillis={}, removedDimensions={}, retainedManifests={}",
+                                "Ten-round native round {} released: id={}, seed={}, resultMillis={}, removedDimensions={}, retainedManifests={}",
                                 number, ids.getLast(), levels[0].getSeed(), frozenTime / 1_000_000, releasedKeys.size(), manifests.size());
                         // Drop fixture references too; retained identifiers/manifests cannot retain chunk/world objects.
                         worlds = null; levels = null; fight = null; first.connection.packets.clear();
