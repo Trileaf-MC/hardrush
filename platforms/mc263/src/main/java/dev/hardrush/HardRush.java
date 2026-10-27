@@ -10,7 +10,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 
-/** Production bootstrap. The historically named MonsterDisguise is the live observer appearance service. */
+/** Production bootstrap. MonsterDisguise is the live observer appearance service. */
 public final class HardRush implements ModInitializer {
     private static boolean initialized;
     @Override public void onInitialize() { initialize(); }
