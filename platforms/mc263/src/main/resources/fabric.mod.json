@@ -12,16 +12,16 @@
     ]
   },
   "mixins": [
-    "hardrush.p0.disguise.mixins.json",
-    "hardrush.p0.world.mixins.json",
-    "hardrush.p0.monster.mixins.json",
-    "hardrush.p1.combat.mixins.json",
-    "hardrush.p1.pact.mixins.json",
-    "hardrush.p1.player.mixins.json",
-    "hardrush.p1.book.mixins.json",
-    "hardrush.p2.protection.mixins.json",
-    "hardrush.p2.combat.mixins.json",
-    "hardrush.p2.locator.mixins.json"
+    "hardrush.disguise.mixins.json",
+    "hardrush.world.mixins.json",
+    "hardrush.monster.mixins.json",
+    "hardrush.combat.mixins.json",
+    "hardrush.pact.mixins.json",
+    "hardrush.player.mixins.json",
+    "hardrush.book.mixins.json",
+    "hardrush.protection.mixins.json",
+    "hardrush.combat.monster.mixins.json",
+    "hardrush.locator.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.5",

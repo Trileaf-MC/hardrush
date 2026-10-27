@@ -200,7 +200,7 @@ loom.runs.named('gameTest') {
                 }) throw new GradleException('Celebration regression requires -PhardrushP1=true and its own isolated run')
         vmArg '-Dhardrush.p1.testCelebration=true'
         vmArg '-Dhardrush.p1.initialMode=normal'
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1ten_round_game_test*'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:ten_round_game_test*'
         runDir celebrationRunDir.absolutePath
     }
 }
@@ -220,7 +220,7 @@ loom.runs.named('gameTest') {
         }
         vmArg '-Dhardrush.p1.testTenRounds=true'
         vmArg '-Dhardrush.p1.initialMode=normal'
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1ten_round_game_test*'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:ten_round_game_test*'
         runDir p1RegressionRunDir.absolutePath
     }
 }
@@ -246,7 +246,7 @@ loom.runs.named('gameTest') {
             providers.gradleProperty(it).orNull == 'true'
         }) throw new GradleException('P3 storage admission requires its own isolated run without -PhardrushP1=true')
         vmArg '-Dhardrush.p3.testStorage=true'
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p3storage_game_test*'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:storage_reserve_game_test*'
         runDir p3StorageRunDir.absolutePath
     }
 }
@@ -272,7 +272,7 @@ loom.runs.named('gameTest') {
                     providers.gradleProperty(it).orNull == 'true'
                 }) throw new GradleException('P3 recovery requires -PhardrushP1=true and its own isolated run')
         vmArg '-Dhardrush.p3.testRecovery=true'
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p3recovery_game_test*'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:recovery_game_test*'
         runDir p3RecoveryRunDir.absolutePath
     }
 }
@@ -296,7 +296,7 @@ loom.runs.named('gameTest') {
         }
         vmArg '-Dhardrush.p2.testIdentity=true'
         vmArg '-Dhardrush.p1.initialMode=hardcore'
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p2runtime_identity_game_test*'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:identity_runtime_game_test*'
         runDir p2IdentityRunDir.absolutePath
     }
 }
@@ -387,7 +387,7 @@ loom.runs.named('gameTest') {
         }
         vmArg '-Dhardrush.p2.testLobby=true'
         vmArg '-Dhardrush.p1.initialMode=hardcore'
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p2runtime_lobby_game_test*'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:lobby_runtime_game_test*'
         runDir p2LobbyRunDir.absolutePath
     }
 }
@@ -414,7 +414,7 @@ loom.runs.named('gameTest') {
                 }) throw new GradleException('Lobby movement requires -PhardrushP1=true and its own isolated run')
         vmArg '-Dhardrush.lobby.testMovement=true'
         vmArg '-Dhardrush.p1.initialMode=normal'
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1lobby_movement_game_test*'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:lobby_movement_game_test*'
         runDir lobbyMovementRunDir.absolutePath
     }
 }
@@ -463,7 +463,7 @@ loom.runs.named('gameTest') {
             throw new GradleException('Human entry requires P1 and its own isolated run')
         vmArg '-Dhardrush.lobby.testHumanEntry=true'
         vmArg '-Dhardrush.p1.initialMode=normal'
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1human_entry_game_test*'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:human_entry_game_test*'
         runDir humanEntryRunDir.absolutePath
     }
 }
@@ -531,7 +531,7 @@ loom.runs.named('gameTest') {
         if (!['adapter', 'storage'].contains(fault)) throw new GradleException('Unknown personal hunt fault scenario')
         vmArg "-Dhardrush.p2.huntFault=${fault}"
         vmArg '-Dhardrush.p1.initialMode=hardcore'
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p2personal_hunt_game_test*'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:personal_hunt_game_test*'
         runDir personalHuntRunDir.absolutePath
     }
 }
@@ -553,7 +553,7 @@ loom.runs.named('gameTest') {
         if (!['none','revival'].contains(fault)) throw new GradleException('Unknown full-flow fault')
         vmArg "-Dhardrush.lobby.fullFlowFault=${fault}"
         vmArg '-Dhardrush.p1.initialMode=hardcore'
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1full_flow_game_test*'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:full_flow_game_test*'
         runDir fullFlowRunDir.absolutePath
     }
 }
@@ -572,7 +572,7 @@ loom.runs.named('gameTest') {
         if (providers.gradleProperty('hardrushP1').orNull != 'true') throw new GradleException('Stabilization requires P1')
         vmArg '-Dhardrush.lobby.testStabilization=true'
         vmArg '-Dhardrush.p1.initialMode=hardcore'
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:p1stabilization_game_test*'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:stabilization_game_test*'
         runDir stabilizationRunDir.absolutePath
     }
 }

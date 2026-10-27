@@ -1,7 +1,0 @@
-{
-  "required": true,
-  "package": "dev.hardrush.p1.book.mixin",
-  "compatibilityLevel": "JAVA_25",
-  "mixins": ["PlayerListBookSaveAccessor"],
-  "injectors": { "defaultRequire": 1 }
-}

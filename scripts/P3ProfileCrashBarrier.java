@@ -34,12 +34,12 @@ public final class P3ProfileCrashBarrier {
         var vm = connector.attach(options);
         boolean hit = false;
         try {
-            var type = vm.classesByName("dev.hardrush.gametest.P3ProfileCrashRegression").stream().findFirst().orElseThrow();
+            var type = vm.classesByName("dev.hardrush.gametest.ProfileCrashRegression").stream().findFirst().orElseThrow();
             if (((LongValue) type.getValue(type.fieldByName("PID"))).value() != pid) {
                 throw new IllegalStateException("Attached VM is not this runner's dedicated server child");
             }
             var exits = vm.eventRequestManager().createMethodExitRequest();
-            exits.addClassFilter("dev.hardrush.p1.player.ProfileJournal");
+            exits.addClassFilter("dev.hardrush.player.ProfileJournal");
             // Every thread freezes before the caller can apply another journal write or native effect.
             exits.setSuspendPolicy(EventRequest.SUSPEND_ALL); exits.enable();
             write(directory.resolve("profile-debugger-ready.json"), "{\"pid\":" + pid + "}\n");

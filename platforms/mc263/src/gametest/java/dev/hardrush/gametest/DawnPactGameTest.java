@@ -5,10 +5,10 @@ import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.combat.DawnPact;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
-import dev.hardrush.p1.pact.DawnPactData;
-import dev.hardrush.p1.pact.DawnPactRuntime;
-import dev.hardrush.p1.combat.P1CombatRuntime;
-import dev.hardrush.p2.combat.P2CombatRuntime;
+import dev.hardrush.pact.DawnPactData;
+import dev.hardrush.pact.DawnPactRuntime;
+import dev.hardrush.combat.CombatRuntime;
+import dev.hardrush.combat.MonsterCombatRuntime;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.*;
@@ -80,7 +80,7 @@ public final class DawnPactGameTest {
             var body = EntityTypes.ZOMBIE.create(f.level, EntitySpawnReason.COMMAND);
             f.roles.put(f.attacker.getUUID(), ParticipantRole.MONSTER_DEPLOYED);
             test.assertTrue(DawnPactRuntime.reject(f.victim, f.attacker), "Human cannot harm a player in monster form either");
-            P2CombatRuntime.stampSource(body, f.attacker);
+            MonsterCombatRuntime.stampSource(body, f.attacker);
             test.assertFalse(body.doHurtTarget(f.level, f.victim), "Player-owned monster native attack rejected");
             body.discard();
             f.roles.put(f.attacker.getUUID(), ParticipantRole.HUMAN_ACTIVE);
@@ -103,7 +103,7 @@ public final class DawnPactGameTest {
     public void capturedOfflineExplosionsAndCrossDimensionSourcesRespectPact(GameTestHelper test) {
         try (var f = new Fixture(test)) {
             var tnt = new net.minecraft.world.entity.item.PrimedTnt(f.level, f.attacker.getX(), f.attacker.getY(), f.attacker.getZ(), f.attacker);
-            P1CombatRuntime.tntCreated(tnt, f.attacker);
+            CombatRuntime.tntCreated(tnt, f.attacker);
             var explosion = f.level.damageSources().explosion(tnt, f.attacker);
             test.assertFalse(f.victim.hurtServer(f.level, explosion, 10), "Player TNT blocked");
             f.level.getServer().getPlayerList().remove(f.attacker);
@@ -113,7 +113,7 @@ public final class DawnPactGameTest {
             test.assertTrue(DawnPactRuntime.reject(cloud, f.victim), "Lingering potion uses its vanilla persisted owner reference");
             test.assertFalse(f.victim.addEffect(new MobEffectInstance(MobEffects.POISON, 100), cloud), "Lingering poison blocked");
             cloud.discard();
-            try (var action = P1CombatRuntime.explosion(f.level, tnt)) {
+            try (var action = CombatRuntime.explosion(f.level, tnt)) {
                 test.assertTrue(DawnPactRuntime.reject(null, f.victim), "Chained explosions with no native owner retain captured player source");
             }
             tnt.discard();
@@ -202,12 +202,12 @@ public final class DawnPactGameTest {
             this.test = test; level = test.getLevel(); original = clock().packState(); difficulty = level.getDifficulty();
             level.getServer().setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
             attacker = player(); victim = player(); time(0);
-            var monster = RuntimeFixtures.monsterCombat(level.getServer(), new P2CombatRuntime.Access() {
+            var monster = RuntimeFixtures.monsterCombat(level.getServer(), new MonsterCombatRuntime.Access() {
                 public Optional<RoundSnapshot> snapshot() { return Optional.of(Fixture.this.snapshot()); }
                 public boolean competitionLocked() { return false; }
                 public boolean formalLevel(ServerLevel candidate) { return true; }
             }); scopes.add(monster::close);
-            var evidence = RuntimeFixtures.combat(level.getServer(), new P1CombatRuntime.RoundAccess() {
+            var evidence = RuntimeFixtures.combat(level.getServer(), new CombatRuntime.RoundAccess() {
                 public Optional<UUID> roundOf(ServerLevel candidate) { return Optional.of(round); }
                 public Optional<CombatActor> actor(UUID roundId, UUID id) {
                     return Optional.ofNullable(roles.get(id)).map(role -> new CombatActor(id, role, 1, role.isMonster() ? 1 : 0));

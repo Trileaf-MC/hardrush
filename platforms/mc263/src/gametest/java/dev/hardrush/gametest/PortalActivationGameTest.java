@@ -2,7 +2,7 @@ package dev.hardrush.gametest;
 
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.RoundEngine;
-import dev.hardrush.p1.world.P1RoundWorldBundle;
+import dev.hardrush.world.RoundWorldBundle;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -34,7 +34,7 @@ public final class PortalActivationGameTest {
     public void roundPortalActivationAndEndRouting(GameTestHelper test) {
         var server = test.getLevel().getServer();
         var snapshot = RoundEngine.create(UUID.randomUUID(), 1, 12345, RulesConfig.defaults(), () -> 0).committed();
-        var bundle = P1RoundWorldBundle.open(server, snapshot);
+        var bundle = RoundWorldBundle.open(server, snapshot);
         var closed = new CompletableFuture<?>[1];
         test.startSequence()
                 .thenWaitUntil(() -> {

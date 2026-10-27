@@ -25,8 +25,7 @@ BASE = ROOT / '.local/demo'
 LOCK = json.loads((ROOT / 'scripts/demo.lock.json').read_text())
 FORBIDDEN = ('mcpfabric', 'spark', 'hardrush-gametest', 'hardrush-debug-tools',
              'dev/hardrush/gametest/', 'dev/hardrush/debug/',
-             'dev/hardrush/p0/hardrushp0', 'dev/hardrush/p0/world/worldprobe',
-             'dev/hardrush/p0/world/roundruntimelevel', 'dev/hardrush/p0/world/worldmanifest')
+             'dev/hardrush/development/')
 FORBIDDEN_CLASS_MARKERS = (b'runUnmanagedFixture', b'UNMANAGED_FIXTURE_DEPTH', b'temporaryConfiguration')
 
 # Reuse the independently checked snapshot prefix parser; it never starts a fixture.

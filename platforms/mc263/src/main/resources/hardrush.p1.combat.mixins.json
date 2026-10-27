@@ -1,7 +1,0 @@
-{
-  "required": true,
-  "package": "dev.hardrush.p1.combat.mixin",
-  "compatibilityLevel": "JAVA_25",
-  "mixins": ["CombatEntityMixin", "CombatProjectileMixin", "CombatPlayerAttackMixin", "CombatArrowImpactMixin", "CombatPickupMixin", "CombatTntMixin", "CombatBedMixin", "CombatAnchorMixin", "CombatTntBlockMixin", "CombatExplosionMixin", "CombatCrystalMixin", "CombatLivingMixin", "CombatDragonMixin"],
-  "injectors": { "defaultRequire": 1 }
-}

@@ -1,8 +1,8 @@
 package dev.hardrush.gametest;
 
-import dev.hardrush.p0.monster.MonsterClouds;
-import dev.hardrush.p2.combat.FrozenMonsterSource;
-import dev.hardrush.p2.combat.MonsterSourceHolder;
+import dev.hardrush.monster.MonsterClouds;
+import dev.hardrush.combat.FrozenMonsterSource;
+import dev.hardrush.combat.MonsterSourceHolder;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;

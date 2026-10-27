@@ -1,6 +1,6 @@
 package dev.hardrush.gametest;
 
-import dev.hardrush.p0.world.WorldProbe;
+import dev.hardrush.development.world.DevelopmentWorlds;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.advancements.predicates.LocationPredicate;
@@ -119,7 +119,7 @@ public final class HardRushWorldBoundaryGameTest {
             oldPearl.setOldPosAndRot();
             move(player, end, new Vec3(100.5, 80, 0.5));
             oldPearl.impact();
-            test.assertTrue(player.level() == overworld && WorldProbe.owns(player.level()), "Late pearl stays within the same round");
+            test.assertTrue(player.level() == overworld && DevelopmentWorlds.owns(player.level()), "Late pearl stays within the same round");
         } finally {
             player.stopRiding();
             remove(player);
@@ -325,7 +325,7 @@ public final class HardRushWorldBoundaryGameTest {
             overworld.clockManager().setTotalTicks(clock, 17000);
             test.assertValueEqual(lobby.clockManager().getInstance(clock).totalTicks(), lobbyTime, "Round time does not alter lobby");
             test.assertValueEqual(nether.clockManager().getInstance(clock).totalTicks(), 17000L, "Nether uses round clock");
-            WorldProbe.create(test.getLevel().getServer(), 12345);
+            DevelopmentWorlds.create(test.getLevel().getServer(), 12345);
             test.assertValueEqual(overworld.clockManager().getInstance(clock).totalTicks(), 17000L, "Idempotent create preserves time");
         } finally {
             overworld.clockManager().setTotalTicks(clock, roundTime);
@@ -442,7 +442,7 @@ public final class HardRushWorldBoundaryGameTest {
             assertAdvancement(test, player, "story/enter_the_nether");
             move(player, test.getLevel().getServer().getLevel(Level.END), new Vec3(100.5, 80, 0.5));
             assertAdvancement(test, player, "story/enter_the_end");
-            test.assertTrue(WorldProbe.portalDestination(lobby, Level.END) == test.getLevel().getServer().getLevel(Level.END), "Vanilla End target unchanged");
+            test.assertTrue(DevelopmentWorlds.portalDestination(lobby, Level.END) == test.getLevel().getServer().getLevel(Level.END), "Vanilla End target unchanged");
             var pig = EntityTypes.PIG.create(test.getLevel().getServer().getLevel(Level.END), EntitySpawnReason.COMMAND);
             var exit = ((Portal) Blocks.END_PORTAL).getPortalDestination(pig.level() instanceof ServerLevel level ? level : null, pig, ServerLevel.END_SPAWN_POINT);
             test.assertTrue(exit.newLevel() == lobby, "Vanilla End portal still returns to vanilla overworld");
@@ -455,9 +455,9 @@ public final class HardRushWorldBoundaryGameTest {
 
     private static ServerLevel roundLevel(GameTestHelper test, ResourceKey<Level> semantic) {
         var server = test.getLevel().getServer();
-        WorldProbe.create(server, 12345);
+        DevelopmentWorlds.create(server, 12345);
         for (ServerLevel level : server.getAllLevels()) {
-            if (WorldProbe.owns(level) && WorldProbe.semanticDimension(level).equals(semantic)) return level;
+            if (DevelopmentWorlds.owns(level) && DevelopmentWorlds.semanticDimension(level).equals(semantic)) return level;
         }
         throw new IllegalStateException("Missing round level: " + semantic);
     }

@@ -4,14 +4,14 @@ import dev.hardrush.core.api.DamagePort.AttackKind;
 import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.combat.CombatOrigin;
 import dev.hardrush.core.round.ParticipantRole;
-import dev.hardrush.p0.monster.MonsterCompanions;
-import dev.hardrush.p0.monster.MonsterRoles;
-import dev.hardrush.p0.monster.mixin.MonsterMobAccessor;
-import dev.hardrush.p1.combat.CombatOriginHolder;
-import dev.hardrush.p1.combat.P1CombatRuntime;
-import dev.hardrush.p2.combat.FrozenMonsterSource;
-import dev.hardrush.p2.combat.MonsterSourceHolder;
-import dev.hardrush.p2.combat.P2CombatRuntime;
+import dev.hardrush.monster.MonsterCompanions;
+import dev.hardrush.monster.MonsterRoles;
+import dev.hardrush.monster.mixin.MonsterMobAccessor;
+import dev.hardrush.combat.CombatOriginHolder;
+import dev.hardrush.combat.CombatRuntime;
+import dev.hardrush.combat.FrozenMonsterSource;
+import dev.hardrush.combat.MonsterSourceHolder;
+import dev.hardrush.combat.MonsterCombatRuntime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -157,8 +157,8 @@ public final class MonsterCompanionGameTest {
                 ((CombatOriginHolder) zombie).hardrush$sealCombatOrigin(Optional.of(origin));
                 var drowned = zombie.convertTo(EntityTypes.DROWNED, ConversionParams.single(zombie, true, true), ignored -> {});
                 test.assertTrue(drowned != null && owner.getUUID().equals(MonsterCompanions.owner(drowned)), "Water conversion retains owner");
-                test.assertTrue(P2CombatRuntime.source(drowned).orElseThrow().equals(frozen), "Conversion preserves frozen P2 source");
-                var childOrigin = P1CombatRuntime.originOf(drowned).orElseThrow();
+                test.assertTrue(MonsterCombatRuntime.source(drowned).orElseThrow().equals(frozen), "Conversion preserves frozen P2 source");
+                var childOrigin = CombatRuntime.originOf(drowned).orElseThrow();
                 test.assertTrue(childOrigin.actor().equals(origin.actor()) && childOrigin.directEntityId().orElseThrow().equals(drowned.getUUID()), "Converted P1 source keeps identity and binds its new entity ID");
                 var villager = EntityTypes.VILLAGER.create(owner.level(), EntitySpawnReason.COMMAND);
                 villager.snapTo(owner.getX(), owner.getY(), owner.getZ() + 2, 0, 0);
@@ -166,13 +166,13 @@ public final class MonsterCompanionGameTest {
                 test.assertTrue(drowned.convertVillagerToZombieVillager(owner.level(), villager), "Native villager infection remains enabled");
                 var infected = owner.level().getEntitiesOfClass(ZombieVillager.class, owner.getBoundingBox().inflate(8)).stream()
                         .filter(mob -> owner.getUUID().equals(MonsterCompanions.owner(mob))).findFirst().orElseThrow();
-                test.assertTrue(P2CombatRuntime.source(infected).orElseThrow().equals(frozen), "Infection inherits the attacker's immutable source");
-                test.assertTrue(P1CombatRuntime.originOf(infected).orElseThrow().actor().equals(origin.actor()), "Infection preserves P1 actor");
+                test.assertTrue(MonsterCombatRuntime.source(infected).orElseThrow().equals(frozen), "Infection inherits the attacker's immutable source");
+                test.assertTrue(CombatRuntime.originOf(infected).orElseThrow().actor().equals(origin.actor()), "Infection preserves P1 actor");
                 var cured = infected.convertTo(EntityTypes.VILLAGER, ConversionParams.single(infected, true, true), ignored -> {});
                 try {
                     test.assertTrue(cured != null && MonsterCompanions.owner(cured) == null
                             && MonsterCompanions.event(cured) == null, "Curing removes all companion ownership");
-                    test.assertTrue(P2CombatRuntime.source(cured).isEmpty() && P1CombatRuntime.originOf(cured).isEmpty(), "Curing ends the inherited combat lineage");
+                    test.assertTrue(MonsterCombatRuntime.source(cured).isEmpty() && CombatRuntime.originOf(cured).isEmpty(), "Curing ends the inherited combat lineage");
                     MonsterRoles.clear(owner);
                     test.assertTrue(cured.isAlive() && !MonsterCompanions.isDismissing(cured), "An ordinary cured villager survives the owner's departure");
                 } finally { if (cured != null) cured.discard(); }
@@ -236,7 +236,7 @@ public final class MonsterCompanionGameTest {
                 var generated = (Chicken) newborn.getVehicle();
                 test.assertValueEqual(MonsterCompanions.owner(generated), owner.getUUID(), "A newly created mount inherits the sortie owner");
                 test.assertValueEqual(MonsterCompanions.event(generated), MonsterCompanions.event(ancestor), "A new mount keeps the ancestor event");
-                test.assertValueEqual(P2CombatRuntime.source(generated).orElseThrow(), frozen, "The mount preserves its ancestor's frozen combat source");
+                test.assertValueEqual(MonsterCombatRuntime.source(generated).orElseThrow(), frozen, "The mount preserves its ancestor's frozen combat source");
                 borrowed.snapTo(owner.getX(), owner.getY(), owner.getZ() + 3, 0, 0);
                 owner.level().addFreshEntity(borrowed);
                 var rider = EntityTypes.ZOMBIE.create(owner.level(), EntitySpawnReason.REINFORCEMENT);

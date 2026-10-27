@@ -1,7 +1,7 @@
 package dev.hardrush.gametest;
 
-import dev.hardrush.p0.disguise.DisguiseProbe;
-import dev.hardrush.p0.world.WorldProbe;
+import dev.hardrush.disguise.MonsterDisguise;
+import dev.hardrush.development.world.DevelopmentWorlds;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
@@ -52,10 +52,10 @@ public final class MonsterAppearanceGameTest {
             for (String kind : List.of("zombie", "skeleton", "creeper")) {
                 for (int cycle = 0; cycle < 20; cycle++) {
                     owner.packets.clear();
-                    DisguiseProbe.apply(player, kind);
+                    MonsterDisguise.apply(player, kind);
                     assertSelected(test, player, observer, kind);
-                    DisguiseProbe.clear(player);
-                    DisguiseProbe.tick(server);
+                    MonsterDisguise.clear(player);
+                    MonsterDisguise.tick(server);
                     assertCleared(test, player, observer);
                     test.assertTrue(player.getGameProfile() == profile && player.getTeam() == team,
                         "Appearance cycles preserve profile and existing team");
@@ -69,7 +69,7 @@ public final class MonsterAppearanceGameTest {
             }
             System.out.println("HardRush appearance lifecycle: apply/clear=60 (20 per kind); no server entity/attribute/team/permission/invisibility leak");
         } finally {
-            DisguiseProbe.clear(player);
+            MonsterDisguise.clear(player);
             server.getPlayerList().remove(player);
             server.getPlayerList().remove(observer);
         }
@@ -84,22 +84,22 @@ public final class MonsterAppearanceGameTest {
         try {
             for (int cycle = 0; cycle < 20; cycle++) {
                 String kind = List.of("zombie", "skeleton", "creeper").get(cycle % 3);
-                DisguiseProbe.apply(player, kind);
+                MonsterDisguise.apply(player, kind);
                 var stale = spawn(player);
                 player.setHealth(0);
                 player.die(player.damageSources().generic());
                 player = server.getPlayerList().respawn(player, false, Entity.RemovalReason.KILLED);
-                DisguiseProbe.tick(server);
+                MonsterDisguise.tick(server);
                 assertSelected(test, player, observer, kind);
                 test.assertTrue(player.isAlive() && !player.isInvisible(), "Native respawn leaves one live visible player");
-                if (stale.getId() != player.getId()) test.assertTrue(DisguiseProbe.rewrite(observer, stale) == stale,
+                if (stale.getId() != player.getId()) test.assertTrue(MonsterDisguise.rewrite(observer, stale) == stale,
                     "Every replaced authoritative ID is unbound");
-                DisguiseProbe.clear(player);
+                MonsterDisguise.clear(player);
                 assertCleared(test, player, observer);
             }
             System.out.println("HardRush appearance lifecycle: death/native respawn=20; old entity IDs unbound");
         } finally {
-            DisguiseProbe.clear(player);
+            MonsterDisguise.clear(player);
             server.getPlayerList().remove(player);
             server.getPlayerList().remove(observer);
         }
@@ -109,31 +109,31 @@ public final class MonsterAppearanceGameTest {
     @GameTest(maxTicks = 1200)
     public void twentyRoundDimensionCyclesRetainOnlyCurrentBinding(GameTestHelper test) {
         var server = test.getLevel().getServer();
-        WorldProbe.create(server, 12345L);
+        DevelopmentWorlds.create(server, 12345L);
         var player = test.makeMockServerPlayerInLevel();
         var observer = test.makeMockServerPlayerInLevel();
         try {
             for (int cycle = 0; cycle < 20; cycle++) {
                 String kind = List.of("zombie", "skeleton", "creeper").get(cycle % 3);
-                DisguiseProbe.apply(player, kind);
+                MonsterDisguise.apply(player, kind);
                 for (var semantic : List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
                     net.minecraft.server.level.ServerLevel level = null;
                     for (var candidate : server.getAllLevels()) {
-                        if (WorldProbe.owns(candidate) && WorldProbe.semanticDimension(candidate).equals(semantic)) level = candidate;
+                        if (DevelopmentWorlds.owns(candidate) && DevelopmentWorlds.semanticDimension(candidate).equals(semantic)) level = candidate;
                     }
-                    test.assertTrue(level != null && WorldProbe.owns(level), "Round dimension exists");
+                    test.assertTrue(level != null && DevelopmentWorlds.owns(level), "Round dimension exists");
                     player.teleport(new TeleportTransition(level, new Vec3(128.5, semantic.equals(Level.NETHER) ? 100 : 200, 128.5),
                         Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
-                    DisguiseProbe.tick(server);
+                    MonsterDisguise.tick(server);
                     assertSelected(test, player, observer, kind);
                     test.assertTrue(player.level() == level, "Appearance follows the native dimension transfer");
                 }
-                DisguiseProbe.clear(player);
+                MonsterDisguise.clear(player);
                 assertCleared(test, player, observer);
             }
             System.out.println("HardRush appearance lifecycle: round dimension cycles=20; native transfers=60");
         } finally {
-            DisguiseProbe.clear(player);
+            MonsterDisguise.clear(player);
             server.getPlayerList().remove(player);
             server.getPlayerList().remove(observer);
         }
@@ -145,7 +145,7 @@ public final class MonsterAppearanceGameTest {
         var player = test.makeMockServerPlayerInLevel();
         try {
             for (var kind : List.of("zombie", "skeleton", "creeper")) {
-                DisguiseProbe.apply(player, kind);
+                MonsterDisguise.apply(player, kind);
                 for (var pose : List.of(net.minecraft.world.entity.Pose.STANDING, net.minecraft.world.entity.Pose.CROUCHING,
                         net.minecraft.world.entity.Pose.SWIMMING)) {
                     player.setPose(pose);
@@ -163,7 +163,7 @@ public final class MonsterAppearanceGameTest {
                 System.out.println("HardRush appearance dimensions: " + type + "=" + type.getWidth() + "x" + type.getHeight());
             }
         } finally {
-            DisguiseProbe.clear(player);
+            MonsterDisguise.clear(player);
             player.level().getServer().getPlayerList().remove(player);
         }
         test.succeed();
@@ -182,10 +182,10 @@ public final class MonsterAppearanceGameTest {
         for (int cycle = 0; cycle < 20; cycle++) {
             String kind = List.of("zombie", "skeleton", "creeper").get(cycle % 3);
             sequence.thenExecute(() -> {
-                DisguiseProbe.apply(player[0], kind);
+                MonsterDisguise.apply(player[0], kind);
                 previousSpawn[0] = spawn(player[0]);
-                DisguiseProbe.onDisconnect(player[0]);
-                test.assertTrue(DisguiseProbe.rewrite(observer, previousSpawn[0]) == previousSpawn[0], "Disconnect unbinds the old entity");
+                MonsterDisguise.onDisconnect(player[0]);
+                test.assertTrue(MonsterDisguise.rewrite(observer, previousSpawn[0]) == previousSpawn[0], "Disconnect unbinds the old entity");
                 server.getPlayerList().remove(player[0]);
                 if (channel[0] != null) channel[0].finishAndReleaseAll();
                 preparation[0] = new PrepareSpawnTask(server, new NameAndId(profile));
@@ -197,13 +197,13 @@ public final class MonsterAppearanceGameTest {
                     dev.hardrush.gametest.UnmanagedProfileFixtures.run(() ->
                             player[0] = preparation[0].spawnPlayer(connection, CommonListenerCookie.createInitial(profile, false)));
                     preparation[0].close(); preparation[0] = null;
-                    DisguiseProbe.onJoin(player[0]);
-                    DisguiseProbe.tick(server);
+                    MonsterDisguise.onJoin(player[0]);
+                    MonsterDisguise.tick(server);
                     test.assertValueEqual(player[0].getUUID(), profile.id(), "Native reconnect retains UUID");
                     assertSelected(test, player[0], observer, kind);
-                    if (previousSpawn[0].getId() != player[0].getId()) test.assertTrue(DisguiseProbe.rewrite(observer, previousSpawn[0]) == previousSpawn[0],
+                    if (previousSpawn[0].getId() != player[0].getId()) test.assertTrue(MonsterDisguise.rewrite(observer, previousSpawn[0]) == previousSpawn[0],
                         "Reconnect does not revive the old entity mapping");
-                    DisguiseProbe.clear(player[0]);
+                    MonsterDisguise.clear(player[0]);
                     assertCleared(test, player[0], observer);
                 });
         }
@@ -217,7 +217,7 @@ public final class MonsterAppearanceGameTest {
 
     private static void assertSelected(GameTestHelper test, ServerPlayer player, ServerPlayer observer, String kind) {
         var type = switch (kind) { case "zombie" -> EntityTypes.ZOMBIE; case "skeleton" -> EntityTypes.SKELETON; default -> EntityTypes.CREEPER; };
-        test.assertValueEqual(((ClientboundAddEntityPacket) DisguiseProbe.rewrite(observer, spawn(player))).getType(), type,
+        test.assertValueEqual(((ClientboundAddEntityPacket) MonsterDisguise.rewrite(observer, spawn(player))).getType(), type,
             "Observer gets the current selected mob");
         test.assertTrue(!player.isInvisible() && player.getCamera() == player, "Owner remains visible with native camera");
         for (var level : player.level().getServer().getAllLevels()) {
@@ -229,8 +229,8 @@ public final class MonsterAppearanceGameTest {
     }
 
     private static void assertCleared(GameTestHelper test, ServerPlayer player, ServerPlayer observer) {
-        test.assertTrue(DisguiseProbe.status(player).startsWith("disguise=off"), "Role appearance selection removed");
-        test.assertValueEqual(((ClientboundAddEntityPacket) DisguiseProbe.rewrite(observer, spawn(player))).getType(), EntityTypes.PLAYER,
+        test.assertTrue(MonsterDisguise.status(player).startsWith("disguise=off"), "Role appearance selection removed");
+        test.assertValueEqual(((ClientboundAddEntityPacket) MonsterDisguise.rewrite(observer, spawn(player))).getType(), EntityTypes.PLAYER,
             "Clear restores native player tracking");
         test.assertTrue(!player.isInvisible() && player.getCamera() == player, "Clear leaves native visibility and camera");
     }
@@ -253,7 +253,7 @@ public final class MonsterAppearanceGameTest {
             var id = owner.getId();
             for (String kind : List.of("zombie", "skeleton", "creeper")) {
                 owned.packets.clear();
-                DisguiseProbe.apply(owner, kind);
+                MonsterDisguise.apply(owner, kind);
                 test.assertTrue(owner.getGameProfile() == profile, "Authenticated profile object is unchanged");
                 test.assertValueEqual(owner.getId(), id, "No server-side respawn or replacement player");
                 test.assertValueEqual(owner.position(), position, "Skin refresh preserves position");
@@ -297,30 +297,30 @@ public final class MonsterAppearanceGameTest {
                 test.assertValueEqual(spawn.getType(), EntityTypes.PLAYER, "Original shared spawn packet not mutated");
 
                 var metadata = new ClientboundSetEntityDataPacket(owner.getId(), owner.getEntityData().getNonDefaultValues());
-                test.assertTrue(DisguiseProbe.rewrite(owner, metadata) == metadata, "Own metadata is never hidden or remapped");
+                test.assertTrue(MonsterDisguise.rewrite(owner, metadata) == metadata, "Own metadata is never hidden or remapped");
                 var nested = new ClientboundBundlePacket(List.of(spawn, metadata));
-                var copy = (ClientboundBundlePacket) DisguiseProbe.rewrite(observer, nested);
+                var copy = (ClientboundBundlePacket) MonsterDisguise.rewrite(observer, nested);
                 test.assertTrue(copy != nested, "Bundled tracking packets get an independent copy");
                 var originalInfo = ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(owner, observer));
-                test.assertTrue(DisguiseProbe.rewrite(observer, originalInfo) == originalInfo, "Steve does not leak to another observer");
+                test.assertTrue(MonsterDisguise.rewrite(observer, originalInfo) == originalInfo, "Steve does not leak to another observer");
                 var attributes = new ClientboundUpdateAttributesPacket(owner.getId(), owner.getAttributes().getSyncableAttributes());
-                var displayed = (ClientboundUpdateAttributesPacket) DisguiseProbe.rewrite(observer, attributes);
+                var displayed = (ClientboundUpdateAttributesPacket) MonsterDisguise.rewrite(observer, attributes);
                 var speed = displayed.getValues().stream().filter(a -> a.attribute().equals(Attributes.MOVEMENT_SPEED)).findFirst().orElseThrow();
                 test.assertValueEqual(speed.base(), 0.13, "Mob display uses authoritative player speed");
                 int sent = owned.packets.size();
-                DisguiseProbe.apply(owner, kind);
+                MonsterDisguise.apply(owner, kind);
                 test.assertValueEqual(owned.packets.size(), sent, "Repeated apply is idempotent");
             }
-            DisguiseProbe.clear(owner);
-            test.assertTrue(DisguiseProbe.rewrite(observer, spawn(owner)).getClass() == ClientboundAddEntityPacket.class,
+            MonsterDisguise.clear(owner);
+            test.assertTrue(MonsterDisguise.rewrite(observer, spawn(owner)).getClass() == ClientboundAddEntityPacket.class,
                 "Clear removes observer mapping");
-            test.assertValueEqual(((ClientboundAddEntityPacket) DisguiseProbe.rewrite(observer, spawn(owner))).getType(), EntityTypes.PLAYER,
+            test.assertValueEqual(((ClientboundAddEntityPacket) MonsterDisguise.rewrite(observer, spawn(owner))).getType(), EntityTypes.PLAYER,
                 "Clear restores native player appearance");
             var restored = owned.packets.stream().filter(p -> p instanceof ClientboundPlayerInfoUpdatePacket)
                 .map(p -> (ClientboundPlayerInfoUpdatePacket) p).reduce((a, b) -> b).orElseThrow();
             test.assertValueEqual(restored.entries().getFirst().profile(), profile, "Clear restores original cosmetic profile");
         } finally {
-            DisguiseProbe.clear(owner);
+            MonsterDisguise.clear(owner);
             owner.level().getServer().getPlayerList().remove(owner);
             observer.level().getServer().getPlayerList().remove(observer);
         }
@@ -333,27 +333,27 @@ public final class MonsterAppearanceGameTest {
         var player = test.makeMockServerPlayerInLevel();
         var observer = test.makeMockServerPlayerInLevel();
         try {
-            DisguiseProbe.apply(player, "skeleton");
+            MonsterDisguise.apply(player, "skeleton");
             int oldId = player.getId();
             player.setHealth(0);
             player.die(player.damageSources().generic());
-            DisguiseProbe.tick(server);
-            test.assertTrue(DisguiseProbe.status(player).contains("disguise=skeleton"), "Death does not erase selected role appearance");
+            MonsterDisguise.tick(server);
+            test.assertTrue(MonsterDisguise.status(player).contains("disguise=skeleton"), "Death does not erase selected role appearance");
             player = server.getPlayerList().respawn(player, false, Entity.RemovalReason.KILLED);
-            DisguiseProbe.tick(server);
-            test.assertValueEqual(((ClientboundAddEntityPacket) DisguiseProbe.rewrite(observer, spawn(player))).getType(), EntityTypes.SKELETON,
+            MonsterDisguise.tick(server);
+            test.assertValueEqual(((ClientboundAddEntityPacket) MonsterDisguise.rewrite(observer, spawn(player))).getType(), EntityTypes.SKELETON,
                 "Vanilla respawn rebinds new authoritative player");
             var stale = new ClientboundAddEntityPacket(oldId, player.getUUID(), 0, 0, 0, 0, 0, EntityTypes.PLAYER, 0, Vec3.ZERO, 0);
-            if (oldId != player.getId()) test.assertTrue(DisguiseProbe.rewrite(observer, stale) == stale, "Old ID mapping is gone");
-            DisguiseProbe.onDisconnect(player);
+            if (oldId != player.getId()) test.assertTrue(MonsterDisguise.rewrite(observer, stale) == stale, "Old ID mapping is gone");
+            MonsterDisguise.onDisconnect(player);
             var disconnectedSpawn = spawn(player);
-            test.assertTrue(DisguiseProbe.rewrite(observer, disconnectedSpawn) == disconnectedSpawn, "Disconnected binding removed");
-            DisguiseProbe.onJoin(player);
-            DisguiseProbe.tick(server);
-            test.assertValueEqual(((ClientboundAddEntityPacket) DisguiseProbe.rewrite(observer, spawn(player))).getType(), EntityTypes.SKELETON,
+            test.assertTrue(MonsterDisguise.rewrite(observer, disconnectedSpawn) == disconnectedSpawn, "Disconnected binding removed");
+            MonsterDisguise.onJoin(player);
+            MonsterDisguise.tick(server);
+            test.assertValueEqual(((ClientboundAddEntityPacket) MonsterDisguise.rewrite(observer, spawn(player))).getType(), EntityTypes.SKELETON,
                 "Same UUID reconnect resumes selection");
         } finally {
-            DisguiseProbe.clear(player);
+            MonsterDisguise.clear(player);
             server.getPlayerList().remove(player);
             server.getPlayerList().remove(observer);
         }
@@ -370,15 +370,15 @@ public final class MonsterAppearanceGameTest {
             player.level().addFreshEntity(vehicle);
             test.assertTrue(player.startRiding(vehicle, true, false), "Player can mount test vehicle");
             capture.packets.clear();
-            DisguiseProbe.apply(player, "creeper");
-            test.assertTrue(player.isPassenger() && DisguiseProbe.status(player).contains("disguise=creeper"), "Riding keeps monster appearance");
+            MonsterDisguise.apply(player, "creeper");
+            test.assertTrue(player.isPassenger() && MonsterDisguise.status(player).contains("disguise=creeper"), "Riding keeps monster appearance");
             test.assertTrue(capture.packets.stream().noneMatch(p -> p instanceof ClientboundRespawnPacket), "No disruptive refresh while riding");
             player.stopRiding();
-            DisguiseProbe.tick(server);
+            MonsterDisguise.tick(server);
             test.assertTrue(capture.packets.stream().anyMatch(p -> p instanceof ClientboundRespawnPacket), "Steve applied at safe point");
         } finally {
             player.stopRiding();
-            DisguiseProbe.clear(player);
+            MonsterDisguise.clear(player);
             server.getPlayerList().remove(player);
             if (vehicle != null) vehicle.discard();
         }
