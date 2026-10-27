@@ -1,5 +1,6 @@
 package dev.hardrush.gametest;
 
+import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.Participant;
@@ -52,7 +53,7 @@ public final class IdentityRespawnGameTest {
 
     @GameTest(maxTicks = 1600)
     public void normalBedRespawnAndBrokenBedFallbackKeepOneHumanHistory(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var overworld = roundLevel(test, Level.OVERWORLD);
         var bed = new BlockPos(128, 200, 128);
         platform(overworld, bed);
@@ -94,7 +95,7 @@ public final class IdentityRespawnGameTest {
 
     @GameTest(maxTicks = 1600)
     public void normalAnchorRespawnConsumesOneChargeThenEmptyAnchorReturnsToRound(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var nether = roundLevel(test, Level.NETHER);
         var overworld = roundLevel(test, Level.OVERWORLD);
         var anchor = new BlockPos(144, 100, 144);
@@ -137,7 +138,7 @@ public final class IdentityRespawnGameTest {
 
     @GameTest(maxTicks = 1600)
     public void normalDeathScreenSurvivesCleanStopAndNativeReconnectBeforeRespawn(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var overworld = roundLevel(test, Level.OVERWORLD);
         var bed = new BlockPos(176, 200, 176);
         platform(overworld, bed);
@@ -198,7 +199,7 @@ public final class IdentityRespawnGameTest {
 
     @GameTest(maxTicks = 1600)
     public void hardcoreNativeDropsPrecedeMonsterLobbyAndUuidReconnectCannotRestoreHumanLife(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var overworld = roundLevel(test, Level.OVERWORLD);
         var deathPos = new BlockPos(160, 200, 160);
         platform(overworld, deathPos);
@@ -319,7 +320,7 @@ public final class IdentityRespawnGameTest {
             lobby = Vec3.atBottomCenterOf(test.absolutePos(new BlockPos(1, 2, 1)));
             player = test.makeMockServerPlayerInLevel();
             profileRoot = test.getLevel().getServer().getWorldPath(LevelResource.ROOT)
-                    .resolve("hardrush/p2-identity-tests/" + UUID.randomUUID());
+                    .resolve("hardrush/identity-runtime-tests/" + UUID.randomUUID());
             profiles = new PlayerProfiles(test.getLevel().getServer(), profileRoot, test::getLevel, () -> lobby);
         }
 

@@ -6,5 +6,5 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'hardrush-p0b-probes'
+rootProject.name = 'hardrush-dependency-probes'
 include 'mc2612', 'mc262', 'mc263'

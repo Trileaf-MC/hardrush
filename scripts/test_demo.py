@@ -47,7 +47,7 @@ class DemoTests(unittest.TestCase):
         return demo.prepare(self.bundle, 'hardcore', 25587)
 
     def accept_existing_eula(self):
-        source = self.root / '.local/server-p0/eula.txt'
+        source = self.root / '.local/server/eula.txt'
         source.parent.mkdir(parents=True)
         source.write_text('eula=true\n')
 
@@ -99,8 +99,8 @@ class DemoTests(unittest.TestCase):
         self.accept_existing_eula()
         run = self.prepare()
         command = demo.launch_command(run)
-        self.assertIn('-Dhardrush.p1.enabled=true', command)
-        self.assertIn('-Dhardrush.p1.initialMode=hardcore', command)
+        self.assertIn('-Dhardrush.competition.enabled=true', command)
+        self.assertIn('-Dhardrush.round.initialMode=hardcore', command)
         self.assertEqual(command[-3:], ['-jar', 'fabric-server.jar', 'nogui'])
         self.assertEqual(demo.instance(run.name), run)
 
@@ -125,7 +125,7 @@ class DemoTests(unittest.TestCase):
 
     def test_escape_and_symlink_instances_are_rejected(self):
         with self.assertRaises(ValueError):
-            demo.instance('../../server-p0')
+            demo.instance('../../server')
         run = self.prepare()
         identifier = run.name
         shutil.rmtree(run)
@@ -145,7 +145,7 @@ class DemoTests(unittest.TestCase):
         self.accept_existing_eula()
         run = demo.prepare(self.bundle, 'normal', 25588, '0.0.0.0')
         command = demo.launch_command(run)
-        self.assertIn('-Dhardrush.p1.initialMode=normal', command)
+        self.assertIn('-Dhardrush.round.initialMode=normal', command)
         self.assertIn('online-mode=true', (run / 'server.properties').read_text())
 
 

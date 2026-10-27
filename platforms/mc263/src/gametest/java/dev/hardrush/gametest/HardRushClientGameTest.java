@@ -26,7 +26,7 @@ import net.minecraft.world.phys.EntityHitResult;
 public final class HardRushClientGameTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext test) {
-        command("hardrushp0 status"); // Fail early if the debug server is unavailable.
+        command("hardrushdev status"); // Fail early if the debug server is unavailable.
         test.runOnClient(client -> ConnectScreen.startConnecting(new TitleScreen(), client,
                 ServerAddress.parseString("127.0.0.1:25586"),
                 new ServerData("HardRush debug", "127.0.0.1:25586", ServerData.Type.OTHER), false, null));
@@ -35,7 +35,7 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
         JsonArray evidence = new JsonArray();
         String originalSkin = test.computeOnClient(client -> client.player.getSkin().body().texturePath().toString());
         try {
-            command("hardrushp0 clear HRDebug");
+            command("hardrushdev clear HRDebug");
             command("hardrushdebug actor clear");
             command("gamemode survival HRDebug");
             command("effect clear HRDebug");
@@ -53,7 +53,7 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
             test.waitTicks(30);
             for (String kind : new String[]{"zombie", "skeleton", "creeper"}) {
                 command("tp HRDebug 0.5 150 0.5 0 0");
-                var applied = command("hardrushp0 appearance HRDebug " + kind);
+                var applied = command("hardrushdev appearance HRDebug " + kind);
                 if (!applied.toString().contains("disguise=" + kind)) throw new AssertionError("Disguise rejected: " + applied);
                 test.waitTicks(20);
                 evidence.add(snapshot(test, kind + "-after-profile-refresh"));
@@ -111,13 +111,13 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
             if (before.equals(after)) throw new AssertionError("Native owner camera did not send movement");
             JsonObject movement = snapshot(test, "native-owner-movement");
             movement.add("serverPositionBefore", before); movement.add("serverPositionAfter", after); evidence.add(movement);
-            command("hardrushp0 world enter HRDebug nether");
+            command("hardrushdev world enter HRDebug nether");
             test.waitFor(client -> client.level.dimension().toString().contains("/nether"), 400);
             test.waitFor(client -> !client.player.isInvisible() && !hasSelfBody(client)
                 && client.getCameraEntity() == client.player, 400);
             test.waitTicks(30);
             evidence.add(snapshot(test, "owner-after-dimension-change"));
-            command("hardrushp0 clear HRDebug");
+            command("hardrushdev clear HRDebug");
             test.waitFor(client -> client.player.getSkin().body().texturePath().toString().equals(originalSkin)
                 && !hasSelfBody(client) && !client.player.isInvisible(), 1200);
             test.waitForScreen(null);
@@ -130,7 +130,7 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
                 Files.writeString(out, new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(evidence));
             } catch (java.io.IOException error) { throw new IllegalStateException(error); }
             command("hardrushdebug actor clear");
-            command("hardrushp0 clear HRDebug");
+            command("hardrushdev clear HRDebug");
             test.runOnClient(client -> client.disconnectFromWorld(net.minecraft.network.chat.Component.literal("GameTest complete")));
             test.setScreen(TitleScreen::new);
             test.waitForScreen(TitleScreen.class);

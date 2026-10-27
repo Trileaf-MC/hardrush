@@ -157,7 +157,7 @@ public final class SessionCrashProcessFixture {
                 PauseReason.SERVER_STOPPED, 100, 0, Map.of(HUNTER, hunter, VICTIM, victim, WINNER, winner), true, false, null);
         try (var store = new SqliteRoundStore(database)) {
             equal(CommitResult.APPLIED, store.commit(new SnapshotWrite(ROUND, -1, 0,
-                    RoundSnapshotCodec.encode(initial), UUID.randomUUID(), "P3_TEST_SEED")), "Initial fixture stored");
+                    RoundSnapshotCodec.encode(initial), UUID.randomUUID(), "FAULT_TEST_SEED")), "Initial fixture stored");
         }
     }
 

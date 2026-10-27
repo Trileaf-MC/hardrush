@@ -51,7 +51,7 @@ import net.minecraft.world.phys.Vec3;
 public final class HumanEntryGameTest {
     @GameTest(maxTicks = 60000)
     public void campAssemblyCancellationDeathAndMiddleGate(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.lobby.testHumanEntry")) { test.succeed(); return; }
+        if (!Boolean.getBoolean(TestProperties.HUMAN_ENTRY)) { test.succeed(); return; }
         var f = new Fixture(test);
         test.onEachTick(() -> { f.drain(); f.a.tickConnection(); f.b.tickConnection(); });
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready()

@@ -7,7 +7,7 @@ import struct
 import unittest
 import uuid
 
-SPEC = importlib.util.spec_from_file_location('p1_server_restart', Path(__file__).with_name('p1-server-restart.py'))
+SPEC = importlib.util.spec_from_file_location('server_restart', Path(__file__).with_name('server-restart.py'))
 RUNNER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(RUNNER)
 ROUND = uuid.UUID('f3e990c5-f902-4a20-bc6a-0be4a91d4c57')

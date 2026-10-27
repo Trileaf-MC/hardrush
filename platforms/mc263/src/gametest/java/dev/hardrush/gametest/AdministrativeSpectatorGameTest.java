@@ -27,7 +27,7 @@ import net.minecraft.world.phys.Vec3;
 public final class AdministrativeSpectatorGameTest {
     @GameTest(maxTicks = 60000)
     public void operatorsAuthorizeNonParticipantsWithoutOpeningOrdinaryGameplay(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.lobby.testAdminSpectator")) { test.succeed(); return; }
+        if (!Boolean.getBoolean(TestProperties.ADMIN_SPECTATOR)) { test.succeed(); return; }
         var f = new HumanEntryGameTest.Fixture(test);
         var ordinaryPosition = new Vec3[1];
         test.onEachTick(() -> { f.drain(); f.a.tickConnection(); f.b.tickConnection(); });

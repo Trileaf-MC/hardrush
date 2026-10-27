@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "hardrush-p0b-gametest",
+  "id": "hardrush-dependency-probe-gametest",
   "version": "1.0.0",
   "name": "HardRush P0b headless dependency tests",
   "environment": "server",

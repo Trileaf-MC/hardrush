@@ -1,5 +1,6 @@
 package dev.hardrush.gametest;
 
+import dev.hardrush.HardRushProperties;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.GameMode;
@@ -52,8 +53,8 @@ import net.minecraft.world.phys.Vec3;
 public final class IdentityRuntimeGameTest {
     @GameTest(maxTicks = 40000)
     public void nativeRuntimeAllowsSpawnSurvivalAndExtremeDeathBeforeMonsterReconnect(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p2.testIdentity")) { test.succeed(); return; }
-        test.assertTrue(Boolean.getBoolean("hardrush.p1.enabled"), "The dedicated run requires the real enabled runtime");
+        if (!Boolean.getBoolean(TestProperties.IDENTITY_RUNTIME)) { test.succeed(); return; }
+        test.assertTrue(HardRushProperties.competitionEnabled(), "The dedicated run requires the real enabled runtime");
         var fixture = new Fixture(test);
         var offlineHuman = new Fixture(test, "P2OfflineHuman");
         test.onEachTick(() -> {

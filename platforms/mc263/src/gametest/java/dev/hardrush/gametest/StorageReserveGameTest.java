@@ -20,7 +20,7 @@ import net.minecraft.world.level.storage.LevelResource;
 public final class StorageReserveGameTest {
     @GameTest(maxTicks = 24000)
     public void unavailableReserveRetainsIdentityAndRequiresExplicitSameRoundRetry(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p3.testStorage")) { test.succeed(); return; }
+        if (!Boolean.getBoolean(TestProperties.STORAGE_RESERVE)) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var root = server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
         var snapshot = RoundEngine.create(UUID.randomUUID(), 1, 12345, RulesConfig.defaults(), () -> 0).committed();

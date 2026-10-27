@@ -1,5 +1,6 @@
 package dev.hardrush.storage;
 
+import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.player.PlayerProfiles;
@@ -25,7 +26,7 @@ public final class FullCheckpointRuntime {
     public static void close(MinecraftServer server) { SCHEDULES.remove(server); SAVING.remove(server); }
 
     public static void tick(MinecraftServer server, RoundSession session, RoundWorldBundle worlds, PlayerProfiles profiles) {
-        long interval = Long.getLong("hardrush.p1.fullCheckpointIntervalSeconds", 60L);
+        long interval = HardRushProperties.fullCheckpointIntervalSeconds();
         if (interval == 0) return;
         if (interval < 1 || interval > 3600) interval = 60;
         var round = session.snapshot().orElse(null);

@@ -1,5 +1,6 @@
 package dev.hardrush.gametest;
 
+import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.record.ProgressWrite;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.player.ProfileTagged;
@@ -59,7 +60,7 @@ public final class ProgressGameTest {
     @GameTest(maxTicks = 100)
     public void isolationAndProfileRestorationDoNotCreateProgressAndCelebrationCannotWrite(GameTestHelper test) {
         // Profile quarantine is deliberately disabled with P1; the enabled suite exercises this gate.
-        if (!Boolean.getBoolean("hardrush.p1.enabled")) { test.succeed(); return; }
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var writes = new ArrayList<ProgressWrite>();

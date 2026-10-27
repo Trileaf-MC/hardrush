@@ -37,7 +37,7 @@ public final class ProfileCrashRegression implements ModInitializer {
     public static final long PID = ProcessHandle.current().pid();
 
     @Override public void onInitialize() {
-        if (System.getProperty("hardrush.p3.profile.boundary") == null) return;
+        if (System.getProperty(TestProperties.PROFILE_CRASH_BOUNDARY) == null) return;
         RoundRuntime.initialize();
         var fixture = new ProfileFixture[1];
         ServerLifecycleEvents.SERVER_STARTED.register(server -> fixture[0] = new ProfileFixture(server));
@@ -46,7 +46,7 @@ public final class ProfileCrashRegression implements ModInitializer {
     }
 
     private static final class ProfileFixture extends Fixture {
-        final String boundary = System.getProperty("hardrush.p3.profile.boundary");
+        final String boundary = System.getProperty(TestProperties.PROFILE_CRASH_BOUNDARY);
         int recoveryTicks;
 
         ProfileFixture(MinecraftServer server) {

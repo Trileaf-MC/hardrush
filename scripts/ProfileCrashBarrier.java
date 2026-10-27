@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** External test-only JDI barrier. No halt, observer, or fault switch is added to production code. */
-public final class P3ProfileCrashBarrier {
+public final class ProfileCrashBarrier {
     public static void main(String[] args) throws Exception {
         Path directory = Path.of(args[0]);
         int port = Integer.parseInt(args[1]);
@@ -47,7 +47,7 @@ public final class P3ProfileCrashBarrier {
                 var events = vm.eventQueue().remove(1000);
                 if (events == null) continue;
                 for (var event : events) {
-                    if (!(event instanceof MethodExitEvent exit) || !exit.thread().name().equals("hardrush-p1-profiles")) continue;
+                    if (!(event instanceof MethodExitEvent exit) || !exit.thread().name().equals("hardrush-profiles")) continue;
                     String method = exit.method().name();
                     boolean matches = boundary.equals("PREPARED") ? method.equals("prepare")
                             : boundary.equals("SUSPENDED") ? method.equals("suspend")

@@ -10,7 +10,7 @@ import unittest
 import uuid
 from unittest.mock import MagicMock, patch
 
-SPEC = importlib.util.spec_from_file_location('p3_crash', Path(__file__).with_name('p3-server-crash.py'))
+SPEC = importlib.util.spec_from_file_location('crash', Path(__file__).with_name('server-crash.py'))
 RUNNER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(RUNNER)
 
@@ -41,7 +41,7 @@ class CrashSignalSafetyTest(unittest.TestCase):
                 (self.directory / 'kill-ready.json').unlink(missing_ok=True)
                 self.emitted_marker = marker
                 with patch.object(RUNNER.subprocess, 'Popen', side_effect=self.spawn), \
-                        patch.object(RUNNER.P1, 'cleanup_failed_process', return_value={'required': False}), \
+                        patch.object(RUNNER.RESTART, 'cleanup_failed_process', return_value={'required': False}), \
                         patch.object(RUNNER.os, 'kill') as kill:
                     with self.assertRaisesRegex(RuntimeError, 'stale kill boundary'):
                         self.launch()
@@ -61,7 +61,7 @@ class CrashSignalSafetyTest(unittest.TestCase):
         self.emitted_marker = self.marker
         self.process.poll.return_value = 0
         with patch.object(RUNNER.subprocess, 'Popen', side_effect=self.spawn), \
-                patch.object(RUNNER.P1, 'cleanup_failed_process', return_value={'required': False}), \
+                patch.object(RUNNER.RESTART, 'cleanup_failed_process', return_value={'required': False}), \
                 patch.object(RUNNER.os, 'kill') as kill:
             with self.assertRaisesRegex(RuntimeError, 'before parent-issued SIGKILL'):
                 self.launch()
@@ -136,7 +136,7 @@ class CrashSignalSafetyTest(unittest.TestCase):
 
     def test_profile_hit_requires_frozen_vm_and_the_exact_journal_worker(self):
         baseline = dict(self.marker, scenario='PROFILE', boundary='PREPARED')
-        hit = dict(baseline, suspendPolicy='ALL', thread='hardrush-p1-profiles', method='prepare')
+        hit = dict(baseline, suspendPolicy='ALL', thread='hardrush-profiles', method='prepare')
         (self.directory / 'profile-baseline.json').write_text(json.dumps(baseline))
         for key, value in (('pid', 999), ('boundary', 'VERIFIED'), ('suspendPolicy', 'EVENT_THREAD'), ('thread', 'Server thread')):
             with self.subTest(key=key):

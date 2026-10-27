@@ -30,7 +30,7 @@ import net.minecraft.world.level.block.Blocks;
 /** Test mod only: a parent owns SIGKILL; production code owns save publication and startup rollback. */
 public final class FullCheckpointRegression implements ModInitializer {
     @Override public void onInitialize() {
-        if (System.getProperty("hardrush.p1.fullCheckpoint.test") == null) return;
+        if (System.getProperty(TestProperties.FULL_CHECKPOINT) == null) return;
         RoundRuntime.initialize();
         var fixture = new FullFixture[1];
         ServerLifecycleEvents.SERVER_STARTED.register(server -> fixture[0] = new FullFixture(server));

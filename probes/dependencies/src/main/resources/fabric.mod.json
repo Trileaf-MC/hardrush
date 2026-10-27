@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "hardrush-p0b-probe",
+  "id": "hardrush-dependency-probe",
   "version": "${version}",
   "name": "HardRush P0b dependency probe (not gameplay)",
   "environment": "server",

@@ -60,7 +60,7 @@ import net.minecraft.world.phys.Vec3;
 public final class LobbyFoundationGameTest {
     @GameTest(maxTicks = 60000)
     public void dedicatedFacilitiesProjectionGenerationsAndRecoveryUseProductionGuards(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.lobby.testFoundation")) { test.succeed(); return; }
+        if (!Boolean.getBoolean(TestProperties.LOBBY_FOUNDATION)) { test.succeed(); return; }
         var f = new Fixture(test); var scenario = new Scenario(f);
         test.onEachTick(() -> { f.clock.accumulateAndGet(System.nanoTime(), Math::max); f.a.tickConnection(); f.b.tickConnection(); });
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready()

@@ -15,28 +15,3 @@ tasks.named('assemble') {
         logger.lifecycle("\n模组构建完成：\n${modJar.absolutePath}")
     }
 }
-
-tasks.register('checkP0') {
-    group = 'verification'
-    description = 'Build the 26.3 P0 mod and run automated checks (not a visual acceptance).'
-    dependsOn ':core:check', ':platforms:mc263:check', ':platforms:mc263:jar'
-}
-
-tasks.register('checkP1') {
-    group = 'verification'
-    description = 'Verify the first P1 foundations and the 26.3 adapter without a graphical client.'
-    dependsOn ':core:check', ':persistence:check', ':platforms:mc263:check', ':platforms:mc263:jar'
-}
-
-tasks.register('checkP2') {
-    group = 'verification'
-    description = 'Verify implemented P2 identity, protection, lobby, deployment, monster skills and combat with headless regressions.'
-    dependsOn 'checkP1'
-}
-
-tasks.register('checkP3') {
-    group = 'verification'
-    description = 'Verify P3 crash isolation, durable profile recovery and storage failure safeguards without a client.'
-    dependsOn 'checkP2'
-}
-

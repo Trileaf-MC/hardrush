@@ -1,5 +1,6 @@
 package dev.hardrush.round;
 
+import dev.hardrush.HardRushProperties;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import dev.hardrush.core.api.MonotonicClock;
@@ -59,7 +60,7 @@ import org.slf4j.LoggerFactory;
 
 /** Explicitly enabled formal round adapter; competition state stays separate from P0 probes. */
 public final class RoundRuntime {
-    private static final Logger LOGGER = LoggerFactory.getLogger("hardrush-p1");
+    private static final Logger LOGGER = LoggerFactory.getLogger("hardrush-round");
     private static final Map<MinecraftServer, RoundSession> SESSIONS = new IdentityHashMap<>();
     private static final Map<MinecraftServer, RoundWorldBundle> WORLDS = new IdentityHashMap<>();
     private static final Map<MinecraftServer, PlayerProfiles> PROFILES = new IdentityHashMap<>();
@@ -88,7 +89,7 @@ public final class RoundRuntime {
         initialized = true;
         dev.hardrush.participation.ParticipationControl.registerCommands();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            if (!Boolean.getBoolean("hardrush.p1.enabled")) return;
+            if (!HardRushProperties.competitionEnabled()) return;
             var recovery = new dev.hardrush.storage.FullCheckpoint(server.getWorldPath(LevelResource.ROOT)).restore();
             if (!recovery.message().isEmpty()) LOGGER.warn("{}", recovery.message());
             var lobby = LobbyWorld.open(server);
@@ -847,6 +848,6 @@ public final class RoundRuntime {
 
     private static RoundSession.Reply disabled() {
         return new RoundSession.Reply(false,
-                "P1 默认关闭；服务端启动参数 -Dhardrush.p1.enabled=true 可启用独立世界／档案与普通模式开发入口。");
+                "P1 默认关闭；服务端启动参数 -Dhardrush.competition.enabled=true 可启用独立世界／档案与普通模式开发入口。");
     }
 }

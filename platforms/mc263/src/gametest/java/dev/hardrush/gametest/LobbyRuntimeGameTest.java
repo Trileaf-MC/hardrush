@@ -1,5 +1,6 @@
 package dev.hardrush.gametest;
 
+import dev.hardrush.HardRushProperties;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.GameMode;
@@ -80,8 +81,8 @@ public final class LobbyRuntimeGameTest {
 
     @GameTest(maxTicks = 60000)
     public void formalLobbyOutingsReturnDefeatAndOutsideReconnectKeepDurableIdentity(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p2.testLobby")) { test.succeed(); return; }
-        test.assertTrue(Boolean.getBoolean("hardrush.p1.enabled"), "The dedicated run requires the production runtime");
+        if (!Boolean.getBoolean(TestProperties.LOBBY_RUNTIME)) { test.succeed(); return; }
+        test.assertTrue(HardRushProperties.competitionEnabled(), "The dedicated run requires the production runtime");
         var f = new Fixture(test);
         test.onEachTick(() -> {
             if (f.clock != null) f.clock.accumulateAndGet(System.nanoTime(), Math::max);

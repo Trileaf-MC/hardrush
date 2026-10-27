@@ -27,7 +27,7 @@ import net.minecraft.world.item.*;
 public final class StabilizationGameTest {
     @GameTest(maxTicks=120000)
     public void twentyConnectionsReleaseViewsAndCompleteThreeSpatialRounds(GameTestHelper test) {
-        if(!Boolean.getBoolean("hardrush.lobby.testStabilization")){test.succeed();return;}
+        if(!Boolean.getBoolean(TestProperties.STABILIZATION)){test.succeed();return;}
         var f=new LobbyRuntimeGameTest.Fixture(test);
         var scene=new FullFlowGameTest.State(f,test);
         var peers=new ArrayList<LobbyRuntimeGameTest.Fixture.Peer>();

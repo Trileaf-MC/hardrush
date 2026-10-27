@@ -12,9 +12,9 @@ import net.minecraft.server.level.ServerLevel;
 public final class UnprotectedLobbyFixtures implements ModInitializer {
     @Override public void onInitialize() {
         ServerTickEvents.START_SERVER_TICK.register(server -> {
-            if (Boolean.getBoolean("hardrush.lobby.testParticipationExit")) return;
-            if (Boolean.getBoolean("hardrush.lobby.testAdminSpectator")) return;
-            if (Boolean.getBoolean("hardrush.p2.testPersonalHunt") || Boolean.getBoolean("hardrush.lobby.testFoundation") || Boolean.getBoolean("hardrush.p2.testIdentity") || Boolean.getBoolean("hardrush.p2.testLobby")) return;
+            if (Boolean.getBoolean(TestProperties.PARTICIPATION_EXIT)) return;
+            if (Boolean.getBoolean(TestProperties.ADMIN_SPECTATOR)) return;
+            if (Boolean.getBoolean(TestProperties.PERSONAL_HUNT) || Boolean.getBoolean(TestProperties.LOBBY_FOUNDATION) || Boolean.getBoolean(TestProperties.IDENTITY_RUNTIME) || Boolean.getBoolean(TestProperties.LOBBY_RUNTIME)) return;
             // The dedicated P2 runtime test retains the production binding. Native protection
             // fixtures install their own zones; old P0/P1 fixtures predate protected lobbies.
             ProtectionRuntime.configure(server, new ProtectionRuntime.Access() {

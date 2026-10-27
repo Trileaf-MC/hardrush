@@ -41,7 +41,7 @@ public final class DependencyGameTest {
     @GameTest(maxTicks = 100)
     public void sqliteNativeMigrationRollbackAndWriterLock(GameTestHelper test) throws Exception {
         Class.forName("org.sqlite.JDBC");
-        var directory = Files.createTempDirectory("hardrush-p0b-sqlite-");
+        var directory = Files.createTempDirectory("hardrush-dependency-probe-sqlite-");
         var database = directory.resolve("probe.sqlite");
         var url = "jdbc:sqlite:" + database;
         try {

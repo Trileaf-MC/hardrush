@@ -47,7 +47,7 @@ import net.minecraft.world.phys.Vec3;
 public final class PersonalHuntGameTest {
     @GameTest(maxTicks = 60000)
     public void personalModelsDimensionsBudgetsAndCommitRaces(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p2.testPersonalHunt")) { test.succeed(); return; }
+        if (!Boolean.getBoolean(TestProperties.PERSONAL_HUNT)) { test.succeed(); return; }
         var f = new Fixture(test);
         test.onEachTick(f::tick);
         var s = test.startSequence().thenWaitUntil(() -> f.await(RoundRuntime.sessionState(f.server)
@@ -230,7 +230,7 @@ public final class PersonalHuntGameTest {
                     test.assertTrue(f.c.player.level()==LobbyWorld.open(f.server).holdingLevel(),"Fault holds the native hunter in camp");
                     test.assertTrue(LobbyInteractions.get(f.server).orElseThrow().projections().view(f.c.player).isEmpty(), "Fault removes actionable models");
                     f.peers.forEach(p -> { if(p.current()!=null) p.disconnect(); });
-                    System.out.println("PERSONAL_HUNT_PASS: four native connections + 18 admitted AWAY display fixtures; physical booths/models/pages; three dimensions; independent and shared anchors; cooldown/no queue; double hand/spam; shared budgets; post-commit movement/terrain refunds; disconnect/reconnect and stale connection; death/revival life; other-human kill; fault="+System.getProperty("hardrush.p2.huntFault","adapter"));
+                    System.out.println("PERSONAL_HUNT_PASS: four native connections + 18 admitted AWAY display fixtures; physical booths/models/pages; three dimensions; independent and shared anchors; cooldown/no queue; double hand/spam; shared budgets; post-commit movement/terrain refunds; disconnect/reconnect and stale connection; death/revival life; other-human kill; fault="+System.getProperty(TestProperties.PERSONAL_HUNT_FAULT,"adapter"));
                 }).thenSucceed();
     }
 
@@ -383,7 +383,7 @@ public final class PersonalHuntGameTest {
             test.assertValueEqual(server.getPlayerList().getPlayerCount(),4,"Eighteen offline fixture candidates never count as native connections");
         }
         void prepareFault() {
-            if(!System.getProperty("hardrush.p2.huntFault","adapter").equals("storage")) { ioTask=java.util.concurrent.CompletableFuture.completedFuture(null); return; }
+            if(!System.getProperty(TestProperties.PERSONAL_HUNT_FAULT,"adapter").equals("storage")) { ioTask=java.util.concurrent.CompletableFuture.completedFuture(null); return; }
             var database=server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("hardrush/p1.sqlite");
             ioTask=java.util.concurrent.CompletableFuture.runAsync(() -> {
                 try(var connection=java.sql.DriverManager.getConnection("jdbc:sqlite:"+database);var sql=connection.createStatement()) {
@@ -393,7 +393,7 @@ public final class PersonalHuntGameTest {
         }
         void profileFault() {
             ioTask.join(); faultSortie=c.participant().monsterDeploymentSequence();
-            if(System.getProperty("hardrush.p2.huntFault","adapter").equals("storage")) c.hunt(a);
+            if(System.getProperty(TestProperties.PERSONAL_HUNT_FAULT,"adapter").equals("storage")) c.hunt(a);
             else session.adapterFailure("personal hunt controlled world/profile adapter failure",new IllegalStateException("test adapter fault, not physical media failure"));
         }
         <T>T service(String name,Class<T> type) { return type.cast(((Map<?,?>)staticField(RoundRuntime.class,name)).get(server)); }

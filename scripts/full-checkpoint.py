@@ -14,17 +14,17 @@ import time
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('p1_restart', ROOT / 'scripts/p1-server-restart.py')
-P1 = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(P1)
+spec = importlib.util.spec_from_file_location('server_restart', ROOT / 'scripts/server-restart.py')
+RESTART = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(RESTART)
 
 
 def launch(specification, directory, operation):
     arguments = [value for value in specification['jvmArgs']
-                 if not value.startswith(('-Dhardrush.p1.restart.', '-Dhardrush.p1.fullCheckpoint'))]
-    arguments += ['-Dhardrush.p1.fullCheckpoint.test=true', '-Dhardrush.p1.fullCheckpointIntervalSeconds=3600',
-                  '-Dhardrush.p1.restart.phase=RUNNING', f'-Dhardrush.p1.restart.operation={operation}',
-                  f'-Dhardrush.p1.restart.directory={directory}']
+                 if not value.startswith(('-Dhardrush.test.restart.', '-Dhardrush.test.fullCheckpoint', '-Dhardrush.storage.fullCheckpointIntervalSeconds='))]
+    arguments += ['-Dhardrush.test.fullCheckpoint=true', '-Dhardrush.storage.fullCheckpointIntervalSeconds=3600',
+                  '-Dhardrush.test.restart.phase=RUNNING', f'-Dhardrush.test.restart.operation={operation}',
+                  f'-Dhardrush.test.restart.directory={directory}']
     command = [specification['java'], *arguments, '-cp', os.pathsep.join(specification['classpath']),
                specification['mainClass'], *specification['programArgs']]
     environment = os.environ.copy()
@@ -40,7 +40,7 @@ def main():
     parser.add_argument('--launch-spec', type=Path, help='Reuse a completed isolated build while other checkout edits are in progress')
     parser.add_argument('--online-only', action='store_true', help='Only run online recovery, confirmation, fallback and close-recovery in one JVM')
     arguments = parser.parse_args()
-    run = ROOT / '.local/p3-full-checkpoint' / str(uuid.uuid4())
+    run = ROOT / '.local/full-checkpoint' / str(uuid.uuid4())
     run.mkdir(parents=True)
     print(f'Full-checkpoint evidence: {run}', flush=True)
     source_paths = [
@@ -56,7 +56,7 @@ def main():
         'platforms/mc263/src/main/java/dev/hardrush/admin/AdminCommands.java',
     ]
     sources = {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in source_paths}
-    eula = P1.accepted_eula()
+    eula = RESTART.accepted_eula()
     # A separate build output avoids concurrent developer builds removing one another's classes.
     init = run / 'build.init.gradle'
     init.write_text("gradle.beforeProject { p ->\n"
@@ -67,8 +67,8 @@ def main():
                     "}\n")
     launch_spec = run / 'launch-spec.json'
     command = [str(ROOT / 'gradlew'), '--init-script', str(init),
-               ':platforms:mc263:writeP1RestartLaunchSpec',
-               f'-PhardrushP1RestartLaunchSpec={launch_spec}', '--console=plain']
+               ':platforms:mc263:writeRestartLaunchSpec',
+               f'-PhardrushRestartLaunchSpec={launch_spec}', '--console=plain']
     if arguments.launch_spec:
         shutil.copyfile(arguments.launch_spec, launch_spec)
     else:
@@ -112,10 +112,10 @@ def main():
             frozen_config = run / 'launch.cfg'
             frozen_config.write_text(contents)
             specification['jvmArgs'][index] = '-Dfabric.dli.config=' + str(frozen_config)
-    P1.write_json(run / 'resolved-launch-spec.json', specification)
+    RESTART.write_json(run / 'resolved-launch-spec.json', specification)
     if arguments.online_only:
         directory = run / 'online'
-        P1.prepare_scenario(directory, eula)
+        RESTART.prepare_scenario(directory, eula)
         child, output = launch(specification, directory, 'online')
         try:
             child.wait(timeout=300)
@@ -125,15 +125,15 @@ def main():
             result['sourceSha256'] = sources
             result['sourceChangedDuringRun'] = [name for name, digest in sources.items()
                                               if hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != digest]
-            P1.write_json(run / 'result.json', result)
+            RESTART.write_json(run / 'result.json', result)
             print(f'PASS: {run / "result.json"}', flush=True)
             return
         finally:
             if child.poll() is None:
-                P1.cleanup_failed_process(child)
+                RESTART.cleanup_failed_process(child)
             output.close()
     writer = run / 'writer'
-    P1.prepare_scenario(writer, eula)
+    RESTART.prepare_scenario(writer, eula)
     child, output = launch(specification, writer, 'write')
     try:
         deadline = time.monotonic() + 300
@@ -151,7 +151,7 @@ def main():
             raise RuntimeError('Writer was not killed by SIGKILL')
     finally:
         if child.poll() is None:
-            P1.cleanup_failed_process(child)
+            RESTART.cleanup_failed_process(child)
         output.close()
     results = {'writerPid': child.pid, 'writerExitCode': child.returncode, 'recoveries': []}
     for operation in ('recover', 'recover-corrupt'):
@@ -173,18 +173,18 @@ def main():
             print(f'{operation}: PASS (PID {child.pid})', flush=True)
         finally:
             if child.poll() is None:
-                P1.cleanup_failed_process(child)
+                RESTART.cleanup_failed_process(child)
             output.close()
     normal = run / 'normal-RUNNING'
-    P1.prepare_scenario(normal, eula)
-    results['normalRestart'] = [P1.run_operation(specification, normal, 'RUNNING', operation, 300)
+    RESTART.prepare_scenario(normal, eula)
+    results['normalRestart'] = [RESTART.run_operation(specification, normal, 'RUNNING', operation, 300)
                                 for operation in ('write', 'recover')]
     results['sourceSha256'] = sources
     results['reusedBuild'] = str(arguments.launch_spec.resolve()) if arguments.launch_spec else None
     results['sourceChangedDuringRun'] = [name for name, digest in sources.items()
                                         if hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != digest]
     results['status'] = 'PASS'
-    P1.write_json(run / 'result.json', results)
+    RESTART.write_json(run / 'result.json', results)
     print(f'PASS: {run / "result.json"}', flush=True)
 
 

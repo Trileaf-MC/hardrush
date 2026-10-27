@@ -33,7 +33,7 @@ import net.minecraft.world.phys.*;
 public final class FullFlowGameTest {
     @GameTest(maxTicks=90000)
     public void commandFreeAssemblyHuntReturnAltarRescueCelebrationAndLibrary(GameTestHelper test) {
-        if(!Boolean.getBoolean("hardrush.lobby.testFullFlow")){test.succeed();return;}
+        if(!Boolean.getBoolean(TestProperties.FULL_FLOW)){test.succeed();return;}
         var f=new LobbyRuntimeGameTest.Fixture(test);
         var visitor=f.new Peer("LibraryVisitor");
         var state=new State(f,test);
@@ -131,7 +131,7 @@ public final class FullFlowGameTest {
                     f.ageReturnChannel();
                 })
                 .thenWaitUntil(()->f.await(f.monsterReady(false),"Item return commits lobby and thirty-second cooldown"));
-        if (System.getProperty("hardrush.lobby.fullFlowFault","none").equals("revival")) {
+        if (System.getProperty(TestProperties.FULL_FLOW_FAULT,"none").equals("revival")) {
             seq.thenExecute(state::revivalFault)
                     .thenWaitUntil(()->f.await(state.io.isDone(),"Real SQLite revival fault installed"))
                     .thenExecute(()->{state.io.join();state.expectedFailure=true;state.facility(f.monster.player,LobbyLayout.Facility.ALTAR);state.click(f.monster.player,"确认复生");})

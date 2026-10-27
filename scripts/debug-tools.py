@@ -39,10 +39,10 @@ def artifact(path, spec, algorithm):
 
 
 def accepted_eula():
-    path = ROOT / '.local/server-p0/eula.txt'
+    path = ROOT / '.local/server/eula.txt'
     if path.exists() and 'eula=true' in [s.strip() for s in path.read_text().splitlines()]:
         return path.read_text()
-    raise RuntimeError('Read https://aka.ms/MinecraftEULA and accept it in .local/server-p0/eula.txt first.')
+    raise RuntimeError('Read https://aka.ms/MinecraftEULA and accept it in .local/server/eula.txt first.')
 
 
 def prepare():

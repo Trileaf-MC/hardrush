@@ -25,13 +25,13 @@ HardRush 的 P0 伪装实现为本项目代码，未嵌入 DisguiseLib、Polymer
 
 ## P0b 基础依赖探针
 
-`probes/p0b` 为独立、仅服务端的核查工程；SQLite JDBC 已在后续 P1 基础中成为运行依赖，SGui 仍仅在该探针工程。三个探针分别使用对应 Fabric API、Fantasy 和 SGui，直接版本在 [versions.json](probes/p0b/versions.json)，实际传递依赖、校验及许可证出处在 [P0b 证据](docs/p0b-dependency-evidence.md)。
+`probes/dependencies` 为独立、仅服务端的核查工程；SQLite JDBC 已在后续 P1 基础中成为运行依赖，SGui 仍仅在该探针工程。三个探针分别使用对应 Fabric API、Fantasy 和 SGui，直接版本在 [versions.json](probes/dependencies/versions.json)，实际传递依赖、校验及许可证出处在 [P0b 证据](docs/p0b-dependency-evidence.md)。
 
 | 组件 | 锁定版本 | 使用方式与许可证 |
 | --- | --- | --- |
 | Fantasy | `0.8.0+26.1.2`／`0.8.3+26.2`／`0.8.4+26.3` | 未修改的独立 JAR 嵌入探针；原 JAR 保留 LGPL v3，探针附 GPL v3；对应 Maven 源码 JAR 的 URL／SHA-256 见证据 |
-| SGui | `2.0.0+26.1`／`2.1.0+26.2`／`2.2.1+26.3` | 未修改的独立 JAR 嵌入探针；[LGPL v3](probes/p0b/licenses/SGui-LGPL-3.0.txt)、[源码](https://github.com/Patbox/sgui)；26.1 构建已在 26.1.2 基础探针中运行 |
-| SQLite JDBC | `3.53.4.0`，三版相同 | Loom 添加 Fabric 加载元数据后嵌入，原代码／原生库／许可证条目字节保持不变；原始和嵌套 JAR 分别记录校验；[Apache 2.0](probes/p0b/licenses/SQLite-jdbc-Apache-2.0.txt)及保留的 [Zentus BSD 2-Clause](probes/p0b/licenses/SQLite-jdbc-Zentus-BSD-2-Clause.txt)；[上游](https://github.com/xerial/sqlite-jdbc) |
+| SGui | `2.0.0+26.1`／`2.1.0+26.2`／`2.2.1+26.3` | 未修改的独立 JAR 嵌入探针；[LGPL v3](probes/dependencies/licenses/SGui-LGPL-3.0.txt)、[源码](https://github.com/Patbox/sgui)；26.1 构建已在 26.1.2 基础探针中运行 |
+| SQLite JDBC | `3.53.4.0`，三版相同 | Loom 添加 Fabric 加载元数据后嵌入，原代码／原生库／许可证条目字节保持不变；原始和嵌套 JAR 分别记录校验；[Apache 2.0](probes/dependencies/licenses/SQLite-jdbc-Apache-2.0.txt)及保留的 [Zentus BSD 2-Clause](probes/dependencies/licenses/SQLite-jdbc-Zentus-BSD-2-Clause.txt)；[上游](https://github.com/xerial/sqlite-jdbc) |
 
 许可证索引区分 POM／父 POM、原 JAR 中的文本／模组声明与固定上游源码快照。部分 Mojang 官方运行库没有在 POM／JAR 声明独立许可证，已明确记录这种情况；这些文件仅存在 Minecraft 构建缓存，未嵌入或随仓库分发。不将该记录当作这些组件可任意重新分发的授权。完整发布组合仍由 P4 审查。
 

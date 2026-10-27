@@ -1,5 +1,6 @@
 package dev.hardrush.gametest;
 
+import dev.hardrush.HardRushProperties;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.GameMode;
@@ -57,7 +58,7 @@ public final class TenRoundGameTest {
 
     @GameTest(maxTicks = 100000)
     public void celebrationKitsReconnectPortalEarlyReturnAndThreeMinuteTimeout(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.testCelebration")) { test.succeed(); return; }
+        if (!Boolean.getBoolean(TestProperties.CELEBRATION)) { test.succeed(); return; }
         var f = new Fixture(test);
         test.onEachTick(() -> {
             test.assertFalse(RoundRuntime.sessionState(f.server).filter(s -> s == RoundSession.State.FAILED).isPresent(),
@@ -145,8 +146,8 @@ public final class TenRoundGameTest {
 
     @GameTest(maxTicks = 200000)
     public void tenNativeRoundsReleaseWorldsAndKeepOfflineProfilesAndResultsIsolated(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p1.testTenRounds")) { test.succeed(); return; }
-        test.assertTrue(Boolean.getBoolean("hardrush.p1.enabled"), "Dedicated regression requires the real enabled runtime");
+        if (!Boolean.getBoolean(TestProperties.TEN_ROUNDS)) { test.succeed(); return; }
+        test.assertTrue(HardRushProperties.competitionEnabled(), "Dedicated regression requires the real enabled runtime");
         var fixture = new Fixture(test);
         // Outside the wait sequence: failures here are terminal instead of being retried as wait assertions.
         test.onEachTick(() -> test.assertFalse(RoundRuntime.sessionState(fixture.server)
@@ -440,7 +441,7 @@ public final class TenRoundGameTest {
                         test.assertTrue(Files.exists(worlds.manifestPath()), "Rotation retains every old ownership manifest");
                         assertReleased(worlds);
                         session.recordProgress(first.stale);
-                        org.slf4j.LoggerFactory.getLogger("hardrush-p1-ten-rounds").info(
+                        org.slf4j.LoggerFactory.getLogger("hardrush-round-ten-rounds").info(
                                 "P1 native round {} released: id={}, seed={}, resultMillis={}, removedDimensions={}, retainedManifests={}",
                                 number, ids.getLast(), levels[0].getSeed(), frozenTime / 1_000_000, releasedKeys.size(), manifests.size());
                         // Drop fixture references too; retained identifiers/manifests cannot retain chunk/world objects.

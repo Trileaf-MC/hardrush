@@ -40,7 +40,7 @@ import org.sqlite.Function;
 /** Test mod only: an external parent SIGKILLs this dedicated JVM at a real SQLite boundary. */
 public final class ServerCrashRegression implements ModInitializer {
     @Override public void onInitialize() {
-        if (System.getProperty("hardrush.p3.crash.scenario") == null) return;
+        if (System.getProperty(TestProperties.CRASH_SCENARIO) == null) return;
         RoundRuntime.initialize();
         var fixture = new CrashFixture[1];
         ServerLifecycleEvents.SERVER_STARTED.register(server -> fixture[0] = new CrashFixture(server));
@@ -49,8 +49,8 @@ public final class ServerCrashRegression implements ModInitializer {
     }
 
     private static final class CrashFixture extends Fixture {
-        final String scenario = System.getProperty("hardrush.p3.crash.scenario");
-        final String boundary = System.getProperty("hardrush.p3.crash.boundary");
+        final String scenario = System.getProperty(TestProperties.CRASH_SCENARIO);
+        final String boundary = System.getProperty(TestProperties.CRASH_BOUNDARY);
         final Path database;
         final AtomicBoolean armed = new AtomicBoolean();
         RoundSnapshot before;
@@ -173,7 +173,7 @@ public final class ServerCrashRegression implements ModInitializer {
                         callbacks.execute(work);
                     });
                 } else {
-                    Function.create(connection, "p3_server_crash", new Function() {
+                    Function.create(connection, "server_crash", new Function() {
                         @Override protected void xFunc() { reached(store); }
                     });
                     String target = boundary.equals("SNAPSHOT") ? "AFTER UPDATE ON round_snapshots"
@@ -181,8 +181,8 @@ public final class ServerCrashRegression implements ModInitializer {
                             : "AFTER UPDATE ON participant_records WHEN NEW.player_id='" + (scenario.equals("AWARD") ? b : a).profile.id() + "'";
                     try (var sql = connection.createStatement()) {
                         sql.execute("PRAGMA cache_size=1"); sql.execute("PRAGMA cache_spill=ON");
-                        sql.execute("CREATE TABLE p3_crash_spill(payload BLOB)");
-                        sql.execute("CREATE TEMP TRIGGER p3_server_boundary " + target + " BEGIN INSERT INTO p3_crash_spill VALUES(zeroblob(262144)); SELECT p3_server_crash(); END");
+                        sql.execute("CREATE TABLE crash_spill(payload BLOB)");
+                        sql.execute("CREATE TEMP TRIGGER fault_server_boundary " + target + " BEGIN INSERT INTO crash_spill VALUES(zeroblob(262144)); SELECT server_crash(); END");
                     }
                 }
                 baselineWalBytes = Files.size(database.resolveSibling("p1.sqlite-wal"));

@@ -27,7 +27,7 @@ import net.minecraft.world.level.storage.LevelResource;
 public final class RecoveryGameTest {
     @GameTest(maxTicks = 60000)
     public void failedStorageRepairsIntoQuarantineAndRetiresLoadedAndAlreadyClosedWorlds(GameTestHelper test) {
-        if (!Boolean.getBoolean("hardrush.p3.testRecovery")) { test.succeed(); return; }
+        if (!Boolean.getBoolean(TestProperties.RECOVERY)) { test.succeed(); return; }
         var f = new Fixture(test);
         test.startSequence()
             .thenWaitUntil(() -> f.awaitReady(1))
@@ -38,7 +38,7 @@ public final class RecoveryGameTest {
                 f.oldLevels = List.of(f.first.level(Level.OVERWORLD), f.first.level(Level.NETHER), f.first.level(Level.END));
                 f.marker = f.first.spawn().offset(2, 1, 2);
                 f.first.level(Level.OVERWORLD).setBlockAndUpdate(f.marker, Blocks.GOLD_BLOCK.defaultBlockState());
-                f.task = f.sql("CREATE TRIGGER p3_refuse_audit BEFORE INSERT ON admin_audits BEGIN SELECT RAISE(ABORT,'P3 storage failure'); END");
+                f.task = f.sql("CREATE TRIGGER fault_refuse_audit BEFORE INSERT ON admin_audits BEGIN SELECT RAISE(ABORT,'P3 storage failure'); END");
             })
             .thenWaitUntil(() -> f.awaitIo())
             .thenExecute(() -> f.session.updateNextMode(f.old.rules().mode(), "fixture", "注入真实SQLite写入故障", f.reply::set))
@@ -51,7 +51,7 @@ public final class RecoveryGameTest {
             .thenWaitUntil(() -> f.awaitReply(false))
             .thenExecute(() -> {
                 test.assertValueEqual(f.session.state(), RoundSession.State.FAILED, "Unrepaired audit failure remains frozen");
-                f.task = f.sql("DROP TRIGGER p3_refuse_audit");
+                f.task = f.sql("DROP TRIGGER fault_refuse_audit");
             })
             .thenWaitUntil(() -> f.awaitIo())
             .thenExecute(() -> { f.reply.set(null); f.session.recheckStorage("fixture", "存储已修复", f.reply::set); })

@@ -199,12 +199,12 @@ final class RecoverySessionTest {
         Path database = database("integrity"); seed(database, true, false);
         try (var session = open(database)) {
             session.adapterFailure("损坏的引用", new IllegalStateException("retain"));
-            sql(database, "CREATE TABLE p3_parent(id INTEGER PRIMARY KEY)");
-            sql(database, "CREATE TABLE p3_child(parent INTEGER REFERENCES p3_parent(id))");
-            sql(database, "INSERT INTO p3_child VALUES (9)");
+            sql(database, "CREATE TABLE fault_parent(id INTEGER PRIMARY KEY)");
+            sql(database, "CREATE TABLE fault_child(parent INTEGER REFERENCES fault_parent(id))");
+            sql(database, "INSERT INTO fault_child VALUES (9)");
             assertFalse(recheck(session).success()); assertEquals(RoundSession.State.FAILED, session.state());
             try (var store = new SqliteRoundStore(database)) { assertTrue(store.audits(null, 10, 0).isEmpty()); }
-            sql(database, "DELETE FROM p3_child");
+            sql(database, "DELETE FROM fault_child");
             assertTrue(recheck(session).success()); assertTrue(session.competitionLocked());
         }
     }

@@ -22,7 +22,7 @@ import time
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = ROOT / '.local/p1-server-restart'
+BASE = ROOT / '.local/server-restart'
 PHASES = ('PREPARING', 'WAITING', 'COUNTDOWN', 'RUNNING', 'RESCUE', 'SETTLING', 'CELEBRATING', 'ROTATING')
 RESTART_PROPERTIES = ('phase', 'operation', 'directory')
 SAVE_FAILURE = re.compile(
@@ -40,7 +40,7 @@ def sha256(path):
 
 
 def accepted_eula():
-    source = ROOT / '.local/server-p0/eula.txt'
+    source = ROOT / '.local/server/eula.txt'
     if not source.is_file() or source.is_symlink():
         raise RuntimeError(f'Missing accepted EULA: {source}')
     contents = source.read_text(encoding='utf-8')
@@ -90,8 +90,8 @@ def cleanup_failed_process(process):
 
 def build_launch(run, timeout):
     spec_path = run / 'launch-spec.json'
-    command = [str(ROOT / 'gradlew'), ':platforms:mc263:writeP1RestartLaunchSpec',
-               f'-PhardrushP1RestartLaunchSpec={spec_path}', '--console=plain']
+    command = [str(ROOT / 'gradlew'), ':platforms:mc263:writeRestartLaunchSpec',
+               f'-PhardrushRestartLaunchSpec={spec_path}', '--console=plain']
     evidence = {'command': command, 'log': 'build.log', 'status': 'RUNNING'}
     write_json(run / 'build-result.json', evidence)
     with (run / 'build.log').open('wb') as output:
@@ -234,12 +234,12 @@ def run_operation(spec, directory, phase, operation, timeout):
     result_path = directory / f'{operation}-result.json'
     if result_path.exists():
         raise RuntimeError(f'Refusing stale fixture result: {result_path}')
-    prefixes = tuple(f'-Dhardrush.p1.restart.{name}=' for name in RESTART_PROPERTIES)
-    jvm_args = [arg for arg in spec['jvmArgs'] if not arg.startswith(prefixes) and not arg.startswith('-Dhardrush.p1.initialMode=')]
-    jvm_args.append('-Dhardrush.p1.initialMode=' + ('hardcore' if phase == 'RESCUE' else 'normal'))
-    jvm_args.extend((f'-Dhardrush.p1.restart.phase={phase}',
-                     f'-Dhardrush.p1.restart.operation={operation}',
-                     f'-Dhardrush.p1.restart.directory={directory}'))
+    prefixes = tuple(f'-Dhardrush.test.restart.{name}=' for name in RESTART_PROPERTIES)
+    jvm_args = [arg for arg in spec['jvmArgs'] if not arg.startswith(prefixes) and not arg.startswith('-Dhardrush.round.initialMode=')]
+    jvm_args.append('-Dhardrush.round.initialMode=' + ('hardcore' if phase == 'RESCUE' else 'normal'))
+    jvm_args.extend((f'-Dhardrush.test.restart.phase={phase}',
+                     f'-Dhardrush.test.restart.operation={operation}',
+                     f'-Dhardrush.test.restart.directory={directory}'))
     command = [spec['java'], *jvm_args, '-cp', os.pathsep.join(spec['classpath']),
                spec['mainClass'], *spec['programArgs']]
     environment = os.environ.copy()

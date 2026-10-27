@@ -12,8 +12,8 @@ def matrix = new JsonSlurper().parse(file('versions.json'))
 subprojects {
     apply plugin: 'net.fabricmc.fabric-loom'
     group = 'dev.hardrush.probe'
-    version = "0.1.0-p0b+mc${matrix[name].minecraft}"
-    base { archivesName = 'hardrush-p0b-probe' }
+    version = "0.1.0-alpha+mc${matrix[name].minecraft}"
+    base { archivesName = 'hardrush-dependency-probe' }
 
     repositories {
         mavenCentral()
@@ -43,7 +43,7 @@ subprojects {
     fabricApi {
         configureTests {
             createSourceSet = true
-            modId = 'hardrush-p0b-gametest'
+            modId = 'hardrush-dependency-probe-gametest'
             enableGameTests = true
             enableClientGameTests = false
             eula = false
@@ -56,9 +56,9 @@ subprojects {
     }
     tasks.register('prepareProbeEula') {
         doLast {
-            def accepted = rootProject.file('../../.local/server-p0/eula.txt')
+            def accepted = rootProject.file('../../.local/server/eula.txt')
             if (!accepted.exists() || !accepted.readLines().any { it.trim() == 'eula=true' }) {
-                throw new GradleException('Review and accept the EULA in .local/server-p0/eula.txt; this probe never accepts it.')
+                throw new GradleException('Review and accept the EULA in .local/server/eula.txt; this probe never accepts it.')
             }
             def target = layout.buildDirectory.file('run/gameTest/eula.txt').get().asFile
             target.parentFile.mkdirs()
@@ -110,7 +110,7 @@ subprojects {
     }
 }
 
-tasks.register('checkP0bDependencies') {
+tasks.register('checkDependencyProbes') {
     group = 'verification'
     description = 'Headless dependency probes only; not a full HardRush adapter or client acceptance.'
     dependsOn subprojects.collect { it.tasks.named('jar') }
