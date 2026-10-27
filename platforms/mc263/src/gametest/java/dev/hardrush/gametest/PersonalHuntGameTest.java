@@ -154,8 +154,18 @@ public final class PersonalHuntGameTest {
                 .thenWaitUntil(() -> f.await(f.deployed(f.c, 0), "hunt anchor A before attacking B"))
                 .thenExecute(() -> {
                     // Choice is only a spawn anchor; a DIFFERENT legal human still earns entitlement.
+                    dev.hardrush.pact.DawnPactRuntime.tick(f.server);
+                    var overworld = f.worlds.level(Level.OVERWORLD);
+                    var daylight = overworld.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
+                            .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+                    overworld.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DawnPact.SUNRISE_TICKS + 18_000);
+                    dev.hardrush.pact.DawnPactRuntime.tick(f.server);
                     f.c.player.teleportTo(f.b.player.level(), f.b.player.getX()+1, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
                     f.b.player.setHealth(1); f.b.player.setInvulnerableTime(0);
+                    // Birth gear can be a spear; this regression exercises ordinary native melee.
+                    f.c.player.getInventory().setItem(8, net.minecraft.world.item.ItemStack.EMPTY);
+                    f.c.player.getInventory().setSelectedSlot(8); MonsterRoles.repairLoadout(f.c.player);
+                    test.assertFalse(dev.hardrush.pact.DawnPactRuntime.reject(f.c.player, f.b.player), "The first sunrise releases player combat before entitlement checks");
                     test.assertTrue(MonsterRoles.attack(f.c.player, f.b.player) && f.b.player.isDeadOrDying(), "Attack another legal human");
                 })
                 .thenWaitUntil(() -> f.await(f.c.participant().revivalEntitled() && f.lobby(f.b), "actual non-anchor kill awards entitlement"))
@@ -188,6 +198,8 @@ public final class PersonalHuntGameTest {
                 .thenExecute(() -> {
                     f.a.player.teleportTo(f.c.player.level(),f.c.player.getX()+1,f.c.player.getY(),f.c.player.getZ(),Set.of(),0,0,true);
                     f.c.player.setHealth(1); f.c.player.setInvulnerableTime(0);
+                    f.a.player.getInventory().setItem(8, net.minecraft.world.item.ItemStack.EMPTY);
+                    f.a.player.getInventory().setSelectedSlot(8); MonsterRoles.repairLoadout(f.a.player);
                     test.assertTrue(MonsterRoles.attack(f.a.player,f.c.player) && f.c.player.isDeadOrDying(), "A earns real entitlement by native lethal attack");
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.a.participant().revivalEntitled() && f.lobby(f.c), "A entitlement persisted"))
