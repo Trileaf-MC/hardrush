@@ -34,7 +34,7 @@ TAB 提示为每位玩家单独生成，只在当前可以主动退出时显示�
 
 ## 自动规则接口
 
-未来程序应在服务端主线程调用 `P1LobbySession.requestParticipationExit(...)`，指定当前轮次、目标 UUID、预期角色、生命／出场序号、退出类型、来源标识和原因。自动处罚使用 `ParticipantRole.DISQUALIFIED` 与可辨识的来源（如 `system:anti-cheat`）。此 Java API 是受信任服务端接口，命令权限检查在命令适配器中完成。
+未来程序应在服务端主线程调用 `RoundSession.requestParticipationExit(...)`，指定当前轮次、目标 UUID、预期角色、生命／出场序号、退出类型、来源标识和原因。自动处罚使用 `ParticipantRole.DISQUALIFIED` 与可辨识的来源（如 `system:anti-cheat`）。此 Java API 是受信任服务端接口，命令权限检查在命令适配器中完成。
 
 接口对过期轮次／身份、并行状态提交和重复退出返回失败；调用方须检查回执，必要时重新读取当前状态后重试。不要通过执行原版 `/kill`、改游戏模式或直接改玩家存档替代资格操作。
 
@@ -43,6 +43,6 @@ TAB 提示为每位玩家单独生成，只在当前可以主动退出时显示�
 ## 验证
 
 - 核心规则：`./gradlew :core:test`。
-- SQLite、原子回滚与档案：`./gradlew :platforms:mc263:test --tests dev.hardrush.p1.P1ParticipationExitSessionTest --tests dev.hardrush.p1.player.ProfileJournalTest`。
+- SQLite、原子回滚与档案：`./gradlew :platforms:mc263:test --tests dev.hardrush.round.ParticipationExitSessionTest --tests dev.hardrush.player.ProfileJournalTest`。
 - 隔离无图形完整流程：`./gradlew :platforms:mc263:runGameTest -PhardrushP1=true -PhardrushParticipationExit=true`。
 - 人工原版客户端：[取消资格与主动退出观战](人工客户端测试/取消资格与主动退出观战.md)。

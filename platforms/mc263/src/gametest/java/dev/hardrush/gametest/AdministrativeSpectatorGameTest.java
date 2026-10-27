@@ -2,11 +2,11 @@ package dev.hardrush.gametest;
 
 import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.RoundPhase;
-import dev.hardrush.p1.P1LobbyRuntime;
-import dev.hardrush.p1.P1LobbySession;
-import dev.hardrush.p1.player.P1PlayerProfiles;
-import dev.hardrush.p1.world.P1LobbyWorld;
-import dev.hardrush.p1.world.P1RoundWorldBundle;
+import dev.hardrush.round.RoundRuntime;
+import dev.hardrush.round.RoundSession;
+import dev.hardrush.player.PlayerProfiles;
+import dev.hardrush.world.LobbyWorld;
+import dev.hardrush.world.RoundWorldBundle;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -28,46 +28,46 @@ public final class AdministrativeSpectatorGameTest {
     @GameTest(maxTicks = 60000)
     public void operatorsAuthorizeNonParticipantsWithoutOpeningOrdinaryGameplay(GameTestHelper test) {
         if (!Boolean.getBoolean("hardrush.lobby.testAdminSpectator")) { test.succeed(); return; }
-        var f = new P1HumanEntryGameTest.Fixture(test);
+        var f = new HumanEntryGameTest.Fixture(test);
         var ordinaryPosition = new Vec3[1];
         test.onEachTick(() -> { f.drain(); f.a.tickConnection(); f.b.tickConnection(); });
-        var sequence = test.startSequence().thenWaitUntil(() -> f.await(P1LobbyWorld.open(f.server).ready()
-                && P1LobbyRuntime.snapshot(f.server).filter(r -> r.phase() == RoundPhase.WAITING).isPresent()
-                && !((P1LobbySession) f.service("SESSIONS")).mutationPending(), "Admin spectator camp ready"))
+        var sequence = test.startSequence().thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready()
+                && RoundRuntime.snapshot(f.server).filter(r -> r.phase() == RoundPhase.WAITING).isPresent()
+                && !((RoundSession) f.service("SESSIONS")).mutationPending(), "Admin spectator camp ready"))
                 .thenExecute(() -> { f.bind(); f.callbacks(); });
         f.a.login(sequence); f.b.login(sequence);
         sequence.thenWaitUntil(() -> f.await(f.idle(), "Both non-participant profiles ready"))
                 .thenExecute(() -> {
                     packet(f.b.player, "gamemode spectator");
-                    test.assertFalse(P1PlayerProfiles.administrativeCommandAllowed(f.b.player, "tp @s CampHumanA"), "Non-OP commands stay sealed");
+                    test.assertFalse(PlayerProfiles.administrativeCommandAllowed(f.b.player, "tp @s CampHumanA"), "Non-OP commands stay sealed");
                     f.server.getPlayerList().op(new NameAndId(f.a.profile),
                             Optional.of(LevelBasedPermissionSet.forLevel(PermissionLevel.MODERATORS)), Optional.empty());
-                    test.assertFalse(P1PlayerProfiles.administrativeCommandAllowed(f.a.player, "gamemode spectator"), "OP 1 cannot open travel commands");
+                    test.assertFalse(PlayerProfiles.administrativeCommandAllowed(f.a.player, "gamemode spectator"), "OP 1 cannot open travel commands");
                     f.server.getPlayerList().op(new NameAndId(f.a.profile),
                             Optional.of(LevelBasedPermissionSet.forLevel(PermissionLevel.GAMEMASTERS)), Optional.empty());
                     packet(f.a.player, "gamemode spectator");
                 })
-                .thenWaitUntil(() -> f.await(P1PlayerProfiles.isAdministrativeSpectator(f.a.player), "OP 2 opens spectator mode through the actual command packet"))
+                .thenWaitUntil(() -> f.await(PlayerProfiles.isAdministrativeSpectator(f.a.player), "OP 2 opens spectator mode through the actual command packet"))
                 .thenExecute(() -> {
                     test.assertTrue(f.b.player.gameMode() == GameType.ADVENTURE, "Ordinary player could not self-authorize spectator mode");
-                    var worlds = (P1RoundWorldBundle) f.service("WORLDS");
+                    var worlds = (RoundWorldBundle) f.service("WORLDS");
                     command(f.server.createCommandSourceStack().withLevel(worlds.level(Level.OVERWORLD)), "tp CampHumanB 0 150 0");
                 })
                 .thenIdle(3)
                 .thenExecute(() -> {
-                    test.assertTrue(P1LobbyWorld.isLobby(f.b.player.level()), "An ordinary unadmitted TP still returns to the lobby");
+                    test.assertTrue(LobbyWorld.isLobby(f.b.player.level()), "An ordinary unadmitted TP still returns to the lobby");
                     packet(f.a.player, "gamemode spectator CampHumanB");
                 })
-                .thenWaitUntil(() -> f.await(P1PlayerProfiles.isAdministrativeSpectator(f.b.player), "Operator grants a non-OP spectator mode"))
+                .thenWaitUntil(() -> f.await(PlayerProfiles.isAdministrativeSpectator(f.b.player), "Operator grants a non-OP spectator mode"))
                 .thenExecute(() -> {
                     assertObserver(test, f.a.player); assertObserver(test, f.b.player);
-                    var worlds = (P1RoundWorldBundle) f.service("WORLDS");
+                    var worlds = (RoundWorldBundle) f.service("WORLDS");
                     command(f.server.createCommandSourceStack().withLevel(worlds.level(Level.OVERWORLD)), "tp CampHumanB 0 150 0");
                     packet(f.a.player, "teleport CampHumanA CampHumanB");
                 })
                 .thenIdle(3)
                 .thenExecute(() -> {
-                    test.assertTrue(f.a.player.level() == f.b.player.level() && !P1LobbyWorld.isLobby(f.a.player.level()), "Native teleport alias crosses into the current round");
+                    test.assertTrue(f.a.player.level() == f.b.player.level() && !LobbyWorld.isLobby(f.a.player.level()), "Native teleport alias crosses into the current round");
                     assertObserver(test, f.a.player); assertObserver(test, f.b.player);
                     f.a.move(.2, .42, 45, 15, false);
                     ordinaryPosition[0] = f.b.player.position();
@@ -82,31 +82,31 @@ public final class AdministrativeSpectatorGameTest {
                     for (var p : f.round().participants().values()) {
                         test.assertTrue(p.role() == ParticipantRole.LOBBY && p.lifeSequence() == 0 && p.humanNanos() == 0 && !p.ready(), "Travel never grants roster admission or time");
                     }
-                    command(f.server.createCommandSourceStack().withLevel(P1LobbyWorld.open(f.server).holdingLevel()), "tp CampHumanB 0 100 0");
+                    command(f.server.createCommandSourceStack().withLevel(LobbyWorld.open(f.server).holdingLevel()), "tp CampHumanB 0 100 0");
                     packet(f.a.player, "tp CampHumanA CampHumanB");
                 })
                 .thenIdle(3)
                 .thenExecute(() -> {
-                    test.assertTrue(P1LobbyWorld.isLobby(f.a.player.level()) && P1LobbyWorld.isLobby(f.b.player.level()), "Operator and target can return to the lobby without losing spectator mode");
+                    test.assertTrue(LobbyWorld.isLobby(f.a.player.level()) && LobbyWorld.isLobby(f.b.player.level()), "Operator and target can return to the lobby without losing spectator mode");
                     packet(f.a.player, "gamemode survival CampHumanB");
                     test.assertTrue(f.b.player.isSpectator(), "A spectator cannot be turned into an unadmitted survival body");
                     packet(f.a.player, "gamemode adventure CampHumanB");
                     packet(f.a.player, "gamemode adventure");
                 })
-                .thenWaitUntil(() -> f.await(P1PlayerProfiles.canMoveInLobby(f.a.player) && P1PlayerProfiles.canMoveInLobby(f.b.player), "Adventure ends observation and restores normal lobby bodies"))
+                .thenWaitUntil(() -> f.await(PlayerProfiles.canMoveInLobby(f.a.player) && PlayerProfiles.canMoveInLobby(f.b.player), "Adventure ends observation and restores normal lobby bodies"))
                 .thenExecute(() -> f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "Operator prepares through the ordinary assembly"))
                 .thenExecute(() -> {
                     test.assertValueEqual(command(f.server.createCommandSourceStack(), "gamemode spectator CampHumanA"), 0, "A prepared player must leave assembly before spectating");
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
                 })
-                .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RUNNING && !P1PlayerProfiles.isLocked(f.a.player) && f.idle(), "Operator enters as an ordinary participant"))
+                .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RUNNING && !PlayerProfiles.isLocked(f.a.player) && f.idle(), "Operator enters as an ordinary participant"))
                 .thenExecute(() -> {
                     test.assertValueEqual(command(f.server.createCommandSourceStack(), "gamemode spectator CampHumanA"), 0, "A participating OP cannot become an administrative spectator");
                     test.assertTrue(f.a.player.gameMode() == GameType.SURVIVAL && f.round().onlineHumans() == 1, "Denied spectator command preserves the active identity");
                     packet(f.a.player, "gamemode spectator CampHumanB");
                 })
-                .thenWaitUntil(() -> f.await(P1PlayerProfiles.isAdministrativeSpectator(f.b.player), "Participating operator can authorize a different unadmitted player"))
+                .thenWaitUntil(() -> f.await(PlayerProfiles.isAdministrativeSpectator(f.b.player), "Participating operator can authorize a different unadmitted player"))
                 .thenExecute(() -> packet(f.a.player, "tp CampHumanB CampHumanA"))
                 .thenIdle(3)
                 .thenExecute(() -> {
@@ -116,14 +116,14 @@ public final class AdministrativeSpectatorGameTest {
                 });
         f.b.login(sequence);
         sequence.thenExecute(() -> {
-                    test.assertFalse(P1PlayerProfiles.isAdministrativeSpectator(f.b.player), "A reconnect needs a new explicit grant");
-                    test.assertTrue(P1LobbyWorld.isLobby(f.b.player.level()) && f.b.player.gameMode() == GameType.ADVENTURE, "Reconnect cannot restore a spectator competition location");
+                    test.assertFalse(PlayerProfiles.isAdministrativeSpectator(f.b.player), "A reconnect needs a new explicit grant");
+                    test.assertTrue(LobbyWorld.isLobby(f.b.player.level()) && f.b.player.gameMode() == GameType.ADVENTURE, "Reconnect cannot restore a spectator competition location");
                     packet(f.a.player, "gamemode spectator CampHumanB");
                 })
-                .thenWaitUntil(() -> f.await(P1PlayerProfiles.isAdministrativeSpectator(f.b.player), "Regrant after reconnect"));
+                .thenWaitUntil(() -> f.await(PlayerProfiles.isAdministrativeSpectator(f.b.player), "Regrant after reconnect"));
         for (var dimension : java.util.List.of(Level.NETHER, Level.END)) {
             sequence.thenExecute(() -> {
-                var worlds = (P1RoundWorldBundle) f.service("WORLDS");
+                var worlds = (RoundWorldBundle) f.service("WORLDS");
                 ServerLevel destination = worlds.level(dimension);
                 command(f.server.createCommandSourceStack().withLevel(destination), "tp CampHumanB 0 150 0");
             }).thenIdle(3).thenExecute(() -> {
@@ -132,17 +132,17 @@ public final class AdministrativeSpectatorGameTest {
             });
         }
         sequence.thenExecute(() -> f.session.adapterFailure("管理旁观隔离回归", new IllegalStateException("intentional fixture")))
-                .thenWaitUntil(() -> f.await(P1LobbyWorld.isLobby(f.b.player.level()) && f.b.player.gameMode() == GameType.ADVENTURE
-                        && !P1PlayerProfiles.isAdministrativeSpectator(f.b.player), "A runtime failure revokes observation and evacuates the round"))
+                .thenWaitUntil(() -> f.await(LobbyWorld.isLobby(f.b.player.level()) && f.b.player.gameMode() == GameType.ADVENTURE
+                        && !PlayerProfiles.isAdministrativeSpectator(f.b.player), "A runtime failure revokes observation and evacuates the round"))
                 .thenExecute(() -> {
-                    test.assertTrue(P1PlayerProfiles.simulationFrozen(f.b.player), "Spectating cannot bypass recovery isolation");
+                    test.assertTrue(PlayerProfiles.simulationFrozen(f.b.player), "Spectating cannot bypass recovery isolation");
                     f.a.disconnect(); f.b.disconnect();
                 }).thenSucceed();
     }
 
     private static void assertObserver(GameTestHelper test, ServerPlayer player) {
-        test.assertTrue(P1PlayerProfiles.isAdministrativeSpectator(player) && !P1PlayerProfiles.simulationFrozen(player), "Authorized spectator can move");
-        test.assertTrue(P1PlayerProfiles.isLocked(player) && !P1PlayerProfiles.verifiedLobbyBody(player), "Movement leaves admission, items and lobby interactions sealed");
+        test.assertTrue(PlayerProfiles.isAdministrativeSpectator(player) && !PlayerProfiles.simulationFrozen(player), "Authorized spectator can move");
+        test.assertTrue(PlayerProfiles.isLocked(player) && !PlayerProfiles.verifiedLobbyBody(player), "Movement leaves admission, items and lobby interactions sealed");
     }
     private static void packet(ServerPlayer player, String command) {
         player.connection.handleChatCommand(new ServerboundChatCommandPacket(command));

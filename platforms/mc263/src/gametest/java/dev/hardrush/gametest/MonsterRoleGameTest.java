@@ -1,9 +1,9 @@
 package dev.hardrush.gametest;
 
-import dev.hardrush.p0.disguise.DisguiseProbe;
-import dev.hardrush.p0.monster.MonsterRoles;
-import dev.hardrush.p0.monster.MonsterItems;
-import dev.hardrush.p0.monster.MonsterCompanions;
+import dev.hardrush.disguise.MonsterDisguise;
+import dev.hardrush.monster.MonsterRoles;
+import dev.hardrush.monster.MonsterItems;
+import dev.hardrush.monster.MonsterCompanions;
 import java.util.List;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.ChannelFutureListener;
@@ -317,7 +317,7 @@ public final class MonsterRoleGameTest {
                 com.mojang.datafixers.util.Pair.of(EquipmentSlot.MAINHAND,player.getMainHandItem())));
             MonsterRoles.repairLoadout(player);
             test.assertTrue(Math.abs(player.getAttributeValue(Attributes.ATTACK_SPEED)-1)<.00001,"Skill control preserves melee indicator");
-            var rewritten=(net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket)DisguiseProbe.rewrite(observer,packet);
+            var rewritten=(net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket)MonsterDisguise.rewrite(observer,packet);
             test.assertTrue(rewritten.getSlots().stream().anyMatch(pair->pair.getFirst()==EquipmentSlot.MAINHAND && ItemStack.matches(pair.getSecond(),player.getMainHandItem())),"Observer sees the selected real item including a moved control");
             player.getInventory().setSelectedSlot(4); MonsterRoles.repairLoadout(player);
             MonsterRoles.onDisconnect(player);MonsterRoles.onJoin(player);
@@ -548,7 +548,7 @@ public final class MonsterRoleGameTest {
         return player;
     }
     public static void remove(ServerPlayer player) {
-        MonsterRoles.clear(player); DisguiseProbe.clear(player);
+        MonsterRoles.clear(player); MonsterDisguise.clear(player);
         player.level().getServer().getPlayerList().remove(player);
         var channel=CHANNELS.remove(player.getUUID()); if(channel!=null)channel.finishAndReleaseAll();
         var forced=FORCED.remove(player.getUUID());if(forced!=null)for(var key:forced) {

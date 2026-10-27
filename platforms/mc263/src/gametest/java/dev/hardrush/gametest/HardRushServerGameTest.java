@@ -1,7 +1,7 @@
 package dev.hardrush.gametest;
 
-import dev.hardrush.p0.disguise.DisguiseProbe;
-import dev.hardrush.p0.world.WorldProbe;
+import dev.hardrush.disguise.MonsterDisguise;
+import dev.hardrush.development.world.DevelopmentWorlds;
 import java.util.ArrayList;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -19,29 +19,29 @@ public final class HardRushServerGameTest {
     @GameTest(maxTicks = 1200)
     public void persistentRoundDimensions(GameTestHelper test) {
         var server = test.getLevel().getServer();
-        String first = WorldProbe.create(server, 12345);
+        String first = DevelopmentWorlds.create(server, 12345);
         var round = new ArrayList<net.minecraft.server.level.ServerLevel>();
         for (var level : server.getAllLevels()) {
-            if (WorldProbe.owns(level)) round.add(level);
+            if (DevelopmentWorlds.owns(level)) round.add(level);
         }
         test.assertValueEqual(round.size(), 3, "Three runtime round dimensions");
         for (var level : round) {
             test.assertValueEqual(level.getSeed(), 12345L, "Runtime seed");
             for (var destination : java.util.List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
-                var target = WorldProbe.portalDestination(level, destination);
-                test.assertTrue(target != null && WorldProbe.owns(target), "Portal stays within round");
-                test.assertValueEqual(WorldProbe.semanticDimension(target), destination, "Semantic portal target");
+                var target = DevelopmentWorlds.portalDestination(level, destination);
+                test.assertTrue(target != null && DevelopmentWorlds.owns(target), "Portal stays within round");
+                test.assertValueEqual(DevelopmentWorlds.semanticDimension(target), destination, "Semantic portal target");
             }
-            if (WorldProbe.semanticDimension(level).equals(Level.END)) {
+            if (DevelopmentWorlds.semanticDimension(level).equals(Level.END)) {
                 test.assertTrue(level.getDragonFight() != null, "Vanilla dragon fight initialized");
             }
         }
-        test.assertValueEqual(WorldProbe.create(server, 12345), first, "Same seed is idempotent");
+        test.assertValueEqual(DevelopmentWorlds.create(server, 12345), first, "Same seed is idempotent");
         boolean rejected = false;
-        try { WorldProbe.create(server, 54321); }
+        try { DevelopmentWorlds.create(server, 54321); }
         catch (IllegalArgumentException expected) { rejected = true; }
         test.assertTrue(rejected, "Different seed must be rejected");
-        test.assertValueEqual(WorldProbe.status(), first, "Rejected seed preserves original round");
+        test.assertValueEqual(DevelopmentWorlds.status(), first, "Rejected seed preserves original round");
         test.succeed();
     }
 
@@ -49,13 +49,13 @@ public final class HardRushServerGameTest {
     @GameTest(maxTicks = 1200)
     public void vanillaEndPortalRoutesWithinRound(GameTestHelper test) {
         var server = test.getLevel().getServer();
-        WorldProbe.create(server, 12345);
+        DevelopmentWorlds.create(server, 12345);
         ServerLevel overworld = null;
         ServerLevel end = null;
         for (var level : server.getAllLevels()) {
-            if (!WorldProbe.owns(level)) continue;
-            if (WorldProbe.semanticDimension(level).equals(Level.OVERWORLD)) overworld = level;
-            if (WorldProbe.semanticDimension(level).equals(Level.END)) end = level;
+            if (!DevelopmentWorlds.owns(level)) continue;
+            if (DevelopmentWorlds.semanticDimension(level).equals(Level.OVERWORLD)) overworld = level;
+            if (DevelopmentWorlds.semanticDimension(level).equals(Level.END)) end = level;
         }
         test.assertTrue(overworld != null && end != null, "Owned overworld and End are available");
 
@@ -80,21 +80,21 @@ public final class HardRushServerGameTest {
         var player = test.makeMockServerPlayerInLevel();
         try {
             for (String kind : new String[]{"zombie", "skeleton", "creeper"}) {
-                DisguiseProbe.apply(player, kind);
-                test.assertTrue(DisguiseProbe.status(player).contains("disguise=" + kind), "Disguise applied: " + kind);
-                test.assertTrue(DisguiseProbe.status(player).contains("selfView=player; selfSpawned=false"), "Native owner model without self mob");
-                String before = DisguiseProbe.status(player);
-                DisguiseProbe.apply(player, "unknown");
-                test.assertValueEqual(DisguiseProbe.status(player), before, "Invalid mode preserves disguise");
-                DisguiseProbe.clear(player);
-                test.assertTrue(DisguiseProbe.status(player).startsWith("disguise=off"), "Disguise cleared");
+                MonsterDisguise.apply(player, kind);
+                test.assertTrue(MonsterDisguise.status(player).contains("disguise=" + kind), "Disguise applied: " + kind);
+                test.assertTrue(MonsterDisguise.status(player).contains("selfView=player; selfSpawned=false"), "Native owner model without self mob");
+                String before = MonsterDisguise.status(player);
+                MonsterDisguise.apply(player, "unknown");
+                test.assertValueEqual(MonsterDisguise.status(player), before, "Invalid mode preserves disguise");
+                MonsterDisguise.clear(player);
+                test.assertTrue(MonsterDisguise.status(player).startsWith("disguise=off"), "Disguise cleared");
             }
             player.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_SWORD));
-            DisguiseProbe.apply(player, "zombie");
-            test.assertTrue(DisguiseProbe.status(player).contains("disguise=zombie"), "Equipment permits disguise");
+            MonsterDisguise.apply(player, "zombie");
+            test.assertTrue(MonsterDisguise.status(player).contains("disguise=zombie"), "Equipment permits disguise");
             test.assertTrue(player.getMainHandItem().is(Items.DIAMOND_SWORD), "Disguise preserves item");
         } finally {
-            DisguiseProbe.clear(player);
+            MonsterDisguise.clear(player);
             test.getLevel().getServer().getPlayerList().remove(player);
         }
         test.succeed();

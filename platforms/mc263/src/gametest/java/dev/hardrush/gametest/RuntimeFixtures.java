@@ -2,10 +2,10 @@ package dev.hardrush.gametest;
 
 import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.record.ProgressWrite;
-import dev.hardrush.p1.combat.P1CombatRuntime;
-import dev.hardrush.p1.record.P1ProgressRuntime;
-import dev.hardrush.p2.combat.P2CombatRuntime;
-import dev.hardrush.p2.protection.P2ProtectionRuntime;
+import dev.hardrush.combat.CombatRuntime;
+import dev.hardrush.record.ProgressRuntime;
+import dev.hardrush.combat.MonsterCombatRuntime;
+import dev.hardrush.protection.ProtectionRuntime;
 import java.util.Map;
 import java.util.function.Consumer;
 import net.minecraft.server.MinecraftServer;
@@ -19,13 +19,13 @@ public final class RuntimeFixtures {
             return ()->{if(prior==null)bindings.remove(server);else bindings.put(server,prior);};
         }catch(ReflectiveOperationException e){throw new IllegalStateException(e);}
     }
-    public static P1CombatRuntime.Scope combat(MinecraftServer server,P1CombatRuntime.RoundAccess access,Consumer<CombatEvent> events){var restore=restore(P1CombatRuntime.class,server);P1CombatRuntime.configure(server,access,events);return restore::run;}
-    public static P2CombatRuntime.Scope monsterCombat(MinecraftServer server,P2CombatRuntime.Access access){var restore=restore(P2CombatRuntime.class,server);P2CombatRuntime.configure(server,access);return restore::run;}
-    public static Scope protection(MinecraftServer server,P2ProtectionRuntime.Access access){var restore=restore(P2ProtectionRuntime.class,server);P2ProtectionRuntime.configure(server,access);return restore::run;}
-    public static Scope progress(MinecraftServer server,P1ProgressRuntime.Eligibility access,Consumer<ProgressWrite> writes){var restore=restore(P1ProgressRuntime.class,server);P1ProgressRuntime.configure(server,access,writes);return restore::run;}
-    public static Scope dawnPact(MinecraftServer server,dev.hardrush.p1.pact.DawnPactRuntime.Access access){
-        var restore=restore(dev.hardrush.p1.pact.DawnPactRuntime.class,server);
-        dev.hardrush.p1.pact.DawnPactRuntime.configure(server,access);
-        return ()->{dev.hardrush.p1.pact.DawnPactRuntime.close(server);restore.run();};
+    public static CombatRuntime.Scope combat(MinecraftServer server,CombatRuntime.RoundAccess access,Consumer<CombatEvent> events){var restore=restore(CombatRuntime.class,server);CombatRuntime.configure(server,access,events);return restore::run;}
+    public static MonsterCombatRuntime.Scope monsterCombat(MinecraftServer server,MonsterCombatRuntime.Access access){var restore=restore(MonsterCombatRuntime.class,server);MonsterCombatRuntime.configure(server,access);return restore::run;}
+    public static Scope protection(MinecraftServer server,ProtectionRuntime.Access access){var restore=restore(ProtectionRuntime.class,server);ProtectionRuntime.configure(server,access);return restore::run;}
+    public static Scope progress(MinecraftServer server,ProgressRuntime.Eligibility access,Consumer<ProgressWrite> writes){var restore=restore(ProgressRuntime.class,server);ProgressRuntime.configure(server,access,writes);return restore::run;}
+    public static Scope dawnPact(MinecraftServer server,dev.hardrush.pact.DawnPactRuntime.Access access){
+        var restore=restore(dev.hardrush.pact.DawnPactRuntime.class,server);
+        dev.hardrush.pact.DawnPactRuntime.configure(server,access);
+        return ()->{dev.hardrush.pact.DawnPactRuntime.close(server);restore.run();};
     }
 }

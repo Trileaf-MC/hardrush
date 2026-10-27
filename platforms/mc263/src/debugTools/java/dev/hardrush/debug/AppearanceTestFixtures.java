@@ -2,7 +2,7 @@ package dev.hardrush.debug;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import dev.hardrush.p0.disguise.DisguiseProbe;
+import dev.hardrush.disguise.MonsterDisguise;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.UUID;
@@ -72,8 +72,8 @@ public final class AppearanceTestFixtures implements ModInitializer {
                                 for (var entity : level.getAllEntities()) if (entity.getUUID().equals(player.getUUID())) matchingEntities++;
                             }
                             data.addProperty("matchingEntities", matchingEntities);
-                            data.addProperty("appearance", DisguiseProbe.status(player));
-                            data.addProperty("monster", dev.hardrush.p0.monster.MonsterRoles.status(player));
+                            data.addProperty("appearance", MonsterDisguise.status(player));
+                            data.addProperty("monster", dev.hardrush.monster.MonsterRoles.status(player));
                             context.getSource().sendSuccess(() -> Component.literal(data.toString()), false);
                             return 1;
                         })))
@@ -113,7 +113,7 @@ public final class AppearanceTestFixtures implements ModInitializer {
                                 actor.setHealth(20);
                                 actor.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
                                 actor.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
-                                DisguiseProbe.apply(actor, kind);
+                                MonsterDisguise.apply(actor, kind);
                                 // This simulated connection has no graphical
                                 // client to acknowledge loading. Complete the
                                 // native handshake; otherwise vanilla protects
@@ -128,7 +128,7 @@ public final class AppearanceTestFixtures implements ModInitializer {
 
     private static void clear(MinecraftServer server) {
         if (actor != null) {
-            DisguiseProbe.clear(actor);
+            MonsterDisguise.clear(actor);
             server.getPlayerList().remove(actor);
             actor = null;
         }

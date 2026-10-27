@@ -264,8 +264,8 @@ def main():
         spec = P1.build_launch(run, args.timeout)
         sources = [Path(__file__).resolve(), Path(__file__).with_name('p1-server-restart.py').resolve(),
                    Path(__file__).with_name('P3ProfileCrashBarrier.java').resolve(),
-                   *sorted((P1.ROOT / 'platforms/mc263/src/gametest/java/dev/hardrush/gametest').glob('P*Regression.java'))]
-        classes = sorted((P1.ROOT / 'platforms/mc263/build/classes/java/gametest/dev/hardrush/gametest').glob('P*Regression*.class'))
+                   *sorted((P1.ROOT / 'platforms/mc263/src/gametest/java/dev/hardrush/gametest').glob('*Regression.java'))]
+        classes = sorted((P1.ROOT / 'platforms/mc263/build/classes/java/gametest/dev/hardrush/gametest').glob('*Regression*.class'))
         P1.write_json(run / 'launch-fingerprints.json', {str(p.relative_to(P1.ROOT)): P1.sha256(p) for p in (*sources, *classes)})
         for scenario in dict.fromkeys(args.scenario or SCENARIOS):
             supported = PROFILE_BOUNDARIES if scenario == 'PROFILE' else BOUNDARIES

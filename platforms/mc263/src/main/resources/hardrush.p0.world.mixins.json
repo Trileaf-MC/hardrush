@@ -1,7 +1,0 @@
-{
-  "required": true,
-  "package": "dev.hardrush.p0.world.mixin",
-  "compatibilityLevel": "JAVA_25",
-  "mixins": ["FirePortalDimensionMixin", "NetherPortalRoutingMixin", "EndPortalRoutingMixin", "PlayerRespawnRoutingMixin", "RuntimeLevelSeedMixin", "PlayerDimensionAdvancementMixin", "LocationDimensionPredicateMixin", "RoundWeatherMixin", "RoundWeatherCommandMixin"],
-  "injectors": { "defaultRequire": 1 }
-}

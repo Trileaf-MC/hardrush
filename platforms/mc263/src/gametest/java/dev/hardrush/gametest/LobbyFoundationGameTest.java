@@ -7,8 +7,8 @@ import com.google.common.collect.ImmutableMultimap;
 import dev.hardrush.core.lobby.LobbyContext;
 import dev.hardrush.core.lobby.LobbyLayout;
 import dev.hardrush.core.config.RulesConfig;
-import dev.hardrush.p1.lobby.LobbyInteractions;
-import dev.hardrush.p1.lobby.LobbyProjections;
+import dev.hardrush.lobby.LobbyInteractions;
+import dev.hardrush.lobby.LobbyProjections;
 import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -16,12 +16,12 @@ import dev.hardrush.core.api.BookPort;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.api.OperationTag;
 import dev.hardrush.core.round.RoundPhase;
-import dev.hardrush.p1.P1LobbyRuntime;
-import dev.hardrush.p1.P1LobbySession;
-import dev.hardrush.p1.book.P1BookPort;
-import dev.hardrush.p1.player.P1PlayerProfiles;
-import dev.hardrush.p1.world.P1LobbyWorld;
-import dev.hardrush.p2.lobby.P2LobbyUi;
+import dev.hardrush.round.RoundRuntime;
+import dev.hardrush.round.RoundSession;
+import dev.hardrush.book.WrittenBookPort;
+import dev.hardrush.player.PlayerProfiles;
+import dev.hardrush.world.LobbyWorld;
+import dev.hardrush.lobby.LobbyMenus;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
@@ -63,8 +63,8 @@ public final class LobbyFoundationGameTest {
         if (!Boolean.getBoolean("hardrush.lobby.testFoundation")) { test.succeed(); return; }
         var f = new Fixture(test); var scenario = new Scenario(f);
         test.onEachTick(() -> { f.clock.accumulateAndGet(System.nanoTime(), Math::max); f.a.tickConnection(); f.b.tickConnection(); });
-        var sequence = test.startSequence().thenWaitUntil(() -> f.await(P1LobbyWorld.open(f.server).ready()
-                && P1LobbyRuntime.sessionState(f.server).filter(state -> state == P1LobbySession.State.OPEN).isPresent(), "Lobby ready"))
+        var sequence = test.startSequence().thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready()
+                && RoundRuntime.sessionState(f.server).filter(state -> state == RoundSession.State.OPEN).isPresent(), "Lobby ready"))
                 .thenExecute(() -> { f.bind(); scenario.register(); });
         f.a.login(sequence); f.b.login(sequence);
         sequence.thenWaitUntil(() -> f.await(f.session.snapshot().orElseThrow().phase() == RoundPhase.WAITING
@@ -77,42 +77,42 @@ public final class LobbyFoundationGameTest {
                 .thenExecute(() -> test.assertTrue(scenario.router.projections().view(f.b.player).isPresent(), "A disconnect preserves B mapping"));
         f.a.login(sequence);
         sequence.thenExecute(() -> { scenario.reconnected(); f.reply.set(null); f.session.adapterFailure("Foundation recovery fixture", new IllegalStateException("controlled fault")); })
-                .thenWaitUntil(() -> f.await(f.session.state() == P1LobbySession.State.FAILED
+                .thenWaitUntil(() -> f.await(f.session.state() == RoundSession.State.FAILED
                         && scenario.router.projections().view(f.a.player).isEmpty()
                         && scenario.router.projections().view(f.b.player).isEmpty(), "Recovery isolation"))
                 .thenExecute(() -> {
                     test.assertTrue(scenario.router.projections().view(f.a.player).isEmpty()
                             && scenario.router.projections().view(f.b.player).isEmpty(), "Recovery removes both observer projections");
                     scenario.useBlock(f.a.player, scenario.rules, 77, InteractionHand.MAIN_HAND);
-                    test.assertFalse(P2LobbyUi.isMenu(f.a.player), "Unavailable session cannot open rules");
+                    test.assertFalse(LobbyMenus.isMenu(f.a.player), "Unavailable session cannot open rules");
                     f.session.recheckStorage("fixture", "第1轮恢复门槛验证", f.reply::set);
                 })
                 .thenWaitUntil(() -> f.await(f.reply.get() != null && f.reply.get().success(), "Storage recheck complete"))
                 .thenExecute(() -> {
                     test.assertValueEqual(f.session.snapshot().orElseThrow().phase(), RoundPhase.RECOVERY_REQUIRED, "Recheck never resumes competition");
                     scenario.useBlock(f.a.player, scenario.rules, 78, InteractionHand.MAIN_HAND);
-                    test.assertTrue(P2LobbyUi.isMenu(f.a.player), "Verified body can read rules after storage recheck in recovery");
+                    test.assertTrue(LobbyMenus.isMenu(f.a.player), "Verified body can read rules after storage recheck in recovery");
                     f.a.player.closeContainer();
-                    var camp = P1LobbyWorld.open(f.server);
+                    var camp = LobbyWorld.open(f.server);
                     var history = BlockPos.containing(camp.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(dev.hardrush.core.lobby.LobbyLayout.Facility.HISTORY)));
                     scenario.teleport(f.a.player, Vec3.atBottomCenterOf(history.south(2)));
                     scenario.useBlock(f.a.player, history, 781, InteractionHand.MAIN_HAND);
-                    test.assertTrue(P2LobbyUi.isMenu(f.a.player), "Rechecked healthy history service opens through the real library lectern during recovery");
+                    test.assertTrue(LobbyMenus.isMenu(f.a.player), "Rechecked healthy history service opens through the real library lectern during recovery");
                     f.a.player.closeContainer();
                     scenario.teleport(f.a.player, camp.holdingSpawn());
-                    test.assertFalse(P2LobbyUi.open(f.a.player, LobbyContext.COMPETITION), "Recovery competition menu is sealed");
+                    test.assertFalse(LobbyMenus.open(f.a.player, LobbyContext.COMPETITION), "Recovery competition menu is sealed");
                     f.historyDrain = f.session.history(1, 0);
                 })
                 .thenWaitUntil(() -> f.await(f.historyDrain.isDone(), "Read-only history IO drained before audited recovery close"))
                 .thenExecute(() -> {
                     f.historyDrain.join();
-                    test.assertFalse(P2LobbyUi.isMenu(f.a.player), "Late history query never reopens the closed menu");
+                    test.assertFalse(LobbyMenus.isMenu(f.a.player), "Late history query never reopens the closed menu");
                     f.reply.set(null); f.session.closeRecovery("fixture", "第1轮轮换清理验证", f.reply::set);
                 })
                 .thenWaitUntil(() -> f.await(f.reply.get()!=null && f.reply.get().success(), "Recovery close committed after read-only IO"))
                 .thenWaitUntil(() -> f.await(f.session.snapshot().orElseThrow().sequence() == 2
                         && f.session.snapshot().orElseThrow().phase() == RoundPhase.WAITING
-                        && P1PlayerProfiles.canMoveInLobby(f.a.player) && P1PlayerProfiles.canMoveInLobby(f.b.player), "New round ready"))
+                        && PlayerProfiles.canMoveInLobby(f.a.player) && PlayerProfiles.canMoveInLobby(f.b.player), "New round ready"))
                 .thenExecute(() -> {
                     test.assertTrue(scenario.router.projections().view(f.a.player).isEmpty(), "Rotation leaves no old page");
                     int before = scenario.ruleClicks;
@@ -136,20 +136,20 @@ public final class LobbyFoundationGameTest {
         Scenario(Fixture f) { this.f = f; test = f.test; }
         void register() {
             router = LobbyInteractions.get(f.server).orElseThrow();
-            rules = BlockPos.containing(P1LobbyWorld.open(f.server).holdingSpawn()).offset(2, 0, 0);
+            rules = BlockPos.containing(LobbyWorld.open(f.server).holdingSpawn()).offset(2, 0, 0);
             place(rules, Blocks.LECTERN);
-            router.registerBlock(rules, Blocks.LECTERN, LobbyContext.RULES, p -> { ruleClicks++; P2LobbyUi.open(p, LobbyContext.RULES); });
+            router.registerBlock(rules, Blocks.LECTERN, LobbyContext.RULES, p -> { ruleClicks++; LobbyMenus.open(p, LobbyContext.RULES); });
             f.rules = rules;
         }
         void place(BlockPos pos, net.minecraft.world.level.block.Block block) {
             // Fixture terrain only; production protection is restored BEFORE any input packet.
             try (var scope = dev.hardrush.gametest.RuntimeFixtures.protection(f.server,
-                    new dev.hardrush.p2.protection.P2ProtectionRuntime.Access() {
-                        public java.util.Optional<dev.hardrush.p2.protection.P2ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) { return java.util.Optional.empty(); }
+                    new dev.hardrush.protection.ProtectionRuntime.Access() {
+                        public java.util.Optional<dev.hardrush.protection.ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) { return java.util.Optional.empty(); }
                         public java.util.Optional<dev.hardrush.core.round.Participant> participant(UUID id) { return java.util.Optional.empty(); }
                         public boolean leaveProtection(UUID round, UUID player, int life) { return false; }
                     })) {
-                var level = P1LobbyWorld.open(f.server).holdingLevel();
+                var level = LobbyWorld.open(f.server).holdingLevel();
                 level.setBlockAndUpdate(pos, block.defaultBlockState());
                 test.assertTrue(level.getBlockState(pos).is(block), "Fixture places dedicated block idempotently");
             }
@@ -159,11 +159,11 @@ public final class LobbyFoundationGameTest {
                     new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false), sequence));
         }
         void facilities() {
-            test.assertTrue(dev.hardrush.p2.protection.P2ProtectionRuntime.protectedEntity(f.a.player), "Actual production protection is enabled");
+            test.assertTrue(dev.hardrush.protection.ProtectionRuntime.protectedEntity(f.a.player), "Actual production protection is enabled");
             useBlock(f.a.player, rules, 1, InteractionHand.MAIN_HAND);
             test.assertValueEqual(ruleClicks, 1, "Registered lectern reaches both guards: result=" + router.lastResult(f.a.player)
-                    + ", verified=" + P1PlayerProfiles.verifiedLobbyBody(f.a.player));
-            test.assertTrue(P2LobbyUi.isMenu(f.a.player), "Native block packet opens the read-only rule context");
+                    + ", verified=" + PlayerProfiles.verifiedLobbyBody(f.a.player));
+            test.assertTrue(LobbyMenus.isMenu(f.a.player), "Native block packet opens the read-only rule context");
             test.assertTrue(f.a.player.containerMenu.getSlot(0).getItem().getHoverName().getString().contains("集结区"), "Rule context has rule content");
             f.a.player.closeContainer();
             var packet = new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,
@@ -178,13 +178,13 @@ public final class LobbyFoundationGameTest {
                     new BlockHitResult(Vec3.atCenterOf(rules).add(1000,0,0), Direction.UP, rules, false), 4);
             f.a.player.connection.handleUseItemOn(invalid);
             test.assertValueEqual(ruleClicks, 2, "Forged hit vector is rejected");
-            teleport(f.a.player, P1LobbyWorld.open(f.server).holdingSpawn().add(-10,0,0));
+            teleport(f.a.player, LobbyWorld.open(f.server).holdingSpawn().add(-10,0,0));
             useBlock(f.a.player, rules, 5, InteractionHand.MAIN_HAND);
             test.assertValueEqual(ruleClicks, 2, "Remote registered-facility request is rejected");
-            teleport(f.a.player, P1LobbyWorld.open(f.server).holdingSpawn());
+            teleport(f.a.player, LobbyWorld.open(f.server).holdingSpawn());
             var chest = rules.offset(0,0,2); place(chest, Blocks.CHEST);
             useBlock(f.a.player, chest, 6, InteractionHand.MAIN_HAND);
-            test.assertFalse(P2LobbyUi.isMenu(f.a.player) || f.a.player.containerMenu != f.a.player.inventoryMenu, "Ordinary container stays sealed");
+            test.assertFalse(LobbyMenus.isMenu(f.a.player) || f.a.player.containerMenu != f.a.player.inventoryMenu, "Ordinary container stays sealed");
             try { router.registerBlock(chest, Blocks.CHEST, LobbyContext.RULES, p -> {}); throw new AssertionError("Chest registered"); }
             catch (IllegalArgumentException expected) { }
             var stand = new ArmorStand(EntityTypes.ARMOR_STAND, f.a.player.level());
@@ -194,8 +194,8 @@ public final class LobbyFoundationGameTest {
             test.assertTrue(f.a.player.getMainHandItem().is(Items.DIAMOND_CHESTPLATE), "Unregistered entity cannot take equipment");
             stand.discard(); f.a.player.getInventory().clearContent();
             test.assertValueEqual(f.session.snapshot().orElseThrow().rules().huntRule(), RulesConfig.HuntRule.PERSONAL_TARGET, "New rounds use new semantics");
-            dev.hardrush.p2.lobby.P2LobbyRuntime.command(f.a.player, "deploy", "");
-            test.assertTrue(f.a.player.level() == P1LobbyWorld.open(f.server).holdingLevel(), "Unconnected direct hunt stays closed");
+            dev.hardrush.lobby.LobbyRuntime.command(f.a.player, "deploy", "");
+            test.assertTrue(f.a.player.level() == LobbyWorld.open(f.server).holdingLevel(), "Unconnected direct hunt stays closed");
         }
         void project() {
             targets.clear(); selections.clear();
@@ -255,7 +255,7 @@ public final class LobbyFoundationGameTest {
             test.assertTrue(selections.isEmpty(), "Previous generation cannot select a replacement life");
             click(f.a.player, aView.entities().getFirst().entityId());
             test.assertValueEqual(selections.getFirst().life(), 2, "Selection preserves the bound life sequence");
-            selections.clear(); teleport(f.a.player, P1LobbyWorld.open(f.server).holdingSpawn());
+            selections.clear(); teleport(f.a.player, LobbyWorld.open(f.server).holdingSpawn());
             click(f.a.player, aView.entities().getFirst().entityId());
             test.assertTrue(selections.isEmpty(), "Remote model click is rejected");
             aView = router.projections().show(f.a.player, router.round(), targets, 0, (p,s) -> selections.add(s));
@@ -269,7 +269,7 @@ public final class LobbyFoundationGameTest {
             aView = router.projections().show(f.a.player, router.round(), targets, 0, (p,s) -> selections.add(s));
             moveToModel(f.a, aView.entities().getFirst().entityId()); click(f.a.player, beforeReconnect);
             test.assertTrue(selections.isEmpty(), "Old connection's native ID remains invalid");
-            teleport(f.a.player, P1LobbyWorld.open(f.server).holdingSpawn());
+            teleport(f.a.player, LobbyWorld.open(f.server).holdingSpawn());
         }
         void moveToModel(Fixture.Peer peer, int id) {
             var packet = peer.connection.packets.stream().filter(ClientboundAddEntityPacket.class::isInstance)
@@ -291,22 +291,22 @@ public final class LobbyFoundationGameTest {
         final GameTestHelper test;
         final MinecraftServer server;
         final AtomicLong clock = new AtomicLong(System.nanoTime());
-        final AtomicReference<P1LobbySession.Reply> reply = new AtomicReference<>();
+        final AtomicReference<RoundSession.Reply> reply = new AtomicReference<>();
         final Peer a = new Peer("LobbyMovingA"), b = new Peer("LobbyMovingB");
-        P1LobbySession session;
+        RoundSession session;
         java.util.concurrent.CompletableFuture<?> historyDrain;
-        P1PlayerProfiles profiles;
+        PlayerProfiles profiles;
         BlockPos rules;
         String lastStage;
         int stageStarted;
         Fixture(GameTestHelper test) { this.test = test; server = test.getLevel().getServer(); }
         @SuppressWarnings("unchecked") <T> T service(String name) {
-            try { var field = P1LobbyRuntime.class.getDeclaredField(name); field.setAccessible(true); return (T) ((Map<?, ?>) field.get(null)).get(server); }
+            try { var field = RoundRuntime.class.getDeclaredField(name); field.setAccessible(true); return (T) ((Map<?, ?>) field.get(null)).get(server); }
             catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
         }
         void bind() {
             session = service("SESSIONS"); profiles = service("PROFILES");
-            try { var field = P1LobbySession.class.getDeclaredField("clock"); field.setAccessible(true); field.set(session, (MonotonicClock) clock::get); }
+            try { var field = RoundSession.class.getDeclaredField("clock"); field.setAccessible(true); field.set(session, (MonotonicClock) clock::get); }
             catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
         }
         void await(boolean condition, String stage) {
@@ -315,14 +315,14 @@ public final class LobbyFoundationGameTest {
                 System.out.println("Lobby foundation stage: " + stage);
             }
             if (!condition && server.getTickCount() - stageStarted > 5000) throw new IllegalStateException("Lobby stage timed out: " + stage
-                    + "; " + P1LobbyRuntime.status(server) + "; " + P1LobbyRuntime.snapshot(server).orElseThrow().participants());
+                    + "; " + RoundRuntime.status(server) + "; " + RoundRuntime.snapshot(server).orElseThrow().participants());
             java.util.concurrent.locks.LockSupport.parkNanos(2_000_000);
-            test.assertTrue(condition, stage + ": " + P1LobbyRuntime.status(server));
+            test.assertTrue(condition, stage + ": " + RoundRuntime.status(server));
         }
         void assertLobby() {
             for (var peer : List.of(a, b)) {
-                test.assertTrue(P1LobbyWorld.isLobby(peer.player.level()) && P1PlayerProfiles.canMoveInLobby(peer.player), "Healthy verified peers share the active lobby");
-                test.assertTrue(P1PlayerProfiles.isLocked(peer.player), "Movement does not grant competition admission");
+                test.assertTrue(LobbyWorld.isLobby(peer.player.level()) && PlayerProfiles.canMoveInLobby(peer.player), "Healthy verified peers share the active lobby");
+                test.assertTrue(PlayerProfiles.isLocked(peer.player), "Movement does not grant competition admission");
                 test.assertValueEqual(peer.player.gameMode.getGameModeForPlayer(), GameType.ADVENTURE, "Every lobby peer is in adventure mode");
                 test.assertFalse(peer.player.getAbilities().mayBuild || peer.player.getAbilities().mayfly, "Lobby abilities are authoritative");
             }
@@ -345,20 +345,20 @@ public final class LobbyFoundationGameTest {
                         .thenExecute(() -> {
                             connection = new RecordingConnection(); channel = new EmbeddedChannel(connection); acknowledged = Integer.MIN_VALUE; batchCount = 0;
                             player = prepare.spawnPlayer(connection, CommonListenerCookie.createInitial(profile, false)); prepare.close(); acknowledge();
-                            test.assertTrue(P1PlayerProfiles.isLocked(player), "Native login begins in quarantine");
+                            test.assertTrue(PlayerProfiles.isLocked(player), "Native login begins in quarantine");
                             assertFrozen();
-                        }).thenWaitUntil(() -> await(P1PlayerProfiles.canMoveInLobby(player), "Profile verification opens lobby movement"));
+                        }).thenWaitUntil(() -> await(PlayerProfiles.canMoveInLobby(player), "Profile verification opens lobby movement"));
             }
             void assertFrozen() {
                 acknowledge();
                 var position = player.position();
                 player.connection.handleMovePlayer(new ServerboundMovePlayerPacket.PosRot(position.add(.4, 0, 0), 40, 0, true, false));
-                test.assertTrue(player.position().distanceToSqr(position) < .000001 && !P1PlayerProfiles.canMoveInLobby(player), "Pending or failed profiles cannot move");
+                test.assertTrue(player.position().distanceToSqr(position) < .000001 && !PlayerProfiles.canMoveInLobby(player), "Pending or failed profiles cannot move");
                 acknowledge();
                 if (rules != null) {
                     player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,
                             new BlockHitResult(Vec3.atCenterOf(rules), Direction.UP, rules, false), 80));
-                    test.assertFalse(P2LobbyUi.isMenu(player), "Quarantined profile cannot open a registered facility");
+                    test.assertFalse(LobbyMenus.isMenu(player), "Quarantined profile cannot open a registered facility");
                 }
             }
             void move(double x, double y, float yaw, float pitch, boolean ground) {
@@ -368,7 +368,7 @@ public final class LobbyFoundationGameTest {
                 player.connection.handleClientTickEnd(ServerboundClientTickEndPacket.INSTANCE);
                 test.assertTrue(player.position().distanceToSqr(target) < .000001, "Actual inbound movement reaches the server position: target="
                         + target + ", actual=" + player.position() + ", loaded=" + player.connection.hasClientLoaded()
-                        + ", mobile=" + P1PlayerProfiles.canMoveInLobby(player));
+                        + ", mobile=" + PlayerProfiles.canMoveInLobby(player));
             }
             boolean seesMovement(ServerPlayer other, boolean position, boolean rotation) {
                 return connection.packets.subList(observedFrom, connection.packets.size()).stream().anyMatch(packet -> packet instanceof ClientboundMoveEntityPacket move

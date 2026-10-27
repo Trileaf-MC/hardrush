@@ -58,8 +58,8 @@ class DemoTests(unittest.TestCase):
             demo.audit_jar(bad, 'hardrush.jar')
 
     def test_operator_probe_code_is_rejected_even_without_a_development_mod_id(self):
-        for path in ('dev/hardrush/p0/HardRushP0.class', 'dev/hardrush/p0/world/WorldProbe.class',
-                     'dev/hardrush/p0/world/WorldManifest.class', 'dev/hardrush/p0/world/RoundRuntimeLevel.class'):
+        for path in ('dev/hardrush/development/HardRushDevelopment.class', 'dev/hardrush/development/world/DevelopmentWorlds.class',
+                     'dev/hardrush/development/world/DevelopmentWorldManifest.class', 'dev/hardrush/development/world/DevelopmentRuntimeLevel.class'):
             with self.subTest(path=path), self.assertRaisesRegex(RuntimeError, '开发工具'):
                 demo.audit_jar(mod_jar('hardrush', {path: b'probe'}), 'hardrush.jar')
 

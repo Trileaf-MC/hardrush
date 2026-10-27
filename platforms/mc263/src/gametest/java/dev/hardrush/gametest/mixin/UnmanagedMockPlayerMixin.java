@@ -1,6 +1,6 @@
 package dev.hardrush.gametest.mixin;
 
-import dev.hardrush.p1.player.P1PlayerProfiles;
+import dev.hardrush.player.PlayerProfiles;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
 import net.minecraft.server.level.ServerPlayer;

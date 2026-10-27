@@ -1,7 +1,7 @@
 package dev.hardrush.gametest;
 
-import dev.hardrush.p0.monster.MonsterRoles;
-import dev.hardrush.p2.locator.PlayerLocator;
+import dev.hardrush.monster.MonsterRoles;
+import dev.hardrush.locator.PlayerLocator;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;

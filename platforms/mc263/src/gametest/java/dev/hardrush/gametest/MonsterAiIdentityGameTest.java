@@ -1,8 +1,8 @@
 package dev.hardrush.gametest;
 
-import dev.hardrush.p0.monster.MonsterAiIdentity;
-import dev.hardrush.p0.monster.MonsterRoles;
-import dev.hardrush.p0.monster.mixin.MonsterMobAccessor;
+import dev.hardrush.monster.MonsterAiIdentity;
+import dev.hardrush.monster.MonsterRoles;
+import dev.hardrush.monster.mixin.MonsterMobAccessor;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -83,7 +83,7 @@ public final class MonsterAiIdentityGameTest {
                 MonsterRoles.select(f.player, "creeper");
                 test.assertFalse(avoidsHuman(ocelot), "A wild ocelot does not flee a creeper as if it were a human");
                 MonsterRoles.clear(f.player);
-                dev.hardrush.p0.disguise.DisguiseProbe.apply(f.player, "zombie");
+                dev.hardrush.disguise.MonsterDisguise.apply(f.player, "zombie");
                 var zombie = f.mob(EntityTypes.ZOMBIE, new Vec3(0,0,-3));
                 test.assertTrue(MonsterAiIdentity.species(f.player) == f.player && nearest(zombie) == f.player,
                         "Appearance-only disguises never alter native AI identity");

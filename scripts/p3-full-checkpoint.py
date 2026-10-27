@@ -47,13 +47,13 @@ def main():
         'core/src/main/java/dev/hardrush/core/round/RoundEngine.java',
         'core/src/main/java/dev/hardrush/core/round/RoundSnapshotCodec.java',
         'persistence/src/main/java/dev/hardrush/persistence/SqliteRoundStore.java',
-        'platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbyRuntime.java',
-        'platforms/mc263/src/main/java/dev/hardrush/p1/P1LobbySession.java',
-        'platforms/mc263/src/main/java/dev/hardrush/p1/player/P1PlayerProfiles.java',
-        'platforms/mc263/src/main/java/dev/hardrush/p1/storage/P1FullCheckpoint.java',
-        'platforms/mc263/src/main/java/dev/hardrush/p1/storage/P1FullCheckpointRuntime.java',
-        'platforms/mc263/src/main/java/dev/hardrush/p1/storage/P1RecoveryRuntime.java',
-        'platforms/mc263/src/main/java/dev/hardrush/p1/admin/P1AdminCommands.java',
+        'platforms/mc263/src/main/java/dev/hardrush/round/RoundRuntime.java',
+        'platforms/mc263/src/main/java/dev/hardrush/round/RoundSession.java',
+        'platforms/mc263/src/main/java/dev/hardrush/player/PlayerProfiles.java',
+        'platforms/mc263/src/main/java/dev/hardrush/storage/FullCheckpoint.java',
+        'platforms/mc263/src/main/java/dev/hardrush/storage/FullCheckpointRuntime.java',
+        'platforms/mc263/src/main/java/dev/hardrush/storage/RecoveryRuntime.java',
+        'platforms/mc263/src/main/java/dev/hardrush/admin/AdminCommands.java',
     ]
     sources = {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in source_paths}
     eula = P1.accepted_eula()
