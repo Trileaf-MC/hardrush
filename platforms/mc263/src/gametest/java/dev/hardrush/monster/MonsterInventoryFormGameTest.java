@@ -65,7 +65,7 @@ public final class MonsterInventoryFormGameTest {
     @GameTest(maxTicks=200)
     public void closingFullInventoryRetainsBoundCursorAndSettlementDropsWorldItemsOnce(GameTestHelper test) {
         var p = MonsterRoleGameTest.actor(test);
-        test.runAfterDelay(10, () -> {
+        MonsterRoleGameTest.whenArenaTicking(test, p, () -> {
         try {
             MonsterRoles.select(p, "zombie");
             var control = p.getInventory().getItem(7).copy();
@@ -87,7 +87,7 @@ public final class MonsterInventoryFormGameTest {
     @GameTest(maxTicks=200)
     public void firstEntryEscrowsOnlyItemsLeftAfterNativeContainerClose(GameTestHelper test) {
         var p = MonsterRoleGameTest.actor(test);
-        test.runAfterDelay(10, () -> {
+        MonsterRoleGameTest.whenArenaTicking(test, p, () -> {
             try {
                 for (int i=0;i<36;i++) p.getInventory().setItem(i,new ItemStack(Items.COBBLESTONE,64));
                 p.inventoryMenu.setCarried(new ItemStack(Items.DIAMOND,7));

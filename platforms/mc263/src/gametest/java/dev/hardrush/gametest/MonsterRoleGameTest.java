@@ -296,7 +296,7 @@ public final class MonsterRoleGameTest {
     public void realEquipmentMovesInternallyAndConservesWorldItems(GameTestHelper test) {
         var player=actor(test); var observer=actor(test);
         var items=new java.util.ArrayList<ItemEntity>();
-        test.runAfterDelay(10,()->{
+        whenArenaTicking(test,player,()->{
         cleanArena(player);
         try {
             MonsterRoles.select(player,"zombie");
@@ -340,7 +340,7 @@ public final class MonsterRoleGameTest {
     public void skeletonStoresWorldWeaponsAndUsesSelectedEnchantedBow(GameTestHelper test) {
         var player=actor(test);var items=new java.util.ArrayList<ItemEntity>();
         MonsterRoles.select(player,"skeleton");
-        test.runAfterDelay(10,()->{
+        whenArenaTicking(test,player,()->{
         cleanArena(player);
         try {
             var sword=drop(player,new ItemStack(Items.NETHERITE_SWORD));items.add(sword);sword.playerTouch(player);
@@ -407,7 +407,7 @@ public final class MonsterRoleGameTest {
         weather.setClearWeatherTime(6000);weather.setRaining(false);weather.setThundering(false);
         player.level().setBlockAndUpdate(player.blockPosition().above(3),Blocks.AIR.defaultBlockState());
         player.level().clockManager().setTotalTicks(clock,6000);
-        test.runAfterDelay(10,()->{
+        whenArenaTicking(test,player,()->{
           cleanArena(player);
           try {
             test.assertTrue(player.level().canSeeSky(player.blockPosition()), "The daylight control is exposed to the sky");
@@ -519,6 +519,15 @@ public final class MonsterRoleGameTest {
         for(int slot=0;slot<36;slot++) if(player.getInventory().getItem(slot).is(item) && !MonsterItems.bound(player.getInventory().getItem(slot)))
             return player.getInventory().removeItemNoUpdate(slot);
         throw new IllegalStateException("Missing picked-up item "+item);
+    }
+
+    /** Forced arena chunks load asynchronously; item-entity queries skip sections that are not yet accessible. */
+    public static void whenArenaTicking(GameTestHelper test, ServerPlayer player, Runnable action) {
+        var level=player.level();var center=player.blockPosition();
+        test.startSequence().thenIdle(10).thenWaitUntil(()->{
+            for(int dx=-8;dx<=8;dx+=16)for(int dz=-8;dz<=8;dz+=16)
+                test.assertTrue(level.isPositionEntityTicking(center.offset(dx,0,dz)),"Actor arena entities are ticking");
+        }).thenExecute(action);
     }
 
     public static ServerPlayer actor(GameTestHelper test) {
