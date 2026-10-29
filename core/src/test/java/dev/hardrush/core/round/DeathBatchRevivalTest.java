@@ -204,6 +204,50 @@ class DeathBatchRevivalTest {
         assertEquals(RoundPhase.RESCUE, engine.view().phase());
     }
 
+    @Test void campMonstersTransferThrownTotemChargesWithoutTouchingRescueTime() {
+        var engine = rescue(true);
+        apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 1, 2));
+        var receiver = engine.view().participants().get(human);
+        assertEquals(ParticipantRole.MONSTER_LOBBY, receiver.role());
+        apply(engine, engine.proposeOnline(UUID.randomUUID(), human, "Human", true));
+        clock.seconds(10);
+        apply(engine, engine.proposeRevivalTotemDrop(UUID.randomUUID(), round, monster, 1, 3, 2));
+        assertEquals(1, engine.view().participants().get(monster).revivalCharges());
+        assertEquals(50_000, engine.view().remainingPhaseMillis());
+        apply(engine, engine.proposeRevivalTotemPickup(UUID.randomUUID(), round, human,
+                receiver.lifeSequence(), receiver.monsterDeploymentSequence(), 2));
+        assertEquals(2, engine.view().participants().get(human).revivalCharges());
+        apply(engine, engine.proposeRevivalTotemDrop(UUID.randomUUID(), round, monster, 1, 3, 1));
+        assertEquals(0, engine.view().participants().get(monster).revivalCharges());
+        assertEquals(RoundPhase.RESCUE, engine.view().phase(), "Floor totems leave the deadline running");
+        var revived = engine.view().participants().get(human);
+        apply(engine, engine.proposeRevival(UUID.randomUUID(), round, human, revived.lifeSequence(), revived.monsterDeploymentSequence()));
+        assertEquals(1, engine.view().participants().get(human).revivalCharges());
+        assertEquals(RoundPhase.RUNNING, engine.view().phase());
+    }
+
+    @Test void totemTransfersRejectOverdrawStaleIdentityDeployedMonstersAndClosedRounds() {
+        var engine = fixture(GameMode.HARDCORE, human(human, true), monster(true, true));
+        assertThrows(IllegalArgumentException.class, () -> engine.proposeRevivalTotemDrop(UUID.randomUUID(), round, monster, 1, 3, 2));
+        assertThrows(IllegalArgumentException.class, () -> engine.proposeRevivalTotemDrop(UUID.randomUUID(), round, monster, 1, 3, 0));
+        assertThrows(IllegalArgumentException.class, () -> engine.proposeRevivalTotemPickup(UUID.randomUUID(), round, monster, 1, 3, 0));
+        assertThrows(IllegalStateException.class, () -> engine.proposeRevivalTotemDrop(UUID.randomUUID(), round, monster, 2, 3, 1));
+        assertThrows(IllegalStateException.class, () -> engine.proposeRevivalTotemPickup(UUID.randomUUID(), round, monster, 1, 4, 1));
+        assertThrows(IllegalStateException.class, () -> engine.proposeRevivalTotemPickup(UUID.randomUUID(), UUID.randomUUID(), monster, 1, 3, 1));
+        assertThrows(IllegalStateException.class, () -> engine.proposeRevivalTotemPickup(UUID.randomUUID(), round, human, 1, 0, 1));
+        apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 1, Integer.MAX_VALUE - 1));
+        assertThrows(IllegalArgumentException.class, () -> engine.proposeRevivalTotemPickup(UUID.randomUUID(), round, monster, 1, 3, 1));
+        apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
+        assertThrows(IllegalStateException.class, () -> engine.proposeRevivalTotemDrop(UUID.randomUUID(), round, monster, 1, 4, 1));
+        assertFalse(engine.pending());
+        var normal = fixture(GameMode.NORMAL, human(human, true), monster(true, true));
+        assertThrows(IllegalStateException.class, () -> normal.proposeRevivalTotemDrop(UUID.randomUUID(), round, monster, 1, 3, 1));
+        var expired = rescue(true);
+        clock.seconds(60);
+        assertThrows(IllegalStateException.class, () -> expired.proposeRevivalTotemDrop(UUID.randomUUID(), round, monster, 1, 3, 1));
+        assertFalse(expired.pending());
+    }
+
     @Test void adminGrantRejectsStaleIdentityNonpositiveCountsOverflowAndWrongModeWithoutPendingMutation() {
         var engine = fixture(GameMode.HARDCORE, human(human, true), monster(true, false));
         assertThrows(IllegalArgumentException.class, () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 0, 0));

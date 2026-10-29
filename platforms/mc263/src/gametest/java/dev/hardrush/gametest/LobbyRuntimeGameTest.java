@@ -12,6 +12,7 @@ import dev.hardrush.round.RoundSession;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.RoundWorldBundle;
 import dev.hardrush.lobby.LobbyRuntime;
+import dev.hardrush.lobby.RevivalTotems;
 import dev.hardrush.locator.PlayerLocator;
 import dev.hardrush.monster.MonsterRoundRuntime;
 import dev.hardrush.protection.ProtectionRuntime;
@@ -277,6 +278,42 @@ public final class LobbyRuntimeGameTest {
                     })
                     .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_LOBBY
                             && f.profiles.isReady(hunter.profile.id(), f.round()) && !f.session.mutationPending(), "Cycle return remains usable during rescue " + iteration))
+                    .thenWaitUntil(() -> f.await(iteration != 0 || heldTotems(hunter.player) == hunter.participant().revivalCharges(),
+                            "Camp inventory projects the revival balance as totems"))
+                    .thenExecute(() -> {
+                        if (iteration != 0) return;
+                        var held = java.util.stream.IntStream.range(0, 9).mapToObj(hunter.player.getInventory()::getItem)
+                                .filter(RevivalTotems::is).findFirst().orElseThrow();
+                        f.test.assertValueEqual(held.getHoverName().getString(), "复生图腾", "The totem explains itself by name");
+                        f.test.assertFalse(held.has(net.minecraft.core.component.DataComponents.DEATH_PROTECTION), "A revival totem never guards against death");
+                        f.test.assertValueEqual(held.getMaxStackSize(), RevivalTotems.MAX_STACK, "Charges stack in one native slot");
+                        throwTotem(hunter.player);
+                    })
+                    .thenWaitUntil(() -> f.await(iteration != 0 || hunter.participant().revivalCharges() == 0
+                            && thrownTotem(hunter.player) != null && heldTotems(hunter.player) == 0 && !f.session.mutationPending(),
+                            "A thrown totem commits its charge before it lands"))
+                    .thenExecute(() -> {
+                        if (iteration != 0) return;
+                        var floor = thrownTotem(hunter.player);
+                        floor.playerTouch(prey.current());
+                        f.test.assertFalse(floor.isRemoved() || f.session.mutationPending(), "Native pickup delay still applies");
+                        floor.setPickUpDelay(0);
+                        floor.playerTouch(prey.current());
+                    })
+                    .thenWaitUntil(() -> f.await(iteration != 0 || prey.participant().revivalCharges() == 1
+                            && thrownTotem(hunter.player) == null && heldTotems(prey.current()) == 1 && !f.session.mutationPending(),
+                            "Another camp monster picks up the transferred charge"))
+                    .thenExecute(() -> { if (iteration == 0) throwTotem(prey.current()); })
+                    .thenWaitUntil(() -> f.await(iteration != 0 || prey.participant().revivalCharges() == 0
+                            && thrownTotem(prey.current()) != null && !f.session.mutationPending(), "The receiver can pass it back"))
+                    .thenExecute(() -> {
+                        if (iteration != 0) return;
+                        var floor = thrownTotem(prey.current());
+                        floor.setPickUpDelay(0);
+                        floor.playerTouch(hunter.player);
+                    })
+                    .thenWaitUntil(() -> f.await(iteration != 0 || hunter.participant().revivalCharges() == 1
+                            && heldTotems(hunter.player) == 1 && !f.session.mutationPending(), "The original owner regains the charge"))
                     .thenExecute(() -> {
                         f.test.assertTrue(hunter.participant().monsterCooldownNanos() > 0, "Revival is tested during the deployment cooldown");
                         if (iteration == 0) {
@@ -551,7 +588,7 @@ public final class LobbyRuntimeGameTest {
                     "Every returned monster body uses adventure mode");
             if (replaced) test.assertTrue(monster.player != dead, "Defeat must create a native replacement rather than heal the dead object");
             test.assertTrue(monster.player.connection.player == monster.player, "The native connection rebinds to the live lobby body");
-            test.assertTrue(monster.player.getInventory().isEmpty(), "No role controls or human death inventory enter the lobby");
+            test.assertTrue(onlyRevivalTotems(monster.player), "No role controls or human death inventory enter the lobby");
             test.assertFalse(MonsterRoles.isMonster(monster.player), "Lobby has no active prototype role body");
             test.assertTrue(PlayerLocator.hideFrom(monster.player, target.player),
                     "Committed camp identity hides a monster even when the native body looks human");
@@ -663,7 +700,7 @@ public final class LobbyRuntimeGameTest {
                 for (short slot = 0; slot < 45; slot++) if (menu.getSlot(slot).getItem().is(icon)) {
                     player.connection.handleContainerClick(new ServerboundContainerClickPacket(menu.containerId, menu.getStateId(),
                             slot, (byte) 0, ContainerInput.PICKUP, new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(), HashedStack.EMPTY));
-                    test.assertTrue(player.getInventory().isEmpty() && menu.getCarried().isEmpty(), "The real container packet triggers an action without moving a GUI icon");
+                    test.assertTrue(onlyRevivalTotems(player) && menu.getCarried().isEmpty(), "The real container packet triggers an action without moving a GUI icon");
                     return;
                 }
                 throw new IllegalStateException("Expected lobby icon is absent: " + icon);
@@ -685,6 +722,37 @@ public final class LobbyRuntimeGameTest {
                 channel.finishAndReleaseAll(); player = null;
             }
         }
+    }
+
+    static boolean onlyRevivalTotems(ServerPlayer player) {
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            var stack = inventory.getItem(slot);
+            if (!stack.isEmpty() && !RevivalTotems.is(stack)) return false;
+        }
+        return true;
+    }
+    static int heldTotems(ServerPlayer player) {
+        var inventory = player.getInventory();
+        int count = 0;
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            if (RevivalTotems.is(inventory.getItem(slot))) count += inventory.getItem(slot).getCount();
+        }
+        return count;
+    }
+    static ItemEntity thrownTotem(ServerPlayer near) {
+        return near.level().getEntitiesOfClass(ItemEntity.class, near.getBoundingBox().inflate(8)).stream()
+                .filter(item -> RevivalTotems.is(item.getItem())).findFirst().orElse(null);
+    }
+    /** The real Q-key packet: vanilla removes the stack, RevivalTotems commits it before spawning. */
+    static void throwTotem(ServerPlayer player) {
+        for (int slot = 0; slot < 9; slot++) if (RevivalTotems.is(player.getInventory().getItem(slot))) {
+            player.getInventory().setSelectedSlot(slot);
+            player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(
+                    ServerboundPlayerActionPacket.Action.DROP_ITEM, BlockPos.ZERO, Direction.DOWN));
+            return;
+        }
+        throw new IllegalStateException("No revival totem on the hotbar");
     }
 
     static final class RecordingConnection extends Connection {

@@ -373,6 +373,37 @@ public final class RoundEngine {
         return revival(eventId, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence, true);
     }
 
+    /** A camp monster throws charges as native totems; the adapter spawns them only after this commits. */
+    public RoundTransition proposeRevivalTotemDrop(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, int count) {
+        RoundSnapshot before = capture();
+        Participant player = requireTotemHolder(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.spendRevivalCharges(count));
+        return proposal(eventId, "REVIVAL_TOTEM_DROP", before, before.phase(), before.remainingPhaseNanos(),
+                players, before.result(), false);
+    }
+
+    /** The adapter removes the floor totem before proposing, so one thrown stack credits at most once. */
+    public RoundTransition proposeRevivalTotemPickup(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, int count) {
+        RoundSnapshot before = capture();
+        Participant player = requireTotemHolder(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.addRevivalCharges(count));
+        return proposal(eventId, "REVIVAL_TOTEM_PICKUP", before, before.phase(), before.remainingPhaseNanos(),
+                players, before.result(), false);
+    }
+
+    private static Participant requireTotemHolder(RoundSnapshot before, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("仅极限模式有复生图腾。");
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence,
+                expectedDeploymentSequence, ParticipantRole.MONSTER_LOBBY);
+        requireOpenRescue(before);
+        return player;
+    }
+
     private RoundTransition revival(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence, boolean admissionPending) {
         RoundSnapshot before = capture();

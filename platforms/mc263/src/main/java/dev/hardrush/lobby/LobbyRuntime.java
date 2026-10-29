@@ -118,6 +118,23 @@ public final class LobbyRuntime {
             }
         });
         MonsterRoundRuntime.configure(server, session, profiles, worlds);
+        RevivalTotems.configure(server, new RevivalTotems.Access() {
+            @Override public Optional<RoundSnapshot> committed() { return session.snapshot(); }
+            @Override public boolean eligible(ServerPlayer player) {
+                var r = session.snapshot().orElse(null);
+                var p = r == null ? null : r.participants().get(player.getUUID());
+                return p != null && p.online() && p.role() == ParticipantRole.MONSTER_LOBBY
+                        && r.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE
+                        && (r.phase() == RoundPhase.RUNNING || r.phase() == RoundPhase.RESCUE)
+                        && !session.competitionLocked() && current(player, binding)
+                        && PlayerProfiles.verifiedLobbyBody(player) && player.isAlive();
+            }
+            @Override public boolean busy(UUID player) {
+                return binding.committing.contains(player) || binding.searches.containsKey(player)
+                        || binding.resumptions.containsKey(player) || binding.pending.containsKey(player);
+            }
+            @Override public RoundSession session() { return session; }
+        });
         MonsterCombatRuntime.configure(server, new MonsterCombatRuntime.Access() {
             @Override public Optional<RoundSnapshot> snapshot() { return session.snapshot(); }
             @Override public boolean competitionLocked() { return session.competitionLocked(); }
@@ -146,6 +163,7 @@ public final class LobbyRuntime {
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "极限：人类击杀在赛人类每人 +1 次复生；击杀怪物不奖励", "info", ""),
                         new LobbyMenus.Button(Items.ROTTEN_FLESH, "怪物击杀在赛人类：每人 +1 次复生，可累计", "info", ""),
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "死亡后到营地祭坛消耗一次空装复生，冷却中可用", "info", ""),
+                        new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "营地背包的复生图腾数量即剩余次数；丢出可转赠营地怪物，落地5分钟作废", "info", ""),
                         new LobbyMenus.Button(Items.GRASS_BLOCK, "中途门确认空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),
                         new LobbyMenus.Button(Items.DRAGON_EGG, "人类尾刀首龙通关；末地庆祝最多"
                                 + (RoundEngine.successCelebrationMillis(round.rules()) + 999) / 1000
@@ -173,7 +191,7 @@ public final class LobbyRuntime {
         });
     }
     public static void unconfigure(MinecraftServer server) {
-        BINDINGS.remove(server); LobbyInteractions.close(server); LobbyMenus.unconfigure(server);
+        BINDINGS.remove(server); LobbyInteractions.close(server); LobbyMenus.unconfigure(server); RevivalTotems.unconfigure(server);
         MonsterRoundRuntime.unconfigure(server); MonsterCombatRuntime.unconfigure(server);
     }
     public static void prepareStop(MinecraftServer server) {
@@ -328,6 +346,7 @@ public final class LobbyRuntime {
     public static void tick(MinecraftServer server) {
         var b = BINDINGS.get(server); if (b == null) return;
         synchronize(server, b);
+        RevivalTotems.tick(server);
         var round = b.session.view().orElse(null);
         updateDisplays(server, b);
         if (round == null || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE || b.session.competitionLocked()) {

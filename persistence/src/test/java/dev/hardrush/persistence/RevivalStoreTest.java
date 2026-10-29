@@ -214,6 +214,34 @@ class RevivalStoreTest {
         }
     }
 
+    @Test void thrownTotemChargesMoveBetweenCampMonstersDurablyAndReplayOnce() throws Exception {
+        try (var fixture = new Fixture(directory.toRealPath().resolve("totems.sqlite"))) {
+            fixture.start();
+            fixture.commit(fixture.engine.proposeDeathBatch(UUID.randomUUID(), fixture.round(),
+                    List.of(death(fixture.player(BOB), Optional.empty())), null));
+            var bob = fixture.player(BOB);
+            fixture.commit(fixture.engine.proposeAdminGrantRevival(UUID.randomUUID(), fixture.round(), BOB,
+                    bob.lifeSequence(), 0, 3));
+            var drop = fixture.engine.proposeRevivalTotemDrop(UUID.randomUUID(), fixture.round(), BOB,
+                    bob.lifeSequence(), bob.monsterDeploymentSequence(), 2);
+            var replay = write(drop);
+            fixture.commit(drop);
+            fixture.commit(fixture.engine.proposeDeathBatch(UUID.randomUUID(), fixture.round(),
+                    List.of(death(fixture.player(ALICE), Optional.empty())), null));
+            assertEquals(RoundPhase.RESCUE, fixture.engine.committed().phase());
+            fixture.reopen();
+            assertEquals(1, fixture.player(BOB).revivalCharges());
+            assertEquals(CommitResult.DUPLICATE, fixture.store.commit(replay));
+            var alice = fixture.player(ALICE);
+            fixture.commit(fixture.engine.proposeRevivalTotemPickup(UUID.randomUUID(), fixture.round(), ALICE,
+                    alice.lifeSequence(), alice.monsterDeploymentSequence(), 2));
+            fixture.reopen();
+            assertEquals(2, fixture.player(ALICE).revivalCharges());
+            assertEquals(1, fixture.player(BOB).revivalCharges());
+            assertEquals(0, fixture.store.participantRecord(fixture.round(), ALICE).orElseThrow().revivalCount());
+        }
+    }
+
     private static void assertRecord(Fixture fixture, UUID id, int deaths, int revivals, long firstEnd) throws Exception {
         var record = fixture.store.participantRecord(fixture.round(), id).orElseThrow();
         assertEquals(id.equals(ALICE) ? "Alice" : "Bob", record.playerName());
