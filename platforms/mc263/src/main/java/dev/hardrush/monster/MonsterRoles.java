@@ -129,7 +129,7 @@ public final class MonsterRoles {
             player.getInventory().setItem(2, MonsterCompanions.egg(player, false, false));
         } else if (form.skeleton()) {
             player.getInventory().setItem(1, MonsterItems.bind(player,
-                named(Items.BONE, "骷髅：三连射", "持弓时右键使用；每 0.6 秒一箭，冷却 20 秒"), "burst"));
+                named(Items.BONE, "骷髅：三连射", "持弓时右键使用；每 0.3 秒一箭，冷却 20 秒"), "burst"));
         } else player.getInventory().setItem(0, MonsterCreeper.createIgniter(player));
         player.getInventory().setItem(7, MonsterItems.bind(player,
             named(Items.ECHO_SHARD, "归返营地 · 右键引导 5 秒", "移动、攻击、使用物品或受伤会中断"), "return"));
