@@ -861,6 +861,18 @@ public final class RoundSession implements AutoCloseable {
                 lifeSequence, deploymentSequence), reply, "复生资格已消费，正在空装返回本轮出生点。");
     }
 
+    public void requestRevivalTotemDrop(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            int count, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeRevivalTotemDrop(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence, count), reply, "复生图腾已丢出。");
+    }
+
+    public void requestRevivalTotemPickup(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            int count, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeRevivalTotemPickup(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence, count), reply, "复生图腾已拾取。");
+    }
+
     public void requestMonsterSelection(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             MonsterRole role, MonsterDimension dimension, Consumer<Reply> reply) {
         requestAction(() -> engine.proposeMonsterSelection(UUID.randomUUID(), roundId, playerId,

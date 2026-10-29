@@ -2,6 +2,7 @@ package dev.hardrush.protection.mixin;
 
 import dev.hardrush.book.WrittenBookPort;
 import dev.hardrush.lobby.LobbyInteractions;
+import dev.hardrush.lobby.RevivalTotems;
 import dev.hardrush.protection.ProtectionRuntime;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
@@ -54,7 +55,11 @@ public abstract class ProtectionNetworkMixin {
                     player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.getPos())); ci.cancel();
                 }
             }
-            case DROP_ITEM, DROP_ALL_ITEMS -> { if (ProtectionRuntime.protectedEntity(player)) ci.cancel(); }
+            case DROP_ITEM, DROP_ALL_ITEMS -> {
+                // Revival totems are the one lobby item that may be thrown; RevivalTotems commits or restores it.
+                if (ProtectionRuntime.protectedEntity(player)
+                        && !RevivalTotems.is(player.getInventory().getSelectedItem())) ci.cancel();
+            }
             default -> {}
         }
     }
@@ -82,6 +87,7 @@ public abstract class ProtectionNetworkMixin {
     private void inventory(ServerboundContainerClickPacket packet, CallbackInfo ci) {
         if (dev.hardrush.lobby.LobbyMenus.isMenu(player)) return;
         if (!mainThread() || !ProtectionRuntime.protectedEntity(player)) return;
+        if (RevivalTotems.throwsFromInventory(player, packet)) return;
         // Personal inventory sorting is allowed. QUICK_CRAFT uses negative-slot control packets
         // to begin/end a normal drag; only PICKUP/outside and THROW actually discard items.
         if (player.containerMenu != player.inventoryMenu || packet.containerInput() == ContainerInput.THROW
