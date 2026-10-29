@@ -175,7 +175,7 @@ class RevivalStoreTest {
         }
     }
 
-    @Test void oneExplosionBatchCommitsAllDeathsAndOneEntitlementBeforeRescueWithoutDoubleCountingReplay() throws Exception {
+    @Test void oneExplosionBatchCommitsAllDeathsAndOneChargePerVictimBeforeRescueWithoutDoubleCountingReplay() throws Exception {
         try (var fixture = new Fixture(directory.toRealPath().resolve("multi-kill.sqlite"))) {
             fixture.start();
             fixture.commit(fixture.engine.proposeDeathBatch(UUID.randomUUID(), fixture.round(),
@@ -200,6 +200,7 @@ class RevivalStoreTest {
             assertEquals(CommitResult.DUPLICATE, fixture.store.commit(write));
             assertEquals(RoundPhase.RESCUE, fixture.engine.committed().phase());
             assertEquals(1, fixture.engine.committed().participants().values().stream().filter(Participant::revivalEntitled).count());
+            assertEquals(2, fixture.player(BOB).revivalCharges());
             for (UUID id : List.of(ALICE, BOB, newcomer)) {
                 assertEquals(1, fixture.store.participantRecord(fixture.round(), id).orElseThrow().deathCount());
                 assertEquals(0, fixture.store.participantRecord(fixture.round(), id).orElseThrow().revivalCount());
@@ -209,7 +210,7 @@ class RevivalStoreTest {
             fixture.commit(fixture.engine.proposeRevival(UUID.randomUUID(), fixture.round(), BOB,
                     bob.lifeSequence(), bob.monsterDeploymentSequence()));
             assertEquals(1, fixture.store.participantRecord(fixture.round(), BOB).orElseThrow().revivalCount());
-            assertFalse(fixture.player(BOB).revivalEntitled());
+            assertEquals(1, fixture.player(BOB).revivalCharges());
         }
     }
 

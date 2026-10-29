@@ -177,17 +177,31 @@ class DeathBatchRevivalTest {
         assertThrows(IllegalStateException.class, () -> exhausted.proposeRevival(UUID.randomUUID(), round, monster, life, 3));
     }
 
-    @Test void adminCanPregrantOfflineHumanAndKillRewardDoesNotIncreaseExistingCredits() {
+    @Test void adminCanPregrantOfflineHumanAndMonsterKillRewardAddsToExistingCredits() {
         var engine = fixture(GameMode.HARDCORE, human(human, false), human(other, true), monster(true, false));
         apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, human, 1, 0, 3));
         apply(engine, engine.proposeHardcoreDeath(UUID.randomUUID(), human, 1));
         assertEquals(3, engine.view().participants().get(human).revivalCharges());
         apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 0, 4));
         apply(engine, batch(engine, death(engine, other, origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON))));
-        assertEquals(4, engine.view().participants().get(monster).revivalCharges());
+        assertEquals(5, engine.view().participants().get(monster).revivalCharges());
         assertEquals(3, engine.view().participants().get(human).revivalCharges());
         apply(engine, engine.proposeAbort(UUID.randomUUID(), "end test"));
         assertTrue(engine.view().participants().values().stream().allMatch(p -> p.revivalCharges() == 0));
+    }
+
+    @Test void monsterKillsAddOneChargePerVictimAcrossBatches() {
+        var third = UUID.randomUUID();
+        var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), human(third, true), monster(true, true));
+        apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
+        for (var kind : List.of(AttackKind.MELEE, AttackKind.ARROW)) {
+            var victim = kind == AttackKind.MELEE ? human : other;
+            apply(engine, batch(engine, death(engine, victim, origin(monster, ParticipantRole.MONSTER_DEPLOYED, kind))));
+        }
+        assertEquals(3, engine.view().participants().get(monster).revivalCharges());
+        apply(engine, batch(engine, death(engine, third, origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON))));
+        assertEquals(4, engine.view().participants().get(monster).revivalCharges());
+        assertEquals(RoundPhase.RESCUE, engine.view().phase());
     }
 
     @Test void adminGrantRejectsStaleIdentityNonpositiveCountsOverflowAndWrongModeWithoutPendingMutation() {
@@ -220,7 +234,7 @@ class DeathBatchRevivalTest {
         assertThrows(IllegalStateException.class, () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 0, 1));
     }
 
-    @Test void selfExplosionMultikillAwardsBeforeTestingLastHumanAndKeepsOneEntitlement() {
+    @Test void selfExplosionMultikillAwardsOneChargePerVictimBeforeTestingLastHuman() {
         var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), monster(true, false));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         var explosion = origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.CREEPER);
@@ -233,7 +247,7 @@ class DeathBatchRevivalTest {
         assertEquals(RoundPhase.RESCUE, engine.view().phase());
         assertEquals(60_000, engine.view().remainingPhaseMillis());
         var rewarded = engine.view().participants().get(monster);
-        assertTrue(rewarded.revivalEntitled());
+        assertEquals(2, rewarded.revivalCharges());
         assertEquals(ParticipantRole.MONSTER_LOBBY, rewarded.role());
         assertEquals(30_000_000_000L, rewarded.monsterCooldownNanos());
         assertTrue(engine.view().participants().get(human).role().isMonster());

@@ -308,7 +308,7 @@ public final class RoundEngine {
             }
         }
         // Qualify against identity at lethal collection, before applying this batch's human deaths.
-        // Human PvP adds one charge per victim; monster attacks keep their existing entitlement rule.
+        // Human PvP and monster attacks each add one charge per qualifying victim.
         if (before.rules().mode() == GameMode.HARDCORE) {
             for (RoundDeath death : deaths) {
                 if (!before.participants().get(death.playerId()).role().isActiveHuman() || death.cause().isEmpty()) continue;
@@ -342,7 +342,9 @@ public final class RoundEngine {
                         || origin.actor().lifeSequence() > owner.lifeSequence()
                         || origin.actor().deploymentSequence() > owner.monsterDeploymentSequence()) continue;
                 Participant rewarded = players.get(owner.id());
-                players.put(owner.id(), rewarded.withRevivalEntitlement(true));
+                if (rewarded.revivalCharges() < Integer.MAX_VALUE) {
+                    players.put(owner.id(), rewarded.addRevivalCharges(1));
+                }
             }
         }
         if (completion != null) {
@@ -610,7 +612,7 @@ public final class RoundEngine {
                 players, null, false, true);
     }
 
-    /** Admin credits are additive; ordinary kill rewards still only ensure at least one credit. */
+    /** Admin credits are additive, like ordinary kill rewards. */
     public RoundTransition proposeAdminGrantRevival(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedCharges, int count) {
         RoundSnapshot before = capture();
