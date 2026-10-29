@@ -98,7 +98,7 @@ public record RulesConfig(
                 Map.entry("skeleton.armor", 0.0),
                 Map.entry("skeleton.bowChargeTicks", 20.0),
                 Map.entry("skeleton.burstCount", 3.0),
-                Map.entry("skeleton.burstIntervalMillis", 600.0),
+                Map.entry("skeleton.burstIntervalMillis", 300.0),
                 Map.entry("skeleton.burstCooldownMillis", 20_000.0),
                 Map.entry("creeper.maxHealth", 20.0),
                 Map.entry("creeper.movementAttribute", 0.25),
