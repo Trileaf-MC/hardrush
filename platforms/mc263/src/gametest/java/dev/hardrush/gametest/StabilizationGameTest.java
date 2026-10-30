@@ -88,8 +88,8 @@ public final class StabilizationGameTest {
             seq.thenExecute(()->scene.prepareDragon(f.target.player,f.monster.player))
                     .thenWaitUntil(()->f.await(scene.dragon()!=null,"Native first dragon fixture "+round))
                     .thenExecute(()->scene.finishDragon(f.target.player))
-                    .thenWaitUntil(()->f.await(CelebrationRuntime.active(f.target.player)&&CelebrationRuntime.active(f.monster.player)&&!f.session.mutationPending(),"Durable celebration roster "+round))
-                    .thenExecute(()->{scene.portal(f.target.player);scene.portal(f.monster.player);})
+                    .thenWaitUntil(()->f.await(CelebrationRuntime.arena(f.target.player)&&CelebrationRuntime.arena(f.monster.player)&&!f.session.mutationPending(),"Everyone gathered around the winner "+round))
+                    .thenExecute(()->scene.portal(f.target.player))
                     .thenWaitUntil(()->f.await(f.round().sequence()==round+2&&f.round().phase()==RoundPhase.WAITING&&!f.session.mutationPending()
                             &&peers.stream().filter(p->p.current()!=null).allMatch(p->PlayerProfiles.canMoveInLobby(p.player)),"Safe next round "+round))
                     .thenExecute(()->state.afterRotation(round+2));

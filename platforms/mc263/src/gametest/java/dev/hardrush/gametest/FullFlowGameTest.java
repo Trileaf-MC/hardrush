@@ -191,16 +191,19 @@ public final class FullFlowGameTest {
                 .thenExecute(()->state.prepareDragon(f.target.player,f.monster.player))
                 .thenWaitUntil(()->f.await(state.dragon()!=null,"Low-health native first dragon fixture"))
                 .thenExecute(()->state.finishDragon(f.target.player))
-                .thenWaitUntil(()->f.await(CelebrationRuntime.active(f.target.player)&&CelebrationRuntime.active(f.monster.player)&&!f.session.mutationPending(),"End human and monster receive durable ceremony kits"))
+                .thenWaitUntil(()->f.await(CelebrationRuntime.arena(f.target.player)&&CelebrationRuntime.arena(f.monster.player)
+                        &&CelebrationRuntime.arena(visitor.player)&&!f.session.mutationPending(),"Everyone gathered around the winner"))
                 .thenExecute(()->{
                     state.oldRound=f.round().roundId();state.oldWorlds=f.service("WORLDS",RoundWorldBundle.class);
-                    test.assertTrue(f.target.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA),"Human ceremony elytra");
-                    test.assertTrue(f.monster.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA),"Monster normal body ceremony elytra");
-                    test.assertFalse(MonsterRoles.isMonster(f.monster.player),"Ceremony suspends combat role presentation");
+                    test.assertTrue(f.target.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA),"Winner ceremony elytra");
+                    test.assertFalse(f.monster.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA),"Only the winner receives an elytra");
+                    test.assertTrue(MonsterRoles.isMonster(f.monster.player),"Gathered monster keeps its form");
                     state.portal(f.monster.player);
                 })
-                .thenWaitUntil(()->f.await(LobbyWorld.isLobby(f.monster.player.level())&&f.profiles.isReady(f.monster.profile.id(),f.round()),"Monster uses dragon exit to independent lobby"))
-                .thenExecute(()->{test.assertTrue(f.round().roundId().equals(state.oldRound),"Remaining online human prevents early completion");state.portal(f.target.player);})
+                .thenExecute(()->{
+                    test.assertTrue(f.round().roundId().equals(state.oldRound)&&CelebrationRuntime.arena(f.monster.player),"A monster in the pool goes nowhere and ends nothing");
+                    state.portal(f.target.player);
+                })
                 .thenWaitUntil(()->f.await(f.round().sequence()==2&&f.round().phase()==RoundPhase.WAITING&&f.profiles.isReady(visitor.profile.id(),f.round())&&!f.session.mutationPending(),"Everyone returned; safe release and one next round"))
                 .thenExecute(()->{
                     test.assertValueEqual(state.oldWorlds.state(),RoundWorldBundle.State.CLOSED,"Old native worlds closed before next assembly");
@@ -335,6 +338,6 @@ public final class FullFlowGameTest {
         void prepareDragon(ServerPlayer human,ServerPlayer monster){var worlds=f.service("WORLDS",RoundWorldBundle.class);var end=worlds.level(Level.END);move(human,end,new Vec3(.5,128,.5));move(monster,end,new Vec3(3.5,128,.5));fight=new EnderDragonFight(false,false,false,Optional.empty(),0,Optional.empty(),Optional.of(new BlockPos(0,64,0)),List.of(),List.of());fight.init(end,end.getSeed(),BlockPos.ZERO);fight.skipArenaLoadedCheck();end.setDragonFight(fight);end.getChunkSource().addTicketWithRadius(TicketType.PORTAL,new ChunkPos(0,0),3);}
         EnderDragon dragon(){var end=f.service("WORLDS",RoundWorldBundle.class).level(Level.END);return fight.dragonUUID()!=null&&end.getEntity(fight.dragonUUID()) instanceof EnderDragon d?d:null;}
         void finishDragon(ServerPlayer p){var d=dragon();d.snapTo(.5,68,.5,0,0);d.setNoAi(true);d.getPhaseManager().setPhase(EnderDragonPhase.SITTING_SCANNING);d.setHealth(.1f);move(p,(ServerLevel)d.level(),d.head.position().add(0,0,1));p.setItemSlot(EquipmentSlot.MAINHAND,new ItemStack(Items.DIAMOND_SWORD));p.connection.handleAttack(new ServerboundAttackPacket(d.head.getId()));}
-        void portal(ServerPlayer p){var dest=((net.minecraft.world.level.block.EndPortalBlock)Blocks.END_PORTAL).getPortalDestination(p.level(),p,p.blockPosition());test.assertTrue(dest==null,"Native dragon portal intercepted to durable lobby return");}
+        void portal(ServerPlayer p){var dest=((net.minecraft.world.level.block.EndPortalBlock)Blocks.END_PORTAL).getPortalDestination(p.level(),p,p.blockPosition());test.assertTrue(dest==null,"Native dragon portal never moves anyone during the celebration");}
     }
 }

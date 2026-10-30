@@ -154,14 +154,17 @@ public final class RestartProcessFixture {
         var session = open(database);
         try {
             var restored = snapshot(session);
-            equal(phase, restored.phase(), "Clean recovery retains phase");
+            // A successful result is never resumed as a celebration; the restart rotates directly.
+            boolean rotates = phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING;
+            long remaining = rotates ? 0 : stopped.remainingPhaseNanos();
+            equal(rotates ? RoundPhase.ROTATING : phase, restored.phase(), "Clean recovery retains phase");
             equal(stopped.roundId(), restored.roundId(), "Clean recovery retains UUID");
             equal(stopped.sequence(), restored.sequence(), "Clean recovery retains sequence");
             equal(stopped.seed(), restored.seed(), "Clean recovery retains seed");
             equal(stopped.rules(), restored.rules(), "Clean recovery retains active rule snapshot");
             equal(GameMode.HARDCORE, session.nextRules().orElseThrow().mode(), "Next mode remains separate from active normal rules");
             equal(stopped.challengeNanos(), restored.challengeNanos(), "No prior-process clock origin or downtime in challenge");
-            equal(stopped.remainingPhaseNanos(), restored.remainingPhaseNanos(), "No downtime in phase remainder");
+            equal(remaining, restored.remainingPhaseNanos(), "No downtime in phase remainder");
             equal(stopped.result(), restored.result(), "Terminal result survives exactly");
             check(!restored.timingUncertain(), "Normal recovery remains certain");
             equal(stopped.participants().keySet(), restored.participants().keySet(), "Recovered roster is same round only");
@@ -170,12 +173,12 @@ public final class RestartProcessFixture {
             clock.addAndGet(TimeUnit.DAYS.toNanos(1));
             tick(session);
             equal(stopped.challengeNanos(), session.view().orElseThrow().challengeNanos(), "Unverified adapters cannot count time");
-            equal(stopped.remainingPhaseNanos(), session.view().orElseThrow().remainingPhaseNanos(), "Unverified adapters hold remainder");
+            equal(remaining, session.view().orElseThrow().remainingPhaseNanos(), "Unverified adapters hold remainder");
             if (phase != RoundPhase.PREPARING) equal(restored, snapshot(session), "Unverified later phase does not mutate");
             readyAdapters(session);
             check(!snapshot(session).cleanShutdown(), "Verified resume durably marks operation dirty");
             equal(stopped.challengeNanos(), snapshot(session).challengeNanos(), "Adapter verification adds no elapsed race time");
-            equal(stopped.remainingPhaseNanos(), snapshot(session).remainingPhaseNanos(), "Adapter verification adds no display time");
+            equal(remaining, snapshot(session).remainingPhaseNanos(), "Adapter verification adds no display time");
 
             switch (phase) {
                 case PREPARING -> equal(RoundPhase.WAITING, snapshot(session).phase(), "Recovered worlds become waiting only after verification");
@@ -213,18 +216,10 @@ public final class RestartProcessFixture {
                     equal(stopped.participants().get(PLAYER).humanNanos() + nanos(1), player.humanNanos(), "Human accrual resumes from saved duration");
                     equal(2, player.lifeSequence(), "Reconnect cannot replace saved second life");
                 }
-                case SETTLING, CELEBRATING -> {
-                    clock.addAndGet(stopped.remainingPhaseNanos() - nanos(1));
-                    tick(session);
-                    equal(RoundPhase.CELEBRATING, snapshot(session).phase(), "Display remains until saved duration expires");
-                    equal(nanos(1), snapshot(session).remainingPhaseNanos(), "Celebration elapsed is new-process online time only");
-                    clock.addAndGet(nanos(1));
-                    tick(session);
-                    equal(RoundPhase.ROTATING, snapshot(session).phase(), "Celebration expires exactly once");
-                    equal(stopped.challengeNanos(), snapshot(session).challengeNanos(), "Display cannot alter result time");
+                case SETTLING, CELEBRATING, ROTATING -> {
+                    equal(stopped.challengeNanos(), snapshot(session).challengeNanos(), "Rotation cannot alter result time");
                     rotateRecovered(session, stopped);
                 }
-                case ROTATING -> rotateRecovered(session, stopped);
                 default -> throw new AssertionError("Unsupported matrix phase " + phase);
             }
             session.prepareStop();

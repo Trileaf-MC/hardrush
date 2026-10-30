@@ -16,7 +16,7 @@ public abstract class PlayerAdvancementIsolationMixin {
     @Shadow private ServerPlayer player;
     @Inject(method = "award", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdProgress(AdvancementHolder holder, String criterion, CallbackInfoReturnable<Boolean> ci) {
-        if (PlayerProfiles.isLocked(player)) ci.setReturnValue(false);
+        if (PlayerProfiles.isLocked(player) || dev.hardrush.celebration.CelebrationRuntime.sealsProgress(player)) ci.setReturnValue(false);
     }
 
     @Inject(method = "award", at = @At("RETURN"))

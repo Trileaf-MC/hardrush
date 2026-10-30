@@ -144,9 +144,12 @@ public final class ServerRestartRegression implements ModInitializer {
                         marker = BlockPos.of(data.get("marker").getAsLong());
                         if (data.has("worldClock")) expectedWorldClock = data.get("worldClock").getAsLong();
                         sameIdentity(expected, round());
-                        require(round().phase() == expected.phase(), "saved phase restored before adapters");
+                        // A successful result is never resumed as a celebration; the restart rotates directly.
+                        boolean rotates = expected.result() != null && expected.result().kind() == RoundResult.Kind.COMPLETED
+                                && (expected.phase() == RoundPhase.SETTLING || expected.phase() == RoundPhase.CELEBRATING);
+                        require(round().phase() == (rotates ? RoundPhase.ROTATING : expected.phase()), "saved phase restored before adapters");
                         require(round().challengeNanos() == expected.challengeNanos(), "downtime never added to challenge");
-                        require(round().remainingPhaseNanos() == expected.remainingPhaseNanos(), "downtime never deducted from remaining phase");
+                        require(round().remainingPhaseNanos() == (rotates ? 0 : expected.remainingPhaseNanos()), "downtime never deducted from remaining phase");
                         require(round().participants().values().stream().noneMatch(Participant::online), "all restored identities initially offline");
                         require(expected.participants().keySet().equals(round().participants().keySet()), "no extra restored UUIDs");
                         expected.participants().forEach((id, participant) -> require(participant.withSession(participant.name(), false).equals(round().participants().get(id)), "durable identity/ready/life/personal time survives JVM exit"));
@@ -232,20 +235,15 @@ public final class ServerRestartRegression implements ModInitializer {
             act("first celebration checkpoint interval", () -> advance(1));
             waitFor("celebration committed", () -> round().phase() == RoundPhase.CELEBRATING && idle());
             if (target == RoundPhase.CELEBRATING) {
-                waitFor("both native celebration kits durable", () -> dev.hardrush.celebration.CelebrationRuntime.active(a.player)
-                        && dev.hardrush.celebration.CelebrationRuntime.active(b.player));
-                act("consume a native celebration rocket", () -> {
-                    a.player.setOnGround(false); require(a.player.tryToStartFallFlying(), "native elytra glide");
-                    a.player.connection.handleUseItem(new net.minecraft.network.protocol.game.ServerboundUseItemPacket(net.minecraft.world.InteractionHand.MAIN_HAND, 1, 0, 0));
-                    require(a.player.getInventory().getItem(0).getCount() == 15, "native boost consumes rocket");
-                    a.player.stopFallFlying();
-                });
-                act("native portal returns second celebrant", () -> {
+                waitFor("everyone gathered around the winner", () -> dev.hardrush.celebration.CelebrationRuntime.arena(a.player)
+                        && dev.hardrush.celebration.CelebrationRuntime.arena(b.player));
+                act("winner kit and inert pool for others", () -> {
+                    require(a.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA), "winner wears the native elytra");
+                    require(!b.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA), "only the winner receives an elytra");
                     var portal = (net.minecraft.world.level.block.EndPortalBlock) Blocks.END_PORTAL;
                     require(portal.getPortalDestination(b.player.level(), b.player, BlockPos.containing(b.player.position())) == null,
-                            "exit portal bypasses old respawn binding");
+                            "exit portal never moves a non-winner");
                 });
-                waitFor("returned second profile durable before stop", () -> LobbyWorld.isLobby(b.player.level()) && profiles.isReady(b.profile.id(), round()));
                 act("elapsed celebration", () -> advance(29)); act("stop celebration", this::stop); return;
             }
             act("expire celebration", () -> advance(601));
@@ -255,7 +253,8 @@ public final class ServerRestartRegression implements ModInitializer {
 
         void recoverScenario() {
             // Logins begin before native worlds are verified and must remain in the permanent lobby.
-            if (target == RoundPhase.ROTATING) { recoverRotation(); return; }
+            // A successful result is never resumed as a celebration: a restart rotates directly.
+            if (target == RoundPhase.ROTATING || target == RoundPhase.SETTLING || target == RoundPhase.CELEBRATING) { recoverRotation(); return; }
             if (target != RoundPhase.PREPARING && target != RoundPhase.COUNTDOWN) { login(a); login(b); }
             readyWorlds();
             act("check recovered real world contents", () -> {
@@ -447,67 +446,14 @@ public final class ServerRestartRegression implements ModInitializer {
         }
 
         void recoverActive() {
-            waitFor("same-round profile admission", () -> idle() && !PlayerProfiles.isLocked(a.player)
-                    && (target == RoundPhase.CELEBRATING ? LobbyWorld.isLobby(b.player.level()) && profiles.isReady(b.profile.id(), round())
-                            : !PlayerProfiles.isLocked(b.player)));
-            if (target != RoundPhase.RUNNING) {
-                waitFor("restored native celebration kits", () -> dev.hardrush.celebration.CelebrationRuntime.active(a.player)
-                        && (target == RoundPhase.CELEBRATING ? LobbyWorld.isLobby(b.player.level())
-                            : dev.hardrush.celebration.CelebrationRuntime.active(b.player)));
-                act("read immutable pre-celebration archives", () -> query = profiles.celebrationState(a.profile.id(), round())
-                        .thenCombine(profiles.celebrationState(b.profile.id(), round()), (first, second) -> List.of(first.orElseThrow(), second.orElseThrow())));
-                waitFor("pre-celebration archives read", () -> query.isDone());
-            }
-            if (target != RoundPhase.RUNNING) {
-                act("load original dying dragon chunk", () -> {
-                    var end = worlds.level(Level.END);
-                    end.getChunk(new BlockPos(0, 68, 0));
-                    end.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL, new ChunkPos(0, 0), 3);
-                    var restored = end.getDragonFight();
-                    LoggerFactory.getLogger("hardrush-round-server-restart").info("Restored native dragon: expected={}, fight={}, killed={}, entity={}",
-                            nativeDragonId, restored.dragonUUID(), restored.hasPreviouslyKilledDragon(), end.getEntity(nativeDragonId));
-                });
-                waitFor("original dying dragon entity loaded", () -> worlds.level(Level.END).getDragonFight().hasPreviouslyKilledDragon()
-                        || worlds.level(Level.END).getEntity(nativeDragonId) instanceof EnderDragon);
-            }
+            waitFor("same-round profile admission", () -> idle() && !PlayerProfiles.isLocked(a.player) && !PlayerProfiles.isLocked(b.player));
             act("check original human profiles", () -> {
-                if (target == RoundPhase.RUNNING) { checkState(a, 0); checkState(b, 1); }
-                else {
-                    @SuppressWarnings("unchecked") var archived = (List<net.minecraft.nbt.CompoundTag>) query.join();
-                    for (int index = 0; index < 2; index++) {
-                        var input = net.minecraft.world.level.storage.TagValueInput.create(net.minecraft.util.ProblemReporter.DISCARDING,
-                                server.registryAccess(), archived.get(index).getCompoundOrEmpty("original"));
-                        boolean diamond = false;
-                        for (var item : input.listOrEmpty("Inventory", net.minecraft.world.ItemStackWithSlot.CODEC)) {
-                            if (item.slot() == 4 && item.stack().is(Items.DIAMOND) && item.stack().getCount() == 7 + index) diamond = true;
-                        }
-                        require(diamond, "original pre-kit inventory preserved in immutable archive");
-                    }
-                    require(a.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA), "active temporary elytra restored");
-                    if (target == RoundPhase.CELEBRATING) require(LobbyWorld.isLobby(b.player.level())
-                            && !b.player.getInventory().contains(stack -> stack.is(Items.ELYTRA) || stack.is(Items.FIREWORK_ROCKET))
-                            && archived.get(1).getBooleanOr("returned", false), "returned marker survives new JVM without restoring old kit or End position");
-                    else require(b.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA), "second temporary elytra restored");
-                    require(a.player.getInventory().getItem(0).getCount() == (target == RoundPhase.CELEBRATING ? 15 : 16), "saved rocket quantity restored without refill");
-                }
+                checkState(a, 0); checkState(b, 1);
                 require(round().participants().get(a.profile.id()).lifeSequence() == 2, "ordinary second life persists");
                 require(round().challengeNanos() == expected.challengeNanos(), "no stop/drain/downtime counted");
-                if (target == RoundPhase.RUNNING) {
-                    require(round().phase() == RoundPhase.RUNNING, "same live round resumes");
-                    advance(5);
-                } else {
-                    require(round().result().equals(expected.result()) && round().result().winner().equals(a.profile.id()), "native winner preserved");
-                    var restoredFight = worlds.level(Level.END).getDragonFight();
-                    if (!restoredFight.hasPreviouslyKilledDragon()) {
-                        var dragon = worlds.level(Level.END).getEntity(nativeDragonId);
-                        require(nativeDragonId.equals(restoredFight.dragonUUID()) && dragon instanceof EnderDragon
-                                && ((EnderDragon) dragon).getHealth() <= 0, "native dead first dragon identity and health persisted before animation completion");
-                        restoredFight.skipArenaLoadedCheck();
-                    }
-                    if (target == RoundPhase.CELEBRATING) require(round().remainingPhaseNanos() == expected.remainingPhaseNanos(), "celebration resumes saved remainder");
-                }
+                require(round().phase() == RoundPhase.RUNNING, "same live round resumes");
+                advance(5);
             });
-            if (target != RoundPhase.RUNNING) waitFor("native death animation completes after restart", () -> worlds.level(Level.END).getDragonFight().hasPreviouslyKilledDragon());
             act("stop fully restored round", this::stop);
         }
 

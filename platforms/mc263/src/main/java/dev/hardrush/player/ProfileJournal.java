@@ -104,26 +104,6 @@ public final class ProfileJournal {
         return Files.exists(path, LinkOption.NOFOLLOW_LINKS) ? Optional.of(readSnapshot(path)) : Optional.empty();
     }
 
-    public byte[] celebrationRoster(UUID roundId, byte[] initial) throws IOException {
-        Path path = root.resolve("celebration-roster-" + roundId + ".bin");
-        if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
-            requireSnapshot(initial);
-            atomicWrite(path, envelope(initial));
-        }
-        return readSnapshot(path);
-    }
-
-    public Optional<byte[]> celebration(UUID player, Generation generation) throws IOException {
-        Path path = playerDirectory(player).resolve("celebration-" + generation.roundId() + ".bin");
-        return Files.exists(path, LinkOption.NOFOLLOW_LINKS) ? Optional.of(readSnapshot(path)) : Optional.empty();
-    }
-
-    /** Original survival data and temporary/returned state share one atomic, checksummed envelope. */
-    public void celebration(UUID player, Generation generation, byte[] snapshot) throws IOException {
-        requireSnapshot(snapshot);
-        atomicWrite(playerDirectory(player).resolve("celebration-" + generation.roundId() + ".bin"), envelope(snapshot));
-    }
-
     /** A restarted conversion may reuse only the durable target snapshot, never reset an uncertain player again. */
     public Recovery recovery(UUID player, Generation target) throws IOException {
         var current = transition(player).orElseThrow(() -> new IOException("Missing profile transition"));

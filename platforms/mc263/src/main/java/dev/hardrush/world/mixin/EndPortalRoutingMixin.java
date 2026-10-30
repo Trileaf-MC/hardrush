@@ -20,9 +20,9 @@ import dev.hardrush.celebration.CelebrationRuntime;
 @Mixin(EndPortalBlock.class)
 public abstract class EndPortalRoutingMixin {
     @Inject(method = "getPortalDestination", at = @At("HEAD"), cancellable = true)
-    private void hardrush$celebrationReturn(ServerLevel source, Entity entity, BlockPos entry,
+    private void hardrush$celebrationPool(ServerLevel source, Entity entity, BlockPos entry,
             CallbackInfoReturnable<TeleportTransition> ci) {
-        if (entity instanceof ServerPlayer player && CelebrationRuntime.returnThroughPortal(player)) ci.setReturnValue(null);
+        if (entity instanceof ServerPlayer player && CelebrationRuntime.enterExitPortal(player)) ci.setReturnValue(null);
     }
     @Redirect(method = "getPortalDestination", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/level/ServerLevel;dimension()Lnet/minecraft/resources/ResourceKey;"))

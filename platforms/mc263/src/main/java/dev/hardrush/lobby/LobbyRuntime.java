@@ -147,9 +147,9 @@ public final class LobbyRuntime {
                         new LobbyMenus.Button(Items.ROTTEN_FLESH, "怪物击杀在赛人类：没有复生次数时获得一次", "info", ""),
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "死亡后到营地祭坛消耗一次空装复生，冷却中可用", "info", ""),
                         new LobbyMenus.Button(Items.GRASS_BLOCK, "中途门确认空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),
-                        new LobbyMenus.Button(Items.DRAGON_EGG, "人类尾刀首龙通关；末地庆祝最多"
+                        new LobbyMenus.Button(Items.DRAGON_EGG, "人类尾刀首龙通关；全员集结末地为胜者庆祝，胜者跳龙池结束，最长"
                                 + (RoundEngine.successCelebrationMillis(round.rules()) + 999) / 1000
-                                + "秒（现实时间），龙池回厅；书屋查战绩领书", "info", ""),
+                                + "秒（现实时间）；书屋查战绩领书", "info", ""),
                         new LobbyMenus.Button(Items.PAPER, "离线人类保留资格并暂停计时；无人类有资格时60秒救场", "info", ""));
             }
             @Override public void act(ServerPlayer player, UUID round, LobbyContext context, String action, String value) {
@@ -236,8 +236,12 @@ public final class LobbyRuntime {
             dev.hardrush.record.HistoryLibrary.open(player); return;
         }
         var participant = round.participants().get(player.getUUID());
-        if (participant == null || !participant.role().isMonster() || !participant.online()
-                || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE || b.session.competitionLocked()) {
+        boolean celebrating = dev.hardrush.celebration.CelebrationRuntime.arena(player);
+        if (celebrating && action.equals("return")) { tell(player, CELEBRATION_RETURN); return; }
+        if (participant == null || !participant.role().isMonster()
+                || !celebrating && (!participant.online() || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE
+                    || b.session.competitionLocked())
+                || celebrating && !action.equals("skill")) {
             tell(player, "当前身份或轮次不允许怪物操作。"); return;
         }
         if (action.equals("skill")) {
@@ -465,7 +469,10 @@ public final class LobbyRuntime {
                 b.searchRandom, b.searchClock, SafeDeployment.MAX_CANDIDATES - d.spentCandidates, d.started);
         b.searches.put(d.identity.hunter(), d);
     }
+    private static final String CELEBRATION_RETURN = "庆祝期间归返无效；胜者离场或计时结束后全员统一回大厅。";
+
     public static boolean useReturn(ServerPlayer player) {
+        if (dev.hardrush.celebration.CelebrationRuntime.arena(player)) { tell(player, CELEBRATION_RETURN); return false; }
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.view().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
@@ -502,6 +509,11 @@ public final class LobbyRuntime {
         var round = b.session.snapshot().orElse(null);
         var origin = round == null ? null : round.participants().get(owner);
         if (origin == null) return true; // Operator-only development fixtures retain their independent scope.
+        if (dev.hardrush.celebration.CelebrationRuntime.arena(level)) {
+            // Celebration is native survival: anyone standing in the End may be fought, never recorded.
+            return !owner.equals(target.getUUID()) && target instanceof ServerPlayer player && player.level() == level
+                    && player.isAlive() && !player.isSpectator() && !PlayerProfiles.isLocked(player);
+        }
         return round.phase() == RoundPhase.RUNNING && !b.session.competitionLocked()
                 && origin.lifeSequence() > 0 && !owner.equals(target.getUUID())
                 && target instanceof ServerPlayer player && !dimension(b, level).equals("lobby")

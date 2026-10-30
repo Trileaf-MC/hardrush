@@ -15,7 +15,7 @@ public abstract class PlayerRespawnRoutingMixin {
     @Inject(method = "findRespawnPositionAndUseSpawnBlock", at = @At("HEAD"), cancellable = true)
     private void hardrush$monsterLobby(boolean consumeSpawnBlock, TeleportTransition.PostTeleportTransition post,
                                       CallbackInfoReturnable<TeleportTransition> cir) {
-        PlayerProfiles.monsterRespawnDestination((ServerPlayer) (Object) this).ifPresent(cir::setReturnValue);
+        PlayerProfiles.scopedRespawnDestination((ServerPlayer) (Object) this).ifPresent(cir::setReturnValue);
     }
     @Redirect(method = "findRespawnPositionAndUseSpawnBlock", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/level/ServerPlayer;getRespawnConfig()Lnet/minecraft/server/level/ServerPlayer$RespawnConfig;"))
@@ -33,7 +33,7 @@ public abstract class PlayerRespawnRoutingMixin {
     private void hardrush$boundRespawn(boolean consumeSpawnBlock, TeleportTransition.PostTeleportTransition post,
                                       CallbackInfoReturnable<TeleportTransition> cir) {
         var player = (ServerPlayer) (Object) this;
-        cir.setReturnValue(PlayerProfiles.monsterRespawnDestination(player)
+        cir.setReturnValue(PlayerProfiles.scopedRespawnDestination(player)
                 .orElseGet(() -> RoundWorldRouting.boundRespawn(player, cir.getReturnValue())));
     }
 }

@@ -155,8 +155,8 @@ public final class MonsterRoles {
         MonsterAiIdentity.changed(player);
     }
 
-    /** Celebration has already sealed the inventory, so do not drop competition items again. */
-    public static void suspendForCelebration(ServerPlayer player) {
+    /** Leave the monster form without settling items: the body is carried into the lobby or replaced natively. */
+    public static void suspend(ServerPlayer player) {
         Role role = ROLES.get(player.getUUID());
         if (role == null) return;
         boolean dead = player.isDeadOrDying();

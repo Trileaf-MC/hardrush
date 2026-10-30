@@ -50,13 +50,16 @@ public final class MonsterCombatRuntime {
         var round = access == null ? null : access.snapshot().orElse(null);
         var actor = round == null ? null : round.participants().get(owner.getUUID());
         if (actor == null || !actor.role().isMonster()) return; // Isolated development fixtures retain their own scope.
-        boolean admitted = actor.role() == ParticipantRole.MONSTER_DEPLOYED && actor.monsterDeploymentSequence() > 0
+        boolean formal = actor.role() == ParticipantRole.MONSTER_DEPLOYED && actor.monsterDeploymentSequence() > 0
                 && actor.online() && owner.isAlive()
                 && round.phase() == RoundPhase.RUNNING && !access.competitionLocked() && access.formalLevel(owner.level())
                 && !PlayerProfiles.isLocked(owner) && !ProtectionRuntime.protectedEntity(owner);
+        // A celebration body may still fight, but never seals a combat origin: nothing it does is attributed.
+        boolean celebrating = actor.role() == ParticipantRole.MONSTER_DEPLOYED && owner.isAlive()
+                && dev.hardrush.celebration.CelebrationRuntime.arena(owner);
         holder.hardrush$stampMonsterSource(new FrozenMonsterSource(round.roundId(), owner.getUUID(),
-                actor.lifeSequence(), actor.monsterDeploymentSequence(), admitted));
-        if (admitted && entity instanceof CombatOriginHolder combat && !combat.hardrush$combatOriginSealed()) {
+                actor.lifeSequence(), actor.monsterDeploymentSequence(), formal || celebrating));
+        if (formal && entity instanceof CombatOriginHolder combat && !combat.hardrush$combatOriginSealed()) {
             combat.hardrush$sealCombatOrigin(Optional.of(new CombatOrigin(round.roundId(), UUID.randomUUID(),
                     new CombatActor(owner.getUUID(), actor.role(), actor.lifeSequence(), actor.monsterDeploymentSequence()),
                     entity instanceof AbstractArrow ? AttackKind.ARROW
@@ -105,6 +108,9 @@ public final class MonsterCombatRuntime {
         return dev.hardrush.pact.DawnPactRuntime.reject(entity, target) || rejectMonster(entity, target);
     }
     private static boolean rejectMonster(Entity entity, Entity target) {
+        if (target.level() instanceof ServerLevel arena && dev.hardrush.celebration.CelebrationRuntime.arena(arena)) {
+            return rejectCelebrationMonster(entity, target, arena);
+        }
         if (target.level() instanceof ServerLevel level && (CombatRuntime.participationRevoked(level, CombatRuntime.originOf(entity))
                 || entity instanceof ServerPlayer player && dev.hardrush.participation.ParticipationControl.disabled(level.getServer(), player.getUUID()))) return true;
         var frozen = source(entity).orElse(null);
@@ -131,5 +137,20 @@ public final class MonsterCombatRuntime {
                 || ProtectionRuntime.protectedEntity(entity)) return true;
         return Optional.ofNullable(round.participants().get(player.getUUID()))
                 .filter(p -> p.online() && (p.role() == ParticipantRole.HUMAN_ACTIVE || p.role() == ParticipantRole.MONSTER_DEPLOYED)).isEmpty();
+    }
+    /** Celebration End: identity and phase filters are lifted; only the native-model and self-harm boundaries remain. */
+    private static boolean rejectCelebrationMonster(Entity entity, Entity target, ServerLevel level) {
+        if (dev.hardrush.monster.MonsterRoles.summonOwner(entity) != null
+                && !dev.hardrush.monster.MonsterCompanions.allowedTarget(entity, target)) return true;
+        var frozen = source(entity).orElse(null);
+        if (frozen == null) return formalMonsterPlayer(entity);
+        if (entity.level() != level || !frozen.admitted()) return true;
+        if (target instanceof net.minecraft.world.entity.Mob mob) {
+            return mob instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon
+                    || dev.hardrush.monster.MonsterRoles.isNativeBody(mob)
+                    || frozen.ownerId().equals(mob.getUUID()) || !mob.isAlive() || mob.isRemoved() || mob.isInvulnerable();
+        }
+        return !(target instanceof ServerPlayer player) || !player.isAlive() || player.isRemoved() || player.isSpectator()
+                || player.getAbilities().invulnerable || frozen.ownerId().equals(player.getUUID());
     }
 }
