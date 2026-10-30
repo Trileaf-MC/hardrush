@@ -598,6 +598,37 @@ public final class RoundEngine {
         return players;
     }
 
+    /**
+     * Read-only replay of credit the adapter has not committed yet, on the formal path's clock: the
+     * pending transition counts as accepted, each queued batch is credited at its own event time as
+     * drainEvent's capture() would, and still-buffered entries at {@code now}. Engine state is untouched.
+     */
+    public RoundSnapshot projectDamageCoins(List<QueuedDamageCoins> queued, UUID roundId, List<DamageCoins> buffered, long now) {
+        RoundSnapshot base = pending == null ? committed : pending.after();
+        long start = pending == null ? boundary : pending.capturedNanos();
+        for (QueuedDamageCoins batch : List.copyOf(queued)) {
+            long time = Math.max(start, batch.time());
+            base = credited(project(base, start, time), batch.roundId(), batch.entries());
+            start = time;
+        }
+        return credited(project(base, start, Math.max(start, now)), roundId, buffered);
+    }
+
+    private static RoundSnapshot credited(RoundSnapshot base, UUID roundId, List<DamageCoins> entries) {
+        if (entries.isEmpty()) return base;
+        return new RoundSnapshot(base.roundId(), base.sequence(), base.seed(), base.version(), base.rules(), base.phase(),
+                base.pauseReason(), base.challengeNanos(), base.remainingPhaseNanos(),
+                creditDamageCoins(base, roundId, entries), base.cleanShutdown(), base.timingUncertain(), base.result());
+    }
+
+    /** A flushed damage batch waiting in the adapter's event queue, credited at its own event time. */
+    public record QueuedDamageCoins(long time, UUID roundId, List<DamageCoins> entries) {
+        public QueuedDamageCoins {
+            Objects.requireNonNull(roundId);
+            entries = List.copyOf(entries);
+        }
+    }
+
     /** One buffered damage observation: actual milli-health a sortie took from one human. */
     public record DamageCoins(UUID owner, int ownerLife, int sortie, UUID victim, MonsterDimension dimension, long damageMilli) {
         public DamageCoins {
