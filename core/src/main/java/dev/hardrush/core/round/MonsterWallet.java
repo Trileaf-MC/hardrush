@@ -20,7 +20,7 @@ import java.util.UUID;
  * @param active       consumables frozen by the current deployment
  * @param gear         vault results waiting for a role that can wear them
  * @param activeGear   vault results carried by the current deployment
- * @param sortieDamage per-human damage credit of the current deployment
+ * @param sortieDamage per-human damage credit of the current or most recently ended deployment
  */
 public record MonsterWallet(int coins, boolean roleChosen,
                             Map<ShopOffer, Integer> bought, Map<ShopOffer, Integer> order,
@@ -178,12 +178,15 @@ public record MonsterWallet(int coins, boolean roleChosen,
                 nextGearSerial, Map.of());
     }
 
-    /** Return, death or disconnect: the carried goods are spent and the price ladder restarts. */
+    /**
+     * Return, death or disconnect: the carried goods are spent and the price ladder restarts. The
+     * sortie's damage credit stays until the next deployment, so late buffered damage keeps its cap.
+     */
     public MonsterWallet endSortie() {
         // Goods still waiting in the camp keep their paid ladder steps for an exact refund.
         var waiting = new EnumMap<ShopOffer, Integer>(ShopOffer.class);
         bought.forEach((offer, count) -> { if (order.containsKey(offer)) waiting.put(offer, count); });
-        return with(coins, roleChosen, waiting, order, Map.of(), gear, List.of(), nextGearSerial, Map.of());
+        return with(coins, roleChosen, waiting, order, Map.of(), gear, List.of(), nextGearSerial, sortieDamage);
     }
 
     /**

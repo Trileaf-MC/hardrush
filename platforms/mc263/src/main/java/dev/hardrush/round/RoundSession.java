@@ -290,12 +290,21 @@ public final class RoundSession implements AutoCloseable {
     private void flushDamageCoins(boolean force) {
         long now = clock.nanoTime();
         if (damageCoins.isEmpty() || !force && now - lastDamageFlushNanos < DAMAGE_FLUSH_NANOS) return;
-        lastDamageFlushNanos = now;
+        flushDamageCoinsAt(now);
+    }
+
+    /**
+     * Queued events run on their own timestamp, and the engine's projection is monotonic. A flush
+     * that precedes another event must therefore use that event's time, never a later one.
+     */
+    private void flushDamageCoinsAt(long time) {
+        if (damageCoins.isEmpty()) return;
+        lastDamageFlushNanos = Math.max(lastDamageFlushNanos, time);
         var byRound = new LinkedHashMap<UUID, List<RoundEngine.DamageCoins>>();
         damageCoins.forEach((key, milli) -> byRound.computeIfAbsent(key.round(), ignored -> new java.util.ArrayList<>())
                 .add(new RoundEngine.DamageCoins(key.owner(), key.life(), key.sortie(), key.victim(), key.dimension(), milli)));
         damageCoins.clear();
-        byRound.forEach((round, entries) -> enqueue(e -> e.proposeMonsterDamageCoins(UUID.randomUUID(), round, entries)));
+        byRound.forEach((round, entries) -> enqueueAt(time, e -> e.proposeMonsterDamageCoins(UUID.randomUUID(), round, entries)));
     }
 
     /** All victims, rewards and self-death commit once, before rescue or completion is published. */
@@ -305,13 +314,14 @@ public final class RoundSession implements AutoCloseable {
                 && terminalCandidate.roundId().equals(roundId) && terminalCandidate.batchId().equals(batchId);
         var deaths = deathBatches.remove(batchId);
         if (!completes && (deaths == null || deaths.isEmpty())) return;
-        // Damage dealt before these deaths is credited while its sortie still exists.
-        flushDamageCoins(true);
         if (completes) terminalQueued = true;
         var terminal = completes ? terminalCandidate : null;
         var dragon = firstDragonId;
         var victims = deaths == null ? List.<RoundDeath>of() : List.copyOf(deaths.values());
         long time = completes ? terminal.observedNanoTime() : clock.nanoTime();
+        // Damage dealt before these deaths is credited first, on the batch's own timestamp: the
+        // first dragon's batch replays the earlier observed time and must not follow a later event.
+        flushDamageCoinsAt(time);
         enqueueAt(time, e -> e.proposeDeathBatch(UUID.randomUUID(), roundId, victims,
                 terminal == null ? null : DragonDeathArbiter.adjudicate(e.committed(), terminal, dragon)));
     }
@@ -1253,6 +1263,7 @@ public final class RoundSession implements AutoCloseable {
         if (stopping) return;
         long shutdownTime = shutdownBoundary == null ? clock.nanoTime() : shutdownBoundary;
         if (terminalCandidate != null && !terminalQueued) finishDamageBatch(terminalCandidate.roundId(), terminalCandidate.batchId());
+        else flushDamageCoinsAt(shutdownTime);
         stopping = true;
         Throwable failure = null;
         try {
@@ -1349,6 +1360,8 @@ public final class RoundSession implements AutoCloseable {
             if (assemblyGuard != null) stopAssemblyEligible = online.keySet().stream().filter(assemblyGuard).collect(java.util.stream.Collectors.toSet());
         }
         if (terminalCandidate != null && !terminalQueued) finishDamageBatch(terminalCandidate.roundId(), terminalCandidate.batchId());
+        // Buffered damage still belongs to the sorties it was dealt in; credit it inside the stop boundary.
+        else flushDamageCoinsAt(shutdownBoundary);
     }
 
     private void fail(String prefix, Throwable error) {
