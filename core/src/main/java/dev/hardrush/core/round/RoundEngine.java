@@ -290,6 +290,10 @@ public final class RoundEngine {
         for (RoundDeath death : deaths) {
             if (!victims.add(death.playerId())) throw new IllegalArgumentException("Duplicate batch victim");
             Participant player = requirePlayer(before, death.playerId());
+            // An earlier commit (a kill's recall, a disconnect) already ended this exact sortie after
+            // the death was captured: that outing is settled, so this body's death changes nothing more.
+            if (player.role() == ParticipantRole.MONSTER_LOBBY && death.lifeSequence() == player.lifeSequence()
+                    && death.deploymentSequence() != 0 && death.deploymentSequence() == player.monsterDeploymentSequence()) continue;
             if (player.lifeSequence() != death.lifeSequence()
                     || player.monsterDeploymentSequence() != death.deploymentSequence()
                     || player.role() != ParticipantRole.HUMAN_ACTIVE && player.role() != ParticipantRole.MONSTER_DEPLOYED) {
@@ -580,8 +584,10 @@ public final class RoundEngine {
             for (DamageCoins entry : List.copyOf(entries)) {
                 Participant owner = players.get(entry.owner());
                 Participant victim = before.participants().get(entry.victim());
+                // A sortie ended by return, disconnect or recall still owns the damage it dealt before
+                // ending; the next deployment advances the sequence and clears that sortie's credit.
                 if (owner == null || victim == null || owner.id().equals(victim.id())
-                        || owner.role() != ParticipantRole.MONSTER_DEPLOYED
+                        || owner.role() != ParticipantRole.MONSTER_DEPLOYED && owner.role() != ParticipantRole.MONSTER_LOBBY
                         || owner.lifeSequence() != entry.ownerLife() || owner.monsterDeploymentSequence() != entry.sortie()
                         || !victim.role().isActiveHuman() && victim.role() != ParticipantRole.MONSTER_LOBBY) continue;
                 int bounty = MonsterCoins.bountyPermille(before.rules(), entry.dimension(), victim.lifeHumanNanos());

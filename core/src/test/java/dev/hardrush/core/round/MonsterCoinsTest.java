@@ -187,6 +187,22 @@ class MonsterCoinsTest {
         assertEquals(8_000, p.humanNanos(), "The cross-life total keeps accumulating separately");
     }
 
+    @Test void aDeathOfTheJustRecalledSortieIsSettledButOtherStaleIdentitiesAreRejected() {
+        var engine = engine(humanParticipant(), deployedMonster());
+        var bite = origin(monster, ParticipantRole.MONSTER_DEPLOYED, 3, AttackKind.MELEE);
+        accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
+                List.of(new RoundDeath(human, 1, 0, Optional.of(lethal(human, bite)))), null));
+        var recalled = engine.committed().participants().get(monster);
+        accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
+                List.of(new RoundDeath(monster, 1, 3, Optional.empty())), null));
+        assertEquals(recalled, engine.committed().participants().get(monster), "The ended sortie is not settled twice");
+        assertThrows(IllegalStateException.class, () -> engine.proposeDeathBatch(UUID.randomUUID(), round,
+                List.of(new RoundDeath(monster, 1, 2, Optional.empty())), null), "An older sortie stays stale");
+        assertThrows(IllegalStateException.class, () -> engine.proposeDeathBatch(UUID.randomUUID(), round,
+                List.of(new RoundDeath(monster, 2, 3, Optional.empty())), null), "A different life stays stale");
+        assertFalse(engine.pending());
+    }
+
     @Test void bufferedDamageSkipsStaleEntriesInsteadOfFailing() {
         var engine = engine(humanParticipant(), deployedMonster());
         accept(engine, engine.proposeMonsterDamageCoins(UUID.randomUUID(), round, List.of(
