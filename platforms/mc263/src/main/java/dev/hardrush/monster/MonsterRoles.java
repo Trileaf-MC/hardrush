@@ -263,10 +263,15 @@ public final class MonsterRoles {
         if (!role.settled) dropWornEquipment(player, source, player.getRandom());
         settleInventory(player, role, true);
     }
+    /** Native getLastHurtByPlayer() memory, except a monster that last hurt itself was not slain by a player. */
+    public static boolean recentlyHurtByOtherPlayer(ServerPlayer player) {
+        var attacker = player.getLastHurtByPlayer();
+        return attacker != null && !attacker.getUUID().equals(player.getUUID());
+    }
     /** Mob.dropCustomDeathLoot for spawned equipment: 8.5% per worn slot, looting adds, only for a player kill. */
     static void dropWornEquipment(ServerPlayer player, net.minecraft.world.damagesource.DamageSource source,
                                   net.minecraft.util.RandomSource random) {
-        if (player.getLastHurtByPlayer() == null) return;
+        if (!recentlyHurtByOtherPlayer(player)) return;
         for (var slot : EquipmentSlot.VALUES) {
             if (slot.getType() != EquipmentSlot.Type.HUMANOID_ARMOR && slot.getType() != EquipmentSlot.Type.HAND) continue;
             var stack = player.getItemBySlot(slot);
@@ -400,6 +405,7 @@ public final class MonsterRoles {
         for (var entry : List.copyOf(ROLES.entrySet())) {
             Role role = entry.getValue(); ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
             if (player == null || !player.isAlive()) continue;
+            MonsterWorthRewards.showWorth(player);
             if (!MonsterRoundRuntime.canAct(player)) {
                 role.burstRemaining = 0; role.chargeTick = -1; MonsterNativeWeapons.clear(player);
                 MonsterCreeper.cancelInput(player); player.stopUsingItem(); continue;

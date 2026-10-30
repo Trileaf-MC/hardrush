@@ -357,17 +357,10 @@ public final class RoundEngine {
                 // A kill pays a revival, never coins; an owner still out hunting is sent back to the altar.
                 players.put(owner.id(), revivalFirst(before.rules(), rewarded));
             }
-            // A deployed monster slain by a human's own attack is paid for engaging, never for any other death.
+            // Use vanilla's player-damage memory captured at death, including subsequent environmental damage.
             for (RoundDeath death : deaths) {
                 if (before.participants().get(death.playerId()).role() != ParticipantRole.MONSTER_DEPLOYED
-                        || death.cause().isEmpty()) continue;
-                CombatEvent cause = death.cause().get();
-                if (cause.attribution() != CombatEvent.Attribution.HUMAN || cause.origin().isEmpty()) continue;
-                var origin = cause.origin().get();
-                if (!origin.roundId().equals(roundId)) continue;
-                Participant killer = before.participants().get(origin.actor().playerId());
-                if (!directHumanAttack(origin.kind()) || killer == null || !killer.role().isActiveHuman()
-                        || origin.actor().lifeSequence() != killer.lifeSequence()) continue;
+                        || !death.recentlyHurtByPlayer()) continue;
                 players.put(death.playerId(), credit(before.rules(), players.get(death.playerId()), MonsterCoins.KILLED_BY_HUMAN));
             }
         }
@@ -576,26 +569,64 @@ public final class RoundEngine {
      */
     public RoundTransition proposeMonsterDamageCoins(UUID eventId, UUID roundId, List<DamageCoins> entries) {
         RoundSnapshot before = capture();
+        return proposal(eventId, "MONSTER_DAMAGE_COINS", before, before.phase(), before.remainingPhaseNanos(),
+                creditDamageCoins(before, roundId, entries), before.result(), false);
+    }
+
+    /**
+     * The participants after crediting {@code entries} onto {@code before}. The adapter also uses
+     * this to project damage it has not committed yet, so a monster's worth never lags its hits.
+     */
+    public static Map<UUID, Participant> creditDamageCoins(RoundSnapshot before, UUID roundId, List<DamageCoins> entries) {
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         boolean open = before.roundId().equals(roundId) && MonsterCoins.enabled(before.rules())
                 && (before.phase() == RoundPhase.RUNNING || before.phase() == RoundPhase.RESCUE);
-        if (open) {
-            long cap = Math.multiplyExact((long) MonsterCoins.amount(before.rules(), MonsterCoins.DAMAGE_CAP), 1000L);
-            for (DamageCoins entry : List.copyOf(entries)) {
-                Participant owner = players.get(entry.owner());
-                Participant victim = before.participants().get(entry.victim());
-                // A sortie ended by return, disconnect or recall still owns the damage it dealt before
-                // ending; the next deployment advances the sequence and clears that sortie's credit.
-                if (owner == null || victim == null || owner.id().equals(victim.id())
-                        || owner.role() != ParticipantRole.MONSTER_DEPLOYED && owner.role() != ParticipantRole.MONSTER_LOBBY
-                        || owner.lifeSequence() != entry.ownerLife() || owner.monsterDeploymentSequence() != entry.sortie()
-                        || !victim.role().isActiveHuman() && victim.role() != ParticipantRole.MONSTER_LOBBY) continue;
-                int bounty = MonsterCoins.bountyPermille(before.rules(), entry.dimension(), victim.lifeHumanNanos());
-                players.put(owner.id(), owner.withWallet(owner.wallet().creditDamage(entry.victim(), entry.damageMilli(), bounty, cap)));
-            }
+        if (!open) return players;
+        long cap = Math.multiplyExact((long) MonsterCoins.amount(before.rules(), MonsterCoins.DAMAGE_CAP), 1000L);
+        for (DamageCoins entry : List.copyOf(entries)) {
+            Participant owner = players.get(entry.owner());
+            Participant victim = before.participants().get(entry.victim());
+            // A sortie ended by return, disconnect or recall still owns the damage it dealt before
+            // ending; the next deployment advances the sequence and clears that sortie's credit.
+            if (owner == null || victim == null || owner.id().equals(victim.id())
+                    || owner.role() != ParticipantRole.MONSTER_DEPLOYED && owner.role() != ParticipantRole.MONSTER_LOBBY
+                    || owner.lifeSequence() != entry.ownerLife() || owner.monsterDeploymentSequence() != entry.sortie()
+                    || !victim.role().isActiveHuman() && victim.role() != ParticipantRole.MONSTER_LOBBY) continue;
+            int bounty = MonsterCoins.bountyPermille(before.rules(), entry.dimension(), victim.lifeHumanNanos());
+            players.put(owner.id(), owner.withWallet(owner.wallet().creditDamage(entry.victim(), entry.damageMilli(), bounty, cap)));
         }
-        return proposal(eventId, "MONSTER_DAMAGE_COINS", before, before.phase(), before.remainingPhaseNanos(),
-                players, before.result(), false);
+        return players;
+    }
+
+    /**
+     * Read-only replay of credit the adapter has not committed yet, on the formal path's clock: the
+     * pending transition counts as accepted, each queued batch is credited at its own event time as
+     * drainEvent's capture() would, and still-buffered entries at {@code now}. Engine state is untouched.
+     */
+    public RoundSnapshot projectDamageCoins(List<QueuedDamageCoins> queued, UUID roundId, List<DamageCoins> buffered, long now) {
+        RoundSnapshot base = pending == null ? committed : pending.after();
+        long start = pending == null ? boundary : pending.capturedNanos();
+        for (QueuedDamageCoins batch : List.copyOf(queued)) {
+            long time = Math.max(start, batch.time());
+            base = credited(project(base, start, time), batch.roundId(), batch.entries());
+            start = time;
+        }
+        return credited(project(base, start, Math.max(start, now)), roundId, buffered);
+    }
+
+    private static RoundSnapshot credited(RoundSnapshot base, UUID roundId, List<DamageCoins> entries) {
+        if (entries.isEmpty()) return base;
+        return new RoundSnapshot(base.roundId(), base.sequence(), base.seed(), base.version(), base.rules(), base.phase(),
+                base.pauseReason(), base.challengeNanos(), base.remainingPhaseNanos(),
+                creditDamageCoins(base, roundId, entries), base.cleanShutdown(), base.timingUncertain(), base.result());
+    }
+
+    /** A flushed damage batch waiting in the adapter's event queue, credited at its own event time. */
+    public record QueuedDamageCoins(long time, UUID roundId, List<DamageCoins> entries) {
+        public QueuedDamageCoins {
+            Objects.requireNonNull(roundId);
+            entries = List.copyOf(entries);
+        }
     }
 
     /** One buffered damage observation: actual milli-health a sortie took from one human. */
