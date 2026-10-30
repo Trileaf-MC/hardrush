@@ -51,6 +51,24 @@ public final class MonsterRoleGameTest {
     private static final java.util.Map<java.util.UUID,List<ForcedChunk>> FORCED=new java.util.HashMap<>();
     private static final java.util.Map<ForcedChunk,Integer> FORCE_REFERENCES=new java.util.HashMap<>();
 
+    @GameTest(maxTicks=20)
+    public void slainMonsterBookIsANamedNativeEnchantedBookFromRandomLoot(GameTestHelper test) {
+        var level = test.getLevel();
+        for (int cost : new int[] {20, 30}) {
+            var book = dev.hardrush.monster.MonsterWorthRewards.signedBook(level, "Hunter", level.getRandom(), cost);
+            test.assertTrue(book.is(Items.ENCHANTED_BOOK), "Vanilla enchantItem turns the book into an enchanted book");
+            var stored = book.get(net.minecraft.core.component.DataComponents.STORED_ENCHANTMENTS);
+            test.assertTrue(stored != null && !stored.isEmpty(), "A level " + cost + " roll always stores an enchantment");
+            for (var enchantment : stored.keySet()) {
+                test.assertTrue(enchantment.is(net.minecraft.tags.EnchantmentTags.ON_RANDOM_LOOT),
+                        "Every enchantment comes from #on_random_loot");
+            }
+            test.assertValueEqual(book.getHoverName().getString(), "从 Hunter 身上找到的书", "The book names whose body it came from");
+            test.assertFalse(book.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME), "The name is the item name, not an italic rename");
+        }
+        test.succeed();
+    }
+
     @GameTest(maxTicks=200)
     public void nativeStatsBoundBirthItemsAndHumanRestoration(GameTestHelper test) {
         var player=actor(test);
