@@ -285,7 +285,10 @@ class RevivalStoreTest {
             store = new SqliteRoundStore(path);
             engine = RoundEngine.restore(RoundSnapshotCodec.decode(store.load(saved.roundId()).orElseThrow().payload()), clock);
             assertEquals(saved.challengeNanos(), engine.committed().challengeNanos());
-            assertEquals(saved.remainingPhaseNanos(), engine.committed().remainingPhaseNanos());
+            boolean celebrated = saved.result() != null && saved.result().kind() == RoundResult.Kind.COMPLETED;
+            // A successful round's celebration is not resumed; the reopened round rotates immediately.
+            assertEquals(celebrated ? 0 : saved.remainingPhaseNanos(), engine.committed().remainingPhaseNanos());
+            if (celebrated) assertEquals(RoundPhase.ROTATING, engine.committed().phase());
             if (saved.result() == null) {
                 for (var player : saved.participants().values()) {
                     commit(engine.proposeOnline(UUID.randomUUID(), player.id(), player.name(), true));

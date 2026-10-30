@@ -50,6 +50,13 @@ public abstract class PlayerIsolationNetworkMixin {
         // Destination admission remains owned by the player teleport/protection hooks.
     }
 
+    @Inject(method = "handleTeleportToEntityPacket", at = @At("HEAD"), cancellable = true)
+    private void hardrush$celebrationObservation(net.minecraft.network.protocol.game.ServerboundTeleportToEntityPacket packet, CallbackInfo ci) {
+        // A fallen celebration spectator watches the dragon pool, never another world.
+        if (player.level().getServer().isSameThread() && CelebrationRuntime.arena(player)
+                && packet.getEntity(player.level()) == null) ci.cancel();
+    }
+
     @Inject(method = "handleInteract", at = @At("HEAD"), cancellable = true)
     private void hardrush$facilityEntity(ServerboundInteractPacket packet, CallbackInfo ci) {
         if (!player.level().getServer().isSameThread()) return;
@@ -107,15 +114,6 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = "handleContainerClick", at = @At("HEAD"), cancellable = true)
     private void hardrush$lobbyMenuClick(net.minecraft.network.protocol.game.ServerboundContainerClickPacket packet, CallbackInfo ci) {
-        if (player.level().getServer().isSameThread() && CelebrationRuntime.active(player)
-                && player.containerMenu == player.inventoryMenu) {
-            if (packet.slotNum() < 0 || packet.containerInput() == net.minecraft.world.inventory.ContainerInput.THROW
-                    || packet.containerInput() == net.minecraft.world.inventory.ContainerInput.CLONE) {
-                player.containerMenu.sendAllDataToRemote();
-                ci.cancel();
-            }
-            return;
-        }
         if (player.level().getServer().isSameThread() && !dev.hardrush.lobby.LobbyMenus.isMenu(player)
                 && (PlayerProfiles.isLocked(player) || CombatRuntime.competitionFrozen(player.level()))) ci.cancel();
     }
@@ -163,19 +161,9 @@ public abstract class PlayerIsolationNetworkMixin {
     }
 
     @Inject(method = "handleUseItemOn", at = @At("HEAD"), cancellable = true)
-    private void hardrush$celebrationFirework(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
+    private void hardrush$holdFrozenBlockUse(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && LobbyInteractions.consumed(LobbyInteractions.block(player, packet))) { ci.cancel(); return; }
-        if (!player.level().getServer().isSameThread() || !CombatRuntime.competitionFrozen(player.level())) return;
-        if (CelebrationRuntime.allowsRocket(player, packet.hand())) {
-            // Use only the rocket item: a chest/bed/button beneath it must never receive block interaction.
-            var pos = packet.hitResult().getBlockPos();
-            if (player.level().getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) != null
-                    && player.isWithinBlockInteractionRange(pos, 1)) {
-                player.getItemInHand(packet.hand()).useOn(new net.minecraft.world.item.context.UseOnContext(player, packet.hand(), packet.hitResult()));
-            }
-            player.connection.ackBlockChangesUpTo(packet.sequence());
-        }
-        ci.cancel();
+        if (player.level().getServer().isSameThread() && CombatRuntime.competitionFrozen(player.level())) ci.cancel();
     }
 
     @Inject(method = "handleSetCarriedItem", at = @At("HEAD"), cancellable = true)
@@ -189,7 +177,6 @@ public abstract class PlayerIsolationNetworkMixin {
         if (!player.level().getServer().isSameThread()) return;
         boolean locked = PlayerProfiles.isLocked(player);
         if (!locked && !CombatRuntime.competitionFrozen(player.level())) return;
-        if (!locked && CelebrationRuntime.allowsRocket(player, packet.hand())) return;
         // Only a generated written book can be used while other item/gameplay input stays sealed.
         if (!WrittenBookPort.isHistoryBook(player.getItemInHand(packet.hand()))
                 || locked && !RoundRuntime.lobbyBookReady(player)) ci.cancel();
@@ -197,7 +184,12 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = "handleClientCommand", at = @At("HEAD"), cancellable = true)
     private void hardrush$allowOnlyCommittedRespawn(ServerboundClientCommandPacket packet, CallbackInfo ci) {
-        if (!player.level().getServer().isSameThread() || !PlayerProfiles.isLocked(player)) return;
+        if (!player.level().getServer().isSameThread()) return;
+        // The celebration coordinator replaces dead bodies itself, as spectators beside the dragon pool.
+        if (packet.getAction() == ServerboundClientCommandPacket.Action.PERFORM_RESPAWN && CelebrationRuntime.ownsRespawn(player)) {
+            ci.cancel(); return;
+        }
+        if (!PlayerProfiles.isLocked(player)) return;
         if (packet.getAction() != ServerboundClientCommandPacket.Action.PERFORM_RESPAWN
                 || !PlayerProfiles.isRespawnAllowed(player)) ci.cancel();
     }

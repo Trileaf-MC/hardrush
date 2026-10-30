@@ -324,7 +324,8 @@ def main():
             if (after.get('recoveredRoundId') != before['roundId']
                     or after.get('recoveredSequence') != before['sequence']):
                 raise RuntimeError('Recovery must begin from the writer\'s persisted round identity')
-            if phase == 'ROTATING':
+            # A successful round is never resumed as a celebration: its restart rotates like ROTATING.
+            if phase in ('SETTLING', 'CELEBRATING', 'ROTATING'):
                 if after['roundId'] == before['roundId'] or after['sequence'] != before['sequence'] + 1:
                     raise RuntimeError('Recovered rotation must advance exactly one round')
             elif after['roundId'] != before['roundId'] or after['sequence'] != before['sequence']:

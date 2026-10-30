@@ -43,6 +43,12 @@ public final class MonsterRoundRuntime {
         if (r == null || !r.participants().containsKey(player.getUUID())) return true;
         var p = r.participants().get(player.getUUID());
         var worlds = b.worlds.get();
+        // The winner's celebration keeps a gathered monster's form and skills; nothing it does is recorded.
+        if (dev.hardrush.celebration.CelebrationRuntime.arena(player)) {
+            return p.role() == ParticipantRole.MONSTER_DEPLOYED && player.isAlive() && !player.isSpectator()
+                    && !PlayerProfiles.isLocked(player) && b.profiles.isReady(p.id(), r)
+                    && player.level().getServer().getPlayerList().getPlayer(p.id()) == player;
+        }
         return b.session.state() == RoundSession.State.OPEN && !b.session.competitionLocked()
                 && r.phase() == RoundPhase.RUNNING && p.role() == ParticipantRole.MONSTER_DEPLOYED && p.online()
                 && player.isAlive() && !player.isSpectator() && !PlayerProfiles.isLocked(player) && b.profiles.isReady(p.id(), r)
@@ -61,6 +67,9 @@ public final class MonsterRoundRuntime {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
+        if (p != null && dev.hardrush.celebration.CelebrationRuntime.arena(player)) {
+            return dev.hardrush.celebration.CelebrationRuntime.skillRemaining(player, skill);
+        }
         return p == null ? -1 : p.monsterSkillRemainingMillis(skill, System.currentTimeMillis());
     }
     public static boolean casting(ServerPlayer player) {
@@ -74,6 +83,7 @@ public final class MonsterRoundRuntime {
         var r = b == null ? null : b.session.snapshot().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
         if (p == null) return Optional.empty();
+        if (dev.hardrush.celebration.CelebrationRuntime.arena(player)) return Optional.of(castInCelebration(player, skill, effect));
         if (p.monsterSkillRemainingMillis(skill, System.currentTimeMillis()) > 0) return Optional.of(false);
         if (!canAct(player) || !b.casting.add(p.id())) return Optional.of(false);
         long now = System.currentTimeMillis();
@@ -111,6 +121,18 @@ public final class MonsterRoundRuntime {
                     });
         });
         return Optional.of(true);
+    }
+    /** The round is already settled: run the effect directly with an in-memory cooldown, never a durable reservation. */
+    private static boolean castInCelebration(ServerPlayer player, MonsterSkill skill, BooleanSupplier effect) {
+        if (dev.hardrush.celebration.CelebrationRuntime.skillRemaining(player, skill) > 0 || !canAct(player)) return false;
+        try {
+            if (!effect.getAsBoolean()) return false;
+        } catch (RuntimeException failure) {
+            LoggerFactory.getLogger(MonsterRoundRuntime.class).error("Celebration monster skill failed for " + player.getUUID() + "/" + skill.id(), failure);
+            tell(player, "技能执行异常，已记录日志。"); return false;
+        }
+        dev.hardrush.celebration.CelebrationRuntime.consumeSkill(player, skill);
+        return true;
     }
     private static void tell(ServerPlayer player, String text) { player.sendSystemMessage(Component.literal(text)); }
 }

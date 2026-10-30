@@ -57,84 +57,101 @@ public final class TenRoundGameTest {
     private static volatile AtomicLong accelerated;
 
     @GameTest(maxTicks = 100000)
-    public void celebrationKitsReconnectPortalEarlyReturnAndThreeMinuteTimeout(GameTestHelper test) {
+    public void winnerCelebrationGathersEveryoneAndEndsOnPoolTimeoutDeathOrDisconnect(GameTestHelper test) {
         if (!Boolean.getBoolean(TestProperties.CELEBRATION)) { test.succeed(); return; }
         var f = new Fixture(test);
         test.onEachTick(() -> {
             test.assertFalse(RoundRuntime.sessionState(f.server).filter(s -> s == RoundSession.State.FAILED).isPresent(),
                     "Celebration runtime failed: " + RoundRuntime.status(f.server));
-            for (var actor : List.of(f.first, f.offline)) if (actor.player != null) f.acknowledge(actor.player);
+            for (var actor : List.of(f.first, f.offline, f.visitor)) {
+                if (actor.player == null) continue;
+                // Celebration deaths are replaced by native respawns; follow the live entity.
+                var live = f.server.getPlayerList().getPlayer(actor.profile.id());
+                if (live != null) actor.player = live;
+                f.acknowledge(actor.player);
+            }
         });
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(RoundRuntime.sessionState(f.server)
                 .filter(s -> s == RoundSession.State.OPEN).isPresent(), "Runtime bootstrap"))
                 .thenExecute(f::installClock);
         f.login(sequence, f.first); f.login(sequence, f.offline);
-        f.celebrationRound(sequence, true);
+        int[] life = new int[1];
+        f.celebrationRound(sequence, false);
         sequence.thenExecute(() -> {
-            f.assertKit(f.first.player); f.assertKit(f.offline.player);
-            f.first.player.setOnGround(false);
-            test.assertTrue(f.first.player.tryToStartFallFlying(), "Human can begin native elytra gliding");
-            f.first.player.connection.handleUseItem(new ServerboundUseItemPacket(net.minecraft.world.InteractionHand.MAIN_HAND, 1, 0, 0));
-            test.assertValueEqual(f.first.player.getInventory().getItem(0).getCount(), 15, "Actual use-item packet consumes one boost rocket");
-            f.first.player.stopFallFlying();
-            var chest = BlockPos.containing(f.first.player.position()).below();
-            f.first.player.level().setBlockAndUpdate(chest, net.minecraft.world.level.block.Blocks.CHEST.defaultBlockState());
-            f.first.player.getInventory().setSelectedSlot(1);
-            f.first.player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(net.minecraft.world.InteractionHand.MAIN_HAND,
-                    new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(chest), net.minecraft.core.Direction.UP, chest, false), 2));
-            test.assertValueEqual(f.first.player.getInventory().getItem(1).getCount(), 15, "Native block-use packet launches a colored rocket");
-            test.assertTrue(f.first.player.containerMenu == f.first.player.inventoryMenu, "Rocket use on a chest never opens its external container");
-            f.first.player.getInventory().setSelectedSlot(0);
-            f.disconnect(f.first);
+            f.assertWinnerKit(f.first.player);
+            var end = f.worlds.level(Level.END);
+            test.assertTrue(f.offline.player.level() == end, "Nether participant is gathered into the End");
+            test.assertTrue(f.offline.player.getInventory().contains(stack -> stack.is(Items.DIAMOND))
+                    && f.offline.player.getItemBySlot(EquipmentSlot.CHEST).is(Items.DIAMOND_CHESTPLATE), "Gathered body keeps its own round inventory");
+            test.assertFalse(f.offline.player.getInventory().contains(stack -> stack.is(Items.FIREWORK_ROCKET)), "Only the winner receives rockets");
+            test.assertFalse(PlayerProfiles.isLocked(f.offline.player), "Gathered body is an ordinary survival player");
+            test.assertTrue(f.offline.player.distanceToSqr(.5, f.offline.player.getY(), .5) <= 12 * 12, "Gathered body stands around the dragon pool");
         });
-        f.login(sequence, f.first);
-        sequence.thenWaitUntil(() -> f.await(dev.hardrush.celebration.CelebrationRuntime.active(f.first.player), "Active ceremony reconnect restored"))
+        // The fixture winner lands on the island after the kill; let vanilla's damage cooldown expire first.
+        sequence.thenIdle(30).thenExecute(() -> {
+            float health = f.first.player.getHealth();
+            f.offline.player.attack(f.first.player);
+            test.assertTrue(f.first.player.getHealth() < health, "Celebration allows native PvP");
+            f.first.player.setHealth(f.first.player.getMaxHealth());
+            life[0] = f.round().participants().get(f.offline.profile.id()).lifeSequence();
+            f.portal(f.offline.player);
+        });
+        f.login(sequence, f.visitor);
+        sequence.thenWaitUntil(() -> f.await(dev.hardrush.celebration.CelebrationRuntime.arena(f.visitor.player), "Late login is gathered as a visitor"))
                 .thenExecute(() -> {
-                    test.assertValueEqual(f.first.player.getInventory().getItem(0).getCount(), 15, "Reconnect does not refill consumed rockets");
-                    f.portal(f.offline.player);
+                    test.assertTrue(f.offline.player.level() == f.worlds.level(Level.END) && f.round().sequence() == 1 && f.round().phase() != RoundPhase.ROTATING,
+                            "A non-winner in the pool goes nowhere and ends nothing");
+                    test.assertTrue(f.visitor.player.gameMode.getGameModeForPlayer() == net.minecraft.world.level.GameType.SURVIVAL
+                            && f.visitor.player.getInventory().isEmpty() && !PlayerProfiles.isLocked(f.visitor.player), "Visitor is an empty survival body");
+                    test.assertFalse(PlayerProfiles.allowVanillaSave(f.visitor.player), "Visitor body never overwrites the vanilla save");
+                    f.offline.player.kill(f.offline.player.level());
                 })
-                .thenWaitUntil(() -> f.await(LobbyWorld.isLobby(f.offline.player.level()) && f.profiles.isReady(f.offline.profile.id(), f.round()), "First player durably returned"))
+                .thenWaitUntil(() -> f.await(f.offline.player.isAlive() && f.offline.player.isSpectator()
+                        && f.offline.player.level() == f.worlds.level(Level.END), "Celebration death becomes an End spectator"))
                 .thenExecute(() -> {
-                    test.assertTrue(f.round().phase() != RoundPhase.ROTATING, "One remaining online End player prevents early rotation");
-                    test.assertFalse(f.offline.player.getInventory().contains(stack -> stack.is(Items.ELYTRA) || stack.is(Items.FIREWORK_ROCKET)), "Returned player has no temporary kit");
+                    var participant = f.round().participants().get(f.offline.profile.id());
+                    test.assertValueEqual(participant.lifeSequence(), life[0], "Celebration death changes no life");
+                    test.assertValueEqual(participant.role(), ParticipantRole.HUMAN_ACTIVE, "Celebration death changes no role");
                     f.disconnect(f.offline);
                 });
         f.login(sequence, f.offline);
-        sequence.thenWaitUntil(() -> f.await(LobbyWorld.isLobby(f.offline.player.level()) && f.profiles.isReady(f.offline.profile.id(), f.round()), "Returned reconnect stays in lobby"))
-                .thenExecute(() -> { f.frozenTime = f.round().challengeNanos(); f.portal(f.first.player); })
+        sequence.thenWaitUntil(() -> f.await(dev.hardrush.celebration.CelebrationRuntime.arena(f.offline.player)
+                        && f.offline.player.isSpectator(), "Fallen reconnect stays a spectator"))
+                .thenExecute(() -> { f.disconnect(f.visitor); f.portal(f.first.player); })
                 .thenWaitUntil(() -> f.await(f.round().sequence() == 2 && f.round().phase() == RoundPhase.WAITING
-                        && f.profiles.isReady(f.first.profile.id(), f.round()) && f.profiles.isReady(f.offline.profile.id(), f.round()), "All returned creates exactly one next round"))
+                        && f.profiles.isReady(f.first.profile.id(), f.round()) && f.profiles.isReady(f.offline.profile.id(), f.round()), "Winner in the pool rotates once"))
                 .thenExecute(() -> {
-                    test.assertValueEqual(f.worlds.state(), RoundWorldBundle.State.CLOSED, "Early return still closes native world IO");
-                    test.assertTrue(f.first.player.getItemBySlot(EquipmentSlot.CHEST).isEmpty(), "No elytra crosses into next round");
+                    test.assertValueEqual(f.worlds.state(), RoundWorldBundle.State.CLOSED, "Pool return closes native world IO");
+                    test.assertTrue(f.first.player.getItemBySlot(EquipmentSlot.CHEST).isEmpty()
+                            && !f.first.player.getInventory().contains(stack -> stack.is(Items.FIREWORK_ROCKET)), "No kit crosses into next round");
+                    test.assertFalse(f.offline.player.isSpectator(), "Spectators return as lobby bodies");
                 });
-        f.celebrationRound(sequence, false);
-        sequence.thenWaitUntil(() -> f.await(LobbyWorld.isLobby(f.offline.player.level()) && f.profiles.isReady(f.offline.profile.id(), f.round()), "Non-End human automatically returns"))
-                .thenExecute(() -> {
-                    f.assertKit(f.first.player);
-                    test.assertFalse(f.offline.player.getInventory().contains(stack -> stack.is(Items.FIREWORK_ROCKET)), "Nether player is not issued a kit");
-                    f.advance(89);
-                })
+        f.celebrationRound(sequence, true);
+        sequence.thenExecute(() -> f.advance(89))
                 .thenWaitUntil(() -> f.await(f.session.view().orElseThrow().remainingPhaseMillis() == 1_000 && !f.session.mutationPending(), "89 seconds leaves one second"))
                 .thenExecute(() -> {
-                    test.assertTrue(dev.hardrush.celebration.CelebrationRuntime.active(f.first.player), "Celebration remains usable before deadline");
-                    f.disconnect(f.offline); // Offline lobby player cannot block timeout or release.
+                    test.assertTrue(dev.hardrush.celebration.CelebrationRuntime.arena(f.first.player), "Celebration remains open before deadline");
                     f.advance(1);
                 })
                 .thenWaitUntil(() -> f.await(f.round().sequence() == 3 && f.round().phase() == RoundPhase.WAITING
                         && f.profiles.isReady(f.first.profile.id(), f.round()), "90-second timeout evacuates and rotates"))
                 .thenExecute(() -> {
-                    test.assertTrue(LobbyWorld.isLobby(f.first.player.level()), "Timeout returns remaining celebrant to permanent lobby");
+                    test.assertTrue(LobbyWorld.isLobby(f.first.player.level()) && LobbyWorld.isLobby(f.offline.player.level()), "Timeout returns everyone to the lobby");
                     test.assertValueEqual(f.worlds.state(), RoundWorldBundle.State.CLOSED, "Timeout closes old native IO");
                 });
-        f.login(sequence, f.offline);
         f.celebrationRound(sequence, true);
-        sequence.thenExecute(() -> f.portal(f.first.player))
-                .thenWaitUntil(() -> f.await(LobbyWorld.isLobby(f.first.player.level()) && f.profiles.isReady(f.first.profile.id(), f.round()), "Third ceremony first return"))
-                .thenExecute(() -> f.disconnect(f.offline))
+        sequence.thenExecute(() -> f.first.player.kill(f.first.player.level()))
                 .thenWaitUntil(() -> f.await(f.round().sequence() == 4 && f.round().phase() == RoundPhase.WAITING
-                        && f.profiles.isReady(f.first.profile.id(), f.round()), "Disconnected End celebrant does not block early finish"))
-                .thenExecute(() -> { f.disconnect(f.first); accelerated = null; }).thenSucceed();
+                        && f.profiles.isReady(f.first.profile.id(), f.round()) && f.first.player.isAlive(), "Winner death ends the celebration"))
+                .thenExecute(() -> test.assertTrue(LobbyWorld.isLobby(f.first.player.level()), "Dead winner is respawned in the lobby"));
+        f.celebrationRound(sequence, true);
+        sequence.thenExecute(() -> f.disconnect(f.first))
+                .thenWaitUntil(() -> f.await(f.round().sequence() == 5 && f.round().phase() == RoundPhase.WAITING
+                        && f.profiles.isReady(f.offline.profile.id(), f.round()), "Winner disconnect ends the celebration"))
+                .thenExecute(() -> {
+                    test.assertTrue(LobbyWorld.isLobby(f.offline.player.level()), "Remaining celebrant returns to the lobby");
+                    f.disconnect(f.offline); accelerated = null;
+                }).thenSucceed();
     }
 
     /** Called only by the separately packaged GameTest mixin; ordinary suites retain the system clock. */
@@ -181,6 +198,7 @@ public final class TenRoundGameTest {
         final MinecraftServer server;
         final Actor first = new Actor("TenRoundA");
         final Actor offline = new Actor("TenRoundB");
+        final Actor visitor = new Actor("TenRoundC");
         final ArrayList<UUID> ids = new ArrayList<>();
         final HashSet<Long> seeds = new HashSet<>();
         final ArrayList<net.minecraft.resources.ResourceKey<Level>> releasedKeys = new ArrayList<>();
@@ -225,6 +243,8 @@ public final class TenRoundGameTest {
                             for (int slot = 0; slot < 36; slot++) actor.player.getInventory().setItem(slot, new ItemStack(Items.DIAMOND, 64));
                             actor.player.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.DIAMOND_CHESTPLATE));
                         }
+                        // Exactly enough room for the winner's displaced chestplate and sixteen rocket stacks.
+                        for (int slot = 19; slot < 36; slot++) first.player.getInventory().setItem(slot, ItemStack.EMPTY);
                         move(first.player, worlds.level(Level.END), new Vec3(.5, 128, .5));
                         move(offline.player, worlds.level(secondInEnd ? Level.END : Level.NETHER), new Vec3(2.5, 128, .5));
                         fight = new EnderDragonFight(false, false, false, Optional.empty(), 0, Optional.empty(),
@@ -240,17 +260,23 @@ public final class TenRoundGameTest {
                         dragon.getPhaseManager().setPhase(EnderDragonPhase.SITTING_SCANNING); dragon.setHealth(.1f);
                         first.player.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_SWORD)); first.player.attack(dragon.head);
                     })
-                    .thenWaitUntil(() -> await(round().result() != null && dev.hardrush.celebration.CelebrationRuntime.active(first.player)
-                            && (!secondInEnd || dev.hardrush.celebration.CelebrationRuntime.active(offline.player)) && !session.mutationPending(), "Durable kit applied"));
+                    .thenWaitUntil(() -> await(round().result() != null && dev.hardrush.celebration.CelebrationRuntime.arena(first.player)
+                            && dev.hardrush.celebration.CelebrationRuntime.arena(offline.player) && !session.mutationPending(),
+                            "Everyone gathered around the winner (winner=" + dev.hardrush.celebration.CelebrationRuntime.arena(first.player)
+                                    + " " + first.player.level().dimension().identifier() + ", other=" + dev.hardrush.celebration.CelebrationRuntime.arena(offline.player)
+                                    + " " + offline.player.level().dimension().identifier() + ")"));
         }
 
-        void assertKit(ServerPlayer player) {
+        void assertWinnerKit(ServerPlayer player) {
             test.assertTrue(player.getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA)
-                    && player.getItemBySlot(EquipmentSlot.CHEST).has(DataComponents.UNBREAKABLE), "Native unbreakable elytra equipped despite full original inventory");
+                    && player.getItemBySlot(EquipmentSlot.CHEST).has(DataComponents.UNBREAKABLE), "Native unbreakable elytra equipped");
+            test.assertTrue(player.getInventory().contains(stack -> stack.is(Items.DIAMOND_CHESTPLATE)), "Displaced chestplate kept in the inventory");
+            test.assertTrue(player.getInventory().contains(stack -> stack.is(Items.DIAMOND)), "Winner keeps the round inventory");
             var colors = new HashSet<Integer>();
-            for (int slot = 0; slot < 16; slot++) {
+            for (int slot = 0; slot < 36; slot++) {
                 var stack = player.getInventory().getItem(slot);
-                test.assertTrue(dev.hardrush.celebration.CelebrationKit.isRocket(stack) && stack.getCount() == 16, "Sixteen temporary rockets per color");
+                if (!stack.is(Items.FIREWORK_ROCKET)) continue;
+                test.assertValueEqual(stack.getCount(), 16, "Sixteen rockets per color");
                 colors.add(stack.get(DataComponents.FIREWORKS).explosions().getFirst().colors().getInt(0));
             }
             test.assertValueEqual(colors.size(), 16, "Sixteen distinct native firework colors");
@@ -259,7 +285,7 @@ public final class TenRoundGameTest {
         void portal(ServerPlayer player) {
             var destination = ((net.minecraft.world.level.block.EndPortalBlock) net.minecraft.world.level.block.Blocks.END_PORTAL)
                     .getPortalDestination(player.level(), player, BlockPos.containing(player.position()));
-            test.assertTrue(destination == null, "Native exit portal is intercepted before bed/anchor lookup");
+            test.assertTrue(destination == null, "Native exit portal never moves anyone during the celebration");
         }
 
         RoundSnapshot round() { return RoundRuntime.snapshot(server).orElseThrow(); }
@@ -487,7 +513,8 @@ public final class TenRoundGameTest {
             acknowledge(player);
         }
         void acknowledge(ServerPlayer player) {
-            var actor = player.getUUID().equals(first.profile.id()) ? first : offline;
+            var actor = player.getUUID().equals(first.profile.id()) ? first
+                    : player.getUUID().equals(offline.profile.id()) ? offline : visitor;
             // The embedded peer follows the native teleport and dimension-loaded acknowledgements.
             actor.connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance)
                     .map(ClientboundPlayerPositionPacket.class::cast).reduce((previous, current) -> current)

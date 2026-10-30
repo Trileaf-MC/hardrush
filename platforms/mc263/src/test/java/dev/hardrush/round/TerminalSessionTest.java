@@ -102,26 +102,50 @@ final class TerminalSessionTest {
         }
     }
 
-    @Test void cleanCelebrationRestoresRemainingDurationWithoutCountingOfflineTime() throws Exception {
+    @Test void cleanCelebrationRestartRotatesInsteadOfResuming() throws Exception {
         Path database = directory.resolve("celebration.sqlite");
         var original = seed(database, RoundPhase.CELEBRATING,
                 new RoundResult(RoundResult.Kind.COMPLETED, player, "fixture"), TimeUnit.SECONDS.toNanos(2));
         var callbacks = new LinkedBlockingQueue<Runnable>();
         var clock = new AtomicLong(TimeUnit.DAYS.toNanos(5));
         try (var session = open(database, clock, callbacks)) {
+            var restored = session.snapshot().orElseThrow();
             assertTrue(session.competitionLocked());
-            assertEquals(original.roundId(), session.snapshot().orElseThrow().roundId());
-            assertEquals(TimeUnit.SECONDS.toNanos(2), session.view().orElseThrow().remainingPhaseNanos());
-            clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
+            assertEquals(original.roundId(), restored.roundId());
+            assertEquals(RoundPhase.ROTATING, restored.phase());
+            assertEquals(0, session.view().orElseThrow().remainingPhaseNanos());
+            assertEquals(original.result(), restored.result());
+            assertEquals(123_000_000, restored.challengeNanos());
         }
-        clock.addAndGet(TimeUnit.DAYS.toNanos(3));
+    }
+
+    @Test void evidenceAfterCommittedResultIsNeverStored() throws Exception {
+        Path database = directory.resolve("evidence-closed.sqlite");
+        var original = seed(database, RoundPhase.RUNNING, null, 0);
+        var callbacks = new LinkedBlockingQueue<Runnable>();
+        var clock = new AtomicLong();
+        var running = new UUID[1];
+        var settled = new UUID[1];
         try (var session = open(database, clock, callbacks)) {
-            assertEquals(TimeUnit.SECONDS.toNanos(1), session.view().orElseThrow().remainingPhaseNanos());
-            clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
-            session.tick();
+            var before = lethal(original.roundId(), 0);
+            running[0] = before.eventId();
+            session.recordEvidence(new EvidenceWrite(original.roundId(), before.eventId(), "COMBAT", CombatEventCodec.encode(before)));
+            session.onOnline(player, "Human", true);
             pump(callbacks, () -> !session.mutationPending());
-            assertEquals(RoundPhase.ROTATING, session.snapshot().orElseThrow().phase());
-            assertEquals(123_000_000, session.snapshot().orElseThrow().challengeNanos());
+            clock.set(TimeUnit.SECONDS.toNanos(3));
+            session.captureDragonDeath(lethal(original.roundId(), clock.get()), dragon);
+            session.finishDamageBatch(original.roundId(), session.terminalBatchId().orElseThrow());
+            pump(callbacks, () -> session.snapshot().orElseThrow().result() != null && !session.mutationPending());
+            var after = lethal(original.roundId(), clock.get());
+            settled[0] = after.eventId();
+            session.recordEvidence(new EvidenceWrite(original.roundId(), after.eventId(), "COMBAT", CombatEventCodec.encode(after)));
+            pump(callbacks, () -> !session.mutationPending());
+        }
+        for (var callback : callbacks) callback.run();
+        try (var store = new SqliteRoundStore(database)) {
+            var stored = store.evidence(original.roundId(), "COMBAT", 10).stream().map(EvidenceWrite::eventId).toList();
+            assertTrue(stored.contains(running[0]), "Evidence before the result is stored");
+            assertFalse(stored.contains(settled[0]), "Evidence after the committed result is not stored");
         }
     }
 

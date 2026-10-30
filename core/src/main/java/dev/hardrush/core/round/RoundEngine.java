@@ -52,8 +52,15 @@ public final class RoundEngine {
         // A dirty shutdown is never silently presented as a complete timing interval.
         RoundPhase phase = stored.cleanShutdown() && !requiresLegacyClosure(stored)
                 ? stored.phase() : RoundPhase.RECOVERY_REQUIRED;
+        long remaining = stored.remainingPhaseNanos();
+        // The winner's celebration lives only in the running process; a restart rotates instead of resuming it.
+        if (phase != RoundPhase.RECOVERY_REQUIRED && stored.result() != null && stored.result().kind() == RoundResult.Kind.COMPLETED
+                && (phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING)) {
+            phase = RoundPhase.ROTATING;
+            remaining = 0;
+        }
         RoundSnapshot restored = new RoundSnapshot(stored.roundId(), stored.sequence(), stored.seed(), stored.version(),
-                stored.rules(), phase, pause(phase, players), stored.challengeNanos(), stored.remainingPhaseNanos(),
+                stored.rules(), phase, pause(phase, players), stored.challengeNanos(), remaining,
                 players, stored.cleanShutdown(), uncertain, stored.result());
         return new RoundEngine(restored, clock);
     }

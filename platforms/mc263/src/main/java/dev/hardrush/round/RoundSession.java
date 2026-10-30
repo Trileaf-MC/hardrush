@@ -403,7 +403,9 @@ public final class RoundSession implements AutoCloseable {
     public void adapterFailure(String reason, Throwable error) { fail(reason, error); }
 
     public void recordEvidence(EvidenceWrite evidence) {
-        if (stopping || state != State.OPEN || !engine.committed().roundId().equals(evidence.roundId())) return;
+        // A committed result closes the round's evidence record; celebration fights are never stored.
+        if (stopping || state != State.OPEN || !engine.committed().roundId().equals(evidence.roundId())
+                || engine.committed().result() != null) return;
         if (evidencePending >= 256) { fail("战斗证据队列超出预算", new IllegalStateException("暂停比赛，保留证据")); return; }
         evidencePending++;
         supplyIo(() -> store.recordEvidence(evidence)).whenComplete((result, error) -> {

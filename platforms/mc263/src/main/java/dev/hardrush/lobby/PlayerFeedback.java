@@ -28,7 +28,7 @@ public final class PlayerFeedback {
         boolean recovery = round.phase()==RoundPhase.RECOVERY_REQUIRED || dev.hardrush.round.RoundRuntime.sessionState(server)
                 .filter(state->state!=RoundSession.State.OPEN).isPresent();
         stageBar.setVisible(recovery||rescue||displaying);
-        String terminalText=displaying?RoundResultText.stageLabel(round.result(), celebrating?"通关庆祝 · 龙池回厅，全员返回提前结束":"结算展示"):"结算展示";
+        String terminalText=displaying?RoundResultText.stageLabel(round.result(), celebrating?"通关庆祝 · 胜者跳入龙池／阵亡／离线即结束":"结算展示"):"结算展示";
         stageBar.setName(Component.literal(recovery ? "恢复隔离 · 竞技入口关闭，请联系管理员" : (rescue?"救场 · 祭坛复生／中途门加入":terminalText)
                 + " · 剩余 " + (round.remainingPhaseMillis()+999)/1000 + " 秒"));
         long total=rescue?round.rules().combatValues().get("round.rescueMillis").longValue():completed
@@ -53,14 +53,19 @@ public final class PlayerFeedback {
             if(frozen) dev.hardrush.lobby.LobbyRuntime.interruptReturn(player,"阶段变化／恢复隔离");
             if(session.state()!=RoundSession.State.OPEN||r.phase()==RoundPhase.RECOVERY_REQUIRED)
                 hints.offer("recovery",LobbyHints.Priority.RECOVERY,"恢复隔离 · 竞技入口关闭；可用的规则与历史仍可阅读",now+300);
-            else if(PlayerProfiles.simulationFrozen(player) && !dev.hardrush.celebration.CelebrationRuntime.active(player))
+            else if(PlayerProfiles.simulationFrozen(player) && !dev.hardrush.celebration.CelebrationRuntime.arena(player))
                 hints.offer("profile",LobbyHints.Priority.RECOVERY,"正在核验／应用个人档案，请稍候",now+300);
             if(r.phase()==RoundPhase.RESCUE)
                 hints.offer("rescue",LobbyHints.Priority.FACILITY,"救场剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · 祭坛复生或中途门参赛恢复挑战",now+300);
             else if(r.phase()==RoundPhase.RUNNING && humans>0 && r.onlineHumans()==0)
                 hints.offer("away",LobbyHints.Priority.FACILITY,"人类暂离，挑战计时暂停；资格保留，暂无可追猎目标",now+300);
-            if(dev.hardrush.celebration.CelebrationRuntime.active(player))
-                hints.offer("celebration",LobbyHints.Priority.FACILITY,"庆祝剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · 跳入龙池返回独立大厅，全员返回提前换轮",now+300);
+            if(dev.hardrush.celebration.CelebrationRuntime.arena(player)) {
+                String left="剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒";
+                hints.offer("celebration",LobbyHints.Priority.FACILITY,dev.hardrush.celebration.CelebrationRuntime.winner(player)
+                        ?"你是本轮胜者 · 跳入龙池结束庆祝 · "+left
+                        :player.isSpectator()?"已阵亡旁观 · 庆祝"+left
+                        :"胜者 "+dev.hardrush.celebration.CelebrationRuntime.winnerName(server)+" 庆祝中 · 原版生存，死亡转旁观，不计战绩 · "+left,now+300);
+            }
             if(MonsterRoles.isMonster(player) && !dev.hardrush.lobby.LobbyRuntime.channeling(player)) {
                 var name=player.getMainHandItem().get(net.minecraft.core.component.DataComponents.CUSTOM_NAME);
                 if(name!=null)hints.offer("skill",LobbyHints.Priority.FACILITY,name.getString(),now+300);

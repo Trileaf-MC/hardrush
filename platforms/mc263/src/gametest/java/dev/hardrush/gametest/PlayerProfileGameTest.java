@@ -28,6 +28,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.Vec3;
@@ -41,17 +42,24 @@ public final class PlayerProfileGameTest {
         level.getChunkAt(pos).setBlockState(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
         level.getChunkAt(pos).setBlockState(pos.above(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
     }
+    private enum CelebrationBody { MONSTER, DEAD, LOBBY }
+
     @GameTest(maxTicks = 2000)
-    public void monsterCelebrationRemovesControlsAndPreservesOriginalArchive(GameTestHelper test) {
-        temporaryCelebration(test, true, false);
+    public void gatheredMonsterKeepsItsBodyAndIsSealedOnReturn(GameTestHelper test) {
+        celebrationBody(test, CelebrationBody.MONSTER);
     }
 
     @GameTest(maxTicks = 2000)
-    public void settledDeathUsesNativeCelebrationBodyWithoutCompetitiveRevival(GameTestHelper test) {
-        temporaryCelebration(test, false, true);
+    public void celebrationDeathRespawnsAsSpectatorWithoutCompetitiveRevival(GameTestHelper test) {
+        celebrationBody(test, CelebrationBody.DEAD);
     }
 
-    private static void temporaryCelebration(GameTestHelper test, boolean monster, boolean dead) {
+    @GameTest(maxTicks = 2000)
+    public void lobbyVisitorBodyNeverTouchesItsSealedSuspension(GameTestHelper test) {
+        celebrationBody(test, CelebrationBody.LOBBY);
+    }
+
+    private static void celebrationBody(GameTestHelper test, CelebrationBody kind) {
         if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
@@ -65,54 +73,56 @@ public final class PlayerProfileGameTest {
                 RoundPhase.CELEBRATING, PauseReason.SETTLED, 123, 90_000_000_000L, initial.participants(), false, false,
                 new dev.hardrush.core.round.RoundResult(dev.hardrush.core.round.RoundResult.Kind.COMPLETED, player.getUUID(), "verified fixture"));
         var next = round(UUID.randomUUID(), 2, player, GameMode.NORMAL);
-        var state = new net.minecraft.nbt.CompoundTag();
-        var pending = new java.util.concurrent.atomic.AtomicReference<java.util.concurrent.CompletableFuture<Void>>();
         profiles.onLogin(player); profiles.tick(initial);
         test.startSequence()
                 .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), initial), "Source profile verified"))
                 .thenExecute(() -> {
-                    test.assertTrue(profiles.admit(player, initial, test.getLevel(), position, l -> l == test.getLevel()), "Committed initial admission");
+                    if (kind != CelebrationBody.LOBBY) {
+                        test.assertTrue(profiles.admit(player, initial, test.getLevel(), position, l -> l == test.getLevel()), "Committed initial admission");
+                    }
                     player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 23));
                     player.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.DIAMOND_CHESTPLATE));
-                    if (monster) dev.hardrush.monster.MonsterRoles.select(player, "skeleton");
-                    if (dead) player.setHealth(0);
-                    state.put("original", profiles.celebrationSnapshot(player, true));
-                    state.putBoolean("returned", false);
-                    pending.set(profiles.celebrationState(player.getUUID(), celebrating, state));
-                })
-                .thenWaitUntil(() -> test.assertTrue(pending.get().isDone(), "Original archived before kit application"))
-                .thenExecute(() -> {
-                    pending.get().join();
-                    body[0] = profiles.prepareCelebrationBody(player, celebrating, state.getCompoundOrEmpty("original"), test.getLevel(), true);
-                    test.assertTrue(!dev.hardrush.monster.MonsterRoles.isMonster(body[0]), "Monster controls and disguise suspended without drops");
-                    test.assertTrue(body[0].isAlive(), "Celebration has a living native body");
-                    test.assertTrue(!dead || body[0] != player, "Dead participant gets an actual native replacement");
-                    test.assertTrue(body[0].getItemBySlot(EquipmentSlot.CHEST).is(Items.ELYTRA), "Kit replaces the old chestplate");
-                    state.put("current", profiles.celebrationSnapshot(body[0], false));
-                    pending.set(profiles.celebrationState(player.getUUID(), celebrating, state));
-                })
-                .thenWaitUntil(() -> test.assertTrue(pending.get().isDone(), "Temporary kit checkpoint is durable"))
-                .thenExecute(() -> {
-                    pending.get().join(); profiles.unlockCelebration(body[0], celebrating);
-                    body[0].setOnGround(false);
-                    test.assertTrue(body[0].tryToStartFallFlying(), "Former monster/dead body can use native elytra");
+                    if (kind == CelebrationBody.MONSTER) dev.hardrush.monster.MonsterRoles.select(player, "skeleton");
+                    switch (kind) {
+                        case MONSTER -> {
+                            profiles.moveIntoCelebration(player, test.getLevel(), position, 90);
+                            test.assertTrue(dev.hardrush.monster.MonsterRoles.isMonster(player), "Gathered monster keeps its form");
+                            test.assertFalse(PlayerProfiles.isLocked(player), "Gathered body stays playable");
+                        }
+                        case DEAD -> {
+                            player.setHealth(0);
+                            body[0] = profiles.respawnInCelebration(player, celebrating, test.getLevel(), position, 0, GameType.SPECTATOR);
+                            test.assertTrue(body[0] != player && body[0].isAlive() && body[0].isSpectator(), "Dead body is natively replaced by a spectator");
+                        }
+                        case LOBBY -> {
+                            body[0] = profiles.enterCelebrationAsGuest(player, celebrating, test.getLevel(), position, 0, GameType.SURVIVAL);
+                            test.assertTrue(body[0].getInventory().isEmpty() && body[0].getItemBySlot(EquipmentSlot.CHEST).isEmpty(), "Visitor starts empty-handed");
+                            test.assertValueEqual(body[0].gameMode.getGameModeForPlayer(), GameType.SURVIVAL, "Visitor is a survival body");
+                        }
+                    }
+                    test.assertTrue(profiles.isReady(player.getUUID(), celebrating), "Celebration body keeps its verified generation");
+                    // This fixture's local service is not installed, so static lock/save checks only apply to real bodies here;
+                    // the installed runtime path for visitors is covered by the celebration regression.
+                    if (kind == CelebrationBody.MONSTER) test.assertFalse(PlayerProfiles.isLocked(body[0]), "Celebration body is not locked");
                     test.assertValueEqual(celebrating.participants(), initial.participants(), "Ceremony has no competitive identity/life transition");
-                    state.putBoolean("returned", true);
-                    pending.set(profiles.celebrationState(player.getUUID(), celebrating, state));
+                    body[0] = profiles.finishCelebration(body[0], celebrating);
+                    profiles.tick(celebrating);
                 })
-                .thenWaitUntil(() -> test.assertTrue(pending.get().isDone(), "Returned marker durable"))
-                .thenExecute(() -> { pending.get().join(); body[0] = profiles.finishCelebration(body[0], celebrating); profiles.tick(celebrating); })
                 .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), celebrating), "Lobby suspension verified"))
                 .thenExecute(() -> {
-                    test.assertTrue(body[0].getItemBySlot(EquipmentSlot.CHEST).isEmpty() && body[0].getInventory().isEmpty(), "Lobby has no temporary gear");
+                    test.assertFalse(dev.hardrush.monster.MonsterRoles.isMonster(body[0]), "Lobby body has no monster form");
+                    test.assertFalse(body[0].isSpectator(), "Lobby body is never a spectator");
+                    test.assertTrue(body[0].getItemBySlot(EquipmentSlot.CHEST).isEmpty() && body[0].getInventory().isEmpty(), "Lobby shows no celebration gear");
                     profiles.tick(next);
                 })
                 .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), next), "Next generation verified"))
                 .thenExecute(() -> {
                     try {
                         var bytes = new ProfileJournal(root).archived(player.getUUID(), java.util.Optional.of(new ProfileJournal.Generation(initial.roundId(), 1)));
-                        var original = net.minecraft.nbt.NbtIo.readCompressed(new java.io.ByteArrayInputStream(bytes), net.minecraft.nbt.NbtAccounter.create(16 * 1024 * 1024));
-                        test.assertValueEqual(original, state.getCompoundOrEmpty("original"), "Cross-round archive contains exact original, never ceremony gear");
+                        var archived = net.minecraft.nbt.NbtIo.readCompressed(new java.io.ByteArrayInputStream(bytes), net.minecraft.nbt.NbtAccounter.create(16 * 1024 * 1024));
+                        boolean diamonds = archived.getListOrEmpty("Inventory").toString().contains("minecraft:diamond\"");
+                        // A real body is sealed as it left the celebration; a guest never replaces its sealed suspension.
+                        test.assertValueEqual(diamonds, kind == CelebrationBody.MONSTER, "Archive reflects only a real gathered body");
                         profiles.close();
                     } catch (Exception error) { throw new IllegalStateException(error); }
                     ((ProfileTagged) body[0]).hardrush$isolated(false);

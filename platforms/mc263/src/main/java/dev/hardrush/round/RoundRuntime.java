@@ -205,11 +205,13 @@ public final class RoundRuntime {
                             .filter(participant -> participant.role() == ParticipantRole.HUMAN_ACTIVE)
                             .map(participant -> new CombatActor(participant.id(), participant.role(), participant.lifeSequence(), 0));
                 }
+                // The winner's celebration End plays by native survival rules; actor() stays empty, so nothing is attributed.
                 @Override public boolean competitionFrozen(net.minecraft.server.level.ServerLevel level) {
-                    return session.competitionLocked();
+                    return session.competitionLocked() && !CelebrationRuntime.arena(level);
                 }
                 @Override public boolean mayDamage(net.minecraft.server.level.ServerLevel level, UUID batchId) {
-                    return !session.competitionLocked() || session.terminalBatchId().filter(id -> id.equals(batchId)).isPresent();
+                    return !session.competitionLocked() || session.terminalBatchId().filter(id -> id.equals(batchId)).isPresent()
+                            || CelebrationRuntime.arena(level);
                 }
                 @Override public void batchClosed(UUID roundId, UUID batchId) { session.finishDamageBatch(roundId, batchId); }
             }, event -> {
@@ -264,13 +266,13 @@ public final class RoundRuntime {
                 refreshTab(server, false);
                 if (worlds != null && worlds.ready() && lobby.ready()) session.adaptersReady(round.roundId());
                 if (round.phase() == RoundPhase.ROTATING) {
-                    if (!CelebrationRuntime.tick(server, round, true)) { session.tick(); return; }
+                    if (!CelebrationRuntime.evacuate(server, round)) { session.tick(); return; }
                     rotate(server, session, round, worlds, profiles);
                     session.tick();
                     return;
                 }
                 if (CelebrationRuntime.successful(round)) {
-                    if (CelebrationRuntime.tick(server, round, false)) session.celebrationComplete(round.roundId());
+                    if (CelebrationRuntime.tick(server, round)) session.celebrationComplete(round.roundId());
                     ProtectionRuntime.tick(server);
                     LobbyRuntime.tick(server);
                     session.tick();
@@ -354,6 +356,11 @@ public final class RoundRuntime {
             if (!(entity instanceof ServerPlayer player)) return;
             var session = SESSIONS.get(player.level().getServer());
             var round = session == null ? null : session.snapshot().orElse(null);
+            if (round != null && CelebrationRuntime.successful(round)) {
+                // Celebration deaths are never competitive: no hold, no capture, no life change.
+                CelebrationRuntime.died(player);
+                return;
+            }
             var participant = round == null ? null : round.participants().get(player.getUUID());
             if (participant != null && participant.role() == ParticipantRole.HUMAN_ACTIVE
                     && RoundWorldBundle.owns(player.level())) {
@@ -373,6 +380,8 @@ public final class RoundRuntime {
             if (alive || PlayerProfiles.celebrationRespawnInProgress()) return;
             var session = SESSIONS.get(newPlayer.level().getServer());
             var round = session == null ? null : session.snapshot().orElse(null);
+            // Celebration replacements are placed by CelebrationRuntime; no life or lobby transition follows.
+            if (round != null && CelebrationRuntime.successful(round)) return;
             var participant = round == null ? null : round.participants().get(newPlayer.getUUID());
             if (participant != null && participant.role().isExcluded()) {
                 var profiles = PROFILES.get(newPlayer.level().getServer());
@@ -593,9 +602,9 @@ public final class RoundRuntime {
             var winner = after.result().winner() == null ? "胜者待核验"
                     : dev.hardrush.core.book.SafeBookText.literal(after.participants().get(after.result().winner()).name(), 64);
             server.getPlayerList().broadcastSystemMessage(Component.literal("本轮已通关：" + winner
-                    + "，有效挑战 " + after.challengeMillis() + " ms。末地庆祝最多 "
-                    + (RoundEngine.successCelebrationMillis(after.rules()) + 999) / 1000
-                    + " 秒（现实时间），可携烟花和鞘翅庆祝；跳入龙池返回下一轮大厅，全员返回后提前轮换。"), false);
+                    + "，有效挑战 " + after.challengeMillis() + " ms。全员集结到末地龙池旁为胜者庆祝：胜者获得鞘翅和烟花；"
+                    + "庆祝期间为原版生存，可 PvP 和建造，死亡转旁观，一切不计战绩。胜者跳入龙池、阵亡或离线即结束，最长 "
+                    + (RoundEngine.successCelebrationMillis(after.rules()) + 999) / 1000 + " 秒（现实时间）。"), false);
         }
         if (after.phase() != RoundPhase.RUNNING && after.phase() != RoundPhase.RESCUE) return;
         var worlds = WORLDS.get(server);

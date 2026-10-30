@@ -341,19 +341,28 @@ class RoundEngineTest {
         assertThrows(IllegalStateException.class, engine::view);
     }
 
-    @Test void celebrationNormalRestartResumesRemainingServerTimeAfterDurableStartupBoundary() {
+    @Test void cleanStopDuringSuccessfulCelebrationRestoresDirectlyAsRotating() {
         RoundEngine engine = running();
-        apply(engine, engine.proposeFinish(UUID.randomUUID(), new RoundResult(RoundResult.Kind.COMPLETED, A, "verified hook")));
+        clock.millis(4_000);
+        var completed = new RoundResult(RoundResult.Kind.COMPLETED, A, "verified hook");
+        apply(engine, engine.proposeFinish(UUID.randomUUID(), completed));
+        assertEquals(RoundPhase.SETTLING, engine.committed().phase());
+        apply(engine, engine.proposeCheckpoint(UUID.randomUUID(), true));
+        RoundEngine settling = RoundEngine.restore(engine.committed(), clock);
+        assertEquals(RoundPhase.ROTATING, settling.view().phase());
+
         apply(engine, engine.proposeTick(UUID.randomUUID()));
+        assertEquals(RoundPhase.CELEBRATING, engine.committed().phase());
         clock.millis(10_000);
         apply(engine, engine.proposeCheckpoint(UUID.randomUUID(), true));
-        clock.millis(10_000_000);
         RoundEngine restored = RoundEngine.restore(engine.committed(), clock);
-        assertEquals(80_000, restored.view().remainingPhaseMillis());
-        apply(restored, restored.proposeCheckpoint(UUID.randomUUID(), false));
-        clock.millis(20_000);
-        assertEquals(60_000, restored.view().remainingPhaseMillis());
-        assertEquals(0, restored.view().challengeMillis());
+        assertEquals(RoundPhase.ROTATING, restored.view().phase());
+        assertEquals(0, restored.view().remainingPhaseMillis());
+        assertEquals(completed, restored.view().result());
+        assertEquals(4_000, restored.view().challengeMillis());
+
+        var dirty = RoundEngine.restoreForRecovery(engine.committed(), clock);
+        assertEquals(RoundPhase.RECOVERY_REQUIRED, dirty.view().phase());
     }
 
     @Test void inconsistentTerminalSnapshotCannotBeLoadedAsAUsableRace() {

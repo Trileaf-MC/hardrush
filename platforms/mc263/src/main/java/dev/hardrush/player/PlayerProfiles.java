@@ -31,10 +31,8 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetHealthPacket;
 import net.minecraft.resources.Identifier;
@@ -63,7 +61,7 @@ public final class PlayerProfiles implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger("hardrush-profiles");
     private static final Map<MinecraftServer, PlayerProfiles> SERVICES = new IdentityHashMap<>();
     private static final ThreadLocal<PlayerProfiles> MONSTER_RESPAWN = new ThreadLocal<>();
-    private static final ThreadLocal<Boolean> CELEBRATION_RESPAWN = ThreadLocal.withInitial(() -> false);
+    private static final ThreadLocal<net.minecraft.world.level.portal.TeleportTransition> CELEBRATION_RESPAWN = new ThreadLocal<>();
     private static final String FRESH = "hardrush_fresh_profile";
     private static final String SUSPENSION_ID = "hardrush_suspension_id";
     private final MinecraftServer server;
@@ -239,6 +237,8 @@ public final class PlayerProfiles implements AutoCloseable {
         if (service != null && service.recoveryPaused) return false;
         var entry = service == null ? null : service.players.get(player.getUUID());
         if (entry == null || entry.player != player) return !((ProfileTagged) player).hardrush$isolated();
+        // A celebration visitor body is temporary; its vanilla file keeps the sealed lobby state.
+        if (entry.celebrationGuest) return false;
         return entry.admitted || entry.diskSafe;
     }
 
@@ -317,8 +317,11 @@ public final class PlayerProfiles implements AutoCloseable {
         ((ProfileTagged) player).hardrush$respawnPermitted(false);
     }
 
-    /** Scoped override: a committed monster is born in the persistent lobby, never at a human bed/anchor. */
-    public static Optional<net.minecraft.world.level.portal.TeleportTransition> monsterRespawnDestination(ServerPlayer player) {
+    /** Scoped override: a committed monster is born in the persistent lobby, never at a human bed/anchor;
+     *  a celebration respawn lands exactly where the coordinator placed it. */
+    public static Optional<net.minecraft.world.level.portal.TeleportTransition> scopedRespawnDestination(ServerPlayer player) {
+        var celebration = CELEBRATION_RESPAWN.get();
+        if (celebration != null) return Optional.of(celebration);
         var profiles = MONSTER_RESPAWN.get();
         if (profiles == null || profiles.server != player.level().getServer()) return Optional.empty();
         return Optional.of(new net.minecraft.world.level.portal.TeleportTransition(profiles.lobby.get(),
@@ -828,162 +831,167 @@ public final class PlayerProfiles implements AutoCloseable {
         return snapshots;
     }
 
-    public static boolean celebrationRespawnInProgress() { return CELEBRATION_RESPAWN.get(); }
+    public static boolean celebrationRespawnInProgress() { return CELEBRATION_RESPAWN.get() != null; }
 
-    public boolean savedInCelebrationEnd(ServerPlayer player, RoundSnapshot round, ServerLevel end) {
+    /** A real round body keeps everything it carries when gathered at the dragon pool. */
+    public boolean realRoundBody(ServerPlayer player) {
         var entry = players.get(player.getUUID());
-        if (entry == null || entry.source.filter(generation(round)::equals).isEmpty()) return false;
-        var saved = entry.resume != null ? entry.resume : entry.original;
-        return saved.getStringOr("Dimension", "").equals(end.dimension().identifier().toString());
+        return entry != null && entry.player == player && entry.admitted && !entry.deathHeld && !entry.celebrationGuest
+                && player.isAlive() && !player.isSpectator() && dev.hardrush.world.RoundWorldBundle.owns(player.level());
     }
 
-    public CompletableFuture<Set<UUID>> celebrationRoster(RoundSnapshot round, Set<UUID> initial) {
-        var tag = new CompoundTag();
-        var ids = new ListTag();
-        initial.stream().sorted().forEach(id -> ids.add(StringTag.valueOf(id.toString())));
-        tag.put("players", ids);
-        return supply(() -> {
-            var saved = decode(journal.join().celebrationRoster(round.roundId(), encode(tag)));
-            var result = new java.util.HashSet<UUID>();
-            for (var id : saved.getListOrEmpty("players")) result.add(UUID.fromString(id.asString().orElseThrow()));
-            return Set.copyOf(result);
-        });
-    }
-
-    public CompletableFuture<Optional<CompoundTag>> celebrationState(UUID player, RoundSnapshot round) {
-        return supply(() -> {
-            var saved = journal.join().celebration(player, generation(round));
-            if (saved.isEmpty()) return Optional.empty();
-            var state = decode(saved.orElseThrow());
-            requireSnapshotGeneration(state.getCompoundOrEmpty("original"), generation(round));
-            if (state.contains("current")) requireSnapshotGeneration(state.getCompoundOrEmpty("current"), generation(round));
-            return Optional.of(state);
-        });
-    }
-
-    public CompletableFuture<Void> celebrationState(UUID player, RoundSnapshot round, CompoundTag state) {
-        var copy = state.copy();
-        return supply(() -> {
-            requireSnapshotGeneration(copy.getCompoundOrEmpty("original"), generation(round));
-            var store = journal.join();
-            var previous = store.celebration(player, generation(round));
-            if (previous.isPresent()) {
-                var sealed = decode(previous.orElseThrow());
-                if (!sealed.getCompoundOrEmpty("original").equals(copy.getCompoundOrEmpty("original"))) {
-                    throw new IOException("庆祝不能覆盖已经封存的原物资");
-                }
-                if (sealed.getBooleanOr("returned", false) && !copy.getBooleanOr("returned", false)) {
-                    throw new IOException("已返回大厅的庆祝状态不能回退");
-                }
-            }
-            store.celebration(player, generation(round), encode(copy));
-            return null;
-        });
-    }
-
-    /** A quarantined login still owns the sealed competition position, not its temporary lobby coordinates. */
-    public CompoundTag celebrationSnapshot(ServerPlayer player, boolean original) {
+    /** Native menus return carried/crafting stacks to this body; only cross-world riding and pearls are dropped. */
+    public void moveIntoCelebration(ServerPlayer player, ServerLevel end, Vec3 position, float yaw) {
         requireMainThread();
-        var entry = players.get(player.getUUID());
-        var snapshot = original && entry != null && !entry.admitted && entry.resume != null
-                ? entry.resume.copy() : capture(player, false);
-        if (original && dev.hardrush.monster.MonsterRoles.isMonster(player)) {
-            var output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
-            for (var slot : EquipmentSlot.values()) output.store(slot.getName(), ItemStack.OPTIONAL_CODEC,
-                    dev.hardrush.monster.MonsterRoles.actualEquipment(player, slot));
-            snapshot.put("hardrush_monster_equipment", output.buildResult());
-        }
-        return snapshot;
+        player.closeContainer();
+        player.stopRiding();
+        player.ejectPassengers();
+        player.stopFallFlying();
+        for (var pearl : Set.copyOf(player.getEnderPearls())) pearl.discard();
+        placeInCelebration(player, end, position, yaw);
     }
 
-    /** Applied while movement remains locked; the coordinator unlocks only after the kit checkpoint is durable. */
-    public ServerPlayer prepareCelebrationBody(ServerPlayer player, RoundSnapshot round, CompoundTag snapshot,
-            ServerLevel end, boolean freshKit) {
+    /** A lobby, dead or reconnecting visitor joins as a newborn survival body; its sealed suspension is never touched. */
+    public ServerPlayer enterCelebrationAsGuest(ServerPlayer player, RoundSnapshot round, ServerLevel end, Vec3 position,
+            float yaw, GameType mode) {
         requireMainThread();
-        var entry = players.get(player.getUUID());
-        if (entry == null || !isReady(player.getUUID(), round)) throw new IllegalStateException("庆祝档案尚未核验");
-        entry.deathHeld = true;
-        dev.hardrush.monster.MonsterRoles.suspendForCelebration(player);
-        closeSuspendedContainer(player);
-        boolean dead = player.isDeadOrDying();
-        if (dead) {
-            CELEBRATION_RESPAWN.set(true);
-            MONSTER_RESPAWN.set(this);
-            try {
-                var replacement = server.getPlayerList().respawn(player, false, net.minecraft.world.entity.Entity.RemovalReason.KILLED);
-                replacement.connection.player = replacement;
-                replacement.connection.resetPosition();
-                ((PlayerRespawnConnectionAccessor) replacement.connection).hardrush$restartClientLoadTimerAfterRespawn();
-                player = replacement;
-            } finally { MONSTER_RESPAWN.remove(); CELEBRATION_RESPAWN.remove(); }
-        }
-        var target = generation(round);
-        var rebound = new Entry(player, Optional.of(target), false, snapshot.copy());
-        rebound.target = target;
-        rebound.resume = snapshot.copy();
-        rebound.ready = true;
-        rebound.diskSafe = true;
-        rebound.admitted = true;
-        rebound.deathHeld = true;
-        players.put(player.getUUID(), rebound);
-        player.load(TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), snapshot.copy()));
-        ((ProfileTagged) player).hardrush$clearLoadedProfile();
-        restoreAdvancements(player, snapshot);
-        closeSuspendedContainer(player);
+        var entry = requireCelebrationEntry(player, round);
+        if (player.isDeadOrDying()) return respawnInCelebration(player, round, end, position, yaw, mode);
+        dev.hardrush.monster.MonsterRoles.suspend(player);
+        clearMonsterLobbyState(player);
+        player.getInventory().setSelectedSlot(0);
         resetHumanAttributes(player);
         player.setHealth(player.getMaxHealth());
-        player.deathTime = 0;
+        player.setAbsorptionAmount(0);
         ((PlayerProfileResetAccessor) player).hardrush$setFoodData(new FoodData());
-        player.removeAllEffects();
-        player.setGameMode(GameType.SURVIVAL);
-        if (freshKit) dev.hardrush.celebration.CelebrationKit.equip(player);
-        else restoreCarriedAndCrafting(player, snapshot);
-        ((ProfileTagged) player).hardrush$generation(target);
-        ((ProfileTagged) player).hardrush$isolated(true);
-        ((ProfileTagged) player).hardrush$respawnPermitted(false);
-        Vec3 position = dead ? Vec3.atBottomCenterOf(ServerLevel.END_SPAWN_POINT).subtract(0, 1, 0) : player.position();
-        if (!player.teleportTo(end, position.x, position.y, position.z, Set.of(), player.getYRot(), player.getXRot(), true)) {
-            throw new IllegalStateException("庆祝入场传送失败");
+        for (var cooldown : Set.copyOf(((PlayerCooldownAccessor) player.getCooldowns()).hardrush$cooldowns().keySet())) {
+            player.getCooldowns().removeCooldown(cooldown);
         }
-        player.portalProcess = null;
-        player.setDeltaMovement(Vec3.ZERO);
-        player.resetFallDistance();
+        player.getAbilities().apply(new Abilities().pack());
+        player.setPermanentlyInvulnerable(false);
+        player.setNoGravity(false);
+        player.setCamera(player);
+        player.setAirSupply(player.getMaxAirSupply());
+        for (var pearl : Set.copyOf(player.getEnderPearls())) pearl.discard();
+        markCelebrationGuest(entry);
+        player.setGameMode(mode);
+        placeInCelebration(player, end, position, yaw);
+        player.resetSentInfo();
+        player.onUpdateAbilities();
         player.inventoryMenu.sendAllDataToRemote();
         return player;
     }
 
-    public void unlockCelebration(ServerPlayer player, RoundSnapshot round) {
-        var entry = players.get(player.getUUID());
-        if (entry == null || entry.player != player || !isReady(player.getUUID(), round)) return;
-        entry.deathHeld = false;
-        ((ProfileTagged) player).hardrush$isolated(false);
+    /** Server-driven native respawn inside the celebration; no competitive life or death event is created. */
+    public ServerPlayer respawnInCelebration(ServerPlayer player, RoundSnapshot round, ServerLevel level, Vec3 position,
+            float yaw, GameType mode) {
+        requireMainThread();
+        var entry = requireCelebrationEntry(player, round);
+        dev.hardrush.monster.MonsterRoles.suspend(player);
+        var replacement = nativeRespawn(player, new net.minecraft.world.level.portal.TeleportTransition(level, position,
+                Vec3.ZERO, yaw, 0, net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING));
+        markCelebrationGuest(rebindCelebration(entry, player, replacement));
+        replacement.setGameMode(mode);
+        replacement.setDeltaMovement(Vec3.ZERO);
+        replacement.resetFallDistance();
+        replacement.portalProcess = null;
+        replacement.resetSentInfo();
+        replacement.onUpdateAbilities();
+        replacement.inventoryMenu.sendAllDataToRemote();
+        return replacement;
     }
 
-    public void freezeCelebration(ServerPlayer player) {
-        var entry = players.get(player.getUUID());
-        if (entry != null && entry.player == player) entry.deathHeld = true;
-    }
-
-    /** The immutable original lives in the celebration journal; never expose the temporary kit in the lobby. */
+    /** Real bodies are sealed for this generation; guests keep their existing lobby suspension. */
     public ServerPlayer finishCelebration(ServerPlayer player, RoundSnapshot round) {
         requireMainThread();
-        if (player.isDeadOrDying()) {
-            // Use a native replacement even for settled HUMAN_RESPAWNING, without a competitive life event.
-            player = prepareCelebrationBody(player, round, celebrationSnapshot(player, true), lobby.get(), false);
-        }
-        dev.hardrush.monster.MonsterRoles.suspendForCelebration(player);
-        returnToLobby(player);
         var entry = players.get(player.getUUID());
+        if (player.isDeadOrDying() && entry != null && entry.player == player) {
+            dev.hardrush.monster.MonsterRoles.suspend(player);
+            var replacement = nativeRespawn(player, new net.minecraft.world.level.portal.TeleportTransition(lobby.get(),
+                    lobbySpawn.get(), Vec3.ZERO, 180, 0, net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING));
+            markCelebrationGuest(rebindCelebration(entry, player, replacement));
+            player = replacement;
+        }
+        dev.hardrush.monster.MonsterRoles.suspend(player);
+        player.stopFallFlying();
+        returnToLobby(player);
+        entry = players.get(player.getUUID());
         entry.deathHeld = false;
         entry.awaitingRespawn = false;
         entry.deathScreenPermit = false;
         clearMonsterLobbyState(player);
         moveToLobby(player);
-        player.stopFallFlying();
         player.setKnownMovement(Vec3.ZERO);
         player.portalProcess = null;
         player.inventoryMenu.sendAllDataToRemote();
         return player;
+    }
+
+    public static boolean celebrationGuest(ServerPlayer player) {
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        return entry != null && entry.player == player && entry.celebrationGuest;
+    }
+
+    private Entry requireCelebrationEntry(ServerPlayer player, RoundSnapshot round) {
+        var entry = players.get(player.getUUID());
+        if (closed || entry == null || entry.player != player || !isReady(player.getUUID(), round)) {
+            throw new IllegalStateException("庆祝档案尚未核验");
+        }
+        return entry;
+    }
+
+    private static void markCelebrationGuest(Entry entry) {
+        entry.admitted = true;
+        entry.celebrationGuest = true;
+        entry.adminSpectating = false;
+        entry.deathHeld = false;
+        entry.awaitingRespawn = false;
+        entry.deathScreenPermit = false;
+        // A withdrawn visitor must not be pulled into administrative observation while gathered.
+        entry.exitObservationApplied = true;
+    }
+
+    private static void placeInCelebration(ServerPlayer player, ServerLevel level, Vec3 position, float yaw) {
+        if (!player.teleportTo(level, position.x, position.y, position.z, Set.of(), yaw, 0, true)) {
+            throw new IllegalStateException("庆祝集结传送失败");
+        }
+        player.portalProcess = null;
+        player.setDeltaMovement(Vec3.ZERO);
+        player.resetFallDistance();
+    }
+
+    private ServerPlayer nativeRespawn(ServerPlayer player, net.minecraft.world.level.portal.TeleportTransition destination) {
+        CELEBRATION_RESPAWN.set(destination);
+        try {
+            var replacement = server.getPlayerList().respawn(player, false, net.minecraft.world.entity.Entity.RemovalReason.KILLED);
+            replacement.connection.player = replacement;
+            replacement.connection.resetPosition();
+            ((PlayerRespawnConnectionAccessor) replacement.connection).hardrush$restartClientLoadTimerAfterRespawn();
+            return replacement;
+        } finally { CELEBRATION_RESPAWN.remove(); }
+    }
+
+    /** Native replacement bodies carry no profile tags; keep the verified generation so isReady stays true. */
+    private Entry rebindCelebration(Entry old, ServerPlayer previous, ServerPlayer replacement) {
+        var tags = (ProfileTagged) replacement;
+        tags.hardrush$generation(old.target);
+        tags.hardrush$lifeSequence(((ProfileTagged) previous).hardrush$lifeSequence());
+        tags.hardrush$suspensionId(((ProfileTagged) previous).hardrush$suspensionId());
+        tags.hardrush$isolated(true);
+        tags.hardrush$respawnPermitted(false);
+        var rebound = new Entry(replacement, old.source, true, old.original);
+        rebound.target = old.target;
+        rebound.resume = old.resume;
+        rebound.ready = old.ready;
+        rebound.diskSafe = old.diskSafe;
+        rebound.fresh = old.fresh;
+        rebound.exclusionInitialized = old.exclusionInitialized;
+        rebound.exclusionRole = old.exclusionRole;
+        rebound.exitObservationApplied = old.exitObservationApplied;
+        rebound.monsterLobbyInitialized = old.monsterLobbyInitialized;
+        players.put(replacement.getUUID(), rebound);
+        return rebound;
     }
 
     public String diagnostic(UUID playerId) {
@@ -991,6 +999,7 @@ public final class PlayerProfiles implements AutoCloseable {
         if (entry == null) return "unmanaged";
         return "source=" + entry.source + ",target=" + entry.target + ",initiallyIsolated=" + entry.wasIsolated
                 + ",fresh=" + entry.fresh + ",ready=" + entry.ready + ",admitted=" + entry.admitted
+                + ",celebrationGuest=" + entry.celebrationGuest
                 + ",originalInventory=" + entry.original.getListOrEmpty("Inventory")
                 + ",resumeInventory=" + (entry.resume == null ? "missing" : entry.resume.getListOrEmpty("Inventory"));
     }
@@ -1140,14 +1149,6 @@ public final class PlayerProfiles implements AutoCloseable {
             byte[] oldSnapshot = entry.wasIsolated && entry.source.isPresent()
                     ? store.suspended(playerId, entry.source.get()).orElseThrow(() -> new IOException("隔离中的旧轮恢复档案缺失，禁止以大厅数据替代旧档案"))
                     : encode(entry.original);
-            if (entry.source.isPresent()) {
-                var celebration = store.celebration(playerId, entry.source.orElseThrow());
-                if (celebration.isPresent()) {
-                    var original = decode(celebration.orElseThrow()).getCompoundOrEmpty("original");
-                    requireSnapshotGeneration(original, entry.source.orElseThrow());
-                    oldSnapshot = encode(original);
-                }
-            }
             var prepared = store.prepare(playerId, entry.source, target, oldSnapshot);
             return new Plan(false, null, prepared);
         }).whenComplete((plan, error) -> callbacks.execute(() -> {
@@ -1480,6 +1481,7 @@ public final class PlayerProfiles implements AutoCloseable {
         boolean deathScreenPermit;
         boolean deathHeld;
         boolean monsterLobbyInitialized;
+        boolean celebrationGuest;
         String problem = "";
         Entry(ServerPlayer player, Optional<ProfileJournal.Generation> source, boolean wasIsolated, CompoundTag original) {
             this.player = player; this.source = source; this.wasIsolated = wasIsolated; this.original = original;
