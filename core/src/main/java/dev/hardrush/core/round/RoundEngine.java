@@ -315,7 +315,7 @@ public final class RoundEngine {
             }
         }
         // Qualify against identity at lethal collection, before applying this batch's human deaths.
-        // Human PvP adds one charge per victim; monster attacks keep their existing entitlement rule.
+        // Human PvP and monster attacks each add one charge per qualifying victim.
         if (before.rules().mode() == GameMode.HARDCORE) {
             for (RoundDeath death : deaths) {
                 if (!before.participants().get(death.playerId()).role().isActiveHuman() || death.cause().isEmpty()) continue;
@@ -349,7 +349,9 @@ public final class RoundEngine {
                         || origin.actor().lifeSequence() > owner.lifeSequence()
                         || origin.actor().deploymentSequence() > owner.monsterDeploymentSequence()) continue;
                 Participant rewarded = players.get(owner.id());
-                players.put(owner.id(), rewarded.withRevivalEntitlement(true));
+                if (rewarded.revivalCharges() < Integer.MAX_VALUE) {
+                    players.put(owner.id(), rewarded.addRevivalCharges(1));
+                }
             }
         }
         if (completion != null) {
@@ -376,6 +378,37 @@ public final class RoundEngine {
     public RoundTransition proposeAdmissionRevival(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence) {
         return revival(eventId, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence, true);
+    }
+
+    /** A camp monster throws charges as native totems; the adapter spawns them only after this commits. */
+    public RoundTransition proposeRevivalTotemDrop(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, int count) {
+        RoundSnapshot before = capture();
+        Participant player = requireTotemHolder(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.spendRevivalCharges(count));
+        return proposal(eventId, "REVIVAL_TOTEM_DROP", before, before.phase(), before.remainingPhaseNanos(),
+                players, before.result(), false);
+    }
+
+    /** The adapter removes the floor totem before proposing, so one thrown stack credits at most once. */
+    public RoundTransition proposeRevivalTotemPickup(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, int count) {
+        RoundSnapshot before = capture();
+        Participant player = requireTotemHolder(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.addRevivalCharges(count));
+        return proposal(eventId, "REVIVAL_TOTEM_PICKUP", before, before.phase(), before.remainingPhaseNanos(),
+                players, before.result(), false);
+    }
+
+    private static Participant requireTotemHolder(RoundSnapshot before, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("仅极限模式有复生图腾。");
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence,
+                expectedDeploymentSequence, ParticipantRole.MONSTER_LOBBY);
+        requireOpenRescue(before);
+        return player;
     }
 
     private RoundTransition revival(UUID eventId, UUID roundId, UUID playerId,
@@ -617,7 +650,7 @@ public final class RoundEngine {
                 players, null, false, true);
     }
 
-    /** Admin credits are additive; ordinary kill rewards still only ensure at least one credit. */
+    /** Admin credits are additive, like ordinary kill rewards. */
     public RoundTransition proposeAdminGrantRevival(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedCharges, int count) {
         RoundSnapshot before = capture();

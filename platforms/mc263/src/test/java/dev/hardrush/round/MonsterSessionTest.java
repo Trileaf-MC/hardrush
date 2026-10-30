@@ -78,6 +78,28 @@ class MonsterSessionTest {
         }
     }
 
+    @Test void totemThrowAndPickupCommitBeforeRepliesAndRejectOverlappingWrites() throws Exception {
+        Path path = seed();
+        try (var session = open(path)) {
+            var thrown = new AtomicReference<RoundSession.Reply>();
+            session.requestRevivalTotemDrop(round, player, 3, 4, 1, thrown::set);
+            assertNull(thrown.get(), "The floor stack waits for the durable write");
+            var overlapping = new AtomicReference<RoundSession.Reply>();
+            session.requestRevivalTotemPickup(round, player, 3, 4, 1, overlapping::set);
+            assertFalse(overlapping.get().success());
+            pump(() -> thrown.get() != null);
+            assertTrue(thrown.get().success(), thrown.get().message());
+            assertEquals(0, session.snapshot().orElseThrow().participants().get(player).revivalCharges());
+            var overdraw = new AtomicReference<RoundSession.Reply>();
+            session.requestRevivalTotemDrop(round, player, 3, 4, 1, overdraw::set);
+            assertFalse(overdraw.get().success());
+            request(reply -> session.requestRevivalTotemPickup(round, player, 3, 4, 2, reply));
+        }
+        try (var session = open(path)) {
+            assertEquals(2, session.snapshot().orElseThrow().participants().get(player).revivalCharges());
+        }
+    }
+
     private Path seed() throws Exception {
         var path = temporary.toRealPath().resolve("monster.sqlite");
         var participant = new Participant(player, "Monster", ParticipantRole.MONSTER_LOBBY, false, false,
