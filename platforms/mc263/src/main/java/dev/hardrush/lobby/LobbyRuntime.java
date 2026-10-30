@@ -432,6 +432,7 @@ public final class LobbyRuntime {
                     if (!MonsterRoles.isMonster(d.player) || MonsterRoles.nativeModel(d.player) == null)
                         throw new IllegalStateException("已提交出场未能应用原生怪物角色");
                     b.pending.remove(id, d); b.committing.remove(id);
+                    dev.hardrush.hunt.HuntBossBars.deployed(d.player, committed, d.identity);
                     sound(d.player, true);
                     tell(d.player, "已安全出场。"); return;
                 }

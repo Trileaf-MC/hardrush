@@ -152,6 +152,23 @@ public final class PersonalHuntGameTest {
                     f.c.hunt(f.a); f.refresh();
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(f.c, 0), "hunt anchor A before attacking B"))
+                .thenWaitUntil(() -> f.await(f.huntBars(f.c).equals(List.of("追猎目标 · HuntA")) && f.huntBars(f.a).isEmpty(),
+                        "hunter sees the target at once; a 24-40 block deployment never alerts it"))
+                .thenExecute(() -> {
+                    f.c.player.teleportTo(f.a.player.level(), f.a.player.getX()+3, f.a.player.getY(), f.a.player.getZ(), Set.of(),0,0,true);
+                })
+                .thenWaitUntil(() -> f.await(f.huntBars(f.a).equals(List.of("来自 HuntC 的追猎")) && f.huntBars(f.b).isEmpty(),
+                        "proximity bar only for the selected target"))
+                .thenExecute(() -> {
+                    f.sunrise();
+                    f.c.player.teleportTo(f.b.player.level(), f.b.player.getX()+1, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
+                    f.b.player.setHealth(20); f.b.player.setInvulnerableTime(0);
+                    f.c.player.getInventory().setItem(8, net.minecraft.world.item.ItemStack.EMPTY);
+                    f.c.player.getInventory().setSelectedSlot(8); MonsterRoles.repairLoadout(f.c.player);
+                    test.assertTrue(MonsterRoles.attack(f.c.player, f.b.player) && f.b.player.getHealth() < 20, "Non-lethal hit on a human C did not select");
+                })
+                .thenWaitUntil(() -> f.await(f.huntBars(f.b).equals(List.of("来自 HuntC 的追猎")), "damage shows any monster player's bar"))
+                .thenIdle(25)
                 .thenExecute(() -> {
                     // Choice is only a spawn anchor; a DIFFERENT legal human still earns entitlement.
                     dev.hardrush.pact.DawnPactRuntime.tick(f.server);
@@ -171,7 +188,8 @@ public final class PersonalHuntGameTest {
                 .thenWaitUntil(() -> f.await(f.c.participant().revivalEntitled() && f.lobby(f.b), "actual non-anchor kill awards entitlement"))
                 .thenExecute(() -> f.b.player = f.b.current())
                 // The kill's revival recalls the hunter to the camp; it never keeps hunting while entitled.
-                .thenWaitUntil(() -> f.await(f.lobby(f.c), "entitled hunter recalled to the camp"))
+                .thenWaitUntil(() -> f.await(f.lobby(f.c) && f.huntBars(f.c).isEmpty() && f.huntBars(f.b).isEmpty(),
+                        "entitled hunter recalled to the camp without hunt bars"))
                 .thenExecute(() -> {
                     f.c.player = f.c.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); f.useSearchClock();
                     f.moveVoid(f.a, 1);
@@ -291,6 +309,28 @@ public final class PersonalHuntGameTest {
             test.assertTrue(ok,text+": "+RoundRuntime.status(server));
         }
         RoundSnapshot round() { return RoundRuntime.snapshot(server).orElseThrow(); }
+        void sunrise() {
+            dev.hardrush.pact.DawnPactRuntime.tick(server);
+            var overworld = worlds.level(Level.OVERWORLD);
+            var daylight = overworld.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
+                    .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+            overworld.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DawnPact.SUNRISE_TICKS + 18_000);
+            dev.hardrush.pact.DawnPactRuntime.tick(server);
+        }
+        /** Visible hunt boss bar titles addressed to this peer's UUID, human slots first. */
+        @SuppressWarnings("unchecked") List<String> huntBars(Peer p) {
+            var binding = ((Map<?,?>)staticField(dev.hardrush.hunt.HuntBossBars.class,"BINDINGS")).get(server);
+            var titles = new ArrayList<String>();
+            if (binding == null) return titles;
+            var bars = new ArrayList<net.minecraft.server.level.ServerBossEvent>();
+            var human = ((Map<UUID,Object>)field(binding,"humans")).get(p.id());
+            if (human != null) bars.addAll((List<net.minecraft.server.level.ServerBossEvent>)field(human,"slots"));
+            var target = ((Map<UUID,Object>)field(binding,"targets")).get(p.id());
+            if (target != null) bars.add((net.minecraft.server.level.ServerBossEvent)field(target,"bar"));
+            for (var bar : bars) if (bar.isVisible() && bar.getPlayers().stream().anyMatch(viewer -> viewer.getUUID().equals(p.id())))
+                titles.add(bar.getName().getString());
+            return titles;
+        }
         boolean idle() { return !session.mutationPending(); }
         void refresh() { LobbyRuntime.tick(server); }
         Object binding() { return ((Map<?,?>)staticField(LobbyRuntime.class,"BINDINGS")).get(server); }
