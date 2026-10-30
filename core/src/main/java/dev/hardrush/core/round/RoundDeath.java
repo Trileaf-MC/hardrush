@@ -7,7 +7,12 @@ import java.util.UUID;
 
 /** One native, irreversible player death collected before its outer damage batch closes. */
 public record RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence,
-                         Optional<CombatEvent> cause) {
+                         Optional<CombatEvent> cause, boolean recentlyHurtByPlayer) {
+    /** Deaths without a native player-damage observation cannot claim the monster death reward. */
+    public RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence, Optional<CombatEvent> cause) {
+        this(playerId, lifeSequence, deploymentSequence, cause, false);
+    }
+
     public RoundDeath {
         Objects.requireNonNull(playerId); Objects.requireNonNull(cause);
         if (lifeSequence < 1 || deploymentSequence < 0) throw new IllegalArgumentException("Invalid death identity");

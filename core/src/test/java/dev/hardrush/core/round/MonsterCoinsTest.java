@@ -123,7 +123,7 @@ class MonsterCoinsTest {
         assertEquals(6, revived.wallet().becameMonster(6).coins(), "The next monster life gets the gift again");
     }
 
-    @Test void aKillPaysARevivalAndSendsTheHunterBackWhileHumanSlainMonstersArePaid() {
+    @Test void aKillPaysARevivalAndSendsTheHunterBack() {
         var other = new Participant(UUID.randomUUID(), "Other", ParticipantRole.HUMAN_ACTIVE, true, false, 100, 50, 1, false, true);
         var engine = engine(humanParticipant(), other, deployedMonster());
         var bite = origin(monster, ParticipantRole.MONSTER_DEPLOYED, 3, AttackKind.MELEE);
@@ -140,17 +140,37 @@ class MonsterCoinsTest {
             var refused = assertThrows(IllegalStateException.class, attempt::get);
             assertEquals(RoundEngine.REVIVAL_FIRST, refused.getMessage());
         }
+    }
 
-        var second = engine(humanParticipant(), deployedMonster());
-        var sword = origin(human, ParticipantRole.HUMAN_ACTIVE, 0, AttackKind.MELEE);
-        accept(second, second.proposeDeathBatch(UUID.randomUUID(), round,
-                List.of(new RoundDeath(monster, 1, 3, Optional.of(lethal(monster, sword)))), null));
-        assertEquals(5, second.committed().participants().get(monster).wallet().coins());
+    @Test void monsterDeathRewardUsesNativePlayerMemoryRegardlessOfTheFinalDamageSource() {
+        for (var cause : List.of(Optional.<CombatEvent>empty(),
+                Optional.of(lethal(monster, origin(human, ParticipantRole.HUMAN_ACTIVE, 0, AttackKind.MELEE))),
+                Optional.of(lethal(monster, origin(human, ParticipantRole.HUMAN_ACTIVE, 0, AttackKind.SUMMON))),
+                Optional.of(lethal(monster, origin(UUID.randomUUID(), ParticipantRole.MONSTER_DEPLOYED, 1, AttackKind.MELEE))))) {
+            var engine = engine(humanParticipant(), deployedMonster());
+            accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
+                    List.of(new RoundDeath(monster, 1, 3, cause, true)), null));
+            var victim = engine.committed().participants().get(monster);
+            assertEquals(5, victim.wallet().coins(), "Native player memory alone qualifies the deployed monster");
+            assertEquals(ParticipantRole.MONSTER_LOBBY, victim.role());
+        }
+    }
 
-        var third = engine(humanParticipant(), deployedMonster());
-        accept(third, third.proposeDeathBatch(UUID.randomUUID(), round,
-                List.of(new RoundDeath(monster, 1, 3, Optional.empty())), null));
-        assertEquals(0, third.committed().participants().get(monster).wallet().coins());
+    @Test void absentOrExpiredNativePlayerMemoryCannotBeReplacedByCombatAttribution() {
+        for (var cause : List.of(Optional.<CombatEvent>empty(),
+                Optional.of(lethal(monster, origin(human, ParticipantRole.HUMAN_ACTIVE, 0, AttackKind.MELEE))))) {
+            var engine = engine(humanParticipant(), deployedMonster());
+            accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
+                    List.of(new RoundDeath(monster, 1, 3, cause, false)), null));
+            assertEquals(0, engine.committed().participants().get(monster).wallet().coins());
+        }
+    }
+
+    @Test void recentPlayerDamageDoesNotGiveHumansTheMonsterDeathReward() {
+        var engine = engine(humanParticipant(), deployedMonster());
+        accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
+                List.of(new RoundDeath(human, 1, 0, Optional.empty(), true)), null));
+        assertEquals(6, engine.committed().participants().get(human).wallet().coins(), "Only the transformation gift applies");
     }
 
     @Test void bountyAddsDimensionAndSurvivalBonusesUnderTheCap() {
@@ -194,7 +214,7 @@ class MonsterCoinsTest {
                 List.of(new RoundDeath(human, 1, 0, Optional.of(lethal(human, bite)))), null));
         var recalled = engine.committed().participants().get(monster);
         accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
-                List.of(new RoundDeath(monster, 1, 3, Optional.empty())), null));
+                List.of(new RoundDeath(monster, 1, 3, Optional.empty(), true)), null));
         assertEquals(recalled, engine.committed().participants().get(monster), "The ended sortie is not settled twice");
         assertThrows(IllegalStateException.class, () -> engine.proposeDeathBatch(UUID.randomUUID(), round,
                 List.of(new RoundDeath(monster, 1, 2, Optional.empty())), null), "An older sortie stays stale");

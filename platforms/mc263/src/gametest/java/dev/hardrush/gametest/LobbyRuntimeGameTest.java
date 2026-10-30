@@ -199,6 +199,8 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(() -> {
                     f.monster.player = f.monster.current();
                     f.assertLobby(true);
+                    f.test.assertValueEqual(f.monster.participant().wallet().coins(), f.coinsBeforeDefeat + 5,
+                            "A native fall death after recent player damage pays the monster exactly five coins");
                     f.assertSkillCooldowns();
                     HuntInputFixtures.role(f.monster.player, "creeper");
                 })
@@ -239,14 +241,7 @@ public final class LobbyRuntimeGameTest {
                     .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_DEPLOYED
                             && MonsterRoles.isMonster(hunter.player) && !f.session.mutationPending(), "Cycle formal deployment " + iteration))
                     .thenExecute(() -> {
-                        if (iteration == 0) {
-                            // Combat starts after the first sunrise; do not bypass the production pact gate.
-                            dev.hardrush.pact.DawnPactRuntime.tick(f.server);
-                            var daylight = f.level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
-                                    .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
-                            f.level.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DawnPact.SUNRISE_TICKS + 18_000);
-                            dev.hardrush.pact.DawnPactRuntime.tick(f.server);
-                        }
+                        if (iteration == 0) f.allowCombat();
                         hunter.move(prey.player.position().add(1, 0, 0));
                         prey.player.setHealth(1);
                         prey.player.setInvulnerableTime(0);
@@ -380,6 +375,7 @@ public final class LobbyRuntimeGameTest {
         ServerLevel level;
         Vec3 anchor;
         ServerPlayer dead;
+        int coinsBeforeDefeat;
         ServerPlayer voluntaryReturnBody;
         AABB humanDrops;
         final ArrayList<ItemEntity> humanDropEntities = new ArrayList<>();
@@ -469,11 +465,31 @@ public final class LobbyRuntimeGameTest {
             }
             return true;
         }
+        void allowCombat() {
+            // Combat starts after the first sunrise; do not bypass the production pact gate.
+            dev.hardrush.pact.DawnPactRuntime.tick(server);
+            var daylight = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
+                    .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+            level.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DawnPact.SUNRISE_TICKS + 18_000);
+            dev.hardrush.pact.DawnPactRuntime.tick(server);
+        }
         void killMonsterPeer(boolean alreadyMonster) {
             dead = monster.player;
             if (!alreadyMonster) test.assertTrue(level.isPositionEntityTicking(dead.blockPosition()),
                     "Immediate death-drop assertion requires the native loot arena to remain entity ticking");
-            test.assertTrue(dead.hurtServer(level, dead.damageSources().genericKill(), Float.MAX_VALUE), "Native damage outside protection kills this body");
+            if (alreadyMonster) {
+                allowCombat();
+                coinsBeforeDefeat = monster.participant().wallet().coins();
+                dead.setInvulnerableTime(0);
+                dead.damageCooldownTime = 0;
+                test.assertTrue(dead.hurtServer(level, dead.damageSources().playerAttack(target.player), 1),
+                        "The human lands a nonlethal native attack");
+                test.assertTrue(dead.isAlive() && dead.getLastHurtByPlayer() == target.player,
+                        "Vanilla remembers the player before the subsequent environmental death");
+                dead.damageCooldownTime = 0;
+            }
+            var source = alreadyMonster ? dead.damageSources().fall() : dead.damageSources().genericKill();
+            test.assertTrue(dead.hurtServer(level, source, Float.MAX_VALUE), "Native damage outside protection kills this body");
             test.assertTrue(dead.isDeadOrDying() && PlayerProfiles.isLocked(dead), "Production death hook immediately holds the dead body");
             if (!alreadyMonster) {
                 humanDropEntities.addAll(level.getEntitiesOfClass(ItemEntity.class, humanDrops).stream()
