@@ -89,6 +89,9 @@ public final class RoundSession implements AutoCloseable {
     private record DamageKey(UUID round, UUID owner, int life, int sortie, UUID victim,
                              dev.hardrush.core.round.MonsterDimension dimension) {}
     private final Map<DamageKey, Long> damageCoins = new LinkedHashMap<>();
+    // Flushed credit still waiting in the event queue; applying its event moves it into the pending transition.
+    private record QueuedDamage(UUID round, List<RoundEngine.DamageCoins> entries) {}
+    private final List<QueuedDamage> queuedDamage = new java.util.ArrayList<>();
     private long lastDamageFlushNanos;
     private static final long DAMAGE_FLUSH_NANOS = 1_000_000_000L;
     private long lastCheckpointNanos;
@@ -310,7 +313,42 @@ public final class RoundSession implements AutoCloseable {
         damageCoins.forEach((key, milli) -> byRound.computeIfAbsent(key.round(), ignored -> new java.util.ArrayList<>())
                 .add(new RoundEngine.DamageCoins(key.owner(), key.life(), key.sortie(), key.victim(), key.dimension(), milli)));
         damageCoins.clear();
-        byRound.forEach((round, entries) -> enqueueAt(time, e -> e.proposeMonsterDamageCoins(UUID.randomUUID(), round, entries)));
+        byRound.forEach((round, entries) -> {
+            var queued = new QueuedDamage(round, entries);
+            queuedDamage.add(queued);
+            if (!enqueueAt(time, e -> {
+                queuedDamage.remove(queued);
+                return e.proposeMonsterDamageCoins(UUID.randomUUID(), round, entries);
+            })) queuedDamage.remove(queued);
+        });
+    }
+
+    /**
+     * Experience a deployed monster's body is worth now, including damage this session has not
+     * committed: the pending transition, queued credit events and the per-hit buffer all count.
+     */
+    public java.util.OptionalInt monsterWorth(UUID playerId) {
+        if (engine == null) return java.util.OptionalInt.empty();
+        var body = engine.committed().participants().get(playerId);
+        if (body == null || body.role() != ParticipantRole.MONSTER_DEPLOYED) return java.util.OptionalInt.empty();
+        var base = pendingTransition != null ? pendingTransition.after() : engine.view();
+        // A recall or death already pending still settles the same sortie's credit.
+        var owner = base.participants().get(playerId);
+        if (!dev.hardrush.core.round.MonsterWorth.enabled(base.rules()) || owner == null
+                || owner.lifeSequence() != body.lifeSequence()
+                || owner.monsterDeploymentSequence() != body.monsterDeploymentSequence()) return java.util.OptionalInt.empty();
+        var entries = new java.util.ArrayList<RoundEngine.DamageCoins>();
+        for (var queued : queuedDamage) {
+            if (queued.round().equals(base.roundId())) {
+                for (var entry : queued.entries()) if (entry.owner().equals(playerId)) entries.add(entry);
+            }
+        }
+        damageCoins.forEach((key, milli) -> {
+            if (key.round().equals(base.roundId()) && key.owner().equals(playerId)) entries.add(
+                    new RoundEngine.DamageCoins(key.owner(), key.life(), key.sortie(), key.victim(), key.dimension(), milli));
+        });
+        if (!entries.isEmpty()) owner = RoundEngine.creditDamageCoins(base, base.roundId(), entries).get(playerId);
+        return java.util.OptionalInt.of(dev.hardrush.core.round.MonsterWorth.experience(base.rules(), owner.wallet()));
     }
 
     /** All victims, rewards and self-death commit once, before rescue or completion is published. */
@@ -663,7 +701,7 @@ public final class RoundSession implements AutoCloseable {
         engine = RoundEngine.restoreForRecovery(loaded.snapshot(), this::engineTime);
         nextRules = loaded.nextRules();
         endEntrants = loaded.endEntrants();
-        events.clear(); requestedRespawns.clear(); deathBatches.clear(); capturedDeaths.clear();
+        events.clear(); queuedDamage.clear(); requestedRespawns.clear(); deathBatches.clear(); capturedDeaths.clear();
         terminalCandidate = null; firstDragonId = null; terminalQueued = false;
         evidenceFailure = null; failureBoundary = null; adminBoundary = null;
         recoveringCountdown = false; adaptersReady = false; unsupportedPhase = true;
@@ -1102,12 +1140,13 @@ public final class RoundSession implements AutoCloseable {
         enqueueAt(clock.nanoTime(), action);
     }
 
-    private void enqueueAt(long time, Function<RoundEngine, RoundTransition> action) {
-        if (stopping || state != State.OPEN || !adaptersReady) return;
-        if (adminBoundary != null || shutdownBoundary != null && time > shutdownBoundary) return;
-        if (events.size() >= 256) { fail("关键事件队列超出预算", new IllegalStateException("保留存档并停止比赛")); return; }
+    private boolean enqueueAt(long time, Function<RoundEngine, RoundTransition> action) {
+        if (stopping || state != State.OPEN || !adaptersReady) return false;
+        if (adminBoundary != null || shutdownBoundary != null && time > shutdownBoundary) return false;
+        if (events.size() >= 256) { fail("关键事件队列超出预算", new IllegalStateException("保留存档并停止比赛")); return false; }
         events.add(new QueuedEvent(time, action));
         drainEvent();
+        return true;
     }
 
     private void drainEvent() {

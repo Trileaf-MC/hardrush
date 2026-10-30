@@ -405,6 +405,7 @@ public final class MonsterRoles {
         for (var entry : List.copyOf(ROLES.entrySet())) {
             Role role = entry.getValue(); ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
             if (player == null || !player.isAlive()) continue;
+            MonsterWorthRewards.showWorth(player);
             if (!MonsterRoundRuntime.canAct(player)) {
                 role.burstRemaining = 0; role.chargeTick = -1; MonsterNativeWeapons.clear(player);
                 MonsterCreeper.cancelInput(player); player.stopUsingItem(); continue;

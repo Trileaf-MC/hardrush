@@ -39,6 +39,11 @@ public final class MonsterRoundRuntime {
         return p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED || !dev.hardrush.core.round.MonsterCoins.enabled(r.rules())
                 ? dev.hardrush.core.round.MonsterWallet.EMPTY : p.wallet();
     }
+    /** Experience this deployed body is worth now; empty outside a formal sortie or a worth round. */
+    public static OptionalInt worth(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        return b == null ? OptionalInt.empty() : b.session.monsterWorth(player.getUUID());
+    }
     public static String identity(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);

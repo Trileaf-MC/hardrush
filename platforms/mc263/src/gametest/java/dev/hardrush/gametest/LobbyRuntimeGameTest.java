@@ -201,6 +201,7 @@ public final class LobbyRuntimeGameTest {
                     f.assertLobby(true);
                     f.test.assertValueEqual(f.monster.participant().wallet().coins(), f.coinsBeforeDefeat + 5,
                             "A native fall death after recent player damage pays the monster exactly five coins");
+                    f.assertWorthReward();
                     f.assertSkillCooldowns();
                     HuntInputFixtures.role(f.monster.player, "creeper");
                 })
@@ -376,6 +377,8 @@ public final class LobbyRuntimeGameTest {
         Vec3 anchor;
         ServerPlayer dead;
         int coinsBeforeDefeat;
+        int worthBeforeDefeat;
+        Vec3 defeatPosition;
         ServerPlayer voluntaryReturnBody;
         AABB humanDrops;
         final ArrayList<ItemEntity> humanDropEntities = new ArrayList<>();
@@ -480,6 +483,11 @@ public final class LobbyRuntimeGameTest {
             if (alreadyMonster) {
                 allowCombat();
                 coinsBeforeDefeat = monster.participant().wallet().coins();
+                worthBeforeDefeat = dev.hardrush.monster.MonsterRoundRuntime.worth(dead).orElseThrow();
+                test.assertTrue(worthBeforeDefeat >= 100, "A deployed body is worth at least the base experience");
+                test.assertValueEqual(dead.totalExperience, worthBeforeDefeat, "The monster's experience bar shows its worth");
+                test.assertValueEqual(dead.experienceLevel, dev.hardrush.core.round.MonsterWorth.level(worthBeforeDefeat),
+                        "The bar's level follows the vanilla experience curve");
                 dead.setInvulnerableTime(0);
                 dead.damageCooldownTime = 0;
                 test.assertTrue(dead.hurtServer(level, dead.damageSources().playerAttack(target.player), 1),
@@ -489,6 +497,7 @@ public final class LobbyRuntimeGameTest {
                 dead.damageCooldownTime = 0;
             }
             var source = alreadyMonster ? dead.damageSources().fall() : dead.damageSources().genericKill();
+            defeatPosition = dead.position();
             test.assertTrue(dead.hurtServer(level, source, Float.MAX_VALUE), "Native damage outside protection kills this body");
             test.assertTrue(dead.isDeadOrDying() && PlayerProfiles.isLocked(dead), "Production death hook immediately holds the dead body");
             if (!alreadyMonster) {
@@ -498,6 +507,17 @@ public final class LobbyRuntimeGameTest {
             }
             dead.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
             test.assertTrue(monster.current() == dead && dead.connection.player == dead && dead.isDeadOrDying(), "Early native respawn cannot bypass SQLite identity commit");
+        }
+        /** The fall death after a human's hit sprays the worth; only a worth of level 10 adds the signed book. */
+        void assertWorthReward() {
+            var around = new AABB(defeatPosition, defeatPosition).inflate(8);
+            test.assertFalse(level.getEntitiesOfClass(net.minecraft.world.entity.ExperienceOrb.class, around).isEmpty(),
+                    "The slain monster's worth starts spraying as experience orbs");
+            long books = level.getEntitiesOfClass(ItemEntity.class, around).stream()
+                    .filter(item -> item.getItem().is(Items.ENCHANTED_BOOK)
+                            && item.getItem().getHoverName().getString().equals("从 LobbyMonster 身上找到的书")).count();
+            boolean worthy = dev.hardrush.core.round.MonsterWorth.bookCost(round().rules(), worthBeforeDefeat) > 0;
+            test.assertValueEqual(books, worthy ? 1L : 0L, "Exactly one signed book drops, and only from a worthy body");
         }
         boolean monsterReady(boolean replacementRequired) {
             var current = monster.current();

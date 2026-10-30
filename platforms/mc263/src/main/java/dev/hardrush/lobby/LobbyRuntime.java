@@ -171,6 +171,7 @@ public final class LobbyRuntime {
                         new LobbyMenus.Button(Items.EMERALD, "怪物币：伤害人类、近期受玩家伤害后阵亡都能赚，领先者有悬赏倍率；找营地女巫购买下次出场的增强", "info", ""),
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "持有复生次数的怪物不能追猎、选角或交易，须先到祭坛复生；击杀人类后立即传回营地；复生时怪物币清空", "info", ""),
                         new LobbyMenus.Button(Items.TRIAL_KEY, "试炼钥匙插入营地宝库抽一件一次性装备；穿戴的装备被玩家击杀时按原版概率掉落", "info", ""),
+                        new LobbyMenus.Button(Items.EXPERIENCE_BOTTLE, "出场时经验条就是你的身价，伤害人类会上涨；近期受玩家伤害后阵亡，喷出等量经验，满 10 级再掉一本署名附魔书", "info", ""),
                         new LobbyMenus.Button(Items.GRASS_BLOCK, "中途门确认空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),
                         new LobbyMenus.Button(Items.DRAGON_EGG, "人类尾刀首龙通关；全员集结末地为胜者庆祝，胜者跳龙池结束，最长"
                                 + (RoundEngine.successCelebrationMillis(round.rules()) + 999) / 1000
