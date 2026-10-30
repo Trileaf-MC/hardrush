@@ -220,6 +220,7 @@ public final class RoundRuntime {
                     var worlds = WORLDS.get(server);
                     var target = round == null ? null : round.participants().get(victim.getUUID());
                     if (target == null || target.role() != ParticipantRole.HUMAN_ACTIVE || worlds == null || !worlds.ready()) return;
+                    dev.hardrush.hunt.HuntBossBars.damaged(victim, origin, round);
                     // The bounty follows where the human stands when hit, not where the monster spawned.
                     var dimension = level == worlds.level(Level.NETHER) ? dev.hardrush.core.round.MonsterDimension.NETHER
                             : level == worlds.level(Level.END) ? dev.hardrush.core.round.MonsterDimension.END
@@ -352,6 +353,8 @@ public final class RoundRuntime {
                 try { dev.hardrush.pact.DawnPactRuntime.tick(server); }
                 catch (RuntimeException error) { session.adapterFailure("黎明契约状态更新失败", error); }
                 session.view().ifPresent(round -> dev.hardrush.lobby.PlayerFeedback.tick(server, round, session));
+                try { session.view().ifPresent(round -> dev.hardrush.hunt.HuntBossBars.tick(server, round, session)); }
+                catch (RuntimeException error) { LOGGER.error("Hunt boss bar update failed", error); }
             }
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
@@ -359,6 +362,7 @@ public final class RoundRuntime {
             LobbyRuntime.disconnected(handler.player);
             dev.hardrush.record.HistoryLibrary.disconnected(handler.player);
             dev.hardrush.lobby.HumanEntry.disconnected(handler.player);
+            dev.hardrush.hunt.HuntBossBars.disconnected(handler.player);
             var session = SESSIONS.get(server);
             if (session != null) session.onOnline(handler.player.getUUID(), handler.player.getScoreboardName(), false);
             var admitted = ADMITTED.get(server);
@@ -459,6 +463,7 @@ public final class RoundRuntime {
             dev.hardrush.record.HistoryLibrary.close(server);
             var tab = TABS.get(server); if (tab != null) tab.close();
             dev.hardrush.lobby.PlayerFeedback.close(server);
+            dev.hardrush.hunt.HuntBossBars.close(server);
             CelebrationRuntime.unconfigure(server);
             TABS.remove(server);
             BOOKS.remove(server);
