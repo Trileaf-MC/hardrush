@@ -387,7 +387,8 @@ public final class RoundRuntime {
                 var profiles = PROFILES.get(player.level().getServer());
                 if (profiles != null) profiles.holdDeath(player);
                 session.captureDeath(round.roundId(), player.getUUID(), participant.lifeSequence(), participant.monsterDeploymentSequence(),
-                        CombatRuntime.currentBatch(player.level()).orElse(null), player.getLastHurtByPlayer() != null);
+                        CombatRuntime.currentBatch(player.level()).orElse(null),
+                        dev.hardrush.monster.MonsterRoles.recentlyHurtByOtherPlayer(player));
             }
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {

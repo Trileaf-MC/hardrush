@@ -259,7 +259,7 @@ public final class RoundSession implements AutoCloseable {
         captureDeath(roundId, playerId, lifeSequence, deploymentSequence, batchId, false);
     }
 
-    /** recentlyHurtByPlayer is the native getLastHurtByPlayer() != null observation at death. */
+    /** recentlyHurtByPlayer is the native getLastHurtByPlayer() memory at death, naming someone other than the victim. */
     public void captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId,
             boolean recentlyHurtByPlayer) {
         if (engine == null || stopping || state != State.OPEN || !roundId.equals(engine.committed().roundId())
