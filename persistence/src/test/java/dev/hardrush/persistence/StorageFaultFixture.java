@@ -69,9 +69,7 @@ final class StorageFaultFixture {
                         List.of(death(engine.committed().participants().get(ALICE), Optional.of(lethal))), null);
                 if (scenario == Scenario.CONSUME) {
                     accept(store, engine, target);
-                    bob = engine.committed().participants().get(BOB);
-                    accept(store, engine, engine.proposeMonsterReturn(UUID.randomUUID(), ROUND, BOB,
-                            bob.lifeSequence(), bob.monsterDeploymentSequence()));
+                    // Bob's kill already returned him to the camp; he revives from there.
                     bob = engine.committed().participants().get(BOB);
                     target = engine.proposeAdmissionRevival(event(scenario), ROUND, BOB,
                             bob.lifeSequence(), bob.monsterDeploymentSequence());

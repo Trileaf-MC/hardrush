@@ -28,8 +28,7 @@ public final class CampBlueprint {
         for (int x = 12; x <= 30; x++) for (int z = -6; z <= 5; z++) blocks.put(anchor.offset(x, 4, z), Blocks.OAK_PLANKS.defaultBlockState());
         for (var facility : LobbyLayout.Facility.values()) {
             var p = LobbyLayout.facility(facility);
-            blocks.put(anchor.offset((int)p.x(), 0, (int)p.z()),
-                    (LobbyLayout.MONSTER_FACILITIES.contains(facility) ? Blocks.AIR : Blocks.LECTERN).defaultBlockState());
+            blocks.put(anchor.offset((int)p.x(), 0, (int)p.z()), facilityBlock(facility));
         }
         // Nonfunctional areas are visibly marked closed until their delivery round.
         for (var p : LobbyLayout.displaySlots()) blocks.put(anchor.offset((int)p.x(), -1, (int)p.z()), Blocks.POLISHED_ANDESITE.defaultBlockState());
@@ -48,13 +47,45 @@ public final class CampBlueprint {
                 case RULES -> "规则讲台"; case HISTORY -> "战绩书屋"; case MIDROUND -> "中途入场门";
                 case ZOMBIE -> "僵尸展位"; case SKELETON -> "骷髅展位"; case CREEPER -> "苦力怕展位";
                 case PREVIOUS -> "庭院上一页"; case NEXT -> "庭院下一页"; case ALTAR -> "复生祭坛";
+                case MERCHANT -> "女巫商人"; case VAULT -> "试炼宝库"; case OMINOUS_VAULT -> "不祥宝库";
             };
             labels.put(anchor.offset((int)p.x(), 0, (int)p.z() + 2), new String[]{name,
-                    facility == LobbyLayout.Facility.RULES ? "右键阅读" : facility == LobbyLayout.Facility.MIDROUND ? "右键确认加入" : facility == LobbyLayout.Facility.HISTORY ? "右键查战绩领书" : facility == LobbyLayout.Facility.ALTAR ? "右键查看复生资格" : "极限挑战时开放",
-                    facility == LobbyLayout.Facility.MIDROUND ? "挑战／救场时开放" : "", ""});
+                    switch (facility) {
+                        case RULES -> "右键阅读"; case MIDROUND -> "右键确认加入"; case HISTORY -> "右键查战绩领书";
+                        case ALTAR -> "右键查看复生资格"; case MERCHANT -> "怪物币换出场增强";
+                        case VAULT -> "手持试炼钥匙右键"; case OMINOUS_VAULT -> "手持不祥钥匙右键";
+                        default -> "极限挑战时开放";
+                    },
+                    switch (facility) {
+                        case MIDROUND -> "挑战／救场时开放"; case MERCHANT -> "先选角色再右键";
+                        case VAULT, OMINOUS_VAULT -> "抽取一次性装备"; default -> "";
+                    }, ""});
         }
         return labels;
     }
+    /** What stands at a facility point: packet models need air, vaults face the camp entrance. */
+    public static BlockState facilityBlock(LobbyLayout.Facility facility) {
+        return switch (facility) {
+            case ZOMBIE, SKELETON, CREEPER, MERCHANT -> Blocks.AIR.defaultBlockState();
+            case VAULT, OMINOUS_VAULT -> Blocks.VAULT.defaultBlockState()
+                    .setValue(net.minecraft.world.level.block.VaultBlock.FACING, net.minecraft.core.Direction.WEST)
+                    .setValue(net.minecraft.world.level.block.VaultBlock.OMINOUS, facility == LobbyLayout.Facility.OMINOUS_VAULT);
+            default -> Blocks.LECTERN.defaultBlockState();
+        };
+    }
+
+    /** Blocks added with the monster shop; an existing camp receives them only where the ground is still untouched. */
+    public static Map<BlockPos, BlockState> shopAdditions(BlockPos anchor) {
+        var additions = new LinkedHashMap<BlockPos, BlockState>();
+        for (var facility : LobbyLayout.SHOP_FACILITIES) {
+            var p = LobbyLayout.facility(facility);
+            var pos = anchor.offset((int)p.x(), 0, (int)p.z());
+            if (!facilityBlock(facility).isAir()) additions.put(pos, facilityBlock(facility));
+            additions.put(anchor.offset((int)p.x(), 0, (int)p.z() + 2), Blocks.OAK_SIGN.defaultBlockState());
+        }
+        return additions;
+    }
+
     /** The three owned v1 lecterns may be removed when opening an existing camp. */
     public static boolean legacyMonsterLectern(BlockPos anchor, BlockPos pos, BlockState state) {
         return state.is(Blocks.LECTERN) && LobbyLayout.MONSTER_FACILITIES.stream()

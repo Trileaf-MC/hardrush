@@ -67,9 +67,8 @@ public final class HumanEntryGameTest {
                         test.assertTrue(lobby.holdingLevel().getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) != null, "Every owned block is loaded");
                     for (var facility : dev.hardrush.core.lobby.LobbyLayout.Facility.values()) {
                         var pos = BlockPos.containing(lobby.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(facility)));
-                        test.assertTrue(LobbyLayout.MONSTER_FACILITIES.contains(facility)
-                                ? lobby.holdingLevel().getBlockState(pos).isAir()
-                                : lobby.holdingLevel().getBlockState(pos).is(Blocks.LECTERN), "Facility physically built: " + facility);
+                        test.assertTrue(lobby.holdingLevel().getBlockState(pos).equals(dev.hardrush.world.CampBlueprint.facilityBlock(facility)),
+                                "Facility physically built: " + facility);
                     }
                     for (var landing : dev.hardrush.core.lobby.LobbyLayout.Landing.values()) test.assertTrue(lobby.safeLanding(landing), "Safe landing: " + landing);
                     f.assertRoleModels();
@@ -106,7 +105,7 @@ public final class HumanEntryGameTest {
                     LobbyInteractions.tick(f.server);
                     var router = LobbyInteractions.get(f.server).orElseThrow();
                     var ids = router.roleModels().view(f.a.player);
-                    test.assertValueEqual(ids.size(), 3, "Reconnect restores all three native monster models");
+                    test.assertValueEqual(ids.size(), 4, "Reconnect restores the three native monster models and the witch");
                     test.assertTrue(ids.values().stream().noneMatch(f.oldRoleModels.values()::contains), "Reconnect never reuses stale role IDs");
                     HuntInputFixtures.click(f.a.player, f.oldRoleModels.get(LobbyLayout.Facility.ZOMBIE), InteractionHand.MAIN_HAND);
                     test.assertValueEqual(router.lastResult(f.a.player).orElseThrow(), LobbyInteractions.Result.UNREGISTERED, "Old connection role ID is rejected");
@@ -325,7 +324,7 @@ public final class HumanEntryGameTest {
             LobbyInteractions.tick(server);
             var router = LobbyInteractions.get(server).orElseThrow();
             var ids = router.roleModels().view(a.player);
-            test.assertValueEqual(ids.size(), 3, "Waiting humans see all three monster choices");
+            test.assertValueEqual(ids.size(), 4, "Waiting humans see all three monster choices and the witch merchant");
             test.assertTrue(ids.values().stream().noneMatch(router.roleModels().view(b.player).values()::contains), "Each connection owns independent role IDs");
             var lobby = LobbyWorld.open(server);
             for (var facility : LobbyLayout.MONSTER_FACILITIES) {
@@ -344,6 +343,11 @@ public final class HumanEntryGameTest {
                 test.assertTrue(a.player.level().getEntity(id) == null, "Display is never a live hostile mob");
                 test.assertTrue(a.connection.packets.stream().anyMatch(p -> p instanceof ClientboundSetEntityDataPacket data && data.id() == id), "Native model metadata is sent");
             }
+            int witch = ids.get(LobbyLayout.Facility.MERCHANT);
+            test.assertTrue(a.connection.packets.stream().filter(ClientboundAddEntityPacket.class::isInstance)
+                    .map(ClientboundAddEntityPacket.class::cast).anyMatch(p -> p.getId() == witch
+                            && p.getType() == net.minecraft.world.entity.EntityTypes.WITCH), "The merchant is a native witch model");
+            test.assertTrue(a.player.level().getEntity(witch) == null, "The witch is never a live mob");
             test.assertTrue(a.connection.packets.stream().anyMatch(p -> p instanceof ClientboundSetEquipmentPacket equipment
                     && equipment.getEntity() == ids.get(LobbyLayout.Facility.SKELETON)
                     && equipment.getSlots().stream().anyMatch(slot -> slot.getFirst() == net.minecraft.world.entity.EquipmentSlot.MAINHAND
@@ -378,6 +382,9 @@ public final class HumanEntryGameTest {
                 var pos = anchor.offset((int) point.x(), 0, (int) point.z());
                 test.assertTrue(level.setBlockAndUpdate(pos, Blocks.LECTERN.defaultBlockState()), "Fixture restores an old v1 role lectern");
             }
+            // A v1 camp predates the monster shop: no vaults and no shop signs.
+            for (var pos : dev.hardrush.world.CampBlueprint.shopAdditions(anchor).keySet())
+                level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
             if (editFloor) level.setBlockAndUpdate(anchor.offset(-8, -1, 10), Blocks.GOLD_BLOCK.defaultBlockState());
             level.save(null, true, false);
             var manifest = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("hardrush/lobby-layout.txt");
@@ -391,9 +398,8 @@ public final class HumanEntryGameTest {
             var lobby = LobbyWorld.open(server);
             for (var facility : LobbyLayout.Facility.values()) {
                 var pos = BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(facility)));
-                test.assertTrue(LobbyLayout.MONSTER_FACILITIES.contains(facility)
-                        ? lobby.holdingLevel().getBlockState(pos).isAir()
-                        : lobby.holdingLevel().getBlockState(pos).is(Blocks.LECTERN), "Legacy upgrade only replaces monster lecterns: " + facility);
+                test.assertTrue(lobby.holdingLevel().getBlockState(pos).equals(dev.hardrush.world.CampBlueprint.facilityBlock(facility)),
+                        "Legacy upgrade replaces monster lecterns and adds the shop vaults: " + facility);
             }
         }
         void assertProtectionAndUi() {

@@ -86,6 +86,8 @@ public abstract class ProtectionNetworkMixin {
     @Inject(method="handleContainerClick", at=@At("HEAD"), cancellable=true)
     private void inventory(ServerboundContainerClickPacket packet, CallbackInfo ci) {
         if (dev.hardrush.lobby.LobbyMenus.isMenu(player)) return;
+        // The witch's menu accepts only its own guarded result click; see MonsterShop.ShopMenu.
+        if (mainThread() && dev.hardrush.lobby.MonsterShop.isShop(player)) return;
         if (!mainThread() || !ProtectionRuntime.protectedEntity(player)) return;
         if (RevivalTotems.throwsFromInventory(player, packet)) return;
         // Personal inventory sorting is allowed. QUICK_CRAFT uses negative-slot control packets

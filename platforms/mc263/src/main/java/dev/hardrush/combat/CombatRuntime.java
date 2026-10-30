@@ -28,6 +28,9 @@ public final class CombatRuntime {
         default boolean competitionFrozen(ServerLevel level) { return false; }
         /** Runs synchronously after the outermost scope for this batch has completed. */
         default void batchClosed(UUID roundId, UUID batchId) {}
+        /** Actual health plus absorption a player lost to one hit; the round decides any coin credit. */
+        default void playerDamaged(ServerLevel level, net.minecraft.server.level.ServerPlayer victim,
+                CombatOrigin origin, float actualDamage) {}
     }
     public interface Scope extends AutoCloseable { @Override void close(); }
     private record Binding(RoundAccess rounds, Consumer<CombatEvent> events) {}
@@ -199,6 +202,20 @@ public final class CombatRuntime {
         var origin = cause == null ? resolve(level, source) : cause.origin;
         return participationRevoked(level, origin)
                 || round.isPresent() && origin.filter(value -> !value.isHumanAttack(round.get())).isPresent();
+    }
+    /** Monster attacks that pay coins: the same direct kinds that earn revival kill credit. */
+    public static void playerDamaged(ServerLevel level, net.minecraft.server.level.ServerPlayer victim, float actualDamage) {
+        if (actualDamage <= 0) return;
+        var binding = BINDINGS.get(level.getServer()); var round = round(level);
+        if (binding == null || round.isEmpty()) return;
+        var cause = current(level);
+        var origin = cause == null ? Optional.<CombatOrigin>empty() : cause.origin;
+        if (origin.isEmpty() || !origin.get().roundId().equals(round.get())
+                || origin.get().actor().identity() != dev.hardrush.core.round.ParticipantRole.MONSTER_DEPLOYED) return;
+        switch (origin.get().kind()) {
+            case MELEE, ARROW, CREEPER, SUMMON -> binding.rounds.playerDamaged(level, victim, origin.get(), actualDamage);
+            default -> {}
+        }
     }
     /** Called once after actual damage; dragon parts use the parent dragon UUID. */
     public static void observed(ServerLevel level, Entity victim, DamageSource source, float actualDamage, boolean lethal) {

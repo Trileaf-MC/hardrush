@@ -34,7 +34,7 @@ public abstract class PlayerIsolationNetworkMixin {
     @Inject(method = {"handleMoveVehicle", "handleAttack", "handlePunch", "handlePaddleBoat",
             "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
             "handlePlayerAbilities",
-            "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
+            "handleRenameItem", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
             "handlePickItemFromBlock", "handlePickItemFromEntity", "handleBundleItemSelectedPacket",
             "handleContainerSlotStateChanged", "handleSetCommandBlock", "handleSetCommandMinecart",
             "handleSetStructureBlock", "handleSetTestBlock", "handleTestInstanceBlockAction", "handleSetJigsawBlock",
@@ -42,6 +42,13 @@ public abstract class PlayerIsolationNetworkMixin {
             at = @At("HEAD"), cancellable = true)
     private void hardrush$holdGameplay(CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)) ci.cancel();
+    }
+
+    // A camp monster's isolated body may still pick an offer in the witch's guarded menu.
+    @Inject(method = "handleSelectTrade", at = @At("HEAD"), cancellable = true)
+    private void hardrush$holdTrade(CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)
+                && !dev.hardrush.lobby.MonsterShop.isShop(player)) ci.cancel();
     }
 
     @Inject(method = {"handleSpectatorAction", "handleTeleportToEntityPacket"}, at = @At("HEAD"), cancellable = true)
@@ -121,13 +128,14 @@ public abstract class PlayerIsolationNetworkMixin {
     private void hardrush$lobbyMenuClick(net.minecraft.network.protocol.game.ServerboundContainerClickPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && RevivalTotems.throwsFromInventory(player, packet)) return;
         if (player.level().getServer().isSameThread() && !dev.hardrush.lobby.LobbyMenus.isMenu(player)
+                && !dev.hardrush.lobby.MonsterShop.isShop(player)
                 && (PlayerProfiles.isLocked(player) || CombatRuntime.competitionFrozen(player.level()))) ci.cancel();
     }
 
     @Inject(method = "handleContainerClose", at = @At("HEAD"), cancellable = true)
     private void hardrush$lobbyMenuClose(CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)
-                && !dev.hardrush.lobby.LobbyMenus.isMenu(player)) ci.cancel();
+                && !dev.hardrush.lobby.LobbyMenus.isMenu(player) && !dev.hardrush.lobby.MonsterShop.isShop(player)) ci.cancel();
     }
 
     @Inject(method = "handleSetCreativeModeSlot", at = @At("HEAD"), cancellable = true)

@@ -118,7 +118,7 @@ public final class LobbyRuntime {
             }
         });
         MonsterRoundRuntime.configure(server, session, profiles, worlds);
-        RevivalTotems.configure(server, new RevivalTotems.Access() {
+        var camp = new RevivalTotems.Access() {
             @Override public Optional<RoundSnapshot> committed() { return session.snapshot(); }
             @Override public boolean eligible(ServerPlayer player) {
                 var r = session.snapshot().orElse(null);
@@ -134,7 +134,11 @@ public final class LobbyRuntime {
                         || binding.resumptions.containsKey(player) || binding.pending.containsKey(player);
             }
             @Override public RoundSession session() { return session; }
-        });
+        };
+        RevivalTotems.configure(server, camp);
+        CampKit.configure(server, camp);
+        MonsterShop.configure(server, camp);
+        MonsterVaults.configure(server, camp);
         MonsterCombatRuntime.configure(server, new MonsterCombatRuntime.Access() {
             @Override public Optional<RoundSnapshot> snapshot() { return session.snapshot(); }
             @Override public boolean competitionLocked() { return session.competitionLocked(); }
@@ -164,6 +168,9 @@ public final class LobbyRuntime {
                         new LobbyMenus.Button(Items.ROTTEN_FLESH, "怪物击杀在赛人类：每人 +1 次复生，可累计", "info", ""),
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "死亡后到营地祭坛消耗一次空装复生，冷却中可用", "info", ""),
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "营地背包的复生图腾数量即剩余次数；丢出可转赠营地怪物，落地5分钟作废", "info", ""),
+                        new LobbyMenus.Button(Items.EMERALD, "怪物币：伤害人类、被人类击杀都能赚，领先者有悬赏倍率；找营地女巫购买下次出场的增强", "info", ""),
+                        new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "持有复生次数的怪物不能追猎、选角或交易，须先到祭坛复生；击杀人类后立即传回营地；复生时怪物币清空", "info", ""),
+                        new LobbyMenus.Button(Items.TRIAL_KEY, "试炼钥匙插入营地宝库抽一件一次性装备；穿戴的装备被玩家击杀时按原版概率掉落", "info", ""),
                         new LobbyMenus.Button(Items.GRASS_BLOCK, "中途门确认空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),
                         new LobbyMenus.Button(Items.DRAGON_EGG, "人类尾刀首龙通关；全员集结末地为胜者庆祝，胜者跳龙池结束，最长"
                                 + (RoundEngine.successCelebrationMillis(round.rules()) + 999) / 1000
@@ -192,6 +199,7 @@ public final class LobbyRuntime {
     }
     public static void unconfigure(MinecraftServer server) {
         BINDINGS.remove(server); LobbyInteractions.close(server); LobbyMenus.unconfigure(server); RevivalTotems.unconfigure(server);
+        CampKit.unconfigure(server); MonsterShop.unconfigure(server); MonsterVaults.unconfigure(server);
         MonsterRoundRuntime.unconfigure(server); MonsterCombatRuntime.unconfigure(server);
     }
     public static void prepareStop(MinecraftServer server) {
@@ -316,6 +324,7 @@ public final class LobbyRuntime {
         if (b.committing.contains(p.id()) || b.searches.containsKey(p.id()) || b.resumptions.containsKey(p.id())) {
             tell(player, "正在搜索或提交本人的追猎，请稍候。"); return;
         }
+        if (revivalFirst(player, round, p)) return;
         long now = b.searchClock.getAsLong();
         if (p.monsterCooldownNanos() > 0) { tell(player, "出场冷却剩余 " + seconds(p.monsterCooldownNanos()) + " 秒；结束后请再次右键。"); return; }
         Long retry = b.retryAt.get(p.id());
@@ -351,6 +360,8 @@ public final class LobbyRuntime {
         var b = BINDINGS.get(server); if (b == null) return;
         synchronize(server, b);
         RevivalTotems.tick(server);
+        CampKit.tick(server);
+        MonsterVaults.tick(server);
         var round = b.session.view().orElse(null);
         updateDisplays(server, b);
         if (round == null || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE || b.session.competitionLocked()) {
@@ -561,11 +572,17 @@ public final class LobbyRuntime {
                 if (revived != null && MonsterRoles.isMonster(revived)) MonsterRoles.clear(revived);
                 b.channels.remove(p.id()); b.searches.remove(p.id()); b.resumptions.remove(p.id());
             }
+            if (old != null && p.wallet().coins() > old.wallet().coins()) {
+                var owner = server.getPlayerList().getPlayer(p.id());
+                if (owner != null) coinFeedback(owner, b.session.committedEventType(), old, p);
+            }
             if (old != null && p.revivalCharges() > old.revivalCharges()) {
                 var owner = server.getPlayerList().getPlayer(p.id());
                 if (owner != null) {
+                    boolean recalled = old.role() == ParticipantRole.MONSTER_DEPLOYED && p.role() == ParticipantRole.MONSTER_LOBBY
+                            && dev.hardrush.core.round.MonsterCoins.enabled(after.rules());
                     tell(owner, "复生次数增加 " + (p.revivalCharges() - old.revivalCharges()) + "，剩余 " + p.revivalCharges()
-                            + " 次；成为大厅怪物后可在祭坛确认空装复生。");
+                            + (recalled ? " 次；已传回营地，请前往复生祭坛复生。" : " 次；成为大厅怪物后可在祭坛确认空装复生。"));
                     sound(owner, true);
                 }
             }
@@ -577,8 +594,34 @@ public final class LobbyRuntime {
             b.profiles.returnMonsterToLobby(player, after);
         }
     }
+    /** A camp monster holding a revival is pointed to the altar instead of hunting, choosing or shopping. */
+    public static boolean revivalFirst(ServerPlayer player, RoundSnapshot round, dev.hardrush.core.round.Participant p) {
+        if (!dev.hardrush.core.round.MonsterCoins.enabled(round.rules()) || !p.revivalEntitled()) return false;
+        tell(player, RoundEngine.REVIVAL_FIRST);
+        sound(player, false);
+        return true;
+    }
+    /** Only the earner hears the native experience chime; the reason follows the committed event. */
+    private static void coinFeedback(ServerPlayer player, String event, dev.hardrush.core.round.Participant before,
+                                     dev.hardrush.core.round.Participant after) {
+        int gained = after.wallet().coins() - before.wallet().coins();
+        String reason = switch (event) {
+            case "MONSTER_DAMAGE_COINS" -> "伤害";
+            case "HARDCORE_DEATH" -> "化身礼包";
+            case "DEATH_BATCH" -> before.role().isActiveHuman() ? "化身礼包" : "阵亡奖励";
+            case "MONSTER_DEPLOY", "MONSTER_SELECTION" -> "退款";
+            default -> "奖励";
+        };
+        player.sendSystemMessage(Component.literal("+" + gained + " 怪物币（" + reason + "）· 共 " + after.wallet().coins())
+                .withStyle(net.minecraft.ChatFormatting.GREEN), true);
+        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.wrapAsHolder(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP),
+                net.minecraft.sounds.SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(), 0.3f, 1.2f,
+                player.getRandom().nextLong()));
+    }
     public static void disconnected(ServerPlayer player) {
         LobbyInteractions.disconnected(player);
+        MonsterVaults.disconnected(player);
         var b = BINDINGS.get(player.level().getServer()); if (b == null) return;
         b.channels.remove(player.getUUID()); b.displays.remove(player.getUUID());
         var attempts = new HashSet<Deployment>(b.searches.values()); attempts.addAll(b.resumptions.values()); attempts.addAll(b.pending.values());
@@ -603,6 +646,7 @@ public final class LobbyRuntime {
         if (r == null || !contextAvailable(player, b, LobbyContext.DISPLAY) || !personalOpen(b, r)) {
             tell(player, "怪物庭院仅在极限挑战或救场期间开放。"); return;
         }
+        if (facility == LobbyLayout.Facility.MERCHANT) { MonsterShop.open(player); return; }
         if (facility == LobbyLayout.Facility.PREVIOUS || facility == LobbyLayout.Facility.NEXT) {
             var projections = LobbyInteractions.get(player.level().getServer()).orElseThrow().projections();
             projections.turn(player, facility == LobbyLayout.Facility.NEXT ? 1 : -1);
@@ -618,6 +662,7 @@ public final class LobbyRuntime {
             case ZOMBIE -> MonsterRole.ZOMBIE; case SKELETON -> MonsterRole.SKELETON; case CREEPER -> MonsterRole.CREEPER;
             default -> null;
         };
+        if (role != null && revivalFirst(player, r, p)) return;
         if (role == null) return;
         b.committing.add(p.id());
         b.session.requestMonsterRole(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), role, reply -> {
@@ -661,7 +706,8 @@ public final class LobbyRuntime {
                     tell(player, "复生完成：已空装恢复人类，位于本轮自然出生点，无出生保护。"); sound(player, true);
                 }
             }
-            targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state));
+            targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state,
+                    state == LobbyProjections.State.AVAILABLE ? bounty(b, r, p, player) : 1000));
         }
         for (var observer : server.getPlayerList().getPlayers()) {
             if (!contextAvailable(observer, b, LobbyContext.DISPLAY)) { b.displays.remove(observer.getUUID()); continue; }
@@ -699,6 +745,14 @@ public final class LobbyRuntime {
         return worlds == null || !worlds.ready() ? null : worlds.level(switch (dimension) {
             case OVERWORLD -> Level.OVERWORLD; case NETHER -> Level.NETHER; case END -> Level.END;
         });
+    }
+    /** The same multiplier damage pays, from the human's live life time and current dimension. */
+    private static int bounty(Binding b, RoundSnapshot r, dev.hardrush.core.round.Participant p, ServerPlayer player) {
+        if (player == null || !dev.hardrush.core.round.MonsterCoins.enabled(r.rules())) return 1000;
+        var live = b.session.view().map(view -> view.participants().get(p.id())).orElse(p);
+        var where = dimension(b, player.level());
+        var kind = where.equals("lobby") ? MonsterDimension.OVERWORLD : MonsterDimension.valueOf(where.toUpperCase(Locale.ROOT));
+        return dev.hardrush.core.round.MonsterCoins.bountyPermille(r.rules(), kind, live.lifeHumanNanos());
     }
     private static String dimension(Binding b, ServerLevel level) {
         for (var kind : MonsterDimension.values()) if (level == level(b, kind)) return kind.name().toLowerCase(Locale.ROOT);

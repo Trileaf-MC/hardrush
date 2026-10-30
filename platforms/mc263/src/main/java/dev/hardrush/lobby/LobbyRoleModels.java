@@ -53,12 +53,15 @@ public final class LobbyRoleModels {
             if (!available(observer, round) || displays.containsKey(observer.getUUID())) continue;
             var lobby = LobbyWorld.open(server);
             var models = new LinkedHashMap<Integer, Model>();
-            for (var facility : LobbyLayout.MONSTER_FACILITIES) {
+            var facilities = new ArrayList<>(LobbyLayout.MONSTER_FACILITIES);
+            facilities.add(LobbyLayout.Facility.MERCHANT);
+            for (var facility : facilities) {
                 // Templates bypass spawn admission: the peaceful lobby never spawns a live mob.
                 Mob entity = switch (facility) {
                     case ZOMBIE -> new Zombie(EntityTypes.ZOMBIE, observer.level());
                     case SKELETON -> new Skeleton(EntityTypes.SKELETON, observer.level());
                     case CREEPER -> new Creeper(EntityTypes.CREEPER, observer.level());
+                    case MERCHANT -> new net.minecraft.world.entity.monster.Witch(EntityTypes.WITCH, observer.level());
                     default -> throw new IllegalStateException("Not a monster facility");
                 };
                 if (entity.getId() <= lastNativeId) throw new IllegalStateException("Native entity IDs exhausted; restart required");
@@ -67,10 +70,11 @@ public final class LobbyRoleModels {
                 entity.setPos(lobby.layoutPosition(point)); entity.setYRot(point.yaw()); entity.setYHeadRot(point.yaw());
                 entity.setNoAi(true); entity.setNoGravity(true); entity.setSilent(true);
                 String name = switch (facility) {
-                    case ZOMBIE -> "僵尸"; case SKELETON -> "骷髅"; case CREEPER -> "苦力怕";
+                    case ZOMBIE -> "僵尸 · 右键选择角色"; case SKELETON -> "骷髅 · 右键选择角色"; case CREEPER -> "苦力怕 · 右键选择角色";
+                    case MERCHANT -> "女巫商人 · 右键交易";
                     default -> throw new IllegalStateException("Not a monster facility");
                 };
-                entity.setCustomName(Component.literal(name + " · 右键选择角色")); entity.setCustomNameVisible(true);
+                entity.setCustomName(Component.literal(name)); entity.setCustomNameVisible(true);
                 if (facility == LobbyLayout.Facility.SKELETON) entity.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
                 models.put(entity.getId(), new Model(facility, entity));
             }
