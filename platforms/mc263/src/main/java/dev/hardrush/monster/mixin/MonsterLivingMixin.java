@@ -49,7 +49,7 @@ public abstract class MonsterLivingMixin {
     private void noRoleLoot(ServerLevel level, DamageSource source, CallbackInfo callback) {
         var entity=(LivingEntity)(Object)this;
         if (MonsterRoles.isMonster(entity)) {
-            MonsterRoles.dropRoleEquipment((ServerPlayer)entity,true);
+            MonsterRoles.dropRoleEquipment((ServerPlayer)entity,source);
             callback.cancel();
         } else if (dev.hardrush.monster.MonsterCompanions.isDismissing(entity)) callback.cancel();
     }
