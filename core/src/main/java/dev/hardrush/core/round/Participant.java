@@ -145,6 +145,13 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
                 monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis);
     }
 
+    Participant spendRevivalCharges(int count) {
+        if (count <= 0 || count > revivalCharges) throw new IllegalArgumentException("复生次数不足。");
+        return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
+                lifeSequence, revivalCharges - count, hasLeftProtection, monsterRole, monsterDimension,
+                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis);
+    }
+
     Participant revive(boolean admissionPending) {
         return new Participant(id, name, ParticipantRole.HUMAN_ACTIVE, online && !admissionPending,
                 false, humanNanos, joinedAtChallengeNanos, Math.addExact(lifeSequence, 1), revivalCharges - 1,

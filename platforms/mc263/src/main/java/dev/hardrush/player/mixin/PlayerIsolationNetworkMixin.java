@@ -2,6 +2,7 @@ package dev.hardrush.player.mixin;
 
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.lobby.LobbyInteractions;
+import dev.hardrush.lobby.RevivalTotems;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.round.RoundRuntime;
@@ -94,6 +95,10 @@ public abstract class PlayerIsolationNetworkMixin {
                     player.connection.ackBlockChangesUpTo(packet.getSequence());
                     player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.getPos()));
                 }
+                // A camp monster may throw its revival totem; RevivalTotems commits the transfer.
+                case DROP_ITEM, DROP_ALL_ITEMS -> {
+                    if (RevivalTotems.is(player.getInventory().getSelectedItem())) return;
+                }
                 default -> { }
             }
             ci.cancel();
@@ -114,6 +119,7 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = "handleContainerClick", at = @At("HEAD"), cancellable = true)
     private void hardrush$lobbyMenuClick(net.minecraft.network.protocol.game.ServerboundContainerClickPacket packet, CallbackInfo ci) {
+        if (player.level().getServer().isSameThread() && RevivalTotems.throwsFromInventory(player, packet)) return;
         if (player.level().getServer().isSameThread() && !dev.hardrush.lobby.LobbyMenus.isMenu(player)
                 && (PlayerProfiles.isLocked(player) || CombatRuntime.competitionFrozen(player.level()))) ci.cancel();
     }
