@@ -168,7 +168,7 @@ public final class LobbyRuntime {
                         new LobbyMenus.Button(Items.ROTTEN_FLESH, "怪物击杀在赛人类：每人 +1 次复生，可累计", "info", ""),
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "死亡后到营地祭坛消耗一次空装复生，冷却中可用", "info", ""),
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "营地背包的复生图腾数量即剩余次数；丢出可转赠营地怪物，落地5分钟作废", "info", ""),
-                        new LobbyMenus.Button(Items.EMERALD, "怪物币：伤害人类、被人类击杀都能赚，领先者有悬赏倍率；找营地女巫购买下次出场的增强", "info", ""),
+                        new LobbyMenus.Button(Items.EMERALD, "怪物币：伤害人类、近期受玩家伤害后阵亡都能赚，领先者有悬赏倍率；找营地女巫购买下次出场的增强", "info", ""),
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "持有复生次数的怪物不能追猎、选角或交易，须先到祭坛复生；击杀人类后立即传回营地；复生时怪物币清空", "info", ""),
                         new LobbyMenus.Button(Items.TRIAL_KEY, "试炼钥匙插入营地宝库抽一件一次性装备；穿戴的装备被玩家击杀时按原版概率掉落", "info", ""),
                         new LobbyMenus.Button(Items.GRASS_BLOCK, "中途门确认空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),

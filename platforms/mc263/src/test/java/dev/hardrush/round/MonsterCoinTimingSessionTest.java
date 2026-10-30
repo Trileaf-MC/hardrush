@@ -71,7 +71,7 @@ class MonsterCoinTimingSessionTest {
             assertTrue(session.mutationPending(), "The kill's batch is still being written");
             // Before that write completes, another human kills the still-deployed hunter in a separate batch.
             var second = UUID.randomUUID();
-            session.captureDeath(round, monster, 1, 3, second);
+            session.captureDeath(round, monster, 1, 3, second, true);
             session.captureLethalEvidence(lethal(second, monster, new CombatActor(other, ParticipantRole.HUMAN_ACTIVE, 1, 0)));
             session.finishDamageBatch(round, second);
             clock.set(seconds(6));
@@ -129,6 +129,40 @@ class MonsterCoinTimingSessionTest {
         }
         try (var session = open(path)) {
             assertEquals(4, coins(session), "Buffered damage survives a normal stop exactly once");
+        }
+    }
+
+    @Test void recentPlayerDamageSurvivesEnvironmentalEvidenceAndDuplicateDeathCallbacks() throws Exception {
+        Path path = seed();
+        try (var session = open(path)) {
+            var batch = UUID.randomUUID();
+            session.captureDeath(round, monster, 1, 3, batch, true);
+            // AFTER_DEATH is followed by the final environmental hit's evidence, with no player origin.
+            session.captureLethalEvidence(new CombatEvent(round, UUID.randomUUID(), batch, 1, monster,
+                    Optional.empty(), CombatEvent.Attribution.PENDING_VERIFICATION, "minecraft:fall",
+                    Optional.empty(), Optional.empty(), 20, true, clock.get()));
+            session.captureDeath(round, monster, 1, 3, batch, false);
+            session.finishDamageBatch(round, batch);
+            settle(session);
+            assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
+            assertEquals(5, coins(session), "Later evidence must preserve the native memory captured at death");
+            session.captureDeath(round, monster, 1, 3, UUID.randomUUID(), true);
+            session.finishDamageBatch(round, batch);
+            settle(session);
+            assertEquals(5, coins(session), "Repeated callbacks cannot award the death twice");
+        }
+        try (var store = new SqliteRoundStore(path)) {
+            var saved = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload()).participants().get(monster);
+            assertEquals(5, saved.wallet().coins(), "The environmental death reward is durable");
+        }
+    }
+
+    @Test void recentPlayerDamageRewardsADeathWithoutACombatBatch() throws Exception {
+        try (var session = open(seed())) {
+            session.captureDeath(round, monster, 1, 3, null, true);
+            settle(session);
+            assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
+            assertEquals(5, coins(session));
         }
     }
 

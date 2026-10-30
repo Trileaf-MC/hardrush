@@ -357,17 +357,10 @@ public final class RoundEngine {
                 // A kill pays a revival, never coins; an owner still out hunting is sent back to the altar.
                 players.put(owner.id(), revivalFirst(before.rules(), rewarded));
             }
-            // A deployed monster slain by a human's own attack is paid for engaging, never for any other death.
+            // Use vanilla's player-damage memory captured at death, including subsequent environmental damage.
             for (RoundDeath death : deaths) {
                 if (before.participants().get(death.playerId()).role() != ParticipantRole.MONSTER_DEPLOYED
-                        || death.cause().isEmpty()) continue;
-                CombatEvent cause = death.cause().get();
-                if (cause.attribution() != CombatEvent.Attribution.HUMAN || cause.origin().isEmpty()) continue;
-                var origin = cause.origin().get();
-                if (!origin.roundId().equals(roundId)) continue;
-                Participant killer = before.participants().get(origin.actor().playerId());
-                if (!directHumanAttack(origin.kind()) || killer == null || !killer.role().isActiveHuman()
-                        || origin.actor().lifeSequence() != killer.lifeSequence()) continue;
+                        || !death.recentlyHurtByPlayer()) continue;
                 players.put(death.playerId(), credit(before.rules(), players.get(death.playerId()), MonsterCoins.KILLED_BY_HUMAN));
             }
         }
