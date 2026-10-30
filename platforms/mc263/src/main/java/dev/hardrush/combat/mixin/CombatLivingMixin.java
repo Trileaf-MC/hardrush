@@ -16,8 +16,10 @@ public abstract class CombatLivingMixin {
         if (CombatRuntime.rejectDamage(level)) return false;
         if (!((Object)this instanceof ServerPlayer player)) return original.call(level, source, amount);
         float before = player.getHealth();
+        float shielded = before + player.getAbsorptionAmount();
         try (var ignored = CombatRuntime.damage(level, source)) {
             boolean accepted = original.call(level, source, amount);
+            CombatRuntime.playerDamaged(level, player, Math.max(0, shielded - Math.max(0, player.getHealth()) - player.getAbsorptionAmount()));
             if (before > 0 && player.getHealth() <= 0) CombatRuntime.observed(level, player, source, Math.max(0, before - player.getHealth()), true);
             return accepted;
         }

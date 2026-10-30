@@ -85,8 +85,14 @@ public final class HumanEntry {
         if (lobby.ready() && registeredRound == null) {
             var router = LobbyInteractions.get(server).orElseThrow();
             for (var facility : LobbyLayout.Facility.values()) {
-                if (LobbyLayout.MONSTER_FACILITIES.contains(facility)) continue;
+                if (LobbyLayout.MONSTER_FACILITIES.contains(facility) || facility == LobbyLayout.Facility.MERCHANT) continue;
                 var pos = BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(facility)));
+                if (facility == LobbyLayout.Facility.VAULT || facility == LobbyLayout.Facility.OMINOUS_VAULT) {
+                    var key = facility == LobbyLayout.Facility.VAULT ? dev.hardrush.core.round.ShopOffer.TRIAL_KEY
+                            : dev.hardrush.core.round.ShopOffer.OMINOUS_KEY;
+                    router.registerBlock(pos, Blocks.VAULT, LobbyContext.DISPLAY, player -> MonsterVaults.use(player, key));
+                    continue;
+                }
                 router.registerBlock(pos, Blocks.LECTERN, LobbyContext.RULES, player -> {
                     if (facility == LobbyLayout.Facility.RULES) LobbyMenus.open(player, LobbyContext.RULES);
                     else if (facility == LobbyLayout.Facility.MIDROUND) openGate(player);

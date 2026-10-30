@@ -165,7 +165,7 @@ class MonsterSkillSessionTest {
     private Path seed(MonsterRole role, Map<MonsterSkill, Long> cooldowns) throws Exception {
         var path = temporary.toRealPath().resolve("monster-skills.sqlite");
         var participant = new Participant(player, "Monster", ParticipantRole.MONSTER_LOBBY, false, false,
-                123, 0, 3, true, true, role, MonsterDimension.OVERWORLD, 0, 4, cooldowns);
+                123, 0, 3, false, true, role, MonsterDimension.OVERWORLD, 0, 4, cooldowns);
         var base = RulesConfig.defaults();
         var values = new java.util.LinkedHashMap<>(base.combatValues());
         values.put("skeleton.burstCooldownMillis", 90_000.0);

@@ -52,7 +52,7 @@ class MonsterSessionTest {
             var saved = session.snapshot().orElseThrow().participants().get(player);
             assertEquals(MonsterRole.CREEPER, saved.monsterRole());
             assertEquals(MonsterDimension.OVERWORLD, saved.monsterDimension());
-            assertTrue(saved.revivalEntitled());
+            assertFalse(saved.revivalEntitled());
         }
         try (var store = new SqliteRoundStore(path)) {
             var saved = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload());
@@ -79,7 +79,7 @@ class MonsterSessionTest {
     }
 
     @Test void totemThrowAndPickupCommitBeforeRepliesAndRejectOverlappingWrites() throws Exception {
-        Path path = seed();
+        Path path = seed(true);
         try (var session = open(path)) {
             var thrown = new AtomicReference<RoundSession.Reply>();
             session.requestRevivalTotemDrop(round, player, 3, 4, 1, thrown::set);
@@ -100,12 +100,49 @@ class MonsterSessionTest {
         }
     }
 
-    private Path seed() throws Exception {
+    @Test void bufferedDamagePaysCoinsThatBuyGoodsForTheNextSortie() throws Exception {
+        UUID human = UUID.randomUUID();
+        Path path = seed(new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 50, 1, false, true));
+        try (var session = open(path)) {
+            session.onOnline(human, "Human", true);
+            pump(() -> !session.mutationPending());
+            request(reply -> session.requestMonsterRole(round, player, 3, 4, MonsterRole.ZOMBIE, reply));
+            var broke = new AtomicReference<RoundSession.Reply>();
+            session.requestShopPurchase(round, player, 3, 4, ShopOffer.ADULT_EGG, 6, broke::set);
+            pump(() -> broke.get() != null);
+            assertFalse(broke.get().success(), "No coins yet");
+            request(reply -> session.requestMonsterDeploy(round, player, 3, 4, reply));
+            session.recordMonsterDamage(round, player, 3, 5, human, MonsterDimension.OVERWORLD, 4_000);
+            session.recordMonsterDamage(round, player, 3, 5, human, MonsterDimension.OVERWORLD, 3_500);
+            session.tick();
+            assertEquals(0, session.snapshot().orElseThrow().participants().get(player).wallet().coins(), "Hits are batched");
+            clock.addAndGet(1_000_000_000L);
+            session.tick();
+            pump(() -> !session.mutationPending());
+            assertEquals(7, session.snapshot().orElseThrow().participants().get(player).wallet().coins());
+            request(reply -> session.requestMonsterReturn(round, player, 3, 5, reply));
+            request(reply -> session.requestShopPurchase(round, player, 3, 5, ShopOffer.ADULT_EGG, 6, reply));
+            assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
+        }
+        try (var session = open(path)) {
+            var wallet = session.snapshot().orElseThrow().participants().get(player).wallet();
+            assertEquals(1, wallet.coins());
+            assertEquals(1, wallet.ordered(ShopOffer.ADULT_EGG));
+        }
+    }
+
+    private Path seed(Participant... others) throws Exception { return seed(false, others); }
+
+    /** A camp monster holding a revival may only revive or transfer it, never hunt. */
+    private Path seed(boolean entitled, Participant... others) throws Exception {
         var path = temporary.toRealPath().resolve("monster.sqlite");
         var participant = new Participant(player, "Monster", ParticipantRole.MONSTER_LOBBY, false, false,
-                123, 0, 3, true, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 4);
+                123, 0, 3, entitled, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 4);
+        var players = new java.util.LinkedHashMap<UUID, Participant>();
+        players.put(player, participant);
+        for (var other : others) players.put(other.id(), other);
         var snapshot = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults(), RoundPhase.RUNNING,
-                PauseReason.SERVER_STOPPED, 123, 0, Map.of(player, participant), true, false, null);
+                PauseReason.SERVER_STOPPED, 123, 0, players, true, false, null);
         try (var store = new SqliteRoundStore(path)) {
             store.commit(new SnapshotWrite(round, -1, 0, RoundSnapshotCodec.encode(snapshot), UUID.randomUUID(), "FIXTURE"));
         }

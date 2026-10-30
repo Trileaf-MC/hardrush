@@ -134,6 +134,15 @@ public final class MonsterCreeper {
         MonsterDisguise.setCreeperState(player, state.direction, true);
     }
 
+    /** A purchased charged sortie starts in the same powered state a real lightning strike leaves. */
+    public static void charge(ServerPlayer player) {
+        if (!(MonsterRoles.nativeModel(player) instanceof Creeper)) return;
+        State state = state(player);
+        state.charged = true;
+        state.model.getEntityData().set(CreeperPoweredAccessor.hardrush$poweredData(), true);
+        MonsterDisguise.setCreeperState(player, state.direction, true);
+    }
+
     public static boolean isUsingIgniter(ServerPlayer player) {
         return MonsterRoles.isMonster(player) && MonsterItems.matches(player, player.getUseItem(), "igniter");
     }

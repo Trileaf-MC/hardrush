@@ -208,7 +208,7 @@ public final class RoundEngine {
         Participant connected = player.withSession(name, online);
         if (!online && player.role() == ParticipantRole.LOBBY) connected = connected.withReady(false);
         if (player.role() == ParticipantRole.MONSTER_DEPLOYED && player.online() != online) {
-            connected = connected.monsterLobby(MONSTER_COOLDOWN_NANOS);
+            connected = endSortie(connected, MONSTER_COOLDOWN_NANOS);
         }
         players.put(playerId, connected);
         RoundPhase phase = before.phase();
@@ -264,7 +264,8 @@ public final class RoundEngine {
         players.put(playerId, new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
                 player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
                 player.lifeSequence(), player.revivalCharges(), player.hasLeftProtection(), MonsterRole.ZOMBIE,
-                MonsterDimension.OVERWORLD, MONSTER_COOLDOWN_NANOS, player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis()));
+                MonsterDimension.OVERWORLD, MONSTER_COOLDOWN_NANOS, player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
+                becameMonster(before.rules(), player.wallet())));
         return proposal(eventId, "HARDCORE_DEATH", before, before.phase(), 0, players, before.result(), false);
     }
 
@@ -309,9 +310,10 @@ public final class RoundEngine {
                                 player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
                                 player.lifeSequence(), player.revivalCharges(), player.hasLeftProtection(), MonsterRole.ZOMBIE,
                                 MonsterDimension.OVERWORLD, MONSTER_COOLDOWN_NANOS,
-                                player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis()));
+                                player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
+                                becameMonster(before.rules(), player.wallet())));
             } else {
-                players.put(player.id(), player.monsterLobby(MONSTER_COOLDOWN_NANOS));
+                players.put(player.id(), endSortie(player, MONSTER_COOLDOWN_NANOS));
             }
         }
         // Qualify against identity at lethal collection, before applying this batch's human deaths.
@@ -326,11 +328,7 @@ public final class RoundEngine {
                 Participant owner = before.participants().get(origin.actor().playerId());
                 if (owner == null || owner.id().equals(death.playerId())) continue;
                 if (cause.attribution() == CombatEvent.Attribution.HUMAN) {
-                    boolean directHumanAttack = switch (origin.kind()) {
-                        case MELEE, ARROW, BED, RESPAWN_ANCHOR, TNT, END_CRYSTAL -> true;
-                        default -> false;
-                    };
-                    if (directHumanAttack && owner.role().isActiveHuman()
+                    if (directHumanAttack(origin.kind()) && owner.role().isActiveHuman()
                             && origin.actor().lifeSequence() == owner.lifeSequence()
                             && origin.actor().deploymentSequence() == owner.monsterDeploymentSequence()) {
                         Participant rewarded = players.get(owner.id());
@@ -350,8 +348,23 @@ public final class RoundEngine {
                         || origin.actor().deploymentSequence() > owner.monsterDeploymentSequence()) continue;
                 Participant rewarded = players.get(owner.id());
                 if (rewarded.revivalCharges() < Integer.MAX_VALUE) {
-                    players.put(owner.id(), rewarded.addRevivalCharges(1));
+                    rewarded = rewarded.addRevivalCharges(1);
                 }
+                // A kill pays a revival, never coins; an owner still out hunting is sent back to the altar.
+                players.put(owner.id(), revivalFirst(before.rules(), rewarded));
+            }
+            // A deployed monster slain by a human's own attack is paid for engaging, never for any other death.
+            for (RoundDeath death : deaths) {
+                if (before.participants().get(death.playerId()).role() != ParticipantRole.MONSTER_DEPLOYED
+                        || death.cause().isEmpty()) continue;
+                CombatEvent cause = death.cause().get();
+                if (cause.attribution() != CombatEvent.Attribution.HUMAN || cause.origin().isEmpty()) continue;
+                var origin = cause.origin().get();
+                if (!origin.roundId().equals(roundId)) continue;
+                Participant killer = before.participants().get(origin.actor().playerId());
+                if (!directHumanAttack(origin.kind()) || killer == null || !killer.role().isActiveHuman()
+                        || origin.actor().lifeSequence() != killer.lifeSequence()) continue;
+                players.put(death.playerId(), credit(before.rules(), players.get(death.playerId()), MonsterCoins.KILLED_BY_HUMAN));
             }
         }
         if (completion != null) {
@@ -432,14 +445,17 @@ public final class RoundEngine {
                 ParticipantRole.MONSTER_LOBBY);
         if (before.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET && dimension != player.monsterDimension())
             throw new IllegalStateException("个人追猎由系统决定维度。");
-        return monsterProposal(eventId, "MONSTER_SELECTION", before, player.selectMonster(role, dimension));
+        requireNoRevival(before.rules(), player);
+        return monsterProposal(eventId, "MONSTER_SELECTION", before, chooseRole(before.rules(), player.selectMonster(role, dimension)));
     }
 
     public RoundTransition proposeMonsterRole(UUID eventId, UUID roundId, UUID playerId,
             int life, int sortie, MonsterRole role) {
         RoundSnapshot before = capture();
         var player = requireMonster(before, roundId, playerId, life, sortie, ParticipantRole.MONSTER_LOBBY);
-        return monsterProposal(eventId, "MONSTER_SELECTION", before, player.selectMonsterRole(Objects.requireNonNull(role)));
+        requireNoRevival(before.rules(), player);
+        return monsterProposal(eventId, "MONSTER_SELECTION", before,
+                chooseRole(before.rules(), player.selectMonsterRole(Objects.requireNonNull(role))));
     }
 
     public RoundTransition proposePersonalHunt(UUID eventId, dev.hardrush.core.hunt.PersonalHuntRequest request, int sortie) {
@@ -457,8 +473,12 @@ public final class RoundEngine {
         requireOpenRescue(before);
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_LOBBY);
+        requireNoRevival(before.rules(), player);
         if (player.monsterCooldownNanos() != 0) throw new IllegalStateException("Monster deployment cooldown has not elapsed");
-        return monsterProposal(eventId, "MONSTER_DEPLOY", before, player.deployMonster());
+        var deployed = player.deployMonster();
+        if (MonsterCoins.enabled(before.rules()))
+            deployed = deployed.withWallet(player.wallet().deploy(before.rules(), player.monsterRole()));
+        return monsterProposal(eventId, "MONSTER_DEPLOY", before, deployed);
     }
 
     /** The platform may apply the effect only after this cooldown reservation is durably accepted. */
@@ -522,7 +542,8 @@ public final class RoundEngine {
         RoundSnapshot before = capture();
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_DEPLOYED);
-        return monsterProposal(eventId, "MONSTER_DEPLOY_CANCELLED", before, player.monsterLobby(0));
+        return monsterProposal(eventId, "MONSTER_DEPLOY_CANCELLED", before,
+                player.monsterLobby(0).withWallet(player.wallet().cancelDeploy()));
     }
 
     public RoundTransition proposeMonsterDeath(UUID eventId, UUID roundId, UUID playerId,
@@ -535,13 +556,113 @@ public final class RoundEngine {
         RoundSnapshot before = capture();
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_DEPLOYED);
-        return monsterProposal(eventId, type, before, player.monsterLobby(MONSTER_COOLDOWN_NANOS));
+        return monsterProposal(eventId, type, before, endSortie(player, MONSTER_COOLDOWN_NANOS));
     }
 
     private RoundTransition monsterProposal(UUID eventId, String type, RoundSnapshot before, Participant player) {
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         players.put(player.id(), player);
         return proposal(eventId, type, before, before.phase(), before.remainingPhaseNanos(), players, before.result(), false);
+    }
+
+    /**
+     * Buffered damage credit from the adapter. Entries whose monster has since left that sortie,
+     * or whose victim is no longer a living human of this round, are skipped rather than failing
+     * the queued event.
+     */
+    public RoundTransition proposeMonsterDamageCoins(UUID eventId, UUID roundId, List<DamageCoins> entries) {
+        RoundSnapshot before = capture();
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        boolean open = before.roundId().equals(roundId) && MonsterCoins.enabled(before.rules())
+                && (before.phase() == RoundPhase.RUNNING || before.phase() == RoundPhase.RESCUE);
+        if (open) {
+            long cap = Math.multiplyExact((long) MonsterCoins.amount(before.rules(), MonsterCoins.DAMAGE_CAP), 1000L);
+            for (DamageCoins entry : List.copyOf(entries)) {
+                Participant owner = players.get(entry.owner());
+                Participant victim = before.participants().get(entry.victim());
+                if (owner == null || victim == null || owner.id().equals(victim.id())
+                        || owner.role() != ParticipantRole.MONSTER_DEPLOYED
+                        || owner.lifeSequence() != entry.ownerLife() || owner.monsterDeploymentSequence() != entry.sortie()
+                        || !victim.role().isActiveHuman() && victim.role() != ParticipantRole.MONSTER_LOBBY) continue;
+                int bounty = MonsterCoins.bountyPermille(before.rules(), entry.dimension(), victim.lifeHumanNanos());
+                players.put(owner.id(), owner.withWallet(owner.wallet().creditDamage(entry.victim(), entry.damageMilli(), bounty, cap)));
+            }
+        }
+        return proposal(eventId, "MONSTER_DAMAGE_COINS", before, before.phase(), before.remainingPhaseNanos(),
+                players, before.result(), false);
+    }
+
+    /** One buffered damage observation: actual milli-health a sortie took from one human. */
+    public record DamageCoins(UUID owner, int ownerLife, int sortie, UUID victim, MonsterDimension dimension, long damageMilli) {
+        public DamageCoins {
+            Objects.requireNonNull(owner); Objects.requireNonNull(victim); Objects.requireNonNull(dimension);
+            if (damageMilli <= 0) throw new IllegalArgumentException("Damage credit must be positive");
+        }
+    }
+
+    public RoundTransition proposeShopPurchase(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, ShopOffer offer, int expectedPrice) {
+        RoundSnapshot before = capture();
+        Participant player = requireCampMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+        return monsterProposal(eventId, "SHOP_PURCHASE_" + offer.name(), before, player.withWallet(
+                player.wallet().buy(before.rules(), player.monsterRole(), offer, expectedPrice)));
+    }
+
+    /** The adapter rolls the native item first; this commit spends the key and keeps the result. */
+    public RoundTransition proposeVaultOpen(UUID eventId, UUID roundId, UUID playerId, int expectedLifeSequence,
+            int expectedDeploymentSequence, ShopOffer key, MonsterWallet.GearSlot slot,
+            java.util.Set<MonsterRole> roles, String item) {
+        RoundSnapshot before = capture();
+        Participant player = requireCampMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+        if (!key.sellableTo(player.monsterRole())) throw new IllegalStateException("当前角色不能使用宝库。");
+        return monsterProposal(eventId, "VAULT_OPEN_" + key.name(), before,
+                player.withWallet(player.wallet().openVault(key, slot, roles, item)));
+    }
+
+    private static Participant requireCampMonster(RoundSnapshot before, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        if (!MonsterCoins.enabled(before.rules())) throw new IllegalStateException("本轮没有开放怪物币商店。");
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence,
+                expectedDeploymentSequence, ParticipantRole.MONSTER_LOBBY);
+        requireOpenRescue(before);
+        requireNoRevival(before.rules(), player);
+        return player;
+    }
+
+    public static final String REVIVAL_FIRST = "你持有复生次数，请先到营地的复生祭坛复生。";
+
+    /** In a coin round, a monster holding a revival returns to the race instead of hunting on. */
+    private static void requireNoRevival(RulesConfig rules, Participant player) {
+        if (MonsterCoins.enabled(rules) && player.revivalEntitled()) throw new IllegalStateException(REVIVAL_FIRST);
+    }
+
+    private static Participant revivalFirst(RulesConfig rules, Participant player) {
+        return MonsterCoins.enabled(rules) && player.revivalEntitled() && player.role() == ParticipantRole.MONSTER_DEPLOYED
+                ? endSortie(player, MONSTER_COOLDOWN_NANOS) : player;
+    }
+
+    private static MonsterWallet becameMonster(RulesConfig rules, MonsterWallet wallet) {
+        return MonsterCoins.enabled(rules) ? wallet.becameMonster(MonsterCoins.amount(rules, MonsterCoins.STARTER)) : wallet;
+    }
+
+    private static Participant endSortie(Participant player, long cooldown) {
+        var lobby = player.monsterLobby(cooldown);
+        return player.role() == ParticipantRole.MONSTER_DEPLOYED ? lobby.withWallet(player.wallet().endSortie()) : lobby;
+    }
+
+    private static Participant chooseRole(RulesConfig rules, Participant player) {
+        return MonsterCoins.enabled(rules) ? player.withWallet(player.wallet().chooseRole(rules, player.monsterRole())) : player;
+    }
+
+    private static Participant credit(RulesConfig rules, Participant player, String reward) {
+        return MonsterCoins.enabled(rules) ? player.withWallet(player.wallet().credit(MonsterCoins.amount(rules, reward))) : player;
+    }
+
+    private static boolean directHumanAttack(dev.hardrush.core.api.DamagePort.AttackKind kind) {
+        return switch (kind) {
+            case MELEE, ARROW, BED, RESPAWN_ANCHOR, TNT, END_CRYSTAL -> true;
+            default -> false;
+        };
     }
 
     private static Participant requireMonster(RoundSnapshot before, UUID roundId, UUID playerId,
@@ -667,7 +788,7 @@ public final class RoundEngine {
             throw new IllegalStateException("玩家生命或剩余次数已改变，请重新申请。");
         }
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
-        players.put(playerId, player.addRevivalCharges(count));
+        players.put(playerId, revivalFirst(before.rules(), player.addRevivalCharges(count)));
         return proposal(eventId, "ADMIN_GRANT_REVIVAL", before, before.phase(), before.remainingPhaseNanos(),
                 players, before.result(), false, true);
     }

@@ -20,8 +20,10 @@ import net.minecraft.world.phys.Vec3;
 /** Per-connection, packet-only FULL mannequins. Never added to a world, player list or tracker. */
 public final class LobbyProjections {
     public enum State { AVAILABLE, AWAY, DEAD, EMPTY, RESTORING, CLOSED }
-    public record Target(GameProfile originalProfile, int life, State state) {
+    /** {@code bountyPermille} above 1000 is shown on a huntable target's name tag. */
+    public record Target(GameProfile originalProfile, int life, State state, int bountyPermille) {
         public Target { Objects.requireNonNull(originalProfile); Objects.requireNonNull(state); if (life < 1) throw new IllegalArgumentException("life"); }
+        public Target(GameProfile originalProfile, int life, State state) { this(originalProfile, life, state, 1000); }
     }
     public record Selection(UUID round, UUID target, int life, long generation, int entityId) {}
     public record View(long generation, int page, int pages, List<Selection> entities) {}
@@ -63,7 +65,9 @@ public final class LobbyProjections {
             model.setNoGravity(true); model.setSilent(true);
             // Authenticated profile is never taken from OwnerSkin's rewritten player-info packets.
             model.setComponent(DataComponents.PROFILE, ResolvableProfile.createResolved(target.originalProfile));
-            model.setCustomName(Component.literal(target.originalProfile.name() + " · " + switch (target.state) {
+            String bounty = target.state == State.AVAILABLE && target.bountyPermille > 1000
+                    ? " · 悬赏 ×" + dev.hardrush.core.round.MonsterCoins.multiplier(target.bountyPermille) : "";
+            model.setCustomName(Component.literal(target.originalProfile.name() + bounty + " · " + switch (target.state) {
                 case AVAILABLE -> "右键追猎"; case AWAY -> "暂离，无法追猎"; case DEAD -> "已死亡";
                 case RESTORING -> "复生核验中"; case CLOSED, EMPTY -> "暂不可追猎";
             }));
