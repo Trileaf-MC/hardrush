@@ -46,7 +46,7 @@ public final class PlayerFeedback {
         long humans=r.participants().values().stream().filter(p->p.role().isActiveHuman()).count();
         for(var player:server.getPlayerList().getPlayers()) {
             var hints=router.hints(player); var p=r.participants().get(player.getUUID());
-            for(var source:java.util.List.of("recovery","profile","rescue","away","celebration","skill","facility"))hints.clear(source);
+            for(var source:java.util.List.of("recovery","profile","rescue","away","celebration","skill","facility","revival"))hints.clear(source);
             if(!LobbyWorld.isLobby(player.level()))hints.clear("assembly");
             if(p==null||p.role()!=ParticipantRole.MONSTER_LOBBY){hints.clear("hunt");hints.clear("hunt-target");}
             if(!dev.hardrush.lobby.LobbyRuntime.channeling(player))hints.clear("return");
@@ -55,6 +55,8 @@ public final class PlayerFeedback {
                 hints.offer("recovery",LobbyHints.Priority.RECOVERY,"恢复隔离 · 竞技入口关闭；可用的规则与历史仍可阅读",now+300);
             else if(PlayerProfiles.simulationFrozen(player) && !dev.hardrush.celebration.CelebrationRuntime.arena(player))
                 hints.offer("profile",LobbyHints.Priority.RECOVERY,"正在核验／应用个人档案，请稍候",now+300);
+            if(p!=null&&p.role()==ParticipantRole.MONSTER_LOBBY&&p.revivalEntitled()&&dev.hardrush.core.round.MonsterCoins.enabled(r.rules()))
+                hints.offer("revival",LobbyHints.Priority.FACILITY,"持有复生次数 "+p.revivalCharges()+" · 请到复生祭坛右键复生，复生前不能追猎或交易",now+300);
             if(r.phase()==RoundPhase.RESCUE)
                 hints.offer("rescue",LobbyHints.Priority.FACILITY,"救场剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · 祭坛复生或中途门参赛恢复挑战",now+300);
             else if(r.phase()==RoundPhase.RUNNING && humans>0 && r.onlineHumans()==0)
@@ -80,6 +82,8 @@ public final class PlayerFeedback {
                         case MIDROUND -> "中途门 · 挑战／救场中确认空装加入";
                         case ZOMBIE, SKELETON, CREEPER -> "右键怪物模型选择角色，之后右键目标模型追猎";
                         case PREVIOUS, NEXT -> "右键翻阅本人的追猎庭院";
+                        case MERCHANT -> "女巫商人 · 选好角色后右键，用怪物币购买下次出场的增强";
+                        case VAULT, OMINOUS_VAULT -> "手持对应的试炼钥匙右键宝库，抽取一件一次性装备";
                     };
                     hints.offer("facility",LobbyHints.Priority.FACILITY,text,now+300); break;
                 }

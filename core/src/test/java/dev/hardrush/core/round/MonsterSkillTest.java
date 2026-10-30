@@ -25,7 +25,7 @@ class MonsterSkillTest {
         return fixture(role, MonsterRole.SKELETON, rules, cooldowns);
     }
     private RoundEngine fixture(ParticipantRole role, MonsterRole monsterRole, RulesConfig rules, Map<MonsterSkill, Long> cooldowns) {
-        var participant = new Participant(player, "Skill", role, false, false, 123, 0, 3, true, true,
+        var participant = new Participant(player, "Skill", role, false, false, 123, 0, 3, false, true,
                 monsterRole, MonsterDimension.OVERWORLD, 0, 4, cooldowns);
         var snapshot = new RoundSnapshot(round, 1, 123, 0, rules, RoundPhase.RUNNING,
                 PauseReason.SERVER_STOPPED, 123, 0, Map.of(player, participant), true, false, null);

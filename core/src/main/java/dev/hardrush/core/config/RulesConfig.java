@@ -75,6 +75,14 @@ public record RulesConfig(
         if (summonMin != null && summonMax != null && summonMin > summonMax) {
             throw new IllegalArgumentException("召唤最小距离不能大于最大距离");
         }
+        copy.forEach((key, value) -> {
+            if (!key.startsWith("coin.price.")) return;
+            Double limit = copy.get("coin.limit." + key.substring("coin.price.".length()));
+            // A doubled price must still fit one native emerald stack in the trade slot.
+            if (limit == null || value * Math.pow(2, limit - 1) > 64) {
+                throw new IllegalArgumentException("怪物币价格翻倍后不能超过 64，且需配置购买上限: " + key);
+            }
+        });
         combatValues = Collections.unmodifiableSortedMap(copy);
         if (!Double.isFinite(protectionRadius) || protectionRadius <= 0 || protectionRadius > 30_000_000) {
             throw new IllegalArgumentException("保护半径必须为有效的正数");
@@ -108,7 +116,43 @@ public record RulesConfig(
                 Map.entry("monster.deployCooldownMillis", 30_000.0),
                 Map.entry("monster.returnChannelMillis", 5_000.0),
                 Map.entry("round.rescueMillis", 60_000.0)),
-                32.0, 30_000, 90_000, 30_000);
+                32.0, 30_000, 90_000, 30_000).withCoinDefaults();
+    }
+
+    /** Monster coin economy; each offer's price doubles per purchase within one sortie. */
+    private static final Map<String, Double> COIN_DEFAULTS = Map.ofEntries(
+            Map.entry("coin.starter", 6.0),
+            Map.entry("coin.killedByHuman", 5.0),
+            Map.entry("coin.damageCapPerHuman", 20.0),
+            Map.entry("coin.bounty.netherBonus", 0.5),
+            Map.entry("coin.bounty.endBonus", 1.0),
+            Map.entry("coin.bounty.survivalBonus1", 0.25),
+            Map.entry("coin.bounty.survivalBonus2", 0.5),
+            Map.entry("coin.bounty.max", 2.5),
+            Map.entry("coin.survival.tier1Minutes", 10.0),
+            Map.entry("coin.survival.tier2Minutes", 30.0),
+            Map.entry("coin.arrowsPerBundle", 4.0),
+            Map.entry("coin.potion.swiftnessSeconds", 180.0),
+            Map.entry("coin.potion.fireResistanceSeconds", 180.0),
+            Map.entry("coin.potion.regenerationSeconds", 45.0),
+            Map.entry("coin.price.adultEgg", 6.0), Map.entry("coin.limit.adultEgg", 3.0),
+            Map.entry("coin.price.babyEgg", 16.0), Map.entry("coin.limit.babyEgg", 2.0),
+            Map.entry("coin.price.swiftness", 10.0), Map.entry("coin.limit.swiftness", 1.0),
+            Map.entry("coin.price.fireResistance", 6.0), Map.entry("coin.limit.fireResistance", 1.0),
+            Map.entry("coin.price.regeneration", 8.0), Map.entry("coin.limit.regeneration", 1.0),
+            Map.entry("coin.price.slownessArrows", 8.0), Map.entry("coin.limit.slownessArrows", 2.0),
+            Map.entry("coin.price.poisonArrows", 10.0), Map.entry("coin.limit.poisonArrows", 2.0),
+            Map.entry("coin.price.charged", 40.0), Map.entry("coin.limit.charged", 1.0),
+            Map.entry("coin.price.trialKey", 15.0), Map.entry("coin.limit.trialKey", 2.0),
+            Map.entry("coin.price.ominousKey", 40.0), Map.entry("coin.limit.ominousKey", 1.0));
+
+    /** Adds missing coin values to stored pending rules; values an operator already set are kept. */
+    public RulesConfig withCoinDefaults() {
+        if (COIN_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)) return this;
+        var values = new TreeMap<>(combatValues);
+        COIN_DEFAULTS.forEach(values::putIfAbsent);
+        return new RulesConfig(schemaVersion, mode, minecraftVersion, difficulty, generationRule, values,
+                protectionRadius, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
 
     /** Schema 1 is the byte-for-byte historical voting rule; schema 2 is personal direct hunt. */
@@ -120,7 +164,7 @@ public record RulesConfig(
 
     /** Only for pending/new rounds. Never apply this to an existing round snapshot. */
     public RulesConfig forNewRound() {
-        return withHuntRule(HuntRule.PERSONAL_TARGET);
+        return withHuntRule(HuntRule.PERSONAL_TARGET).withCoinDefaults();
     }
 
     public RulesConfig withHuntRule(HuntRule rule) {
@@ -250,6 +294,11 @@ public record RulesConfig(
                 throw new IllegalArgumentException("次数或时间必须是可用的正整数: " + key);
             }
         }
+        if (key.startsWith("coin.") && !key.startsWith("coin.bounty.")
+                && (value != Math.rint(value) || value > Integer.MAX_VALUE)) {
+            throw new IllegalArgumentException("怪物币参数必须是整数: " + key);
+        }
+        if (key.startsWith("coin.limit.") && value > 8) throw new IllegalArgumentException("单次出场购买上限不能超过 8: " + key);
         if (key.equals("zombie.summonMaxDistance") && value > 30_000_000) {
             throw new IllegalArgumentException("召唤距离超出有效世界范围");
         }

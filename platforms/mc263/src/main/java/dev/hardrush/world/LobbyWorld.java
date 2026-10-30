@@ -38,6 +38,7 @@ import xyz.nucleoid.fantasy.RuntimeLevelConfig;
 
 /** One permanent shared lobby, independent of both the original overworld and round rotation. */
 public final class LobbyWorld {
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("hardrush-lobby");
     public static final ResourceKey<Level> KEY = ResourceKey.create(Registries.DIMENSION, Identifier.parse("hardrush:lobby"));
     private static final Map<MinecraftServer, LobbyWorld> SERVICES = new IdentityHashMap<>();
     private static final TicketType SPAWN = new TicketType(TicketType.NO_TIMEOUT,
@@ -176,6 +177,15 @@ public final class LobbyWorld {
                 if (CampBlueprint.legacyMonsterLectern(spawn, pos, level.getBlockState(pos))) {
                     level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState()); replaced = true;
                 }
+            }
+            // The monster shop arrived after v1: claim only air, never an administrator's edit.
+            var labels = CampBlueprint.labels(spawn);
+            for (var entry : CampBlueprint.shopAdditions(spawn).entrySet()) {
+                var actual = level.getBlockState(entry.getKey());
+                if (actual.is(entry.getValue().getBlock())) continue;
+                if (!actual.isAir()) { LOGGER.warn("营地商店设施位置已被占用，保留原方块：{}", entry.getKey()); continue; }
+                level.setBlockAndUpdate(entry.getKey(), entry.getValue()); replaced = true;
+                if (labels.containsKey(entry.getKey())) label(entry.getKey(), labels.get(entry.getKey()));
             }
             if (replaced) level.save(null, true, false);
             ready = true;

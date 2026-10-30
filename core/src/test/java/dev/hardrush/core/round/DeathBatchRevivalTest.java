@@ -192,15 +192,17 @@ class DeathBatchRevivalTest {
 
     @Test void monsterKillsAddOneChargePerVictimAcrossBatches() {
         var third = UUID.randomUUID();
-        var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), human(third, true), monster(true, true));
+        var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), human(third, true), monster(true, false));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         for (var kind : List.of(AttackKind.MELEE, AttackKind.ARROW)) {
             var victim = kind == AttackKind.MELEE ? human : other;
             apply(engine, batch(engine, death(engine, victim, origin(monster, ParticipantRole.MONSTER_DEPLOYED, kind))));
+            // The first kill already sends the hunter back; its arrow still in flight is credited too.
+            assertEquals(ParticipantRole.MONSTER_LOBBY, engine.view().participants().get(monster).role());
         }
-        assertEquals(3, engine.view().participants().get(monster).revivalCharges());
+        assertEquals(2, engine.view().participants().get(monster).revivalCharges());
         apply(engine, batch(engine, death(engine, third, origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON))));
-        assertEquals(4, engine.view().participants().get(monster).revivalCharges());
+        assertEquals(3, engine.view().participants().get(monster).revivalCharges());
         assertEquals(RoundPhase.RESCUE, engine.view().phase());
     }
 
@@ -237,9 +239,13 @@ class DeathBatchRevivalTest {
         assertThrows(IllegalStateException.class, () -> engine.proposeRevivalTotemPickup(UUID.randomUUID(), round, human, 1, 0, 1));
         apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 1, Integer.MAX_VALUE - 1));
         assertThrows(IllegalArgumentException.class, () -> engine.proposeRevivalTotemPickup(UUID.randomUUID(), round, monster, 1, 3, 1));
-        apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
-        assertThrows(IllegalStateException.class, () -> engine.proposeRevivalTotemDrop(UUID.randomUUID(), round, monster, 1, 4, 1));
+        assertEquals(RoundEngine.REVIVAL_FIRST, assertThrows(IllegalStateException.class,
+                () -> engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3)).getMessage());
+        var deployed = fixture(GameMode.HARDCORE, human(human, true), monster(true, false));
+        apply(deployed, deployed.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
+        assertThrows(IllegalStateException.class, () -> deployed.proposeRevivalTotemDrop(UUID.randomUUID(), round, monster, 1, 4, 1));
         assertFalse(engine.pending());
+        assertFalse(deployed.pending());
         var normal = fixture(GameMode.NORMAL, human(human, true), monster(true, true));
         assertThrows(IllegalStateException.class, () -> normal.proposeRevivalTotemDrop(UUID.randomUUID(), round, monster, 1, 3, 1));
         var expired = rescue(true);
@@ -352,14 +358,14 @@ class DeathBatchRevivalTest {
     @Test void cooldownLobbyRevivalIsAtomicFreshProtectedLifeAndRetainsProgressAndSkillDeadlines() {
         var engine = rescue(true);
         var before = engine.view().participants().get(monster);
-        apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
+        // A monster holding a revival can only go to the altar; hunting is refused.
+        assertEquals(RoundEngine.REVIVAL_FIRST, assertThrows(IllegalStateException.class,
+                () -> engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3)).getMessage());
         assertThrows(IllegalStateException.class, () -> engine.proposeRevival(UUID.randomUUID(), round, monster, 1, 4));
-        apply(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, monster, 1, 4));
-        assertEquals(30_000_000_000L, engine.view().participants().get(monster).monsterCooldownNanos());
-        var pending = engine.proposeAdmissionRevival(UUID.randomUUID(), round, monster, 1, 4);
+        var pending = engine.proposeAdmissionRevival(UUID.randomUUID(), round, monster, 1, 3);
         assertEquals(ParticipantRole.MONSTER_LOBBY, engine.view().participants().get(monster).role());
         assertTrue(engine.view().participants().get(monster).revivalEntitled());
-        assertThrows(IllegalStateException.class, () -> engine.proposeAdmissionRevival(UUID.randomUUID(), round, monster, 1, 4));
+        assertThrows(IllegalStateException.class, () -> engine.proposeAdmissionRevival(UUID.randomUUID(), round, monster, 1, 3));
         clock.seconds(75);
         assertThrows(IllegalStateException.class, () -> engine.proposeTick(UUID.randomUUID()));
         apply(engine, pending);
@@ -373,7 +379,7 @@ class DeathBatchRevivalTest {
         assertEquals(before.joinedAtChallengeNanos(), revived.joinedAtChallengeNanos());
         assertEquals(before.monsterSkillReadyAtMillis(), revived.monsterSkillReadyAtMillis());
         assertEquals(RoundPhase.RUNNING, engine.view().phase());
-        assertThrows(IllegalStateException.class, () -> engine.proposeRevival(UUID.randomUUID(), round, monster, 1, 4));
+        assertThrows(IllegalStateException.class, () -> engine.proposeRevival(UUID.randomUUID(), round, monster, 1, 3));
     }
 
     @Test void deadlineRejectsNewRequestsAndExpiryInvalidatesEvenOfflineEntitlement() {
@@ -487,22 +493,19 @@ class DeathBatchRevivalTest {
         assertEquals(60_000, engine.view().remainingPhaseMillis());
     }
 
-    @Test void reconnectMoreMonsterDeathsAndRoleSelectionNeverExtendRescue() {
+    @Test void reconnectAndRefusedHuntingNeverExtendRescue() {
         var engine = rescue(true);
-        apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         clock.seconds(20);
-        apply(engine, batch(engine, death(engine, monster, null)));
         assertTrue(engine.view().participants().get(monster).revivalEntitled());
         assertEquals(40_000, engine.view().remainingPhaseMillis());
         apply(engine, engine.proposeOnline(UUID.randomUUID(), monster, "Offline", false));
         clock.seconds(10);
         apply(engine, engine.proposeOnline(UUID.randomUUID(), monster, "Online", true));
-        apply(engine, engine.proposeMonsterRole(UUID.randomUUID(), round, monster, 1, 4,
+        assertThrows(IllegalStateException.class, () -> engine.proposeMonsterRole(UUID.randomUUID(), round, monster, 1, 3,
                 MonsterRole.SKELETON));
+        assertThrows(IllegalStateException.class, () -> engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
+        assertFalse(engine.pending());
         assertEquals(30_000, engine.view().remainingPhaseMillis());
-        assertEquals(30_000_000_000L, engine.view().participants().get(monster).monsterCooldownNanos());
-        clock.seconds(5);
-        assertEquals(25_000_000_000L, engine.view().participants().get(monster).monsterCooldownNanos());
     }
 
     @Test void rescueCleanRestartFreezesRemainingAndChallengeTimeWhilePreservingQualifications() {

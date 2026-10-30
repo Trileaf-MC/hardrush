@@ -127,9 +127,8 @@ class RevivalStoreTest {
                         UUID.randomUUID(), human, "Ignored monster progress", Set.of("minecraft:story/enter_the_nether"),
                         SET, true, challenge)));
 
-                attacker = fixture.player(monster);
-                fixture.commit(fixture.engine.proposeMonsterReturn(UUID.randomUUID(), fixture.round(), monster,
-                        attacker.lifeSequence(), attacker.monsterDeploymentSequence()));
+                // The kill itself already sent the hunter back to the camp altar.
+                assertEquals(ParticipantRole.MONSTER_LOBBY, fixture.player(monster).role());
                 fixture.clock.millis(2_000);
                 fixture.commit(fixture.engine.proposeCheckpoint(UUID.randomUUID(), false));
                 assertEquals(58_000, fixture.engine.committed().remainingPhaseMillis());

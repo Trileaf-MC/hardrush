@@ -118,18 +118,15 @@ class DeathBatchSessionTest {
             session.captureLethalEvidence(lethal(batch));
             session.finishDamageBatch(round, batch);
             pump(() -> !session.mutationPending());
-            // Return remains possible while rescue runs.
-            var reply = new AtomicReference<RoundSession.Reply>();
-            session.requestMonsterReturn(round, hunter, 1, 1, reply::set);
-            pump(() -> reply.get() != null);
-            assertTrue(reply.get().success());
+            // The kill's revival sent the hunter straight back to the camp while rescue runs.
+            assertEquals(ParticipantRole.MONSTER_LOBBY, session.snapshot().orElseThrow().participants().get(hunter).role());
             clock.addAndGet(TimeUnit.SECONDS.toNanos(20));
         }
         try (var session = open(path)) {
             assertEquals(40_000, session.view().orElseThrow().remainingPhaseMillis());
             clock.addAndGet(TimeUnit.SECONDS.toNanos(39));
             var selection = new AtomicReference<RoundSession.Reply>();
-            session.requestMonsterSelection(round, hunter, 1, 1, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, selection::set);
+            session.requestRevivalTotemDrop(round, hunter, 1, 1, 1, selection::set);
             assertTrue(session.mutationPending());
             clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
             assertTrue(session.competitionLocked(), "An unrelated pending write must not extend the rescue deadline");

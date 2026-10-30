@@ -128,7 +128,11 @@ public final class LobbyRuntimeGameTest {
                     HuntInputFixtures.role(f.monster.player, "zombie");
                 })
                 .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.ZOMBIE && !f.session.mutationPending(), "Role choice durably saved"))
+                .thenExecute(f::buyAdultEggFromWitch)
+                .thenWaitUntil(() -> f.await(f.monster.participant().wallet().ordered(dev.hardrush.core.round.ShopOffer.ADULT_EGG) == 1
+                        && !f.session.mutationPending(), "The witch purchase commits durably"))
                 .thenExecute(() -> {
+                    f.assertWitchPurchase();
                     HuntInputFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
                     f.test.assertValueEqual(f.monster.participant().role(), ParticipantRole.MONSTER_LOBBY, "Early deploy cannot bypass the first 30 seconds");
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
@@ -137,6 +141,7 @@ public final class LobbyRuntimeGameTest {
                 .thenWaitUntil(() -> f.await(f.deployed(1), "First formal safe deployment"))
                 .thenExecute(() -> {
                     f.assertDeployment(1);
+                    f.test.assertValueEqual(f.monster.player.getInventory().getItem(2).getCount(), 2, "The bought adult egg joins the role egg");
                     f.assertMenuDoesNotUnlockRoleDrops();
                     f.equipWorldSword();
                     f.test.assertFalse(MonsterRoles.summon(f.monster.player), "Historical summon action remains retired");
@@ -268,16 +273,9 @@ public final class LobbyRuntimeGameTest {
                     .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RESCUE && hunter.participant().revivalEntitled()
                             && prey.current() != null && prey.current().isAlive() && prey.current().level() == LobbyWorld.open(f.server).holdingLevel()
                             && f.profiles.isReady(prey.profile.id(), f.round()) && !f.session.mutationPending(), "Cycle all deaths and reward reach rescue atomically " + iteration))
-                    .thenExecute(() -> {
-                        var returnItem = hunter.player.getInventory().getItem(7);
-                        hunter.player.getInventory().setItem(7, ItemStack.EMPTY);
-                        hunter.player.setItemSlot(EquipmentSlot.OFFHAND, returnItem);
-                        f.test.assertTrue(MonsterRoles.useControl(hunter.player, net.minecraft.world.InteractionHand.OFF_HAND),
-                                "A moved bound return item works from the offhand even while combat is frozen in rescue");
-                        f.ageReturnChannel(hunter);
-                    })
+                    // The kill's revival recalls the hunter in the same durable batch; it goes to the altar next.
                     .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_LOBBY
-                            && f.profiles.isReady(hunter.profile.id(), f.round()) && !f.session.mutationPending(), "Cycle return remains usable during rescue " + iteration))
+                            && f.profiles.isReady(hunter.profile.id(), f.round()) && !f.session.mutationPending(), "Cycle kill recalls the hunter during rescue " + iteration))
                     .thenWaitUntil(() -> f.await(iteration != 0 || heldTotems(hunter.player) == hunter.participant().revivalCharges(),
                             "Camp inventory projects the revival balance as totems"))
                     .thenExecute(() -> {
@@ -546,6 +544,47 @@ public final class LobbyRuntimeGameTest {
             test.assertTrue(monster.player.getInventory().getItem(skillSlot).is(control), "The fixed skill control remains equipped while the menu is open");
             monster.player.closeContainer();
         }
+        void buyAdultEggFromWitch() {
+            var wallet = monster.participant().wallet();
+            test.assertTrue(wallet.coins() == 6 && wallet.roleChosen(), "The first transformation gives the starter coins and the role is chosen");
+            dev.hardrush.lobby.CampKit.tick(server);
+            test.assertValueEqual(coins(), 6, "The camp projects the coin balance as native emeralds");
+            var lobby = LobbyWorld.open(server);
+            HuntInputFixtures.move(monster.player, lobby.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(
+                    dev.hardrush.core.lobby.LobbyLayout.Facility.MERCHANT)).add(0, 0, 2));
+            dev.hardrush.lobby.LobbyInteractions.tick(server);
+            var ids = dev.hardrush.lobby.LobbyInteractions.get(server).orElseThrow().roleModels().view(monster.player);
+            HuntInputFixtures.click(monster.player, ids.get(dev.hardrush.core.lobby.LobbyLayout.Facility.MERCHANT), net.minecraft.world.InteractionHand.MAIN_HAND);
+            test.assertTrue(dev.hardrush.lobby.MonsterShop.isShop(monster.player), "Right-clicking the witch model opens the native trading screen");
+            var menu = monster.player.containerMenu;
+            // The isolated camp body may still select an offer; vanilla moves the projected coins into the payment slot.
+            monster.player.connection.handleSelectTrade(new net.minecraft.network.protocol.game.ServerboundSelectTradePacket(0));
+            test.assertTrue(dev.hardrush.lobby.CampKit.isCoin(menu.getSlot(0).getItem()) && menu.getSlot(0).getItem().getCount() == 6,
+                    "Selecting the adult egg offer pays with the projected coins");
+            test.assertFalse(menu.getSlot(2).getItem().isEmpty(), "The native result slot shows the paid offer");
+            monster.player.connection.handleContainerClick(new ServerboundContainerClickPacket(menu.containerId, menu.getStateId(),
+                    (short) 2, (byte) 0, ContainerInput.PICKUP, new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(), HashedStack.EMPTY));
+            test.assertTrue(menu.getCarried().isEmpty(), "Taking the result commits a purchase instead of handing out an item");
+        }
+        void assertWitchPurchase() {
+            var wallet = monster.participant().wallet();
+            test.assertValueEqual(wallet.coins(), 0, "The egg cost exactly its first ladder price");
+            test.assertTrue(monster.player.containerMenu.getSlot(0).getItem().isEmpty(), "Paid coins leave the payment slot");
+            monster.player.closeContainer();
+            dev.hardrush.lobby.CampKit.tick(server);
+            test.assertValueEqual(coins(), 0, "Closing the shop never returns spent coins");
+            boolean projected = false;
+            for (int i = 0; i < monster.player.getInventory().getContainerSize(); i++)
+                projected |= dev.hardrush.lobby.CampKit.is(monster.player.getInventory().getItem(i))
+                        && monster.player.getInventory().getItem(i).is(Items.ZOMBIE_SPAWN_EGG);
+            test.assertTrue(projected, "The paid order is shown in the camp backpack");
+        }
+        int coins() {
+            int count = 0;
+            for (int i = 0; i < monster.player.getInventory().getContainerSize(); i++)
+                if (dev.hardrush.lobby.CampKit.isCoin(monster.player.getInventory().getItem(i))) count += monster.player.getInventory().getItem(i).getCount();
+            return count;
+        }
         void equipWorldSword() {
             worldGearDrops = new AABB(monster.player.blockPosition()).inflate(6);
             var sword = new ItemEntity(level, monster.player.getX(), monster.player.getY(), monster.player.getZ(), new ItemStack(Items.DIAMOND_SWORD));
@@ -562,8 +601,9 @@ public final class LobbyRuntimeGameTest {
             level.setBlockAndUpdate(floor,Blocks.SMOOTH_STONE.defaultBlockState());
             for(int y=1;y<=3;y++) level.setBlockAndUpdate(floor.above(y),Blocks.AIR.defaultBlockState());
             var hit = new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(floor).add(0,.5,0),Direction.UP,floor,false);
+            int before = monster.player.getInventory().getItem(slot).getCount();
             test.assertTrue(dev.hardrush.monster.MonsterCompanions.useOn(monster.player,net.minecraft.world.InteractionHand.MAIN_HAND,hit), "Bound egg spawns at a safe block");
-            test.assertTrue(monster.player.getInventory().getItem(slot).isEmpty(), "Successful egg use consumes exactly its one charge");
+            test.assertValueEqual(monster.player.getInventory().getItem(slot).getCount(), before - 1, "Successful egg use consumes exactly one charge");
         }
         void restoreSummonRing() { }
         int worldSwords() {
@@ -588,7 +628,7 @@ public final class LobbyRuntimeGameTest {
                     "Every returned monster body uses adventure mode");
             if (replaced) test.assertTrue(monster.player != dead, "Defeat must create a native replacement rather than heal the dead object");
             test.assertTrue(monster.player.connection.player == monster.player, "The native connection rebinds to the live lobby body");
-            test.assertTrue(onlyRevivalTotems(monster.player), "No role controls or human death inventory enter the lobby");
+            test.assertTrue(onlyCampProjections(monster.player), "No role controls or human death inventory enter the lobby");
             test.assertFalse(MonsterRoles.isMonster(monster.player), "Lobby has no active prototype role body");
             test.assertTrue(PlayerLocator.hideFrom(monster.player, target.player),
                     "Committed camp identity hides a monster even when the native body looks human");
@@ -700,7 +740,7 @@ public final class LobbyRuntimeGameTest {
                 for (short slot = 0; slot < 45; slot++) if (menu.getSlot(slot).getItem().is(icon)) {
                     player.connection.handleContainerClick(new ServerboundContainerClickPacket(menu.containerId, menu.getStateId(),
                             slot, (byte) 0, ContainerInput.PICKUP, new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(), HashedStack.EMPTY));
-                    test.assertTrue(onlyRevivalTotems(player) && menu.getCarried().isEmpty(), "The real container packet triggers an action without moving a GUI icon");
+                    test.assertTrue(onlyCampProjections(player) && menu.getCarried().isEmpty(), "The real container packet triggers an action without moving a GUI icon");
                     return;
                 }
                 throw new IllegalStateException("Expected lobby icon is absent: " + icon);
@@ -724,11 +764,12 @@ public final class LobbyRuntimeGameTest {
         }
     }
 
-    static boolean onlyRevivalTotems(ServerPlayer player) {
+    static boolean onlyCampProjections(ServerPlayer player) {
         var inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             var stack = inventory.getItem(slot);
-            if (!stack.isEmpty() && !RevivalTotems.is(stack)) return false;
+            // Revival totems, coins and paid orders are camp projections of the committed wallet, never possessions.
+            if (!stack.isEmpty() && !RevivalTotems.is(stack) && !dev.hardrush.lobby.CampKit.is(stack)) return false;
         }
         return true;
     }

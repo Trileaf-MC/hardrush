@@ -42,7 +42,9 @@ class LobbyFoundationTest {
         var next = legacy.forNewRound();
         assertEquals(RulesConfig.HuntRule.PERSONAL_TARGET, next.huntRule());
         assertNotEquals(legacy.fingerprint(), next.fingerprint());
-        assertEquals(legacy.combatValues(), next.combatValues());
+        // Every stored value is kept; only missing monster coin values are added.
+        legacy.combatValues().forEach((key, value) -> assertEquals(value, next.combatValues().get(key)));
+        assertEquals(6.0, next.combatValues().get("coin.starter"));
         var stored = snapshot(legacy, RoundPhase.RUNNING, null);
         assertEquals(stored, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(stored)));
         assertEquals(encoded, stored.rules().encode());
