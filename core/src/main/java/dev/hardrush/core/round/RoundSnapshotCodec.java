@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 6;
+    private static final int SCHEMA = 7;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -47,6 +47,8 @@ public final class RoundSnapshotCodec {
                     Long readyAt = p.monsterSkillReadyAtMillis().get(skill);
                     if (readyAt != null) { writeText(out, skill.id()); out.writeLong(readyAt); }
                 }
+                writeWallet(out, p.wallet());
+                out.writeLong(p.lifeHumanNanos());
             }
             out.writeBoolean(snapshot.result() != null);
             if (snapshot.result() != null) {
@@ -107,9 +109,13 @@ public final class RoundSnapshotCodec {
                         if (skillCooldowns.put(skill, in.readLong()) != null) throw new IOException("Duplicate skill cooldown");
                     }
                 }
+                // Rounds saved before the coin economy carry an empty wallet; their rules keep it disabled.
+                MonsterWallet wallet = schema >= 7 ? readWallet(in) : MonsterWallet.EMPTY;
+                // Older lives start their survival bounty from the upgrade instead of inheriting cross-life time.
+                long lifeHumanNanos = schema >= 7 ? in.readLong() : 0;
                 Participant p = new Participant(playerId, name, role, online, ready,
                         humanNanos, joinedAt, lifeSequence, revivalCharges, hasLeftProtection,
-                        monsterRole, monsterDimension, monsterCooldown, deploymentSequence, skillCooldowns);
+                        monsterRole, monsterDimension, monsterCooldown, deploymentSequence, skillCooldowns, wallet, lifeHumanNanos);
                 if (players.put(playerId, p) != null) throw new IOException("Duplicate participant UUID");
             }
             RoundResult result = null;
@@ -132,6 +138,75 @@ public final class RoundSnapshotCodec {
         } catch (IOException | IllegalArgumentException invalid) {
             throw new IllegalArgumentException("Invalid round snapshot", invalid);
         }
+    }
+
+    private static void writeWallet(DataOutputStream out, MonsterWallet wallet) throws IOException {
+        out.writeInt(wallet.coins()); out.writeBoolean(wallet.roleChosen());
+        out.writeInt(wallet.nextGearSerial());
+        for (var counts : java.util.List.of(wallet.bought(), wallet.order(), wallet.active())) {
+            out.writeInt(counts.size());
+            for (var offer : ShopOffer.values()) {
+                Integer count = counts.get(offer);
+                if (count != null) { writeText(out, offer.id()); out.writeInt(count); }
+            }
+        }
+        for (var pieces : java.util.List.of(wallet.gear(), wallet.activeGear())) {
+            out.writeInt(pieces.size());
+            for (var piece : pieces) {
+                out.writeInt(piece.serial()); writeText(out, piece.slot().name());
+                int roles = 0;
+                for (var role : piece.roles()) roles |= 1 << role.ordinal();
+                out.writeInt(roles); writeText(out, piece.item());
+            }
+        }
+        out.writeInt(wallet.sortieDamage().size());
+        for (var entry : wallet.sortieDamage().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).toList()) {
+            writeUuid(out, entry.getKey());
+            out.writeLong(entry.getValue().countedMilli()); out.writeLong(entry.getValue().weightedMilli());
+            out.writeInt(entry.getValue().paid());
+        }
+    }
+
+    private static MonsterWallet readWallet(DataInputStream in) throws IOException {
+        int coins = in.readInt();
+        boolean chosen = in.readBoolean();
+        int serial = in.readInt();
+        var counts = new java.util.ArrayList<java.util.Map<ShopOffer, Integer>>();
+        for (int map = 0; map < 3; map++) {
+            int size = in.readInt();
+            if (size < 0 || size > ShopOffer.values().length) throw new IOException("Invalid offer count");
+            var values = new java.util.EnumMap<ShopOffer, Integer>(ShopOffer.class);
+            for (int i = 0; i < size; i++) {
+                if (values.put(ShopOffer.fromId(readText(in, 128)), in.readInt()) != null) throw new IOException("Duplicate offer");
+            }
+            counts.add(values);
+        }
+        var gear = new java.util.ArrayList<java.util.List<MonsterWallet.GearPiece>>();
+        for (int list = 0; list < 2; list++) {
+            int size = in.readInt();
+            if (size < 0 || size > MonsterWallet.MAX_GEAR) throw new IOException("Invalid gear count");
+            var pieces = new java.util.ArrayList<MonsterWallet.GearPiece>();
+            for (int i = 0; i < size; i++) {
+                int pieceSerial = in.readInt();
+                var slot = MonsterWallet.GearSlot.valueOf(readText(in, 64));
+                int mask = in.readInt();
+                var roles = java.util.EnumSet.noneOf(MonsterRole.class);
+                for (var role : MonsterRole.values()) if ((mask & 1 << role.ordinal()) != 0) roles.add(role);
+                pieces.add(new MonsterWallet.GearPiece(pieceSerial, slot, roles, readText(in, MonsterWallet.MAX_GEAR_TEXT * 4)));
+            }
+            gear.add(pieces);
+        }
+        int damaged = in.readInt();
+        if (damaged < 0 || damaged > MonsterWallet.MAX_DAMAGE_VICTIMS) throw new IOException("Invalid damage credit count");
+        var damage = new LinkedHashMap<UUID, MonsterWallet.DamageCredit>();
+        for (int i = 0; i < damaged; i++) {
+            UUID victim = readUuid(in);
+            if (damage.put(victim, new MonsterWallet.DamageCredit(in.readLong(), in.readLong(), in.readInt())) != null) {
+                throw new IOException("Duplicate damage credit");
+            }
+        }
+        return new MonsterWallet(coins, chosen, counts.get(0), counts.get(1), counts.get(2),
+                gear.get(0), gear.get(1), serial, damage);
     }
 
     private static void writeUuid(DataOutputStream out, UUID id) throws IOException {

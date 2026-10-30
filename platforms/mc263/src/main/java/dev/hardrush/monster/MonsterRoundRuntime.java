@@ -31,6 +31,14 @@ public final class MonsterRoundRuntime {
         return b == null ? Optional.empty() : b.session.snapshot()
                 .filter(r -> r.participants().containsKey(player.getUUID())).map(RoundSnapshot::rules);
     }
+    /** The committed kit of this deployment; empty outside a formal sortie or a coin round. */
+    public static dev.hardrush.core.round.MonsterWallet sortieKit(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        var r = b == null ? null : b.session.snapshot().orElse(null);
+        var p = r == null ? null : r.participants().get(player.getUUID());
+        return p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED || !dev.hardrush.core.round.MonsterCoins.enabled(r.rules())
+                ? dev.hardrush.core.round.MonsterWallet.EMPTY : p.wallet();
+    }
     public static String identity(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);

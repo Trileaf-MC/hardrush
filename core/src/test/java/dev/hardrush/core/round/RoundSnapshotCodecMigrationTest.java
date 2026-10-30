@@ -63,7 +63,7 @@ class RoundSnapshotCodecMigrationTest {
         assertFalse(migrated.participants().get(RESPAWNING).hasLeftProtection());
         assertFalse(migrated.participants().get(LOBBY).hasLeftProtection());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(6, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(7, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 

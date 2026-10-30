@@ -84,6 +84,13 @@ public final class RoundSession implements AutoCloseable {
     private long eventTime = Long.MIN_VALUE;
     private final ArrayDeque<QueuedEvent> events = new ArrayDeque<>();
     private BiConsumer<RoundSnapshot, RoundSnapshot> committedListener = (before, after) -> {};
+    private String committedEventType = "";
+    // Per-hit monster damage is summed here and committed about once per second, never per hit.
+    private record DamageKey(UUID round, UUID owner, int life, int sortie, UUID victim,
+                             dev.hardrush.core.round.MonsterDimension dimension) {}
+    private final Map<DamageKey, Long> damageCoins = new LinkedHashMap<>();
+    private long lastDamageFlushNanos;
+    private static final long DAMAGE_FLUSH_NANOS = 1_000_000_000L;
     private long lastCheckpointNanos;
     private RoundTransition pendingTransition;
     private CompletableFuture<CommitResult> pendingWrite;
@@ -272,6 +279,34 @@ public final class RoundSession implements AutoCloseable {
                 death.deploymentSequence(), Optional.of(event)));
     }
 
+    /** Actual milli-health a deployed monster's attack took from a human of this round. */
+    public void recordMonsterDamage(UUID roundId, UUID owner, int life, int sortie, UUID victim,
+            dev.hardrush.core.round.MonsterDimension dimension, long damageMilli) {
+        if (damageMilli <= 0 || engine == null || stopping || state != State.OPEN || competitionLocked()
+                || !engine.committed().roundId().equals(roundId)) return;
+        damageCoins.merge(new DamageKey(roundId, owner, life, sortie, victim, dimension), damageMilli, Math::addExact);
+    }
+
+    private void flushDamageCoins(boolean force) {
+        long now = clock.nanoTime();
+        if (damageCoins.isEmpty() || !force && now - lastDamageFlushNanos < DAMAGE_FLUSH_NANOS) return;
+        flushDamageCoinsAt(now);
+    }
+
+    /**
+     * Queued events run on their own timestamp, and the engine's projection is monotonic. A flush
+     * that precedes another event must therefore use that event's time, never a later one.
+     */
+    private void flushDamageCoinsAt(long time) {
+        if (damageCoins.isEmpty()) return;
+        lastDamageFlushNanos = Math.max(lastDamageFlushNanos, time);
+        var byRound = new LinkedHashMap<UUID, List<RoundEngine.DamageCoins>>();
+        damageCoins.forEach((key, milli) -> byRound.computeIfAbsent(key.round(), ignored -> new java.util.ArrayList<>())
+                .add(new RoundEngine.DamageCoins(key.owner(), key.life(), key.sortie(), key.victim(), key.dimension(), milli)));
+        damageCoins.clear();
+        byRound.forEach((round, entries) -> enqueueAt(time, e -> e.proposeMonsterDamageCoins(UUID.randomUUID(), round, entries)));
+    }
+
     /** All victims, rewards and self-death commit once, before rescue or completion is published. */
     public void finishDamageBatch(UUID roundId, UUID batchId) {
         if (engine == null || !engine.committed().roundId().equals(roundId)) return;
@@ -284,6 +319,9 @@ public final class RoundSession implements AutoCloseable {
         var dragon = firstDragonId;
         var victims = deaths == null ? List.<RoundDeath>of() : List.copyOf(deaths.values());
         long time = completes ? terminal.observedNanoTime() : clock.nanoTime();
+        // Damage dealt before these deaths is credited first, on the batch's own timestamp: the
+        // first dragon's batch replays the earlier observed time and must not follow a later event.
+        flushDamageCoinsAt(time);
         enqueueAt(time, e -> e.proposeDeathBatch(UUID.randomUUID(), roundId, victims,
                 terminal == null ? null : DragonDeathArbiter.adjudicate(e.committed(), terminal, dragon)));
     }
@@ -333,6 +371,9 @@ public final class RoundSession implements AutoCloseable {
         if (!stopping) try { committedListener.accept(before, next); }
         catch (RuntimeException failure) { fail("新轮已持久化但适配器应用失败", failure); }
     }
+
+    /** The durable event type while the commit listener runs; empty otherwise. */
+    public String committedEventType() { return committedEventType; }
 
     public void onCommitted(BiConsumer<RoundSnapshot, RoundSnapshot> listener) {
         committedListener = Objects.requireNonNull(listener);
@@ -875,6 +916,19 @@ public final class RoundSession implements AutoCloseable {
                 lifeSequence, deploymentSequence, count), reply, "复生图腾已拾取。");
     }
 
+    public void requestShopPurchase(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            dev.hardrush.core.round.ShopOffer offer, int price, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeShopPurchase(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence, offer, price), reply, "已购买" + offer.title() + "。");
+    }
+
+    public void requestVaultOpen(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            dev.hardrush.core.round.ShopOffer key, dev.hardrush.core.round.MonsterWallet.GearSlot slot,
+            java.util.Set<MonsterRole> roles, String item, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeVaultOpen(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence, key, slot, roles, item), reply, "宝库已开启。");
+    }
+
     public void requestMonsterSelection(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             MonsterRole role, MonsterDimension dimension, Consumer<Reply> reply) {
         requestAction(() -> engine.proposeMonsterSelection(UUID.randomUUID(), roundId, playerId,
@@ -1102,6 +1156,7 @@ public final class RoundSession implements AutoCloseable {
 
     public void tick() {
         if (shutdownBoundary != null || terminalCandidate != null && !terminalQueued) return;
+        flushDamageCoins(false);
         if (stopping || state != State.OPEN || unsupportedPhase || mutationPending()) return;
         if (!events.isEmpty()) { drainEvent(); return; }
         if (recoveringCountdown) {
@@ -1186,8 +1241,10 @@ public final class RoundSession implements AutoCloseable {
             if (!engine.accept(transition)) fail("轮次提交回调标签已过期", new IllegalStateException("旧轮次回调被拒绝"));
             else if (!stopping && state != State.FAILED) {
                 if (transition.after().phase() != RoundPhase.COUNTDOWN) { recoveringCountdown = false; restoredReady.clear(); }
+                committedEventType = transition.eventType();
                 try { committedListener.accept(transition.before(), transition.after()); }
                 catch (RuntimeException failure) { fail("已持久化状态的玩家应用失败", failure); }
+                finally { committedEventType = ""; }
             }
         }
         else {
@@ -1206,6 +1263,7 @@ public final class RoundSession implements AutoCloseable {
         if (stopping) return;
         long shutdownTime = shutdownBoundary == null ? clock.nanoTime() : shutdownBoundary;
         if (terminalCandidate != null && !terminalQueued) finishDamageBatch(terminalCandidate.roundId(), terminalCandidate.batchId());
+        else flushDamageCoinsAt(shutdownTime);
         stopping = true;
         Throwable failure = null;
         try {
@@ -1302,6 +1360,8 @@ public final class RoundSession implements AutoCloseable {
             if (assemblyGuard != null) stopAssemblyEligible = online.keySet().stream().filter(assemblyGuard).collect(java.util.stream.Collectors.toSet());
         }
         if (terminalCandidate != null && !terminalQueued) finishDamageBatch(terminalCandidate.roundId(), terminalCandidate.batchId());
+        // Buffered damage still belongs to the sorties it was dealt in; credit it inside the stop boundary.
+        else flushDamageCoinsAt(shutdownBoundary);
     }
 
     private void fail(String prefix, Throwable error) {

@@ -214,6 +214,20 @@ public final class RoundRuntime {
                             || CelebrationRuntime.arena(level);
                 }
                 @Override public void batchClosed(UUID roundId, UUID batchId) { session.finishDamageBatch(roundId, batchId); }
+                @Override public void playerDamaged(net.minecraft.server.level.ServerLevel level, ServerPlayer victim,
+                        dev.hardrush.core.combat.CombatOrigin origin, float actualDamage) {
+                    var round = session.snapshot().orElse(null);
+                    var worlds = WORLDS.get(server);
+                    var target = round == null ? null : round.participants().get(victim.getUUID());
+                    if (target == null || target.role() != ParticipantRole.HUMAN_ACTIVE || worlds == null || !worlds.ready()) return;
+                    // The bounty follows where the human stands when hit, not where the monster spawned.
+                    var dimension = level == worlds.level(Level.NETHER) ? dev.hardrush.core.round.MonsterDimension.NETHER
+                            : level == worlds.level(Level.END) ? dev.hardrush.core.round.MonsterDimension.END
+                            : dev.hardrush.core.round.MonsterDimension.OVERWORLD;
+                    session.recordMonsterDamage(origin.roundId(), origin.actor().playerId(), (int) origin.actor().lifeSequence(),
+                            (int) origin.actor().deploymentSequence(), victim.getUUID(), dimension,
+                            Math.round((double) actualDamage * 1000));
+                }
             }, event -> {
                 var worlds = WORLDS.get(server);
                 var dragon = verifiedFirstDragon(worlds, event);

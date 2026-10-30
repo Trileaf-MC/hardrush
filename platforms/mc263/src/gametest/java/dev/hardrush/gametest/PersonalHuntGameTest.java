@@ -169,19 +169,18 @@ public final class PersonalHuntGameTest {
                     test.assertTrue(MonsterRoles.attack(f.c.player, f.b.player) && f.b.player.isDeadOrDying(), "Attack another legal human");
                 })
                 .thenWaitUntil(() -> f.await(f.c.participant().revivalEntitled() && f.lobby(f.b), "actual non-anchor kill awards entitlement"))
-                .thenExecute(() -> {
-                    f.b.player = f.b.current();
-                    f.kill(f.c);
-                })
-                .thenWaitUntil(() -> f.await(f.lobby(f.c), "entitled hunter defeated"))
+                .thenExecute(() -> f.b.player = f.b.current())
+                // The kill's revival recalls the hunter to the camp; it never keeps hunting while entitled.
+                .thenWaitUntil(() -> f.await(f.lobby(f.c), "entitled hunter recalled to the camp"))
                 .thenExecute(() -> {
                     f.c.player = f.c.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); f.useSearchClock();
                     f.moveVoid(f.a, 1);
                 })
-                .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterCooldownNanos() == 0, "death-life setup"))
+                .thenWaitUntil(() -> f.await(f.idle() && f.b.participant().monsterCooldownNanos() == 0, "death-life setup"))
                 .thenExecute(() -> {
-                    f.c.hunt(f.a); f.oldAttempt = f.searches().get(f.c.id());
-                    f.oldModel = f.model(f.c, f.a); f.kill(f.a);
+                    // C holds a revival and may only go to the altar; B, freshly dead, hunts instead.
+                    f.b.hunt(f.a); f.oldAttempt = f.searches().get(f.b.id());
+                    f.oldModel = f.model(f.b, f.a); f.kill(f.a);
                 })
                 .thenWaitUntil(() -> f.await(f.lobby(f.a), "anchor death cancels old life"))
                 .thenExecute(() -> {
@@ -203,8 +202,8 @@ public final class PersonalHuntGameTest {
                     test.assertTrue(MonsterRoles.attack(f.a.player,f.c.player) && f.c.player.isDeadOrDying(), "A earns real entitlement by native lethal attack");
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.a.participant().revivalEntitled() && f.lobby(f.c), "A entitlement persisted"))
-                .thenExecute(() -> { f.c.player=f.c.current(); f.kill(f.a); })
-                .thenWaitUntil(() -> f.await(f.lobby(f.a), "A defeated with entitlement"))
+                .thenExecute(() -> f.c.player=f.c.current())
+                .thenWaitUntil(() -> f.await(f.lobby(f.a), "A recalled with entitlement"))
                 .thenExecute(() -> { f.a.player=f.a.current(); f.reply.set(null); var p=f.a.participant();
                     f.session.requestRevival(f.round().roundId(), f.a.id(), p.lifeSequence(), p.monsterDeploymentSequence(), f.reply::set); })
                 .thenWaitUntil(() -> f.await(f.reply.get()!=null && f.reply.get().success() && f.idle() && !PlayerProfiles.isLocked(f.a.player), "same UUID new human life"))
@@ -213,7 +212,7 @@ public final class PersonalHuntGameTest {
                     test.assertValueEqual(f.restoringShows,2,"Both new-life admissions expose restoring status before availability");
                     var identity = (dev.hardrush.core.hunt.PersonalHuntRequest)f.field(f.oldAttempt,"identity");
                     test.assertFalse(identity.targetMatches(f.round()), "Original request cannot match revived same UUID");
-                    f.refresh(); HuntInputFixtures.click(f.c.player, f.oldModel, InteractionHand.MAIN_HAND);
+                    f.refresh(); HuntInputFixtures.click(f.b.player, f.oldModel, InteractionHand.MAIN_HAND);
                     test.assertTrue(f.searches().isEmpty(), "Old model cannot chase revived life");
                 });
         // Only these AWAY roster entries are pre-admitted fixtures, never claimed as native players.

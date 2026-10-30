@@ -120,13 +120,29 @@ public final class MonsterRoles {
         role.form = form; role.binding = MonsterRoundRuntime.identity(player) + ":" + UUID.randomUUID();
         role.settled = false; role.exposure = 0; role.conversion = -1;
         bind(player, role, true);
+        var kit = MonsterRoundRuntime.sortieKit(player);
+        // Vault gear takes its slot; the newest piece is worn and the rest are spares in the backpack.
+        var bought = new java.util.EnumMap<EquipmentSlot, ItemStack>(EquipmentSlot.class);
+        var spares = new ArrayList<ItemStack>();
+        var pieces = new ArrayList<>(kit.activeGear());
+        pieces.sort(java.util.Comparator.comparingInt(dev.hardrush.core.round.MonsterWallet.GearPiece::serial).reversed());
+        for (var piece : pieces) {
+            var stack = MonsterGacha.decode(player.level().registryAccess(), piece.item());
+            if (stack.isEmpty()) continue;
+            var slot = MonsterGacha.equipmentSlot(piece.slot());
+            if (bought.containsKey(slot)) spares.add(stack); else bought.put(slot, stack);
+        }
         if (form != MonsterForm.CREEPER) {
             for (var entry : MonsterSpawnEquipment.generate(player, role.model, form.skeleton()).entrySet())
-                if (!entry.getValue().isEmpty()) player.setItemSlot(entry.getKey(), MonsterItems.bind(player, entry.getValue(), "gear"));
+                if (!entry.getValue().isEmpty() && !bought.containsKey(entry.getKey()))
+                    player.setItemSlot(entry.getKey(), MonsterItems.bind(player, entry.getValue(), "gear"));
+            bought.forEach((slot, stack) -> player.setItemSlot(slot, MonsterItems.bind(player, stack, "gear")));
         }
         if (form.zombie()) {
-            player.getInventory().setItem(1, MonsterCompanions.egg(player, true, false));
-            player.getInventory().setItem(2, MonsterCompanions.egg(player, false, false));
+            player.getInventory().setItem(1, MonsterCompanions.egg(player, true, false)
+                    .copyWithCount(1 + kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG)));
+            player.getInventory().setItem(2, MonsterCompanions.egg(player, false, false)
+                    .copyWithCount(1 + kit.carried(dev.hardrush.core.round.ShopOffer.ADULT_EGG)));
         } else if (form.skeleton()) {
             player.getInventory().setItem(1, MonsterItems.bind(player,
                 named(Items.BONE, "骷髅：三连射", "持弓时右键使用；每 0.3 秒一箭，冷却 20 秒"), "burst"));
@@ -134,8 +150,38 @@ public final class MonsterRoles {
         player.getInventory().setItem(7, MonsterItems.bind(player,
             named(Items.ECHO_SHARD, "归返营地 · 右键引导 5 秒", "移动、攻击、使用物品或受伤会中断"), "return"));
         player.getInventory().setSelectedSlot(0);
+        applyPurchases(player, kit, form, spares);
         repairLoadout(player);
         return "已进入怪物角色；可整理背包与装备，出生物资仅限本次出场本人使用。" + status(player);
+    }
+
+    /** Witch goods paid in the camp; everything left over is cleared with the rest of the sortie kit. */
+    private static void applyPurchases(ServerPlayer player, dev.hardrush.core.round.MonsterWallet kit, MonsterForm form,
+                                       List<ItemStack> spares) {
+        var rules = MonsterRoundRuntime.rules(player).orElse(DEFAULT_RULES);
+        if (!dev.hardrush.core.round.MonsterCoins.enabled(rules)) return;
+        if (form != MonsterForm.CREEPER) for (var spare : spares) player.getInventory().add(MonsterItems.bind(player, spare, "gear"));
+        int arrows = dev.hardrush.core.round.MonsterCoins.amount(rules, dev.hardrush.core.round.MonsterCoins.ARROWS_PER_BUNDLE);
+        for (var entry : java.util.Map.of(dev.hardrush.core.round.ShopOffer.SLOWNESS_ARROWS, net.minecraft.world.item.alchemy.Potions.SLOWNESS,
+                dev.hardrush.core.round.ShopOffer.POISON_ARROWS, net.minecraft.world.item.alchemy.Potions.POISON).entrySet()) {
+            int count = kit.carried(entry.getKey()) * arrows;
+            if (count > 0) player.getInventory().add(MonsterItems.bind(player, net.minecraft.world.item.alchemy.PotionContents
+                    .createItemStack(Items.TIPPED_ARROW, entry.getValue()).copyWithCount(count), "shop_arrow"));
+        }
+        effect(player, kit, dev.hardrush.core.round.ShopOffer.SWIFTNESS, net.minecraft.world.effect.MobEffects.SPEED,
+                rules, dev.hardrush.core.round.MonsterCoins.SWIFTNESS_SECONDS);
+        effect(player, kit, dev.hardrush.core.round.ShopOffer.FIRE_RESISTANCE, net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE,
+                rules, dev.hardrush.core.round.MonsterCoins.FIRE_RESISTANCE_SECONDS);
+        effect(player, kit, dev.hardrush.core.round.ShopOffer.REGENERATION, net.minecraft.world.effect.MobEffects.REGENERATION,
+                rules, dev.hardrush.core.round.MonsterCoins.REGENERATION_SECONDS);
+        if (form == MonsterForm.CREEPER && kit.carried(dev.hardrush.core.round.ShopOffer.CHARGED) > 0) MonsterCreeper.charge(player);
+    }
+
+    private static void effect(ServerPlayer player, dev.hardrush.core.round.MonsterWallet kit, dev.hardrush.core.round.ShopOffer offer,
+                               net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect, RulesConfig rules, String seconds) {
+        if (kit.carried(offer) <= 0) return;
+        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(effect,
+                dev.hardrush.core.round.MonsterCoins.amount(rules, seconds) * 20));
     }
 
     public static void clear(ServerPlayer player) {
@@ -210,6 +256,35 @@ public final class MonsterRoles {
         var role = ROLES.get(player.getUUID());
         if (role != null) settleInventory(player, role, death);
     }
+    /** A slain monster first rolls its worn sortie equipment like a native mob, then settles world items. */
+    public static void dropRoleEquipment(ServerPlayer player, net.minecraft.world.damagesource.DamageSource source) {
+        var role = ROLES.get(player.getUUID());
+        if (role == null) return;
+        if (!role.settled) dropWornEquipment(player, source, player.getRandom());
+        settleInventory(player, role, true);
+    }
+    /** Mob.dropCustomDeathLoot for spawned equipment: 8.5% per worn slot, looting adds, only for a player kill. */
+    static void dropWornEquipment(ServerPlayer player, net.minecraft.world.damagesource.DamageSource source,
+                                  net.minecraft.util.RandomSource random) {
+        if (player.getLastHurtByPlayer() == null) return;
+        for (var slot : EquipmentSlot.VALUES) {
+            if (slot.getType() != EquipmentSlot.Type.HUMANOID_ARMOR && slot.getType() != EquipmentSlot.Type.HAND) continue;
+            var stack = player.getItemBySlot(slot);
+            if (stack.isEmpty() || !MonsterItems.matches(player, stack, "gear")
+                    || EnchantmentHelper.has(stack, EnchantmentEffectComponents.PREVENT_EQUIPMENT_DROP)) continue;
+            float chance = SPAWNED_EQUIPMENT_DROP_CHANCE;
+            if (source.getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker)
+                chance = EnchantmentHelper.processEquipmentDropChance(player.level(), attacker, source, chance);
+            if (random.nextFloat() >= chance) continue;
+            var dropped = MonsterItems.unbind(stack.copy());
+            if (dropped.isDamageableItem()) dropped.setDamageValue(dropped.getMaxDamage()
+                    - random.nextInt(1 + random.nextInt(Math.max(dropped.getMaxDamage() - 3, 1))));
+            player.spawnAtLocation(player.level(), dropped);
+            player.setItemSlot(slot, ItemStack.EMPTY);
+        }
+    }
+    /** Mob's default drop chance for equipment it spawned with. */
+    static final float SPAWNED_EQUIPMENT_DROP_CHANCE = 0.085F;
     private static void settleInventory(ServerPlayer player, Role role, boolean death) {
         if (role.settled) return;
         role.settled = true;
@@ -477,7 +552,10 @@ public final class MonsterRoles {
     private static void shoot(ServerPlayer player, Role role, ItemStack weapon) {
         if (weapon.isEmpty()) return;
         syncNativeContext(player, role);
-        AbstractArrow arrow = ((MonsterSkeletonAccessor) role.model).hardrush$getArrow(selectedArrow(player), 1, weapon);
+        var ammunition = selectedArrow(player);
+        AbstractArrow arrow = ((MonsterSkeletonAccessor) role.model).hardrush$getArrow(ammunition, 1, weapon);
+        // Bought tipped arrows are real ammunition; any other arrow stays an unlimited native template.
+        if (MonsterItems.matches(player, ammunition, "shop_arrow")) ammunition.shrink(1);
         arrow.setOwner(player); MonsterCombatRuntime.stampSource(arrow, player);
         arrow.entityTags().add(SHOT_OWNER + player.getUUID()); arrow.entityTags().add(SHOT_BINDING + role.binding);
         arrow.pickup = AbstractArrow.Pickup.DISALLOWED; arrow.setCritArrow(false);

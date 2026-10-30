@@ -127,10 +127,9 @@ public final class FullFlowGameTest {
                     f.await(f.round().phase()==RoundPhase.RESCUE&&f.monster.participant().revivalEntitled()&&!f.session.mutationPending(),"Death batch grants entitlement then starts rescue");})
                 .thenExecute(()->{
                     test.assertValueEqual(f.session.view().orElseThrow().remainingPhaseMillis(),60000L,"Rescue starts at sixty seconds under controlled clock");
-                    state.use(f.monster.player,7);test.assertTrue(LobbyRuntime.channeling(f.monster.player),"Return item works in rescue");
-                    f.ageReturnChannel();
+                    test.assertValueEqual(f.monster.participant().role(),dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY,"The kill's revival sends the hunter straight back to the camp");
                 })
-                .thenWaitUntil(()->f.await(f.monsterReady(false),"Item return commits lobby and thirty-second cooldown"));
+                .thenWaitUntil(()->f.await(f.monsterReady(false),"Recalled hunter is in the camp with a thirty-second cooldown"));
         if (System.getProperty(TestProperties.FULL_FLOW_FAULT,"none").equals("revival")) {
             seq.thenExecute(state::revivalFault)
                     .thenWaitUntil(()->f.await(state.io.isDone(),"Real SQLite revival fault installed"))

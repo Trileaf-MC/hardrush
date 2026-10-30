@@ -68,8 +68,8 @@ public final class LobbyInteractions {
     }
     public void registerBlock(BlockPos pos, Block expected, LobbyContext context, Consumer<ServerPlayer> action) {
         requireThread(); synchronizeRound();
-        // The only initial block facilities are dedicated lecterns and pagination signs.
-        if (expected != Blocks.LECTERN && expected != Blocks.OAK_SIGN && expected != Blocks.OAK_WALL_SIGN)
+        // Block facilities are dedicated lecterns, pagination signs and the camp's two vaults.
+        if (expected != Blocks.LECTERN && expected != Blocks.OAK_SIGN && expected != Blocks.OAK_WALL_SIGN && expected != Blocks.VAULT)
             throw new IllegalArgumentException("Not a dedicated lobby facility block");
         blocks.put(pos.immutable(), new BlockEntry(Objects.requireNonNull(round()), expected,
                 Objects.requireNonNull(context), Objects.requireNonNull(action)));
