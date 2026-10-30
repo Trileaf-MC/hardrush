@@ -70,6 +70,19 @@ class HuntBarsTest {
         assertEquals(List.of(), view.update(List.of(passer(b, 40)), settings, 6_500).monsters());
     }
 
+    @Test void fallenAttackerOnlyKeepsTheRemainingDamageLinger() {
+        var view = new HuntBars.HumanView();
+        // The adapter reports a body that died in the same blast as a non-hunting candidate.
+        view.damaged(a, 1_000);
+        assertEquals(List.of(a), view.update(List.of(passer(a, 2)), settings, 1_200).monsters());
+        assertEquals(List.of(a), view.update(List.of(passer(a, 2)), settings, 3_999).monsters());
+        assertEquals(List.of(), view.update(List.of(passer(a, 2)), settings, 4_000).monsters());
+        // A proximity-only hunter that falls is not kept longer than its existing linger either.
+        assertEquals(List.of(b), view.update(List.of(hunter(b, 3)), settings, 5_000).monsters());
+        assertEquals(List.of(b), view.update(List.of(passer(b, 3)), settings, 7_999).monsters());
+        assertEquals(List.of(), view.update(List.of(passer(b, 3)), settings, 8_000).monsters());
+    }
+
     @Test void damageFromAnInvalidOrOtherDimensionMonsterIsDropped() {
         var view = new HuntBars.HumanView();
         view.damaged(a, 0);

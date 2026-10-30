@@ -134,6 +134,32 @@ public final class PersonalHuntGameTest {
         });
         // Changed terrain and target movement AFTER real SQLite submission, BEFORE the native callback.
         f.commitRace(s, false); f.commitRace(s, true);
+        // A creeper's blast kills its own body in the same call; the surviving bystander must still see the bar.
+        s.thenExecute(() -> f.d.role("creeper"))
+                .thenWaitUntil(() -> f.await(f.idle() && f.d.participant().monsterRole()==MonsterRole.CREEPER
+                        && f.d.participant().monsterCooldownNanos()==0, "creeper role for blast bar"))
+                .thenExecute(() -> {
+                    f.move(f.a, 0); f.move(f.b, 0);
+                    f.b.player.teleportTo(f.levels[0], f.anchor[0].x + 10, f.anchor[0].y, f.anchor[0].z, Set.of(), 0,0,true);
+                    f.d.hunt(f.a); f.refresh();
+                })
+                .thenWaitUntil(() -> f.await(f.deployed(f.d, 0), "creeper hunts A"))
+                .thenExecute(() -> {
+                    f.sunrise();
+                    f.d.player.teleportTo(f.b.player.level(), f.b.player.getX()+4.5, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
+                    f.b.player.setHealth(20); f.b.player.setInvulnerableTime(0);
+                    var inventory = f.d.player.getInventory();
+                    for (int slot = 0; slot < 9; slot++)
+                        if (dev.hardrush.monster.MonsterItems.matches(f.d.player, inventory.getItem(slot), "igniter")) inventory.setSelectedSlot(slot);
+                    test.assertTrue(dev.hardrush.monster.MonsterCreeper.use(f.d.player, InteractionHand.MAIN_HAND), "Bound igniter starts the fuse");
+                    for (int tick = 0; tick < 40 && f.d.player.isAlive(); tick++) dev.hardrush.monster.MonsterCreeper.tick(f.d.player);
+                    test.assertTrue(!f.d.player.isAlive(), "The blast kills the creeper body in the same call");
+                    test.assertTrue(f.b.player.isAlive() && f.b.player.getHealth() < 20, "Bystander B survives the blast hurt");
+                })
+                .thenWaitUntil(() -> f.await(f.huntBars(f.b).equals(List.of("来自 HuntD 的追猎@0.0")) && f.huntBars(f.a).isEmpty(),
+                        "blast victim sees the fallen creeper's empty bar"))
+                .thenWaitUntil(() -> f.await(f.lobby(f.d) && f.huntBars(f.b).isEmpty(), "fallen creeper bar ends with the damage linger"))
+                .thenExecute(() -> { f.d.player = f.d.current(); f.b.player.setHealth(20); });
         s.thenExecute(() -> f.c.role("zombie"))
                 .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterRole()==MonsterRole.ZOMBIE,"physical role for non-anchor melee"))
                 .thenExecute(() -> {
@@ -328,7 +354,7 @@ public final class PersonalHuntGameTest {
             var target = ((Map<UUID,Object>)field(binding,"targets")).get(p.id());
             if (target != null) bars.add((net.minecraft.server.level.ServerBossEvent)field(target,"bar"));
             for (var bar : bars) if (bar.isVisible() && bar.getPlayers().stream().anyMatch(viewer -> viewer.getUUID().equals(p.id())))
-                titles.add(bar.getName().getString());
+                titles.add(bar.getName().getString() + (bar.getProgress() == 0 ? "@0.0" : ""));
             return titles;
         }
         boolean idle() { return !session.mutationPending(); }

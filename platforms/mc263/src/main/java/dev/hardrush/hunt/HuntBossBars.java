@@ -17,6 +17,7 @@ import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.BossEvent;
+import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +29,10 @@ public final class HuntBossBars {
     private static final Logger LOGGER = LoggerFactory.getLogger("hardrush-hunt");
     private static final int UPDATE_TICKS = 4;
     private record Sortie(UUID round, int hunterLife, int deployment, UUID target, int targetLife) {}
+    /** Last direct hit by a monster player, kept for the damage linger even if that body dies in the same call. */
+    private record Attacker(String name, ServerLevel level, Vec3 position, long until) {}
+    /** What a human slot shows: a live body, or an attacker whose body already fell (empty bar). */
+    private record Shown(String name, float progress, ServerLevel level, Vec3 position, double visibility, boolean live) {}
     private static final class HumanBars {
         final HuntBars.HumanView view = new HuntBars.HumanView();
         final List<ServerBossEvent> slots = new ArrayList<>();
@@ -43,6 +48,7 @@ public final class HuntBossBars {
         final Map<UUID, Sortie> sorties = new HashMap<>();
         final Map<UUID, HumanBars> humans = new HashMap<>();
         final Map<UUID, TargetBar> targets = new HashMap<>();
+        final Map<UUID, Attacker> attackers = new HashMap<>();
     }
     private static final Map<MinecraftServer, Binding> BINDINGS = new IdentityHashMap<>();
     private HuntBossBars() {}
@@ -79,8 +85,15 @@ public final class HuntBossBars {
         if (monster == null || monster.role() != ParticipantRole.MONSTER_DEPLOYED
                 || monster.lifeSequence() != origin.actor().lifeSequence()
                 || monster.monsterDeploymentSequence() != origin.actor().deploymentSequence()) return;
-        binding(victim.level().getServer()).humans.computeIfAbsent(victim.getUUID(), ignored -> new HumanBars())
-                .view.damaged(monster.id(), now());
+        var b = binding(victim.level().getServer());
+        long now = now();
+        b.humans.computeIfAbsent(victim.getUUID(), ignored -> new HumanBars()).view.damaged(monster.id(), now);
+        // A creeper's blast kills its own body in the same call, before the next bar update runs.
+        var body = victim.level().getServer().getPlayerList().getPlayer(monster.id());
+        var level = body != null && body.level() instanceof ServerLevel own ? own : (ServerLevel) victim.level();
+        var attacker = new Attacker(body != null ? body.getScoreboardName() : monster.name(), level,
+                body != null ? body.position() : victim.position(), now + HuntBars.LINGER_MILLIS);
+        b.attackers.merge(monster.id(), attacker, (old, next) -> next.until() >= old.until() ? next : old);
     }
 
     public static void tick(MinecraftServer server, RoundSnapshot round, RoundSession session) {
@@ -98,9 +111,11 @@ public final class HuntBossBars {
         var bodies = new LinkedHashMap<UUID, ServerPlayer>();
         for (var id : b.sorties.keySet()) {
             var player = server.getPlayerList().getPlayer(id);
-            if (player != null && player.isAlive() && !player.isSpectator() && MonsterRoles.isMonster(player)) bodies.put(id, player);
+            if (player != null && player.isAlive() && !player.isSpectator() && MonsterRoles.isMonster(player)
+                    && player.level() instanceof ServerLevel level && !LobbyWorld.isLobby(level)) bodies.put(id, player);
         }
         long now = now();
+        b.attackers.values().removeIf(attacker -> attacker.until() <= now);
         humans(server, round, b, bodies, active, now);
         targets(server, round, b, bodies, active, now);
     }
@@ -108,6 +123,13 @@ public final class HuntBossBars {
     private static void humans(MinecraftServer server, RoundSnapshot round, Binding b, Map<UUID, ServerPlayer> bodies,
                                boolean active, long now) {
         var viewers = new HashSet<UUID>();
+        var shown = new LinkedHashMap<UUID, Shown>();
+        bodies.forEach((id, monster) -> shown.put(id, new Shown(monster.getScoreboardName(),
+                progress(monster.getHealth(), monster.getMaxHealth()), (ServerLevel) monster.level(), monster.position(),
+                // The real body's vanilla detection modifiers: sneaking and invisibility with armor cover.
+                monster.getVisibilityPercent((ServerLevel) monster.level(), null), true)));
+        b.attackers.forEach((id, attacker) -> shown.putIfAbsent(id,
+                new Shown(attacker.name(), 0, attacker.level(), attacker.position(), 1.0, false)));
         if (active) for (var human : round.participants().values()) {
             if (human.role() != ParticipantRole.HUMAN_ACTIVE || !human.online()) continue;
             var player = server.getPlayerList().getPlayer(human.id());
@@ -116,16 +138,15 @@ public final class HuntBossBars {
             viewers.add(human.id());
             var bars = b.humans.computeIfAbsent(human.id(), ignored -> new HumanBars());
             var candidates = new ArrayList<HuntBars.HumanView.Candidate>();
-            bodies.forEach((id, monster) -> {
+            shown.forEach((id, monster) -> {
                 var sortie = b.sorties.get(id);
-                double distance = monster.level() == level ? monster.distanceTo(player) : Double.NaN;
-                // The real body's vanilla detection modifiers: sneaking and invisibility with armor cover.
-                double visibility = monster.level() instanceof ServerLevel monsterLevel ? monster.getVisibilityPercent(monsterLevel, null) : 1.0;
-                candidates.add(new HuntBars.HumanView.Candidate(id, distance, visibility,
-                        sortie.target().equals(human.id()) && sortie.targetLife() == human.lifeSequence()));
+                double distance = monster.level() == level ? monster.position().distanceTo(player.position()) : Double.NaN;
+                // A fallen attacker never counts as hunting: only an unexpired damage linger can keep it shown.
+                candidates.add(new HuntBars.HumanView.Candidate(id, distance, monster.visibility(), monster.live() && sortie != null
+                        && sortie.target().equals(human.id()) && sortie.targetLife() == human.lifeSequence()));
             });
             var frame = bars.view.update(candidates, b.settings, now);
-            render(player, bars, frame, bodies);
+            render(player, bars, frame, shown);
         }
         for (var it = b.humans.entrySet().iterator(); it.hasNext();) {
             var entry = it.next();
@@ -135,15 +156,15 @@ public final class HuntBossBars {
         }
     }
 
-    private static void render(ServerPlayer viewer, HumanBars bars, HuntBars.HumanView.Frame frame, Map<UUID, ServerPlayer> bodies) {
+    private static void render(ServerPlayer viewer, HumanBars bars, HuntBars.HumanView.Frame frame, Map<UUID, Shown> shown) {
         while (bars.slots.size() < frame.monsters().size()) bars.slots.add(bar());
         // Fixed slots keep the client's insertion order equal to the distance order.
         for (int i = 0; i < bars.slots.size(); i++) {
             var slot = bars.slots.get(i);
             if (i >= frame.monsters().size()) { slot.setVisible(false); continue; }
-            var monster = bodies.get(frame.monsters().get(i));
-            slot.setName(Component.literal(HuntBars.humanTitle(monster.getScoreboardName())));
-            slot.setProgress(progress(monster.getHealth(), monster.getMaxHealth()));
+            var monster = shown.get(frame.monsters().get(i));
+            slot.setName(Component.literal(HuntBars.humanTitle(monster.name())));
+            slot.setProgress(monster.progress());
             slot.setDarkenScreen(i == 0 && frame.darken());
             attach(slot, viewer);
             slot.setVisible(true);
@@ -198,5 +219,6 @@ public final class HuntBossBars {
         if (b == null) return;
         b.humans.values().forEach(bars -> bars.slots.forEach(ServerBossEvent::removeAllPlayers));
         b.targets.values().forEach(bar -> bar.bar.removeAllPlayers());
+        b.attackers.clear();
     }
 }
