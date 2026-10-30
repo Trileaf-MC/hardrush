@@ -166,6 +166,33 @@ class MonsterCoinTimingSessionTest {
         }
     }
 
+    @Test void worthCountsBufferedQueuedPendingAndCommittedDamageExactlyOnce() throws Exception {
+        try (var session = open(seed())) {
+            assertEquals(OptionalInt.of(100), session.monsterWorth(monster), "A fresh sortie is worth the base");
+            clock.set(seconds(5));
+            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 4_000);
+            assertEquals(OptionalInt.of(140), session.monsterWorth(monster), "A buffered hit counts before any flush");
+            clock.set(seconds(6));
+            session.tick();
+            assertTrue(session.mutationPending(), "The first flush is being written");
+            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 2_000);
+            clock.set(seconds(7));
+            session.tick();
+            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 1_000);
+            assertEquals(OptionalInt.of(170), session.monsterWorth(monster),
+                    "The pending write, the queued flush behind it and the buffer each count once");
+            clock.set(seconds(8));
+            settle(session);
+            assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
+            assertEquals(7, coins(session));
+            assertEquals(OptionalInt.of(170), session.monsterWorth(monster));
+            assertTrue(session.monsterWorth(human).isEmpty(), "Only a deployed monster body has worth");
+            session.captureDeath(round, monster, 1, 3, null, true);
+            settle(session);
+            assertTrue(session.monsterWorth(monster).isEmpty(), "A body back in the camp has no worth");
+        }
+    }
+
     private int coins(RoundSession session) { return session.snapshot().orElseThrow().participants().get(monster).wallet().coins(); }
 
     private static long seconds(long value) { return TimeUnit.SECONDS.toNanos(value); }

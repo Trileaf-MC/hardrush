@@ -83,6 +83,14 @@ public record RulesConfig(
                 throw new IllegalArgumentException("怪物币价格翻倍后不能超过 64，且需配置购买上限: " + key);
             }
         });
+        if (copy.keySet().stream().anyMatch(key -> key.startsWith("worth."))) {
+            if (!copy.keySet().containsAll(WORTH_DEFAULTS.keySet())) {
+                throw new IllegalArgumentException("身价参数必须完整配置: " + WORTH_DEFAULTS.keySet());
+            }
+            if (copy.get("worth.baseXp") > copy.get("worth.maxXp")) {
+                throw new IllegalArgumentException("身价基础经验不能超过身价上限");
+            }
+        }
         combatValues = Collections.unmodifiableSortedMap(copy);
         if (!Double.isFinite(protectionRadius) || protectionRadius <= 0 || protectionRadius > 30_000_000) {
             throw new IllegalArgumentException("保护半径必须为有效的正数");
@@ -116,7 +124,7 @@ public record RulesConfig(
                 Map.entry("monster.deployCooldownMillis", 30_000.0),
                 Map.entry("monster.returnChannelMillis", 5_000.0),
                 Map.entry("round.rescueMillis", 60_000.0)),
-                32.0, 30_000, 90_000, 30_000).withCoinDefaults();
+                32.0, 30_000, 90_000, 30_000).withEconomyDefaults();
     }
 
     /** Monster coin economy; each offer's price doubles per purchase within one sortie. */
@@ -146,11 +154,21 @@ public record RulesConfig(
             Map.entry("coin.price.trialKey", 15.0), Map.entry("coin.limit.trialKey", 2.0),
             Map.entry("coin.price.ominousKey", 40.0), Map.entry("coin.limit.ominousKey", 1.0));
 
-    /** Adds missing coin values to stored pending rules; values an operator already set are kept. */
-    public RulesConfig withCoinDefaults() {
-        if (COIN_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)) return this;
+    /** A slain monster sprays 100 to 315 experience; from level 10 of worth it also leaves a book. */
+    private static final Map<String, Double> WORTH_DEFAULTS = Map.ofEntries(
+            Map.entry("worth.baseXp", 100.0),
+            Map.entry("worth.xpPerDamage", 10.0),
+            Map.entry("worth.maxXp", 315.0),
+            Map.entry("worth.bookMinLevel", 10.0),
+            Map.entry("worth.bookCostPerLevel", 2.0));
+
+    /** Adds missing coin and worth values to stored pending rules; values an operator already set are kept. */
+    public RulesConfig withEconomyDefaults() {
+        if (COIN_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
+                && WORTH_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)) return this;
         var values = new TreeMap<>(combatValues);
         COIN_DEFAULTS.forEach(values::putIfAbsent);
+        WORTH_DEFAULTS.forEach(values::putIfAbsent);
         return new RulesConfig(schemaVersion, mode, minecraftVersion, difficulty, generationRule, values,
                 protectionRadius, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
@@ -164,7 +182,7 @@ public record RulesConfig(
 
     /** Only for pending/new rounds. Never apply this to an existing round snapshot. */
     public RulesConfig forNewRound() {
-        return withHuntRule(HuntRule.PERSONAL_TARGET).withCoinDefaults();
+        return withHuntRule(HuntRule.PERSONAL_TARGET).withEconomyDefaults();
     }
 
     public RulesConfig withHuntRule(HuntRule rule) {
@@ -297,6 +315,9 @@ public record RulesConfig(
         if (key.startsWith("coin.") && !key.startsWith("coin.bounty.")
                 && (value != Math.rint(value) || value > Integer.MAX_VALUE)) {
             throw new IllegalArgumentException("怪物币参数必须是整数: " + key);
+        }
+        if (key.startsWith("worth.") && (value != Math.rint(value) || value > 1_000_000)) {
+            throw new IllegalArgumentException("身价参数必须是不超过 1000000 的整数: " + key);
         }
         if (key.startsWith("coin.limit.") && value > 8) throw new IllegalArgumentException("单次出场购买上限不能超过 8: " + key);
         if (key.equals("zombie.summonMaxDistance") && value > 30_000_000) {

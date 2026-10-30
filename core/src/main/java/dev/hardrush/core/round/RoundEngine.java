@@ -569,26 +569,33 @@ public final class RoundEngine {
      */
     public RoundTransition proposeMonsterDamageCoins(UUID eventId, UUID roundId, List<DamageCoins> entries) {
         RoundSnapshot before = capture();
+        return proposal(eventId, "MONSTER_DAMAGE_COINS", before, before.phase(), before.remainingPhaseNanos(),
+                creditDamageCoins(before, roundId, entries), before.result(), false);
+    }
+
+    /**
+     * The participants after crediting {@code entries} onto {@code before}. The adapter also uses
+     * this to project damage it has not committed yet, so a monster's worth never lags its hits.
+     */
+    public static Map<UUID, Participant> creditDamageCoins(RoundSnapshot before, UUID roundId, List<DamageCoins> entries) {
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         boolean open = before.roundId().equals(roundId) && MonsterCoins.enabled(before.rules())
                 && (before.phase() == RoundPhase.RUNNING || before.phase() == RoundPhase.RESCUE);
-        if (open) {
-            long cap = Math.multiplyExact((long) MonsterCoins.amount(before.rules(), MonsterCoins.DAMAGE_CAP), 1000L);
-            for (DamageCoins entry : List.copyOf(entries)) {
-                Participant owner = players.get(entry.owner());
-                Participant victim = before.participants().get(entry.victim());
-                // A sortie ended by return, disconnect or recall still owns the damage it dealt before
-                // ending; the next deployment advances the sequence and clears that sortie's credit.
-                if (owner == null || victim == null || owner.id().equals(victim.id())
-                        || owner.role() != ParticipantRole.MONSTER_DEPLOYED && owner.role() != ParticipantRole.MONSTER_LOBBY
-                        || owner.lifeSequence() != entry.ownerLife() || owner.monsterDeploymentSequence() != entry.sortie()
-                        || !victim.role().isActiveHuman() && victim.role() != ParticipantRole.MONSTER_LOBBY) continue;
-                int bounty = MonsterCoins.bountyPermille(before.rules(), entry.dimension(), victim.lifeHumanNanos());
-                players.put(owner.id(), owner.withWallet(owner.wallet().creditDamage(entry.victim(), entry.damageMilli(), bounty, cap)));
-            }
+        if (!open) return players;
+        long cap = Math.multiplyExact((long) MonsterCoins.amount(before.rules(), MonsterCoins.DAMAGE_CAP), 1000L);
+        for (DamageCoins entry : List.copyOf(entries)) {
+            Participant owner = players.get(entry.owner());
+            Participant victim = before.participants().get(entry.victim());
+            // A sortie ended by return, disconnect or recall still owns the damage it dealt before
+            // ending; the next deployment advances the sequence and clears that sortie's credit.
+            if (owner == null || victim == null || owner.id().equals(victim.id())
+                    || owner.role() != ParticipantRole.MONSTER_DEPLOYED && owner.role() != ParticipantRole.MONSTER_LOBBY
+                    || owner.lifeSequence() != entry.ownerLife() || owner.monsterDeploymentSequence() != entry.sortie()
+                    || !victim.role().isActiveHuman() && victim.role() != ParticipantRole.MONSTER_LOBBY) continue;
+            int bounty = MonsterCoins.bountyPermille(before.rules(), entry.dimension(), victim.lifeHumanNanos());
+            players.put(owner.id(), owner.withWallet(owner.wallet().creditDamage(entry.victim(), entry.damageMilli(), bounty, cap)));
         }
-        return proposal(eventId, "MONSTER_DAMAGE_COINS", before, before.phase(), before.remainingPhaseNanos(),
-                players, before.result(), false);
+        return players;
     }
 
     /** One buffered damage observation: actual milli-health a sortie took from one human. */
