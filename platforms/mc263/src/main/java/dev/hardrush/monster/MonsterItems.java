@@ -22,6 +22,13 @@ public final class MonsterItems {
         return stack;
     }
     public static boolean bound(ItemStack stack) { return !tag(stack).isEmpty(); }
+    /** A world copy of a sortie item, e.g. equipment a slain monster drops natively. */
+    public static ItemStack unbind(ItemStack stack) {
+        var data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        data.remove(KEY);
+        if (data.isEmpty()) stack.remove(DataComponents.CUSTOM_DATA); else stack.set(DataComponents.CUSTOM_DATA, CustomData.of(data));
+        return stack;
+    }
     public static String purpose(ItemStack stack) { return tag(stack).getStringOr("purpose", ""); }
     public static boolean owned(ServerPlayer owner, ItemStack stack) {
         var binding = tag(stack);

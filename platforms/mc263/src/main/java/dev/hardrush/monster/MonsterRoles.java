@@ -210,6 +210,35 @@ public final class MonsterRoles {
         var role = ROLES.get(player.getUUID());
         if (role != null) settleInventory(player, role, death);
     }
+    /** A slain monster first rolls its worn sortie equipment like a native mob, then settles world items. */
+    public static void dropRoleEquipment(ServerPlayer player, net.minecraft.world.damagesource.DamageSource source) {
+        var role = ROLES.get(player.getUUID());
+        if (role == null) return;
+        if (!role.settled) dropWornEquipment(player, source, player.getRandom());
+        settleInventory(player, role, true);
+    }
+    /** Mob.dropCustomDeathLoot for spawned equipment: 8.5% per worn slot, looting adds, only for a player kill. */
+    static void dropWornEquipment(ServerPlayer player, net.minecraft.world.damagesource.DamageSource source,
+                                  net.minecraft.util.RandomSource random) {
+        if (player.getLastHurtByPlayer() == null) return;
+        for (var slot : EquipmentSlot.VALUES) {
+            if (slot.getType() != EquipmentSlot.Type.HUMANOID_ARMOR && slot.getType() != EquipmentSlot.Type.HAND) continue;
+            var stack = player.getItemBySlot(slot);
+            if (stack.isEmpty() || !MonsterItems.matches(player, stack, "gear")
+                    || EnchantmentHelper.has(stack, EnchantmentEffectComponents.PREVENT_EQUIPMENT_DROP)) continue;
+            float chance = SPAWNED_EQUIPMENT_DROP_CHANCE;
+            if (source.getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker)
+                chance = EnchantmentHelper.processEquipmentDropChance(player.level(), attacker, source, chance);
+            if (random.nextFloat() >= chance) continue;
+            var dropped = MonsterItems.unbind(stack.copy());
+            if (dropped.isDamageableItem()) dropped.setDamageValue(dropped.getMaxDamage()
+                    - random.nextInt(1 + random.nextInt(Math.max(dropped.getMaxDamage() - 3, 1))));
+            player.spawnAtLocation(player.level(), dropped);
+            player.setItemSlot(slot, ItemStack.EMPTY);
+        }
+    }
+    /** Mob's default drop chance for equipment it spawned with. */
+    static final float SPAWNED_EQUIPMENT_DROP_CHANCE = 0.085F;
     private static void settleInventory(ServerPlayer player, Role role, boolean death) {
         if (role.settled) return;
         role.settled = true;
