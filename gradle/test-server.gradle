@@ -1,0 +1,161 @@
+// Daily test server: the production JARs in a reusable instance below test-server/.
+// Entry points are test-server.sh / test-server.cmd; they translate --options into
+// -PtestServer* properties, run prepareTestServer, then start the generated launcher.
+
+import groovy.json.JsonSlurper
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
+
+def option = { String name -> providers.gradleProperty("testServer${name}").orNull }
+def noBuild = option('NoBuild') == 'true'
+
+tasks.register('prepareTestServer') {
+    group = 'hardrush'
+    description = 'Build the mod and prepare a reusable dedicated test server in test-server/<instance>.'
+    if (!noBuild) dependsOn tasks.named('stageDemoMods')
+    doLast {
+        def instanceName = option('Instance') ?: 'default'
+        if (!(instanceName ==~ /[A-Za-z0-9][A-Za-z0-9_-]*/)) throw new GradleException("实例名只能包含字母、数字、- 和 _：${instanceName}")
+        def reset = option('Reset') ?: 'none'
+        if (!['none', 'world', 'all'].contains(reset)) throw new GradleException("--reset 只支持 world 或 all：${reset}")
+
+        def base = rootProject.file('test-server')
+        def dir = new File(base, instanceName)
+        def runtimeCache = new File(base, '.cache/runtime')
+        // Downloaded by the Fabric launcher on first start; immutable for one MC/loader pair.
+        def runtimePaths = ['.fabric/server', 'libraries', 'versions']
+        def levelName = { readProperties(new File(dir, 'server.properties')).getProperty('level-name', 'world') }
+
+        // Share the runtime between instances so a new instance or reset never re-downloads it.
+        // Only a server that reached world creation has a complete runtime worth caching.
+        if (new File(dir, "${levelName()}/level.dat").isFile()) {
+            runtimePaths.each { path ->
+                def local = new File(dir, path)
+                def cached = new File(runtimeCache, path)
+                if (local.isDirectory() && !cached.exists()) project.copy { from local; into cached }
+            }
+        }
+
+        if (reset == 'all' && dir.isDirectory()) {
+            dir.listFiles().each { child ->
+                if (child.name in ['libraries', 'versions']) return
+                if (child.name == '.fabric') {
+                    child.listFiles().findAll { it.name != 'server' }.each { project.delete(it) }
+                    return
+                }
+                project.delete(child)
+            }
+            logger.lifecycle("已重置实例（保留已下载的原版服务端与依赖库）：${dir}")
+        } else if (reset == 'world') {
+            def world = new File(dir, levelName()).canonicalFile
+            if (world.parentFile != dir.canonicalFile) throw new GradleException("level-name 必须是实例目录下的文件夹：${world}")
+            project.delete(world)
+            logger.lifecycle("已删除存档：${world}")
+        }
+        dir.mkdirs()
+
+        runtimePaths.each { path ->
+            def cached = new File(runtimeCache, path)
+            if (!new File(dir, path).exists() && cached.isDirectory()) project.copy { from cached; into new File(dir, path) }
+        }
+
+        def lock = new JsonSlurper().parse(rootProject.file('scripts/demo.lock.json'))
+        if (lock.minecraft != minecraft_version || lock.loader != loader_version) {
+            throw new GradleException('scripts/demo.lock.json 与 gradle.properties 的 Minecraft／Loader 版本不一致，请先更新锁文件。')
+        }
+        def launcher = new File(base, ".cache/fabric-server-${lock.minecraft}-${lock.loader}-${lock.installer}.jar")
+        if (!launcher.isFile() || sha256(launcher) != lock.launcher.sha256) {
+            logger.lifecycle("下载 Fabric 服务端启动器：${lock.launcher.url}")
+            launcher.parentFile.mkdirs()
+            def part = new File(launcher.path + '.part')
+            URI.create(lock.launcher.url).toURL().withInputStream { input -> part.withOutputStream { it << input } }
+            if (sha256(part) != lock.launcher.sha256) {
+                part.delete()
+                throw new GradleException('Fabric 服务端启动器 sha256 校验失败。')
+            }
+            Files.move(part.toPath(), launcher.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        }
+        project.copy { from launcher; into dir; rename { 'fabric-server.jar' } }
+
+        def mods = new File(dir, 'mods')
+        if (noBuild) {
+            if (!mods.listFiles()?.any { it.name.startsWith('hardrush-') }) {
+                throw new GradleException('实例里还没有 HardRush；第一次请不带 --no-build 运行。')
+            }
+        } else {
+            // Replace only our own JARs; anything else dropped into mods/ (spark etc.) stays.
+            mods.mkdirs()
+            mods.listFiles().findAll { it.name ==~ /(hardrush|fabric-api)-.*\.jar/ }.each { it.delete() }
+            project.copy { from tasks.named('stageDemoMods').get().destinationDir; into mods }
+        }
+
+        new File(dir, 'eula.txt').text = '# Accepted by test-server: https://aka.ms/MinecraftEULA\neula=true\n'
+
+        def serverProperties = new File(dir, 'server.properties')
+        if (!serverProperties.isFile()) {
+            serverProperties.text = [
+                    'motd=HardRush test server', 'server-port=25565', 'online-mode=true',
+                    'gamemode=survival', 'difficulty=hard', 'max-players=20',
+                    'spawn-protection=0', 'pause-when-empty-seconds=0', 'enable-rcon=false', '',
+            ].join('\n')
+        }
+        def port = option('Port')
+        if (port != null && !(port ==~ /\d+/ && (port as int) in 1024..65535)) throw new GradleException("端口必须在 1024-65535：${port}")
+        def onlineMode = option('OnlineMode')
+        setProperties(serverProperties, ['server-port': port, 'level-seed': option('Seed'), 'online-mode': onlineMode])
+
+        // JVM-level settings live in launch.properties so they stick to the instance like server.properties.
+        def launchFile = new File(dir, 'launch.properties')
+        def launch = readProperties(launchFile)
+        [memory: option('Memory'), mode: option('Mode'), competition: option('Competition')].each { key, value ->
+            if (value != null) launch.setProperty(key, value)
+        }
+        def memory = launch.getProperty('memory', '2G')
+        def mode = launch.getProperty('mode', 'hardcore')
+        def competition = launch.getProperty('competition', 'true')
+        if (!(memory ==~ /\d+[MG]/)) throw new GradleException("--memory 格式应为 2G 或 2048M：${memory}")
+        if (!['normal', 'hardcore'].contains(mode)) throw new GradleException("--mode 只支持 normal 或 hardcore：${mode}")
+        launch.putAll(memory: memory, mode: mode, competition: competition)
+        launchFile.withWriter('UTF-8') { launch.store(it, 'test-server launch settings') }
+
+        def java = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }.get().executablePath.asFile.absolutePath
+        def args = ["-Xms512M", "-Xmx${memory}", '--enable-native-access=ALL-UNNAMED',
+                    "-Dhardrush.competition.enabled=${competition}", "-Dhardrush.round.initialMode=${mode}",
+                    '-jar', 'fabric-server.jar', 'nogui'].join(' ')
+        def startSh = new File(dir, 'start.sh')
+        startSh.text = "#!/bin/sh\ncd \"\$(dirname \"\$0\")\" || exit 1\nexec \"${java}\" ${args} \"\$@\"\n"
+        startSh.setExecutable(true)
+        new File(dir, 'start.cmd').text = "@echo off\r\ncd /d \"%~dp0\"\r\n\"${java}\" ${args} %*\r\n"
+
+        def actualPort = readProperties(serverProperties).getProperty('server-port')
+        logger.lifecycle("""
+测试服实例：${dir}
+端口 ${actualPort} · 模式 ${mode} · 比赛运行时 ${competition} · 内存 ${memory} · 正版验证 ${readProperties(serverProperties).getProperty('online-mode')}
+已自动同意 Minecraft EULA（https://aka.ms/MinecraftEULA）""")
+    }
+}
+
+static String sha256(File file) {
+    def digest = MessageDigest.getInstance('SHA-256')
+    file.eachByte(1 << 16) { buffer, length -> digest.update(buffer, 0, length) }
+    digest.digest().encodeHex().toString()
+}
+
+static Properties readProperties(File file) {
+    def properties = new Properties()
+    if (file.isFile()) file.withReader('UTF-8') { properties.load(it) }
+    properties
+}
+
+// Edit server.properties in place so comments and keys the server wrote stay untouched.
+static void setProperties(File file, Map<String, String> values) {
+    def pending = values.findAll { it.value != null }
+    if (pending.isEmpty()) return
+    def lines = file.readLines('UTF-8').collect { line ->
+        def key = line.contains('=') && !line.startsWith('#') ? line.substring(0, line.indexOf('=')).trim() : null
+        key in pending ? "${key}=${pending.remove(key)}".toString() : line
+    }
+    lines.addAll(pending.collect { key, value -> "${key}=${value}".toString() })
+    file.write(lines.join('\n') + '\n', 'UTF-8')
+}
