@@ -2,11 +2,11 @@ package dev.hardrush.gametest;
 
 import com.mojang.serialization.JsonOps;
 import dev.hardrush.core.combat.CombatActor;
-import dev.hardrush.core.combat.DawnPact;
+import dev.hardrush.core.combat.DuskPact;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
-import dev.hardrush.pact.DawnPactData;
-import dev.hardrush.pact.DawnPactRuntime;
+import dev.hardrush.pact.DuskPactData;
+import dev.hardrush.pact.DuskPactRuntime;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.combat.MonsterCombatRuntime;
 import io.netty.channel.ChannelFutureListener;
@@ -41,23 +41,23 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /** Native server regressions; no graphical Minecraft client or computer use. */
-public final class DawnPactGameTest {
+public final class DuskPactGameTest {
     @GameTest(maxTicks=200)
     public void nativeSavedDataReusesOneStateAndReloadsFromDisk(GameTestHelper test) {
         var level = test.getLevel();
         var root = level.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
-                .resolve("hardrush/dawn-pact-storage-tests/" + UUID.randomUUID());
+                .resolve("hardrush/dusk-pact-storage-tests/" + UUID.randomUUID());
         try {
             java.nio.file.Files.createDirectories(root);
             try (var storage = new net.minecraft.world.level.storage.SavedDataStorage(root, net.minecraft.util.datafix.DataFixers.getDataFixer(), level.registryAccess())) {
-                var data = DawnPactData.get(storage, false);
+                var data = DuskPactData.get(storage, false);
                 data.start();
-                test.assertTrue(data == DawnPactData.get(storage, true), "All admissions/damage/UI reads use the same native saved instance");
-                test.assertTrue(data.protectedAt(23_999), "Final tick remains protected");
-                test.assertFalse(data.protectedAt(24_000), "Sunrise durably releases contract");
+                test.assertTrue(data == DuskPactData.get(storage, true), "All admissions/damage/UI reads use the same native saved instance");
+                test.assertTrue(data.protectedAt(12_999), "Final tick remains protected");
+                test.assertFalse(data.protectedAt(13_000), "Dusk durably releases contract");
             }
             try (var storage = new net.minecraft.world.level.storage.SavedDataStorage(root, net.minecraft.util.datafix.DataFixers.getDataFixer(), level.registryAccess())) {
-                var data = DawnPactData.get(storage, false);
+                var data = DuskPactData.get(storage, false);
                 test.assertTrue(data.started() && data.released(), "New native storage session reads both flags from the owned disk file");
                 test.assertFalse(data.protectedAt(0), "Reload and clock rewind cannot revive the contract");
             }
@@ -65,7 +65,7 @@ public final class DawnPactGameTest {
         test.succeed();
     }
     @GameTest(maxTicks=200)
-    public void pvpArrowsFireEffectsAndSummonsAreBlockedUntilSunrise(GameTestHelper test) {
+    public void pvpArrowsFireEffectsAndSummonsAreBlockedUntilDusk(GameTestHelper test) {
         try (var f = new Fixture(test)) {
             test.assertFalse(f.victim.hurtServer(f.level, f.level.damageSources().playerAttack(f.attacker), 4), "Direct PvP rejected");
             var arrow = new TestArrow(f.level, f.attacker);
@@ -79,7 +79,7 @@ public final class DawnPactGameTest {
             f.victim.removeAllEffects();
             var body = EntityTypes.ZOMBIE.create(f.level, EntitySpawnReason.COMMAND);
             f.roles.put(f.attacker.getUUID(), ParticipantRole.MONSTER_DEPLOYED);
-            test.assertTrue(DawnPactRuntime.reject(f.victim, f.attacker), "Human cannot harm a player in monster form either");
+            test.assertTrue(DuskPactRuntime.reject(f.victim, f.attacker), "Human cannot harm a player in monster form either");
             MonsterCombatRuntime.stampSource(body, f.attacker);
             test.assertFalse(body.doHurtTarget(f.level, f.victim), "Player-owned monster native attack rejected");
             body.discard();
@@ -87,12 +87,12 @@ public final class DawnPactGameTest {
             test.assertTrue(f.victim.hurtServer(f.level, f.level.damageSources().fall(), 2), "Environment damage still applies");
             f.victim.damageCooldownTime = 0;
             var natural = EntityTypes.ZOMBIE.create(f.level, EntitySpawnReason.COMMAND);
-            test.assertFalse(DawnPactRuntime.rejectDamage(f.victim, f.level.damageSources().mobAttack(natural)), "Natural mob is not attributed to a player");
+            test.assertFalse(DuskPactRuntime.rejectDamage(f.victim, f.level.damageSources().mobAttack(natural)), "Natural mob is not attributed to a player");
             test.assertTrue(f.victim.hurtServer(f.level, f.level.damageSources().mobAttack(natural), 2), "Natural mobs still hurt");
             natural.discard(); f.victim.damageCooldownTime = 0;
             test.assertTrue(f.victim.hurtServer(f.level, f.level.damageSources().playerAttack(f.victim), 1), "Self harm not reclassified as another player");
-            f.time(24_000); f.victim.damageCooldownTime = 0;
-            test.assertTrue(f.victim.hurtServer(f.level, f.level.damageSources().playerAttack(f.attacker), 2), "PvP enabled at sunrise without waiting for UI tick");
+            f.time(DuskPact.DUSK_TICKS); f.victim.damageCooldownTime = 0;
+            test.assertTrue(f.victim.hurtServer(f.level, f.level.damageSources().playerAttack(f.attacker), 2), "PvP enabled at dusk without waiting for UI tick");
             f.time(0); f.victim.damageCooldownTime = 0;
             test.assertTrue(f.victim.hurtServer(f.level, f.level.damageSources().playerAttack(f.attacker), 2), "Time rewind cannot reactivate protection");
         }
@@ -110,18 +110,18 @@ public final class DawnPactGameTest {
             test.assertFalse(f.victim.hurtServer(f.level, explosion, 10), "Frozen TNT attribution survives shooter going offline");
             var cloud = new net.minecraft.world.entity.AreaEffectCloud(f.level, f.victim.getX(), f.victim.getY(), f.victim.getZ());
             cloud.setOwner(f.attacker);
-            test.assertTrue(DawnPactRuntime.reject(cloud, f.victim), "Lingering potion uses its vanilla persisted owner reference");
+            test.assertTrue(DuskPactRuntime.reject(cloud, f.victim), "Lingering potion uses its vanilla persisted owner reference");
             test.assertFalse(f.victim.addEffect(new MobEffectInstance(MobEffects.POISON, 100), cloud), "Lingering poison blocked");
             cloud.discard();
             try (var action = CombatRuntime.explosion(f.level, tnt)) {
-                test.assertTrue(DawnPactRuntime.reject(null, f.victim), "Chained explosions with no native owner retain captured player source");
+                test.assertTrue(DuskPactRuntime.reject(null, f.victim), "Chained explosions with no native owner retain captured player source");
             }
             tnt.discard();
             var other = f.level.getServer().getLevel(net.minecraft.world.level.Level.NETHER);
             if (other != null) {
                 var original = f.victim.level();
                 f.victim.setServerLevel(other);
-                test.assertTrue(DawnPactRuntime.reject(f.attacker, f.victim), "Nether shares overworld grace deadline");
+                test.assertTrue(DuskPactRuntime.reject(f.attacker, f.victim), "Nether shares overworld grace deadline");
                 f.victim.setServerLevel(original);
             }
         }
@@ -129,37 +129,51 @@ public final class DawnPactGameTest {
     }
 
     @GameTest(maxTicks=200)
-    public void nativeBossbarSoundsJoinReconnectAndSunrisePackets(GameTestHelper test) {
-        try (var f = new Fixture(test); var capture = new Capture(f.victim)) {
-            f.time(0); DawnPactRuntime.tick(f.level.getServer());
-            test.assertValueEqual(capture.chats(DawnPact.INTRO), 1L, "Entering round explains protection once");
-            test.assertTrue(capture.packets.stream().anyMatch(ClientboundBossEventPacket.class::isInstance), "Native bossbar packet sent");
-            test.assertValueEqual(capture.boss().color, net.minecraft.world.BossEvent.BossBarColor.GREEN, "Initial native bar is green");
-            test.assertTrue(capture.boss().name.startsWith("黎明契约 · 日出前暂息纷争"), "Initial native bar has the agreed wording");
-            DawnPactRuntime.tick(f.level.getServer());
-            test.assertValueEqual(capture.chats(DawnPact.INTRO), 1L, "Repeated ticks do not spam intro");
-            f.time(20_400); DawnPactRuntime.tick(f.level.getServer());
+    public void titlesLateBossbarSoundsAndDuskPackets(GameTestHelper test) {
+        try (var f = new Fixture(test); var capture = new Capture(f.victim, false)) {
+            var server = f.level.getServer();
+            f.time(0); DuskPactRuntime.tick(server);
+            test.assertValueEqual(capture.titles(DuskPact.TITLE), 0L, "Entry title waits for the loading screen to close");
+            capture.loaded(); DuskPactRuntime.tick(server); DuskPactRuntime.tick(server);
+            test.assertValueEqual(capture.titles(DuskPact.TITLE), 1L, "Entering round explains protection once as a title");
+            test.assertValueEqual(capture.subtitles(DuskPact.INTRO), 1L, "Entry subtitle has the agreed wording");
+            test.assertFalse(capture.packets.stream().anyMatch(ClientboundBossEventPacket.class::isInstance), "Daylight shows no bossbar");
+            test.assertValueEqual(DuskPactRuntime.tabLine(server).orElse(""), "黄昏契约 · 日落前暂息纷争 · 10:50", "TAB footer carries the countdown");
+            DuskPactRuntime.reject(f.victim, f.attacker);
+            String blocked = "黄昏契约期间，你不可攻击其他玩家 · 剩余 10:50";
+            // The shared hint router owns the action bar when the lobby runtime is up; otherwise the pact sends it directly.
+            test.assertTrue(dev.hardrush.lobby.LobbyInteractions.get(server)
+                    .map(router -> router.hints(f.victim).current(System.nanoTime() / 1_000_000).filter(blocked::equals).isPresent())
+                    .orElseGet(() -> capture.actionBars(blocked) == 1), "Blocked hint names the remaining time");
+            f.time(9_400); DuskPactRuntime.tick(server);
+            test.assertTrue(capture.boss().active, "Bossbar appears at the 180-second warning");
             test.assertValueEqual(capture.boss().color, net.minecraft.world.BossEvent.BossBarColor.YELLOW, "180-second native bar is yellow");
-            test.assertValueEqual(capture.boss().name, "黎明契约即将解除 · 距猎杀开始还有 03:00", "Warning packet uses final user wording");
+            test.assertValueEqual(capture.boss().name, "夜幕将至 · 距猎杀开始还有 03:00", "Warning packet uses final user wording");
+            test.assertValueEqual(capture.boss().progress, 1F, "Late bar starts full");
             test.assertValueEqual(capture.sounds(), 1L, "180-real-second warning plays once");
-            f.time(22_800); DawnPactRuntime.tick(f.level.getServer());
+            f.time(11_800); DuskPactRuntime.tick(server);
             test.assertValueEqual(capture.boss().color, net.minecraft.world.BossEvent.BossBarColor.RED, "Final minute is red");
             test.assertValueEqual(capture.boss().name, "准备作战", "Final minute has exactly the requested text");
             test.assertValueEqual(capture.sounds(), 1L, "Final 60-second combat text does not start second-by-second sounds early");
             for (int seconds = 10; seconds >= 1; seconds--) {
-                f.time(24_000 - seconds * 20L);
-                DawnPactRuntime.tick(f.level.getServer()); DawnPactRuntime.tick(f.level.getServer());
+                f.time(DuskPact.DUSK_TICKS - seconds * 20L);
+                DuskPactRuntime.tick(server); DuskPactRuntime.tick(server);
+                test.assertValueEqual(capture.boss().name, "准备作战 · " + seconds, "Final seconds are counted on the bar");
             }
             test.assertValueEqual(capture.sounds(), 11L, "Last 10 seconds play exactly one cue each");
-            f.time(24_000); DawnPactRuntime.tick(f.level.getServer()); DawnPactRuntime.tick(f.level.getServer());
-            test.assertFalse(capture.boss().active, "Sunrise removes native bossbar");
-            test.assertValueEqual(capture.sounds(), 12L, "Sunrise sound occurs once");
-            test.assertValueEqual(capture.chats("极限追猎开始，祝你好运"), 1L, "Sunrise announcement occurs once");
-            test.assertTrue(capture.packets.stream().anyMatch(ClientboundSetSubtitleTextPacket.class::isInstance), "Sunrise native subtitle sent");
-            var encoded = DawnPactData.CODEC.encodeStart(JsonOps.INSTANCE, f.data).getOrThrow();
-            f.data = DawnPactData.CODEC.parse(JsonOps.INSTANCE, encoded).getOrThrow();
+            f.time(DuskPact.DUSK_TICKS); DuskPactRuntime.tick(server); DuskPactRuntime.tick(server);
+            test.assertFalse(capture.boss().active, "Dusk removes native bossbar");
+            test.assertValueEqual(capture.sounds(), 12L, "Dusk sound occurs once");
+            test.assertTrue(capture.lastSound() == net.minecraft.sounds.SoundEvents.BELL_BLOCK, "Dusk rings the vanilla bell");
+            test.assertValueEqual(capture.titles(DuskPact.RELEASED), 1L, "Dusk title occurs once");
+            test.assertValueEqual(capture.subtitles(DuskPact.releasedSubtitle(true)), 1L, "Hardcore subtitle announces the hunt");
+            test.assertValueEqual(capture.titles(DuskPact.TITLE), 1L, "Entry title never repeats within the round");
+            test.assertFalse(capture.packets.stream().anyMatch(ClientboundSystemChatPacket.class::isInstance), "Pact never writes to public chat");
+            test.assertTrue(DuskPactRuntime.tabLine(server).isEmpty(), "TAB countdown ends with the pact");
+            var encoded = DuskPactData.CODEC.encodeStart(JsonOps.INSTANCE, f.data).getOrThrow();
+            f.data = DuskPactData.CODEC.parse(JsonOps.INSTANCE, encoded).getOrThrow();
             f.time(0);
-            test.assertFalse(DawnPactRuntime.reject(f.attacker, f.victim), "Serialized release remains final after reload and clock rewind");
+            test.assertFalse(DuskPactRuntime.reject(f.attacker, f.victim), "Serialized release remains final after reload and clock rewind");
         }
         test.succeed();
     }
@@ -167,18 +181,18 @@ public final class DawnPactGameTest {
     @GameTest(maxTicks=200)
     public void preparationDoesNotSpendFirstDayAndReloadDoesNotResetIt(GameTestHelper test) {
         try (var f = new Fixture(test)) {
-            f.data = new DawnPactData(false, false); f.phase = RoundPhase.WAITING; f.time(30_000);
-            DawnPactRuntime.tick(f.level.getServer());
+            f.data = new DuskPactData(false, false); f.phase = RoundPhase.WAITING; f.time(30_000);
+            DuskPactRuntime.tick(f.level.getServer());
             test.assertFalse(f.data.started(), "Waiting never starts protection clock");
-            f.phase = RoundPhase.RUNNING; DawnPactRuntime.tick(f.level.getServer());
+            f.phase = RoundPhase.RUNNING; DuskPactRuntime.tick(f.level.getServer());
             test.assertValueEqual(f.clock().totalTicks(), 0L, "First actual start begins at sunrise");
             f.time(12_000);
-            var encoded = DawnPactData.CODEC.encodeStart(JsonOps.INSTANCE, f.data).getOrThrow();
-            f.data = DawnPactData.CODEC.parse(JsonOps.INSTANCE, encoded).getOrThrow();
-            DawnPactRuntime.tick(f.level.getServer());
+            var encoded = DuskPactData.CODEC.encodeStart(JsonOps.INSTANCE, f.data).getOrThrow();
+            f.data = DuskPactData.CODEC.parse(JsonOps.INSTANCE, encoded).getOrThrow();
+            DuskPactRuntime.tick(f.level.getServer());
             test.assertValueEqual(f.clock().totalTicks(), 12_000L, "Reloaded running round retains original day progress");
-            f.time(48_000); DawnPactRuntime.tick(f.level.getServer());
-            test.assertTrue(f.data.released(), "Sleeping/time jump beyond dawn releases protection");
+            f.time(48_000); DuskPactRuntime.tick(f.level.getServer());
+            test.assertTrue(f.data.released(), "Sleeping/time jump beyond dusk releases protection");
         }
         test.succeed();
     }
@@ -196,7 +210,7 @@ public final class DawnPactGameTest {
         final List<RuntimeFixtures.Scope> scopes = new ArrayList<>();
         final net.minecraft.world.clock.ClockState original;
         final net.minecraft.world.Difficulty difficulty;
-        DawnPactData data = new DawnPactData(true, false);
+        DuskPactData data = new DuskPactData(true, false);
         RoundPhase phase = RoundPhase.RUNNING;
         Fixture(GameTestHelper test) {
             this.test = test; level = test.getLevel(); original = clock().packState(); difficulty = level.getDifficulty();
@@ -213,10 +227,10 @@ public final class DawnPactGameTest {
                     return Optional.ofNullable(roles.get(id)).map(role -> new CombatActor(id, role, 1, role.isMonster() ? 1 : 0));
                 }
             }, event -> {}); scopes.add(evidence::close);
-            scopes.add(RuntimeFixtures.dawnPact(level.getServer(), new DawnPactRuntime.Access() {
+            scopes.add(RuntimeFixtures.duskPact(level.getServer(), new DuskPactRuntime.Access() {
                 public Optional<RoundSnapshot> snapshot() { return Optional.of(Fixture.this.snapshot()); }
                 public ServerLevel overworld() { return level; }
-                public DawnPactData data() { return data; }
+                public DuskPactData data() { return data; }
                 public boolean formalLevel(ServerLevel candidate) { return true; }
             }));
         }
@@ -250,31 +264,43 @@ public final class DawnPactGameTest {
         final ServerGamePacketListenerImpl previous;
         final List<Packet<?>> packets;
         final EmbeddedChannel channel;
-        Capture(ServerPlayer player) {
+        Capture(ServerPlayer player, boolean loaded) {
             this.player = player; previous = player.connection;
             var connection = new RecordingConnection(); packets = connection.packets;
             channel = new EmbeddedChannel(connection);
             player.connection = new ServerGamePacketListenerImpl(player.level().getServer(), connection, player,
                     CommonListenerCookie.createInitial(player.getGameProfile(), false));
+            if (loaded) loaded();
         }
+        void loaded() { player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket()); }
         long sounds() { return packets.stream().filter(ClientboundSoundPacket.class::isInstance).count(); }
+        Object lastSound() {
+            return packets.stream().filter(ClientboundSoundPacket.class::isInstance).map(ClientboundSoundPacket.class::cast)
+                    .reduce((first, second) -> second).orElseThrow().getSound().value();
+        }
         BossView boss() {
             var state = new BossView();
             packets.stream().filter(ClientboundBossEventPacket.class::isInstance).map(ClientboundBossEventPacket.class::cast).forEach(packet -> packet.dispatch(state));
             return state;
         }
-        long chats(String text) { return packets.stream().filter(ClientboundSystemChatPacket.class::isInstance)
-                .map(ClientboundSystemChatPacket.class::cast).filter(packet -> packet.content().getString().equals(text)).count(); }
+        long titles(String text) { return packets.stream().filter(ClientboundSetTitleTextPacket.class::isInstance)
+                .map(ClientboundSetTitleTextPacket.class::cast).filter(packet -> packet.text().getString().equals(text)).count(); }
+        long subtitles(String text) { return packets.stream().filter(ClientboundSetSubtitleTextPacket.class::isInstance)
+                .map(ClientboundSetSubtitleTextPacket.class::cast).filter(packet -> packet.text().getString().equals(text)).count(); }
+        long actionBars(String text) { return packets.stream().filter(ClientboundSetActionBarTextPacket.class::isInstance)
+                .map(ClientboundSetActionBarTextPacket.class::cast).filter(packet -> packet.text().getString().equals(text)).count(); }
         public void close() { player.connection = previous; channel.finishAndReleaseAll(); }
     }
     private static final class BossView implements ClientboundBossEventPacket.Handler {
         String name = "";
+        float progress;
         net.minecraft.world.BossEvent.BossBarColor color;
         boolean active;
         @Override public void add(UUID id, net.minecraft.network.chat.Component text, float progress, net.minecraft.world.BossEvent.BossBarColor color,
                 net.minecraft.world.BossEvent.BossBarOverlay overlay, boolean darken, boolean music, boolean fog) {
-            name = text.getString(); this.color = color; active = true;
+            name = text.getString(); this.progress = progress; this.color = color; active = true;
         }
+        @Override public void updateProgress(UUID id, float progress) { this.progress = progress; }
         @Override public void updateName(UUID id, net.minecraft.network.chat.Component text) { name = text.getString(); }
         @Override public void updateStyle(UUID id, net.minecraft.world.BossEvent.BossBarColor color, net.minecraft.world.BossEvent.BossBarOverlay overlay) { this.color = color; }
         @Override public void remove(UUID id) { active = false; }

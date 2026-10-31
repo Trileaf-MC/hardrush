@@ -134,13 +134,13 @@ public final class RoundWorldBundle implements AutoCloseable {
         return bundle;
     }
 
-    public dev.hardrush.pact.DawnPactData dawnPact() {
+    public dev.hardrush.pact.DuskPactData duskPact() {
         // Upgrading an already active round preserves its original day; only new rounds reset at admission.
         boolean existing = switch (snapshot.phase()) {
             case PREPARING, WAITING, COUNTDOWN -> false;
             default -> true;
         };
-        return dev.hardrush.pact.DawnPactData.get(level(Level.OVERWORLD), existing);
+        return dev.hardrush.pact.DuskPactData.get(level(Level.OVERWORLD), existing);
     }
 
     private void beginManifest() {

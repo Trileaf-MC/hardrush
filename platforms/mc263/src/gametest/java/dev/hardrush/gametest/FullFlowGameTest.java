@@ -62,10 +62,10 @@ public final class FullFlowGameTest {
                 .thenWaitUntil(()->f.await(f.humansReady(),"Two admitted human lives"))
                 .thenExecute(() -> {
                     f.prepareArena();
-                    // This combat fixture runs after the first-sunrise grace period, at night for the zombie body.
+                    // This combat fixture runs after the first-dusk grace period, at midnight for the zombie body.
                     var daylight = f.level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
                             .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
-                    f.level.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DawnPact.SUNRISE_TICKS + 18_000);
+                    f.level.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DuskPact.DUSK_TICKS + 5_000);
                 })
                 .thenWaitUntil(()->f.await(f.arenaTicking(),"Bounded fixture arena ticking"))
                 .thenExecute(()->{

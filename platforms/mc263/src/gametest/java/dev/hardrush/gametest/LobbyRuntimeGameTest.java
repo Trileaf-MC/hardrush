@@ -261,7 +261,7 @@ public final class LobbyRuntimeGameTest {
                                 + ", invulnerable=" + prey.player.getAbilities().invulnerable
                                 + ", distance=" + hunter.player.distanceTo(prey.player)
                                 + ", los=" + hunter.player.hasLineOfSight(prey.player)
-                                + ", pact=" + dev.hardrush.pact.DawnPactRuntime.reject(hunter.player, prey.player)
+                                + ", pact=" + dev.hardrush.pact.DuskPactRuntime.reject(hunter.player, prey.player)
                                 + ", sourceRejected=" + dev.hardrush.combat.MonsterCombatRuntime.reject(MonsterRoles.nativeModel(hunter.player), prey.player)
                                 + ", actor=" + MonsterRoles.status(hunter.player));
                         f.test.assertTrue(prey.player.isDeadOrDying(), "Actual native attack creates the lethal event");
@@ -469,12 +469,12 @@ public final class LobbyRuntimeGameTest {
             return true;
         }
         void allowCombat() {
-            // Combat starts after the first sunrise; do not bypass the production pact gate.
-            dev.hardrush.pact.DawnPactRuntime.tick(server);
+            // Combat starts at the first dusk; do not bypass the production pact gate.
+            dev.hardrush.pact.DuskPactRuntime.tick(server);
             var daylight = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
                     .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
-            level.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DawnPact.SUNRISE_TICKS + 18_000);
-            dev.hardrush.pact.DawnPactRuntime.tick(server);
+            level.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DuskPact.DUSK_TICKS + 5_000);
+            dev.hardrush.pact.DuskPactRuntime.tick(server);
         }
         void killMonsterPeer(boolean alreadyMonster) {
             dead = monster.player;

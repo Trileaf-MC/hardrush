@@ -1,6 +1,6 @@
 package dev.hardrush.pact;
 
-import dev.hardrush.core.combat.DawnPact;
+import dev.hardrush.core.combat.DuskPact;
 import dev.hardrush.core.lobby.LobbyHints;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.core.round.RoundSnapshot;
@@ -27,11 +27,11 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.gamerules.GameRules;
 
 /** Server-only grace policy and native UI. Protection is global to the round, independent of each viewer. */
-public final class DawnPactRuntime {
+public final class DuskPactRuntime {
     public interface Access {
         Optional<RoundSnapshot> snapshot();
         ServerLevel overworld();
-        DawnPactData data();
+        DuskPactData data();
         boolean formalLevel(ServerLevel level);
         default boolean locked() { return false; }
     }
@@ -40,12 +40,14 @@ public final class DawnPactRuntime {
         final ServerBossEvent bar = new ServerBossEvent(UUID.randomUUID(), Component.empty(), BossEvent.BossBarColor.GREEN, BossEvent.BossBarOverlay.PROGRESS);
         final Map<ServerPlayer, Long> viewers = new IdentityHashMap<>();
         final Map<UUID, Long> blockedAt = new HashMap<>();
+        final Set<UUID> introduced = new HashSet<>();
         UUID roundId;
+        String tab;
         boolean wasProtected;
         Binding(Access access) { this.access = access; }
     }
     private static final Map<MinecraftServer, Binding> BINDINGS = new IdentityHashMap<>();
-    private DawnPactRuntime() {}
+    private DuskPactRuntime() {}
 
     public static void configure(MinecraftServer server, Access access) { BINDINGS.put(server, new Binding(access)); }
     public static void close(MinecraftServer server) {
@@ -68,6 +70,17 @@ public final class DawnPactRuntime {
             data.start();
         }
         return data.protectedAt(level.clockManager().getInstance(clock).totalTicks());
+    }
+    private static DuskPact.Display display(Binding binding, MinecraftServer server) {
+        var level = binding.access.overworld();
+        var clock = level.clockManager().getInstance(level.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(WorldClocks.OVERWORLD));
+        return DuskPact.display(clock.totalTicks(), clock.partialTick(), clock.rate(), server.tickRateManager().tickrate(),
+                clock.isPaused() || !level.getGameRules().get(GameRules.ADVANCE_TIME) || server.tickRateManager().isFrozen());
+    }
+    /** Countdown line for the native TAB footer while the contract is shown; the bossbar stays hidden until the warning. */
+    public static Optional<String> tabLine(MinecraftServer server) {
+        var binding = BINDINGS.get(server);
+        return binding == null ? Optional.empty() : Optional.ofNullable(binding.tab);
     }
     private static UUID actor(Entity entity) { return actor(entity, 0); }
     private static UUID actor(Entity entity, int depth) {
@@ -125,61 +138,66 @@ public final class DawnPactRuntime {
         long now = System.nanoTime() / 1_000_000;
         if (now - binding.blockedAt.getOrDefault(player.getUUID(), Long.MIN_VALUE / 2) < 1_500) return;
         binding.blockedAt.put(player.getUUID(), now);
-        var router = LobbyInteractions.get(player.level().getServer()).orElse(null);
-        if (router != null) router.hints(player).offer("dawn-pact", LobbyHints.Priority.TARGET, DawnPact.BLOCKED, now + 1_500);
-        else player.connection.send(new ClientboundSetActionBarTextPacket(Component.literal(DawnPact.BLOCKED)));
+        var server = player.level().getServer();
+        String text = display(binding, server).blocked();
+        var router = LobbyInteractions.get(server).orElse(null);
+        if (router != null) router.hints(player).offer("dusk-pact", LobbyHints.Priority.TARGET, text, now + 1_500);
+        else player.connection.send(new ClientboundSetActionBarTextPacket(Component.literal(text)));
     }
     private static void sound(ServerPlayer player, net.minecraft.sounds.SoundEvent sound, float pitch) {
         player.connection.send(new ClientboundSoundPacket(net.minecraft.core.Holder.direct(sound), SoundSource.MASTER,
                 player.getX(), player.getY(), player.getZ(), .5F, pitch, player.getRandom().nextLong()));
+    }
+    private static void title(ServerPlayer player, int fadeIn, int stay, int fadeOut, String title, String subtitle) {
+        player.connection.send(new ClientboundSetTitlesAnimationPacket(fadeIn, stay, fadeOut));
+        player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(subtitle)));
+        player.connection.send(new ClientboundSetTitleTextPacket(Component.literal(title)));
     }
     public static void tick(MinecraftServer server) {
         var binding = BINDINGS.get(server);
         if (binding == null) return;
         var access = binding.access;
         var round = access.snapshot().orElse(null);
-        if (round == null) return;
+        if (round == null) { binding.tab = null; return; }
         if (!round.roundId().equals(binding.roundId)) {
-            binding.bar.removeAllPlayers(); binding.viewers.clear(); binding.blockedAt.clear();
+            binding.bar.removeAllPlayers(); binding.viewers.clear(); binding.blockedAt.clear(); binding.introduced.clear();
             binding.roundId = round.roundId(); binding.wasProtected = false;
         }
         boolean protectedNow = protectedNow(binding);
-        boolean displaying = protectedNow && !access.locked();
+        var display = protectedNow && !access.locked() ? display(binding, server) : null;
+        binding.tab = display == null ? null : display.tab();
+        boolean barShown = display != null && display.bar();
         var viewers = server.getPlayerList().getPlayers().stream().filter(player -> {
             var participant = round.participants().get(player.getUUID());
             return participant != null && (participant.role().isActiveHuman() || participant.role().isMonster())
                     && !player.isSpectator() && (access.formalLevel(player.level()) || participant.role().isMonster());
         }).toList();
-        for (var old : List.copyOf(binding.bar.getPlayers())) if (!displaying || !viewers.contains(old)) binding.bar.removePlayer(old);
+        for (var old : List.copyOf(binding.bar.getPlayers())) if (!barShown || !viewers.contains(old)) binding.bar.removePlayer(old);
         binding.viewers.keySet().removeIf(player -> server.getPlayerList().getPlayer(player.getUUID()) != player);
-        if (displaying) {
-            var level = access.overworld();
-            var clock = level.clockManager().getInstance(level.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(WorldClocks.OVERWORLD));
-            var display = DawnPact.display(clock.totalTicks(), clock.partialTick(), clock.rate(), server.tickRateManager().tickrate(),
-                    clock.isPaused() || !level.getGameRules().get(GameRules.ADVANCE_TIME) || server.tickRateManager().isFrozen());
-            binding.bar.setName(Component.literal(display.text()));
-            binding.bar.setColor(BossEvent.BossBarColor.valueOf(display.color().name()));
-            binding.bar.setProgress(display.progress());
+        if (display != null) {
+            if (barShown) {
+                binding.bar.setName(Component.literal(display.text()));
+                binding.bar.setColor(BossEvent.BossBarColor.valueOf(display.color().name()));
+                binding.bar.setProgress(display.progress());
+            }
             for (var player : viewers) {
-                binding.bar.addPlayer(player);
+                if (barShown) binding.bar.addPlayer(player);
+                // Wait for the loading screen to close; one entry title per player and round, never on respawn or reconnect.
+                if (player.connection.hasClientLoaded() && binding.introduced.add(player.getUUID()))
+                    title(player, 10, 80, 20, DuskPact.TITLE, DuskPact.INTRO);
                 Long previous = binding.viewers.put(player, display.seconds());
-                if (previous == null) player.sendSystemMessage(Component.literal(DawnPact.INTRO));
                 if (previous != null && display.seconds() < previous && display.advancing()) {
-                    if (previous > DawnPact.WARNING_SECONDS && display.seconds() <= DawnPact.WARNING_SECONDS)
+                    if (previous > DuskPact.WARNING_SECONDS && display.seconds() <= DuskPact.WARNING_SECONDS)
                         sound(player, SoundEvents.NOTE_BLOCK_CHIME.value(), 1);
-                    if (display.seconds() >= 1 && display.seconds() <= 10)
+                    if (display.seconds() >= 1 && display.seconds() <= DuskPact.FINAL_SECONDS)
                         sound(player, SoundEvents.NOTE_BLOCK_HAT.value(), display.seconds() <= 3 ? 1.5F : 1);
                 }
             }
         } else if (binding.wasProtected && !protectedNow && challenge(round) && access.overworld() != null && access.data().released()) {
+            boolean hardcore = round.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE;
             for (var player : viewers) {
-                String text = round.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE
-                        ? "极限追猎开始，祝你好运" : "黎明契约已解除，祝你好运";
-                player.connection.send(new ClientboundSetTitlesAnimationPacket(5, 50, 10));
-                player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal(text)));
-                player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("黎明契约已解除")));
-                player.sendSystemMessage(Component.literal(text));
-                sound(player, SoundEvents.NOTE_BLOCK_IRON_XYLOPHONE.value(), .8F);
+                title(player, 5, 50, 10, DuskPact.RELEASED, DuskPact.releasedSubtitle(hardcore));
+                sound(player, SoundEvents.BELL_BLOCK, 1);
             }
         }
         binding.wasProtected = protectedNow;

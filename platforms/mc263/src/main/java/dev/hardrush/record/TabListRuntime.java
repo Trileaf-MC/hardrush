@@ -24,8 +24,9 @@ public final class TabListRuntime {
         var text = RoundTab.from(round, endEntrants, problem);
         displayed.keySet().removeIf(connection -> server.getPlayerList().getPlayers().stream()
                 .noneMatch(player -> player.connection == connection));
+        String pact = dev.hardrush.pact.DuskPactRuntime.tabLine(server).map(line -> "\n" + line).orElse("");
         for (var player : server.getPlayerList().getPlayers()) {
-            var footer = Component.literal(text.footer());
+            var footer = Component.literal(text.footer() + pact);
             if (ParticipationControl.canWithdraw(player)) footer.append("\n").append(ParticipationControl.shortcutHint());
             var personal = new TabText(Component.literal(text.header()), footer);
             if (personal.equals(displayed.get(player.connection))) continue;

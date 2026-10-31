@@ -80,7 +80,7 @@ public final class MonsterCombatRuntime {
     public static boolean rejectCurrent(Entity target) { return reject(current(), target); }
     public static boolean rejectDamage(Entity target, DamageSource source) {
         if (target.level() instanceof ServerLevel level && CombatRuntime.participationRevoked(level, CombatRuntime.damageOrigin(level, source))) return true;
-        if (dev.hardrush.pact.DawnPactRuntime.rejectDamage(target, source)) return true;
+        if (dev.hardrush.pact.DuskPactRuntime.rejectDamage(target, source)) return true;
         // A launched arrow's frozen identity wins over a mutable native owner reference.
         if (source(source.getDirectEntity()).isPresent()) return reject(source.getDirectEntity(), target);
         if (capturedHuman(source.getDirectEntity())) return false;
@@ -90,7 +90,7 @@ public final class MonsterCombatRuntime {
     public static boolean rejectEffect(Entity source, Entity target, net.minecraft.world.effect.MobEffectInstance effect) {
         var action = current();
         if (!effect.getEffect().value().isBeneficial()
-                && dev.hardrush.pact.DawnPactRuntime.reject(action != null ? action : source, target)) return true;
+                && dev.hardrush.pact.DuskPactRuntime.reject(action != null ? action : source, target)) return true;
         if ((action instanceof AbstractArrow || action instanceof net.minecraft.world.entity.AreaEffectCloud)
                 && (source(action).isPresent() || capturedHuman(action))) {
             return rejectMonster(action, target);
@@ -105,7 +105,7 @@ public final class MonsterCombatRuntime {
                 .filter(p -> p.role().isMonster()).isPresent();
     }
     public static boolean reject(Entity entity, Entity target) {
-        return dev.hardrush.pact.DawnPactRuntime.reject(entity, target) || rejectMonster(entity, target);
+        return dev.hardrush.pact.DuskPactRuntime.reject(entity, target) || rejectMonster(entity, target);
     }
     private static boolean rejectMonster(Entity entity, Entity target) {
         if (target.level() instanceof ServerLevel arena && dev.hardrush.celebration.CelebrationRuntime.arena(arena)) {
