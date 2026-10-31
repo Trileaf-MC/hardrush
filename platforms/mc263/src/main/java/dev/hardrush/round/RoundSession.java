@@ -472,6 +472,9 @@ public final class RoundSession implements AutoCloseable {
         return engine.committed();
     }
 
+    /** True only inside the periodic checkpoint barrier, which locks competition for at most one blocking save. */
+    public boolean savingFullCheckpoint() { return fullCheckpointSaving; }
+
     public void endFullCheckpoint() {
         fullCheckpointSaving = false;
         if (state == State.OPEN && engine != null && !engine.pending()) {
