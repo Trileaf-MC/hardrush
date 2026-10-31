@@ -135,14 +135,13 @@ public final class CelebrationRuntime {
             tell(body, "你是本轮胜者！已获得不可损坏的鞘翅和 16 色烟花，原物资全部保留。跳入龙池即结束庆祝。");
         } else if (fallen.contains(id)) {
             body = guest(round, end, player, GameType.SPECTATOR);
-            tell(body, "你已在本次庆祝中阵亡，继续旁观到庆祝结束。");
         } else if (profiles.realRoundBody(player)) {
             move(end, player);
             body = player;
-            tell(body, "已集结到末地龙池旁，为胜者 " + winnerName + " 庆祝：原版生存，可 PvP 和建造，死亡转旁观，一切不计战绩。");
+            tell(body, "已集结到末地龙池旁，为胜者 " + winnerName + " 庆祝：原版生存，可 PvP 和建造，一切不计战绩。");
         } else {
             body = guest(round, end, player, GameType.SURVIVAL);
-            tell(body, "以空手生存身份来到末地龙池旁，为胜者 " + winnerName + " 庆祝：可 PvP 和建造，死亡转旁观，一切不计战绩。");
+            tell(body, "以空手生存身份来到末地龙池旁，为胜者 " + winnerName + " 庆祝：可 PvP 和建造，一切不计战绩。");
         }
         gathered.put(id, body);
         LOGGER.info("Gathered {} for winner {}: {} in {}", id, winner, body.gameMode.getGameModeForPlayer(), body.level().dimension().identifier());

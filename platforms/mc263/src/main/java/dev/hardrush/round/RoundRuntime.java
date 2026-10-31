@@ -586,9 +586,6 @@ public final class RoundRuntime {
         for (var p : after.participants().values()) {
             var previous = before.participants().get(p.id());
             var player = server.getPlayerList().getPlayer(p.id());
-            if (player != null && !p.role().isExcluded() && p.role() != ParticipantRole.LOBBY
-                    && (previous == null || previous.role() != p.role() || !previous.online() && p.online()))
-                dev.hardrush.participation.ParticipationControl.offerWithdrawal(player);
             if (player != null && p.role().isExcluded() && (previous == null || previous.role() != p.role()))
                 player.sendSystemMessage(Component.literal(p.role() == ParticipantRole.DISQUALIFIED
                         ? "你的本轮参赛资格已取消；本轮不能重新入场、追猎或复生，下轮恢复资格。"
@@ -623,7 +620,7 @@ public final class RoundRuntime {
                     : dev.hardrush.core.book.SafeBookText.literal(after.participants().get(after.result().winner()).name(), 64);
             server.getPlayerList().broadcastSystemMessage(Component.literal("本轮已通关：" + winner
                     + "，有效挑战 " + after.challengeMillis() + " ms。全员集结到末地龙池旁为胜者庆祝：胜者获得鞘翅和烟花；"
-                    + "庆祝期间为原版生存，可 PvP 和建造，死亡转旁观，一切不计战绩。胜者跳入龙池、阵亡或离线即结束，最长 "
+                    + "庆祝期间为原版生存，可 PvP 和建造，一切不计战绩。胜者跳入龙池、阵亡或离线即结束，最长 "
                     + (RoundEngine.successCelebrationMillis(after.rules()) + 999) / 1000 + " 秒（现实时间）。"), false);
         }
         if (after.phase() != RoundPhase.RUNNING && after.phase() != RoundPhase.RESCUE) return;

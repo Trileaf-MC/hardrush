@@ -16,9 +16,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Items;
@@ -133,13 +131,6 @@ public final class ParticipationControl {
         if (player.containerMenu == player.inventoryMenu) LobbyMenus.open(player, LobbyContext.WITHDRAWAL);
         player.containerMenu.sendAllDataToRemote();
         return true;
-    }
-
-    public static void offerWithdrawal(ServerPlayer player) {
-        player.sendSystemMessage(Component.literal("[退出本轮并观战]").withStyle(style -> style.withColor(ChatFormatting.GRAY)
-                .withUnderlined(true).withClickEvent(new ClickEvent.RunCommand("/hardrush spectate"))
-                .withHoverEvent(new HoverEvent.ShowText(Component.literal("点击打开确认菜单；退出后本轮不能重新参赛")))));
-        player.sendSystemMessage(Component.literal("常驻入口见 TAB · ").append(shortcutHint()));
     }
 
     public static boolean disabled(MinecraftServer server, UUID player) {
