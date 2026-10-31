@@ -394,7 +394,6 @@ public final class PlayerProfiles implements AutoCloseable {
             entry.exitObservationApplied = true;
             entry.adminSpectating = true;
             player.setGameMode(GameType.SPECTATOR);
-            player.sendSystemMessage(Component.literal("已进入观战；本轮不能重新参赛，下轮恢复资格。"));
         }
     }
 
