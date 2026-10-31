@@ -47,9 +47,14 @@ class FullCheckpointSessionTest {
             assertEquals(beforeFailedAttempt, session.view().orElseThrow().challengeNanos(), "A failure before export preserves time already raced");
             assertTrue(session.beginFullCheckpoint());
             Path exported = root.resolve("copy.sqlite");
+            // Commit listeners run inside the barrier, so UI that only hides on real locks must exempt it.
+            var committedDuringSave = new java.util.ArrayList<Boolean>();
+            session.onCommitted((before, after) -> committedDuringSave.add(session.competitionLocked() && session.savingFullCheckpoint()));
             var saved = session.exportFullCheckpoint(exported);
+            assertEquals(java.util.List.of(true), committedDuringSave);
             clock.addAndGet(TimeUnit.SECONDS.toNanos(4));
             session.endFullCheckpoint();
+            assertFalse(session.savingFullCheckpoint());
             assertEquals(saved, SqliteRoundStore.inspectLatest(exported).orElseThrow());
             assertEquals(saved.challengeNanos(), session.view().orElseThrow().challengeNanos());
         }

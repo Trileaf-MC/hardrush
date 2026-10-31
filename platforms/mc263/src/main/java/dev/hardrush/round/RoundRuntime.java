@@ -135,7 +135,9 @@ public final class RoundRuntime {
                     var overworld = overworld();
                     return overworld != null && RoundWorldBundle.sameRound(overworld, level);
                 }
-                public boolean locked() { return session.competitionLocked(); }
+                // Periodic checkpoints commit through applyPlayers while the world save blocks the server thread;
+                // hiding there would leave the bar off the client until the save finishes.
+                public boolean locked() { return session.competitionLocked() && !session.savingFullCheckpoint(); }
             });
             ProtectionRuntime.configure(server, new ProtectionRuntime.Access() {
                 @Override public Optional<ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) {
