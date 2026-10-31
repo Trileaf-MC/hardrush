@@ -10,3 +10,4 @@
 .codex/config.toml
 **/__pycache__/
 
+/test-server/
