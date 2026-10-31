@@ -21,7 +21,7 @@ public record RoundTab(String header, String footer) {
         }
         String header = "HardRush · 第 " + round.sequence() + " 轮 · "
                 + (round.rules().mode() == GameMode.NORMAL ? "普通" : "极限") + "\n" + state
-                + " · 有效挑战 " + duration(round.challengeMillis());
+                + " · 挑战用时 " + duration(round.challengeMillis());
         String footer = "人类在线 " + round.onlineHumans() + " / 离线 " + offline + " · 怪物 " + monsters
                 + "\n进入过末地 " + endEntrants + " 人";
         long withdrawn = round.participants().values().stream().filter(p -> p.role() == dev.hardrush.core.round.ParticipantRole.WITHDRAWN).count();
