@@ -586,3 +586,5 @@ tasks.named('runGameTest') {
         logger.lifecycle("Isolated stabilization storage: ${stabilizationRunDir}")
     }
 }
+
+apply from: rootProject.file('gradle/test-server.gradle')
