@@ -29,6 +29,7 @@ public final class PlayerFeedback {
                 .filter(state->state!=RoundSession.State.OPEN).isPresent();
         stageBar.setVisible(recovery||rescue||displaying);
         String terminalText=displaying?RoundResultText.stageLabel(round.result(), celebrating?"通关庆祝 · 胜者跳入龙池／阵亡／离线即结束":"结算展示"):"结算展示";
+        if(displaying&&round.result().kind()==RoundResult.Kind.FAILED)terminalText="全员挑战失败";
         stageBar.setName(Component.literal(recovery ? "恢复隔离 · 竞技入口关闭，请联系管理员" : (rescue?"救场 · 祭坛复生／中途门加入":terminalText)
                 + " · 剩余 " + (round.remainingPhaseMillis()+999)/1000 + " 秒"));
         long total=rescue?round.rules().combatValues().get("round.rescueMillis").longValue():completed
