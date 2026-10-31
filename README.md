@@ -17,3 +17,27 @@ HardRush 是面向原版客户端的多人速通挑战模组。主要特性如�
 友情提醒：初始时你可能只是一只原版的普通僵尸，但会随着不同的活动变得越来越强！
 
 体验一下成为一只 ～～平平无奇～～（并非）的 MC 僵尸是什么感觉！  
+
+## 本地测试服
+
+需要 Java 25。在仓库根目录运行一条命令，就会从当前源码构建模组，并在 `test-server/<实例名>/` 里启动一个已装好 HardRush 和 Fabric API 的 26.3 服务端。
+
+```bash
+./test-server.sh                     # macOS / Linux / WSL
+test-server.cmd                      # Windows（参数相同）
+```
+
+常用参数（`--help` 查看全部）：
+
+| 参数 | 作用 |
+| --- | --- |
+| `--reset world` | 只删除存档，保留配置、白名单、OP 和 mods |
+| `--reset all` | 实例恢复为全新状态，只保留已下载的原版服务端和依赖库，不会重新下载 |
+| `--instance NAME` | 使用另一个独立实例，默认 `default` |
+| `--port` / `--seed` / `--memory` | 端口（默认 25565）、新存档种子、最大内存（默认 2G） |
+| `--mode normal\|hardcore` | 新一轮的初始模式，默认 `hardcore` |
+| `--offline` / `--online` | 关闭／开启正版验证 |
+| `--no-competition` | 关闭比赛运行时 |
+| `--no-build` | 不重新构建，直接启动 |
+
+除 `--reset` 和 `--no-build` 外，其余参数会记在实例的 `server.properties` 和 `launch.properties` 里，之后不用重复传。每次启动时只替换 `mods/` 里的 HardRush 和 Fabric API，你自己放进去的其他模组会保留。控制台输入 `stop` 即可正常保存并退出。
