@@ -145,7 +145,7 @@ public final class PersonalHuntGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(f.d, 0), "creeper hunts A"))
                 .thenExecute(() -> {
-                    f.sunrise();
+                    f.dusk();
                     f.d.player.teleportTo(f.b.player.level(), f.b.player.getX()+4.5, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
                     f.b.player.setHealth(20); f.b.player.setInvulnerableTime(0);
                     var inventory = f.d.player.getInventory();
@@ -186,7 +186,7 @@ public final class PersonalHuntGameTest {
                 .thenWaitUntil(() -> f.await(f.huntBars(f.a).equals(List.of("来自 HuntC 的追猎")) && f.huntBars(f.b).isEmpty(),
                         "proximity bar only for the selected target"))
                 .thenExecute(() -> {
-                    f.sunrise();
+                    f.dusk();
                     f.c.player.teleportTo(f.b.player.level(), f.b.player.getX()+1, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
                     f.b.player.setHealth(20); f.b.player.setInvulnerableTime(0);
                     f.c.player.getInventory().setItem(8, net.minecraft.world.item.ItemStack.EMPTY);
@@ -197,18 +197,18 @@ public final class PersonalHuntGameTest {
                 .thenIdle(25)
                 .thenExecute(() -> {
                     // Choice is only a spawn anchor; a DIFFERENT legal human still earns entitlement.
-                    dev.hardrush.pact.DawnPactRuntime.tick(f.server);
+                    dev.hardrush.pact.DuskPactRuntime.tick(f.server);
                     var overworld = f.worlds.level(Level.OVERWORLD);
                     var daylight = overworld.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
                             .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
-                    overworld.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DawnPact.SUNRISE_TICKS + 18_000);
-                    dev.hardrush.pact.DawnPactRuntime.tick(f.server);
+                    overworld.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DuskPact.DUSK_TICKS + 5_000);
+                    dev.hardrush.pact.DuskPactRuntime.tick(f.server);
                     f.c.player.teleportTo(f.b.player.level(), f.b.player.getX()+1, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
                     f.b.player.setHealth(1); f.b.player.setInvulnerableTime(0);
                     // Birth gear can be a spear; this regression exercises ordinary native melee.
                     f.c.player.getInventory().setItem(8, net.minecraft.world.item.ItemStack.EMPTY);
                     f.c.player.getInventory().setSelectedSlot(8); MonsterRoles.repairLoadout(f.c.player);
-                    test.assertFalse(dev.hardrush.pact.DawnPactRuntime.reject(f.c.player, f.b.player), "The first sunrise releases player combat before entitlement checks");
+                    test.assertFalse(dev.hardrush.pact.DuskPactRuntime.reject(f.c.player, f.b.player), "The first dusk releases player combat before entitlement checks");
                     test.assertTrue(MonsterRoles.attack(f.c.player, f.b.player) && f.b.player.isDeadOrDying(), "Attack another legal human");
                 })
                 .thenWaitUntil(() -> f.await(f.c.participant().revivalEntitled() && f.lobby(f.b), "actual non-anchor kill awards entitlement"))
@@ -335,13 +335,13 @@ public final class PersonalHuntGameTest {
             test.assertTrue(ok,text+": "+RoundRuntime.status(server));
         }
         RoundSnapshot round() { return RoundRuntime.snapshot(server).orElseThrow(); }
-        void sunrise() {
-            dev.hardrush.pact.DawnPactRuntime.tick(server);
+        void dusk() {
+            dev.hardrush.pact.DuskPactRuntime.tick(server);
             var overworld = worlds.level(Level.OVERWORLD);
             var daylight = overworld.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
                     .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
-            overworld.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DawnPact.SUNRISE_TICKS + 18_000);
-            dev.hardrush.pact.DawnPactRuntime.tick(server);
+            overworld.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DuskPact.DUSK_TICKS + 5_000);
+            dev.hardrush.pact.DuskPactRuntime.tick(server);
         }
         /** Visible hunt boss bar titles addressed to this peer's UUID, human slots first. */
         @SuppressWarnings("unchecked") List<String> huntBars(Peer p) {

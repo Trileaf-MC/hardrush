@@ -48,7 +48,7 @@
       "dev.hardrush.gametest.FullFlowGameTest",
       "dev.hardrush.gametest.StabilizationGameTest",
       "dev.hardrush.gametest.MonsterAiIdentityGameTest",
-      "dev.hardrush.gametest.DawnPactGameTest",
+      "dev.hardrush.gametest.DuskPactGameTest",
       "dev.hardrush.monster.MonsterSpawnEquipmentGameTest",
       "dev.hardrush.monster.MonsterGachaGameTest",
       "dev.hardrush.monster.MonsterNativeWeaponsGameTest",

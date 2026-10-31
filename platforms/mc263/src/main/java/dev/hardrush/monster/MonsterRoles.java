@@ -468,7 +468,7 @@ public final class MonsterRoles {
                 || role.form.skeleton() && player.getMainHandItem().is(Items.BOW)
                 || player.getMainHandItem().is(ItemTags.SPEARS) || !(target instanceof LivingEntity living)
                 || !legalTarget(player.getUUID(), player.level(), target)
-                || dev.hardrush.pact.DawnPactRuntime.reject(player, target)) return false;
+                || dev.hardrush.pact.DuskPactRuntime.reject(player, target)) return false;
         syncNativeContext(player, role);
         if (!role.model.isWithinMeleeAttackRange(living) || !player.hasLineOfSight(target)
                 || player.level().getServer().getTickCount() < role.nextMeleeTick) return false;

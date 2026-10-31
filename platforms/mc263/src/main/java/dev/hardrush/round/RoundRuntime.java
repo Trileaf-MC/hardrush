@@ -123,14 +123,14 @@ public final class RoundRuntime {
             dev.hardrush.record.HistoryLibrary.configure(server, session);
             dev.hardrush.lobby.HumanEntry.configure(server, session, profiles, () -> WORLDS.get(server));
             CelebrationRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
-            dev.hardrush.pact.DawnPactRuntime.configure(server, new dev.hardrush.pact.DawnPactRuntime.Access() {
+            dev.hardrush.pact.DuskPactRuntime.configure(server, new dev.hardrush.pact.DuskPactRuntime.Access() {
                 public Optional<RoundSnapshot> snapshot() { return session.snapshot(); }
                 public net.minecraft.server.level.ServerLevel overworld() {
                     var worlds = WORLDS.get(server);
                     return worlds != null && worlds.ready() && session.snapshot().filter(r -> r.roundId().equals(worlds.roundId())).isPresent()
                             ? worlds.level(Level.OVERWORLD) : null;
                 }
-                public dev.hardrush.pact.DawnPactData data() { return WORLDS.get(server).dawnPact(); }
+                public dev.hardrush.pact.DuskPactData data() { return WORLDS.get(server).duskPact(); }
                 public boolean formalLevel(net.minecraft.server.level.ServerLevel level) {
                     var overworld = overworld();
                     return overworld != null && RoundWorldBundle.sameRound(overworld, level);
@@ -352,8 +352,8 @@ public final class RoundRuntime {
                 session.tick();
             } catch (RuntimeException error) { session.adapterFailure("世界／档案适配失败", error); }
             finally {
-                try { dev.hardrush.pact.DawnPactRuntime.tick(server); }
-                catch (RuntimeException error) { session.adapterFailure("黎明契约状态更新失败", error); }
+                try { dev.hardrush.pact.DuskPactRuntime.tick(server); }
+                catch (RuntimeException error) { session.adapterFailure("黄昏契约状态更新失败", error); }
                 session.view().ifPresent(round -> dev.hardrush.lobby.PlayerFeedback.tick(server, round, session));
                 try { session.view().ifPresent(round -> dev.hardrush.hunt.HuntBossBars.tick(server, round, session)); }
                 catch (RuntimeException error) { LOGGER.error("Hunt boss bar update failed", error); }
@@ -472,7 +472,7 @@ public final class RoundRuntime {
             BOOK_ATTEMPTS.remove(server);
             ProgressRuntime.unconfigure(server);
             CombatRuntime.unconfigure(server);
-            dev.hardrush.pact.DawnPactRuntime.close(server);
+            dev.hardrush.pact.DuskPactRuntime.close(server);
             dev.hardrush.lobby.HumanEntry.close(server);
             LobbyWorld.shutdown(server);
         });
@@ -594,7 +594,7 @@ public final class RoundRuntime {
                         : "你已主动退出本轮；本轮不能重新参赛，下轮恢复资格。"));
         }
         refreshTab(server, true);
-        dev.hardrush.pact.DawnPactRuntime.tick(server);
+        dev.hardrush.pact.DuskPactRuntime.tick(server);
         if (before.result() == null && CelebrationRuntime.successful(after)) CelebrationRuntime.start(server, after);
         LobbyRuntime.onCommitted(server, before, after);
         if (!before.roundId().equals(after.roundId())) {

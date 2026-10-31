@@ -357,12 +357,12 @@ tasks.named('jar') {
     from(rootProject.file('licenses')) { into 'META-INF/licenses' }
 }
 
-// Native dawn-pact policy/UI regression in the default fresh, headless GameTest storage.
+// Native dusk-pact policy/UI regression in the default fresh, headless GameTest storage.
 loom.runs.named('gameTest') {
-    if (providers.gradleProperty('hardrushDawnPact').orNull == 'true') {
+    if (providers.gradleProperty('hardrushDuskPact').orNull == 'true') {
         if (providers.gradleProperty('hardrushCompetition').orNull == 'true')
-            throw new GradleException('Dawn pact fixtures require their own run without the competition runtime');
-        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:dawn_pact_game_test*'
+            throw new GradleException('Dusk pact fixtures require their own run without the competition runtime');
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:dusk_pact_game_test*'
     }
 }
 
