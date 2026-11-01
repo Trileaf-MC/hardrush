@@ -1083,6 +1083,8 @@ public final class PlayerProfiles implements AutoCloseable {
 
     /** A completed participant remains suspended in the lobby until another durable entry permits restoration. */
     public void returnToLobby(ServerPlayer player) {
+        // A deployed monster cannot act in the lobby; carry the body there as a player, never as a monster template.
+        dev.hardrush.monster.MonsterRoles.suspend(player);
         if (recoveryPaused) { moveToLobby(player); return; }
         var entry = players.get(player.getUUID());
         if (entry != null && entry.player == player) entry.adminSpectating = false;

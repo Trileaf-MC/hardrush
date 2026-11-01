@@ -109,6 +109,26 @@ public final class MonsterRoleGameTest {
         test.succeed();
     }
 
+    /** The lobby is peaceful: vanilla refuses to create monsters there, but templates never enter a level. */
+    @GameTest(maxTicks=100)
+    public void peacefulDifficultyStillBindsMonsterTemplates(GameTestHelper test) {
+        var player=actor(test);
+        var server=test.getLevel().getServer();
+        var difficulty=server.getWorldData().getDifficulty();
+        try {
+            server.setDifficulty(net.minecraft.world.Difficulty.PEACEFUL,true);
+            for(String kind:new String[]{"zombie","skeleton","creeper"}) {
+                MonsterRoles.select(player,kind);
+                test.assertTrue(MonsterRoles.isMonster(player),"Peaceful difficulty still binds role: "+kind);
+                test.assertTrue(MonsterDisguise.status(player).contains("disguise="+kind),"Peaceful difficulty still binds disguise: "+kind);
+            }
+            MonsterDisguise.onJoin(player);
+            MonsterDisguise.tick(server);
+            test.assertTrue(MonsterDisguise.status(player).contains("disguise=creeper"),"Peaceful rebind keeps the disguise");
+        } finally { server.setDifficulty(difficulty,true); remove(player); }
+        test.succeed();
+    }
+
     @GameTest(maxTicks=200)
     public void inventoryPacketsKeepBoundEggsButAllowWorldPickupAndStorage(GameTestHelper test) {
         var player=actor(test);

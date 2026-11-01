@@ -636,7 +636,7 @@ public final class MonsterRoles {
         if (role != null && role.form.skeleton() && role.model != null && role.model.level() == level
                 && arrow.entityTags().contains(SHOT_BINDING + role.binding)
                 && MonsterCombatRuntime.source(arrow).equals(MonsterCombatRuntime.source(role.model))) return role.model;
-        Mob source = EntityTypes.SKELETON.create(level, EntitySpawnReason.COMMAND);
+        Mob source = EntityTypes.SKELETON.create(level, new EntitySpawnRequest(EntitySpawnReason.COMMAND, true));
         source.entityTags().add(NATIVE_BODY); source.setUUID(owner);
         if (vanilla != null) source.setId(vanilla.getId());
         return source;
@@ -681,7 +681,8 @@ public final class MonsterRoles {
         MonsterDoorBreaking.clear(player);
         float resumedHealth = role.player == null ? role.disconnectedHealth : Float.NaN;
         role.player = player; role.disconnectedSource = null;
-        role.model = role.form.type.create(player.level(), EntitySpawnReason.COMMAND);
+        // Unregistered template: peaceful difficulty must not veto a body that never spawns.
+        role.model = role.form.type.create(player.level(), new EntitySpawnRequest(EntitySpawnReason.COMMAND, true));
         if (role.model == null) throw new IllegalStateException("Native monster template unavailable");
         role.model.setUUID(player.getUUID()); role.model.setId(player.getId()); role.model.entityTags().add(NATIVE_BODY);
         String species = role.form.role.name().toLowerCase(Locale.ROOT);

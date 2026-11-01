@@ -233,6 +233,36 @@ public final class PlayerProfileGameTest {
                 }).thenSucceed();
     }
 
+    /** A failed round returns deployed monsters to the peaceful lobby; the next tick must not rebuild a monster there. */
+    @GameTest(maxTicks = 100)
+    public void lobbyReturnLeavesMonsterFormBeforeThePeacefulLobby(GameTestHelper test) {
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
+        var server = test.getLevel().getServer();
+        var player = MonsterRoleGameTest.actor(test);
+        var position = player.position();
+        var difficulty = server.getWorldData().getDifficulty();
+        var profiles = new PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT)
+                .resolve("hardrush/profile-tests/" + UUID.randomUUID()), test::getLevel, () -> position);
+        try {
+            dev.hardrush.monster.MonsterRoles.select(player, "zombie");
+            test.assertTrue(dev.hardrush.monster.MonsterRoles.isMonster(player), "Fixture deploys a monster");
+            server.setDifficulty(net.minecraft.world.Difficulty.PEACEFUL, true);
+            profiles.returnToLobby(player);
+            test.assertFalse(dev.hardrush.monster.MonsterRoles.isMonster(player), "Lobby return leaves the monster form");
+            test.assertTrue(dev.hardrush.disguise.MonsterDisguise.status(player).startsWith("disguise=off"),
+                    "Lobby return clears the observer disguise");
+            dev.hardrush.monster.MonsterRoles.tick(server);
+            dev.hardrush.disguise.MonsterDisguise.tick(server);
+            profiles.close();
+        } catch (Exception error) { throw new IllegalStateException(error); }
+        finally {
+            server.setDifficulty(difficulty, true);
+            ((ProfileTagged) player).hardrush$isolated(false);
+            MonsterRoleGameTest.remove(player);
+        }
+        test.succeed();
+    }
+
     @GameTest(maxTicks = 100)
     public void connectedSuspensionMovesNativePlayerMembershipBeforeWorldRelease(GameTestHelper test) {
         if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }

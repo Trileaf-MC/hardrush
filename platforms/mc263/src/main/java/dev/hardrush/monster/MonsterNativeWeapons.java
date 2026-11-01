@@ -18,6 +18,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntitySpawnRequest;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.LivingEntity;
@@ -169,7 +170,7 @@ public final class MonsterNativeWeapons {
         if (current instanceof Drowned && current.level() == level
                 && trident.entityTags().contains("hardrush.shot-binding=" + MonsterRoles.binding(player))
                 && MonsterCombatRuntime.source(trident).equals(MonsterCombatRuntime.source(current))) return current;
-        var model = EntityTypes.DROWNED.create(level, EntitySpawnReason.COMMAND);
+        var model = EntityTypes.DROWNED.create(level, new EntitySpawnRequest(EntitySpawnReason.COMMAND, true));
         model.setUUID(owner);
         model.entityTags().add("hardrush.native-body");
         if (vanilla != null) model.setId(vanilla.getId());
