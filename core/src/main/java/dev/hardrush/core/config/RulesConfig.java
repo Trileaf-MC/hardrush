@@ -87,8 +87,8 @@ public record RulesConfig(
             if (!copy.keySet().containsAll(WORTH_DEFAULTS.keySet())) {
                 throw new IllegalArgumentException("身价参数必须完整配置: " + WORTH_DEFAULTS.keySet());
             }
-            if (copy.get("worth.baseXp") > copy.get("worth.maxXp")) {
-                throw new IllegalArgumentException("身价基础经验不能超过身价上限");
+            if (copy.get("worth.baseLevel") > copy.get("worth.maxLevel")) {
+                throw new IllegalArgumentException("身价基础等级不能超过身价上限");
             }
         }
         combatValues = Collections.unmodifiableSortedMap(copy);
@@ -154,13 +154,13 @@ public record RulesConfig(
             Map.entry("coin.price.trialKey", 15.0), Map.entry("coin.limit.trialKey", 2.0),
             Map.entry("coin.price.ominousKey", 40.0), Map.entry("coin.limit.ominousKey", 1.0));
 
-    /** A slain monster sprays 100 to 315 experience; from level 10 of worth it also leaves a book. */
+    /** Worth runs from level 10 to 30, one level per damage point; a slain body sprays 10 experience per level and leaves a book from level 15. */
     private static final Map<String, Double> WORTH_DEFAULTS = Map.ofEntries(
-            Map.entry("worth.baseXp", 100.0),
-            Map.entry("worth.xpPerDamage", 10.0),
-            Map.entry("worth.maxXp", 315.0),
-            Map.entry("worth.bookMinLevel", 10.0),
-            Map.entry("worth.bookCostPerLevel", 2.0));
+            Map.entry("worth.baseLevel", 10.0),
+            Map.entry("worth.levelsPerDamage", 1.0),
+            Map.entry("worth.maxLevel", 30.0),
+            Map.entry("worth.xpPerLevel", 10.0),
+            Map.entry("worth.bookMinLevel", 15.0));
 
     /** Adds missing coin and worth values to stored pending rules; values an operator already set are kept. */
     public RulesConfig withEconomyDefaults() {

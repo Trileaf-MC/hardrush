@@ -10,6 +10,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetExperiencePacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -25,15 +26,18 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * A monster slain with a player's recent help sprays its worth like the dragon's death, and a
- * worthy one leaves an enchanted book naming whose body it came from. While deployed, the monster's
- * own experience bar shows that worth. All callbacks run on the server thread.
+ * A monster slain with a player's recent help sprays experience for its worth like the dragon's
+ * death, and a worthy one leaves an enchanted book naming whose body it came from. While deployed,
+ * the monster's own experience bar shows the worth's level, which is the book's enchanting level.
+ * All callbacks run on the server thread.
  */
 public final class MonsterWorthRewards {
     /** Small orbs read as a fountain; the dragon's large ones would arrive as a handful. */
     static final int ORB_VALUE = 7;
-    static final int WAVES = 6;
+    static final int WAVES = 10;
     static final int WAVE_INTERVAL_TICKS = 5;
+    /** Like the dragon's closing award, the last wave carries a fifth of the total. */
+    static final int FINAL_WAVE_PERCENT = 20;
 
     private record Fountain(ServerLevel level, Vec3 pos, int[] waves, int startTick) {}
     private static final Map<MinecraftServer, List<Fountain>> FOUNTAINS = new IdentityHashMap<>();
@@ -46,20 +50,20 @@ public final class MonsterWorthRewards {
         var worth = MonsterRoundRuntime.worth(player);
         var rules = MonsterRoundRuntime.rules(player);
         if (worth.isEmpty() || rules.isEmpty() || !(player.level() instanceof ServerLevel level)) return;
-        int xp = worth.getAsInt();
+        int milliLevels = worth.getAsInt();
         var server = level.getServer();
-        FOUNTAINS.computeIfAbsent(server, ignored -> new ArrayList<>())
-                .add(new Fountain(level, player.position(), waves(xp), server.getTickCount()));
-        int cost = MonsterWorth.bookCost(rules.get(), xp);
+        FOUNTAINS.computeIfAbsent(server, ignored -> new ArrayList<>()).add(new Fountain(level, player.position(),
+                waves(MonsterWorth.experience(rules.get(), milliLevels)), server.getTickCount()));
+        int cost = MonsterWorth.bookLevel(rules.get(), milliLevels);
         if (cost > 0) player.spawnAtLocation(level, signedBook(level, player.getScoreboardName(), player.getRandom(), cost));
     }
 
-    /** Splits the worth into equal waves of small orbs; the remainder rides in the last wave. */
+    /** Equal waves share four fifths of the experience; the last wave takes the rest. */
     static int[] waves(int xp) {
         int[] waves = new int[WAVES];
-        int each = xp / WAVES;
-        for (int i = 0; i < WAVES; i++) waves[i] = each;
-        waves[WAVES - 1] += xp - each * WAVES;
+        int each = xp * (100 - FINAL_WAVE_PERCENT) / 100 / (WAVES - 1);
+        for (int i = 0; i < WAVES - 1; i++) waves[i] = each;
+        waves[WAVES - 1] = xp - each * (WAVES - 1);
         return waves;
     }
 
@@ -86,31 +90,43 @@ public final class MonsterWorthRewards {
         if (fountains.isEmpty()) FOUNTAINS.remove(server);
     }
 
+    /**
+     * Launches each orb from about head height in a random direction, so the wave bursts outward and
+     * lands in a ring a few blocks wide before vanilla pulls the orbs toward nearby humans.
+     */
     private static void spray(ServerLevel level, Vec3 pos, int xp) {
         var random = level.getRandom();
         for (int left = xp; left > 0; ) {
             int value = Math.min(ORB_VALUE, left);
             left -= value;
-            var orb = new ExperienceOrb(level, pos.add(0, 0.5, 0), Vec3.ZERO, value);
-            orb.setDeltaMovement((random.nextDouble() - 0.5) * 0.3, 0.3 + random.nextDouble() * 0.25,
-                    (random.nextDouble() - 0.5) * 0.3);
+            var orb = new ExperienceOrb(level, pos.add(0, 1.0, 0), Vec3.ZERO, value);
+            double angle = random.nextDouble() * Math.PI * 2;
+            double speed = 0.12 + random.nextDouble() * 0.18;
+            orb.setDeltaMovement(Math.cos(angle) * speed, 0.35 + random.nextDouble() * 0.2, Math.sin(angle) * speed);
             level.addFreshEntity(orb);
         }
     }
 
     /**
-     * Mirrors the worth onto the monster's own experience bar. Like Player.giveExperienceLevels it
-     * chimes on each fifth level, but only the monster hears it, so nearby humans learn nothing.
+     * Mirrors the worth's level onto the monster's own experience bar. Like
+     * Player.giveExperienceLevels it chimes on each fifth level, but only the monster hears it, so
+     * nearby humans learn nothing.
      */
     static void showWorth(ServerPlayer player) {
         var worth = MonsterRoundRuntime.worth(player);
-        if (worth.isEmpty() || player.totalExperience == worth.getAsInt()) return;
-        int xp = worth.getAsInt();
+        var rules = MonsterRoundRuntime.rules(player);
+        if (worth.isEmpty() || rules.isEmpty()) return;
+        int milliLevels = worth.getAsInt();
+        int level = MonsterWorth.level(milliLevels);
+        float progress = MonsterWorth.progress(milliLevels);
+        if (player.experienceLevel == level && player.experienceProgress == progress) return;
         int before = player.experienceLevel;
-        player.totalExperience = xp;
-        player.experienceLevel = MonsterWorth.level(xp);
-        player.experienceProgress = MonsterWorth.progress(xp);
-        // Level 0 is the camp's cleared bar: the first deployed tick sets the base silently.
+        player.totalExperience = MonsterWorth.experience(rules.get(), milliLevels);
+        player.experienceLevel = level;
+        player.experienceProgress = progress;
+        // ServerPlayer.doTick only resends the bar when the total changes; the fill can move alone.
+        player.connection.send(new ClientboundSetExperiencePacket(progress, player.totalExperience, level));
+        // Level 0 is the camp's cleared bar: the first deployed tick sets the base level silently.
         if (before > 0 && player.experienceLevel / 5 > before / 5) {
             float volume = player.experienceLevel > 30 ? 1.0F : player.experienceLevel / 30.0F;
             player.connection.send(new ClientboundSoundPacket(BuiltInRegistries.SOUND_EVENT.wrapAsHolder(SoundEvents.PLAYER_LEVELUP),
