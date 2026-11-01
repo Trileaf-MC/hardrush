@@ -190,6 +190,7 @@ public final class WorldPreparationGameTest {
                     test.assertTrue(RoundWorldBundle.portalDestination(overworld, server.overworld().dimension()) == overworld,
                             "Vanilla overworld semantic key cannot escape to the lobby");
                     test.assertTrue(end.getDragonFight() != null, "Real vanilla EnderDragonFight initialized");
+                    HardRushWorldBoundaryGameTest.assertDayCycleFollowsClock(test, overworld);
                     test.assertTrue(bundle.exits().isEmpty(), "Natural spawn requires no artificial exit corridors");
                     test.assertTrue(RoundWorldBundle.safeStanding(overworld, bundle.spawn()), "Spawn is safe");
                     test.assertTrue(naturalSurface.containsKey(bundle.spawn().below()), "Native terrain was observed before spawn preparation");
