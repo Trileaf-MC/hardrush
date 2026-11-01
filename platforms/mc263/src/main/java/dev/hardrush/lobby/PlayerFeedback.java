@@ -6,12 +6,14 @@ import dev.hardrush.core.round.*;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.LobbyWorld;
-import dev.hardrush.monster.MonsterRoles;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
 import net.minecraft.server.MinecraftServer;
 
-/** Render after all intent producers, including early-return recovery/celebration ticks. */
+/**
+ * Render after all intent producers, including early-return recovery/celebration ticks.
+ * Item names are already shown by the vanilla selected-item HUD; do not repeat them in the action bar.
+ */
 public final class PlayerFeedback {
     private static final java.util.Map<MinecraftServer, net.minecraft.server.level.ServerBossEvent> BARS = new java.util.IdentityHashMap<>();
     private PlayerFeedback() {}
@@ -47,7 +49,7 @@ public final class PlayerFeedback {
         long humans=r.participants().values().stream().filter(p->p.role().isActiveHuman()).count();
         for(var player:server.getPlayerList().getPlayers()) {
             var hints=router.hints(player); var p=r.participants().get(player.getUUID());
-            for(var source:java.util.List.of("recovery","profile","rescue","away","celebration","skill","facility","revival"))hints.clear(source);
+            for(var source:java.util.List.of("recovery","profile","rescue","away","celebration","facility","revival"))hints.clear(source);
             if(!LobbyWorld.isLobby(player.level()))hints.clear("assembly");
             if(p==null||p.role()!=ParticipantRole.MONSTER_LOBBY){hints.clear("hunt");hints.clear("hunt-target");}
             if(!dev.hardrush.lobby.LobbyRuntime.channeling(player))hints.clear("return");
@@ -68,10 +70,6 @@ public final class PlayerFeedback {
                         ?"你是本轮胜者 · 跳入龙池结束庆祝 · "+left
                         :player.isSpectator()?"已阵亡旁观 · 庆祝"+left
                         :"胜者 "+dev.hardrush.celebration.CelebrationRuntime.winnerName(server)+" 庆祝中 · 原版生存，死亡转旁观，不计战绩 · "+left,now+300);
-            }
-            if(MonsterRoles.isMonster(player) && !dev.hardrush.lobby.LobbyRuntime.channeling(player)) {
-                var name=player.getMainHandItem().get(net.minecraft.core.component.DataComponents.CUSTOM_NAME);
-                if(name!=null)hints.offer("skill",LobbyHints.Priority.FACILITY,name.getString(),now+300);
             }
             var lobby=LobbyWorld.open(server);
             if(lobby.ready()&&LobbyWorld.isLobby(player.level())&&PlayerProfiles.verifiedLobbyBody(player)) {
