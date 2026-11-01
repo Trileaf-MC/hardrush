@@ -426,4 +426,42 @@ public final class WorldPreparationGameTest {
         try { level.close(); }
         catch (java.io.IOException error) { throw new IllegalStateException(error); }
     }
+
+    /** Round and vanilla levels generate on separate workers but share templates; first palette lookups may race. */
+    @GameTest(maxTicks = 100)
+    public void sharedStructurePaletteSurvivesConcurrentFirstLookups(GameTestHelper test) {
+        var origin = test.absolutePos(new net.minecraft.core.BlockPos(0, 1, 0));
+        for (int x = 0; x < 4; x++) for (int z = 0; z < 4; z++)
+            test.getLevel().setBlockAndUpdate(origin.offset(x, 0, z), (x + z) % 2 == 0 ? Blocks.STONE.defaultBlockState() : Blocks.JIGSAW.defaultBlockState());
+        var template = new net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate();
+        template.fillFromWorld(test.getLevel(), origin, new net.minecraft.core.Vec3i(4, 1, 4), false, java.util.List.of());
+        var blocks = new java.util.ArrayList<net.minecraft.world.level.block.Block>();
+        net.minecraft.core.registries.BuiltInRegistries.BLOCK.forEach(blocks::add);
+        var failure = new java.util.concurrent.atomic.AtomicReference<Throwable>();
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var workers = new java.util.ArrayList<Thread>();
+        for (int worker = 0; worker < 8; worker++) {
+            var order = new java.util.ArrayList<>(blocks);
+            java.util.Collections.shuffle(order, new java.util.Random(worker));
+            var thread = new Thread(() -> {
+                try {
+                    start.await();
+                    var settings = new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings();
+                    for (var block : order) template.filterBlocks(net.minecraft.core.BlockPos.ZERO, settings, block, false);
+                } catch (Throwable error) { failure.compareAndSet(null, error); }
+            }, "hardrush-palette-race-" + worker);
+            workers.add(thread);
+            thread.start();
+        }
+        start.countDown();
+        for (var thread : workers) {
+            try { thread.join(10_000); } catch (InterruptedException error) { throw new IllegalStateException(error); }
+            test.assertFalse(thread.isAlive(), "Concurrent palette lookups finish");
+        }
+        test.assertTrue(failure.get() == null, "Concurrent first lookups do not corrupt the palette cache: " + failure.get());
+        var settings = new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings();
+        test.assertValueEqual(template.filterBlocks(net.minecraft.core.BlockPos.ZERO, settings, Blocks.STONE, false).size(), 8, "Stone lookup stays exact");
+        test.assertValueEqual(template.filterBlocks(net.minecraft.core.BlockPos.ZERO, settings, Blocks.JIGSAW, false).size(), 8, "Jigsaw lookup stays exact");
+        test.succeed();
+    }
 }
