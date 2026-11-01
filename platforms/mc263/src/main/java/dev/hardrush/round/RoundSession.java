@@ -989,6 +989,18 @@ public final class RoundSession implements AutoCloseable {
                 lifeSequence, deploymentSequence, offer, price), reply, "已购买" + offer.title() + "。");
     }
 
+    public void requestMonsterCoinDrop(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            int count, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeMonsterCoinDrop(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence, count), reply, "怪物币已丢出。");
+    }
+
+    public void requestMonsterCoinPickup(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            int count, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeMonsterCoinPickup(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence, count), reply, "怪物币已拾取。");
+    }
+
     public void requestVaultOpen(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             dev.hardrush.core.round.ShopOffer key, dev.hardrush.core.round.MonsterWallet.GearSlot slot,
             java.util.Set<MonsterRole> roles, String item, Consumer<Reply> reply) {

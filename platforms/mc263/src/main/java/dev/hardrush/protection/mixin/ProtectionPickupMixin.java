@@ -1,6 +1,6 @@
 package dev.hardrush.protection.mixin;
 
-import dev.hardrush.lobby.RevivalTotems;
+import dev.hardrush.lobby.CampTransfers;
 import dev.hardrush.protection.ProtectionRuntime;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ExperienceOrb;
@@ -15,9 +15,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ProtectionPickupMixin {
     @Inject(method="playerTouch", at=@At("HEAD"), cancellable=true)
     private void touch(Player player, CallbackInfo ci) {
-        if ((Object)this instanceof ItemEntity item && RevivalTotems.is(item.getItem())) {
+        if ((Object)this instanceof ItemEntity item && CampTransfers.is(item.getItem())) {
             // Native pickup never applies: the balance moves only through a committed transfer.
-            if (player instanceof ServerPlayer server) RevivalTotems.touch(server, item);
+            if (player instanceof ServerPlayer server) CampTransfers.touch(server, item);
             ci.cancel(); return;
         }
         if (ProtectionRuntime.protectedEntity(player) || ProtectionRuntime.protectedEntity((net.minecraft.world.entity.Entity)(Object)this)) ci.cancel();

@@ -1,6 +1,6 @@
 package dev.hardrush.protection.mixin;
 
-import dev.hardrush.lobby.RevivalTotems;
+import dev.hardrush.lobby.CampTransfers;
 import dev.hardrush.protection.ProtectionRuntime;
 import java.util.Set;
 import net.minecraft.server.level.ServerLevel;
@@ -28,14 +28,17 @@ public abstract class ProtectionServerPlayerMixin {
     @Inject(method="drop(Z)V", at=@At("HEAD"), cancellable=true)
     private void drop(boolean wholeStack, CallbackInfo ci) {
         var player = (ServerPlayer)(Object)this;
-        if (ProtectionRuntime.protectedEntity(player) && !RevivalTotems.is(player.getInventory().getSelectedItem())) ci.cancel();
+        if (ProtectionRuntime.protectedEntity(player) && !CampTransfers.is(player.getInventory().getSelectedItem())) {
+            player.inventoryMenu.sendAllDataToRemote();
+            ci.cancel();
+        }
     }
     /** Every throw path (key, inventory screen, closing menus) reaches here after removing the stack. */
     @Inject(method="drop(Lnet/minecraft/world/item/ItemStack;ZLnet/minecraft/util/Prediction;)Lnet/minecraft/world/entity/item/ItemEntity;",
             at=@At("HEAD"), cancellable=true)
     private void dropRevivalTotem(ItemStack stack, boolean thrown, Prediction prediction, CallbackInfoReturnable<ItemEntity> ci) {
-        if (!RevivalTotems.is(stack)) return;
-        RevivalTotems.thrown((ServerPlayer)(Object)this, stack.copy());
+        if (!CampTransfers.is(stack)) return;
+        CampTransfers.thrown((ServerPlayer)(Object)this, stack.copy());
         ci.setReturnValue(null);
     }
     @Inject(method="teleport(Lnet/minecraft/world/level/portal/TeleportTransition;)Lnet/minecraft/server/level/ServerPlayer;", at=@At("HEAD"), cancellable=true)

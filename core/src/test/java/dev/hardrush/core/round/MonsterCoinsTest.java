@@ -29,6 +29,36 @@ class MonsterCoinsTest {
         return MonsterWallet.EMPTY.credit(coins).chooseRole(RULES, MonsterRole.ZOMBIE);
     }
 
+    @Test void campCoinTransfersPreserveOrdersAndAllowGiftsBeforeRevival() {
+        var wallet = chosen(90).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 15);
+        var engine = engine(humanParticipant(), deployedMonster().withWallet(wallet));
+        accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, monster, 1, 3));
+        accept(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 0, 1));
+        var before = engine.view().participants().get(monster);
+        accept(engine, engine.proposeMonsterCoinDrop(UUID.randomUUID(), round, monster, 1, 3, 64));
+        var dropped = engine.view().participants().get(monster);
+        assertEquals(before.wallet().spendCoins(64), dropped.wallet());
+        assertEquals(1, dropped.revivalCharges(), "Coin transfers do not consume revival charges");
+        accept(engine, engine.proposeMonsterCoinPickup(UUID.randomUUID(), round, monster, 1, 3, 64));
+        assertEquals(before.wallet(), engine.view().participants().get(monster).wallet());
+    }
+
+    @Test void coinTransfersRejectOverdrawStaleBodiesHumansDeployedMonstersAndOverflow() {
+        var engine = engine(humanParticipant(), deployedMonster().withWallet(chosen(10)));
+        assertThrows(IllegalStateException.class, () -> engine.proposeMonsterCoinDrop(UUID.randomUUID(), round, monster, 1, 3, 1));
+        accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, monster, 1, 3));
+        assertThrows(IllegalArgumentException.class, () -> engine.proposeMonsterCoinDrop(UUID.randomUUID(), round, monster, 1, 3, 11));
+        assertThrows(IllegalArgumentException.class, () -> engine.proposeMonsterCoinDrop(UUID.randomUUID(), round, monster, 1, 3, 0));
+        assertThrows(IllegalArgumentException.class, () -> engine.proposeMonsterCoinPickup(UUID.randomUUID(), round, monster, 1, 3, -1));
+        assertThrows(IllegalArgumentException.class, () -> engine.proposeMonsterCoinPickup(UUID.randomUUID(), round, monster, 1, 3, Integer.MAX_VALUE));
+        assertThrows(IllegalStateException.class, () -> engine.proposeMonsterCoinDrop(UUID.randomUUID(), UUID.randomUUID(), monster, 1, 3, 1));
+        assertThrows(IllegalStateException.class, () -> engine.proposeMonsterCoinDrop(UUID.randomUUID(), round, monster, 2, 3, 1));
+        assertThrows(IllegalStateException.class, () -> engine.proposeMonsterCoinPickup(UUID.randomUUID(), round, monster, 1, 4, 1));
+        assertThrows(IllegalStateException.class, () -> engine.proposeMonsterCoinPickup(UUID.randomUUID(), round, human, 1, 0, 1));
+        assertEquals(10, engine.view().participants().get(monster).wallet().coins());
+        assertFalse(engine.pending());
+    }
+
     @Test void pricesDoubleWithinOneSortieAndStopAtTheLimit() {
         var wallet = chosen(100);
         for (int price : new int[] {6, 12, 24}) {
