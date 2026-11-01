@@ -10,6 +10,7 @@
     "MonsterPlayerMixin",
     "NativeCreeperAccessor",
     "MonsterInventoryMixin",
+    "MonsterDoorGameModeMixin",
     "MonsterLivingMixin",
     "MonsterPickupMixin",
     "MonsterExperienceMixin",
