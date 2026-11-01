@@ -113,24 +113,29 @@ public final class PersonalHuntGameTest {
                     f.c.hunt(f.a); f.refresh();
                     var request = f.searches().get(f.c.id()); f.originalAttempt = request;
                     f.started = (long)f.field(request, "started");
-                    int used = f.candidates(request); test.assertTrue(used > 0 && used <= 64, "Actual search evaluates bounded candidates");
+                    test.assertTrue(request != null, "A quarry over the void keeps the hunt waiting instead of failing");
                     f.moveVoid(f.a, 0); f.refresh();
                     test.assertTrue(f.searches().get(f.c.id()) == request, "Dimension switch keeps the exact request");
-                    test.assertTrue((long)f.field(request, "started") == f.started && (int)f.field(request, "spentCandidates") >= used,
-                            "Dimension switch retains deadline and spent candidates");
-                    f.searchClock.addAndGet(2_000_000_000L); f.refresh();
-                    test.assertTrue(f.searches().isEmpty() && f.candidates(request) <= 64, "All dimensions share two seconds and 64 candidates");
+                    test.assertTrue((long)f.field(request, "started") == f.started, "Dimension switch keeps the original minute");
+                    f.searchClock.addAndGet(dev.hardrush.hunt.SafeDeployment.DEPLOY_WAIT_NANOS); f.refresh();
+                    test.assertTrue(f.searches().isEmpty(), "All dimensions share one sixty-second wait");
                     f.c.hunt(f.b); test.assertTrue(f.searches().isEmpty(), "Changing target cannot bypass UUID retry wait");
                     f.move(f.a, 0); f.searchClock.addAndGet(3_000_000_000L);
                 });
         s.thenExecute(() -> {
             f.moveVoid(f.a,1); f.c.hunt(f.a); var request=f.searches().get(f.c.id());
-            for(int i=0; i<80 && f.searches().containsKey(f.c.id()); i++) {
-                if(i%3==0) f.moveVoid(f.a,i%2); f.refresh();
-            }
-            test.assertTrue(f.searches().isEmpty(), "Shared candidate allowance eventually ends search across dimensions");
-            test.assertValueEqual(f.candidates(request),64,"Exactly 64 total candidates, never 64 per dimension");
-            f.searchClock.addAndGet(3_000_000_000L); f.move(f.a,0);
+            test.assertTrue(request != null, "Waiting hunt started");
+            f.c.hunt(f.a); test.assertTrue(f.searches().get(f.c.id()) == request, "A held right-click repeat never cancels");
+            f.searchClock.addAndGet(1_000_000_000L); f.c.hunt(f.a);
+            test.assertTrue(f.searches().isEmpty(), "A deliberate second click on the same model cancels");
+            f.c.hunt(f.a); var again=f.searches().get(f.c.id());
+            test.assertTrue(again != null && again != request, "A cancel imposes no retry wait");
+            f.c.hunt(f.b); var switched=f.searches().get(f.c.id());
+            test.assertTrue(switched != null && ((dev.hardrush.core.hunt.PersonalHuntRequest)f.field(switched,"identity")).target().equals(f.b.id()),
+                    "Another model switches the waiting hunt to the new quarry");
+            f.searchClock.addAndGet(1_000_000_000L); f.c.hunt(f.b);
+            test.assertTrue(f.searches().isEmpty(), "The switched hunt cancels the same way");
+            f.move(f.a,0);
         });
         // Changed terrain and target movement AFTER real SQLite submission, BEFORE the native callback.
         f.commitRace(s, false); f.commitRace(s, true);
@@ -179,7 +184,26 @@ public final class PersonalHuntGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(f.c, 0), "hunt anchor A before attacking B"))
                 .thenWaitUntil(() -> f.await(f.huntBars(f.c).equals(List.of("追猎目标 · HuntA")) && f.huntBars(f.a).isEmpty(),
-                        "hunter sees the target at once; a 24-40 block deployment never alerts it"))
+                        "hunter sees the target at once; an 8-24 block deployment never alerts it"))
+                .thenExecute(() -> {
+                    var compass = f.compass(f.c);
+                    test.assertTrue(compass != null, "A deployed monster carries the bound tracking compass");
+                    test.assertFalse(Boolean.TRUE.equals(compass.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE)),
+                            "The compass stays dark near its quarry");
+                    test.assertFalse(LobbyRuntime.useRetrack(f.c.player, compass), "A nearby quarry refuses a retrack");
+                    f.c.player.teleportTo(f.a.player.level(), f.a.player.getX()+60, f.a.player.getY(), f.a.player.getZ(), Set.of(),0,0,true);
+                })
+                .thenIdle(dev.hardrush.hunt.HuntRetracks.FAR_SECONDS * 20 + 10)
+                .thenExecute(() -> {
+                    var compass = f.compass(f.c);
+                    test.assertTrue(Boolean.TRUE.equals(compass.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE)),
+                            "The compass lights after ten seconds beyond forty blocks");
+                    test.assertTrue(LobbyRuntime.useRetrack(f.c.player, compass), "A lit compass starts the five-second channel");
+                })
+                .thenWaitUntil(() -> f.await(f.c.player.position().distanceTo(f.a.player.position()) <= dev.hardrush.hunt.SafeDeployment.MAX_PATH + 1
+                        && f.c.player.getCooldowns().isOnCooldown(f.compass(f.c)), "retrack lands within a short walk and cools down"))
+                .thenExecute(() -> test.assertFalse(Boolean.TRUE.equals(f.compass(f.c).get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE)),
+                        "A cooling compass is dark"))
                 .thenExecute(() -> {
                     f.c.player.teleportTo(f.a.player.level(), f.a.player.getX()+3, f.a.player.getY(), f.a.player.getZ(), Set.of(),0,0,true);
                 })
@@ -358,14 +382,16 @@ public final class PersonalHuntGameTest {
             return titles;
         }
         boolean idle() { return !session.mutationPending(); }
+        net.minecraft.world.item.ItemStack compass(Peer p) {
+            var inventory=p.player.getInventory();
+            for(int slot=0; slot<inventory.getContainerSize(); slot++)
+                if(dev.hardrush.monster.MonsterItems.matches(p.player,inventory.getItem(slot),dev.hardrush.hunt.HuntRetracks.PURPOSE)) return inventory.getItem(slot);
+            return null;
+        }
         void refresh() { LobbyRuntime.tick(server); }
         Object binding() { return ((Map<?,?>)staticField(LobbyRuntime.class,"BINDINGS")).get(server); }
         @SuppressWarnings("unchecked") Map<UUID,Object> searches() { return (Map<UUID,Object>)field(binding(),"searches"); }
         @SuppressWarnings("unchecked") Map<UUID,Object> pending() { return (Map<UUID,Object>)field(binding(),"pending"); }
-        int candidates(Object request) {
-            var search=(dev.hardrush.hunt.SafeDeployment.Search)field(request,"search");
-            return (int)field(request,"spentCandidates")+(search == null ? 0 : search.result().candidates());
-        }
         void useSearchClock() { set(binding(),"searchClock",(java.util.function.LongSupplier)searchClock::get); }
         void arenas() {
             worlds=service("WORLDS",RoundWorldBundle.class);
@@ -436,7 +462,7 @@ public final class PersonalHuntGameTest {
                         test.assertValueEqual(refunds,baseline[0]+1,"Changed condition triggers one durable compensation");
                         test.assertValueEqual(c.participant().monsterDeploymentSequence(),baseline[1]+2,"Compensated sortie is never reused");
                         double distance=c.player.position().subtract(a.player.position()).horizontalDistance();
-                        test.assertTrue(distance>=24 && distance<=40,"New result respects current target distance");
+                        test.assertTrue(distance>=8 && distance<=dev.hardrush.hunt.SafeDeployment.MAX_PATH+4,"New result respects current target distance");
                         if(terrain) levels[0].setBlock(BlockPos.containing(found[0]).below(),Blocks.STONE.defaultBlockState(),2);
                         kill(c);
                     }).thenWaitUntil(() -> await(lobby(c),"race defeat back in camp"))

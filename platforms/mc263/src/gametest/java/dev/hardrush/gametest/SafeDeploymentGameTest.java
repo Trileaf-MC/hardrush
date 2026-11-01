@@ -1,5 +1,6 @@
 package dev.hardrush.gametest;
 
+import dev.hardrush.core.round.MonsterRole;
 import dev.hardrush.core.round.Participant;
 import dev.hardrush.hunt.SafeDeployment;
 import dev.hardrush.protection.ProtectionRuntime;
@@ -21,82 +22,119 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
-/** S04 uses controlled native server terrain. No graphical client or terrain creation by the search. */
+/** Controlled native server terrain and a fake 20 TPS clock. No graphical client or terrain creation by the search. */
 public final class SafeDeploymentGameTest {
     private static final AtomicInteger ARENAS = new AtomicInteger();
+    private static final long TICK = 50_000_000L;
 
     @GameTest(maxTicks=200)
-    public void reachableLoadedTerrainUsesRingAndRevalidatesMovingHumans(GameTestHelper test) {
+    public void openGroundLandsWithinAShortWalkFacingTheQuarry(GameTestHelper test) {
         var fixture = new Fixture(test, test.getLevel(), 220);
         try (var ignored = fixture.empty()) {
-            fixture.corridor(Blocks.STONE);
-            var search = fixture.search(fixture.target, List.of(fixture.target));
-            var result = complete(search);
-            test.assertValueEqual(result.status(), SafeDeployment.Status.FOUND, "Loaded walking corridor finds a safe spawn");
-            double distance = result.position().subtract(fixture.target).horizontalDistance();
-            test.assertTrue(distance >= 24 && distance <= 40, "Target distance stays in the closer 24-40 horizontal annulus");
+            fixture.flat(Blocks.STONE, 34);
+            var clock = new AtomicLong();
+            var search = fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target), List.of(fixture.target), clock);
+            var result = complete(search, clock);
+            test.assertValueEqual(result.status(), SafeDeployment.Status.FOUND, "Open loaded ground finds a landing");
+            test.assertFalse(result.fallback(), "A reachable landing is never a fallback");
+            double distance = result.position().distanceTo(fixture.target);
+            test.assertTrue(distance >= SafeDeployment.MIN_HUMAN_DISTANCE && distance <= SafeDeployment.MAX_PATH,
+                    "Open ground lands 8-24 blocks away: " + distance);
+            test.assertTrue(clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS, "A reachable landing needs no five-second wait");
+            float yaw = search.yaw(fixture.target);
+            double radians = Math.toRadians(yaw);
+            var look = new Vec3(-Math.sin(radians), 0, Math.cos(radians));
+            test.assertTrue(look.dot(fixture.target.subtract(result.position()).multiply(1, 0, 1).normalize()) > .99, "The landing faces the quarry");
             test.assertTrue(search.revalidate(), "Unchanged loaded terrain passes departure revalidation");
-            test.assertTrue(search.revalidate(result.position().add(-24, 0, 0), List.of(fixture.target)), "The 24-block target boundary is admitted");
-            test.assertTrue(!search.revalidate(result.position().add(-23.99, 0, 0), List.of(fixture.target)), "A target inside 24 blocks revokes departure");
-            test.assertTrue(search.revalidate(result.position().add(-40, 0, 0), List.of(fixture.target)), "The 40-block target boundary is admitted");
-            test.assertTrue(!search.revalidate(result.position().add(-40.01, 0, 0), List.of(fixture.target)), "A target beyond 40 blocks revokes departure");
-            test.assertTrue(search.revalidate(fixture.target, List.of(result.position().add(16, 0, 0))), "Another human 16 blocks away is permitted");
-            test.assertTrue(!search.revalidate(fixture.target, List.of(result.position().add(15.99, 0, 0))), "Another human closer than 16 blocks revokes departure");
-            var nearbyHuman = fixture.target.add(25, 0, 0);
-            var crowded = complete(fixture.search(fixture.target, List.of(fixture.target, nearbyHuman)));
-            test.assertValueEqual(crowded.status(), SafeDeployment.Status.FOUND, "The search can use another safe patch when a second human blocks the first");
-            test.assertTrue(crowded.position().distanceToSqr(nearbyHuman) >= 16 * 16, "Every active human receives the 16-block minimum separation");
-            test.assertTrue(!search.revalidate(fixture.target, List.of(result.position())), "Another active human moving to the point revokes admission");
-            test.assertTrue(!search.revalidate(result.position(), List.of(fixture.target)), "A moving target cannot produce a face-to-face spawn");
-            fixture.level.setBlock(BlockPos.containing(result.position()), Blocks.LAVA.defaultBlockState(), 3);
+            var point = result.position();
+            test.assertTrue(!search.revalidate(point.add(SafeDeployment.MAX_PATH + 4.01, 0, 0), List.of()), "A quarry that ran off revokes departure");
+            test.assertTrue(search.revalidate(fixture.target, List.of(point.add(8, 0, 0))), "Another human 8 blocks away is permitted");
+            test.assertTrue(!search.revalidate(fixture.target, List.of(point.add(7.99, 0, 0))), "Another human closer than 8 blocks revokes departure");
+            fixture.level.setBlock(BlockPos.containing(point), Blocks.LAVA.defaultBlockState(), 3);
             test.assertTrue(!search.revalidate(), "A newly flooded point is rejected immediately before teleport");
         }
         test.succeed();
     }
 
     @GameTest(maxTicks=200)
-    public void steppedSlopesAndTwoBlockHighWalledCavesAllowDeployment(GameTestHelper test) {
-        var fixture = new Fixture(test, test.getLevel(), 222);
+    public void aStillQuarryIsApproachedAlongItsOwnFootprints(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 232);
         try (var ignored = fixture.empty()) {
-            var landing = fixture.samples().getFirst();
-            fixture.firstLanding((x, z) -> x, 12);
-            var slope = fixture.search(fixture.target, List.of(fixture.target));
-            test.assertValueEqual(complete(slope).position(), Vec3.atBottomCenterOf(landing),
-                    "A normal one-block-per-column slope needs no same-height flat patch");
-            test.assertTrue(slope.revalidate(), "Sloped ground uses the same safety rules before teleport");
-
-            fixture.firstLanding((x, z) -> 0, 2);
-            // A one-block-wide, two-block-high cave has walls directly beside the body.
-            for (int x=-2; x<=2; x++) for (int z : new int[]{-1, 1}) for (int y=0; y<2; y++)
-                fixture.level.setBlock(landing.offset(x, y, z), Blocks.STONE.defaultBlockState(), 2);
-            var cave = fixture.search(fixture.target, List.of(fixture.target));
-            test.assertValueEqual(complete(cave).position(), Vec3.atBottomCenterOf(landing),
-                    "A low cave with solid side walls remains a valid landing");
-            test.assertTrue(cave.revalidate(), "Departure revalidation permits cave walls and a two-block ceiling");
-            fixture.level.setBlock(landing.above(), Blocks.STONE.defaultBlockState(), 2);
-            test.assertTrue(!cave.revalidate(), "A wall inside the actual body space still revokes departure");
+            fixture.flat(Blocks.STONE, 34);
+            var trail = new java.util.ArrayList<Vec3>();
+            for (int x = -2; x >= -22; x -= 2) trail.add(fixture.target.add(x, 0, 0));
+            // Facing +X: the footprints lie straight behind it.
+            var quarry = new SafeDeployment.Quarry(fixture.target, fixture.target.add(0, 1.62, 0), -90, Vec3.ZERO, trail);
+            var clock = new AtomicLong();
+            var result = complete(fixture.search(MonsterRole.ZOMBIE, quarry, List.of(fixture.target), clock), clock);
+            test.assertValueEqual(result.status(), SafeDeployment.Status.FOUND, "Footprints yield a landing");
+            test.assertTrue(trail.contains(result.position()), "A still quarry is approached from its own footprints: " + result.position());
         }
         test.succeed();
     }
 
     @GameTest(maxTicks=200)
-    public void narrowLedgesAreAllowedButLosingTheActualFloorRevokesDeparture(GameTestHelper test) {
-        var fixture = new Fixture(test, test.getLevel(), 226);
+    public void aRunnerIsInterceptedAheadOfItsHeading(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 234);
         try (var ignored = fixture.empty()) {
-            fixture.corridor(Blocks.STONE, 0);
-            var search = fixture.search(fixture.target, List.of(fixture.target));
-            var result = complete(search);
-            test.assertValueEqual(result.status(), SafeDeployment.Status.FOUND,
-                    "A supported narrow ledge is usable even when the neighboring columns are deep drops");
-            var landing = BlockPos.containing(result.position());
-            fixture.level.setBlock(landing.offset(1, 0, 1), Blocks.LAVA.defaultBlockState(), 2);
-            test.assertTrue(search.revalidate(), "Lava outside the actual body does not veto a vanilla-legal landing");
-            var floor = fixture.level.getBlockState(landing.below());
-            fixture.level.setBlock(landing.below(), Blocks.AIR.defaultBlockState(), 2);
-            test.assertTrue(!search.revalidate(), "Removing actual support prevents an immediate fall or void deployment");
-            fixture.level.setBlock(landing.below(), floor, 2);
-            fixture.level.setBlock(landing, Blocks.LAVA.defaultBlockState(), 2);
-            test.assertTrue(!search.revalidate(), "Lava intersecting the actual player body revokes departure");
+            fixture.flat(Blocks.STONE, 34);
+            var quarry = new SafeDeployment.Quarry(fixture.target, fixture.target.add(0, 1.62, 0), -90, new Vec3(5.6, 0, 0), List.of());
+            var clock = new AtomicLong();
+            var result = complete(fixture.search(MonsterRole.ZOMBIE, quarry, List.of(fixture.target), clock), clock);
+            test.assertValueEqual(result.status(), SafeDeployment.Status.FOUND, "A runner can be intercepted");
+            var away = result.position().subtract(fixture.target).multiply(1, 0, 1).normalize();
+            test.assertTrue(away.dot(new Vec3(1, 0, 0)) >= Math.cos(Math.PI / 4) - 1e-6, "The landing lies within 45 degrees ahead: " + away);
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
+    public void anUnreachableQuarryFallsBackToTheClosestWalkAfterFiveSeconds(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 236);
+        try (var ignored = fixture.empty()) {
+            fixture.flat(Blocks.STONE, 34);
+            // A pillar the quarry built: six blocks up, no way for a walker to climb.
+            for (int y = 0; y < 6; y++) fixture.level.setBlock(fixture.feet.above(y), Blocks.STONE.defaultBlockState(), 2);
+            var top = fixture.target.add(0, 6, 0);
+            var clock = new AtomicLong();
+            var zombie = fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(top), List.of(top), clock);
+            for (int i = 0; i < 90 && clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS - TICK; i++) { zombie.tick(); clock.addAndGet(TICK); }
+            test.assertValueEqual(zombie.result().status(), SafeDeployment.Status.PENDING, "Nothing is admitted before five seconds");
+            var result = complete(zombie, clock);
+            test.assertValueEqual(result.status(), SafeDeployment.Status.FOUND, "The closest walkable spot is admitted after five seconds");
+            test.assertTrue(result.fallback(), "The landing is reported as a fallback");
+            test.assertTrue(clock.get() <= SafeDeployment.FALLBACK_AFTER_NANOS + 3 * TICK, "The fallback answers at five seconds");
+            test.assertTrue(result.position().distanceTo(top) <= SafeDeployment.FALLBACK_RADIUS, "A fallback stays within 32 blocks");
+
+            var skeletonClock = new AtomicLong();
+            var skeleton = complete(fixture.search(MonsterRole.SKELETON, SafeDeployment.Quarry.standing(top), List.of(top), skeletonClock), skeletonClock);
+            test.assertValueEqual(skeleton.status(), SafeDeployment.Status.FOUND, "A skeleton may land within bow range of a pillar");
+            test.assertFalse(skeleton.fallback(), "Sight within 15 blocks is a full landing for a skeleton");
+            test.assertTrue(skeleton.position().add(0, 1.62, 0).distanceTo(top.add(0, 1.62, 0)) <= SafeDeployment.SKELETON_SIGHT + 1e-6,
+                    "The skeleton stands within vanilla bow range");
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=400)
+    public void theNetherRoofIsOnlyUsedWhenTheQuarryIsAlreadyUpThere(GameTestHelper test) {
+        var nether = new Fixture(test, test.getLevel().getServer().getLevel(Level.NETHER), 120);
+        try (var ignored = nether.empty()) {
+            // Solid rock below a bedrock roof at y=127; the quarry stands in a sealed pocket at y=120.
+            for (int x = -34; x <= 34; x++) for (int z = -34; z <= 34; z++) {
+                for (int y = 94; y <= 126; y++) nether.level.setBlock(nether.feet.offset(x, y - 120, z), Blocks.NETHERRACK.defaultBlockState(), 2);
+                nether.level.setBlock(nether.feet.offset(x, 7, z), Blocks.BEDROCK.defaultBlockState(), 2);
+                for (int y = 128; y <= 131; y++) nether.level.setBlock(nether.feet.offset(x, y - 120, z), Blocks.AIR.defaultBlockState(), 2);
+            }
+            for (int y = 0; y < 2; y++) nether.level.setBlock(nether.feet.above(y), Blocks.AIR.defaultBlockState(), 2);
+            var clock = new AtomicLong();
+            var below = complete(nether.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(nether.target), List.of(nether.target), clock), clock);
+            test.assertValueEqual(below.status(), SafeDeployment.Status.FAILED, "A quarry under the roof never sends a monster onto it");
+            var roof = nether.target.add(0, 8, 0);
+            var roofClock = new AtomicLong();
+            var above = complete(nether.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(roof), List.of(roof), roofClock), roofClock);
+            test.assertValueEqual(above.status(), SafeDeployment.Status.FOUND, "A quarry on the roof may be hunted on the roof");
+            test.assertTrue(above.position().y >= 128, "The roof landing stands on the bedrock roof");
         }
         test.succeed();
     }
@@ -170,37 +208,39 @@ public final class SafeDeploymentGameTest {
         test.succeed();
     }
 
-    @GameTest(maxTicks=200)
+    @GameTest(maxTicks=400)
     public void protectionAndUnsupportedVoidCandidatesAreRejected(GameTestHelper test) {
         var fixture = new Fixture(test, test.getLevel(), 228);
-        try (var ignored = fixture.empty()) { fixture.corridor(Blocks.STONE); }
+        try (var ignored = fixture.empty()) { fixture.flat(Blocks.STONE, 34); }
         try (var ignored = fixture.protectedZone()) {
-            test.assertValueEqual(complete(fixture.search(fixture.target, List.of(fixture.target))).status(),
-                    SafeDeployment.Status.FAILED, "Lobby protection still guards gameplay admission");
+            var clock = new AtomicLong();
+            test.assertValueEqual(complete(fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target),
+                    List.of(fixture.target), clock), clock).status(), SafeDeployment.Status.FAILED, "Lobby protection still guards gameplay admission");
         }
         try (var ignored = fixture.empty()) {
-            fixture.corridor(Blocks.AIR);
-            for (var sample : fixture.samples()) for (int y=fixture.level.getMinY(); y<sample.getY(); y++)
-                fixture.level.setBlock(sample.atY(y), Blocks.AIR.defaultBlockState(), 2);
-            test.assertValueEqual(complete(fixture.search(fixture.target, List.of(fixture.target))).status(),
-                    SafeDeployment.Status.FAILED, "No floor means no air or void deployment");
+            fixture.flat(Blocks.AIR, 34);
+            for (int x = -34; x <= 34; x++) for (int z = -34; z <= 34; z++) for (int y = -26; y < 0; y++)
+                fixture.level.setBlock(fixture.feet.offset(x, y, z), Blocks.AIR.defaultBlockState(), 2);
+            var clock = new AtomicLong();
+            test.assertValueEqual(complete(fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target),
+                    List.of(fixture.target), clock), clock).status(), SafeDeployment.Status.FAILED, "No floor means no air or void deployment");
         }
         test.succeed();
     }
 
     @GameTest(maxTicks=200)
-    public void unloadedSearchIsBoundedAndNeverLoadsCandidateChunks(GameTestHelper test) {
+    public void unloadedSearchWaitsSixtySecondsAndNeverLoadsCandidateChunks(GameTestHelper test) {
         var level = test.getLevel();
         var target = new Vec3(26_000_000.5, 100, 26_000_000.5);
         int chunkX = ((int)target.x) >> 4, chunkZ = ((int)target.z) >> 4;
         test.assertTrue(level.getChunkSource().getChunkNow(chunkX, chunkZ) == null, "The test destination starts unloaded");
-        var search = new SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), () -> 0);
-        var first = search.tick();
-        test.assertValueEqual(first.status(), SafeDeployment.Status.PENDING, "One tick cannot consume the entire candidate budget");
-        test.assertValueEqual(first.candidates(), SafeDeployment.CANDIDATES_PER_TICK, "At most four fresh candidates are begun per tick");
-        var result = complete(search);
+        var clock = new AtomicLong();
+        var search = new SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), MonsterRole.ZOMBIE,
+                SafeDeployment.Quarry.standing(target), List.of(target), fixedRandom(), clock::get);
+        var result = complete(search, clock);
         test.assertValueEqual(result.status(), SafeDeployment.Status.FAILED, "Unloaded terrain fails closed");
-        test.assertValueEqual(result.candidates(), 64, "The whole attempt is capped at 64 candidate standing points");
+        test.assertTrue(clock.get() >= SafeDeployment.DEPLOY_WAIT_NANOS, "The hunt keeps waiting for the full minute");
+        test.assertValueEqual(result.candidates(), 0, "No unloaded standing point is inspected");
         for (int x=chunkX-5; x<=chunkX+5; x++) for (int z=chunkZ-5; z<=chunkZ+5; z++) {
             test.assertTrue(level.getChunkSource().getChunkNow(x, z) == null, "Search did not synchronously load or generate any chunk");
         }
@@ -208,67 +248,35 @@ public final class SafeDeploymentGameTest {
     }
 
     @GameTest(maxTicks=200)
-    public void monotonicClockEnforcesTwoSecondAndPerTickBudgets(GameTestHelper test) {
-        var level = test.getLevel();
-        var target = new Vec3(26_100_000.5, 100, 26_100_000.5);
-        var clock = new AtomicLong();
-        var timeout = new SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), clock::get);
-        clock.set(SafeDeployment.MAX_SEARCH_NANOS);
-        test.assertValueEqual(timeout.tick().status(), SafeDeployment.Status.FAILED, "Two elapsed seconds end the search without requiring a candidate");
-        test.assertValueEqual(timeout.result().candidates(), 0, "Expired work cannot begin another candidate");
-        var unitClock = new AtomicLong();
-        var sliced = new SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), () -> unitClock.getAndAdd(600_000));
-        var first = sliced.tick();
-        test.assertValueEqual(first.status(), SafeDeployment.Status.PENDING, "A two-millisecond tick slice preserves the attempt for the next tick");
-        test.assertTrue(first.candidates() < SafeDeployment.CANDIDATES_PER_TICK, "Clock budget stops work before the four-candidate count budget");
-        test.succeed();
-    }
-
-    @GameTest(maxTicks=200)
-    public void sameTargetDimensionSearchInheritsRemainingCandidatesAndOriginalDeadline(GameTestHelper test) {
-        var level = test.getLevel();
-        var target = new Vec3(26_200_000.5, 100, 26_200_000.5);
-        var clock = new AtomicLong(1_500_000_000L);
-        var remaining = new SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), clock::get, 3, 0);
-        var result = complete(remaining);
-        test.assertValueEqual(result.status(), SafeDeployment.Status.FAILED, "The same target in another dimension cannot extend the remaining candidate allowance");
-        test.assertValueEqual(result.candidates(), 3, "Only the three remaining standing points are inspected");
-        clock.set(SafeDeployment.MAX_SEARCH_NANOS);
-        var expired = new SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), clock::get, 3, 0);
-        test.assertValueEqual(expired.tick().status(), SafeDeployment.Status.FAILED, "A target change does not restart the two-second deadline");
-        test.assertValueEqual(expired.result().candidates(), 0, "An inherited expired deadline admits no new work");
-        for (int invalid : new int[]{0, 65}) {
+    public void inheritedStartBoundsTheWaitAndEachTickBoundsThePathfinding(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 238);
+        try (var ignored = fixture.empty()) {
+            fixture.flat(Blocks.STONE, 34);
+            var clock = new AtomicLong(SafeDeployment.DEPLOY_WAIT_NANOS);
+            var expired = new SafeDeployment.Search(fixture.level, fixture.hunter, MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target),
+                    List.of(fixture.target), fixedRandom(), clock::get, 0, SafeDeployment.DEPLOY_WAIT_NANOS);
+            test.assertValueEqual(expired.tick().status(), SafeDeployment.Status.FAILED, "A dimension change does not restart the minute");
+            test.assertValueEqual(expired.result().candidates(), 0, "An inherited expired wait admits no new work");
+            var retrack = new SafeDeployment.Search(fixture.level, fixture.hunter, MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target),
+                    List.of(fixture.target), fixedRandom(), clock::get, clock.get() - SafeDeployment.RETRACK_WAIT_NANOS, SafeDeployment.RETRACK_WAIT_NANOS);
+            test.assertValueEqual(retrack.tick().status(), SafeDeployment.Status.FAILED, "A retrack waits at most ten seconds");
+            var unit = new AtomicLong();
+            var sliced = new SafeDeployment.Search(fixture.level, fixture.hunter, MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target),
+                    List.of(fixture.target), fixedRandom(), unit::get);
+            var first = sliced.tick();
+            test.assertTrue(first.candidates() <= SafeDeployment.PATHS_PER_TICK, "At most four paths are computed per tick");
             boolean rejected = false;
-            try { new SafeDeployment.Search(level, test.makeMockServerPlayerInLevel(), target, List.of(target), fixedRandom(), clock::get, invalid, 0); }
+            try { new SafeDeployment.Search(fixture.level, fixture.hunter, MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target),
+                    List.of(), fixedRandom(), unit::get, 0, 0); }
             catch (IllegalArgumentException expected) { rejected = true; }
-            test.assertTrue(rejected, "Shared budgets outside 1-64 are rejected");
+            test.assertTrue(rejected, "A non-positive wait is rejected");
         }
         test.succeed();
     }
 
-    @GameTest(maxTicks=200)
-    public void nativeNetherRoofAndEndObsidianDoNotAddTerrainBans(GameTestHelper test) {
-        var server = test.getLevel().getServer();
-        var nether = new Fixture(test, server.getLevel(Level.NETHER), 128);
-        var end = new Fixture(test, server.getLevel(Level.END), 120);
-        try (var ignored = nether.empty()) {
-            nether.corridor(Blocks.BEDROCK);
-            for (var sample : nether.samples()) for (int y=-9; y<0; y++)
-                nether.level.setBlock(sample.offset(0, y, 0), Blocks.BEDROCK.defaultBlockState(), 2);
-            test.assertValueEqual(complete(nether.search(nether.target, List.of(nether.target))).status(),
-                    SafeDeployment.Status.FOUND, "The Nether ceiling adds no extra terrain ban");
-            end.corridor(Blocks.OBSIDIAN);
-            test.assertValueEqual(complete(end.search(end.target, List.of(end.target))).status(),
-                    SafeDeployment.Status.FOUND, "Supported End obsidian adds no extra terrain ban");
-            end.corridor(Blocks.END_STONE);
-            test.assertValueEqual(complete(end.search(end.target, List.of(end.target))).status(),
-                    SafeDeployment.Status.FOUND, "Ordinary loaded End island ground remains usable");
-        }
-        test.succeed();
-    }
-
-    private static SafeDeployment.Result complete(SafeDeployment.Search search) {
-        for (int i=0; i<2000 && search.result().status() == SafeDeployment.Status.PENDING; i++) search.tick();
+    /** Ticks at a fake 20 TPS until the search answers; a little over a minute is the most any search may take. */
+    private static SafeDeployment.Result complete(SafeDeployment.Search search, AtomicLong clock) {
+        for (int i=0; i<1400 && search.result().status() == SafeDeployment.Status.PENDING; i++) { search.tick(); clock.addAndGet(TICK); }
         if (search.result().status() == SafeDeployment.Status.PENDING) throw new IllegalStateException("Search failed to yield a bounded result");
         return search.result();
     }
@@ -282,25 +290,19 @@ public final class SafeDeploymentGameTest {
             this.level = java.util.Objects.requireNonNull(level);
             hunter = test.makeMockServerPlayerInLevel();
             // The test server retains terrain between runs. Follow this run's randomized
-            // structure origin so an earlier wide corridor cannot fill today's narrow ledge.
+            // structure origin so an earlier arena cannot leak into today's scene.
             var origin = test.absolutePos(BlockPos.ZERO);
             feet = new BlockPos(origin.getX() + 80_000 + ARENAS.getAndIncrement() * 4096, y, origin.getZ() + 80_000);
             target = Vec3.atBottomCenterOf(feet);
         }
-        void corridor(Block floor) { corridor(floor, 3); }
-        void corridor(Block floor, int width) {
-            for (int x=-3; x<=68; x++) for (int z=-width; z<=width; z++) {
-                standing(feet.offset(x, 0, z), floor);
+        /** A square of floor with three blocks of air above, and solid rock below so no lower floor exists. */
+        void flat(Block floor, int radius) {
+            for (int x=-radius; x<=radius; x++) for (int z=-radius; z<=radius; z++) {
+                var point = feet.offset(x, 0, z);
+                level.setBlock(point.below(), floor.defaultBlockState(), 2);
+                for (int y=0; y<4; y++) level.setBlock(point.above(y), Blocks.AIR.defaultBlockState(), 2);
+                for (int y=2; y<=25; y++) level.setBlock(point.below(y), Blocks.STONE.defaultBlockState(), 2);
             }
-            // Every deterministic sampled column has controlled height and floor material;
-            // the native heightmap cannot accidentally fall back to unrelated terrain below.
-            int pad = width == 0 ? 0 : 2;
-            for (var sample : samples()) for (int x=-pad; x<=pad; x++) for (int z=-pad; z<=pad; z++)
-                standing(sample.offset(x, 0, z), floor);
-        }
-        void standing(BlockPos point, Block floor) {
-            level.setBlock(point.below(), floor.defaultBlockState(), 2);
-            for (int y=0; y<3; y++) level.setBlock(point.above(y), Blocks.AIR.defaultBlockState(), 2);
         }
         void firstLanding(java.util.function.IntBinaryOperator height, int clearance) {
             var center = samples().getFirst();
@@ -308,7 +310,6 @@ public final class SafeDeploymentGameTest {
                 int dy = height.applyAsInt(x, z);
                 for (int y=-6; y<=12; y++) {
                     Block block = y < dy || y >= dy + clearance ? Blocks.STONE : Blocks.AIR;
-                    // Never offer the top of the test cave as an alternate landing.
                     if (y == 12) block = Blocks.MAGMA_BLOCK;
                     level.setBlock(center.offset(x, y, z), block.defaultBlockState(), 2);
                 }
@@ -323,15 +324,15 @@ public final class SafeDeploymentGameTest {
             }
             return points;
         }
-        SafeDeployment.Search search(Vec3 target, List<Vec3> humans) {
-            return new SafeDeployment.Search(level, hunter, target, humans, fixedRandom(), () -> 0);
+        SafeDeployment.Search search(MonsterRole kind, SafeDeployment.Quarry quarry, List<Vec3> humans, AtomicLong clock) {
+            return new SafeDeployment.Search(level, hunter, kind, quarry, humans, fixedRandom(), clock::get);
         }
         dev.hardrush.gametest.RuntimeFixtures.Scope empty() { return scope(false); }
         dev.hardrush.gametest.RuntimeFixtures.Scope protectedZone() { return scope(true); }
         dev.hardrush.gametest.RuntimeFixtures.Scope scope(boolean enabled) {
             return dev.hardrush.gametest.RuntimeFixtures.protection(level.getServer(), new ProtectionRuntime.Access() {
                 @Override public Optional<ProtectionRuntime.Zone> zone(ServerLevel value) {
-                    return enabled && value == level ? Optional.of(new ProtectionRuntime.Zone(UUID.randomUUID(), target, 32, true)) : Optional.empty();
+                    return enabled && value == level ? Optional.of(new ProtectionRuntime.Zone(UUID.randomUUID(), target, 40, true)) : Optional.empty();
                 }
                 @Override public Optional<Participant> participant(UUID id) { return Optional.empty(); }
                 @Override public boolean leaveProtection(UUID round, UUID id, int life) { return false; }

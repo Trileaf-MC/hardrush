@@ -445,6 +445,10 @@ public final class PlayerProfiles implements AutoCloseable {
 
     /** A committed sortie opens only this monster body; never restore a human inventory. */
     public boolean deployMonster(ServerPlayer player, RoundSnapshot round, ServerLevel level, Vec3 position) {
+        return deployMonster(player, round, level, position, 0);
+    }
+    /** The body lands facing {@code yaw}, normally toward its quarry. */
+    public boolean deployMonster(ServerPlayer player, RoundSnapshot round, ServerLevel level, Vec3 position, float yaw) {
         requireMainThread();
         var entry = players.get(player.getUUID());
         var participant = round.participants().get(player.getUUID());
@@ -456,7 +460,7 @@ public final class PlayerProfiles implements AutoCloseable {
         closeSuspendedContainer(player);
         clearMonsterLobbyState(player);
         player.setHealth(player.getMaxHealth());
-        if (!player.teleportTo(level, position.x, position.y, position.z, Set.of(), 0, 0, true)) return false;
+        if (!player.teleportTo(level, position.x, position.y, position.z, Set.of(), yaw, 0, true)) return false;
         player.setGameMode(GameType.SURVIVAL);
         ((ProfileTagged) player).hardrush$isolated(false);
         ((ProfileTagged) player).hardrush$respawnPermitted(false);

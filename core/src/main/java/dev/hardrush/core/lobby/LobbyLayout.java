@@ -16,7 +16,13 @@ public final class LobbyLayout {
     public record Circle(double x, double z, double radius) {
         public boolean contains(double px, double pz) { return Math.hypot(px - x, pz - z) <= radius; }
     }
+    public record Box(double minX, double minZ, double maxX, double maxZ) {
+        /** Layout coordinates name block centers, so each edge block is wholly inside. */
+        public boolean contains(double px, double pz) { return px >= minX - .5 && px <= maxX + .5 && pz >= minZ - .5 && pz <= maxZ + .5; }
+    }
     public static final Circle ASSEMBLY = new Circle(0, -16, 7);
+    /** The monster wing: role booths, courtyard models, merchant, vaults and altar. */
+    public static final Box MONSTER_CAMP = new Box(11, -9, MAX_X, MAX_Z);
     public static Point landing(Landing purpose) {
         return switch (purpose) {
             case CENTRAL -> new Point(0, 0, 180);
