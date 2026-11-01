@@ -2,11 +2,13 @@ package dev.hardrush.gametest;
 
 import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.record.ProgressWrite;
+import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.player.ProfileTagged;
 import dev.hardrush.player.mixin.PlayerAdvancementProfileAccessor;
 import dev.hardrush.record.ProgressRuntime;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -21,6 +23,81 @@ import net.minecraft.world.phys.Vec3;
 
 /** Real server advancement/dimension hooks, without a game client or computer-use interaction. */
 public final class ProgressGameTest {
+    @GameTest(maxTicks = 100)
+    public void monsterFormsCannotAdvanceCriteriaAndHumanProgressResumesAfterClearing(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var player = test.makeMockServerPlayerInLevel();
+        var completed = server.getAdvancements().get(Identifier.parse("minecraft:story/mine_stone"));
+        var challenge = server.getAdvancements().get(Identifier.parse("minecraft:adventure/adventuring_time"));
+        var criteria = challenge.value().criteria().keySet().stream().sorted().toList();
+        var recipe = server.getAdvancements().getAllAdvancements().stream()
+                .filter(holder -> holder.id().getPath().startsWith("recipes/")).findFirst().orElseThrow();
+        try {
+            test.assertFalse(PlayerProfiles.isLocked(player), "The fixture exercises the monster gate, not profile quarantine");
+            completed.value().criteria().keySet().forEach(criterion -> player.getAdvancements().award(completed, criterion));
+            test.assertTrue(player.getAdvancements().award(challenge, criteria.getFirst()), "Human can start a multi-criterion challenge");
+            for (var kind : List.of("zombie", "skeleton", "creeper")) {
+                MonsterRoles.select(player, kind);
+                test.assertTrue(MonsterRoles.isMonster(player), "The tested player has a monster form: " + kind);
+                int experience = player.totalExperience;
+                for (int index = 1; index < criteria.size(); index++) {
+                    test.assertFalse(player.getAdvancements().award(challenge, criteria.get(index)),
+                            "Monster cannot add even a partial criterion: " + kind);
+                }
+                for (var criterion : recipe.value().criteria().keySet()) {
+                    test.assertFalse(player.getAdvancements().award(recipe, criterion), "Recipe advancements use the same monster gate");
+                }
+                var awarded = new ArrayList<String>();
+                player.getAdvancements().getOrStartProgress(challenge).getCompletedCriteria().forEach(awarded::add);
+                test.assertValueEqual(awarded, List.of(criteria.getFirst()),
+                        "The human's previous partial progress is retained without accumulating monster progress");
+                test.assertFalse(player.getAdvancements().getOrStartProgress(recipe).hasProgress(), "Monster cannot unlock a recipe advancement");
+                test.assertTrue(player.getAdvancements().getOrStartProgress(completed).isDone(), "Existing human achievements are preserved");
+                test.assertValueEqual(player.totalExperience, experience, "Rejected advancements grant no experience rewards");
+            }
+            MonsterRoles.clear(player);
+            int experience = player.totalExperience;
+            for (int index = 1; index < criteria.size(); index++) {
+                test.assertTrue(player.getAdvancements().award(challenge, criteria.get(index)), "Human can earn each previously blocked criterion");
+            }
+            test.assertTrue(player.getAdvancements().getOrStartProgress(challenge).isDone(), "Human can finish the challenge after leaving monster form");
+            test.assertTrue(player.totalExperience > experience, "Human completion still grants the native challenge reward");
+        } finally {
+            MonsterRoles.clear(player);
+            server.getPlayerList().remove(player);
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks = 100)
+    public void nativeEndEntryGrantsAdvancementOnlyAfterLeavingMonsterForm(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var player = test.makeMockServerPlayerInLevel();
+        var end = server.getLevel(Level.END);
+        var holder = server.getAdvancements().get(Identifier.parse("minecraft:story/enter_the_end"));
+        var origin = player.position();
+        try {
+            test.assertTrue(end != null, "Vanilla End fixture is available");
+            test.assertFalse(PlayerProfiles.isLocked(player), "End entry is not blocked by profile quarantine");
+            for (var kind : List.of("zombie", "skeleton", "creeper")) {
+                MonsterRoles.select(player, kind);
+                test.assertTrue(MonsterRoles.isMonster(player), "End entrant has the requested monster form: " + kind);
+                player.teleport(new TeleportTransition(end, new Vec3(.5, 128, .5), Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
+                test.assertTrue(player.level() == end, "Monster really changes dimension");
+                test.assertFalse(player.getAdvancements().getOrStartProgress(holder).hasProgress(), "Native monster End entry grants no criterion");
+                player.teleport(new TeleportTransition(test.getLevel(), origin, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
+            }
+            MonsterRoles.clear(player);
+            player.teleport(new TeleportTransition(end, new Vec3(.5, 128, .5), Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
+            test.assertTrue(player.getAdvancements().getOrStartProgress(holder).isDone(), "The native listener still grants End entry to the restored human");
+        } finally {
+            player.teleport(new TeleportTransition(test.getLevel(), origin, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
+            MonsterRoles.clear(player);
+            server.getPlayerList().remove(player);
+        }
+        test.succeed();
+    }
+
     @GameTest(maxTicks = 100)
     public void onlyTheFinalNativeCriterionRecordsTheDisplayAdvancement(GameTestHelper test) {
         var server = test.getLevel().getServer();
