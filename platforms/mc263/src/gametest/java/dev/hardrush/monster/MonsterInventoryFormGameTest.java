@@ -145,7 +145,7 @@ public final class MonsterInventoryFormGameTest {
             var fresh=nativeConversionBody(p,false);
             var freshTracker=nativeTracker(fresh);
             setExposure(p,fresh,false,true);
-            compareConversionTicks(test,p,fresh,freshTracker,441,MonsterForm.STRAY,true);
+            compareConversionTicks(test,p,fresh,freshTracker,441,MonsterForm.STRAY,101,441);
             cleanupConvertedBodies(p);
             MonsterRoles.select(p, "skeleton"); p.setHealth(9);
             var nativeBody=nativeConversionBody(p,false);
@@ -153,11 +153,15 @@ public final class MonsterInventoryFormGameTest {
             var binding = MonsterRoles.binding(p);
             p.getInventory().setItem(4,new ItemStack(Items.DIAMOND,13));
             setExposure(p,nativeBody,false,true);
-            compareConversionTicks(test,p,nativeBody,tracker,440,MonsterForm.STRAY,false);
+            compareConversionTicks(test,p,nativeBody,tracker,49,MonsterForm.STRAY,101,441);
+            setExposure(p,nativeBody,false,false); MonsterRoles.updateEnvironment(p); tracker.tick();
+            test.assertFalse(tracker.isConverting(),"Native powder snow exit cancels the exposure phase");
+            setExposure(p,nativeBody,false,true);
+            compareConversionTicks(test,p,nativeBody,tracker,101,MonsterForm.STRAY,102,442);
             setExposure(p,nativeBody,false,false); MonsterRoles.updateEnvironment(p); tracker.tick();
             test.assertFalse(tracker.isConverting(),"Native powder snow exit cancels conversion");
             setExposure(p,nativeBody,false,true);
-            compareConversionTicks(test,p,nativeBody,tracker,442,MonsterForm.STRAY,true);
+            compareConversionTicks(test,p,nativeBody,tracker,442,MonsterForm.STRAY,102,442);
             test.assertValueEqual(MonsterRoles.currentForm(p),MonsterForm.STRAY,"Exact exposure converts to Stray");
             test.assertValueEqual(p.getHealth(),9f,"Conversion never heals");
             test.assertValueEqual(MonsterRoles.binding(p),binding,"Conversion retains sortie identity");
@@ -191,7 +195,7 @@ public final class MonsterInventoryFormGameTest {
             var fresh=nativeConversionBody(p,true);
             var freshTracker=nativeTracker(fresh);
             setExposure(p,fresh,true,true);
-            compareConversionTicks(test,p,fresh,freshTracker,901,MonsterForm.DROWNED,true);
+            compareConversionTicks(test,p,fresh,freshTracker,901,MonsterForm.DROWNED,101,901);
             cleanupConvertedBodies(p);
             MonsterRoles.select(p,"zombie"); p.setHealth(8);
             var nativeBody=nativeConversionBody(p,true);
@@ -200,11 +204,15 @@ public final class MonsterInventoryFormGameTest {
             var adult=p.getInventory().getItem(2);p.getInventory().setItem(11,adult);p.getInventory().setItem(2,ItemStack.EMPTY);
             var binding=MonsterRoles.binding(p);
             setExposure(p,nativeBody,true,true);
-            compareConversionTicks(test,p,nativeBody,tracker,900,MonsterForm.DROWNED,false);
+            compareConversionTicks(test,p,nativeBody,tracker,49,MonsterForm.DROWNED,101,901);
+            setExposure(p,nativeBody,true,false); MonsterRoles.updateEnvironment(p); tracker.tick();
+            test.assertFalse(tracker.isConverting(),"Native water exit cancels the exposure phase");
+            setExposure(p,nativeBody,true,true);
+            compareConversionTicks(test,p,nativeBody,tracker,101,MonsterForm.DROWNED,102,902);
             setExposure(p,nativeBody,true,false); MonsterRoles.updateEnvironment(p); tracker.tick();
             test.assertFalse(tracker.isConverting(),"Native water exit cancels conversion");
             setExposure(p,nativeBody,true,true);
-            compareConversionTicks(test,p,nativeBody,tracker,902,MonsterForm.DROWNED,true);
+            compareConversionTicks(test,p,nativeBody,tracker,902,MonsterForm.DROWNED,102,902);
             test.assertValueEqual(MonsterRoles.currentForm(p),MonsterForm.DROWNED,"Continuous submerged eyes produce drowned form");
             test.assertTrue(p.getInventory().getItem(11).is(Items.DROWNED_SPAWN_EGG),"Remaining egg changes at its actual slot");
             test.assertValueEqual(countPurpose(p,"baby_egg"),0,"Consumed egg never replenishes");
@@ -324,11 +332,11 @@ public final class MonsterInventoryFormGameTest {
         } else {p.isInPowderSnow=exposed;body.isInPowderSnow=exposed;}
     }
     private static void compareConversionTicks(GameTestHelper test,ServerPlayer p,Mob body,ConversionTracker<?> tracker,
-                                                int ticks,MonsterForm converted,boolean completes) {
+                                                int ticks,MonsterForm converted,int playerConversionTick,int nativeConversionTick) {
         for (int tick=1;tick<=ticks;tick++) {
             MonsterRoles.updateEnvironment(p);tracker.tick();
-            test.assertValueEqual(MonsterRoles.currentForm(p)==converted,body.isRemoved(),"Player conversion matches the native entity at tick "+tick);
-            test.assertValueEqual(body.isRemoved(),completes && tick==ticks,"Native conversion reaches its exact boundary at tick "+tick);
+            test.assertValueEqual(MonsterRoles.currentForm(p)==converted,tick>=playerConversionTick,"Player conversion reaches its shorter boundary at tick "+tick);
+            test.assertValueEqual(body.isRemoved(),tick>=nativeConversionTick,"Native conversion keeps its vanilla boundary at tick "+tick);
         }
     }
     private static void cleanupConvertedBodies(ServerPlayer p) {
