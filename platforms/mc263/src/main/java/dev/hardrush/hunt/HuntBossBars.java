@@ -78,6 +78,17 @@ public final class HuntBossBars {
         if (old != null) old.bar.removeAllPlayers();
     }
 
+    /** The quarry this exact sortie was deployed onto. */
+    public record Hunted(UUID target, int targetLife) {}
+    public static java.util.Optional<Hunted> hunted(ServerPlayer hunter, RoundSnapshot round) {
+        var b = BINDINGS.get(hunter.level().getServer());
+        var s = b == null ? null : b.sorties.get(hunter.getUUID());
+        var p = round.participants().get(hunter.getUUID());
+        if (s == null || p == null || !s.round().equals(round.roundId()) || p.role() != ParticipantRole.MONSTER_DEPLOYED
+                || p.lifeSequence() != s.hunterLife() || p.monsterDeploymentSequence() != s.deployment()) return java.util.Optional.empty();
+        return java.util.Optional.of(new Hunted(s.target(), s.targetLife()));
+    }
+
     /** Direct monster-player damage only; companions keep players and summons indistinguishable. */
     public static void damaged(ServerPlayer victim, CombatOrigin origin, RoundSnapshot round) {
         if (origin.kind() == AttackKind.SUMMON || !origin.roundId().equals(round.roundId())) return;

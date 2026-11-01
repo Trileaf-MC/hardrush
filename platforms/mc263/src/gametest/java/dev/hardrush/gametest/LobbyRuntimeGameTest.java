@@ -541,9 +541,10 @@ public final class LobbyRuntimeGameTest {
             test.assertValueEqual(monster.player.gameMode.getGameModeForPlayer(), net.minecraft.world.level.GameType.ADVENTURE,
                     "A successful monster sortie restricts block editing through adventure mode");
             test.assertValueEqual(monster.participant().monsterDeploymentSequence(), sequence, "Exactly one persisted sortie is admitted");
-            double horizontal = monster.player.position().subtract(target.player.position()).horizontalDistance();
-            test.assertTrue(horizontal >= 24 && horizontal <= 40, "Actual native monster spawns in the target's 24-40 block ring");
-            test.assertTrue(monster.player.position().distanceToSqr(target.player.position()) >= 16 * 16, "Actual body respects the human separation");
+            double distance = monster.player.position().distanceTo(target.player.position());
+            test.assertTrue(distance >= 8 && distance <= 24, "Actual native monster lands within a short walk of its target: " + distance);
+            var toward = target.player.position().subtract(monster.player.position()).multiply(1, 0, 1).normalize();
+            test.assertTrue(monster.player.getLookAngle().multiply(1, 0, 1).normalize().dot(toward) > .9, "The landed monster faces its target");
             test.assertFalse(ProtectionRuntime.protectedEntity(monster.player), "Actual monster never enters spawn protection");
             var kind = monster.participant().monsterRole();
             test.assertValueEqual(MonsterRoles.nativeModel(monster.player).getType(), switch (kind) {
@@ -686,7 +687,7 @@ public final class LobbyRuntimeGameTest {
                 var constructor = old.getClass().getDeclaredConstructors()[0]; constructor.setAccessible(true);
                 var p = peer.participant();
                 channels.put(peer.profile.id(), constructor.newInstance(peer.player, peer.player.level(), peer.player.position(),
-                        System.nanoTime() - TimeUnit.SECONDS.toNanos(6), p.lifeSequence(), p.monsterDeploymentSequence()));
+                        System.nanoTime() - TimeUnit.SECONDS.toNanos(6), p.lifeSequence(), p.monsterDeploymentSequence(), false));
             } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
         }
         Object binding() throws ReflectiveOperationException {

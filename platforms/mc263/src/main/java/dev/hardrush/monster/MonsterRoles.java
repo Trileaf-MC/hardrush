@@ -158,6 +158,9 @@ public final class MonsterRoles {
         // A skeleton's volley lives on whichever bow it holds; MonsterBowDisplay explains it on the bow itself.
         player.getInventory().setItem(7, MonsterItems.bind(player,
             named(Items.ECHO_SHARD, "归返营地 · 右键引导 5 秒", "移动、攻击、使用物品或受伤会中断"), "return"));
+        player.getInventory().setItem(6, MonsterItems.bind(player, named(Items.RECOVERY_COMPASS, "追迹罗盘 · 右键引导 5 秒",
+            "目标离你 40 格以上持续 10 秒，或去了其他维度时发光可用", "循着目标足迹出现在它附近，可跨维度；冷却 15 秒"),
+            dev.hardrush.hunt.HuntRetracks.PURPOSE));
         player.getInventory().setSelectedSlot(0);
         applyPurchases(player, kit, form, spares);
         repairLoadout(player);
@@ -508,6 +511,7 @@ public final class MonsterRoles {
         MonsterDoorBreaking.clear(player);
         var item = player.getItemInHand(hand);
         if (MonsterItems.matches(player, item, "return")) return dev.hardrush.lobby.LobbyRuntime.useReturn(player);
+        if (MonsterItems.matches(player, item, dev.hardrush.hunt.HuntRetracks.PURPOSE)) return dev.hardrush.lobby.LobbyRuntime.useRetrack(player, item);
         if (!MonsterRoundRuntime.canAct(player)) return false;
         dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品／技能");
         if (isEgg(player, item)) return MonsterCompanions.use(player, hand);
@@ -529,7 +533,8 @@ public final class MonsterRoles {
                 || MonsterNativeWeapons.using(player));
     }
     public static boolean isReturnControl(ServerPlayer player, InteractionHand hand) {
-        return isMonster(player) && MonsterItems.matches(player, player.getItemInHand(hand), "return");
+        var item = player.getItemInHand(hand);
+        return isMonster(player) && (MonsterItems.matches(player, item, "return") || MonsterItems.matches(player, item, dev.hardrush.hunt.HuntRetracks.PURPOSE));
     }
     public static void releaseUsingItem(ServerPlayer player) {
         var form = currentForm(player); if (form == null) return;
@@ -724,9 +729,10 @@ public final class MonsterRoles {
         if (changed) MonsterDisguise.refreshEquipment(player);
         player.inventoryMenu.broadcastChanges();
     }
-    public static ItemStack named(Item item, String name, String description) {
+    public static ItemStack named(Item item, String name, String... description) {
         var stack = new ItemStack(item); stack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
-        stack.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(description)))); return stack;
+        stack.set(DataComponents.LORE, new ItemLore(java.util.Arrays.stream(description).map(line -> (Component) Component.literal(line)).toList()));
+        return stack;
     }
     private static List<ItemStack> copyInventory(ServerPlayer player) {
         var result = new ArrayList<ItemStack>();
