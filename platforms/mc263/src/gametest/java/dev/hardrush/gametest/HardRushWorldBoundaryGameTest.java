@@ -25,6 +25,7 @@ import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.clock.PackedClockStates;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
@@ -307,6 +308,31 @@ public final class HardRushWorldBoundaryGameTest {
             restoreWeather(weather, roundWeather);
         }
         test.succeed();
+    }
+
+    @GameTest(maxTicks = 1200)
+    public void roundDayCycleFollowsRoundClock(GameTestHelper test) {
+        assertDayCycleFollowsClock(test, roundLevel(test, Level.OVERWORLD));
+        test.succeed();
+    }
+
+    /** Sun burning, sleeping and night spawning read the level's day timeline, not only the clock numbers. */
+    static void assertDayCycleFollowsClock(GameTestHelper test, ServerLevel overworld) {
+        var clock = overworld.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(WorldClocks.OVERWORLD);
+        long original = overworld.clockManager().getInstance(clock).totalTicks();
+        var sky = new Vec3(0.5, 200, 0.5);
+        try {
+            overworld.clockManager().setTotalTicks(clock, 18000);
+            overworld.updateSkyBrightness();
+            test.assertFalse(overworld.environmentAttributes().getValue(EnvironmentAttributes.MONSTERS_BURN, sky), "Undead do not burn at round midnight");
+            test.assertTrue(overworld.isDarkOutside(), "Round midnight is dark for beds and night spawning");
+            overworld.clockManager().setTotalTicks(clock, 6000);
+            overworld.updateSkyBrightness();
+            test.assertTrue(overworld.environmentAttributes().getValue(EnvironmentAttributes.MONSTERS_BURN, sky), "Undead burn at round noon");
+        } finally {
+            overworld.clockManager().setTotalTicks(clock, original);
+            overworld.updateSkyBrightness();
+        }
     }
 
     @GameTest(maxTicks = 1200)

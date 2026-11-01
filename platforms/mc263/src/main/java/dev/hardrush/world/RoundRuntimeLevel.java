@@ -4,6 +4,7 @@ import java.util.function.BooleanSupplier;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.attribute.EnvironmentAttributeSystem;
 import net.minecraft.world.clock.PackedClockStates;
 import net.minecraft.world.clock.ServerClockManager;
 import net.minecraft.world.level.Level;
@@ -30,6 +31,7 @@ public final class RoundRuntimeLevel extends RuntimeLevel implements dev.hardrus
 
     void bind(RoundWorldBundle owner, RoundRuntimeLevel overworld) {
         this.owner = owner;
+        var previous = roundClocks;
         if (overworld.roundClocks == null) {
             BooleanSupplier advance = () -> overworld.getGameRules().get(GameRules.ADVANCE_TIME);
             var type = new SavedDataType<>(Identifier.parse("hardrush:round_clocks"),
@@ -40,6 +42,14 @@ public final class RoundRuntimeLevel extends RuntimeLevel implements dev.hardrus
         }
         roundClocks = overworld.roundClocks;
         ticksRoundClocks = this == overworld;
+        if (previous != roundClocks) followRoundClocks();
+    }
+
+    /** ServerLevel's constructor binds day/moon timelines to Fantasy's never-ticked placeholder clock. */
+    @SuppressWarnings("deprecation")
+    private void followRoundClocks() {
+        setEnvironmentAttributes(EnvironmentAttributeSystem.builder().addDefaultLayers(this).build());
+        updateSkyBrightness();
     }
 
     RoundWorldBundle owner() { return owner; }
