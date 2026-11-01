@@ -50,6 +50,9 @@ public final class MonsterRoles {
     private static final String SHOT_OWNER = "hardrush.shot-owner=";
     private static final String SHOT_BINDING = "hardrush.shot-binding=";
     private static final String NATIVE_BODY = "hardrush.native-body";
+    // Player forms take about five seconds; ordinary mobs and companions keep vanilla timing.
+    private static final int ENVIRONMENT_EXPOSURE_TICKS = 50;
+    private static final int ENVIRONMENT_CONVERSION_TICKS = 50;
     private static final List<Holder<Attribute>> CONTROLLED = List.of(Attributes.MAX_HEALTH, Attributes.MOVEMENT_SPEED,
         Attributes.ARMOR, Attributes.ARMOR_TOUGHNESS, Attributes.ATTACK_DAMAGE, Attributes.ATTACK_SPEED,
         Attributes.KNOCKBACK_RESISTANCE, Attributes.STEP_HEIGHT);
@@ -366,11 +369,11 @@ public final class MonsterRoles {
         // Daylight immunity is an intentional role rule; real fire and lava remain harmful.
         boolean exposed = role.form == MonsterForm.ZOMBIE ? player.isEyeInFluid(FluidTags.WATER)
                 : role.form == MonsterForm.SKELETON && player.isInPowderSnow;
-        // Match 26.3 ConversionTracker: exit resets affliction to -1; countdown converts only below zero.
+        // Keep 26.3 ConversionTracker boundaries, with shorter player-only phase durations.
         if (!exposed) { role.exposure = -1; role.conversion = -1; return; }
         if (role.conversion >= 0) {
             if (--role.conversion < 0) convert(player, role.form == MonsterForm.ZOMBIE ? MonsterForm.DROWNED : MonsterForm.STRAY);
-        } else if (++role.exposure >= (role.form == MonsterForm.ZOMBIE ? 600 : 140)) role.conversion = 300;
+        } else if (++role.exposure >= ENVIRONMENT_EXPOSURE_TICKS) role.conversion = ENVIRONMENT_CONVERSION_TICKS;
     }
     static void convert(ServerPlayer player, MonsterForm form) {
         var role = ROLES.get(player.getUUID());
