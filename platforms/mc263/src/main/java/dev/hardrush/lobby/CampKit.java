@@ -115,11 +115,12 @@ public final class CampKit {
     private static List<Want> desired(ServerPlayer player, dev.hardrush.core.config.RulesConfig rules, Participant p) {
         var wallet = p.wallet();
         var wants = new ArrayList<Want>();
-        int shown = Math.min(wallet.coins(), MAX_SHOWN_COINS);
+        int available = Math.max(0, wallet.coins() - CampTransfers.pending(player, CampTransfers.Kind.COIN));
+        int shown = Math.min(available, MAX_SHOWN_COINS);
         if (shown > 0) {
             var coins = coin(shown);
-            coins.set(DataComponents.LORE, new ItemLore(List.of(gray("共 " + wallet.coins() + " 枚怪物币"),
-                    gray("向营地的女巫商人购买下次出场的增强"), gray("本轮结束清空；不能丢出或转赠"))));
+            coins.set(DataComponents.LORE, new ItemLore(List.of(gray("共 " + available + " 枚怪物币"),
+                    gray("向营地的女巫商人购买下次出场的增强"), gray("丢出可转赠给营地怪物；落地 5 分钟作废；本轮结束清空"))));
             wants.add(new Want("coin", coins, null));
         }
         for (var entry : wallet.order().entrySet()) {
@@ -164,10 +165,11 @@ public final class CampKit {
         var inventory = player.getInventory();
         var craft = player.inventoryMenu.getCraftSlots();
         var present = new HashMap<String, Integer>();
+        var coinTemplate = wants.stream().filter(want -> want.key.equals("coin")).map(Want::stack).findFirst().orElse(ItemStack.EMPTY);
         boolean extra = false;
-        for (int i = 0; i < inventory.getContainerSize(); i++) extra |= count(present, inventory.getItem(i));
-        for (int i = 0; i < craft.getContainerSize(); i++) extra |= count(present, craft.getItem(i));
-        extra |= count(present, player.containerMenu.getCarried());
+        for (int i = 0; i < inventory.getContainerSize(); i++) extra |= count(present, inventory.getItem(i), coinTemplate);
+        for (int i = 0; i < craft.getContainerSize(); i++) extra |= count(present, craft.getItem(i), coinTemplate);
+        extra |= count(present, player.containerMenu.getCarried(), coinTemplate);
         var expected = new HashMap<String, Integer>();
         boolean matches = !extra;
         for (var want : wants) {
@@ -190,11 +192,12 @@ public final class CampKit {
     }
 
     /** Returns true for a projected stack that no longer belongs to the current projection format. */
-    private static boolean count(Map<String, Integer> present, ItemStack stack) {
+    private static boolean count(Map<String, Integer> present, ItemStack stack, ItemStack coinTemplate) {
         if (!is(stack)) return false;
         String key = isCoin(stack) ? "coin" : tag(stack);
         if (key.isEmpty()) return true;
         present.merge(key, stack.getCount(), Integer::sum);
-        return false;
+        // The displayed three stacks may stay full while a transfer changes the true balance.
+        return isCoin(stack) && !ItemStack.isSameItemSameComponents(stack, coinTemplate);
     }
 }

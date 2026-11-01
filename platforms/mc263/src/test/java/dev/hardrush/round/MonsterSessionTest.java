@@ -131,6 +131,31 @@ class MonsterSessionTest {
         }
     }
 
+    @Test void coinTransfersCommitBeforeReplyRejectOverlappingWritesAndSurviveReload() throws Exception {
+        Path path = seed(true);
+        try (var session = open(path)) {
+            request(reply -> session.requestMonsterCoinPickup(round, player, 3, 4, 70, reply));
+            var thrown = new AtomicReference<RoundSession.Reply>();
+            session.requestMonsterCoinDrop(round, player, 3, 4, 64, thrown::set);
+            assertNull(thrown.get(), "Floor coins must wait for durable debit");
+            assertEquals(70, session.snapshot().orElseThrow().participants().get(player).wallet().coins());
+            var overlap = new AtomicReference<RoundSession.Reply>();
+            session.requestRevivalTotemDrop(round, player, 3, 4, 1, overlap::set);
+            assertFalse(overlap.get().success(), "Coin and revival transfers share the mutation barrier");
+            pump(() -> thrown.get() != null);
+            assertTrue(thrown.get().success(), thrown.get().message());
+            var overdraw = new AtomicReference<RoundSession.Reply>();
+            session.requestMonsterCoinDrop(round, player, 3, 4, 7, overdraw::set);
+            assertFalse(overdraw.get().success());
+            assertEquals(6, session.snapshot().orElseThrow().participants().get(player).wallet().coins());
+        }
+        try (var session = open(path)) {
+            var restored = session.snapshot().orElseThrow().participants().get(player);
+            assertEquals(6, restored.wallet().coins());
+            assertEquals(1, restored.revivalCharges());
+        }
+    }
+
     private Path seed(Participant... others) throws Exception { return seed(false, others); }
 
     /** A camp monster holding a revival may only revive or transfer it, never hunt. */

@@ -645,6 +645,29 @@ public final class RoundEngine {
                 player.wallet().buy(before.rules(), player.monsterRole(), offer, expectedPrice)));
     }
 
+    public RoundTransition proposeMonsterCoinDrop(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, int count) {
+        RoundSnapshot before = capture();
+        Participant player = requireCoinHolder(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+        return monsterProposal(eventId, "MONSTER_COIN_DROP", before, player.withWallet(player.wallet().spendCoins(count)));
+    }
+
+    public RoundTransition proposeMonsterCoinPickup(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, int count) {
+        RoundSnapshot before = capture();
+        Participant player = requireCoinHolder(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+        if (count <= 0 || (long) player.wallet().coins() + count > Integer.MAX_VALUE)
+            throw new IllegalArgumentException("怪物币数量无效或超出余额上限。");
+        return monsterProposal(eventId, "MONSTER_COIN_PICKUP", before, player.withWallet(player.wallet().credit(count)));
+    }
+
+    private static Participant requireCoinHolder(RoundSnapshot before, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        if (!MonsterCoins.enabled(before.rules())) throw new IllegalStateException("本轮没有开放怪物币商店。");
+        // Like revival totems, coins may be gifted before using the altar; this is not a purchase.
+        return requireTotemHolder(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+    }
+
     /** The adapter rolls the native item first; this commit spends the key and keeps the result. */
     public RoundTransition proposeVaultOpen(UUID eventId, UUID roundId, UUID playerId, int expectedLifeSequence,
             int expectedDeploymentSequence, ShopOffer key, MonsterWallet.GearSlot slot,

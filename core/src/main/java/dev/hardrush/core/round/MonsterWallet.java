@@ -95,6 +95,12 @@ public record MonsterWallet(int coins, boolean roleChosen,
                 order, active, gear, activeGear, nextGearSerial, sortieDamage);
     }
 
+    /** Transfer only the coins; purchase limits, queued goods and damage accounting stay intact. */
+    public MonsterWallet spendCoins(int amount) {
+        if (amount <= 0 || amount > coins) throw new IllegalArgumentException("怪物币数量不足或无效。");
+        return with(coins - amount, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage);
+    }
+
     /** Every new monster life starts with the gift; revival already emptied the previous wallet. */
     public MonsterWallet becameMonster(int starter) {
         var wallet = credit(starter);

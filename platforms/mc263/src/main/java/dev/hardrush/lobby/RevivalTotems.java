@@ -1,8 +1,5 @@
 package dev.hardrush.lobby;
 
-import dev.hardrush.core.config.GameMode;
-import dev.hardrush.core.round.ParticipantRole;
-import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.round.RoundSession;
 import java.util.*;
@@ -13,17 +10,12 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
-import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.ItemLore;
-import net.minecraft.world.level.entity.EntityTypeTest;
 
 /**
  * Camp monsters carry their revival charges as native totems. The committed round snapshot stays the
@@ -42,23 +34,10 @@ public final class RevivalTotems {
         boolean busy(UUID player);
         RoundSession session();
     }
-    private static final class Loose {
-        final UUID round, owner;
-        final String ownerName;
-        final int count;
-        final ItemEntity entity;
-        boolean claimed;
-        Loose(UUID round, UUID owner, String ownerName, int count, ItemEntity entity) {
-            this.round = round; this.owner = owner; this.ownerName = ownerName; this.count = count; this.entity = entity;
-        }
-    }
     private record Slot(IntSupplier size, IntFunction<ItemStack> get, java.util.function.ObjIntConsumer<ItemStack> set) {}
 
     private static final Map<MinecraftServer, RevivalTotems> INSTANCES = new IdentityHashMap<>();
     private final Access access;
-    private final Map<UUID, Integer> pendingDrops = new HashMap<>();
-    private final Map<UUID, Loose> loose = new HashMap<>();
-    private UUID round;
 
     private RevivalTotems(Access access) { this.access = access; }
 
@@ -79,7 +58,7 @@ public final class RevivalTotems {
                 "落地 5 分钟无人拾取即作废；本轮结束全部清空"));
     }
 
-    private static ItemStack thrown(UUID round, UUID token, int count, String owner) {
+    static ItemStack thrown(UUID round, UUID token, int count, String owner) {
         return totem(round, token, count, List.of(
                 "来自 " + owner + " 的 " + count + " 次复生",
                 "营地里的怪物拾取后获得这些复生次数",
@@ -106,13 +85,6 @@ public final class RevivalTotems {
         return stack;
     }
 
-    private static Optional<UUID> token(ItemStack stack) {
-        var value = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag()
-                .getCompoundOrEmpty(KEY).getStringOr("token", "");
-        try { return value.isEmpty() ? Optional.empty() : Optional.of(UUID.fromString(value)); }
-        catch (IllegalArgumentException invalid) { return Optional.empty(); }
-    }
-
     public static void tick(MinecraftServer server) {
         var totems = INSTANCES.get(server);
         if (totems != null) totems.reconcile(server);
@@ -120,15 +92,19 @@ public final class RevivalTotems {
 
     private void reconcile(MinecraftServer server) {
         var r = access.committed().orElse(null);
-        UUID current = r == null ? null : r.roundId();
-        if (!Objects.equals(current, round)) { round = current; loose.clear(); }
-        for (var player : server.getPlayerList().getPlayers()) {
-            var p = r == null ? null : r.participants().get(player.getUUID());
-            if (p == null || !access.eligible(player)) { project(player, null, 0, 0); continue; }
-            int balance = Math.max(0, p.revivalCharges() - pendingDrops.getOrDefault(p.id(), 0));
-            project(player, r.roundId(), p.revivalCharges(), Math.min(MAX_STACK, balance));
-        }
-        if (server.getTickCount() % 20 == 0) sweep(server, r);
+        for (var player : server.getPlayerList().getPlayers()) reproject(player, r);
+    }
+
+    static void refresh(ServerPlayer player) {
+        var totems = INSTANCES.get(player.level().getServer());
+        if (totems != null) totems.reproject(player, totems.access.committed().orElse(null));
+    }
+
+    private void reproject(ServerPlayer player, RoundSnapshot r) {
+        var p = r == null ? null : r.participants().get(player.getUUID());
+        if (p == null || !access.eligible(player)) { project(player, null, 0, 0); return; }
+        int balance = Math.max(0, p.revivalCharges() - CampTransfers.pending(player, CampTransfers.Kind.REVIVAL));
+        project(player, r.roundId(), balance, Math.min(MAX_STACK, balance));
     }
 
     /** Converge every copy the player holds, including cursor and 2x2 grid, to exactly {@code want}. */
@@ -156,91 +132,7 @@ public final class RevivalTotems {
             }
         }
         if (have < want) inventory.add(template.copyWithCount(want - have));
+        player.inventoryMenu.broadcastChanges();
     }
 
-    private void sweep(MinecraftServer server, RoundSnapshot r) {
-        loose.values().removeIf(entry -> entry.entity.isRemoved() && !entry.claimed);
-        boolean open = r != null && r.rules().mode() == GameMode.HARDCORE
-                && (r.phase() == RoundPhase.RUNNING || r.phase() == RoundPhase.RESCUE);
-        if (!open) loose.values().removeIf(entry -> !entry.claimed);
-        for (ServerLevel level : server.getAllLevels()) {
-            for (var item : level.getEntities(EntityTypeTest.forClass(ItemEntity.class), item -> is(item.getItem()))) {
-                var entry = token(item.getItem()).map(loose::get).orElse(null);
-                if (entry == null || entry.entity != item) item.discard();
-            }
-        }
-    }
-
-    /** Q / Ctrl+Q over a totem slot of the personal inventory screen; every other click stays sealed. */
-    public static boolean throwsFromInventory(ServerPlayer player, ServerboundContainerClickPacket packet) {
-        var menu = player.inventoryMenu;
-        return player.containerMenu == menu && packet.containerInput() == ContainerInput.THROW
-                && packet.slotNum() >= 0 && packet.slotNum() < menu.slots.size()
-                && is(menu.getSlot(packet.slotNum()).getItem());
-    }
-
-    /** Vanilla removed {@code stack} from the body; it is committed as a throw or projected back. */
-    public static void thrown(ServerPlayer player, ItemStack stack) {
-        var totems = INSTANCES.get(player.level().getServer());
-        if (totems != null) totems.drop(player, stack.getCount());
-    }
-
-    private void drop(ServerPlayer player, int count) {
-        var r = access.committed().orElse(null);
-        var p = r == null ? null : r.participants().get(player.getUUID());
-        if (p == null || !access.eligible(player) || access.busy(p.id()) || access.session().mutationPending()) {
-            tell(player, "复生图腾暂时不能丢出，已放回背包；请稍后再试。"); return;
-        }
-        int n = Math.min(count, p.revivalCharges() - pendingDrops.getOrDefault(p.id(), 0));
-        if (n <= 0) return;
-        pendingDrops.merge(p.id(), n, Integer::sum);
-        access.session().requestRevivalTotemDrop(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), n, reply -> {
-            pendingDrops.computeIfPresent(p.id(), (id, pending) -> pending > n ? pending - n : null);
-            if (!reply.success()) { tell(player, "复生图腾未能丢出，已放回背包：" + reply.message()); return; }
-            var token = UUID.randomUUID();
-            var entity = player.createItemStackToDrop(thrown(r.roundId(), token, n, player.getScoreboardName()), false, true);
-            int left = remaining(p.id());
-            if (entity == null) return;
-            player.level().addFreshEntity(entity);
-            loose.put(token, new Loose(r.roundId(), p.id(), player.getScoreboardName(), n, entity));
-            tell(player, "已丢出 " + n + " 个复生图腾，剩余 " + left + " 次；营地怪物可拾取，5 分钟无人拾取即作废。");
-        });
-    }
-
-    /** Replaces native pickup for every revival totem entity. */
-    public static void touch(ServerPlayer player, ItemEntity item) {
-        var totems = INSTANCES.get(player.level().getServer());
-        if (totems == null) { item.discard(); return; }
-        totems.pickup(player, item);
-    }
-
-    private void pickup(ServerPlayer player, ItemEntity item) {
-        var r = access.committed().orElse(null);
-        var token = token(item.getItem()).orElse(null);
-        var entry = token == null ? null : loose.get(token);
-        if (r == null || entry == null || entry.entity != item || !entry.round.equals(r.roundId())) {
-            if (token != null && entry != null && !entry.claimed) loose.remove(token);
-            item.discard(); return;
-        }
-        var p = r.participants().get(player.getUUID());
-        if (entry.claimed || item.hasPickUpDelay() || p == null || p.role() != ParticipantRole.MONSTER_LOBBY
-                || !access.eligible(player) || access.busy(p.id()) || access.session().mutationPending()) return;
-        entry.claimed = true;
-        access.session().requestRevivalTotemPickup(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), entry.count, reply -> {
-            if (!reply.success()) { entry.claimed = false; return; }
-            loose.remove(token);
-            if (!item.isRemoved()) { player.take(item, entry.count); item.discard(); }
-            tell(player, "拾取了 " + entry.ownerName + " 的复生图腾：复生次数 +" + entry.count + "，剩余 " + remaining(p.id()) + " 次。");
-            var owner = player.level().getServer().getPlayerList().getPlayer(entry.owner);
-            if (owner != null && owner != player) tell(owner, player.getScoreboardName() + " 拾取了你丢出的 " + entry.count + " 个复生图腾。");
-        });
-    }
-
-    private int remaining(UUID player) {
-        return access.committed().map(r -> r.participants().get(player)).map(p -> p.revivalCharges()).orElse(0);
-    }
-
-    private static void tell(ServerPlayer player, String message) {
-        if (player.connection != null) player.sendSystemMessage(Component.literal(message));
-    }
 }

@@ -136,6 +136,7 @@ public final class LobbyRuntime {
             @Override public RoundSession session() { return session; }
         };
         RevivalTotems.configure(server, camp);
+        CampTransfers.configure(server, camp);
         CampKit.configure(server, camp);
         MonsterShop.configure(server, camp);
         MonsterVaults.configure(server, camp);
@@ -199,7 +200,7 @@ public final class LobbyRuntime {
         });
     }
     public static void unconfigure(MinecraftServer server) {
-        BINDINGS.remove(server); LobbyInteractions.close(server); LobbyMenus.unconfigure(server); RevivalTotems.unconfigure(server);
+        BINDINGS.remove(server); LobbyInteractions.close(server); LobbyMenus.unconfigure(server); RevivalTotems.unconfigure(server); CampTransfers.unconfigure(server);
         CampKit.unconfigure(server); MonsterShop.unconfigure(server); MonsterVaults.unconfigure(server);
         MonsterRoundRuntime.unconfigure(server); MonsterCombatRuntime.unconfigure(server);
     }
@@ -360,6 +361,7 @@ public final class LobbyRuntime {
     public static void tick(MinecraftServer server) {
         var b = BINDINGS.get(server); if (b == null) return;
         synchronize(server, b);
+        CampTransfers.tick(server);
         RevivalTotems.tick(server);
         CampKit.tick(server);
         MonsterVaults.tick(server);

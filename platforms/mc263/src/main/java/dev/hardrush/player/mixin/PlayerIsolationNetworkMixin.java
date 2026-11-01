@@ -2,7 +2,7 @@ package dev.hardrush.player.mixin;
 
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.lobby.LobbyInteractions;
-import dev.hardrush.lobby.RevivalTotems;
+import dev.hardrush.lobby.CampTransfers;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.round.RoundRuntime;
@@ -102,9 +102,10 @@ public abstract class PlayerIsolationNetworkMixin {
                     player.connection.ackBlockChangesUpTo(packet.getSequence());
                     player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.getPos()));
                 }
-                // A camp monster may throw its revival totem; RevivalTotems commits the transfer.
+                // Camp currencies are committed before their floor stacks appear.
                 case DROP_ITEM, DROP_ALL_ITEMS -> {
-                    if (RevivalTotems.is(player.getInventory().getSelectedItem())) return;
+                    if (CampTransfers.is(player.getInventory().getSelectedItem())) return;
+                    player.inventoryMenu.sendAllDataToRemote();
                 }
                 default -> { }
             }
@@ -126,10 +127,13 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = "handleContainerClick", at = @At("HEAD"), cancellable = true)
     private void hardrush$lobbyMenuClick(net.minecraft.network.protocol.game.ServerboundContainerClickPacket packet, CallbackInfo ci) {
-        if (player.level().getServer().isSameThread() && RevivalTotems.throwsFromInventory(player, packet)) return;
+        if (player.level().getServer().isSameThread() && CampTransfers.throwsFromInventory(player, packet)) return;
         if (player.level().getServer().isSameThread() && !dev.hardrush.lobby.LobbyMenus.isMenu(player)
                 && !dev.hardrush.lobby.MonsterShop.isShop(player)
-                && (PlayerProfiles.isLocked(player) || CombatRuntime.competitionFrozen(player.level()))) ci.cancel();
+                && (PlayerProfiles.isLocked(player) || CombatRuntime.competitionFrozen(player.level()))) {
+            player.containerMenu.sendAllDataToRemote();
+            ci.cancel();
+        }
     }
 
     @Inject(method = "handleContainerClose", at = @At("HEAD"), cancellable = true)
@@ -162,7 +166,7 @@ public abstract class PlayerIsolationNetworkMixin {
     }
 
     // Celebration allows movement and closing a menu, while sealing all new competitive actions.
-    @Inject(method = {"handlePlayerAction", "handleAttack", "handlePunch",
+    @Inject(method = {"handleAttack", "handlePunch",
             "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
             "handleRenameItem", "handleSelectTrade", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
             "handlePickItemFromBlock", "handlePickItemFromEntity", "handleBundleItemSelectedPacket",
@@ -174,6 +178,15 @@ public abstract class PlayerIsolationNetworkMixin {
         if (player.level().getServer().isSameThread() && CombatRuntime.competitionFrozen(player.level())) ci.cancel();
     }
 
+    @Inject(method = "handlePlayerAction", at = @At("HEAD"), cancellable = true)
+    private void hardrush$holdFrozenAction(ServerboundPlayerActionPacket packet, CallbackInfo ci) {
+        if (!player.level().getServer().isSameThread() || !CombatRuntime.competitionFrozen(player.level())) return;
+        if (packet.getAction() == ServerboundPlayerActionPacket.Action.DROP_ITEM
+                || packet.getAction() == ServerboundPlayerActionPacket.Action.DROP_ALL_ITEMS)
+            player.inventoryMenu.sendAllDataToRemote();
+        ci.cancel();
+    }
+
     @Inject(method = "handleUseItemOn", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdFrozenBlockUse(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && LobbyInteractions.consumed(LobbyInteractions.block(player, packet))) { ci.cancel(); return; }
@@ -183,7 +196,11 @@ public abstract class PlayerIsolationNetworkMixin {
     @Inject(method = "handleSetCarriedItem", at = @At("HEAD"), cancellable = true)
     private void hardrush$bookSlotSelection(CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)
-                && !RoundRuntime.lobbyBookReady(player)) ci.cancel();
+                && !RoundRuntime.lobbyBookReady(player)) {
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket(player.getInventory().getSelectedSlot()));
+            player.inventoryMenu.sendAllDataToRemote();
+            ci.cancel();
+        }
     }
 
     @Inject(method = "handleUseItem", at = @At("HEAD"), cancellable = true)

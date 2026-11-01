@@ -2,7 +2,7 @@ package dev.hardrush.protection.mixin;
 
 import dev.hardrush.book.WrittenBookPort;
 import dev.hardrush.lobby.LobbyInteractions;
-import dev.hardrush.lobby.RevivalTotems;
+import dev.hardrush.lobby.CampTransfers;
 import dev.hardrush.protection.ProtectionRuntime;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
@@ -56,9 +56,12 @@ public abstract class ProtectionNetworkMixin {
                 }
             }
             case DROP_ITEM, DROP_ALL_ITEMS -> {
-                // Revival totems are the one lobby item that may be thrown; RevivalTotems commits or restores it.
+                // Camp currencies are the only lobby items that may be thrown.
                 if (ProtectionRuntime.protectedEntity(player)
-                        && !RevivalTotems.is(player.getInventory().getSelectedItem())) ci.cancel();
+                        && !CampTransfers.is(player.getInventory().getSelectedItem())) {
+                    player.inventoryMenu.sendAllDataToRemote();
+                    ci.cancel();
+                }
             }
             default -> {}
         }
@@ -89,7 +92,7 @@ public abstract class ProtectionNetworkMixin {
         // The witch's menu accepts only its own guarded result click; see MonsterShop.ShopMenu.
         if (mainThread() && dev.hardrush.lobby.MonsterShop.isShop(player)) return;
         if (!mainThread() || !ProtectionRuntime.protectedEntity(player)) return;
-        if (RevivalTotems.throwsFromInventory(player, packet)) return;
+        if (CampTransfers.throwsFromInventory(player, packet)) return;
         // Personal inventory sorting is allowed. QUICK_CRAFT uses negative-slot control packets
         // to begin/end a normal drag; only PICKUP/outside and THROW actually discard items.
         if (player.containerMenu != player.inventoryMenu || packet.containerInput() == ContainerInput.THROW

@@ -272,7 +272,8 @@ public final class LobbyRuntimeGameTest {
                     // The kill's revival recalls the hunter in the same durable batch; it goes to the altar next.
                     .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_LOBBY
                             && f.profiles.isReady(hunter.profile.id(), f.round()) && !f.session.mutationPending(), "Cycle kill recalls the hunter during rescue " + iteration))
-                    .thenWaitUntil(() -> f.await(iteration != 0 || heldTotems(hunter.player) == hunter.participant().revivalCharges(),
+                    .thenWaitUntil(() -> f.await(iteration != 0 || heldTotems(hunter.player) == hunter.participant().revivalCharges()
+                            && CampTransferFixtures.actionsReady(f.session),
                             "Camp inventory projects the revival balance as totems"))
                     .thenExecute(() -> {
                         if (iteration != 0) return;
@@ -307,8 +308,9 @@ public final class LobbyRuntimeGameTest {
                         floor.playerTouch(hunter.player);
                     })
                     .thenWaitUntil(() -> f.await(iteration != 0 || hunter.participant().revivalCharges() == 1
-                            && heldTotems(hunter.player) == 1 && !f.session.mutationPending(), "The original owner regains the charge"))
-                    .thenExecute(() -> {
+                            && heldTotems(hunter.player) == 1 && !f.session.mutationPending(), "The original owner regains the charge"));
+            if (iteration == 0) CampTransferFixtures.append(sequence, f, hunter, prey);
+            sequence.thenExecute(() -> {
                         f.test.assertTrue(hunter.participant().monsterCooldownNanos() > 0, "Revival is tested during the deployment cooldown");
                         if (iteration == 0) {
                             var worlds = f.service("WORLDS", RoundWorldBundle.class);
@@ -752,6 +754,7 @@ public final class LobbyRuntimeGameTest {
             EmbeddedChannel channel;
             ServerPlayer player;
             int acknowledged = Integer.MIN_VALUE;
+            int acknowledgedChunkBatches;
             Peer(String name) { profile = new GameProfile(UUID.randomUUID(), name); }
             Participant participant() { return round().participants().get(profile.id()); }
             ServerPlayer current() { return server.getPlayerList().getPlayer(profile.id()); }
@@ -760,6 +763,7 @@ public final class LobbyRuntimeGameTest {
                         .thenWaitUntil(() -> await(prepare.tick(), "Native UUID player-data load: " + profile.name()))
                         .thenExecute(() -> {
                             connection = new RecordingConnection(); channel = new EmbeddedChannel(connection); acknowledged = Integer.MIN_VALUE;
+                            acknowledgedChunkBatches = 0;
                             player = prepare.spawnPlayer(connection, CommonListenerCookie.createInitial(profile, false)); prepare.close(); acknowledge();
                             test.assertTrue(player.level() == LobbyWorld.open(server).holdingLevel() && PlayerProfiles.isLocked(player), "Native login starts in real profile quarantine");
                         }).thenWaitUntil(() -> await(profiles.isReady(profile.id(), round()), "Real profile journal ready: " + profile.name()));
@@ -785,6 +789,11 @@ public final class LobbyRuntimeGameTest {
             void acknowledge() {
                 if (connection == null) return;
                 var nativePlayer = current(); if (nativePlayer == null) return;
+                int batches = (int) connection.packets.stream().filter(net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket.class::isInstance).count();
+                while (acknowledgedChunkBatches < batches) {
+                    acknowledgedChunkBatches++;
+                    nativePlayer.connection.handleChunkBatchReceived(new net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket(64));
+                }
                 connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
                         .reduce((previous, latest) -> latest).filter(packet -> packet.id() != acknowledged).ifPresent(packet -> {
                             acknowledged = packet.id();
@@ -824,7 +833,8 @@ public final class LobbyRuntimeGameTest {
     /** The real Q-key packet: vanilla removes the stack, RevivalTotems commits it before spawning. */
     static void throwTotem(ServerPlayer player) {
         for (int slot = 0; slot < 9; slot++) if (RevivalTotems.is(player.getInventory().getItem(slot))) {
-            player.getInventory().setSelectedSlot(slot);
+            player.connection.handleSetCarriedItem(new net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket(slot));
+            if (player.getInventory().getSelectedSlot() != slot) throw new IllegalStateException("Camp rejected native hotbar selection");
             player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(
                     ServerboundPlayerActionPacket.Action.DROP_ITEM, BlockPos.ZERO, Direction.DOWN));
             return;
