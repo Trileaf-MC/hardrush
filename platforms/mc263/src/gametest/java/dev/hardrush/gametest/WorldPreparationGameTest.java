@@ -160,6 +160,11 @@ public final class WorldPreparationGameTest {
         var sampledChunks = new java.util.HashSet<net.minecraft.world.level.ChunkPos>();
         long started = System.nanoTime();
         var lastDiagnostic = new long[1];
+        // Dimensions open on later ticks, so the round copies the server rules as they are now.
+        var phantoms = net.minecraft.world.level.gamerules.GameRules.SPAWN_PHANTOMS;
+        var keepInventory = net.minecraft.world.level.gamerules.GameRules.KEEP_INVENTORY;
+        boolean serverPhantoms = server.getGameRules().get(phantoms);
+        server.getGameRules().set(phantoms, !serverPhantoms, null);
         test.assertFalse(bundle.ready(), "Opening an identity cannot announce world readiness");
         try {
             bundle.spawn();
@@ -191,6 +196,15 @@ public final class WorldPreparationGameTest {
                             "Vanilla overworld semantic key cannot escape to the lobby");
                     test.assertTrue(end.getDragonFight() != null, "Real vanilla EnderDragonFight initialized");
                     HardRushWorldBoundaryGameTest.assertDayCycleFollowsClock(test, overworld);
+                    server.getGameRules().set(phantoms, serverPhantoms, null);
+                    test.assertTrue(nether.getGameRules() == overworld.getGameRules() && end.getGameRules() == overworld.getGameRules(),
+                            "Round dimensions share one rule set");
+                    test.assertTrue(overworld.getGameRules() != server.getGameRules(), "Round rules are a copy, not the server rules");
+                    test.assertValueEqual(overworld.getGameRules().get(phantoms), !serverPhantoms, "Round copies server rules when created");
+                    boolean serverKeep = server.getGameRules().get(keepInventory);
+                    overworld.getGameRules().set(keepInventory, !serverKeep, server);
+                    test.assertValueEqual(end.getGameRules().get(keepInventory), !serverKeep, "A round rule change reaches every dimension");
+                    test.assertValueEqual(server.getGameRules().get(keepInventory), serverKeep, "A round rule change leaves the server template");
                     test.assertTrue(bundle.exits().isEmpty(), "Natural spawn requires no artificial exit corridors");
                     test.assertTrue(RoundWorldBundle.safeStanding(overworld, bundle.spawn()), "Spawn is safe");
                     test.assertTrue(naturalSurface.containsKey(bundle.spawn().below()), "Native terrain was observed before spawn preparation");
@@ -270,6 +284,9 @@ public final class WorldPreparationGameTest {
                     test.assertValueEqual(recovered[0].metrics().changedBlocks(), 0, "Restoring a ready manifest performs no world edits");
                     test.assertValueEqual(recovered[0].roundId(), snapshot.roundId(), "Restore keeps the same round identity");
                     test.assertValueEqual(overworld.getSeed(), snapshot.seed(), "Restore keeps the same seed");
+                    test.assertValueEqual(overworld.getGameRules().get(phantoms), !serverPhantoms, "Reopening keeps the round copy instead of recopying");
+                    test.assertValueEqual(recovered[0].level(Level.NETHER).getGameRules().get(keepInventory),
+                            !server.getGameRules().get(keepInventory), "Mid-round rule changes persist across reopening");
                     org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("Round world ready-world recovery metrics: {}", recovered[0].metrics());
                     test.assertTrue(initialLevels.stream().noneMatch(level -> level == recovered[0].level(Level.OVERWORLD)),
                             "Recovery acquires a fresh native handle after releasing old region IO");

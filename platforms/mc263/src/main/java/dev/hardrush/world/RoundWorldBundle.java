@@ -39,7 +39,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.dimension.LevelStem;
-import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.level.portal.TeleportTransition;
@@ -240,8 +239,7 @@ public final class RoundWorldBundle implements AutoCloseable {
                     case "end" -> BuiltinDimensionTypes.END;
                     default -> BuiltinDimensionTypes.OVERWORLD;
                 }).setDifficulty(Difficulty.valueOf(snapshot.rules().difficulty().name()))
-                .setShouldTickTime(true).setMirrorOverworldGameRules(false)
-                .setGameRule(GameRules.KEEP_INVENTORY, false).setLevelConstructor(RoundRuntimeLevel::new);
+                .setShouldTickTime(true).setMirrorOverworldGameRules(false).setLevelConstructor(RoundRuntimeLevel::new);
         var handle = Fantasy.get(server).getOrOpenPersistentLevel(key.identifier(), config);
         if (handle.asLevel().getSeed() != snapshot.seed()) throw new IllegalStateException("轮次种子不符: " + name);
         handles.put(name, handle);

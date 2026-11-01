@@ -514,6 +514,8 @@ public final class TenRoundGameTest {
             boolean raining = weather.isRaining(), thundering = weather.isThundering();
             int clear = weather.getClearWeatherTime(), rain = weather.getRainTime(), thunder = weather.getThunderTime();
             boolean vanillaRaining = server.getWeatherData().isRaining();
+            var keepInventory = net.minecraft.world.level.gamerules.GameRules.KEEP_INVENTORY;
+            boolean roundKeep = overworld.getGameRules().get(keepInventory), vanillaKeep = server.getGameRules().get(keepInventory);
             var console = server.createCommandSourceStack().withSuppressedOutput();
             try {
                 server.getCommands().performPrefixedCommand(console, "time set " + (roundTime == 17000 ? 18000 : 17000));
@@ -522,7 +524,12 @@ public final class TenRoundGameTest {
                 server.getCommands().performPrefixedCommand(console, raining ? "weather clear 600s" : "weather rain 600s");
                 test.assertTrue(weather.isRaining() != raining, "Console weather command reaches the round");
                 test.assertValueEqual(server.getWeatherData().isRaining(), vanillaRaining, "Console weather leaves the vanilla overworld");
+                server.getCommands().performPrefixedCommand(console, "gamerule keep_inventory " + !roundKeep);
+                test.assertValueEqual(levels[2].getGameRules().get(keepInventory), !roundKeep, "Console gamerule reaches every round dimension");
+                test.assertValueEqual(server.getGameRules().get(keepInventory), !roundKeep, "Console gamerule also sets the rules later rounds copy");
             } finally {
+                overworld.getGameRules().set(keepInventory, roundKeep, server);
+                server.getGameRules().set(keepInventory, vanillaKeep, null);
                 overworld.clockManager().setTotalTicks(clock, roundTime);
                 weather.setClearWeatherTime(clear); weather.setRainTime(rain); weather.setThunderTime(thunder);
                 weather.setRaining(raining); weather.setThundering(thundering);
