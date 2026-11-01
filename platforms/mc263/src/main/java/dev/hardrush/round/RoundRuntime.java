@@ -88,6 +88,7 @@ public final class RoundRuntime {
         if (initialized) return;
         initialized = true;
         dev.hardrush.participation.ParticipationControl.registerCommands();
+        dev.hardrush.world.RoundWorldRouting.registerFormalOverworld(RoundRuntime::formalOverworld);
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             if (!HardRushProperties.competitionEnabled()) return;
             var recovery = new dev.hardrush.storage.FullCheckpoint(server.getWorldPath(LevelResource.ROOT)).restore();
@@ -125,11 +126,7 @@ public final class RoundRuntime {
             CelebrationRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
             dev.hardrush.pact.DuskPactRuntime.configure(server, new dev.hardrush.pact.DuskPactRuntime.Access() {
                 public Optional<RoundSnapshot> snapshot() { return session.snapshot(); }
-                public net.minecraft.server.level.ServerLevel overworld() {
-                    var worlds = WORLDS.get(server);
-                    return worlds != null && worlds.ready() && session.snapshot().filter(r -> r.roundId().equals(worlds.roundId())).isPresent()
-                            ? worlds.level(Level.OVERWORLD) : null;
-                }
+                public net.minecraft.server.level.ServerLevel overworld() { return formalOverworld(server); }
                 public dev.hardrush.pact.DuskPactData data() { return WORLDS.get(server).duskPact(); }
                 public boolean formalLevel(net.minecraft.server.level.ServerLevel level) {
                     var overworld = overworld();
@@ -538,6 +535,15 @@ public final class RoundRuntime {
     public static Optional<RoundSession.State> sessionState(MinecraftServer server) {
         var session = SESSIONS.get(server);
         return session == null ? Optional.empty() : Optional.of(session.state());
+    }
+
+    /** The ready overworld of the session's current round, or null outside a formal round. */
+    public static net.minecraft.server.level.ServerLevel formalOverworld(MinecraftServer server) {
+        var session = SESSIONS.get(server);
+        var worlds = WORLDS.get(server);
+        return session != null && worlds != null && worlds.ready()
+                && session.snapshot().filter(r -> r.roundId().equals(worlds.roundId())).isPresent()
+                ? worlds.level(Level.OVERWORLD) : null;
     }
 
     public static Optional<RoundSnapshot> snapshot(MinecraftServer server) {

@@ -6,10 +6,16 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.commands.WeatherCommand;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(WeatherCommand.class)
 public abstract class RoundWeatherCommandMixin {
+    @ModifyVariable(method = {"setClear", "setRain", "setThunder"}, at = @At("HEAD"), argsOnly = true)
+    private static CommandSourceStack hardrush$consoleWeatherInRound(CommandSourceStack source) {
+        return RoundWorldRouting.commandSource(source);
+    }
+
     @Redirect(method = {"setClear", "setRain", "setThunder"}, at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/MinecraftServer;setWeatherParameters(IIZZ)V"))
     private static void hardrush$weatherInSourceLevel(MinecraftServer server, int clearTime, int weatherTime,
