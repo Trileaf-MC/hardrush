@@ -341,6 +341,7 @@ public final class TenRoundGameTest {
                         test.assertTrue(releasedKeys.stream().allMatch(key -> server.getLevel(key) == null), "Previously closed worlds do not return to the server registry");
                         fresh(first);
                         if (number == 5) fresh(offline);
+                        if (number == 1) consoleWorldCommandsTargetRound(levels[0]);
                     });
             if (number > 1) {
                 sequence.thenWaitUntil(() -> await(book(first.player, ids.get(number - 2)), "Previous result delivered as a real written book"))
@@ -503,6 +504,30 @@ public final class TenRoundGameTest {
             });
         }
 
+        /** The console stands in the unused vanilla overworld; its world-wide commands must reach the round. */
+        void consoleWorldCommandsTargetRound(ServerLevel overworld) {
+            var clock = overworld.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
+                    .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+            long roundTime = overworld.clockManager().getInstance(clock).totalTicks();
+            long vanillaTime = server.overworld().clockManager().getInstance(clock).totalTicks();
+            var weather = overworld.getWeatherData();
+            boolean raining = weather.isRaining(), thundering = weather.isThundering();
+            int clear = weather.getClearWeatherTime(), rain = weather.getRainTime(), thunder = weather.getThunderTime();
+            boolean vanillaRaining = server.getWeatherData().isRaining();
+            var console = server.createCommandSourceStack().withSuppressedOutput();
+            try {
+                server.getCommands().performPrefixedCommand(console, "time set " + (roundTime == 17000 ? 18000 : 17000));
+                test.assertTrue(overworld.clockManager().getInstance(clock).totalTicks() != roundTime, "Console time command reaches the round");
+                test.assertValueEqual(server.overworld().clockManager().getInstance(clock).totalTicks(), vanillaTime, "Console time leaves the vanilla overworld");
+                server.getCommands().performPrefixedCommand(console, raining ? "weather clear 600s" : "weather rain 600s");
+                test.assertTrue(weather.isRaining() != raining, "Console weather command reaches the round");
+                test.assertValueEqual(server.getWeatherData().isRaining(), vanillaRaining, "Console weather leaves the vanilla overworld");
+            } finally {
+                overworld.clockManager().setTotalTicks(clock, roundTime);
+                weather.setClearWeatherTime(clear); weather.setRainTime(rain); weather.setThunderTime(thunder);
+                weather.setRaining(raining); weather.setThundering(thundering);
+            }
+        }
         void command(Actor actor, String command) {
             if (SpatialInputFixtures.handle(actor.player, command)) return;
             try { server.getCommands().getDispatcher().execute(command, actor.player.createCommandSourceStack()); }
