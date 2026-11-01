@@ -61,9 +61,15 @@ public final class MonsterRoles {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
             attack(owner, target); return InteractionResult.FAIL;
         });
-        AttackBlockCallback.EVENT.register((p, l, h, pos, face) -> isMonster(p) ? InteractionResult.FAIL : InteractionResult.PASS);
+        AttackBlockCallback.EVENT.register((p, l, h, pos, face) -> {
+            if (!isMonster(p)) return InteractionResult.PASS;
+            if (p instanceof ServerPlayer owner && MonsterDoorBreaking.acceptsAttack(owner, pos)) return InteractionResult.PASS;
+            if (p instanceof ServerPlayer owner) MonsterDoorBreaking.clear(owner);
+            return InteractionResult.FAIL;
+        });
         UseBlockCallback.EVENT.register((p, l, hand, hit) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
+            MonsterDoorBreaking.useBlock(owner, hit.getBlockPos());
             if (isEgg(owner, owner.getItemInHand(hand))) {
                 MonsterCompanions.useOn(owner, hand, hit); return InteractionResult.CONSUME;
             }
@@ -73,12 +79,14 @@ public final class MonsterRoles {
         });
         UseEntityCallback.EVENT.register((p, l, hand, target, hit) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
+            MonsterDoorBreaking.clear(owner);
             if (useControl(owner, hand)) return InteractionResult.CONSUME;
             return MonsterRoundRuntime.canAct(owner) && MonsterInventory.storageEntity(target)
                     ? InteractionResult.PASS : InteractionResult.FAIL;
         });
         UseItemCallback.EVENT.register((p, l, hand) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
+            MonsterDoorBreaking.clear(owner);
             useControl(owner, hand); return InteractionResult.CONSUME;
         });
         ServerLivingEntityEvents.ALLOW_DAMAGE.register(MonsterRoles::allowDamage);
@@ -411,17 +419,22 @@ public final class MonsterRoles {
             if (aiming != role.volleyPose) { role.volleyPose = aiming; MonsterDisguise.refreshMetadata(player); }
             if (!MonsterRoundRuntime.canAct(player)) {
                 role.burstRemaining = 0; role.chargeTick = -1; MonsterNativeWeapons.clear(player);
+                MonsterDoorBreaking.clear(player);
                 MonsterCreeper.cancelInput(player); player.stopUsingItem(); continue;
             }
             if (role.player != player || role.model == null || role.model.level() != player.level()) bind(player, role, false);
             player.setSprinting(false);
-            if (player.gameMode.getGameModeForPlayer() != GameType.ADVENTURE) player.setGameMode(GameType.ADVENTURE);
+            if (player.gameMode.getGameModeForPlayer() != GameType.ADVENTURE) {
+                MonsterDoorBreaking.clear(player);
+                player.setGameMode(GameType.ADVENTURE);
+            }
             player.getFoodData().setFoodLevel(6); player.getFoodData().setSaturation(0);
             repairLoadout(player);
             // Rebinding can be requested again during one server tick; timers advance only once.
             if (role.lastBodyTick != server.getTickCount()) {
                 role.lastBodyTick = server.getTickCount();
                 updateEnvironment(player); MonsterNativeWeapons.tick(player);
+                MonsterDoorBreaking.tick(player);
                 if (role.form == MonsterForm.CREEPER) MonsterCreeper.tick(player);
             }
             if (role.chargeTick >= 0 && (!player.isUsingItem() || !player.getItemInHand(role.bowHand).is(Items.BOW))) role.chargeTick = -1;
@@ -465,10 +478,12 @@ public final class MonsterRoles {
     }
     private static void stopActions(ServerPlayer player) {
         var role = ROLES.get(player.getUUID()); if (role != null) { role.burstRemaining = 0; role.chargeTick = -1; }
+        MonsterDoorBreaking.clear(player);
         MonsterNativeWeapons.clear(player); MonsterCreeper.clear(player); player.stopUsingItem();
     }
 
     public static boolean attack(ServerPlayer player, Entity target) {
+        MonsterDoorBreaking.clear(player);
         dev.hardrush.lobby.LobbyRuntime.interruptReturn(player);
         var role = ROLES.get(player.getUUID());
         if (role == null || !MonsterRoundRuntime.canAct(player) || !player.isAlive() || role.form == MonsterForm.CREEPER
@@ -487,6 +502,7 @@ public final class MonsterRoles {
     public static boolean useControl(ServerPlayer player, InteractionHand hand) {
         var role = ROLES.get(player.getUUID());
         if (role == null || !player.isAlive()) return false;
+        MonsterDoorBreaking.clear(player);
         var item = player.getItemInHand(hand);
         if (MonsterItems.matches(player, item, "return")) return dev.hardrush.lobby.LobbyRuntime.useReturn(player);
         if (!MonsterRoundRuntime.canAct(player)) return false;
@@ -662,6 +678,7 @@ public final class MonsterRoles {
     }
 
     private static void bind(ServerPlayer player, Role role, boolean heal) {
+        MonsterDoorBreaking.clear(player);
         float resumedHealth = role.player == null ? role.disconnectedHealth : Float.NaN;
         role.player = player; role.disconnectedSource = null;
         role.model = role.form.type.create(player.level(), EntitySpawnReason.COMMAND);

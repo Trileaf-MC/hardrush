@@ -53,6 +53,7 @@
       "dev.hardrush.monster.MonsterGachaGameTest",
       "dev.hardrush.monster.MonsterNativeWeaponsGameTest",
       "dev.hardrush.monster.MonsterCreeperGameTest",
+      "dev.hardrush.monster.MonsterDoorBreakingGameTest",
       "dev.hardrush.gametest.MonsterCompanionGameTest",
       "dev.hardrush.gametest.MonsterCloudGameTest",
       "dev.hardrush.monster.MonsterInventoryFormGameTest"

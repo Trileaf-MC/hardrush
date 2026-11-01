@@ -127,6 +127,7 @@ final class OwnerSkin {
         // inventory and selected slot in the same native client bundle, so a
         // render tick cannot send slot zero before the authoritative slot arrives.
         MonsterDisguise.sendRaw(player, new ClientboundBundlePacket(batch.packets));
+        dev.hardrush.monster.MonsterDoorBreaking.refreshInput(player);
     }
 
     @SuppressWarnings("unchecked")
