@@ -99,6 +99,7 @@ public final class RoundRuntime {
             PlayerProfiles.install(server, profiles);
             PROFILES.put(server, profiles);
             ADMITTED.put(server, new java.util.HashMap<>());
+            ServerDifficulty.applyFirstRunDefault(server);
             var reference = new RoundSession[1];
             var bootstrapCallbacks = new ArrayDeque<Runnable>();
             var session = new RoundSession(server.getWorldPath(LevelResource.ROOT).resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE),
@@ -108,7 +109,8 @@ public final class RoundRuntime {
                         // bootstrap IO finished before constructor return.
                         if (reference[0] == null) bootstrapCallbacks.add(task);
                         else if (SESSIONS.get(server) == reference[0]) task.run();
-                    }), (message, error) -> LOGGER.error(message, error), recovery.restored(), recovery.message());
+                    }), (message, error) -> LOGGER.error(message, error), recovery.restored(), recovery.message(),
+                    () -> ServerDifficulty.current(server));
             reference[0] = session;
             SESSIONS.put(server, session);
             new dev.hardrush.storage.RecoveryRuntime(server, session, profiles,

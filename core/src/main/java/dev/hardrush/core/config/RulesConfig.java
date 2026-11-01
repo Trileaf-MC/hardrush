@@ -191,6 +191,11 @@ public record RulesConfig(
                 startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
 
+    public RulesConfig withDifficulty(Difficulty nextDifficulty) {
+        return new RulesConfig(schemaVersion, mode, minecraftVersion, Objects.requireNonNull(nextDifficulty), generationRule,
+                combatValues, protectionRadius, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
+    }
+
     public RulesConfig withMode(GameMode nextMode) {
         return new RulesConfig(schemaVersion, nextMode, minecraftVersion, difficulty, generationRule,
                 combatValues, protectionRadius, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
