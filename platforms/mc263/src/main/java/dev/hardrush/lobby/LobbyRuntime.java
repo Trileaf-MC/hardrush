@@ -672,7 +672,7 @@ public final class LobbyRuntime {
         b.session.requestMonsterRole(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), role, reply -> {
             b.committing.remove(p.id());
             if (current(player, b)) tell(player, reply.success() ? "已选择 " + kindName(role) + " ✓ · " + switch (role) {
-                case ZOMBIE -> "补给：成年／幼年僵尸蛋各一枚；浸水可转化"; case SKELETON -> "三连射；粉雪可转化为流浪者"; case CREEPER -> "引爆器：按住膨胀，松开消退";
+                case ZOMBIE -> "补给：成年／幼年僵尸蛋各一枚；浸水可转化"; case SKELETON -> "潜行拉满弓松手可三连射；粉雪可转化为流浪者"; case CREEPER -> "引爆器：按住膨胀，松开消退";
             } : reply.message());
         });
     }

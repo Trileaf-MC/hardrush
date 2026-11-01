@@ -143,10 +143,8 @@ public final class MonsterRoles {
                     .copyWithCount(1 + kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG)));
             player.getInventory().setItem(2, MonsterCompanions.egg(player, false, false)
                     .copyWithCount(1 + kit.carried(dev.hardrush.core.round.ShopOffer.ADULT_EGG)));
-        } else if (form.skeleton()) {
-            player.getInventory().setItem(1, MonsterItems.bind(player,
-                named(Items.BONE, "骷髅：三连射", "持弓时右键使用；每 0.3 秒一箭，冷却 20 秒"), "burst"));
-        } else player.getInventory().setItem(0, MonsterCreeper.createIgniter(player));
+        } else if (form == MonsterForm.CREEPER) player.getInventory().setItem(0, MonsterCreeper.createIgniter(player));
+        // A skeleton's volley lives on whichever bow it holds; MonsterBowDisplay explains it on the bow itself.
         player.getInventory().setItem(7, MonsterItems.bind(player,
             named(Items.ECHO_SHARD, "归返营地 · 右键引导 5 秒", "移动、攻击、使用物品或受伤会中断"), "return"));
         player.getInventory().setSelectedSlot(0);
@@ -196,7 +194,7 @@ public final class MonsterRoles {
         ROLES.remove(player.getUUID());
         restoreOriginal(player, role);
         if (dead) player.setHealth(0);
-        MonsterDisguise.clear(player);
+        MonsterDisguise.clear(player); MonsterBowDisplay.clear(player);
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player);
         MonsterAiIdentity.changed(player);
     }
@@ -210,7 +208,7 @@ public final class MonsterRoles {
         ROLES.remove(player.getUUID());
         restoreOriginal(player, role);
         if (dead) player.setHealth(0);
-        MonsterDisguise.clear(player);
+        MonsterDisguise.clear(player); MonsterBowDisplay.clear(player);
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player);
         MonsterAiIdentity.changed(player);
     }
@@ -406,6 +404,11 @@ public final class MonsterRoles {
             Role role = entry.getValue(); ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
             if (player == null || !player.isAlive()) continue;
             MonsterWorthRewards.showWorth(player);
+            if (role.form.skeleton()) MonsterBowDisplay.update(player, role.form, burstCooldownRemaining(player),
+                    role.millis("skeleton.burstCooldownMillis"));
+            else MonsterBowDisplay.clear(player);
+            boolean aiming = volleying(player);
+            if (aiming != role.volleyPose) { role.volleyPose = aiming; MonsterDisguise.refreshMetadata(player); }
             if (!MonsterRoundRuntime.canAct(player)) {
                 role.burstRemaining = 0; role.chargeTick = -1; MonsterNativeWeapons.clear(player);
                 MonsterCreeper.cancelInput(player); player.stopUsingItem(); continue;
@@ -422,6 +425,10 @@ public final class MonsterRoles {
                 if (role.form == MonsterForm.CREEPER) MonsterCreeper.tick(player);
             }
             if (role.chargeTick >= 0 && (!player.isUsingItem() || !player.getItemInHand(role.bowHand).is(Items.BOW))) role.chargeTick = -1;
+            if (role.chargeTick >= 0 && !role.volleyCued && player.isShiftKeyDown() && burstCooldownRemaining(player) <= 0
+                    && server.getTickCount() - role.chargeTick >= role.value("skeleton.bowChargeTicks")) {
+                role.volleyCued = true; MonsterBowDisplay.fullDrawCue(player);
+            }
             if (server.getTickCount() >= role.nextAmbientTick) {
                 role.model.playAmbientSound(); role.nextAmbientTick = server.getTickCount() + role.model.getAmbientSoundInterval() + player.getRandom().nextInt(80);
             }
@@ -454,7 +461,7 @@ public final class MonsterRoles {
     public static void stop(MinecraftServer server) {
         for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) clear(player);
         for (var role : List.copyOf(ROLES.values())) if (role.disconnectedSource != null) clear(role.disconnectedSource);
-        ROLES.clear(); BURST_READY.clear();
+        ROLES.clear(); BURST_READY.clear(); MonsterBowDisplay.clearAll();
     }
     private static void stopActions(ServerPlayer player) {
         var role = ROLES.get(player.getUUID()); if (role != null) { role.burstRemaining = 0; role.chargeTick = -1; }
@@ -486,11 +493,10 @@ public final class MonsterRoles {
         dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品／技能");
         if (isEgg(player, item)) return MonsterCompanions.use(player, hand);
         if (role.form == MonsterForm.CREEPER) return MonsterCreeper.use(player, hand);
-        if (MonsterItems.matches(player, item, "burst")) return burst(player);
         if (role.form.skeleton() && item.is(Items.BOW)) {
             if (MonsterRoundRuntime.casting(player) || role.burstRemaining > 0 || role.chargeTick >= 0
                     || player.level().getServer().getTickCount() < role.nextBowTick) return false;
-            role.chargeTick = player.level().getServer().getTickCount(); role.bowHand = hand;
+            role.chargeTick = player.level().getServer().getTickCount(); role.bowHand = hand; role.volleyCued = false;
             player.startUsingItem(hand); return true;
         }
         return MonsterNativeWeapons.startUse(player, hand);
@@ -517,8 +523,31 @@ public final class MonsterRoles {
         int started = role.chargeTick; role.chargeTick = -1;
         boolean holding = player.getItemInHand(role.bowHand).is(Items.BOW);
         player.stopUsingItem();
-        if (MonsterRoundRuntime.canAct(player) && role.form.skeleton() && holding && started >= 0 && role.burstRemaining == 0
-                && player.level().getServer().getTickCount() - started >= role.value("skeleton.bowChargeTicks")) shoot(player, role, player.getItemInHand(role.bowHand));
+        if (!MonsterRoundRuntime.canAct(player) || !role.form.skeleton() || !holding || started < 0 || role.burstRemaining > 0
+                || player.level().getServer().getTickCount() - started < role.value("skeleton.bowChargeTicks")) return;
+        // Sneak is read at release: crouching mid-draw still looses the volley; a cooling volley falls back to one arrow.
+        if (player.isShiftKeyDown()) {
+            if (burst(player)) return;
+            long remaining = burstCooldownRemaining(player);
+            if (remaining > 0) volleyHint(player, "三连射冷却中 · 剩余 " + (remaining + 999) / 1000 + " 秒");
+        }
+        shoot(player, role, player.getItemInHand(role.bowHand));
+    }
+    /** Remaining volley cooldown from the round record, the celebration memory or standalone tooling. */
+    static long burstCooldownRemaining(ServerPlayer player) {
+        var formal = MonsterRoundRuntime.skillRemaining(player, MonsterSkill.SKELETON_BURST);
+        if (formal.isPresent()) return formal.getAsLong();
+        Long ready = BURST_READY.get(player.getUUID());
+        return ready == null ? 0 : Math.max(0, (ready - System.nanoTime() + 999_999) / 1_000_000);
+    }
+    /** The native body keeps its bow raised from release until the volley's last arrow. */
+    public static boolean volleying(ServerPlayer player) {
+        var role = ROLES.get(player.getUUID());
+        return role != null && role.form.skeleton() && (role.burstRemaining > 0 || MonsterRoundRuntime.casting(player));
+    }
+    private static void volleyHint(ServerPlayer player, String text) {
+        dev.hardrush.lobby.LobbyInteractions.get(player.level().getServer()).ifPresent(router -> router.hints(player)
+                .offer("volley", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, text, System.nanoTime() / 1_000_000 + 1500));
     }
     public static boolean burst(ServerPlayer player) {
         var role = ROLES.get(player.getUUID());
@@ -542,10 +571,8 @@ public final class MonsterRoles {
     }
     private static ItemStack heldBow(ServerPlayer player) {
         if (player.getMainHandItem().is(Items.BOW)) return player.getMainHandItem();
-        if (player.getOffhandItem().is(Items.BOW)) return player.getOffhandItem();
-        // The movable burst control may occupy a hand; its bow remains in the same inventory.
-        for (int i = 0; i < 36; i++) if (player.getInventory().getItem(i).is(Items.BOW)) return player.getInventory().getItem(i);
-        return ItemStack.EMPTY;
+        // The volley is loosed from the bow in hand; switching it away cancels the unfired arrows.
+        return player.getOffhandItem().is(Items.BOW) ? player.getOffhandItem() : ItemStack.EMPTY;
     }
     public static ItemStack selectedArrow(ServerPlayer player) {
         if (player.getOffhandItem().is(ItemTags.ARROWS)) return player.getOffhandItem();
@@ -706,7 +733,7 @@ public final class MonsterRoles {
         long nextBurstAt, lastBodyTick = Long.MIN_VALUE;
         int nextMeleeTick, nextBowTick, chargeTick = -1, burstRemaining, arrowsFired, nextAmbientTick, exposure, conversion = -1, disconnectedSlot;
         InteractionHand bowHand = InteractionHand.MAIN_HAND;
-        boolean settled;
+        boolean settled, volleyCued, volleyPose;
         Role(ServerPlayer player) {
             rules = MonsterRoundRuntime.rules(player).orElse(DEFAULT_RULES);
             inventory = copyInventory(player);

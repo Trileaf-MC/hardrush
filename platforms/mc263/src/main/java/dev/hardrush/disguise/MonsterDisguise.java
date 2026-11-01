@@ -200,6 +200,15 @@ public final class MonsterDisguise {
             sendRaw(observer,new ClientboundSetEquipmentPacket(player.getId(),state.equipment));
     }
 
+    /** Pushes pose changes that have no vanilla trigger of their own, such as a volley's raised bow. */
+    public static void refreshMetadata(ServerPlayer player) {
+        Selection selection = SELECTED.get(player.getUUID());
+        if (selection == null || selection.state == null) return;
+        selection.state.updateModel();
+        for (ServerPlayer observer : PlayerLookup.tracking(player))
+            sendRaw(observer, new ClientboundSetEntityDataPacket(player.getId(), selection.state.metadata));
+    }
+
     public static void setCreeperSwelling(ServerPlayer player, boolean swelling) {
         Selection selection = SELECTED.get(player.getUUID());
         if (selection != null && selection.state != null
@@ -319,7 +328,7 @@ public final class MonsterDisguise {
             model.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(owner.getMaxHealth());
             model.setHealth(owner.getHealth());
             model.setLeftHanded(owner.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT);
-            model.setAggressive(owner.isUsingItem());
+            model.setAggressive(owner.isUsingItem() || MonsterRoles.volleying(owner));
             merge(model.getEntityData().packDirty());
             metadata = List.copyOf(latestValues.values());
         }

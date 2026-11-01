@@ -25,7 +25,8 @@ public abstract class DisguiseConnectionMixin {
     )
     private Packet<?> hardrush$rewriteDisguisePacket(Packet<?> packet) {
         if ((Object) this instanceof ServerGamePacketListenerImpl handler) {
-            return MonsterDisguise.rewrite(handler.player, packet);
+            // Observer appearance first, then the owner's private bow presentation.
+            return dev.hardrush.monster.MonsterBowDisplay.rewrite(handler.player, MonsterDisguise.rewrite(handler.player, packet));
         }
         return packet;
     }

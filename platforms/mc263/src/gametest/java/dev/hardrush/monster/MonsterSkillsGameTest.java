@@ -245,6 +245,117 @@ public final class MonsterSkillsGameTest {
                 }).thenSucceed();
     }
 
+    @GameTest(maxTicks = 1800)
+    public void sneakingReleaseLoosesVolleyWhileStandingOrCoolingReleaseShootsOnce(GameTestHelper test) {
+        var f = new Fixture(test, 2);
+        var shots = new ArrayList<Shot>();
+        var single = new ArrayList<Shot>();
+        SHOTS.put(f.owner.getUUID(), shots); SHOTS.put(f.target.getUUID(), single);
+        var ownerPackets = f.connections.get(f.owner.getUUID()).sent;
+        MonsterRoles.select(f.owner, "skeleton"); MonsterRoles.select(f.target, "skeleton");
+        test.assertFalse(f.owner.getInventory().contains(stack -> stack.is(Items.BONE)), "The volley needs no separate control item");
+        f.owner.setShiftKeyDown(true);
+        test.assertTrue(MonsterRoles.useControl(f.owner, InteractionHand.MAIN_HAND), "A sneaking skeleton draws its bow natively");
+        test.assertTrue(MonsterRoles.useControl(f.target, InteractionHand.MAIN_HAND), "A standing skeleton draws its bow natively");
+        test.startSequence().thenIdle(25).thenExecute(() -> {
+            test.assertTrue(ownerPackets.stream().anyMatch(packet -> packet instanceof net.minecraft.network.protocol.game.ClientboundSoundPacket sound
+                    && sound.getSound().is(net.minecraft.sounds.SoundEvents.CROSSBOW_QUICK_CHARGE_3.unwrapKey().orElseThrow())),
+                    "A ready sneaking full draw gives the owner a private cue");
+            MonsterRoles.releaseBow(f.owner); MonsterRoles.releaseBow(f.target);
+            test.assertValueEqual(shots.size(), 1, "A sneaking release looses the first volley arrow at once");
+            test.assertTrue(MonsterRoles.status(f.owner).contains("burstRemaining=2"), "Two volley arrows follow");
+            test.assertTrue(MonsterRoles.volleying(f.owner), "The native body keeps its bow raised during the volley");
+            test.assertTrue(MonsterRoles.burstCooldownRemaining(f.owner) > 0, "The volley starts its cooldown");
+            test.assertValueEqual(single.size(), 1, "A standing release is one ordinary arrow");
+            test.assertTrue(MonsterRoles.status(f.target).contains("burstRemaining=0"), "A standing release starts no volley");
+            test.assertValueEqual(MonsterRoles.burstCooldownRemaining(f.target), 0L, "A standing release keeps the volley ready");
+        }).thenWaitUntil(() -> {
+            if (shots.size() < 3) java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
+            test.assertValueEqual(shots.size(), 3, "The volley completes with three arrows");
+        }).thenIdle(45).thenExecute(() -> {
+            test.assertFalse(MonsterRoles.volleying(f.owner), "The raised bow lowers after the last arrow");
+            test.assertTrue(MonsterRoles.useControl(f.owner, InteractionHand.MAIN_HAND), "The bow can be drawn while the volley cools down");
+        }).thenIdle(25).thenExecute(() -> {
+            try {
+                MonsterRoles.releaseBow(f.owner);
+                test.assertValueEqual(shots.size(), 4, "A cooling sneaking release falls back to one ordinary arrow");
+                test.assertTrue(MonsterRoles.status(f.owner).contains("burstRemaining=0"), "The fallback starts no volley");
+            } finally {
+                SHOTS.remove(f.owner.getUUID()); SHOTS.remove(f.target.getUUID());
+                shots.forEach(shot -> shot.arrow().discard()); single.forEach(shot -> shot.arrow().discard()); f.close();
+            }
+        }).thenSucceed();
+    }
+
+    @GameTest(maxTicks = 400)
+    public void ownerAloneSeesFormNamedBowWithReadyGlintAndCooldownBar(GameTestHelper test) {
+        var f = new Fixture(test, 2);
+        var sent = f.connections.get(f.owner.getUUID()).sent;
+        MonsterRoles.select(f.owner, "skeleton");
+        int slot = f.owner.getInventory().getSelectedSlot();
+        test.startSequence().thenIdle(2).thenExecute(() -> {
+            var shown = shownBow(test, sent, slot);
+            test.assertValueEqual(shown.getHoverName().getString(), "骷髅之弓", "The owner sees the skeleton's bow name");
+            test.assertValueEqual(shown.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE), Boolean.TRUE,
+                    "A ready volley glints");
+            test.assertFalse(shown.isBarVisible(), "A ready volley shows a full, hidden bar");
+            var lore = shown.get(net.minecraft.core.component.DataComponents.LORE).lines();
+            test.assertValueEqual(lore.get(0).getString(), MonsterBowDisplay.HOW_TO, "The bow explains the sneaking release");
+            test.assertValueEqual(lore.get(1).getString(), "技能已就绪", "The bow states readiness");
+            var real = f.owner.getInventory().getItem(slot);
+            test.assertTrue(real.is(Items.BOW) && !real.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)
+                    && !real.has(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE)
+                    && real.get(net.minecraft.core.component.DataComponents.LORE).lines().isEmpty() && real.getDamageValue() == 0,
+                    "The authoritative bow stays vanilla");
+            test.assertFalse(MonsterRoles.actualEquipment(f.owner, EquipmentSlot.MAINHAND)
+                    .has(net.minecraft.core.component.DataComponents.CUSTOM_NAME), "Observers receive the real bow");
+            sent.clear();
+            test.assertTrue(MonsterRoles.burst(f.owner), "The volley starts");
+        }).thenIdle(2).thenExecute(() -> {
+            var shown = shownBow(test, sent, slot);
+            test.assertValueEqual(shown.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE), Boolean.FALSE,
+                    "A cooling volley suppresses the glint");
+            test.assertTrue(shown.isBarVisible() && shown.getBarWidth() >= 1 && shown.getBarWidth() < MonsterBowDisplay.BAR_WIDTH,
+                    "The cooldown refills the durability bar");
+            test.assertValueEqual(shown.get(net.minecraft.core.component.DataComponents.LORE).lines().get(1).getString(), "冷却中",
+                    "The bow states the cooldown");
+            sent.clear();
+            MonsterRoles.convert(f.owner, MonsterForm.STRAY);
+        }).thenIdle(2).thenExecute(() -> {
+            try {
+                test.assertValueEqual(shownBow(test, sent, slot).getHoverName().getString(), "流浪者之弓", "Conversion renames the bow at once");
+                MonsterRoles.clear(f.owner);
+                var raw = new net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket(0, new ItemStack(Items.BOW));
+                test.assertTrue(MonsterBowDisplay.rewrite(f.owner, raw) == raw, "A former monster receives authoritative bows");
+            } finally { f.close(); }
+        }).thenSucceed();
+    }
+
+    @GameTest
+    public void everySkeletonFormNamesItsBowAndTheBarTracksTheCooldown(GameTestHelper test) {
+        for (var form : MonsterForm.values())
+            test.assertValueEqual(MonsterBowDisplay.bowName(form) != null, form.skeleton(), "Only skeleton forms carry a named bow: " + form);
+        var bow = new ItemStack(Items.BOW);
+        for (long remaining = 0; remaining <= 20_000; remaining += 250) {
+            var look = MonsterBowDisplay.look(MonsterForm.SKELETON, remaining, 20_000);
+            var shown = MonsterBowDisplay.dress(bow, look);
+            if (remaining == 0) test.assertTrue(look.ready() && !shown.isBarVisible(), "A finished cooldown is a full bar");
+            else test.assertTrue(!look.ready() && shown.isBarVisible() && shown.getBarWidth() == look.filled(),
+                    "Each cooldown step shows exactly its bar pixel: " + remaining);
+        }
+        test.assertFalse(bow.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME), "Dressing never mutates the source stack");
+        test.succeed();
+    }
+
+    private static ItemStack shownBow(GameTestHelper test, List<Packet<?>> sent, int slot) {
+        synchronized (sent) {
+            for (int i = sent.size() - 1; i >= 0; i--)
+                if (sent.get(i) instanceof net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket packet
+                        && packet.slot() == slot && packet.contents().is(Items.BOW)) return packet.contents();
+        }
+        throw test.assertionException("The owner received no bow at slot " + slot);
+    }
+
     @GameTest(maxTicks = 400)
     public void creeperCanWalkDuringThirtyTickFuseAndDefeatCancelsPendingBlast(GameTestHelper test) {
         var f = new Fixture(test, 3);
@@ -342,6 +453,7 @@ public final class MonsterSkillsGameTest {
         final Vec3 center;
         final List<ServerPlayer> players = new ArrayList<>();
         final List<EmbeddedChannel> channels = new ArrayList<>();
+        final Map<UUID, SinkConnection> connections = new HashMap<>();
         final Map<UUID, Participant> participants = new HashMap<>();
         final List<net.minecraft.world.level.ChunkPos> forced = new ArrayList<>();
         final UUID round = UUID.randomUUID();
@@ -366,7 +478,7 @@ public final class MonsterSkillsGameTest {
                         CommonListenerCookie.createInitial(profile, false)));
                 player.teleportTo(center.x + index * 24, center.y, center.z);
                 player.setGameMode(GameType.SURVIVAL); player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-                players.add(player);
+                players.add(player); connections.put(player.getUUID(), connection);
                 participants.put(player.getUUID(), new Participant(player.getUUID(), profile.name(),
                         index == 0 ? ParticipantRole.MONSTER_DEPLOYED : ParticipantRole.HUMAN_ACTIVE,
                         true, false, 0, 0, 1, false, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 1));
@@ -411,9 +523,11 @@ public final class MonsterSkillsGameTest {
         }
     }
     private static final class SinkConnection extends Connection {
+        /** What the client would receive, after HardRush's outgoing rewrites. */
+        final List<Packet<?>> sent = Collections.synchronizedList(new ArrayList<>());
         SinkConnection() { super(PacketFlow.SERVERBOUND); }
-        @Override public void send(Packet<?> packet) {}
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) {}
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) {}
+        @Override public void send(Packet<?> packet) { sent.add(packet); }
+        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { sent.add(packet); }
+        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { sent.add(packet); }
     }
 }

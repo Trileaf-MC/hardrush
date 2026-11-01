@@ -89,6 +89,16 @@ public final class MonsterRoundRuntime {
         var b = BINDINGS.get(player.level().getServer());
         return b != null && b.casting.contains(player.getUUID());
     }
+    /** Empty means standalone development tooling; otherwise the round's (or celebration's) remaining cooldown. */
+    public static java.util.OptionalLong skillRemaining(ServerPlayer player, MonsterSkill skill) {
+        var b = BINDINGS.get(player.level().getServer());
+        var r = b == null ? null : b.session.snapshot().orElse(null);
+        var p = r == null ? null : r.participants().get(player.getUUID());
+        if (p == null) return java.util.OptionalLong.empty();
+        if (dev.hardrush.celebration.CelebrationRuntime.arena(player))
+            return java.util.OptionalLong.of(dev.hardrush.celebration.CelebrationRuntime.skillRemaining(player, skill));
+        return java.util.OptionalLong.of(p.monsterSkillRemainingMillis(skill, System.currentTimeMillis()));
+    }
     /** Empty means standalone development tooling. A present result means the formal request was handled. */
     public static Optional<Boolean> cast(ServerPlayer player, MonsterSkill skill, BooleanSupplier effect) {
         var server = player.level().getServer();
