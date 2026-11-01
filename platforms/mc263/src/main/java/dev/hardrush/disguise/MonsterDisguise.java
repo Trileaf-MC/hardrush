@@ -23,6 +23,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntitySpawnRequest;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -237,7 +238,8 @@ public final class MonsterDisguise {
     }
 
     private static void bind(ServerPlayer player, Selection selection) {
-        Mob model = selection.type.create(player.level(), EntitySpawnReason.COMMAND);
+        // Never added to a level, so the peaceful spawn gate (the lobby is peaceful) must not apply.
+        Mob model = selection.type.create(player.level(), new EntitySpawnRequest(EntitySpawnReason.COMMAND, true));
         if (model == null) throw new IllegalStateException("Cannot create monster metadata template");
         State state = new State(player, selection.type, model);
         state.updateModel();
