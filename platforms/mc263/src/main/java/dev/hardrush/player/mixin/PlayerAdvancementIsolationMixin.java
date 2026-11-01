@@ -1,5 +1,6 @@
 package dev.hardrush.player.mixin;
 
+import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.record.ProgressRuntime;
 import net.minecraft.advancements.AdvancementHolder;
@@ -16,7 +17,8 @@ public abstract class PlayerAdvancementIsolationMixin {
     @Shadow private ServerPlayer player;
     @Inject(method = "award", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdProgress(AdvancementHolder holder, String criterion, CallbackInfoReturnable<Boolean> ci) {
-        if (PlayerProfiles.isLocked(player) || dev.hardrush.celebration.CelebrationRuntime.sealsProgress(player)) ci.setReturnValue(false);
+        if (PlayerProfiles.isLocked(player) || MonsterRoles.isMonster(player)
+                || dev.hardrush.celebration.CelebrationRuntime.sealsProgress(player)) ci.setReturnValue(false);
     }
 
     @Inject(method = "award", at = @At("RETURN"))
