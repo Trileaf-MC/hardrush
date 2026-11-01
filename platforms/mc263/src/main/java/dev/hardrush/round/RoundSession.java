@@ -2,6 +2,7 @@ package dev.hardrush.round;
 
 import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.api.MonotonicClock;
+import dev.hardrush.core.config.Difficulty;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.RoundEngine;
@@ -48,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Main-thread arbiter plus one SQLite worker. Platform gates must verify worlds
@@ -65,6 +67,8 @@ public final class RoundSession implements AutoCloseable {
     private final Path database;
     private final Executor callbacks;
     private final BiConsumer<String, Throwable> diagnostics;
+    private final Supplier<Difficulty> serverDifficulty;
+    private final Difficulty firstRoundDifficulty;
     private final ExecutorService io;
     private final CompletableFuture<Loaded> opening;
     private final Map<UUID, String> online = new LinkedHashMap<>();
@@ -134,7 +138,17 @@ public final class RoundSession implements AutoCloseable {
 
     public RoundSession(Path database, MonotonicClock clock, Executor callbacks,
             BiConsumer<String, Throwable> diagnostics, boolean restoredFullCheckpoint, String startupRecoveryMessage) {
+        this(database, clock, callbacks, diagnostics, restoredFullCheckpoint, startupRecoveryMessage, () -> null);
+    }
+
+    /** serverDifficulty is read when each new round is created; null keeps the stored rule (e.g. peaceful servers). */
+    public RoundSession(Path database, MonotonicClock clock, Executor callbacks,
+            BiConsumer<String, Throwable> diagnostics, boolean restoredFullCheckpoint, String startupRecoveryMessage,
+            Supplier<Difficulty> serverDifficulty) {
         Objects.requireNonNull(database);
+        this.serverDifficulty = Objects.requireNonNull(serverDifficulty);
+        // The first round may be created on the IO thread; sample the server once on the owner thread.
+        this.firstRoundDifficulty = serverDifficulty.get();
         this.database = database.toAbsolutePath().normalize();
         this.clock = Objects.requireNonNull(clock);
         this.callbacks = Objects.requireNonNull(callbacks);
@@ -152,6 +166,10 @@ public final class RoundSession implements AutoCloseable {
             if (error != null) fail("轮次数据库打开失败", error);
             else install(loaded);
         }));
+    }
+
+    private static RulesConfig withDifficulty(RulesConfig rules, Difficulty difficulty) {
+        return difficulty == null ? rules : rules.withDifficulty(difficulty);
     }
 
     private Loaded open(Path database) throws Exception {
@@ -181,7 +199,7 @@ public final class RoundSession implements AutoCloseable {
             requireVersion(snapshot.rules());
         } else {
             snapshot = RoundEngine.create(UUID.randomUUID(), 1, ThreadLocalRandom.current().nextLong(),
-                    rules, () -> 0).committed();
+                    withDifficulty(rules, firstRoundDifficulty), () -> 0).committed();
             requireCommitted(store.commit(new SnapshotWrite(snapshot.roundId(), -1, 0,
                     RoundSnapshotCodec.encode(snapshot), UUID.randomUUID(), "ROUND_PREPARING")));
         }
@@ -378,7 +396,7 @@ public final class RoundSession implements AutoCloseable {
                 || !engine.committed().roundId().equals(oldRoundId)
                 || engine.committed().phase() != RoundPhase.ROTATING) return;
         var next = RoundEngine.create(UUID.randomUUID(), Math.addExact(engine.committed().sequence(), 1),
-                ThreadLocalRandom.current().nextLong(), nextRules, this::engineTime).committed();
+                ThreadLocalRandom.current().nextLong(), withDifficulty(nextRules, serverDifficulty.get()), this::engineTime).committed();
         pendingNextRound = next;
         adaptersReady = false;
         unsupportedPhase = true;

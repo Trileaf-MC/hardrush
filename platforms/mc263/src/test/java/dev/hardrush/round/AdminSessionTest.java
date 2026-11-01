@@ -107,6 +107,38 @@ final class AdminSessionTest {
         }
     }
 
+    @Test void newRoundsCopyServerDifficultyWhileTheCurrentRoundKeepsItsSnapshot() throws Exception {
+        var path = directory.resolve("difficulty.sqlite"); var initial = seed(path, RoundPhase.RUNNING, GameMode.NORMAL);
+        var tasks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
+        var server = new AtomicReference<dev.hardrush.core.config.Difficulty>(dev.hardrush.core.config.Difficulty.EASY);
+        try (var session = new RoundSession(path, clock::get, tasks::add, (message, error) -> {}, false, "", server::get)) {
+            pump(tasks, () -> session.state() == RoundSession.State.OPEN);
+            session.adaptersReady(initial.roundId()); pump(tasks, () -> !session.mutationPending());
+            assertEquals(dev.hardrush.core.config.Difficulty.HARD, session.snapshot().orElseThrow().rules().difficulty(),
+                    "A stored round never changes difficulty mid-game");
+            server.set(dev.hardrush.core.config.Difficulty.NORMAL);
+            var reply = new AtomicReference<RoundSession.Reply>();
+            session.adminAbort("operator", "换难度", reply::set);
+            pump(tasks, () -> reply.get() != null && !session.mutationPending());
+            session.rotationReady(initial.roundId()); pump(tasks, () -> !session.mutationPending());
+            var next = session.snapshot().orElseThrow();
+            assertEquals(2, next.sequence());
+            assertEquals(dev.hardrush.core.config.Difficulty.NORMAL, next.rules().difficulty(), "Rotation copies the server difficulty");
+            assertEquals(GameMode.NORMAL, next.rules().mode(), "Only difficulty is taken from the server");
+        }
+        var fresh = directory.resolve("difficulty-fresh.sqlite");
+        try (var session = new RoundSession(fresh, clock::get, tasks::add, (message, error) -> {}, false, "",
+                () -> dev.hardrush.core.config.Difficulty.EASY)) {
+            pump(tasks, () -> session.state() == RoundSession.State.OPEN);
+            assertEquals(dev.hardrush.core.config.Difficulty.EASY, session.snapshot().orElseThrow().rules().difficulty(), "The first round copies too");
+        }
+        var peaceful = directory.resolve("difficulty-peaceful.sqlite");
+        try (var session = new RoundSession(peaceful, clock::get, tasks::add, (message, error) -> {}, false, "", () -> null)) {
+            pump(tasks, () -> session.state() == RoundSession.State.OPEN);
+            assertEquals(dev.hardrush.core.config.Difficulty.HARD, session.snapshot().orElseThrow().rules().difficulty(), "Peaceful keeps the stored rule");
+        }
+    }
+
     @Test void stopDrainsAdminAbortWithoutCallbacksAndDoesNotAcceptLaterOnlineEvents() throws Exception {
         var path = directory.resolve("admin-stop.sqlite"); var initial = seed(path, RoundPhase.RUNNING, GameMode.NORMAL);
         var tasks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
