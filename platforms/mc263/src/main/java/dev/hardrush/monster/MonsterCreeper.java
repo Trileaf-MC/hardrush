@@ -41,7 +41,8 @@ public final class MonsterCreeper {
         var stack = new ItemStack(Items.GUNPOWDER);
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("引爆器"));
         stack.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
-                Component.literal("按住右键膨胀，松开后逐渐消退"))));
+                Component.literal("右键长按引爆"),
+                Component.literal("中途松开取消引爆"))));
         // Native clients must enter item-use mode and send RELEASE_USE_ITEM. A consumable
         // without food, effects, animation or slowdown is only the input transport.
         stack.set(DataComponents.CONSUMABLE,
