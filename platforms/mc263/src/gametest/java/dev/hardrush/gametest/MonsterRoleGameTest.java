@@ -54,7 +54,7 @@ public final class MonsterRoleGameTest {
     @GameTest(maxTicks=20)
     public void slainMonsterBookIsANamedNativeEnchantedBookFromRandomLoot(GameTestHelper test) {
         var level = test.getLevel();
-        for (int cost : new int[] {20, 30}) {
+        for (int cost : new int[] {15, 30}) {
             var book = dev.hardrush.monster.MonsterWorthRewards.signedBook(level, "Hunter", level.getRandom(), cost);
             test.assertTrue(book.is(Items.ENCHANTED_BOOK), "Vanilla enchantItem turns the book into an enchanted book");
             var stored = book.get(net.minecraft.core.component.DataComponents.STORED_ENCHANTMENTS);

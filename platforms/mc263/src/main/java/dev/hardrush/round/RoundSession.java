@@ -341,7 +341,7 @@ public final class RoundSession implements AutoCloseable {
     }
 
     /**
-     * Experience a deployed monster's body is worth now, including damage this session has not
+     * Worth, in milli-levels, of a deployed monster's body now, including damage this session has not
      * committed. The pending transition, each queued credit event at its own event time and the
      * per-hit buffer at the current time are replayed exactly as the formal credit will run them, so
      * a bounty tier crossed while a write is in flight weighs each batch the way it will be paid.
@@ -368,7 +368,7 @@ public final class RoundSession implements AutoCloseable {
         if (!dev.hardrush.core.round.MonsterWorth.enabled(projected.rules()) || owner == null
                 || owner.lifeSequence() != body.lifeSequence()
                 || owner.monsterDeploymentSequence() != body.monsterDeploymentSequence()) return java.util.OptionalInt.empty();
-        return java.util.OptionalInt.of(dev.hardrush.core.round.MonsterWorth.experience(projected.rules(), owner.wallet()));
+        return java.util.OptionalInt.of(dev.hardrush.core.round.MonsterWorth.milliLevels(projected.rules(), owner.wallet()));
     }
 
     /** All victims, rewards and self-death commit once, before rescue or completion is published. */

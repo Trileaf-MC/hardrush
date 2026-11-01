@@ -20,36 +20,38 @@ class MonsterWorthTest {
     private final UUID monster = UUID.randomUUID();
     private final MonotonicClock clock = () -> 0;
 
-    @Test void worthIsTheBasePlusTenPerWeightedDamagePointCappedAt315() {
-        assertEquals(100, MonsterWorth.experience(RULES, MonsterWallet.EMPTY));
-        // 0.55 damage points round down to 5 experience.
-        assertEquals(105, MonsterWorth.experience(RULES, MonsterWallet.EMPTY.creditDamage(human, 550, 1000, 20_000)));
+    @Test void worthStartsAtLevelTenAndGainsALevelPerWeightedDamagePointUpToThirty() {
+        assertEquals(10_000, MonsterWorth.milliLevels(RULES, MonsterWallet.EMPTY));
+        assertEquals(10_550, MonsterWorth.milliLevels(RULES, MonsterWallet.EMPTY.creditDamage(human, 550, 1000, 20_000)));
         // The End bounty doubles counted damage before it becomes worth.
-        assertEquals(220, MonsterWorth.experience(RULES, MonsterWallet.EMPTY.creditDamage(human, 6_000, 2000, 20_000)));
-        assertEquals(300, MonsterWorth.experience(RULES, MonsterWallet.EMPTY.creditDamage(human, 40_000, 1000, 20_000)));
+        assertEquals(22_000, MonsterWorth.milliLevels(RULES, MonsterWallet.EMPTY.creditDamage(human, 6_000, 2000, 20_000)));
+        // One human's full per-sortie cap reaches the top level without any bounty.
+        assertEquals(30_000, MonsterWorth.milliLevels(RULES, MonsterWallet.EMPTY.creditDamage(human, 40_000, 1000, 20_000)));
         var twoHumans = MonsterWallet.EMPTY.creditDamage(human, 20_000, 1000, 20_000).creditDamage(other, 20_000, 1000, 20_000);
-        assertEquals(315, MonsterWorth.experience(RULES, twoHumans));
+        assertEquals(30_000, MonsterWorth.milliLevels(RULES, twoHumans));
     }
 
-    @Test void levelsAndProgressFollowTheVanillaExperienceCurve() {
-        assertEquals(0, MonsterWorth.level(0));
-        assertEquals(0, MonsterWorth.progress(0));
-        assertEquals(1, MonsterWorth.level(7));
-        assertEquals(7, MonsterWorth.level(100));
-        assertEquals(9f / 21, MonsterWorth.progress(100), 1e-6);
-        assertEquals(9, MonsterWorth.level(159));
-        assertEquals(10, MonsterWorth.level(160));
-        assertEquals(0, MonsterWorth.progress(160));
-        assertEquals(15, MonsterWorth.level(315));
-        assertEquals(16, MonsterWorth.level(352));
-        assertEquals(30, MonsterWorth.level(1395));
+    @Test void theBarShowsWholeLevelsWithTheFractionAsFill() {
+        assertEquals(10, MonsterWorth.level(10_000));
+        assertEquals(0, MonsterWorth.progress(10_000));
+        assertEquals(10, MonsterWorth.level(10_550));
+        assertEquals(0.55f, MonsterWorth.progress(10_550), 1e-6);
+        assertEquals(30, MonsterWorth.level(30_000));
+        assertEquals(0, MonsterWorth.progress(30_000));
     }
 
-    @Test void onlyWorthOfLevelTenLeavesABookEnchantedAtTwiceTheLevel() {
-        assertEquals(0, MonsterWorth.bookCost(RULES, 100));
-        assertEquals(0, MonsterWorth.bookCost(RULES, 159));
-        assertEquals(20, MonsterWorth.bookCost(RULES, 160));
-        assertEquals(30, MonsterWorth.bookCost(RULES, 315));
+    @Test void theBodySpraysTenExperiencePerWholeLevel() {
+        assertEquals(100, MonsterWorth.experience(RULES, 10_000));
+        assertEquals(100, MonsterWorth.experience(RULES, 10_999));
+        assertEquals(300, MonsterWorth.experience(RULES, 30_000));
+    }
+
+    @Test void fromLevelFifteenTheBookIsEnchantedAtTheBarLevel() {
+        assertEquals(0, MonsterWorth.bookLevel(RULES, 10_000));
+        assertEquals(0, MonsterWorth.bookLevel(RULES, 14_999));
+        assertEquals(15, MonsterWorth.bookLevel(RULES, 15_000));
+        assertEquals(22, MonsterWorth.bookLevel(RULES, 22_500));
+        assertEquals(30, MonsterWorth.bookLevel(RULES, 30_000));
     }
 
     @Test void projectedCreditMatchesWhatTheEngineCommits() {
@@ -60,7 +62,7 @@ class MonsterWorthTest {
         accept(engine, engine.proposeMonsterDamageCoins(UUID.randomUUID(), round, entries));
         var committed = engine.committed().participants().get(monster);
         assertEquals(committed.wallet(), projected.wallet());
-        assertEquals(160, MonsterWorth.experience(RULES, committed.wallet()));
+        assertEquals(16_000, MonsterWorth.milliLevels(RULES, committed.wallet()));
     }
 
     @Test void roundsWithoutWorthRulesOrOutsideHardcoreKeepWorthDisabled() {
@@ -78,10 +80,10 @@ class MonsterWorthTest {
         partial.remove(MonsterWorth.BOOK_MIN_LEVEL);
         assertThrows(IllegalArgumentException.class, () -> rules(partial));
         var fractional = new TreeMap<>(RULES.combatValues());
-        fractional.put(MonsterWorth.XP_PER_DAMAGE, 2.5);
+        fractional.put(MonsterWorth.LEVELS_PER_DAMAGE, 2.5);
         assertThrows(IllegalArgumentException.class, () -> rules(fractional));
         var inverted = new TreeMap<>(RULES.combatValues());
-        inverted.put(MonsterWorth.BASE_XP, 400.0);
+        inverted.put(MonsterWorth.BASE_LEVEL, 40.0);
         assertThrows(IllegalArgumentException.class, () -> rules(inverted));
     }
 

@@ -168,10 +168,10 @@ class MonsterCoinTimingSessionTest {
 
     @Test void worthCountsBufferedQueuedPendingAndCommittedDamageExactlyOnce() throws Exception {
         try (var session = open(seed())) {
-            assertEquals(OptionalInt.of(100), session.monsterWorth(monster), "A fresh sortie is worth the base");
+            assertEquals(OptionalInt.of(10_000), session.monsterWorth(monster), "A fresh sortie is worth the base");
             clock.set(seconds(5));
             session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 4_000);
-            assertEquals(OptionalInt.of(140), session.monsterWorth(monster), "A buffered hit counts before any flush");
+            assertEquals(OptionalInt.of(14_000), session.monsterWorth(monster), "A buffered hit counts before any flush");
             clock.set(seconds(6));
             session.tick();
             assertTrue(session.mutationPending(), "The first flush is being written");
@@ -179,13 +179,13 @@ class MonsterCoinTimingSessionTest {
             clock.set(seconds(7));
             session.tick();
             session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 1_000);
-            assertEquals(OptionalInt.of(170), session.monsterWorth(monster),
+            assertEquals(OptionalInt.of(17_000), session.monsterWorth(monster),
                     "The pending write, the queued flush behind it and the buffer each count once");
             clock.set(seconds(8));
             settle(session);
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
             assertEquals(7, coins(session));
-            assertEquals(OptionalInt.of(170), session.monsterWorth(monster));
+            assertEquals(OptionalInt.of(17_000), session.monsterWorth(monster));
             assertTrue(session.monsterWorth(human).isEmpty(), "Only a deployed monster body has worth");
             session.captureDeath(round, monster, 1, 3, null, true);
             settle(session);
@@ -195,16 +195,16 @@ class MonsterCoinTimingSessionTest {
 
     @Test void deathWorthUsesTheTenMinuteBountyForBufferedDamageAfterAPendingFlush() throws Exception {
         // 1 point at x1 is still being written; 4 buffered points after 10 minutes are worth x1.25 = 5.
-        assertDeathWorthAcrossTier(600, false, 160, 6);
+        assertDeathWorthAcrossTier(600, false, 16_000, 6);
     }
 
     @Test void deathWorthUsesTheTenMinuteBountyForAQueuedFlushBehindAPendingOne() throws Exception {
-        assertDeathWorthAcrossTier(600, true, 160, 6);
+        assertDeathWorthAcrossTier(600, true, 16_000, 6);
     }
 
     @Test void deathWorthUsesTheThirtyMinuteBountyAcrossThePendingFlush() throws Exception {
-        // 1 point at x1.25 before 30 minutes, then 4 points at x1.5 = 6: 100 + 12 + 60.
-        assertDeathWorthAcrossTier(1800, true, 172, 7);
+        // 1 point at x1.25 before 30 minutes, then 4 points at x1.5 = 6: levels 10 + 1.25 + 6.
+        assertDeathWorthAcrossTier(1800, true, 17_250, 7);
     }
 
     @Test void queuedAndBufferedDamageOnBothSidesOfTheTierKeepTheirOwnEventTimes() throws Exception {
@@ -223,11 +223,11 @@ class MonsterCoinTimingSessionTest {
             session.tick();
             session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 4_000);
             // 1 + 2 at x1, 2 + 4 at x1.25: weighted 10.5 points.
-            assertEquals(OptionalInt.of(205), session.monsterWorth(monster));
+            assertEquals(OptionalInt.of(20_500), session.monsterWorth(monster));
             session.captureDeath(round, monster, 1, 3, null, true);
             settle(session);
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
-            assertEquals(205, committedWorth(session), "The formal credit matches the worth read at death");
+            assertEquals(20_500, committedWorth(session), "The formal credit matches the worth read at death");
             assertEquals(10 + 5, coins(session), "Each flush is paid once, plus the death reward");
         }
     }
@@ -248,7 +248,7 @@ class MonsterCoinTimingSessionTest {
             assertTrue(session.mutationPending(), "The pre-tier write is still pending at death");
             int worth = session.monsterWorth(monster).orElseThrow();
             assertEquals(expectedWorth, worth, "The death reward reads the bounty of each flush's own time");
-            assertEquals(expectedWorth >= 160, dev.hardrush.core.round.MonsterWorth.bookCost(
+            assertEquals(expectedWorth >= 15_000, dev.hardrush.core.round.MonsterWorth.bookLevel(
                     session.snapshot().orElseThrow().rules(), worth) > 0, "The book follows the same worth");
             session.captureDeath(round, monster, 1, 3, null, true);
             settle(session);
@@ -261,7 +261,7 @@ class MonsterCoinTimingSessionTest {
 
     private int committedWorth(RoundSession session) {
         var round = session.snapshot().orElseThrow();
-        return dev.hardrush.core.round.MonsterWorth.experience(round.rules(), round.participants().get(monster).wallet());
+        return dev.hardrush.core.round.MonsterWorth.milliLevels(round.rules(), round.participants().get(monster).wallet());
     }
 
     private int coins(RoundSession session) { return session.snapshot().orElseThrow().participants().get(monster).wallet().coins(); }
