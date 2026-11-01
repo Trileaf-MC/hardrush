@@ -558,11 +558,10 @@ public final class LobbyRuntimeGameTest {
                     "Formal movement translates the saved native attribute to player input");
             test.assertValueEqual(monster.player.getAttribute(Attributes.ARMOR).getBaseValue(), values.get(key + ".armor"), "Formal intrinsic armor uses the round snapshot");
             test.assertValueEqual(monster.player.getFoodData().getFoodLevel(), 6, "The role body has no hunger or player sprint input");
-            test.assertTrue(monster.player.getInventory().getItem(kind == MonsterRole.CREEPER ? 0 : 1).is(switch (kind) {
-                case ZOMBIE -> Items.ZOMBIE_SPAWN_EGG;
-                case SKELETON -> Items.BONE;
-                case CREEPER -> Items.GUNPOWDER;
-            }), "Only the selected role's fixed skill control is equipped");
+            if (kind == MonsterRole.SKELETON) test.assertTrue(monster.player.getInventory().getItem(1).isEmpty()
+                    && monster.player.getMainHandItem().is(Items.BOW), "The skeleton's volley rides on its bow; no separate control item");
+            else test.assertTrue(monster.player.getInventory().getItem(kind == MonsterRole.CREEPER ? 0 : 1).is(
+                    kind == MonsterRole.ZOMBIE ? Items.ZOMBIE_SPAWN_EGG : Items.GUNPOWDER), "Only the selected role's fixed skill control is equipped");
             test.assertValueEqual(diamonds(), 3, "Outings do not duplicate or pick up the old human inventory");
         }
         void assertMenuDoesNotUnlockRoleDrops() {
