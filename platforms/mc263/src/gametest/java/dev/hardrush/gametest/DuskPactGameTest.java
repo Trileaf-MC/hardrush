@@ -134,9 +134,18 @@ public final class DuskPactGameTest {
             var server = f.level.getServer();
             f.time(0); DuskPactRuntime.tick(server);
             test.assertValueEqual(capture.titles(DuskPact.TITLE), 0L, "Entry title waits for the loading screen to close");
+            test.assertValueEqual(capture.elderGhosts().size(), 0, "Ghost and its sound wait for the loading screen to close");
             capture.loaded(); DuskPactRuntime.tick(server); DuskPactRuntime.tick(server);
             test.assertValueEqual(capture.titles(DuskPact.TITLE), 1L, "Entering round explains protection once as a title");
             test.assertValueEqual(capture.subtitles(DuskPact.INTRO), 1L, "Entry subtitle has the agreed wording");
+            test.assertValueEqual(capture.elderGhosts().size(), 1, "Entering round shows the elder guardian ghost once");
+            test.assertValueEqual(capture.elderGhosts().getFirst().getParam(), 1F, "Ghost enables the vanilla curse sound");
+            test.assertFalse(f.victim.hasEffect(MobEffects.MINING_FATIGUE), "Contract introduction applies no mining fatigue");
+            try (var reconnected = new Capture(f.victim, true)) {
+                DuskPactRuntime.tick(server);
+                test.assertValueEqual(reconnected.elderGhosts().size(), 0, "Replacing a loaded connection does not replay the ghost or sound");
+                test.assertValueEqual(reconnected.titles(DuskPact.TITLE), 0L, "Replacing a loaded connection does not repeat the title");
+            }
             test.assertFalse(capture.packets.stream().anyMatch(ClientboundBossEventPacket.class::isInstance), "Daylight shows no bossbar");
             test.assertValueEqual(DuskPactRuntime.tabLine(server).orElse(""), "黄昏契约 · 日落前暂息纷争 · 10:50", "TAB footer carries the countdown");
             DuskPactRuntime.reject(f.victim, f.attacker);
@@ -168,6 +177,7 @@ public final class DuskPactGameTest {
             test.assertValueEqual(capture.titles(DuskPact.RELEASED), 1L, "Dusk title occurs once");
             test.assertValueEqual(capture.subtitles(DuskPact.releasedSubtitle(true)), 1L, "Hardcore subtitle announces the hunt");
             test.assertValueEqual(capture.titles(DuskPact.TITLE), 1L, "Entry title never repeats within the round");
+            test.assertValueEqual(capture.elderGhosts().size(), 1, "Warnings and pact release do not replay the entry ghost or sound");
             test.assertFalse(capture.packets.stream().anyMatch(ClientboundSystemChatPacket.class::isInstance), "Pact never writes to public chat");
             test.assertTrue(DuskPactRuntime.tabLine(server).isEmpty(), "TAB countdown ends with the pact");
             var encoded = DuskPactData.CODEC.encodeStart(JsonOps.INSTANCE, f.data).getOrThrow();
@@ -273,6 +283,10 @@ public final class DuskPactGameTest {
             if (loaded) loaded();
         }
         void loaded() { player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket()); }
+        List<ClientboundGameEventPacket> elderGhosts() {
+            return packets.stream().filter(ClientboundGameEventPacket.class::isInstance).map(ClientboundGameEventPacket.class::cast)
+                    .filter(packet -> packet.getEvent() == ClientboundGameEventPacket.GUARDIAN_ELDER_EFFECT).toList();
+        }
         long sounds() { return packets.stream().filter(ClientboundSoundPacket.class::isInstance).count(); }
         Object lastSound() {
             return packets.stream().filter(ClientboundSoundPacket.class::isInstance).map(ClientboundSoundPacket.class::cast)
