@@ -18,7 +18,7 @@ public final class MonsterInventory {
     private MonsterInventory() {}
 
     public static boolean storageBlock(ServerPlayer player, BlockPos pos) {
-        if (ProtectionRuntime.protectedBlock(player.level(), pos)) return false;
+        if (ProtectionRuntime.protectedLevel(player.level())) return false;
         var state = player.level().getBlockState(pos);
         return state.is(Blocks.CHEST) || state.is(Blocks.TRAPPED_CHEST) || state.is(Blocks.ENDER_CHEST)
                 || state.is(Blocks.BARREL) || state.is(Blocks.HOPPER) || state.is(Blocks.DISPENSER)

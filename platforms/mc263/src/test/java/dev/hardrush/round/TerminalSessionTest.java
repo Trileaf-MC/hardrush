@@ -228,7 +228,7 @@ final class TerminalSessionTest {
     private RoundSnapshot seed(Path database, RoundPhase phase, RoundResult result, long remaining) throws Exception {
         var defaults = RulesConfig.defaults().withMode(GameMode.NORMAL);
         var rules = new RulesConfig(defaults.schemaVersion(), defaults.mode(), defaults.minecraftVersion(),
-                defaults.difficulty(), defaults.generationRule(), defaults.combatValues(), defaults.protectionRadius(),
+                defaults.difficulty(), defaults.generationRule(), defaults.combatValues(),
                 1, 2_000, 1_000);
         var snapshot = new RoundSnapshot(UUID.randomUUID(), 1, 42, 0, rules, phase, PauseReason.SERVER_STOPPED,
                 result == null ? 0 : 123_000_000, remaining,

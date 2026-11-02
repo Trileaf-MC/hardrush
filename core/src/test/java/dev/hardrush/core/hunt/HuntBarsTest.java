@@ -109,11 +109,11 @@ class HuntBarsTest {
     }
 
     Participant human(int life, boolean online) {
-        return new Participant(a, "Alex", ParticipantRole.HUMAN_ACTIVE, online, false, 0, 0, life, 0, true,
+        return new Participant(a, "Alex", ParticipantRole.HUMAN_ACTIVE, online, false, 0, 0, life, 0,
                 MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of());
     }
     Participant as(Participant p, ParticipantRole role) {
-        return new Participant(p.id(), p.name(), role, p.online(), false, 0, 0, p.lifeSequence(), 0, true,
+        return new Participant(p.id(), p.name(), role, p.online(), false, 0, 0, p.lifeSequence(), 0,
                 MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of());
     }
 

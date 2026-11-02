@@ -182,7 +182,7 @@ public final class MonsterDoorBreaking {
                 || bottom.getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER
                 || top.getValue(DoorBlock.OPEN) || bottom.getValue(DoorBlock.OPEN)) return null;
         for (var pos : new BlockPos[]{upper, upper.below()}) {
-            if (ProtectionRuntime.rejectInteraction(player, level, pos) || !level.mayInteract(player, pos)
+            if (ProtectionRuntime.rejectInteraction(player, level) || !level.mayInteract(player, pos)
                     || level.getServer().isUnderSpawnProtection(level, pos, player)) return null;
         }
         return upper;

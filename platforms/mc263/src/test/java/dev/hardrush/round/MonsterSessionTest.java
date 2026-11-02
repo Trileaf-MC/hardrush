@@ -103,7 +103,7 @@ class MonsterSessionTest {
 
     @Test void bufferedDamagePaysCoinsThatBuyGoodsForTheNextSortie() throws Exception {
         UUID human = UUID.randomUUID();
-        Path path = seed(new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 50, 1, false, true));
+        Path path = seed(new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 50, 1, false));
         try (var session = open(path)) {
             session.onOnline(human, "Human", true);
             pump(() -> !session.mutationPending());
@@ -163,7 +163,7 @@ class MonsterSessionTest {
     private Path seed(boolean entitled, Participant... others) throws Exception {
         var path = temporary.toRealPath().resolve("monster.sqlite");
         var participant = new Participant(player, "Monster", ParticipantRole.MONSTER_LOBBY, false, false,
-                123, 0, 3, entitled, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 4);
+                123, 0, 3, entitled, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 4);
         var players = new java.util.LinkedHashMap<UUID, Participant>();
         players.put(player, participant);
         for (var other : others) players.put(other.id(), other);

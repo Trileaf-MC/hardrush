@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 8;
+    private static final int SCHEMA = 9;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -39,7 +39,6 @@ public final class RoundSnapshotCodec {
                 writeUuid(out, p.id()); writeText(out, p.name()); writeText(out, p.role().name());
                 out.writeBoolean(p.online()); out.writeBoolean(p.ready()); out.writeLong(p.humanNanos());
                 out.writeLong(p.joinedAtChallengeNanos()); out.writeInt(p.lifeSequence()); out.writeInt(p.revivalCharges());
-                out.writeBoolean(p.hasLeftProtection());
                 writeText(out, p.monsterRole().name()); writeText(out, p.monsterDimension().name());
                 out.writeLong(p.monsterCooldownNanos()); out.writeInt(p.monsterDeploymentSequence());
                 out.writeInt(p.monsterSkillReadyAtMillis().size());
@@ -90,9 +89,8 @@ public final class RoundSnapshotCodec {
                 long humanNanos = in.readLong(), joinedAt = in.readLong();
                 int lifeSequence = in.readInt();
                 int revivalCharges = schema >= 6 ? in.readInt() : (in.readBoolean() ? 1 : 0);
-                // Schema-1 snapshots had no formal protection rule or exit record. Their existing lives receive
-                // the initial permission on upgrade; every later exit is durably recorded.
-                boolean hasLeftProtection = schema >= 2 && in.readBoolean();
+                // Schemas 2–8 recorded a spawn-protection exit flag; the protection no longer exists.
+                if (schema >= 2 && schema <= 8) in.readBoolean();
                 MonsterRole monsterRole = schema >= 3 ? MonsterRole.valueOf(readText(in, 64)) : MonsterRole.ZOMBIE;
                 MonsterDimension monsterDimension = schema >= 3 ? MonsterDimension.valueOf(readText(in, 64)) : MonsterDimension.OVERWORLD;
                 // Older snapshots did not admit monster outings. Grant no bypass of the first wait.
@@ -114,7 +112,7 @@ public final class RoundSnapshotCodec {
                 // Older lives start their survival bounty from the upgrade instead of inheriting cross-life time.
                 long lifeHumanNanos = schema >= 7 ? in.readLong() : 0;
                 Participant p = new Participant(playerId, name, role, online, ready,
-                        humanNanos, joinedAt, lifeSequence, revivalCharges, hasLeftProtection,
+                        humanNanos, joinedAt, lifeSequence, revivalCharges,
                         monsterRole, monsterDimension, monsterCooldown, deploymentSequence, skillCooldowns, wallet, lifeHumanNanos);
                 if (players.put(playerId, p) != null) throw new IOException("Duplicate participant UUID");
             }

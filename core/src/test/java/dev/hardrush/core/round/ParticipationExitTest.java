@@ -14,10 +14,10 @@ class ParticipationExitTest {
     private final UUID round = UUID.randomUUID(), a = UUID.randomUUID(), b = UUID.randomUUID(), m = UUID.randomUUID();
     private final AtomicLong clock = new AtomicLong();
     private Participant human(UUID id) { return new Participant(id, "Human" + id.toString().substring(0, 4),
-            ParticipantRole.HUMAN_ACTIVE, true, false, 70, 0, 2, 3, true,
+            ParticipantRole.HUMAN_ACTIVE, true, false, 70, 0, 2, 3,
             MonsterRole.CREEPER, MonsterDimension.NETHER, 0, 4, Map.of(MonsterSkill.ZOMBIE_SUMMON, 80_000L)); }
     private Participant monster() { return new Participant(m, "Monster", ParticipantRole.MONSTER_LOBBY,
-            true, false, 50, 0, 1, 2, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 3, Map.of()); }
+            true, false, 50, 0, 1, 2, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 3, Map.of()); }
     private RoundEngine engine(GameMode mode, RoundPhase phase, long remaining, Participant... participants) {
         var players = new LinkedHashMap<UUID, Participant>();
         for (var p : participants) players.put(p.id(), p);

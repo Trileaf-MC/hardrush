@@ -68,7 +68,7 @@ class MonsterRoundTest {
         assertEquals(MonsterDimension.OVERWORLD, current.monsterDimension());
         assertEquals(2, current.monsterDeploymentSequence());
         var entitled = new Participant(player, "Entitled", current.role(), true, false, current.humanNanos(),
-                0, 1, true, true, current.monsterRole(), current.monsterDimension(), current.monsterCooldownNanos(), 2);
+                0, 1, true, current.monsterRole(), current.monsterDimension(), current.monsterCooldownNanos(), 2);
         assertTrue(entitled.withSession("Renamed", false).revivalEntitled());
         assertEquals(MonsterRole.SKELETON, entitled.withRole(ParticipantRole.MONSTER_DEPLOYED).monsterRole());
         assertEquals(MonsterDimension.OVERWORLD, entitled.accrue(1).monsterDimension());
@@ -152,13 +152,12 @@ class MonsterRoundTest {
 
     @Test void committedSelectionCodecAndCopiesRetainQualificationAndCounters() {
         Participant chosen = new Participant(player, "Chosen", ParticipantRole.MONSTER_LOBBY, true, false,
-                99, 5, 7, true, true, MonsterRole.CREEPER, MonsterDimension.NETHER, 9_999, 4);
+                99, 5, 7, true, MonsterRole.CREEPER, MonsterDimension.NETHER, 9_999, 4);
         var snapshot = new RoundSnapshot(round, 1, 2, 3, RulesConfig.defaults(), RoundPhase.RUNNING,
                 PauseReason.NO_ONLINE_HUMANS, 99, 0, Map.of(player, chosen), false, false, null);
         assertEquals(snapshot, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(snapshot)));
         assertEquals(chosen.monsterRole(), chosen.withReady(false).monsterRole());
         assertEquals(chosen.monsterDimension(), chosen.withSession("Other", false).monsterDimension());
-        assertEquals(chosen.monsterCooldownNanos(), chosen.leaveProtection().monsterCooldownNanos());
         assertTrue(chosen.monsterLobby(30).revivalEntitled());
         assertTrue(chosen.deployMonster().revivalEntitled());
     }

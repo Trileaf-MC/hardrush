@@ -341,17 +341,11 @@ final class RoundSessionTest {
             assertEquals(RoundPhase.RUNNING, session.snapshot().orElseThrow().phase());
             session.onOnline(player, "Human", true);
             pumpUntil(callbacks, () -> !session.mutationPending());
-            assertTrue(session.leaveProtection(session.snapshot().orElseThrow().roundId(), player, 1));
-            pumpUntil(callbacks, () -> !session.mutationPending());
-            assertTrue(session.snapshot().orElseThrow().participants().get(player).hasLeftProtection());
             clock.addAndGet(TimeUnit.SECONDS.toNanos(7));
             session.humanDeath(player, 1, null);
             pumpUntil(callbacks, () -> !session.mutationPending());
             assertEquals(ParticipantRole.MONSTER_LOBBY, session.snapshot().orElseThrow().participants().get(player).role());
             assertEquals(TimeUnit.SECONDS.toNanos(7), session.view().orElseThrow().challengeNanos());
-            assertTrue(session.leaveProtection(session.snapshot().orElseThrow().roundId(), player, 1));
-            pumpUntil(callbacks, () -> !session.mutationPending());
-            assertEquals(RoundSession.State.OPEN, session.state(), "A queued movement from the dead life is harmless");
             reply.set(null);
             session.requestJoin(player, "Human", reply::set);
             pumpUntil(callbacks, () -> reply.get() != null);
@@ -367,7 +361,6 @@ final class RoundSessionTest {
             var dead = session.snapshot().orElseThrow().participants().get(player);
             assertEquals(ParticipantRole.MONSTER_LOBBY, dead.role());
             assertEquals(1, dead.lifeSequence());
-            assertTrue(dead.hasLeftProtection());
             assertEquals(TimeUnit.SECONDS.toNanos(7), dead.humanNanos());
             assertEquals(TimeUnit.SECONDS.toNanos(7), session.view().orElseThrow().challengeNanos());
         }

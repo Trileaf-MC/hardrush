@@ -31,14 +31,13 @@ public record RulesConfig(
         Difficulty difficulty,
         String generationRule,
         Map<String, Double> combatValues,
-        double protectionRadius,
         long startCountdownMillis,
         long successCelebrationMillis,
         long failureDisplayMillis) {
     public static final int CURRENT_SCHEMA_VERSION = 2;
     private static final Set<String> SUPPORTED_VERSIONS = Set.of("26.1.2", "26.2", "26.3");
     private static final Set<String> FIXED_KEYS = Set.of("schemaVersion", "mode", "minecraftVersion",
-            "difficulty", "generationRule", "protectionRadius", "startCountdownMillis",
+            "difficulty", "generationRule", "startCountdownMillis",
             "successCelebrationMillis", "failureDisplayMillis");
     private static final int MAX_CONFIG_LENGTH = 131_072;
 
@@ -92,9 +91,6 @@ public record RulesConfig(
             }
         }
         combatValues = Collections.unmodifiableSortedMap(copy);
-        if (!Double.isFinite(protectionRadius) || protectionRadius <= 0 || protectionRadius > 30_000_000) {
-            throw new IllegalArgumentException("保护半径必须为有效的正数");
-        }
         requireDuration(startCountdownMillis, "startCountdownMillis");
         requireDuration(successCelebrationMillis, "successCelebrationMillis");
         requireDuration(failureDisplayMillis, "failureDisplayMillis");
@@ -124,7 +120,7 @@ public record RulesConfig(
                 Map.entry("monster.deployCooldownMillis", 30_000.0),
                 Map.entry("monster.returnChannelMillis", 5_000.0),
                 Map.entry("round.rescueMillis", 60_000.0)),
-                32.0, 30_000, 90_000, 30_000).withEconomyDefaults();
+                30_000, 90_000, 30_000).withEconomyDefaults();
     }
 
     /** Monster coin economy; each offer's price doubles per purchase within one sortie. */
@@ -181,7 +177,7 @@ public record RulesConfig(
         WORTH_DEFAULTS.forEach(values::putIfAbsent);
         SORTIE_DEFAULTS.forEach(values::putIfAbsent);
         return new RulesConfig(schemaVersion, mode, minecraftVersion, difficulty, generationRule, values,
-                protectionRadius, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
+                startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
 
     /** Schema 1 is the byte-for-byte historical voting rule; schema 2 is personal direct hunt. */
@@ -198,18 +194,18 @@ public record RulesConfig(
 
     public RulesConfig withHuntRule(HuntRule rule) {
         return new RulesConfig(Objects.requireNonNull(rule) == HuntRule.LEGACY_VOTE ? 1 : 2,
-                mode, minecraftVersion, difficulty, generationRule, combatValues, protectionRadius,
+                mode, minecraftVersion, difficulty, generationRule, combatValues,
                 startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
 
     public RulesConfig withDifficulty(Difficulty nextDifficulty) {
         return new RulesConfig(schemaVersion, mode, minecraftVersion, Objects.requireNonNull(nextDifficulty), generationRule,
-                combatValues, protectionRadius, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
+                combatValues, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
 
     public RulesConfig withMode(GameMode nextMode) {
         return new RulesConfig(schemaVersion, nextMode, minecraftVersion, difficulty, generationRule,
-                combatValues, protectionRadius, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
+                combatValues, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
 
     /** Stable UTF-8 Java-properties representation with no timestamp or iteration-order dependence. */
@@ -220,7 +216,6 @@ public record RulesConfig(
         values.put("minecraftVersion", minecraftVersion);
         values.put("difficulty", difficulty.name());
         values.put("generationRule", generationRule);
-        values.put("protectionRadius", Double.toString(protectionRadius));
         values.put("startCountdownMillis", Long.toString(startCountdownMillis));
         values.put("successCelebrationMillis", Long.toString(successCelebrationMillis));
         values.put("failureDisplayMillis", Long.toString(failureDisplayMillis));
@@ -259,8 +254,7 @@ public record RulesConfig(
             return new RulesConfig(Integer.parseInt(values.getProperty("schemaVersion")),
                     GameMode.valueOf(values.getProperty("mode")), values.getProperty("minecraftVersion"),
                     Difficulty.valueOf(values.getProperty("difficulty")), values.getProperty("generationRule"),
-                    combat, parseDouble(values.getProperty("protectionRadius"), "protectionRadius"),
-                    Long.parseLong(values.getProperty("startCountdownMillis")),
+                    combat, Long.parseLong(values.getProperty("startCountdownMillis")),
                     Long.parseLong(values.getProperty("successCelebrationMillis")),
                     Long.parseLong(values.getProperty("failureDisplayMillis")));
         } catch (NumberFormatException badNumber) {

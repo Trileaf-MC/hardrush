@@ -161,7 +161,7 @@ public final class MonsterNativeWeaponsGameTest {
         var participants = new HashMap<UUID, Participant>();
         for (var player : List.of(owner, first, second)) participants.put(player.getUUID(), new Participant(player.getUUID(),
                 player.getGameProfile().name(), player == owner ? ParticipantRole.MONSTER_DEPLOYED : ParticipantRole.HUMAN_ACTIVE,
-                true, false, 0, 0, 1, false, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 1));
+                true, false, 0, 0, 1, false, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 1));
         var events = new ArrayList<CombatEvent>();
         var sealedBatch = new UUID[1];
         test.runAfterDelay(80, () -> {
@@ -282,7 +282,7 @@ public final class MonsterNativeWeaponsGameTest {
         var level = players[0].level(); var round = UUID.randomUUID();
         var participants = new HashMap<UUID, Participant>();
         for (var player : players) participants.put(player.getUUID(), new Participant(player.getUUID(), player.getGameProfile().name(),
-                ParticipantRole.MONSTER_DEPLOYED, true, false, 0, 0, 1, false, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 1));
+                ParticipantRole.MONSTER_DEPLOYED, true, false, 0, 0, 1, false, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 1));
         return RuntimeFixtures.monsterCombat(level.getServer(), new MonsterCombatRuntime.Access() {
             public Optional<RoundSnapshot> snapshot() { return Optional.of(new RoundSnapshot(round, 1, 42, 0, RulesConfig.defaults(),
                     RoundPhase.RUNNING, PauseReason.NONE, 0, 0, participants, false, false, null)); }

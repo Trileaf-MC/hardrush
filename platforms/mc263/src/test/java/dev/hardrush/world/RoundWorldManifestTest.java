@@ -80,31 +80,13 @@ final class RoundWorldManifestTest {
         }
     }
 
-    @Test void naturalSpawnRecoversWithoutManufacturedExits() throws IOException {
+    @Test void naturalSpawnRecoversWithItsIdentity() throws IOException {
         Path root = temporary.toRealPath(), file = RoundWorldPaths.manifest(root, ROUND);
         var spawn = new BlockPos(2, 70, 6);
-        manifest().prepared(spawn, List.of()).write(root, file);
+        manifest().prepared(spawn).write(root, file);
         var recovered = RoundWorldManifest.read(root, file);
         recovered.requireSnapshot(RoundEngine.create(ROUND, 1, 12345, RulesConfig.defaults(), () -> 0).committed());
         assertEquals(spawn, recovered.spawn);
-        assertTrue(recovered.exits.isEmpty());
-        // The new format also accepts manifests that omit the obsolete field altogether.
-        var json = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
-        json.remove("exits");
-        Files.writeString(file, json.toString());
-        assertTrue(RoundWorldManifest.read(root, file).exits.isEmpty());
-    }
-
-    @Test void legacySpawnAndFourExitsRecoverWithoutChangingIdentity() throws IOException {
-        Path root = temporary.toRealPath();
-        Path file = RoundWorldPaths.manifest(root, ROUND);
-        var spawn = new BlockPos(2, 70, 6);
-        var exits = List.of(spawn.north(40), spawn.south(40), spawn.east(40), spawn.west(40));
-        manifest().prepared(spawn, exits).write(root, file);
-        var recovered = RoundWorldManifest.read(root, file);
-        recovered.requireSnapshot(RoundEngine.create(ROUND, 1, 12345, RulesConfig.defaults(), () -> 0).committed());
-        assertEquals(spawn, recovered.spawn);
-        assertEquals(exits, recovered.exits);
         assertEquals(ROUND, recovered.roundId);
     }
 
@@ -204,6 +186,6 @@ final class RoundWorldManifestTest {
             generator.addProperty("settings", "minecraft:" + dimension);
             generators.put(dimension, generator);
         }
-        return new RoundWorldManifest(ROUND, 12345, RulesConfig.defaults().encode(), generators, null, List.of());
+        return new RoundWorldManifest(ROUND, 12345, RulesConfig.defaults().encode(), generators, null);
     }
 }

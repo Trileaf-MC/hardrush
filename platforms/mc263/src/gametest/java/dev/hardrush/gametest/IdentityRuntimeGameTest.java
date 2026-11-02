@@ -172,11 +172,11 @@ public final class IdentityRuntimeGameTest {
             var worlds = service("WORLDS", RoundWorldBundle.class);
             roundLevel = worlds.level(Level.OVERWORLD);
             test.assertTrue(player.level() == roundLevel && !ProtectionRuntime.protectedEntity(player), "The native human starts on unprotected natural terrain");
-            test.assertTrue(ProtectionRuntime.zone(LobbyWorld.open(server).holdingLevel()).filter(ProtectionRuntime.Zone::lobby).isPresent(), "The long-lived lobby remains protected");
+            test.assertTrue(ProtectionRuntime.protectedLevel(LobbyWorld.open(server).holdingLevel()), "The long-lived lobby remains protected");
             for (var dimension : java.util.List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
-                test.assertTrue(ProtectionRuntime.zone(worlds.level(dimension)).isEmpty(), "No formal round dimension registers a spawn protection zone");
+                test.assertFalse(ProtectionRuntime.protectedLevel(worlds.level(dimension)), "No formal round dimension is protected");
             }
-            test.assertFalse(ProtectionRuntime.rejectInteraction(player, roundLevel, worlds.spawn().below()), "Spawn building and interactions use ordinary survival rules");
+            test.assertFalse(ProtectionRuntime.rejectInteraction(player, roundLevel), "Spawn building and interactions use ordinary survival rules");
             float health = player.getHealth();
             test.assertTrue(player.hurtServer(roundLevel, player.damageSources().genericKill(), 1), "Native damage is allowed immediately at spawn");
             test.assertValueEqual(player.getHealth(), health - 1, "Spawn has no area-based damage immunity");
@@ -208,7 +208,6 @@ public final class IdentityRuntimeGameTest {
             var worlds = service("WORLDS", RoundWorldBundle.class);
             move(Vec3.atBottomCenterOf(worlds.spawn()));
             test.assertTrue(player.position().distanceTo(Vec3.atBottomCenterOf(worlds.spawn())) < .01, "The same human life can freely return to spawn");
-            test.assertFalse(participant().hasLeftProtection(), "Ordinary movement never writes the obsolete exit restriction");
             clock.addAndGet(TimeUnit.SECONDS.toNanos(2));
             drops = new AABB(BlockPos.containing(player.position())).inflate(4);
             dead = player;
@@ -234,7 +233,6 @@ public final class IdentityRuntimeGameTest {
             test.assertValueEqual(round().pauseReason(), PauseReason.NO_ONLINE_HUMANS, "Monster-only connections do not keep the human challenge clock running");
             test.assertValueEqual(participant().role(), ParticipantRole.MONSTER_LOBBY, "The committed UUID remains a monster");
             test.assertValueEqual(participant().lifeSequence(), 1, "Death and reconnect do not create another human life");
-            test.assertFalse(participant().hasLeftProtection(), "Death conversion needs no legacy spawn exit marker");
             test.assertTrue(player.isAlive() && player.level() == LobbyWorld.open(server).holdingLevel() && PlayerProfiles.isLocked(player), "A living native monster remains isolated in the actual lobby");
             test.assertTrue(PlayerProfiles.canMoveInLobby(player), "The verified monster lobby permits native movement");
             test.assertValueEqual(player.gameMode.getGameModeForPlayer(), net.minecraft.world.level.GameType.ADVENTURE,
@@ -255,7 +253,7 @@ public final class IdentityRuntimeGameTest {
             try (var store = new SqliteRoundStore(server.getWorldPath(LevelResource.ROOT).resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE))) {
                 var saved = RoundSnapshotCodec.decode(store.load(round().roundId()).orElseThrow().payload()).participants().get(profile.id());
                 test.assertValueEqual(saved.role(), ParticipantRole.MONSTER_LOBBY, "The real SQLite snapshot stores the monster role");
-                test.assertTrue(!saved.hasLeftProtection() && saved.lifeSequence() == 1, "The real SQLite snapshot preserves identity without requiring a spawn exit");
+                test.assertValueEqual(saved.lifeSequence(), 1, "The real SQLite snapshot preserves the human life count");
                 var record = store.participantRecord(round().roundId(), profile.id()).orElseThrow();
                 test.assertValueEqual(record.deathCount(), 1, "Actual death listeners produce one persisted death");
                 test.assertValueEqual(record.revivalCount(), 0, "A monster respawn is never a human revival");

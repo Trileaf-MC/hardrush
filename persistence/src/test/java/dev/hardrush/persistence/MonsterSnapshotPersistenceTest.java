@@ -17,7 +17,7 @@ class MonsterSnapshotPersistenceTest {
     @Test void sqliteReopenKeepsMonsterSelectionRemainingCooldownEligibilityAndOutingLabels() throws Exception {
         UUID round = UUID.randomUUID(), id = UUID.randomUUID();
         var selected = new Participant(id, "Saved", ParticipantRole.MONSTER_LOBBY, true, false,
-                123, 0, 2, false, true, MonsterRole.SKELETON, MonsterDimension.END, 19_000_000_000L, 7);
+                123, 0, 2, false, MonsterRole.SKELETON, MonsterDimension.END, 19_000_000_000L, 7);
         var snapshot = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults(), RoundPhase.RUNNING,
                 PauseReason.SERVER_STOPPED, 123, 0, Map.of(id, selected), true, false, null);
         var path = temporary.toRealPath().resolve("monster.sqlite");

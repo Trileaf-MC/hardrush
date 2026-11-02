@@ -1,13 +1,9 @@
 package dev.hardrush.gametest;
 
 import dev.hardrush.core.round.MonsterRole;
-import dev.hardrush.core.round.Participant;
 import dev.hardrush.hunt.SafeDeployment;
-import dev.hardrush.protection.ProtectionRuntime;
 import java.util.List;
-import java.util.Optional;
 import java.util.Random;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -381,14 +377,7 @@ public final class SafeDeploymentGameTest {
         dev.hardrush.gametest.RuntimeFixtures.Scope empty() { return scope(false); }
         dev.hardrush.gametest.RuntimeFixtures.Scope protectedZone() { return scope(true); }
         dev.hardrush.gametest.RuntimeFixtures.Scope scope(boolean enabled) {
-            return dev.hardrush.gametest.RuntimeFixtures.protection(level.getServer(), new ProtectionRuntime.Access() {
-                @Override public Optional<ProtectionRuntime.Zone> zone(ServerLevel value) {
-                    return enabled && value == level ? Optional.of(new ProtectionRuntime.Zone(UUID.randomUUID(), target, 40, true)) : Optional.empty();
-                }
-                @Override public Optional<Participant> participant(UUID id) { return Optional.empty(); }
-                @Override public boolean leaveProtection(UUID round, UUID id, int life) { return false; }
-                @Override public void quarantine(ServerPlayer player) { throw new IllegalStateException("Search cannot move players"); }
-            });
+            return dev.hardrush.gametest.RuntimeFixtures.protection(level.getServer(), value -> enabled && value == level);
         }
     }
 }

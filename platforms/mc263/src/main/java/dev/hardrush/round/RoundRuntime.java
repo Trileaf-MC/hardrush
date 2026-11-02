@@ -138,27 +138,9 @@ public final class RoundRuntime {
                 // hiding there would leave the bar off the client until the save finishes.
                 public boolean locked() { return session.competitionLocked() && !session.savingFullCheckpoint(); }
             });
-            ProtectionRuntime.configure(server, new ProtectionRuntime.Access() {
-                @Override public Optional<ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) {
-                    var round = session.snapshot().orElse(null);
-                    if (round == null) return Optional.empty();
-                    if (LobbyWorld.isLobby(level) || level == server.overworld()) return Optional.of(new ProtectionRuntime.Zone(round.roundId(),
-                            lobby.holdingSpawn(), round.rules().protectionRadius(), true));
-                    // Formal round worlds use ordinary survival rules, including their spawn.
-                    return Optional.empty();
-                }
-                @Override public Optional<dev.hardrush.core.round.Participant> participant(UUID playerId) {
-                    return session.snapshot().map(round -> round.participants().get(playerId));
-                }
-                @Override public boolean leaveProtection(UUID roundId, UUID playerId, int lifeSequence) {
-                    return session.leaveProtection(roundId, playerId, lifeSequence);
-                }
-                @Override public void quarantine(ServerPlayer player) {
-                    profiles.returnToLobby(player);
-                    session.adapterFailure("保护边界缺少安全站位，已隔离并保留身份",
-                            new IllegalStateException("玩家 " + player.getUUID() + " 无已加载且安全的区外回退位置"));
-                }
-            });
+            // Formal round worlds use ordinary survival rules, including their spawn; only the camp is sealed.
+            ProtectionRuntime.configure(server, level -> session.snapshot().isPresent()
+                    && (LobbyWorld.isLobby(level) || level == server.overworld()));
             TABS.put(server, new TabListRuntime());
             BOOK_ATTEMPTS.put(server, new java.util.HashMap<>());
             BOOKS.put(server, new HistoryBookService(new HistoryBookService.HistorySource() {
@@ -289,7 +271,6 @@ public final class RoundRuntime {
                 }
                 if (CelebrationRuntime.successful(round)) {
                     if (CelebrationRuntime.tick(server, round)) session.celebrationComplete(round.roundId());
-                    ProtectionRuntime.tick(server);
                     LobbyRuntime.tick(server);
                     session.tick();
                     return;
@@ -345,7 +326,6 @@ public final class RoundRuntime {
                 }
                 dev.hardrush.storage.FullCheckpointRuntime.tick(server, session, worlds, profiles);
                 ProgressRuntime.tick(server);
-                ProtectionRuntime.tick(server);
                 LobbyRuntime.tick(server);
                 automaticBooks(server);
                 session.tick();

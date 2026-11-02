@@ -1147,24 +1147,6 @@ public final class RoundSession implements AutoCloseable {
         } else enqueue(proposal);
     }
 
-    public boolean leaveProtection(UUID roundId, UUID playerId, int lifeSequence) {
-        if (engine == null || stopping || state != State.OPEN || competitionLocked()
-                || !engine.committed().roundId().equals(roundId)) return false;
-        enqueue(e -> {
-            var current = e.committed();
-            var player = current.participants().get(playerId);
-            // Native movement can race an earlier accepted death or round close while SQLite is pending.
-            // A stale movement callback cannot consume the replacement life's exit or fail the round.
-            if (!current.roundId().equals(roundId) || current.phase() != RoundPhase.RUNNING
-                    || player == null || player.role() != dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE
-                    || player.lifeSequence() != lifeSequence || player.hasLeftProtection()) {
-                return e.proposeCheckpoint(UUID.randomUUID(), false);
-            }
-            return e.proposeLeaveProtection(UUID.randomUUID(), playerId, lifeSequence);
-        });
-        return true;
-    }
-
     public void normalRespawn(UUID playerId, int lifeSequence) {
         if (stopping || state != State.OPEN || !adaptersReady || competitionLocked()
                 || Objects.equals(requestedRespawns.get(playerId), lifeSequence)) return;

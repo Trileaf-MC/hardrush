@@ -7,7 +7,6 @@ import dev.hardrush.core.round.*;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.combat.MonsterCombatRuntime;
-import dev.hardrush.protection.ProtectionRuntime;
 import java.util.*;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -239,7 +238,7 @@ public final class MonsterCombatWhitelistGameTest {
             player.setPosRaw(center.x + x, center.y, center.z);
             player.connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
             participants.put(player.getUUID(), new Participant(player.getUUID(), player.getScoreboardName(), role,
-                    true, false, 0, 0, 1, false, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 1));
+                    true, false, 0, 0, 1, false, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 1));
             return player;
         }
         RoundSnapshot snapshot() {
@@ -252,13 +251,7 @@ public final class MonsterCombatWhitelistGameTest {
                 public boolean competitionLocked() { return false; }
                 public boolean formalLevel(ServerLevel candidate) { return candidate == level; }
             });
-            var protection = dev.hardrush.gametest.RuntimeFixtures.protection(level.getServer(), new ProtectionRuntime.Access() {
-                public Optional<ProtectionRuntime.Zone> zone(ServerLevel candidate) {
-                    return candidate == level && protectedTarget ? Optional.of(new ProtectionRuntime.Zone(round, human.position(), 1, false)) : Optional.empty();
-                }
-                public Optional<Participant> participant(UUID id) { return Optional.ofNullable(participants.get(id)); }
-                public boolean leaveProtection(UUID roundId, UUID id, int life) { return false; }
-            });
+            var protection = dev.hardrush.gametest.RuntimeFixtures.protection(level.getServer(), candidate -> candidate == level && protectedTarget);
             var evidence = dev.hardrush.gametest.RuntimeFixtures.combat(level.getServer(), new CombatRuntime.RoundAccess() {
                 public Optional<UUID> roundOf(ServerLevel candidate) { return candidate == level ? Optional.of(round) : Optional.empty(); }
                 public Optional<CombatActor> actor(UUID roundId, UUID id) {

@@ -154,7 +154,7 @@ class MonsterCoinsTest {
     }
 
     @Test void aKillPaysARevivalAndSendsTheHunterBack() {
-        var other = new Participant(UUID.randomUUID(), "Other", ParticipantRole.HUMAN_ACTIVE, true, false, 100, 50, 1, false, true);
+        var other = new Participant(UUID.randomUUID(), "Other", ParticipantRole.HUMAN_ACTIVE, true, false, 100, 50, 1, false);
         var engine = engine(humanParticipant(), other, deployedMonster());
         var bite = origin(monster, ParticipantRole.MONSTER_DEPLOYED, 3, AttackKind.MELEE);
         accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
@@ -213,7 +213,7 @@ class MonsterCoinsTest {
         var values = new TreeMap<>(RULES.combatValues());
         values.put("coin.bounty.max", 1.75);
         var capped = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
-                RULES.generationRule(), values, RULES.protectionRadius(), RULES.startCountdownMillis(),
+                RULES.generationRule(), values, RULES.startCountdownMillis(),
                 RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
         assertEquals(1750, MonsterCoins.bountyPermille(capped, MonsterDimension.END, 30 * minute), "Bonuses add, then cap");
         assertEquals("1.25", MonsterCoins.multiplier(1250));
@@ -223,7 +223,7 @@ class MonsterCoinsTest {
     @Test void survivalTimeCountsOnlyTheCurrentOnlineLife() {
         var clock = new long[] {0};
         Map<UUID, Participant> players = new LinkedHashMap<>();
-        players.put(human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 5_000, 50, 2, 0, true,
+        players.put(human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 5_000, 50, 2, 0,
                 MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of(), MonsterWallet.EMPTY, 0));
         var engine = RoundEngine.restore(new RoundSnapshot(round, 1, 2, 0, RULES, RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
                 100, 0, players, true, false, null), () -> clock[0]);
@@ -280,7 +280,7 @@ class MonsterCoinsTest {
         var values = new TreeMap<>(RULES.combatValues());
         values.put("coin.price.babyEgg", 70.0);
         assertThrows(IllegalArgumentException.class, () -> new RulesConfig(RULES.schemaVersion(), RULES.mode(),
-                RULES.minecraftVersion(), RULES.difficulty(), RULES.generationRule(), values, RULES.protectionRadius(),
+                RULES.minecraftVersion(), RULES.difficulty(), RULES.generationRule(), values,
                 RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis()));
     }
 
@@ -308,7 +308,7 @@ class MonsterCoinsTest {
         var values = new TreeMap<>(RULES.combatValues());
         values.keySet().removeIf(key -> key.contains("soulcatcher"));
         var legacy = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
-                RULES.generationRule(), values, RULES.protectionRadius(), RULES.startCountdownMillis(),
+                RULES.generationRule(), values, RULES.startCountdownMillis(),
                 RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
         assertFalse(MonsterCoins.soulcatcher(legacy));
         assertFalse(MonsterCoins.offered(legacy, ShopOffer.SOULCATCHER_TIER));
@@ -323,7 +323,7 @@ class MonsterCoinsTest {
         var values = new TreeMap<>(RULES.combatValues());
         values.keySet().removeIf(key -> key.startsWith("coin."));
         var legacy = new RulesConfig(RULES.schemaVersion(), GameMode.HARDCORE, RULES.minecraftVersion(), RULES.difficulty(),
-                RULES.generationRule(), values, RULES.protectionRadius(), RULES.startCountdownMillis(),
+                RULES.generationRule(), values, RULES.startCountdownMillis(),
                 RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
         assertFalse(MonsterCoins.enabled(legacy));
         assertFalse(MonsterCoins.enabled(RULES.withMode(GameMode.NORMAL)));
@@ -331,12 +331,12 @@ class MonsterCoinsTest {
     }
 
     private Participant humanParticipant() {
-        return new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, true, false, 100, 50, 1, false, true);
+        return new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, true, false, 100, 50, 1, false);
     }
 
     /** Camp monster at sortie 2; the engine fixture deploys it as sortie 3. */
     private Participant deployedMonster() {
-        return new Participant(monster, "Monster", ParticipantRole.MONSTER_LOBBY, true, false, 70, 20, 1, 0, true,
+        return new Participant(monster, "Monster", ParticipantRole.MONSTER_LOBBY, true, false, 70, 20, 1, 0,
                 MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 2, Map.of());
     }
 

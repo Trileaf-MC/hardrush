@@ -75,7 +75,7 @@ class RevivalStoreTest {
         var values = new java.util.LinkedHashMap<>(base.combatValues());
         values.put("skeleton.burstCooldownMillis", 90_000.0);
         var rules = new RulesConfig(base.schemaVersion(), base.mode(), base.minecraftVersion(), base.difficulty(),
-                base.generationRule(), values, base.protectionRadius(), base.startCountdownMillis(),
+                base.generationRule(), values, base.startCountdownMillis(),
                 base.successCelebrationMillis(), base.failureDisplayMillis());
         try (var fixture = new Fixture(directory.toRealPath().resolve("revival.sqlite"), rules)) {
             fixture.start();
@@ -145,7 +145,6 @@ class RevivalStoreTest {
                 assertEquals(oldLife + 1, revived.lifeSequence());
                 assertFalse(revived.online(), "Native admission must finish before human time runs");
                 assertFalse(revived.revivalEntitled());
-                assertFalse(revived.hasLeftProtection());
                 assertEquals(skillDeadlines.get(monster), revived.monsterSkillReadyAtMillis().get(MonsterSkill.SKELETON_BURST));
                 final UUID consumedBy = monster;
                 assertThrows(IllegalStateException.class, () -> fixture.engine.proposeAdmissionRevival(UUID.randomUUID(),

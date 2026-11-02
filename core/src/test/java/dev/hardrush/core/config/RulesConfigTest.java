@@ -20,7 +20,6 @@ class RulesConfigTest {
         assertEquals(Difficulty.HARD, rules.difficulty());
         assertEquals("26.3", rules.minecraftVersion());
         assertEquals("normal", rules.generationRule());
-        assertEquals(32, rules.protectionRadius());
         assertEquals(30_000, rules.startCountdownMillis());
         assertEquals(90_000, rules.successCelebrationMillis());
         assertEquals(30_000, rules.failureDisplayMillis());
@@ -75,15 +74,14 @@ class RulesConfigTest {
 
     @Test void canonicalEncodingNormalizesNumberSpellingAndZero() {
         RulesConfig original = RulesConfig.defaults();
-        RulesConfig read = RulesConfig.decode(original.encode().replace("protectionRadius=32.0", "protectionRadius=3.2E1")
+        RulesConfig read = RulesConfig.decode(original.encode().replace("combat.zombie.maxHealth=20.0", "combat.zombie.maxHealth=2.0E1")
                 .replace("combat.skeleton.armor=0.0", "combat.skeleton.armor=-0.0"));
         assertEquals(original, read);
         assertEquals(original.fingerprint(), read.fingerprint());
     }
 
     @Test void codecRoundTripsEscapedGenerationAndRejectsAmbiguousFields() {
-        RulesConfig source = rules("26.3", " \t\f生成\\配置\nseed=normal", RulesConfig.defaults().combatValues(),
-                32, 30_000, 600_000, 30_000);
+        RulesConfig source = rules("26.3", " \t\f生成\\配置\nseed=normal", RulesConfig.defaults().combatValues(), 30_000, 600_000, 30_000);
         assertEquals(source, RulesConfig.decode(source.encode()));
         assertThrows(IllegalArgumentException.class, () -> RulesConfig.decode(source.encode() + "mode=NORMAL\n"));
         assertThrows(IllegalArgumentException.class, () -> RulesConfig.decode(source.encode() + "modTypo=foo\n"));
@@ -96,29 +94,28 @@ class RulesConfigTest {
         combat.put("zombie.maxHealth", 21.0);
         RulesConfig[] alternatives = {
                 defaults.withMode(GameMode.NORMAL),
-                rules("26.2", "normal", defaults.combatValues(), 32, 30_000, 600_000, 30_000),
-                new RulesConfig(1, GameMode.HARDCORE, "26.3", Difficulty.NORMAL, "normal", defaults.combatValues(), 32, 30_000, 600_000, 30_000),
-                rules("26.3", "custom", defaults.combatValues(), 32, 30_000, 600_000, 30_000),
+                rules("26.2", "normal", defaults.combatValues(), 30_000, 600_000, 30_000),
+                new RulesConfig(1, GameMode.HARDCORE, "26.3", Difficulty.NORMAL, "normal", defaults.combatValues(), 30_000, 600_000, 30_000),
+                rules("26.3", "custom", defaults.combatValues(), 30_000, 600_000, 30_000),
                 withCombat(combat),
-                rules("26.3", "normal", defaults.combatValues(), 33, 30_000, 600_000, 30_000),
-                rules("26.3", "normal", defaults.combatValues(), 32, 31_000, 600_000, 30_000),
-                rules("26.3", "normal", defaults.combatValues(), 32, 30_000, 601_000, 30_000),
-                rules("26.3", "normal", defaults.combatValues(), 32, 30_000, 600_000, 31_000)
+                rules("26.3", "normal", defaults.combatValues(), 31_000, 600_000, 30_000),
+                rules("26.3", "normal", defaults.combatValues(), 30_000, 601_000, 30_000),
+                rules("26.3", "normal", defaults.combatValues(), 30_000, 600_000, 31_000)
         };
         for (RulesConfig alternative : alternatives) assertNotEquals(defaults.fingerprint(), alternative.fingerprint());
     }
 
     @Test void unsupportedVersionAndSchemaCannotSilentlyUseCurrentRules() {
         for (String version : new String[] {"", " ", "1.21.1", "26.1", "26.3.1", " 26.3"}) {
-            assertThrows(IllegalArgumentException.class, () -> rules(version, "normal", Map.of("health", 20.0), 32, 30_000, 600_000, 30_000));
+            assertThrows(IllegalArgumentException.class, () -> rules(version, "normal", Map.of("health", 20.0), 30_000, 600_000, 30_000));
         }
         for (String version : new String[] {"26.1.2", "26.2", "26.3"}) {
-            assertDoesNotThrow(() -> rules(version, "normal", Map.of("health", 20.0), 32, 30_000, 600_000, 30_000));
+            assertDoesNotThrow(() -> rules(version, "normal", Map.of("health", 20.0), 30_000, 600_000, 30_000));
         }
         assertThrows(IllegalArgumentException.class, () -> RulesConfig.decode(RulesConfig.defaults().encode().replace("schemaVersion=2", "schemaVersion=3")));
     }
 
-    @Test void invalidCombatRadiusAndTimersAreRejectedBeforeApplication() {
+    @Test void invalidCombatAndTimersAreRejectedBeforeApplication() {
         for (double invalid : new double[] {Double.NaN, Double.POSITIVE_INFINITY, -1}) {
             assertThrows(IllegalArgumentException.class, () -> withCombat(Map.of("zombie.maxHealth", invalid)));
         }
@@ -129,16 +126,13 @@ class RulesConfigTest {
         assertThrows(IllegalArgumentException.class, () -> withCombat(Map.of("zombie.summonCooldownMillis", 0.0)));
         assertThrows(IllegalArgumentException.class, () -> withCombat(Map.of("bad\nkey", 20.0)));
         assertThrows(IllegalArgumentException.class, () -> withCombat(Map.of()));
-        for (double invalid : new double[] {Double.NaN, Double.POSITIVE_INFINITY, -1, 0, 30_000_001}) {
-            assertThrows(IllegalArgumentException.class, () -> rules("26.3", "normal", Map.of("health", 20.0), invalid, 30_000, 600_000, 30_000));
-        }
         for (long invalid : new long[] {-1, 0, Long.MAX_VALUE}) {
-            assertThrows(IllegalArgumentException.class, () -> rules("26.3", "normal", Map.of("health", 20.0), 32, invalid, 600_000, 30_000));
-            assertThrows(IllegalArgumentException.class, () -> rules("26.3", "normal", Map.of("health", 20.0), 32, 30_000, invalid, 30_000));
-            assertThrows(IllegalArgumentException.class, () -> rules("26.3", "normal", Map.of("health", 20.0), 32, 30_000, 600_000, invalid));
+            assertThrows(IllegalArgumentException.class, () -> rules("26.3", "normal", Map.of("health", 20.0), invalid, 600_000, 30_000));
+            assertThrows(IllegalArgumentException.class, () -> rules("26.3", "normal", Map.of("health", 20.0), 30_000, invalid, 30_000));
+            assertThrows(IllegalArgumentException.class, () -> rules("26.3", "normal", Map.of("health", 20.0), 30_000, 600_000, invalid));
         }
-        assertThrows(IllegalArgumentException.class, () -> rules("26.3", " ", Map.of("health", 20.0), 32, 30_000, 600_000, 30_000));
-        assertThrows(IllegalArgumentException.class, () -> rules("26.3", "bad\uD800", Map.of("health", 20.0), 32, 30_000, 600_000, 30_000));
+        assertThrows(IllegalArgumentException.class, () -> rules("26.3", " ", Map.of("health", 20.0), 30_000, 600_000, 30_000));
+        assertThrows(IllegalArgumentException.class, () -> rules("26.3", "bad\uD800", Map.of("health", 20.0), 30_000, 600_000, 30_000));
     }
 
     @Test void fileReloadOnlyAppliesValidatedNextRoundRules() throws IOException {
@@ -150,18 +144,18 @@ class RulesConfigTest {
         assertEquals(GameMode.NORMAL, pending.snapshotForNextRound().mode());
         assertEquals(GameMode.HARDCORE, active.mode());
         String validFingerprint = pending.snapshotForNextRound().fingerprint();
-        Files.writeString(file, active.encode().replace("protectionRadius=32.0", "protectionRadius=NaN"));
+        Files.writeString(file, active.encode().replace("failureDisplayMillis=30000", "failureDisplayMillis=NaN"));
         assertThrows(IOException.class, () -> pending.reload(file));
         assertEquals(validFingerprint, pending.snapshotForNextRound().fingerprint());
     }
 
     private static RulesConfig withCombat(Map<String, Double> combat) {
-        return rules("26.3", "normal", combat, 32, 30_000, 600_000, 30_000);
+        return rules("26.3", "normal", combat, 30_000, 600_000, 30_000);
     }
 
     private static RulesConfig rules(String version, String generation, Map<String, Double> combat,
-            double radius, long countdown, long celebration, long failure) {
-        return new RulesConfig(1, GameMode.HARDCORE, version, Difficulty.HARD, generation, combat, radius,
+            long countdown, long celebration, long failure) {
+        return new RulesConfig(1, GameMode.HARDCORE, version, Difficulty.HARD, generation, combat,
                 countdown, celebration, failure);
     }
 }

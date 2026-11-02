@@ -255,7 +255,7 @@ public final class DuskPactGameTest {
         }
         RoundSnapshot snapshot() {
             var participants = new LinkedHashMap<UUID, Participant>();
-            roles.forEach((id, role) -> participants.put(id, new Participant(id, "Pact", role, true, false, 0, 0, 1, false, true,
+            roles.forEach((id, role) -> participants.put(id, new Participant(id, "Pact", role, true, false, 0, 0, 1, false,
                     MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, role.isMonster() ? 1 : 0)));
             return new RoundSnapshot(round, 1, 42, 0, RulesConfig.defaults(), phase, PauseReason.NONE, 0, 0, participants, false, false, null);
         }

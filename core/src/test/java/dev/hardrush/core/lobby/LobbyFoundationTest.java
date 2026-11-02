@@ -38,7 +38,7 @@ class LobbyFoundationTest {
         var legacy = RulesConfig.decode(encoded);
         assertEquals(RulesConfig.HuntRule.LEGACY_VOTE, legacy.huntRule());
         assertEquals(encoded, legacy.encode());
-        assertEquals("1b6d9b7877a9aba787c0929a912e59b86a56571fba739f0c44c264b8f7d09640", legacy.fingerprint());
+        assertEquals("d7eda77f0c2f5621be197e1e6cece7ebc7d6921c3181ec1536055e63c50b6dad", legacy.fingerprint());
         var next = legacy.forNewRound();
         assertEquals(RulesConfig.HuntRule.PERSONAL_TARGET, next.huntRule());
         assertNotEquals(legacy.fingerprint(), next.fingerprint());

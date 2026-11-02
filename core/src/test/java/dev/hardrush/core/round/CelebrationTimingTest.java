@@ -89,7 +89,7 @@ class CelebrationTimingTest {
     private static RulesConfig configured(long millis) {
         var defaults = RulesConfig.defaults().withMode(GameMode.NORMAL);
         return new RulesConfig(defaults.schemaVersion(), defaults.mode(), defaults.minecraftVersion(), defaults.difficulty(),
-                defaults.generationRule(), defaults.combatValues(), defaults.protectionRadius(),
+                defaults.generationRule(), defaults.combatValues(),
                 defaults.startCountdownMillis(), millis, defaults.failureDisplayMillis());
     }
 

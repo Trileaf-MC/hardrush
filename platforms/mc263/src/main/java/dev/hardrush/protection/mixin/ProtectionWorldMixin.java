@@ -16,10 +16,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class ProtectionWorldMixin {
     @Inject(method="setBlock", at=@At("HEAD"), cancellable=true)
     private void set(BlockPos pos, BlockState state, int flags, int recursion, CallbackInfoReturnable<Boolean> ci) {
-        if ((Object)this instanceof ServerLevel level && ProtectionRuntime.protectedBlock(level, pos)) ci.setReturnValue(false);
+        if ((Object)this instanceof ServerLevel level && ProtectionRuntime.protectedLevel(level)) ci.setReturnValue(false);
     }
     @Inject(method="destroyBlock", at=@At("HEAD"), cancellable=true)
     private void destroy(BlockPos pos, boolean drop, Entity entity, int recursion, CallbackInfoReturnable<Boolean> ci) {
-        if ((Object)this instanceof ServerLevel level && ProtectionRuntime.protectedBlock(level, pos)) ci.setReturnValue(false);
+        if ((Object)this instanceof ServerLevel level && ProtectionRuntime.protectedLevel(level)) ci.setReturnValue(false);
     }
 }

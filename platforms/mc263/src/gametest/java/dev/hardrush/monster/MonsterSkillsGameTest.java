@@ -481,7 +481,7 @@ public final class MonsterSkillsGameTest {
                 players.add(player); connections.put(player.getUUID(), connection);
                 participants.put(player.getUUID(), new Participant(player.getUUID(), profile.name(),
                         index == 0 ? ParticipantRole.MONSTER_DEPLOYED : ParticipantRole.HUMAN_ACTIVE,
-                        true, false, 0, 0, 1, false, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 1));
+                        true, false, 0, 0, 1, false, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 1));
             }
             owner = players.get(0); target = players.get(1);
         }

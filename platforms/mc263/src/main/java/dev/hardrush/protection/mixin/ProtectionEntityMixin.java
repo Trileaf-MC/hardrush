@@ -2,7 +2,6 @@ package dev.hardrush.protection.mixin;
 
 import dev.hardrush.protection.ProtectionRuntime;
 import dev.hardrush.protection.ProtectionOriginHolder;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -38,24 +37,17 @@ public abstract class ProtectionEntityMixin implements ProtectionOriginHolder {
     private void position(double x, double y, double z, CallbackInfo ci) {
         var entity = (Entity)(Object)this;
         if (entity instanceof Projectile projectile && entity.tickCount > 0
-                && ProtectionRuntime.rejectProjectilePath(projectile, new Vec3(x,y,z))) {
+                && ProtectionRuntime.rejectProjectilePath(projectile)) {
             entity.discard(); ci.cancel(); return;
         }
-        if (ProtectionRuntime.rejectPosition(entity, new Vec3(x, y, z))) {
+        if (ProtectionRuntime.rejectPosition(entity)) {
             entity.setDeltaMovement(Vec3.ZERO); entity.resetFallDistance(); ci.cancel();
         }
-    }
-    @Inject(method="setPos(DDD)V", at=@At("TAIL"))
-    private void moved(double x, double y, double z, CallbackInfo ci) {
-        ProtectionRuntime.positionAccepted((Entity)(Object)this);
     }
     @Inject(method="teleport", at=@At("HEAD"), cancellable=true)
     private void teleport(net.minecraft.world.level.portal.TeleportTransition transition, CallbackInfoReturnable<Entity> ci) {
         var entity = (Entity)(Object)this;
-        var target = net.minecraft.world.entity.PositionMoveRotation.calculateAbsolute(
-                net.minecraft.world.entity.PositionMoveRotation.of(entity),
-                net.minecraft.world.entity.PositionMoveRotation.of(transition), transition.relatives()).position();
-        if (ProtectionRuntime.rejectMove(entity, transition.newLevel(), target)) {
+        if (ProtectionRuntime.rejectMove(entity, transition.newLevel())) {
             entity.setDeltaMovement(Vec3.ZERO); entity.resetFallDistance(); ci.setReturnValue(null);
         }
     }

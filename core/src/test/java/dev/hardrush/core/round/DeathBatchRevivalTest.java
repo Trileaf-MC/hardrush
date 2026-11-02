@@ -30,11 +30,11 @@ class DeathBatchRevivalTest {
     }
     private static void apply(RoundEngine engine, RoundTransition event) { assertTrue(engine.accept(event)); }
     private Participant human(UUID id, boolean online) {
-        return new Participant(id, "Human", ParticipantRole.HUMAN_ACTIVE, online, false, 100, 50, 1, false, true);
+        return new Participant(id, "Human", ParticipantRole.HUMAN_ACTIVE, online, false, 100, 50, 1, false);
     }
     private Participant monster(boolean online, boolean entitled) {
         return new Participant(monster, "Monster", ParticipantRole.MONSTER_LOBBY, online, false,
-                70, 20, 1, entitled, true, MonsterRole.CREEPER, MonsterDimension.NETHER,
+                70, 20, 1, entitled, MonsterRole.CREEPER, MonsterDimension.NETHER,
                 0, 3, Map.of(MonsterSkill.ZOMBIE_SUMMON, 80_000L));
     }
     private RoundEngine fixture(GameMode mode, Participant... participants) {
@@ -374,7 +374,6 @@ class DeathBatchRevivalTest {
         assertEquals(2, revived.lifeSequence());
         assertFalse(revived.online());
         assertFalse(revived.revivalEntitled());
-        assertFalse(revived.hasLeftProtection());
         assertEquals(before.humanNanos(), revived.humanNanos());
         assertEquals(before.joinedAtChallengeNanos(), revived.joinedAtChallengeNanos());
         assertEquals(before.monsterSkillReadyAtMillis(), revived.monsterSkillReadyAtMillis());
