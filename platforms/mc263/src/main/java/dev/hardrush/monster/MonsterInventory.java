@@ -55,6 +55,12 @@ public final class MonsterInventory {
             if (button < 0 || button >= player.getInventory().getContainerSize()) return false;
             if (!own && MonsterItems.bound(player.getInventory().getItem(button))) return false;
         }
+        // The soulcatcher moves like any bound item, but nothing goes in or comes out by hand:
+        // native bundle clicks insert with a held stack and pull out with a right click.
+        boolean bagClicked = MonsterSoulcatcher.isBag(clicked), bagCarried = MonsterSoulcatcher.isBag(carried);
+        if (bagClicked && input == ContainerInput.PICKUP && (button != 0 || !carried.isEmpty())) return false;
+        if (bagCarried && (input == ContainerInput.QUICK_CRAFT
+                || input == ContainerInput.PICKUP && (button != 0 || !clicked.isEmpty()))) return false;
         // Bundle inventory clicks must not hide a bound item inside a transferable world item.
         if ((MonsterItems.bound(clicked) && carried.has(DataComponents.BUNDLE_CONTENTS))
                 || (MonsterItems.bound(carried) && clicked.has(DataComponents.BUNDLE_CONTENTS))) return false;

@@ -78,9 +78,9 @@ public record RulesConfig(
         copy.forEach((key, value) -> {
             if (!key.startsWith("coin.price.")) return;
             Double limit = copy.get("coin.limit." + key.substring("coin.price.".length()));
-            // A doubled price must still fit one native emerald stack in the trade slot.
-            if (limit == null || value * Math.pow(2, limit - 1) > 64) {
-                throw new IllegalArgumentException("怪物币价格翻倍后不能超过 64，且需配置购买上限: " + key);
+            // A doubled price must still fit the trade's two payment slots, one native emerald stack each.
+            if (limit == null || value * Math.pow(2, limit - 1) > 128) {
+                throw new IllegalArgumentException("怪物币价格翻倍后不能超过 128，且需配置购买上限: " + key);
             }
         });
         if (copy.keySet().stream().anyMatch(key -> key.startsWith("worth."))) {
@@ -152,7 +152,9 @@ public record RulesConfig(
             Map.entry("coin.price.poisonArrows", 10.0), Map.entry("coin.limit.poisonArrows", 2.0),
             Map.entry("coin.price.charged", 40.0), Map.entry("coin.limit.charged", 1.0),
             Map.entry("coin.price.trialKey", 15.0), Map.entry("coin.limit.trialKey", 2.0),
-            Map.entry("coin.price.ominousKey", 40.0), Map.entry("coin.limit.ominousKey", 1.0));
+            Map.entry("coin.price.ominousKey", 40.0), Map.entry("coin.limit.ominousKey", 1.0),
+            Map.entry("coin.price.soulcatcherTier", 30.0), Map.entry("coin.limit.soulcatcherTier", 3.0),
+            Map.entry("coin.price.soulcatcherCapacity", 20.0), Map.entry("coin.limit.soulcatcherCapacity", 3.0));
 
     /** Worth runs from level 10 to 30, one level per damage point; a slain body sprays 10 experience per level and leaves a book from level 15. */
     private static final Map<String, Double> WORTH_DEFAULTS = Map.ofEntries(
@@ -162,8 +164,12 @@ public record RulesConfig(
             Map.entry("worth.xpPerLevel", 10.0),
             Map.entry("worth.bookMinLevel", 15.0));
 
-    /** A deliberate return pauses the sortie, so hunting again may follow at once; death keeps the deploy cooldown. */
-    private static final Map<String, Double> SORTIE_DEFAULTS = Map.of("monster.returnCooldownMillis", 0.0);
+    /**
+     * A deliberate return pauses the sortie, so hunting again may follow at once; death keeps the deploy cooldown.
+     * A zombie's soulcatcher holds three creatures before the witch enlarges it.
+     */
+    private static final Map<String, Double> SORTIE_DEFAULTS = Map.of("monster.returnCooldownMillis", 0.0,
+            "soulcatcher.capacity", 3.0);
 
     /** Adds missing coin, worth and sortie values to stored pending rules; values an operator already set are kept. */
     public RulesConfig withEconomyDefaults() {

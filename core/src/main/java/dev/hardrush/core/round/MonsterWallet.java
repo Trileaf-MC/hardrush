@@ -15,7 +15,8 @@ import java.util.UUID;
  * A monster's coins and purchases for this round. Purchased goods are durable orders, never
  * items: the camp only projects them, and a sortie receives exactly what deployment froze.
  *
- * @param bought       purchases since the last sortie ended; drives the doubling price ladder
+ * @param bought       purchases since the last sortie ended; drives the doubling price ladder. Permanent
+ *                     upgrades stay here for the whole monster life and are never queued in {@code order}
  * @param order        paid goods waiting for the next sortie, including unopened vault keys
  * @param active       consumables frozen by the current deployment
  * @param gear         vault results waiting for a role that can wear them
@@ -135,12 +136,19 @@ public record MonsterWallet(int coins, boolean roleChosen,
         Objects.requireNonNull(role); Objects.requireNonNull(offer);
         if (!roleChosen) throw new IllegalStateException("请先在展位选择本次要化身的怪物。");
         if (!offer.sellableTo(role)) throw new IllegalStateException("女巫不向当前角色出售" + offer.title() + "。");
-        if (soldOut(rules, offer)) throw new IllegalStateException(offer.title() + "本次出场已售罄。");
+        if (!MonsterCoins.offered(rules, offer)) throw new IllegalStateException("女巫本轮不出售" + offer.title() + "。");
+        if (soldOut(rules, offer)) throw new IllegalStateException(offer.title() + (offer.permanent() ? "已升到顶。" : "本次出场已售罄。"));
         int price = nextPrice(rules, offer);
         if (price != expectedPrice) throw new IllegalStateException("价格已变化，请重新选择交易。");
         if (coins < price) throw new IllegalStateException("怪物币不足：需要 " + price + "，现有 " + coins + "。");
-        return with(coins - price, roleChosen, add(bought, offer, 1), add(order, offer, 1), active,
+        return with(coins - price, roleChosen, add(bought, offer, 1), offer.permanent() ? order : add(order, offer, 1), active,
                 gear, activeGear, nextGearSerial, sortieDamage);
+    }
+
+    /** Steps of a round-long upgrade bought so far. */
+    public int owned(ShopOffer offer) {
+        if (!offer.permanent()) throw new IllegalArgumentException("Not a permanent offer");
+        return bought(offer);
     }
 
     /** A committed role choice; goods the new role cannot use are refunded at the price paid. */
@@ -219,9 +227,9 @@ public record MonsterWallet(int coins, boolean roleChosen,
      * sortie's damage credit stays until the next deployment, so late buffered damage keeps its cap.
      */
     public MonsterWallet endSortie() {
-        // Goods still waiting in the camp keep their paid ladder steps for an exact refund.
+        // Goods still waiting in the camp keep their paid ladder steps for an exact refund; round-long upgrades stay owned.
         var waiting = new EnumMap<ShopOffer, Integer>(ShopOffer.class);
-        bought.forEach((offer, count) -> { if (order.containsKey(offer)) waiting.put(offer, count); });
+        bought.forEach((offer, count) -> { if (order.containsKey(offer) || offer.permanent()) waiting.put(offer, count); });
         return with(coins, roleChosen, waiting, order, Map.of(), gear, List.of(), nextGearSerial, sortieDamage).withParked("");
     }
 

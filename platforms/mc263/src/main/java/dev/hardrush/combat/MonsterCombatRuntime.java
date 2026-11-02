@@ -81,21 +81,30 @@ public final class MonsterCombatRuntime {
     public static boolean rejectDamage(Entity target, DamageSource source) {
         if (target.level() instanceof ServerLevel level && CombatRuntime.participationRevoked(level, CombatRuntime.damageOrigin(level, source))) return true;
         if (dev.hardrush.pact.DuskPactRuntime.rejectDamage(target, source)) return true;
+        boolean area = source.is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION) || splash(source.getDirectEntity());
         // A launched arrow's frozen identity wins over a mutable native owner reference.
-        if (source(source.getDirectEntity()).isPresent()) return reject(source.getDirectEntity(), target);
+        if (source(source.getDirectEntity()).isPresent()) return reject(source.getDirectEntity(), target, area);
         if (capturedHuman(source.getDirectEntity())) return false;
-        if (source.getEntity() != null) return reject(source.getEntity(), target);
+        if (source.getEntity() != null) return reject(source.getEntity(), target, area);
         return rejectCurrent(target);
     }
+    private static boolean splash(Entity direct) {
+        return direct instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion
+                || direct instanceof net.minecraft.world.entity.AreaEffectCloud;
+    }
+    /** A native explosion's knockback and damage share this gate; a companion's blast reaches its own side natively. */
+    public static boolean rejectExplosion(Entity source, Entity target) { return reject(source, target, true); }
     public static boolean rejectEffect(Entity source, Entity target, net.minecraft.world.effect.MobEffectInstance effect) {
         var action = current();
         if (!effect.getEffect().value().isBeneficial()
                 && dev.hardrush.pact.DuskPactRuntime.reject(action != null ? action : source, target)) return true;
         if ((action instanceof AbstractArrow || action instanceof net.minecraft.world.entity.AreaEffectCloud)
                 && (source(action).isPresent() || capturedHuman(action))) {
-            return rejectMonster(action, target);
+            return rejectMonster(action, target, false);
         }
-        return rejectMonster(source != null ? source : action, target);
+        // A companion's effects arrive by splash or cloud, which natively touch everyone around.
+        var actor = source != null ? source : action;
+        return rejectMonster(actor, target, dev.hardrush.monster.MonsterRoles.summonOwner(actor) != null);
     }
     /** Ordinary native Player.attack must never bypass the monster model's range, cooldown and attributes. */
     public static boolean formalMonsterPlayer(Entity entity) {
@@ -104,15 +113,25 @@ public final class MonsterCombatRuntime {
         return access != null && access.snapshot().map(r -> r.participants().get(player.getUUID()))
                 .filter(p -> p.role().isMonster()).isPresent();
     }
-    public static boolean reject(Entity entity, Entity target) {
-        return dev.hardrush.pact.DuskPactRuntime.reject(entity, target) || rejectMonster(entity, target);
+    public static boolean reject(Entity entity, Entity target) { return reject(entity, target, false); }
+    /**
+     * {@code area}: an explosion, splash or cloud. A companion never aims at its owner or allies, but
+     * like any native blast it still hurts its owner and the owner's other companions.
+     */
+    private static boolean reject(Entity entity, Entity target, boolean area) {
+        return dev.hardrush.pact.DuskPactRuntime.reject(entity, target) || rejectMonster(entity, target, area);
     }
-    private static boolean rejectMonster(Entity entity, Entity target) {
+    private static boolean ownSide(Entity companion, Entity target) {
+        var owner = dev.hardrush.monster.MonsterRoles.summonOwner(companion);
+        return owner != null && target != null && (owner.equals(target.getUUID()) || owner.equals(dev.hardrush.monster.MonsterRoles.summonOwner(target)));
+    }
+    private static boolean rejectMonster(Entity entity, Entity target, boolean area) {
         if (target.level() instanceof ServerLevel arena && dev.hardrush.celebration.CelebrationRuntime.arena(arena)) {
             return rejectCelebrationMonster(entity, target, arena);
         }
         if (target.level() instanceof ServerLevel level && (CombatRuntime.participationRevoked(level, CombatRuntime.originOf(entity))
                 || entity instanceof ServerPlayer player && dev.hardrush.participation.ParticipationControl.disabled(level.getServer(), player.getUUID()))) return true;
+        if (area && ownSide(entity, target)) return false;
         var frozen = source(entity).orElse(null);
         if (frozen != null && target.level() instanceof ServerLevel level
                 && dev.hardrush.participation.ParticipationControl.disabled(level.getServer(), frozen.ownerId())) return true;
