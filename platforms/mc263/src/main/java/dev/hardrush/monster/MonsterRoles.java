@@ -164,7 +164,7 @@ public final class MonsterRoles {
         // A skeleton's volley lives on whichever bow it holds; MonsterBowDisplay explains it on the bow itself.
         player.getInventory().setItem(7, MonsterItems.bind(player,
             named(Items.ECHO_SHARD, "归返营地 · 右键引导 " + channelSeconds(role) + " 秒",
-                "按方向键、跳跃、攻击、使用其他物品或受伤会中断", "被水流推动不会中断；出生物资、形态与身价留到下次出场"), "return"));
+                "按方向键、跳跃、攻击、使用其他物品或受伤会中断", "被水流推动不会中断；出生物资、买来的增益与身价留到下次出场，转化形态不保留"), "return"));
         player.getInventory().setItem(6, MonsterItems.bind(player, named(Items.RECOVERY_COMPASS, "追迹罗盘 · 右键引导 " + channelSeconds(role) + " 秒",
             "目标离你 40 格以上持续 10 秒，或去了其他维度时发光可用", "循着目标足迹出现在它附近，可跨维度；冷却 15 秒"),
             dev.hardrush.hunt.HuntRetracks.PURPOSE));
@@ -183,7 +183,11 @@ public final class MonsterRoles {
         var inventory = player.getInventory();
         var leftovers = new ArrayList<ItemStack>();
         for (var entry : body.items().entrySet()) {
-            var stack = MonsterItems.bind(player, entry.getValue(), MonsterItems.purpose(entry.getValue()));
+            var purpose = MonsterItems.purpose(entry.getValue());
+            boolean egg = purpose.equals("baby_egg") || purpose.equals("adult_egg");
+            // A body always resumes in its base form, so a drowned's eggs come back as zombie eggs.
+            var stack = egg ? MonsterCompanions.egg(player, purpose.equals("baby_egg"), role.form == MonsterForm.DROWNED)
+                    .copyWithCount(entry.getValue().getCount()) : MonsterItems.bind(player, entry.getValue(), purpose);
             int slot = entry.getKey();
             if (slot >= 0 && slot < inventory.getContainerSize() && inventory.getItem(slot).isEmpty()) inventory.setItem(slot, stack);
             else leftovers.add(stack);
@@ -191,6 +195,7 @@ public final class MonsterRoles {
         for (var stack : leftovers) inventory.add(stack);
         if (body.selected() >= 0 && body.selected() < 9) inventory.setSelectedSlot(body.selected());
         if (body.charged()) MonsterCreeper.charge(player);
+        for (var effect : body.effects()) player.addEffect(effect);
         player.setHealth(Math.max(1, Math.min(role.health, player.getMaxHealth())));
         if (role.form.zombie()) {
             addEggs(player, role, true, kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG));
@@ -337,7 +342,7 @@ public final class MonsterRoles {
         for (var slot : EquipmentSlot.VALUES) {
             if (slot.getType() != EquipmentSlot.Type.HUMANOID_ARMOR && slot.getType() != EquipmentSlot.Type.HAND) continue;
             var stack = player.getItemBySlot(slot);
-            if (stack.isEmpty() || !MonsterItems.matches(player, stack, "gear")
+            if (stack.isEmpty() || !MonsterItems.matches(player, stack, "gear") && !MonsterItems.matches(player, stack, SEA_TRIDENT)
                     || EnchantmentHelper.has(stack, EnchantmentEffectComponents.PREVENT_EQUIPMENT_DROP)) continue;
             float chance = SPAWNED_EQUIPMENT_DROP_CHANCE;
             if (source.getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker)
@@ -428,7 +433,29 @@ public final class MonsterRoles {
             if (--role.conversion < 0) convert(player, role.form == MonsterForm.ZOMBIE ? MonsterForm.DROWNED : MonsterForm.STRAY);
         } else if (++role.exposure >= ENVIRONMENT_EXPOSURE_TICKS) role.conversion = ENVIRONMENT_CONVERSION_TICKS;
     }
-    static void convert(ServerPlayer player, MonsterForm form) {
+    /** Purpose of the trident a zombie receives when it rises from the sea as a drowned; never parked. */
+    public static final String SEA_TRIDENT = "sea_trident";
+
+    /**
+     * A zombie deployed under water rises as a drowned at once, without the conversion: it never was a land
+     * zombie here. Like a native drowned, it holds a trident (thrown copies, endless; see MonsterNativeWeapons).
+     */
+    public static void riseFromSea(ServerPlayer player) {
+        var role = ROLES.get(player.getUUID());
+        if (role == null || role.form != MonsterForm.ZOMBIE) return;
+        convert(player, MonsterForm.DROWNED, false);
+        var inventory = player.getInventory();
+        int slot = inventory.getSelectedSlot();
+        var trident = MonsterItems.bind(player, new ItemStack(Items.TRIDENT), SEA_TRIDENT);
+        var held = inventory.getItem(slot);
+        // Into the hand when the held stack can move aside; otherwise the backpack (a full kit is never dropped).
+        if (held.isEmpty()) inventory.setItem(slot, trident);
+        else if (inventory.getFreeSlot() >= 0) { inventory.setItem(slot, trident); inventory.add(held); }
+        else inventory.add(trident);
+        repairLoadout(player);
+    }
+    static void convert(ServerPlayer player, MonsterForm form) { convert(player, form, true); }
+    private static void convert(ServerPlayer player, MonsterForm form, boolean announce) {
         var role = ROLES.get(player.getUUID());
         if (role == null || role.form.role != form.role || role.form == form) return;
         stopActions(player); role.form = form; role.exposure = 0; role.conversion = -1;
@@ -448,9 +475,11 @@ public final class MonsterRoles {
                 var egg = MonsterCompanions.egg(player, baby, true); egg.setCount(held.getCount()); player.containerMenu.setCarried(egg);
             }
         }
-        player.level().playSound(null, player.blockPosition(), form == MonsterForm.DROWNED
-                ? SoundEvents.ZOMBIE_CONVERTED_TO_DROWNED : SoundEvents.SKELETON_CONVERTED_TO_STRAY, SoundSource.HOSTILE, 1, 1);
-        player.sendSystemMessage(Component.literal(form == MonsterForm.DROWNED ? "已转化为溺尸，剩余刷怪蛋同步转化。" : "已转化为流浪者。"));
+        if (announce) {
+            player.level().playSound(null, player.blockPosition(), form == MonsterForm.DROWNED
+                    ? SoundEvents.ZOMBIE_CONVERTED_TO_DROWNED : SoundEvents.SKELETON_CONVERTED_TO_STRAY, SoundSource.HOSTILE, 1, 1);
+            player.sendSystemMessage(Component.literal(form == MonsterForm.DROWNED ? "已转化为溺尸，剩余刷怪蛋同步转化。" : "已转化为流浪者。"));
+        }
         repairLoadout(player);
     }
     public static String status(ServerPlayer player) {

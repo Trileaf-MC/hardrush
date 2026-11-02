@@ -59,6 +59,13 @@ public final class SafeDeployment {
     public static final int PATHS_PER_TICK = 4;
     public static final int MAX_VISITED_NODES = 768;
     static final int TRAIL_CANDIDATES = 12, AHEAD_COLUMNS = 8, RING_COLUMNS = 16, OUTER_COLUMNS = 8, FLOORS_PER_COLUMN = 2;
+    /** At sea a drowned may only rise from the water this close; it cannot walk, so there is no path to check. */
+    public static final int SEA_RADIUS = 20;
+    /** Blocks per second over five seconds: swimming, fishing, drifting or the odd nudge, not rowing. */
+    public static final double DRIFTING_SPEED = 2.0;
+    /** Water that must cover the head, so the drowned lurks unseen like a native one. */
+    public static final int SEA_COVER = 2;
+    static final int SEA_COLUMNS = 24;
     /** One sweep never queues more pathfinding than this; earlier sources (trail, ahead, inner ring) win. */
     public static final int MAX_CANDIDATES = 48;
     private static final double EPSILON = 1.0E-7;
@@ -68,24 +75,49 @@ public final class SafeDeployment {
             BuiltinStructures.TRIAL_CHAMBERS);
 
     public enum Status { PENDING, FOUND, FAILED }
-    public enum Source { TRAIL, AHEAD, RING }
-    public record Result(Status status, Vec3 position, int candidates, boolean fallback) {}
+    public enum Source { TRAIL, AHEAD, RING, SEA }
+    /** {@code submerged}: a landing under water, where a zombie rises as a drowned. */
+    public record Result(Status status, Vec3 position, int candidates, boolean fallback, boolean submerged) {}
 
-    /** Everything the search may know about its quarry: where it stands and looks, how it moves and where it walked. */
-    public record Quarry(Vec3 position, Vec3 eye, float yaw, Vec3 velocity, List<Vec3> trail) {
+    /**
+     * Everything the search may know about its quarry: where it stands and looks, how it moves and where it walked;
+     * whether it is out at sea and how fast it has been travelling over the last five seconds.
+     */
+    public record Quarry(Vec3 position, Vec3 eye, float yaw, Vec3 velocity, List<Vec3> trail, boolean atSea, Vec3 cruise) {
         public Quarry {
             Objects.requireNonNull(position); Objects.requireNonNull(eye); Objects.requireNonNull(velocity);
+            Objects.requireNonNull(cruise);
             trail = List.copyOf(trail);
+        }
+        public Quarry(Vec3 position, Vec3 eye, float yaw, Vec3 velocity, List<Vec3> trail) {
+            this(position, eye, yaw, velocity, trail, false, velocity);
         }
         public static Quarry of(ServerPlayer player) {
             return new Quarry(player.position(), player.getEyePosition(), player.getYRot(),
-                    HuntTrails.velocity(player), HuntTrails.trail(player));
+                    HuntTrails.velocity(player), HuntTrails.trail(player), SafeDeployment.atSea(player), HuntTrails.velocity(player, 5));
         }
         /** A still body without footprints, facing south. */
         public static Quarry standing(Vec3 position) {
             return new Quarry(position, position.add(0, 1.62, 0), 0, Vec3.ZERO, List.of());
         }
+        /** Afloat or swimming, facing south, travelling at {@code cruise}. */
+        public static Quarry afloat(Vec3 position, Vec3 cruise) {
+            return new Quarry(position, position.add(0, 1.62, 0), 0, cruise, List.of(), true, cruise);
+        }
         public boolean moving() { return velocity.horizontalDistance() >= MOVING_SPEED; }
+        /** Slow enough at sea that a drowned rising from the water can still close in. */
+        public boolean drifting() { return cruise.horizontalDistance() <= DRIFTING_SPEED; }
+    }
+
+    /** Off its feet and in the water, or aboard something floating on it. Wading on a riverbed is land. */
+    public static boolean atSea(ServerPlayer player) {
+        if (player.onGround()) return false;
+        if (player.isInWater()) return true;
+        var vehicle = player.getVehicle();
+        if (vehicle == null) return false;
+        var below = BlockPos.containing(vehicle.position());
+        return player.level().getFluidState(below).is(net.minecraft.tags.FluidTags.WATER)
+                || player.level().getFluidState(below.below()).is(net.minecraft.tags.FluidTags.WATER);
     }
 
     private static final class Candidate {
@@ -136,7 +168,10 @@ public final class SafeDeployment {
             started = startedNanos;
             wait = waitNanos;
         }
-        public Result result() { return new Result(status, found == null ? null : found.point, candidates, found != null && !found.primary); }
+        public Result result() {
+            return new Result(status, found == null ? null : found.point, candidates, found != null && !found.primary,
+                    found != null && found.source == Source.SEA);
+        }
         public long started() { return started; }
         public ServerLevel level() { return level; }
         public Result tick() { return tick(quarry, humans); }
@@ -149,7 +184,7 @@ public final class SafeDeployment {
             long tickStarted = clock.getAsLong();
             if (tickStarted - started >= wait) { status = Status.FAILED; return result(); }
             // The previous sweep's closest spot answers at exactly five seconds, without another full sweep.
-            if (tickStarted - started >= FALLBACK_AFTER_NANOS && lastClosest != null) {
+            if (tickStarted - started >= FALLBACK_AFTER_NANOS && lastClosest != null && !quarry.atSea()) {
                 if (allowed(level, lastClosest.point, quarry.position(), humans, FALLBACK_RADIUS)
                         && canDeployAt(level, player, lastClosest.point)) return found(lastClosest);
                 lastClosest = null;
@@ -168,8 +203,11 @@ public final class SafeDeployment {
 
         /** Re-read the player's current body, terrain and live humans immediately before teleport. */
         public boolean revalidate(Vec3 currentTarget, List<Vec3> currentHumans) {
-            return status == Status.FOUND && allowed(level, found.point, currentTarget, currentHumans,
-                    found.primary ? MAX_PATH + 4 : FALLBACK_RADIUS) && canDeployAt(level, player, found.point);
+            if (status != Status.FOUND) return false;
+            if (found.source == Source.SEA) return allowed(level, found.point, currentTarget, currentHumans, SEA_RADIUS + 4)
+                    && canSubmergeAt(level, player, found.point);
+            return allowed(level, found.point, currentTarget, currentHumans, found.primary ? MAX_PATH + 4 : FALLBACK_RADIUS)
+                    && canDeployAt(level, player, found.point);
         }
         public boolean revalidate() { return revalidate(quarry.position(), humans); }
 
@@ -200,6 +238,18 @@ public final class SafeDeployment {
             lair = lair(level, center);
             var seen = new HashSet<BlockPos>();
             var list = new ArrayList<Candidate>();
+            if (swept.atSea()) {
+                // Out at sea only a zombie, rising as a drowned, has a chance, and only against a slow quarry.
+                // Everyone else waits: once the quarry lands, the land rules put the monster on the shore.
+                if (kind == MonsterRole.ZOMBIE && swept.drifting()) {
+                    double phase = random.nextDouble() * Math.PI * 2;
+                    for (int i = 0; i < SEA_COLUMNS; i++)
+                        water(list, seen, phase + i * Math.PI * (3 - Math.sqrt(5)),
+                                MIN_HUMAN_DISTANCE + .5 + random.nextDouble() * (SEA_RADIUS - MIN_HUMAN_DISTANCE - 1));
+                }
+                queue.clear(); queue.addAll(list);
+                return;
+            }
             // Footprints: the quarry walked here, so the way back to it usually exists.
             Vec3 previous = null; int trail = 0;
             for (var step : swept.trail()) {
@@ -243,17 +293,47 @@ public final class SafeDeployment {
             for (int i = 0; i < Math.min(FLOORS_PER_COLUMN, floors.size()); i++)
                 offer(list, seen, Vec3.atBottomCenterOf(floors.get(i)), source);
         }
+        /** The shallowest spot in this column where a whole body, and two more blocks above it, sit in water. */
+        private void water(List<Candidate> list, Set<BlockPos> seen, double angle, double radius) {
+            int x = Mth.floor(swept.position().x + Math.cos(angle) * radius);
+            int z = Mth.floor(swept.position().z + Math.sin(angle) * radius);
+            if (level.getChunkSource().getChunkNow(x >> 4, z >> 4) == null) return;
+            int qy = Mth.floor(swept.position().y);
+            var cursor = new BlockPos.MutableBlockPos();
+            for (int y = Math.min(qy, level.getMaxY() - SEA_COVER - 3); y >= Math.max(qy - 24, level.getMinY() + 1); y--) {
+                boolean covered = true;
+                for (int dy = 0; dy < 2 + SEA_COVER && covered; dy++) {
+                    cursor.set(x, y + dy, z);
+                    covered = level.getFluidState(cursor).is(net.minecraft.tags.FluidTags.WATER) && (dy >= 2 || empty(cursor));
+                }
+                if (covered) { offer(list, seen, Vec3.atBottomCenterOf(new BlockPos(x, y, z)), Source.SEA, SEA_RADIUS); return; }
+            }
+        }
         private boolean empty(BlockPos pos) {
             return level.getBlockState(pos).getCollisionShape(level, pos).isEmpty();
         }
         private boolean offer(List<Candidate> list, Set<BlockPos> seen, Vec3 point, Source source) {
+            return offer(list, seen, point, source, FALLBACK_RADIUS);
+        }
+        private boolean offer(List<Candidate> list, Set<BlockPos> seen, Vec3 point, Source source, double radius) {
             if (!seen.add(BlockPos.containing(point))
-                    || !allowed(level, point, swept.position(), humans, FALLBACK_RADIUS)) return false;
+                    || !allowed(level, point, swept.position(), humans, radius)) return false;
             list.add(new Candidate(point, source));
             return true;
         }
 
         private void evaluate(Candidate candidate) {
+            if (candidate.source == Source.SEA) {
+                // Open water between them: a drowned swims straight, so the line of sight stands in for a path.
+                var eye = candidate.point.add(0, player.getEyeHeight(), 0);
+                if (!canSubmergeAt(level, player, candidate.point)) return;
+                candidates++;
+                if (!clear(eye, swept.eye())) return;
+                candidate.primary = true;
+                candidate.score = score(candidate, eye.distanceTo(swept.eye()));
+                if (best == null || candidate.score > best.score) best = candidate;
+                return;
+            }
             if (!canDeployAt(level, player, candidate.point)) return;
             candidates++;
             var path = path(candidate.point);
@@ -388,6 +468,19 @@ public final class SafeDeployment {
                 Mth.floor(support.maxX), Mth.floor(support.maxY), Mth.floor(support.maxZ))) {
             if (level.getFluidState(pos).is(net.minecraft.tags.FluidTags.LAVA)) return false;
         }
+        return true;
+    }
+
+    /** A standing body wholly under water with {@link #SEA_COVER} more blocks of water overhead; no solid or entity in the way. */
+    public static boolean canSubmergeAt(ServerLevel level, ServerPlayer player, Vec3 point) {
+        double standing = player.getDimensions(net.minecraft.world.entity.Pose.STANDING).height();
+        var body = new AABB(point.x - .3, point.y, point.z - .3, point.x + .3, point.y + standing, point.z + .3).deflate(EPSILON);
+        var covered = body.setMaxY(Math.floor(body.maxY) + SEA_COVER + .5);
+        if (!loaded(level, covered) || !level.getWorldBorder().isWithinBounds(BlockPos.containing(point))
+                || !level.noBlockCollision(player, body) || !level.noEntityCollision(player, body)) return false;
+        for (var pos : BlockPos.betweenClosed(Mth.floor(covered.minX), Mth.floor(covered.minY), Mth.floor(covered.minZ),
+                Mth.floor(covered.maxX), Mth.floor(covered.maxY), Mth.floor(covered.maxZ)))
+            if (!level.getFluidState(pos).is(net.minecraft.tags.FluidTags.WATER)) return false;
         return true;
     }
 

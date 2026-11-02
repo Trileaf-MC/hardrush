@@ -38,6 +38,8 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 public final class MonsterNativeWeapons {
     private static final Map<UUID, State> STATES = new HashMap<>();
     private static final String TRIDENT_OWNER = "hardrush.trident-owner=";
+    /** {@code DrownedTridentAttackGoal(this, 1.0, 40, 10.0F)}: one throw per 40 ticks. */
+    static final int TRIDENT_INTERVAL_TICKS = 40;
 
     private MonsterNativeWeapons() {}
 
@@ -78,7 +80,9 @@ public final class MonsterNativeWeapons {
         ItemStack weapon = state.held.copy();
         stop(state);
         if (!throwTrident) return;
-        state.nextTridentTick = now(player) + 40;
+        state.nextTridentTick = now(player) + TRIDENT_INTERVAL_TICKS;
+        // The native drowned's throw interval, shown on the hotbar as the vanilla cooldown sweep.
+        player.getCooldowns().addCooldown(weapon, TRIDENT_INTERVAL_TICKS);
         sync(player, model);
         var projectileWeapon = copyForProjectile(weapon);
         var trident = new ThrownTrident(player.level(), model, projectileWeapon);

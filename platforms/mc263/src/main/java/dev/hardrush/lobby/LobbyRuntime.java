@@ -56,7 +56,7 @@ public final class LobbyRuntime {
         int sortie;
         ServerLevel level;
         SafeDeployment.Search search;
-        boolean cancelled;
+        boolean cancelled, seaTipShown;
         Deployment(ServerPlayer player, ServerPlayer target, PersonalHuntRequest identity, long started) {
             this.player = player; targetPlayer = target; connection = player.connection; targetConnection = target == null ? null : target.connection;
             this.identity = identity; this.started = started; sortie = identity.initialSortie();
@@ -483,11 +483,14 @@ public final class LobbyRuntime {
                     MonsterRoles.select(d.player, d.identity.kind().name().toLowerCase(Locale.ROOT));
                     if (!MonsterRoles.isMonster(d.player) || MonsterRoles.nativeModel(d.player) == null)
                         throw new IllegalStateException("已提交出场未能应用原生怪物角色");
+                    boolean risen = d.search.result().submerged() && d.identity.kind() == MonsterRole.ZOMBIE;
+                    if (risen) MonsterRoles.riseFromSea(d.player);
                     b.pending.remove(id, d); b.committing.remove(id);
                     dev.hardrush.hunt.HuntBossBars.deployed(d.player, committed, d.identity);
                     HuntRetracks.arrived(d.player, d.targetPlayer);
                     sound(d.player, true);
-                    tell(d.player, d.search.result().fallback()
+                    tell(d.player, risen ? "已化身溺尸从水下出击；三叉戟投出的是副本，可以一直投掷。"
+                            : d.search.result().fallback()
                             ? "已出场：目标切断了来路，这里是能走到的离它最近的地方。" : "已循着足迹出场，目标就在附近。"); return;
                 }
                 if (b.profiles.failure(id).isPresent()) {
@@ -662,7 +665,8 @@ public final class LobbyRuntime {
         b.retracks.remove(r.player.getUUID());
         LobbyInteractions.get(r.player.level().getServer()).ifPresent(router -> router.hints(r.player).clear("return"));
         if (result.status() == SafeDeployment.Status.FAILED || !r.search.revalidate(target.position(), humans(b, level))) {
-            tell(r.player, "没有找到能循迹过去的位置，罗盘未进入冷却，可以稍后再试。"); sound(r.player, false); return;
+            tell(r.player, SafeDeployment.atSea(target) ? "目标在海上，暂时没有能循迹过去的位置，罗盘未进入冷却。"
+                    : "没有找到能循迹过去的位置，罗盘未进入冷却，可以稍后再试。"); sound(r.player, false); return;
         }
         var landing = result.position();
         var from = r.player.position(); var fromLevel = (ServerLevel) r.player.level();
@@ -917,10 +921,21 @@ public final class LobbyRuntime {
                     var attempt = b.searches.get(p.id());
                     if (attempt != null && attempt.search != null) {
                         var quarry = attempt.targetPlayer;
+                        String name = quarry.getScoreboardName();
                         long waited = Math.max(0, b.searchClock.getAsLong() - attempt.started) / 1_000_000_000L;
-                        hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, (quarry.onGround() || quarry.isInWater()
-                                ? "正在追踪 " + quarry.getScoreboardName() + " 的足迹" : quarry.getScoreboardName() + " 不在地面，等待落地")
-                                + " · 已等待 " + waited + " 秒 · 再次右键模型取消", now + 300);
+                        String state;
+                        if (SafeDeployment.atSea(quarry)) {
+                            if (attempt.identity.kind() != MonsterRole.ZOMBIE) {
+                                state = name + " 在海上，正在等待它靠岸";
+                                if (!attempt.seaTipShown) {
+                                    attempt.seaTipShown = true;
+                                    observer.sendSystemMessage(Component.literal("TIPS：现在改用僵尸出击，会化身溺尸从水下突袭")
+                                            .withStyle(net.minecraft.ChatFormatting.GRAY));
+                                }
+                            } else state = name + " 在海上，正在寻找最佳出击时机";
+                        } else state = quarry.onGround() ? "正在追踪 " + name + " 的足迹" : name + " 不在地面，等待落地";
+                        hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS,
+                                state + " · 已等待 " + waited + " 秒 · 再次右键模型取消", now + 300);
                     } else if (attempt != null || b.committing.contains(p.id()) || b.resumptions.containsKey(p.id()))
                         hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "正在提交出场", now + 300);
                     else {
