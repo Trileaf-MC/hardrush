@@ -147,9 +147,16 @@ public abstract class PlayerIsolationNetworkMixin {
         if (player.level().getServer().isSameThread() && dev.hardrush.lobby.LobbyMenus.isMenu(player)) ci.cancel();
     }
 
-    @Inject(method = {"handleAttack", "handlePunch", "handleInteract"}, at = @At("HEAD"))
+    @Inject(method = {"handleAttack", "handlePunch"}, at = @At("HEAD"))
     private void hardrush$cancelReturn(CallbackInfo ci) {
-        if (player.level().getServer().isSameThread()) dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "攻击／实体交互");
+        if (player.level().getServer().isSameThread()) dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "攻击");
+    }
+    // Right-clicking a mob with the return item or compass is the same use as clicking air.
+    @Inject(method = "handleInteract", at = @At("HEAD"))
+    private void hardrush$interactReturn(ServerboundInteractPacket packet, CallbackInfo ci) {
+        if (player.level().getServer().isSameThread()
+                && !dev.hardrush.monster.MonsterRoles.isReturnControl(player, packet.hand()))
+            dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "实体交互");
     }
 
     @Inject(method = "handleUseItem", at = @At("HEAD"))

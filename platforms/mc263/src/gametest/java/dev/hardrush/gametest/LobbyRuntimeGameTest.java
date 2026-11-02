@@ -155,8 +155,16 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "Native return command begins a channel");
                     f.monster.move(f.monster.player.position().add(.2, 0, 0));
                 })
-                .thenWaitUntil(() -> f.await(!LobbyRuntime.channeling(f.monster.player), "Actual native movement cancels return"))
+                .thenIdle(2)
                 .thenExecute(() -> {
+                    f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "Being moved without movement keys keeps the channel");
+                    f.monster.keys(true);
+                })
+                .thenWaitUntil(() -> f.await(!LobbyRuntime.channeling(f.monster.player), "Native movement keys cancel return"))
+                .thenExecute(() -> {
+                    f.monster.command("hardrush return");
+                    f.test.assertFalse(LobbyRuntime.channeling(f.monster.player), "A return cannot start while movement keys are held");
+                    f.monster.keys(false);
                     f.voluntaryReturnBody = f.monster.player;
                     f.monster.command("hardrush return");
                     f.ageReturnChannel();
@@ -785,6 +793,11 @@ public final class LobbyRuntimeGameTest {
                     return;
                 }
                 throw new IllegalStateException("Expected lobby icon is absent: " + icon);
+            }
+            /** The native movement keys a vanilla client reports; channels read only these. */
+            void keys(boolean forward) {
+                player.connection.handlePlayerInput(new net.minecraft.network.protocol.game.ServerboundPlayerInputPacket(
+                        new net.minecraft.world.entity.player.Input(forward, false, false, false, false, false, false)));
             }
             void move(Vec3 position) { player.teleport(new TeleportTransition(level, position, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING)); acknowledge(); }
             void acknowledge() {

@@ -157,8 +157,9 @@ public final class MonsterRoles {
         } else if (form == MonsterForm.CREEPER) player.getInventory().setItem(0, MonsterCreeper.createIgniter(player));
         // A skeleton's volley lives on whichever bow it holds; MonsterBowDisplay explains it on the bow itself.
         player.getInventory().setItem(7, MonsterItems.bind(player,
-            named(Items.ECHO_SHARD, "归返营地 · 右键引导 5 秒", "移动、攻击、使用物品或受伤会中断"), "return"));
-        player.getInventory().setItem(6, MonsterItems.bind(player, named(Items.RECOVERY_COMPASS, "追迹罗盘 · 右键引导 5 秒",
+            named(Items.ECHO_SHARD, "归返营地 · 右键引导 " + channelSeconds(role) + " 秒",
+                "按方向键、跳跃、攻击、使用其他物品或受伤会中断", "被水流推动不会中断"), "return"));
+        player.getInventory().setItem(6, MonsterItems.bind(player, named(Items.RECOVERY_COMPASS, "追迹罗盘 · 右键引导 " + channelSeconds(role) + " 秒",
             "目标离你 40 格以上持续 10 秒，或去了其他维度时发光可用", "循着目标足迹出现在它附近，可跨维度；冷却 15 秒"),
             dev.hardrush.hunt.HuntRetracks.PURPOSE));
         player.getInventory().setSelectedSlot(0);
@@ -166,6 +167,8 @@ public final class MonsterRoles {
         repairLoadout(player);
         return "已进入怪物角色；可整理背包与装备，出生物资仅限本次出场本人使用。" + status(player);
     }
+
+    private static long channelSeconds(Role role) { return Math.max(1, (role.millis("monster.returnChannelMillis") + 999) / 1000); }
 
     /** Witch goods paid in the camp; everything left over is cleared with the rest of the sortie kit. */
     private static void applyPurchases(ServerPlayer player, dev.hardrush.core.round.MonsterWallet kit, MonsterForm form,
