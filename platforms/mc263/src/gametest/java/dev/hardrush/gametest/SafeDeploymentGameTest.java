@@ -216,6 +216,40 @@ public final class SafeDeploymentGameTest {
     }
 
     @GameTest(maxTicks=400)
+    public void atSeaOnlyAZombieRisesAndOnlyAgainstADriftingQuarry(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 240);
+        try (var ignored = fixture.empty()) {
+            fixture.sea(20, 12, 34);
+            var drifting = SafeDeployment.Quarry.afloat(fixture.target, new Vec3(.5, 0, 0));
+            var clock = new AtomicLong();
+            var search = fixture.search(MonsterRole.ZOMBIE, drifting, List.of(fixture.target), clock);
+            var risen = complete(search, clock);
+            test.assertValueEqual(risen.status(), SafeDeployment.Status.FOUND, "A drifting quarry lets a zombie rise from the water");
+            test.assertTrue(risen.submerged() && !risen.fallback(), "The landing is reported as submerged");
+            double distance = risen.position().distanceTo(fixture.target);
+            test.assertTrue(distance >= SafeDeployment.MIN_HUMAN_DISTANCE && distance <= SafeDeployment.SEA_RADIUS,
+                    "The drowned rises 8-20 blocks away: " + distance);
+            test.assertTrue(SafeDeployment.canSubmergeAt(fixture.level, fixture.hunter, risen.position()), "The whole body and two blocks above are water");
+            test.assertTrue(search.revalidate(), "Unchanged water passes departure revalidation");
+            fixture.level.setBlock(BlockPos.containing(risen.position()).above(3), Blocks.STONE.defaultBlockState(), 2);
+            test.assertFalse(search.revalidate(), "Losing the water cover revokes departure");
+
+            var rowingClock = new AtomicLong();
+            var rowing = complete(fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.afloat(fixture.target, new Vec3(8, 0, 0)),
+                    List.of(fixture.target), rowingClock), rowingClock);
+            test.assertValueEqual(rowing.status(), SafeDeployment.Status.FAILED, "A rowing quarry is never chased by a drowned");
+            test.assertValueEqual(rowing.candidates(), 0, "Nothing is inspected while it rows; the shore is not used either");
+            for (var kind : List.of(MonsterRole.SKELETON, MonsterRole.CREEPER)) {
+                var waitClock = new AtomicLong();
+                var waiting = complete(fixture.search(kind, drifting, List.of(fixture.target), waitClock), waitClock);
+                test.assertValueEqual(waiting.status(), SafeDeployment.Status.FAILED, kind + " waits for the quarry to land instead of the shore");
+                test.assertValueEqual(waiting.candidates(), 0, kind + " inspects nothing at sea");
+            }
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=400)
     public void protectionAndUnsupportedVoidCandidatesAreRejected(GameTestHelper test) {
         var fixture = new Fixture(test, test.getLevel(), 228);
         try (var ignored = fixture.empty()) { fixture.flat(Blocks.STONE, 34); }
@@ -309,6 +343,16 @@ public final class SafeDeploymentGameTest {
                 level.setBlock(point.below(), floor.defaultBlockState(), 2);
                 for (int y=0; y<4; y++) level.setBlock(point.above(y), Blocks.AIR.defaultBlockState(), 2);
                 for (int y=2; y<=25; y++) level.setBlock(point.below(y), Blocks.STONE.defaultBlockState(), 2);
+            }
+        }
+        /** Open water {@code depth} deep within {@code radius} of the quarry, whose surface is at its feet; a stone shore beyond. */
+        void sea(int radius, int depth, int shore) {
+            for (int x=-shore; x<=shore; x++) for (int z=-shore; z<=shore; z++) {
+                var point = feet.offset(x, 0, z);
+                boolean water = x * x + z * z <= radius * radius;
+                for (int y=1; y<=depth; y++) level.setBlock(point.below(y), (water ? Blocks.WATER : Blocks.STONE).defaultBlockState(), 2);
+                level.setBlock(point.below(depth + 1), Blocks.STONE.defaultBlockState(), 2);
+                for (int y=0; y<4; y++) level.setBlock(point.above(y), Blocks.AIR.defaultBlockState(), 2);
             }
         }
         void firstLanding(java.util.function.IntBinaryOperator height, int clearance) {

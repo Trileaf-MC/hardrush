@@ -18,8 +18,8 @@ public final class HuntTrails {
     public static final int SAMPLE_TICKS = 10;
     /** Sixty seconds of footprints. */
     public static final int TRAIL_SAMPLES = 120;
-    /** About three seconds of motion for the travelling direction. */
-    public static final int MOTION_SAMPLES = 7;
+    /** About ten seconds of motion: the last three give the heading, the last five tell cruising from drifting. */
+    public static final int MOTION_SAMPLES = 21;
     private static final Map<MinecraftServer, Map<ServerPlayer, Track>> TRACKS = new IdentityHashMap<>();
 
     private static final class Track {
@@ -33,7 +33,9 @@ public final class HuntTrails {
         if (server.getTickCount() % SAMPLE_TICKS != 0) return;
         var tracks = TRACKS.computeIfAbsent(server, ignored -> new IdentityHashMap<>());
         var online = server.getPlayerList().getPlayers();
-        tracks.keySet().removeIf(player -> !online.contains(player));
+        var present = java.util.Collections.newSetFromMap(new IdentityHashMap<ServerPlayer, Boolean>());
+        present.addAll(online);
+        tracks.keySet().removeIf(player -> !present.contains(player));
         for (var player : online) record(player);
     }
 
@@ -60,13 +62,18 @@ public final class HuntTrails {
         return newest;
     }
 
-    /** Average horizontal velocity in blocks per second over the last few samples. */
-    public static Vec3 velocity(ServerPlayer player) {
+    /** Average horizontal velocity in blocks per second over the last three seconds. */
+    public static Vec3 velocity(ServerPlayer player) { return velocity(player, 3); }
+
+    /** Average horizontal velocity in blocks per second over the last {@code seconds} (as far as samples reach). */
+    public static Vec3 velocity(ServerPlayer player, int seconds) {
         var track = track(player);
         if (track == null || track.motion.size() < 2) return Vec3.ZERO;
-        var delta = track.motion.getLast().subtract(track.motion.getFirst());
-        double seconds = (track.motion.size() - 1) * SAMPLE_TICKS / 20.0;
-        return new Vec3(delta.x / seconds, 0, delta.z / seconds);
+        int span = Math.min(track.motion.size() - 1, seconds * 20 / SAMPLE_TICKS);
+        var samples = new ArrayList<>(track.motion);
+        var delta = samples.getLast().subtract(samples.get(samples.size() - 1 - span));
+        double elapsed = span * SAMPLE_TICKS / 20.0;
+        return new Vec3(delta.x / elapsed, 0, delta.z / elapsed);
     }
 
     public static void clear(MinecraftServer server) { TRACKS.remove(server); }
