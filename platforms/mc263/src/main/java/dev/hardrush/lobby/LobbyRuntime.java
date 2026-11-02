@@ -893,7 +893,8 @@ public final class LobbyRuntime {
                 }
             }
             targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state,
-                    state == LobbyProjections.State.AVAILABLE ? bounty(b, r, p, player) : 1000));
+                    state == LobbyProjections.State.AVAILABLE ? bounty(b, r, p, player) : 1000,
+                    state == LobbyProjections.State.AVAILABLE ? targetLocation(b, player) : null));
         }
         for (var observer : server.getPlayerList().getPlayers()) {
             if (!contextAvailable(observer, b, LobbyContext.DISPLAY)) { b.displays.remove(observer.getUUID()); continue; }
@@ -935,7 +936,14 @@ public final class LobbyRuntime {
                                 state + " · 已等待 " + waited + " 秒 · 再次右键模型取消", now + 300);
                     } else if (attempt != null || b.committing.contains(p.id()) || b.resumptions.containsKey(p.id()))
                         hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "正在提交出场", now + 300);
-                    else {
+                    else if (!dev.hardrush.core.round.MonsterCoins.enabled(r.rules()) || !p.revivalEntitled()) {
+                        if (inCamp(observer)) {
+                            String guidance = targets.stream().anyMatch(target -> target.state() == LobbyProjections.State.AVAILABLE)
+                                    ? "当前角色：" + kindName(p.monsterRole()) + (p.monsterCooldownNanos() > 0
+                                    ? " · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒 · 结束后右键目标模型追猎"
+                                    : " · 右键目标模型追猎") : "当前暂无可追猎目标";
+                            hints.offer("hunt-guide", dev.hardrush.core.lobby.LobbyHints.Priority.GUIDANCE, guidance, now + 300);
+                        }
                         projections.aimed(observer).ifPresent(selected -> hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
                                 "目标：" + r.participants().get(selected.target()).name() + " · 当前角色：" + kindName(p.monsterRole())
                                         + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒" : " · 右键追猎"), now + 300));
@@ -963,6 +971,16 @@ public final class LobbyRuntime {
         var where = dimension(b, player.level());
         var kind = where.equals("lobby") ? MonsterDimension.OVERWORLD : MonsterDimension.valueOf(where.toUpperCase(Locale.ROOT));
         return dev.hardrush.core.round.MonsterCoins.bountyPermille(r.rules(), kind, live.lifeHumanNanos());
+    }
+    private static Component targetLocation(Binding b, ServerPlayer player) {
+        String dimensionName = switch (dimension(b, player.level())) {
+            case "overworld" -> "主世界"; case "nether" -> "下界"; case "end" -> "末地";
+            default -> "未知维度";
+        };
+        var biome = player.level().getBiome(player.blockPosition()).unwrapKey()
+                .map(key -> Component.translatableWithFallback(key.identifier().toLanguageKey("biome"), key.identifier().toString()))
+                .orElseGet(() -> Component.literal("未知群系"));
+        return Component.literal(dimensionName + " · ").append(biome);
     }
     private static String dimension(Binding b, ServerLevel level) {
         for (var kind : MonsterDimension.values()) if (level == level(b, kind)) return kind.name().toLowerCase(Locale.ROOT);

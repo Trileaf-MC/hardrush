@@ -51,7 +51,7 @@ public final class PlayerFeedback {
             var hints=router.hints(player); var p=r.participants().get(player.getUUID());
             for(var source:java.util.List.of("recovery","profile","rescue","away","celebration","facility","revival"))hints.clear(source);
             if(!LobbyWorld.isLobby(player.level()))hints.clear("assembly");
-            if(p==null||p.role()!=ParticipantRole.MONSTER_LOBBY){hints.clear("hunt");hints.clear("hunt-target");}
+            if(p==null||p.role()!=ParticipantRole.MONSTER_LOBBY){hints.clear("hunt");hints.clear("hunt-target");hints.clear("hunt-guide");}
             if(!dev.hardrush.lobby.LobbyRuntime.channeling(player))hints.clear("return");
             if(frozen) dev.hardrush.lobby.LobbyRuntime.interruptReturn(player,"阶段变化／恢复隔离");
             if(session.state()!=RoundSession.State.OPEN||r.phase()==RoundPhase.RECOVERY_REQUIRED)
