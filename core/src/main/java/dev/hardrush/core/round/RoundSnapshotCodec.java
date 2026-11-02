@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 7;
+    private static final int SCHEMA = 8;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -110,7 +110,7 @@ public final class RoundSnapshotCodec {
                     }
                 }
                 // Rounds saved before the coin economy carry an empty wallet; their rules keep it disabled.
-                MonsterWallet wallet = schema >= 7 ? readWallet(in) : MonsterWallet.EMPTY;
+                MonsterWallet wallet = schema >= 7 ? readWallet(in, schema) : MonsterWallet.EMPTY;
                 // Older lives start their survival bounty from the upgrade instead of inheriting cross-life time.
                 long lifeHumanNanos = schema >= 7 ? in.readLong() : 0;
                 Participant p = new Participant(playerId, name, role, online, ready,
@@ -165,9 +165,10 @@ public final class RoundSnapshotCodec {
             out.writeLong(entry.getValue().countedMilli()); out.writeLong(entry.getValue().weightedMilli());
             out.writeInt(entry.getValue().paid());
         }
+        writeText(out, wallet.parked());
     }
 
-    private static MonsterWallet readWallet(DataInputStream in) throws IOException {
+    private static MonsterWallet readWallet(DataInputStream in, int schema) throws IOException {
         int coins = in.readInt();
         boolean chosen = in.readBoolean();
         int serial = in.readInt();
@@ -205,8 +206,10 @@ public final class RoundSnapshotCodec {
                 throw new IOException("Duplicate damage credit");
             }
         }
+        // Schema 7 predates paused sorties: every stored return already ended its sortie.
+        String parked = schema >= 8 ? readText(in, MonsterWallet.MAX_PARKED_TEXT * 4) : "";
         return new MonsterWallet(coins, chosen, counts.get(0), counts.get(1), counts.get(2),
-                gear.get(0), gear.get(1), serial, damage);
+                gear.get(0), gear.get(1), serial, damage, parked);
     }
 
     private static void writeUuid(DataOutputStream out, UUID id) throws IOException {

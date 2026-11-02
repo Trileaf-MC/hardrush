@@ -130,8 +130,14 @@ public final class MonsterRoles {
         player.getInventory().setSelectedSlot(0);
         role.form = form; role.binding = MonsterRoundRuntime.identity(player) + ":" + UUID.randomUUID();
         role.settled = false; role.exposure = 0; role.conversion = -1;
+        var parked = MonsterParking.decode(player, MonsterRoundRuntime.parkedBody(player), form.role).orElse(null);
+        if (parked != null) role.form = parked.form();
         bind(player, role, true);
         var kit = MonsterRoundRuntime.sortieKit(player);
+        if (parked != null) {
+            resume(player, role, parked, kit);
+            return "已继续上次暂存的出场。" + status(player);
+        }
         // Vault gear takes its slot; the newest piece is worn and the rest are spares in the backpack.
         var bought = new java.util.EnumMap<EquipmentSlot, ItemStack>(EquipmentSlot.class);
         var spares = new ArrayList<ItemStack>();
@@ -158,7 +164,7 @@ public final class MonsterRoles {
         // A skeleton's volley lives on whichever bow it holds; MonsterBowDisplay explains it on the bow itself.
         player.getInventory().setItem(7, MonsterItems.bind(player,
             named(Items.ECHO_SHARD, "归返营地 · 右键引导 " + channelSeconds(role) + " 秒",
-                "按方向键、跳跃、攻击、使用其他物品或受伤会中断", "被水流推动不会中断"), "return"));
+                "按方向键、跳跃、攻击、使用其他物品或受伤会中断", "被水流推动不会中断；出生物资、形态与身价留到下次出场"), "return"));
         player.getInventory().setItem(6, MonsterItems.bind(player, named(Items.RECOVERY_COMPASS, "追迹罗盘 · 右键引导 " + channelSeconds(role) + " 秒",
             "目标离你 40 格以上持续 10 秒，或去了其他维度时发光可用", "循着目标足迹出现在它附近，可跨维度；冷却 15 秒"),
             dev.hardrush.hunt.HuntRetracks.PURPOSE));
@@ -168,7 +174,48 @@ public final class MonsterRoles {
         return "已进入怪物角色；可整理背包与装备，出生物资仅限本次出场本人使用。" + status(player);
     }
 
+    /**
+     * A paused sortie resumes in the parked body: the same bound items in the same slots, rebound to
+     * this deployment, its form, charge and the camp body's health. Goods bought during the pause
+     * join it; new vault gear waits in the backpack instead of replacing what is worn.
+     */
+    private static void resume(ServerPlayer player, Role role, MonsterParking.Body body, dev.hardrush.core.round.MonsterWallet kit) {
+        var inventory = player.getInventory();
+        var leftovers = new ArrayList<ItemStack>();
+        for (var entry : body.items().entrySet()) {
+            var stack = MonsterItems.bind(player, entry.getValue(), MonsterItems.purpose(entry.getValue()));
+            int slot = entry.getKey();
+            if (slot >= 0 && slot < inventory.getContainerSize() && inventory.getItem(slot).isEmpty()) inventory.setItem(slot, stack);
+            else leftovers.add(stack);
+        }
+        for (var stack : leftovers) inventory.add(stack);
+        if (body.selected() >= 0 && body.selected() < 9) inventory.setSelectedSlot(body.selected());
+        if (body.charged()) MonsterCreeper.charge(player);
+        player.setHealth(Math.max(1, Math.min(role.health, player.getMaxHealth())));
+        if (role.form.zombie()) {
+            addEggs(player, role, true, kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG));
+            addEggs(player, role, false, kit.carried(dev.hardrush.core.round.ShopOffer.ADULT_EGG));
+        }
+        var spares = new ArrayList<ItemStack>();
+        for (var piece : kit.activeGear()) {
+            var stack = MonsterGacha.decode(player.level().registryAccess(), piece.item());
+            if (!stack.isEmpty()) spares.add(stack);
+        }
+        applyPurchases(player, kit, role.form, spares);
+        repairLoadout(player);
+    }
+
     private static long channelSeconds(Role role) { return Math.max(1, (role.millis("monster.returnChannelMillis") + 999) / 1000); }
+
+    private static void addEggs(ServerPlayer player, Role role, boolean baby, int count) {
+        if (count <= 0) return;
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            var stack = inventory.getItem(i);
+            if (MonsterItems.matches(player, stack, baby ? "baby_egg" : "adult_egg")) { stack.grow(count); return; }
+        }
+        inventory.add(MonsterCompanions.egg(player, baby, role.form == MonsterForm.DROWNED).copyWithCount(count));
+    }
 
     /** Witch goods paid in the camp; everything left over is cleared with the rest of the sortie kit. */
     private static void applyPurchases(ServerPlayer player, dev.hardrush.core.round.MonsterWallet kit, MonsterForm form,

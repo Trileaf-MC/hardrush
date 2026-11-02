@@ -166,6 +166,7 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertFalse(LobbyRuntime.channeling(f.monster.player), "A return cannot start while movement keys are held");
                     f.monster.keys(false);
                     f.voluntaryReturnBody = f.monster.player;
+                    f.monster.player.setHealth(2);
                     f.monster.command("hardrush return");
                     f.ageReturnChannel();
                     f.session.onOnline(f.target.profile.id(), f.target.player.getScoreboardName(), true);
@@ -179,17 +180,44 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertValueEqual(f.worldSwords(), 1, "The picked-up world sword returns exactly once on leaving the body");
                     f.test.assertValueEqual(f.summons(), 0, "Returning to the lobby dismisses the entire owned lineage");
                     f.assertSkillCooldowns();
-                    f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Voluntary return starts another 30-second wait");
+                    f.test.assertValueEqual(f.monster.participant().monsterCooldownNanos(), 0L, "A deliberate return pauses the sortie without a deploy wait");
+                    f.test.assertTrue(f.monster.participant().wallet().hasParkedBody(), "The paused sortie parks its body in the round record");
+                    f.test.assertTrue(f.monster.player.getHealth() < f.monster.player.getMaxHealth(), "The camp body keeps the wounds it returned with");
+                    HuntInputFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
+                })
+                .thenWaitUntil(() -> f.await(f.deployed(2), "The paused sortie resumes at once"))
+                .thenExecute(() -> {
+                    var inventory = f.monster.player.getInventory();
+                    f.test.assertTrue(MonsterRoles.nativeModel(f.monster.player).getType() == EntityTypes.ZOMBIE, "The resumed body keeps its form");
+                    f.test.assertTrue(inventory.getItem(1).isEmpty(), "The spent baby egg is not handed out again");
+                    f.test.assertValueEqual(inventory.getItem(2).getCount(), 1, "The remaining adult egg comes back in its slot");
+                    f.test.assertTrue(inventory.getItem(7).is(Items.ECHO_SHARD) && dev.hardrush.monster.MonsterItems.owned(f.monster.player, inventory.getItem(7)),
+                            "Parked bound items are rebound to the resumed deployment");
+                    f.test.assertValueEqual(f.worldSwords(), 1, "The world sword stayed where the monster returned and is not parked");
+                    f.test.assertTrue(f.monster.player.getHealth() < f.monster.player.getMaxHealth(), "The resumed body keeps the camp body's health");
+                    f.monster.command("hardrush return");
+                    f.ageReturnChannel();
+                })
+                .thenWaitUntil(() -> f.await(f.monsterReady(false) && f.monster.participant().wallet().hasParkedBody(), "The resumed sortie pauses again"))
+                .thenExecute(() -> {
+                    f.monster.player = f.monster.current();
+                    HuntInputFixtures.role(f.monster.player, "skeleton");
+                })
+                .thenIdle(10)
+                .thenExecute(() -> {
+                    f.test.assertTrue(f.monster.participant().monsterRole() == MonsterRole.ZOMBIE && !f.session.mutationPending(),
+                            "One click on another role only warns that it gives up the paused sortie");
                     HuntInputFixtures.role(f.monster.player, "skeleton");
                 })
                 .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.SKELETON && !f.session.mutationPending(), "Skeleton selection keeps summon cooldown"))
                 .thenExecute(() -> {
+                    f.test.assertFalse(f.monster.participant().wallet().hasParkedBody(), "The confirmed role change gives up the paused sortie");
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
                     HuntInputFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
                 })
-                .thenWaitUntil(() -> f.await(f.deployed(2), "Second formal safe deployment"))
+                .thenWaitUntil(() -> f.await(f.deployed(3), "Second formal safe deployment"))
                 .thenExecute(() -> {
-                    f.assertDeployment(2);
+                    f.assertDeployment(3);
                     f.monster.command("hardrush skill");
                     f.monster.command("hardrush skill");
                     f.test.assertTrue(MonsterRoles.status(f.monster.player).contains("arrowsFired=0"), "Pending burst requests do not fire before durable admission");
@@ -218,15 +246,15 @@ public final class LobbyRuntimeGameTest {
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
                     HuntInputFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
                 })
-                .thenWaitUntil(() -> f.await(f.deployed(3), "Third formal safe deployment"))
-                .thenExecute(() -> { f.assertDeployment(3); f.monster.disconnect(); })
+                .thenWaitUntil(() -> f.await(f.deployed(4), "Third formal safe deployment"))
+                .thenExecute(() -> { f.assertDeployment(4); f.monster.disconnect(); })
                 .thenWaitUntil(() -> f.await(!f.monster.participant().online()
                         && f.monster.participant().role() == ParticipantRole.MONSTER_LOBBY && !f.session.mutationPending(), "Outside disconnect commits lobby identity"));
         f.monster.login(sequence);
         sequence.thenWaitUntil(() -> f.await(f.monsterReady(false) && f.monster.participant().online(), "Same UUID native reconnect remains a lobby monster"))
                 .thenExecute(() -> {
                     f.assertLobby(false);
-                    f.test.assertValueEqual(f.monster.participant().monsterDeploymentSequence(), 3, "Reconnect preserves outing sequence");
+                    f.test.assertValueEqual(f.monster.participant().monsterDeploymentSequence(), 4, "Reconnect preserves outing sequence");
                     f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Outside reconnect retains its 30-second wait");
                     f.assertSkillCooldowns();
                     f.assertStored();
@@ -741,7 +769,7 @@ public final class LobbyRuntimeGameTest {
                 test.assertValueEqual(saved.role(), ParticipantRole.MONSTER_LOBBY, "Real SQLite stores the returned lobby identity");
                 test.assertValueEqual(saved.monsterRole(), MonsterRole.CREEPER, "Real SQLite retains role choice across reconnect");
                 test.assertValueEqual(saved.monsterDimension(), MonsterDimension.OVERWORLD, "Real SQLite retains the historical compatibility field across reconnect");
-                test.assertValueEqual(saved.monsterDeploymentSequence(), 3, "Real SQLite retains sortie label across reconnect");
+                test.assertValueEqual(saved.monsterDeploymentSequence(), 4, "Real SQLite retains sortie label across reconnect");
                 test.assertValueEqual(saved.lifeSequence(), 1, "Real SQLite never revives the human through a monster respawn");
                 test.assertFalse(saved.monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON), "Real SQLite never receives a new retired skill deadline");
                 test.assertValueEqual(saved.monsterSkillReadyAtMillis().get(MonsterSkill.SKELETON_BURST), burstReadyAt, "Real SQLite retains the original burst deadline");

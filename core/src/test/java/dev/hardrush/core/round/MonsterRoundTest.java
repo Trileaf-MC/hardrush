@@ -60,8 +60,7 @@ class MonsterRoundTest {
         assertThrows(IllegalStateException.class, () -> engine.proposeMonsterRole(UUID.randomUUID(), round,
                 player, 1, 1, MonsterRole.CREEPER));
         apply(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, player, 1, 1));
-        assertEquals(30_000_000_000L, player(engine).monsterCooldownNanos());
-        clock.seconds(30);
+        assertEquals(0, player(engine).monsterCooldownNanos(), "A deliberate return needs no deploy wait");
         deploy(engine, 1);
         apply(engine, engine.proposeMonsterDeath(UUID.randomUUID(), round, player, 1, 2));
         Participant current = player(engine);

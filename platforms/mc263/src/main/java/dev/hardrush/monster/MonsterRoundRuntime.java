@@ -39,6 +39,13 @@ public final class MonsterRoundRuntime {
         return p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED || !dev.hardrush.core.round.MonsterCoins.enabled(r.rules())
                 ? dev.hardrush.core.round.MonsterWallet.EMPTY : p.wallet();
     }
+    /** The parked body this deployment resumes, or empty when the sortie starts afresh. */
+    public static String parkedBody(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        var r = b == null ? null : b.session.snapshot().orElse(null);
+        var p = r == null ? null : r.participants().get(player.getUUID());
+        return p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED ? "" : p.wallet().parked();
+    }
     /** Milli-levels this deployed body is worth now; empty outside a formal sortie or a worth round. */
     public static OptionalInt worth(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());

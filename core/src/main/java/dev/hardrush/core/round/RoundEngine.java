@@ -19,6 +19,18 @@ public final class RoundEngine {
     public static final long MAX_SUCCESS_CELEBRATION_MILLIS = 180_000;
     public static final long MONSTER_COOLDOWN_NANOS = 30_000_000_000L;
 
+    /** Wait before hunting after death, disconnect, recall or a first monster life. */
+    public static long deployCooldownNanos(RulesConfig rules) {
+        Double millis = rules.combatValues().get("monster.deployCooldownMillis");
+        return millis == null ? MONSTER_COOLDOWN_NANOS : Math.multiplyExact(Math.round(millis), 1_000_000L);
+    }
+
+    /** Wait after a deliberate return; rounds stored before paused sorties keep the deploy cooldown. */
+    public static long returnCooldownNanos(RulesConfig rules) {
+        Double millis = rules.combatValues().get("monster.returnCooldownMillis");
+        return millis == null ? deployCooldownNanos(rules) : Math.multiplyExact(Math.round(millis), 1_000_000L);
+    }
+
     /** Live server milliseconds, shared by every completion path and its player-facing duration. */
     public static long successCelebrationMillis(RulesConfig rules) {
         return Math.min(rules.successCelebrationMillis(), MAX_SUCCESS_CELEBRATION_MILLIS);
@@ -208,7 +220,7 @@ public final class RoundEngine {
         Participant connected = player.withSession(name, online);
         if (!online && player.role() == ParticipantRole.LOBBY) connected = connected.withReady(false);
         if (player.role() == ParticipantRole.MONSTER_DEPLOYED && player.online() != online) {
-            connected = endSortie(connected, MONSTER_COOLDOWN_NANOS);
+            connected = endSortie(connected, deployCooldownNanos(before.rules()));
         }
         players.put(playerId, connected);
         RoundPhase phase = before.phase();
@@ -264,7 +276,7 @@ public final class RoundEngine {
         players.put(playerId, new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
                 player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
                 player.lifeSequence(), player.revivalCharges(), player.hasLeftProtection(), MonsterRole.ZOMBIE,
-                MonsterDimension.OVERWORLD, MONSTER_COOLDOWN_NANOS, player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
+                MonsterDimension.OVERWORLD, deployCooldownNanos(before.rules()), player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
                 becameMonster(before.rules(), player.wallet())));
         return proposal(eventId, "HARDCORE_DEATH", before, before.phase(), 0, players, before.result(), false);
     }
@@ -313,11 +325,11 @@ public final class RoundEngine {
                         : new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
                                 player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
                                 player.lifeSequence(), player.revivalCharges(), player.hasLeftProtection(), MonsterRole.ZOMBIE,
-                                MonsterDimension.OVERWORLD, MONSTER_COOLDOWN_NANOS,
+                                MonsterDimension.OVERWORLD, deployCooldownNanos(before.rules()),
                                 player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
                                 becameMonster(before.rules(), player.wallet())));
             } else {
-                players.put(player.id(), endSortie(player, MONSTER_COOLDOWN_NANOS));
+                players.put(player.id(), endSortie(player, deployCooldownNanos(before.rules())));
             }
         }
         // Qualify against identity at lethal collection, before applying this batch's human deaths.
@@ -443,7 +455,8 @@ public final class RoundEngine {
         if (before.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET && dimension != player.monsterDimension())
             throw new IllegalStateException("个人追猎由系统决定维度。");
         requireNoRevival(before.rules(), player);
-        return monsterProposal(eventId, "MONSTER_SELECTION", before, chooseRole(before.rules(), player.selectMonster(role, dimension)));
+        return monsterProposal(eventId, "MONSTER_SELECTION", before,
+                chooseRole(before.rules(), abandonPause(player, role).selectMonster(role, dimension)));
     }
 
     public RoundTransition proposeMonsterRole(UUID eventId, UUID roundId, UUID playerId,
@@ -452,7 +465,7 @@ public final class RoundEngine {
         var player = requireMonster(before, roundId, playerId, life, sortie, ParticipantRole.MONSTER_LOBBY);
         requireNoRevival(before.rules(), player);
         return monsterProposal(eventId, "MONSTER_SELECTION", before,
-                chooseRole(before.rules(), player.selectMonsterRole(Objects.requireNonNull(role))));
+                chooseRole(before.rules(), abandonPause(player, Objects.requireNonNull(role)).selectMonsterRole(role)));
     }
 
     public RoundTransition proposePersonalHunt(UUID eventId, dev.hardrush.core.hunt.PersonalHuntRequest request, int sortie) {
@@ -530,7 +543,24 @@ public final class RoundEngine {
 
     public RoundTransition proposeMonsterReturn(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence) {
-        return monsterReturn(eventId, "MONSTER_RETURN", roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+        return proposeMonsterReturn(eventId, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence, "");
+    }
+
+    /**
+     * A deliberate return. With the platform's encoded {@code parkedBody} the sortie only pauses:
+     * the body, worth, damage caps and price ladder continue at the next deployment. Without one the
+     * sortie ends as before, still with the return cooldown.
+     */
+    public RoundTransition proposeMonsterReturn(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence, String parkedBody) {
+        Objects.requireNonNull(parkedBody);
+        RoundSnapshot before = capture();
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
+                ParticipantRole.MONSTER_DEPLOYED);
+        long cooldown = returnCooldownNanos(before.rules());
+        var returned = parkedBody.isEmpty() ? endSortie(player, cooldown)
+                : player.monsterLobby(cooldown).withWallet(player.wallet().park(parkedBody));
+        return monsterProposal(eventId, "MONSTER_RETURN", before, returned);
     }
 
     /** Adapter-only compensation after durable admission but before an outing actually opens. */
@@ -553,7 +583,7 @@ public final class RoundEngine {
         RoundSnapshot before = capture();
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_DEPLOYED);
-        return monsterProposal(eventId, type, before, endSortie(player, MONSTER_COOLDOWN_NANOS));
+        return monsterProposal(eventId, type, before, endSortie(player, deployCooldownNanos(before.rules())));
     }
 
     private RoundTransition monsterProposal(UUID eventId, String type, RoundSnapshot before, Participant player) {
@@ -698,11 +728,17 @@ public final class RoundEngine {
 
     private static Participant revivalFirst(RulesConfig rules, Participant player) {
         return MonsterCoins.enabled(rules) && player.revivalEntitled() && player.role() == ParticipantRole.MONSTER_DEPLOYED
-                ? endSortie(player, MONSTER_COOLDOWN_NANOS) : player;
+                ? endSortie(player, deployCooldownNanos(rules)) : player;
     }
 
     private static MonsterWallet becameMonster(RulesConfig rules, MonsterWallet wallet) {
         return MonsterCoins.enabled(rules) ? wallet.becameMonster(MonsterCoins.amount(rules, MonsterCoins.STARTER)) : wallet;
+    }
+
+    /** Choosing another role gives up a paused sortie: its parked body could not become the new one. */
+    private static Participant abandonPause(Participant player, MonsterRole role) {
+        return player.wallet().hasParkedBody() && role != player.monsterRole()
+                ? player.withWallet(player.wallet().endSortie()) : player;
     }
 
     private static Participant endSortie(Participant player, long cooldown) {
