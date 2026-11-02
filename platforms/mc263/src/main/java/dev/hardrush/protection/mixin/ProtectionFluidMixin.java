@@ -17,7 +17,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ProtectionFluidMixin {
     @Inject(method="spreadTo", at=@At("HEAD"), cancellable=true)
     private void flow(LevelAccessor level, BlockPos pos, BlockState state, Direction direction, FluidState fluid, CallbackInfo ci) {
-        if (level instanceof ServerLevel serverLevel && (ProtectionRuntime.protectedBlock(serverLevel, pos)
-                || ProtectionRuntime.protectedBlock(serverLevel, pos.relative(direction.getOpposite())))) ci.cancel();
+        if (level instanceof ServerLevel serverLevel && ProtectionRuntime.protectedLevel(serverLevel)) ci.cancel();
     }
 }

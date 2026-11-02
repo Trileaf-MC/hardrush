@@ -284,10 +284,10 @@ class MonsterCoinTimingSessionTest {
     private Path seed() throws Exception {
         var path = temporary.toRealPath().resolve("coins.sqlite");
         var players = new LinkedHashMap<UUID, Participant>();
-        players.put(human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false, true));
-        players.put(other, new Participant(other, "Other", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false, true));
+        players.put(human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false));
+        players.put(other, new Participant(other, "Other", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false));
         players.put(monster, new Participant(monster, "Monster", ParticipantRole.MONSTER_LOBBY, false, false,
-                100, 0, 1, false, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 2));
+                100, 0, 1, false, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 2));
         var snapshot = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults(), RoundPhase.RUNNING,
                 PauseReason.SERVER_STOPPED, 0, 0, players, true, false, null);
         try (var store = new SqliteRoundStore(path)) {

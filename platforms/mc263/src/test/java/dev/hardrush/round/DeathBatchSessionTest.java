@@ -168,8 +168,7 @@ class DeathBatchSessionTest {
     }
     Path seed(ParticipantRole hunterRole) throws Exception {
         Path path = temp.toRealPath().resolve("batch.sqlite");
-        var monster = new Participant(hunter, "Hunter", hunterRole, false, false, 100, 0, 1, false,
-                true, MonsterRole.CREEPER, MonsterDimension.OVERWORLD, 0, 0);
+        var monster = new Participant(hunter, "Hunter", hunterRole, false, false, 100, 0, 1, false, MonsterRole.CREEPER, MonsterDimension.OVERWORLD, 0, 0);
         var human = new Participant(victim, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false);
         var snapshot = new RoundSnapshot(round, 1, 9, 0, RulesConfig.defaults(), RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
                 100, 0, Map.of(hunter, monster, victim, human), true, false, null);

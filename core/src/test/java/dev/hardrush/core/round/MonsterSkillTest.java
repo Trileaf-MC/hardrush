@@ -25,7 +25,7 @@ class MonsterSkillTest {
         return fixture(role, MonsterRole.SKELETON, rules, cooldowns);
     }
     private RoundEngine fixture(ParticipantRole role, MonsterRole monsterRole, RulesConfig rules, Map<MonsterSkill, Long> cooldowns) {
-        var participant = new Participant(player, "Skill", role, false, false, 123, 0, 3, false, true,
+        var participant = new Participant(player, "Skill", role, false, false, 123, 0, 3, false,
                 monsterRole, MonsterDimension.OVERWORLD, 0, 4, cooldowns);
         var snapshot = new RoundSnapshot(round, 1, 123, 0, rules, RoundPhase.RUNNING,
                 PauseReason.SERVER_STOPPED, 123, 0, Map.of(player, participant), true, false, null);
@@ -39,7 +39,7 @@ class MonsterSkillTest {
         var values = new LinkedHashMap<>(base.combatValues());
         values.put("skeleton.burstCooldownMillis", (double)burstCooldown);
         return new RulesConfig(base.schemaVersion(), base.mode(), base.minecraftVersion(), base.difficulty(),
-                base.generationRule(), values, base.protectionRadius(), base.startCountdownMillis(),
+                base.generationRule(), values, base.startCountdownMillis(),
                 base.successCelebrationMillis(), base.failureDisplayMillis());
     }
     private RoundEngine deployed() {
@@ -154,7 +154,6 @@ class MonsterSkillTest {
         assertEquals(cooldowns, p.withSession("Copy", false).monsterSkillReadyAtMillis());
         assertEquals(cooldowns, p.withReady(false).monsterSkillReadyAtMillis());
         assertEquals(cooldowns, p.withRole(ParticipantRole.HUMAN_RESPAWNING).monsterSkillReadyAtMillis());
-        assertEquals(cooldowns, p.leaveProtection().monsterSkillReadyAtMillis());
         assertEquals(cooldowns, p.accrue(1).monsterSkillReadyAtMillis());
         assertEquals(cooldowns, p.start(1).monsterSkillReadyAtMillis());
         assertEquals(cooldowns, p.selectMonster(MonsterRole.CREEPER, MonsterDimension.END).monsterSkillReadyAtMillis());

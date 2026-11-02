@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 class PersonalHuntRequestTest {
     final UUID round = UUID.randomUUID(), hunter = UUID.randomUUID(), target = UUID.randomUUID(), second = UUID.randomUUID();
     Participant monster(UUID id) { return new Participant(id, "Hunter", ParticipantRole.MONSTER_LOBBY, true, false,
-            0, 0, 3, false, true, MonsterRole.ZOMBIE, MonsterDimension.END, 0, 7); }
+            0, 0, 3, false, MonsterRole.ZOMBIE, MonsterDimension.END, 0, 7); }
     Participant human() { return new Participant(target, "Target", ParticipantRole.HUMAN_ACTIVE, true, false, 0, 0, 4, false); }
     PersonalHuntRequest request(UUID owner) { return new PersonalHuntRequest(round, owner, 3, 7, MonsterRole.ZOMBIE, target, 4); }
     RoundSnapshot snapshot(Participant human) {

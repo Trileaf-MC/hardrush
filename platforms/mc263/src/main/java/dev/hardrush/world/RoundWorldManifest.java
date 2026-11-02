@@ -28,10 +28,8 @@ final class RoundWorldManifest {
     final String rules;
     final Map<String, JsonElement> generators;
     final BlockPos spawn;
-    final List<BlockPos> exits;
 
-    RoundWorldManifest(UUID roundId, long seed, String rules, Map<String, JsonElement> generators,
-            BlockPos spawn, List<BlockPos> exits) {
+    RoundWorldManifest(UUID roundId, long seed, String rules, Map<String, JsonElement> generators, BlockPos spawn) {
         this.roundId = roundId;
         this.seed = seed;
         this.rules = rules;
@@ -40,32 +38,15 @@ final class RoundWorldManifest {
         if (!copy.keySet().equals(java.util.Set.copyOf(DIMENSIONS))) throw new IllegalArgumentException("清单需三维度");
         this.generators = Map.copyOf(copy);
         this.spawn = spawn == null ? null : spawn.immutable();
-        this.exits = exits.stream().map(BlockPos::immutable).toList();
-        // Empty exits describe a natural spawn. Keep reading the old two-to-four-exit format.
-        if (spawn == null && !exits.isEmpty() || !exits.isEmpty() && (exits.size() < 2 || exits.size() > 4)) {
-            throw new IllegalArgumentException("旧版出生点出口必须成组记录两至四个");
-        }
     }
 
-    RoundWorldManifest prepared(BlockPos spawn, List<BlockPos> exits) {
-        return new RoundWorldManifest(roundId, seed, rules, generators, spawn, exits);
+    RoundWorldManifest prepared(BlockPos spawn) {
+        return new RoundWorldManifest(roundId, seed, rules, generators, spawn);
     }
 
     void requireSnapshot(RoundSnapshot snapshot) throws IOException {
         if (!roundId.equals(snapshot.roundId()) || seed != snapshot.seed() || !rules.equals(snapshot.rules().encode())) {
             throw new IOException("本轮清单 ID、种子或规则与已持久化快照不符；拒绝覆盖");
-        }
-        if (spawn != null) {
-            int distance = (int) Math.ceil(snapshot.rules().protectionRadius()) + 8;
-            var directions = new java.util.HashSet<String>();
-            for (BlockPos exit : exits) {
-                long dx = (long) exit.getX() - spawn.getX(), dz = (long) exit.getZ() - spawn.getZ();
-                if (!(dx == 0 && Math.abs(dz) == distance || dz == 0 && Math.abs(dx) == distance)
-                        || Math.abs((long) exit.getY() - spawn.getY()) > distance - 4) {
-                    throw new IOException("出生出口清单与本轮保护半径不符");
-                }
-                if (!directions.add(dx + ":" + dz)) throw new IOException("出生出口方向重复");
-            }
         }
     }
 
@@ -93,10 +74,8 @@ final class RoundWorldManifest {
                 generators.put(name, dimension.get("generator"));
             }
             BlockPos spawn = json.has("spawn") ? pos(json.getAsJsonObject("spawn")) : null;
-            var exits = new java.util.ArrayList<BlockPos>();
-            if (json.has("exits")) json.getAsJsonArray("exits").forEach(value -> exits.add(pos(value.getAsJsonObject())));
             return new RoundWorldManifest(round, json.get("seed").getAsLong(), json.get("rules").getAsString(),
-                    generators, spawn, exits);
+                    generators, spawn);
         } catch (RuntimeException error) {
             throw new IOException("世界清单损坏，保留文件并停止准备: " + path, error);
         }
@@ -125,12 +104,7 @@ final class RoundWorldManifest {
             dimensions.add(name, dimension);
         }
         json.add("dimensions", dimensions);
-        if (spawn != null) {
-            json.add("spawn", jsonPos(spawn));
-            var list = new com.google.gson.JsonArray();
-            exits.forEach(exit -> list.add(jsonPos(exit)));
-            json.add("exits", list);
-        }
+        if (spawn != null) json.add("spawn", jsonPos(spawn));
         Path temporary = Files.createTempFile(path.getParent(), "world-manifest-", ".tmp");
         try {
             byte[] bytes = (new GsonBuilder().setPrettyPrinting().create().toJson(json) + "\n").getBytes(StandardCharsets.UTF_8);

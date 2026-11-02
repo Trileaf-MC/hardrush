@@ -15,7 +15,6 @@ import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
-import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -30,7 +29,7 @@ public abstract class ProtectionNetworkMixin {
     private void move(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
         if (!mainThread()) return;
         // Channels read the movement keys instead: water and pushes also move the reported position.
-        if (ProtectionRuntime.rejectMove(player, player.level(), new Vec3(packet.getX(player.getX()), packet.getY(player.getY()), packet.getZ(player.getZ())))) {
+        if (ProtectionRuntime.rejectMove(player, player.level())) {
             ProtectionRuntime.correct(player); ci.cancel();
         }
     }
@@ -38,7 +37,7 @@ public abstract class ProtectionNetworkMixin {
     private void vehicle(ServerboundMoveVehiclePacket packet, CallbackInfo ci) {
         if (!mainThread()) return;
         var vehicle = player.getRootVehicle();
-        if (ProtectionRuntime.rejectMove(vehicle, player.level(), packet.movingTo().position())) {
+        if (ProtectionRuntime.rejectMove(vehicle, player.level())) {
             ProtectionRuntime.correct(player); ci.cancel();
         }
     }
@@ -48,7 +47,7 @@ public abstract class ProtectionNetworkMixin {
         switch (packet.getAction()) {
             case START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> {
                 dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "攻击方块");
-                if (ProtectionRuntime.rejectInteraction(player, player.level(), packet.getPos())) {
+                if (ProtectionRuntime.rejectInteraction(player, player.level())) {
                     player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.getPos())); ci.cancel();
                 }
             }
@@ -67,8 +66,7 @@ public abstract class ProtectionNetworkMixin {
     private void block(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
         if (!mainThread()) return;
         if (LobbyInteractions.consumed(LobbyInteractions.block(player, packet))) { ci.cancel(); return; }
-        if (ProtectionRuntime.rejectInteraction(player, player.level(), packet.hitResult().getBlockPos())
-                || ProtectionRuntime.protectedBlock(player.level(), packet.hitResult().getBlockPos().relative(packet.hitResult().getDirection()))) {
+        if (ProtectionRuntime.rejectInteraction(player, player.level())) {
             player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.hitResult().getBlockPos())); ci.cancel();
         }
     }

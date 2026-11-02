@@ -7,12 +7,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Prediction;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.entity.Relative;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.portal.TeleportTransition;
-import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -44,8 +42,7 @@ public abstract class ProtectionServerPlayerMixin {
     @Inject(method="teleport(Lnet/minecraft/world/level/portal/TeleportTransition;)Lnet/minecraft/server/level/ServerPlayer;", at=@At("HEAD"), cancellable=true)
     private void portal(TeleportTransition transition, CallbackInfoReturnable<ServerPlayer> ci) {
         var player = (ServerPlayer)(Object)this;
-        var target = PositionMoveRotation.calculateAbsolute(PositionMoveRotation.of(player), PositionMoveRotation.of(transition), transition.relatives()).position();
-        if (ProtectionRuntime.rejectMove(player, transition.newLevel(), target)) {
+        if (ProtectionRuntime.rejectMove(player, transition.newLevel())) {
             ProtectionRuntime.correct(player); ci.setReturnValue(null);
         }
     }
@@ -53,16 +50,14 @@ public abstract class ProtectionServerPlayerMixin {
     private void teleport(ServerLevel level, double x, double y, double z, Set<Relative> relatives, float yaw, float pitch,
             boolean camera, CallbackInfoReturnable<Boolean> ci) {
         var player = (ServerPlayer)(Object)this;
-        var target = PositionMoveRotation.calculateAbsolute(PositionMoveRotation.of(player),
-                new PositionMoveRotation(new Vec3(x,y,z), Vec3.ZERO, yaw, pitch), relatives).position();
-        if (ProtectionRuntime.rejectMove(player, level, target)) {
+        if (ProtectionRuntime.rejectMove(player, level)) {
             ProtectionRuntime.correct(player); ci.setReturnValue(false);
         }
     }
     @Inject(method="teleportTo(DDD)V", at=@At("HEAD"), cancellable=true)
     private void sameLevelTeleport(double x, double y, double z, CallbackInfo ci) {
         var player = (ServerPlayer)(Object)this;
-        if (ProtectionRuntime.rejectMove(player, player.level(), new Vec3(x,y,z))) {
+        if (ProtectionRuntime.rejectMove(player, player.level())) {
             ProtectionRuntime.correct(player); ci.cancel();
         }
     }

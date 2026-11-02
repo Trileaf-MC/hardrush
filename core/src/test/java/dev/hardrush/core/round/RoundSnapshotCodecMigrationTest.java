@@ -48,7 +48,7 @@ class RoundSnapshotCodecMigrationTest {
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(bytes.toByteArray()));
     }
 
-    @Test void schemaOnePreservesIdentityCountersAndGrantsAnInitialProtectionPermission() throws Exception {
+    @Test void schemaOnePreservesIdentityCounters() throws Exception {
         RoundSnapshot migrated = RoundSnapshotCodec.decode(schemaOneFixture());
         assertEquals(ROUND, migrated.roundId());
         assertEquals(7, migrated.version());
@@ -59,23 +59,9 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(25, active.joinedAtChallengeNanos());
         assertEquals(3, active.lifeSequence());
         assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
-        assertFalse(active.hasLeftProtection(), "Schema-1 snapshots had no exit record; upgrading must not force a waiting human out of protection");
-        assertFalse(migrated.participants().get(RESPAWNING).hasLeftProtection());
-        assertFalse(migrated.participants().get(LOBBY).hasLeftProtection());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(8, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(9, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
-    }
-
-    @Test void schemaTwoRetainsDifferentExitPermissionsInTheSameSnapshot() {
-        Participant left = new Participant(ACTIVE, "Left", ParticipantRole.HUMAN_ACTIVE, true, false,
-                1, 0, 1, false, true);
-        Participant fresh = new Participant(RESPAWNING, "Fresh", ParticipantRole.HUMAN_ACTIVE, false, false,
-                1, 0, 2, false, false);
-        RoundSnapshot snapshot = new RoundSnapshot(ROUND, 1, 123, 1, RulesConfig.defaults(),
-                RoundPhase.RUNNING, PauseReason.NONE, 1, 0, Map.of(ACTIVE, left, RESPAWNING, fresh),
-                false, false, null);
-        assertEquals(snapshot, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(snapshot)));
     }
 
     @Test void schemaTwoMonsterUpgradeRetainsEligibilityAndRequiresItsInitialWait() throws Exception {
@@ -91,7 +77,6 @@ class RoundSnapshotCodecMigrationTest {
         out.writeInt(3); out.writeBoolean(true); out.writeBoolean(true); out.writeBoolean(false);
         Participant monster = RoundSnapshotCodec.decode(bytes.toByteArray()).participants().get(ACTIVE);
         assertTrue(monster.revivalEntitled());
-        assertTrue(monster.hasLeftProtection());
         assertEquals(3, monster.lifeSequence());
         assertEquals(98_765, monster.humanNanos());
         assertEquals(MonsterRole.ZOMBIE, monster.monsterRole());
@@ -146,7 +131,7 @@ class RoundSnapshotCodecMigrationTest {
 
     @Test void schemaSixRejectsNegativeRevivalCredits() {
         var player = new Participant(ACTIVE, "Monster", ParticipantRole.MONSTER_LOBBY, true, false,
-                0, 0, 1, 123456789, true, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of());
+                0, 0, 1, 123456789, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of());
         var snapshot = new RoundSnapshot(ROUND, 1, 1, 0, RulesConfig.defaults(), RoundPhase.RUNNING,
                 PauseReason.NONE, 0, 0, Map.of(ACTIVE, player), true, false, null);
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);

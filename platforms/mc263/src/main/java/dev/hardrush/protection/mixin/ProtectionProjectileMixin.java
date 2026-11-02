@@ -16,7 +16,7 @@ public abstract class ProtectionProjectileMixin {
     @Inject(method="hitTargetOrDeflectSelf", at=@At("HEAD"), cancellable=true)
     private void hit(HitResult hit, CallbackInfoReturnable<ProjectileDeflection> ci) {
         var projectile = (Projectile)(Object)this;
-        if (ProtectionRuntime.rejectProjectilePath(projectile, hit.getLocation())) {
+        if (ProtectionRuntime.rejectProjectilePath(projectile)) {
             projectile.discard(); ci.setReturnValue(ProjectileDeflection.NONE);
         }
     }

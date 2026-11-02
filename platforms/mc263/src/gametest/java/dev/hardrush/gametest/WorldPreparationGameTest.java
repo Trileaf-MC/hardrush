@@ -205,7 +205,6 @@ public final class WorldPreparationGameTest {
                     overworld.getGameRules().set(keepInventory, !serverKeep, server);
                     test.assertValueEqual(end.getGameRules().get(keepInventory), !serverKeep, "A round rule change reaches every dimension");
                     test.assertValueEqual(server.getGameRules().get(keepInventory), serverKeep, "A round rule change leaves the server template");
-                    test.assertTrue(bundle.exits().isEmpty(), "Natural spawn requires no artificial exit corridors");
                     test.assertTrue(RoundWorldBundle.safeStanding(overworld, bundle.spawn()), "Spawn is safe");
                     test.assertTrue(naturalSurface.containsKey(bundle.spawn().below()), "Native terrain was observed before spawn preparation");
                     for (var entry : naturalSurface.entrySet()) {
@@ -295,18 +294,7 @@ public final class WorldPreparationGameTest {
                 .thenWaitUntil(() -> awaitClosed(test, recovered[0], closed[0], started, lastDiagnostic))
                 .thenExecute(() -> {
                     try {
-                        // Reopen a legacy manifest whose former elevated corridors no longer exist.
-                        // Its spawn is still safe, so obsolete exit infrastructure must not gate recovery.
-                        var json = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(recovered[0].manifestPath())).getAsJsonObject();
-                        var legacyExits = new com.google.gson.JsonArray();
-                        for (var direction : java.util.List.of(net.minecraft.core.Direction.NORTH, net.minecraft.core.Direction.SOUTH)) {
-                            var exit = json.getAsJsonObject("spawn").deepCopy();
-                            exit.addProperty("z", exit.get("z").getAsInt() + direction.getStepZ() * 40);
-                            exit.addProperty("y", exit.get("y").getAsInt() + 35);
-                            legacyExits.add(exit);
-                        }
-                        json.add("exits", legacyExits);
-                        preservedManifest[0] = json.toString();
+                        preservedManifest[0] = java.nio.file.Files.readString(recovered[0].manifestPath());
                         java.nio.file.Files.writeString(recovered[0].manifestPath(), "{partial");
                     } catch (java.io.IOException error) { throw new IllegalStateException(error); }
                     readFailure[0] = RoundWorldBundle.open(server, snapshot);
@@ -334,7 +322,6 @@ public final class WorldPreparationGameTest {
                     var overworld = readFailure[0].level(Level.OVERWORLD);
                     test.assertValueEqual(readFailure[0].roundId(), snapshot.roundId(), "Retry keeps the same round identity");
                     test.assertValueEqual(overworld.getSeed(), snapshot.seed(), "Retry keeps the same seed");
-                    test.assertValueEqual(readFailure[0].exits().size(), 2, "Legacy exit metadata remains readable without rebuilding or validating corridors");
                     test.assertTrue(overworld.getBlockState(building[0]).is(Blocks.CHEST), "Retry preserves player building files");
                     test.assertValueEqual(readFailure[0].metrics().changedBlocks(), 0, "Retry never regenerates ready world terrain");
                     org.slf4j.LoggerFactory.getLogger("hardrush-round-world-test").info("Round world same-round retry metrics: {}", readFailure[0].metrics());

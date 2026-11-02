@@ -275,7 +275,7 @@ public final class RoundEngine {
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         players.put(playerId, new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
                 player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
-                player.lifeSequence(), player.revivalCharges(), player.hasLeftProtection(), MonsterRole.ZOMBIE,
+                player.lifeSequence(), player.revivalCharges(), MonsterRole.ZOMBIE,
                 MonsterDimension.OVERWORLD, deployCooldownNanos(before.rules()), player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
                 becameMonster(before.rules(), player.wallet())));
         return proposal(eventId, "HARDCORE_DEATH", before, before.phase(), 0, players, before.result(), false);
@@ -324,7 +324,7 @@ public final class RoundEngine {
                         ? player.withRole(ParticipantRole.HUMAN_RESPAWNING)
                         : new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
                                 player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
-                                player.lifeSequence(), player.revivalCharges(), player.hasLeftProtection(), MonsterRole.ZOMBIE,
+                                player.lifeSequence(), player.revivalCharges(), MonsterRole.ZOMBIE,
                                 MonsterDimension.OVERWORLD, deployCooldownNanos(before.rules()),
                                 player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
                                 becameMonster(before.rules(), player.wallet())));
@@ -773,20 +773,6 @@ public final class RoundEngine {
         return player;
     }
 
-    /**
-     * Called before the adapter permits the first exit of this life. Repetition preserves the
-     * existing restriction; a callback from a previous life must not consume a new life's exit.
-     */
-    public RoundTransition proposeLeaveProtection(UUID eventId, UUID playerId, int expectedLifeSequence) {
-        RoundSnapshot before = capture();
-        requirePhase(before, RoundPhase.RUNNING);
-        Participant player = requirePlayer(before, playerId);
-        requireLife(player, ParticipantRole.HUMAN_ACTIVE, expectedLifeSequence);
-        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
-        players.put(playerId, player.leaveProtection());
-        return proposal(eventId, "LEAVE_PROTECTION", before, before.phase(), 0, players, before.result(), false);
-    }
-
     private RoundTransition normalIdentity(UUID eventId, UUID playerId, int expectedLifeSequence, ParticipantRole expected, ParticipantRole target, String type, boolean admissionPending) {
         RoundSnapshot before = capture();
         requirePhase(before, RoundPhase.RUNNING);
@@ -797,7 +783,7 @@ public final class RoundEngine {
         Participant changed = player.withRole(target);
         if (target == ParticipantRole.HUMAN_ACTIVE) {
             changed = new Participant(changed.id(), changed.name(), target, changed.online(), false,
-                    changed.humanNanos(), changed.joinedAtChallengeNanos(), Math.addExact(changed.lifeSequence(), 1), false, false,
+                    changed.humanNanos(), changed.joinedAtChallengeNanos(), Math.addExact(changed.lifeSequence(), 1), false,
                     changed.monsterRole(), changed.monsterDimension(), changed.monsterCooldownNanos(), changed.monsterDeploymentSequence(), changed.monsterSkillReadyAtMillis());
         }
         if (admissionPending) changed = changed.withSession(changed.name(), false);

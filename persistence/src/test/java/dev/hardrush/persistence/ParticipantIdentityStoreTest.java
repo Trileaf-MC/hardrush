@@ -36,7 +36,6 @@ class ParticipantIdentityStoreTest {
             commit(store, engine, engine.proposeReady(UUID.randomUUID(), PLAYER, true));
             clock.millis(30_000);
             commit(store, engine, engine.proposeTick(UUID.randomUUID()));
-            commit(store, engine, engine.proposeLeaveProtection(UUID.randomUUID(), PLAYER, 1));
             clock.millis(2_000);
             assertEquals(CommitResult.APPLIED, store.recordProgress(new ProgressWrite(round, UUID.randomUUID(),
                     PLAYER, "Alice", Set.of("minecraft:story/mine_stone"), "a".repeat(64), true, 2_000_000_000L)));
@@ -55,7 +54,6 @@ class ParticipantIdentityStoreTest {
             assertThrows(IllegalStateException.class, () -> restored.proposeJoin(UUID.randomUUID(), PLAYER, "Renamed"));
             Participant monster = restored.view().participants().get(PLAYER);
             assertEquals(ParticipantRole.MONSTER_LOBBY, monster.role());
-            assertTrue(monster.hasLeftProtection());
             assertEquals(1, monster.lifeSequence());
             var record = store.participantRecord(round, PLAYER).orElseThrow();
             assertEquals("Alice", record.playerName());
@@ -76,7 +74,7 @@ class ParticipantIdentityStoreTest {
         Path database = directory.toRealPath().resolve("imported.sqlite");
         UUID round = UUID.randomUUID();
         Participant monster = new Participant(PLAYER, "Alice", ParticipantRole.MONSTER_LOBBY, false, false,
-                123, 0, 1, false, true);
+                123, 0, 1, false);
         RoundSnapshot snapshot = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults(), RoundPhase.RUNNING,
                 PauseReason.NO_ONLINE_HUMANS, 123, 0, Map.of(PLAYER, monster), false, false, null);
         try (var store = new SqliteRoundStore(database)) {

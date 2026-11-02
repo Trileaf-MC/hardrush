@@ -244,7 +244,7 @@ public final class MonsterCreeperGameTest {
                 players.add(player);
                 participants.put(player.getUUID(), new Participant(player.getUUID(), profile.name(),
                         index == 0 ? ParticipantRole.MONSTER_DEPLOYED : ParticipantRole.HUMAN_ACTIVE,
-                        true, false, 0, 0, 1, false, true, MonsterRole.CREEPER, MonsterDimension.OVERWORLD, 0, 1));
+                        true, false, 0, 0, 1, false, MonsterRole.CREEPER, MonsterDimension.OVERWORLD, 0, 1));
             }
             owner = players.getFirst();
         }

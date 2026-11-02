@@ -152,7 +152,7 @@ public final class MonsterCompanions {
         BlockPos clicked = hit.getBlockPos();
         if (!withinReach(player, clicked) || !loaded(level, clicked)
                 || level.getBlockEntity(clicked) instanceof Spawner
-                || ProtectionRuntime.rejectInteraction(player, level, clicked)) return null;
+                || ProtectionRuntime.rejectInteraction(player, level)) return null;
         BlockPos spawn = level.getBlockState(clicked).getCollisionShape(level, clicked).isEmpty()
                 ? clicked : clicked.relative(hit.getDirection());
         return new Landing(spawn, true, !clicked.equals(spawn) && hit.getDirection() == Direction.UP);
@@ -165,7 +165,7 @@ public final class MonsterCompanions {
         BlockHitResult hit = player.level().clip(new ClipContext(start, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.SOURCE_ONLY, player));
         if (hit.getType() != HitResult.Type.BLOCK || !loaded(player.level(), hit.getBlockPos())
                 || !(player.level().getBlockState(hit.getBlockPos()).getBlock() instanceof LiquidBlock)
-                || ProtectionRuntime.rejectInteraction(player, player.level(), hit.getBlockPos())) return null;
+                || ProtectionRuntime.rejectInteraction(player, player.level())) return null;
         return new Landing(hit.getBlockPos(), false, false);
     }
 
@@ -173,7 +173,7 @@ public final class MonsterCompanions {
     public static boolean place(ServerPlayer player, Mob mob, Landing landing) {
         var level = player.level();
         var pos = landing.pos();
-        if (!loaded(level, pos) || !level.getWorldBorder().isWithinBounds(pos) || ProtectionRuntime.protectedBlock(level, pos)) return false;
+        if (!loaded(level, pos) || !level.getWorldBorder().isWithinBounds(pos) || ProtectionRuntime.protectedLevel(level)) return false;
         double offset = 0;
         if (landing.moveDown()) {
             mob.setPos(pos.getX() + .5, pos.getY() + 1, pos.getZ() + .5);
@@ -445,7 +445,7 @@ public final class MonsterCompanions {
                 int z = zombie.getRandom().nextIntBetweenInclusive(-3, 3);
                 if (Math.abs(x) < 2 && Math.abs(z) < 2) continue;
                 var pos = player.blockPosition().offset(x, zombie.getRandom().nextIntBetweenInclusive(-1, 1), z);
-                if (!loaded(level, pos) || ProtectionRuntime.protectedBlock(level, pos)
+                if (!loaded(level, pos) || ProtectionRuntime.protectedLevel(level)
                         || level.getBlockState(pos.below()).getBlock() instanceof LeavesBlock
                         || WalkNodeEvaluator.getPathTypeStatic(zombie, pos) != PathType.WALKABLE) continue;
                 var destination = Vec3.atBottomCenterOf(pos);

@@ -53,7 +53,7 @@ public final class RestartProcessFixture {
     private void write(Path database, RoundPhase phase) throws Exception {
         var defaults = RulesConfig.defaults().withMode(GameMode.NORMAL);
         var rules = new RulesConfig(defaults.schemaVersion(), defaults.mode(), defaults.minecraftVersion(),
-                defaults.difficulty(), defaults.generationRule(), defaults.combatValues(), defaults.protectionRadius(),
+                defaults.difficulty(), defaults.generationRule(), defaults.combatValues(),
                 2_000, 4_000, 1_000);
         try (var store = new SqliteRoundStore(database)) {
             equal(CommitResult.APPLIED, store.savePendingRules(rules.encode().getBytes(StandardCharsets.UTF_8),

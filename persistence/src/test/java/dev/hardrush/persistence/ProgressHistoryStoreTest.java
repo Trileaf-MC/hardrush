@@ -86,7 +86,7 @@ class ProgressHistoryStoreTest {
             create(store,a,1,rules,false); finish(store,a,10_000_001,true);
             create(store,b,2,rules,false); finish(store,b,10_999_999,true);
             create(store,c,3,rules,false); finish(store,c,11_000_000,true);
-            var changed=new RulesConfig(rules.schemaVersion(),rules.mode(),rules.minecraftVersion(),rules.difficulty(),rules.generationRule(),rules.combatValues(),rules.protectionRadius()+1,rules.startCountdownMillis(),rules.successCelebrationMillis(),rules.failureDisplayMillis());
+            var changed=new RulesConfig(rules.schemaVersion(),rules.mode(),rules.minecraftVersion(),rules.difficulty(),rules.generationRule(),rules.combatValues(),rules.startCountdownMillis()+1_000,rules.successCelebrationMillis(),rules.failureDisplayMillis());
             create(store,other,4,changed,false);finish(store,other,1_000_000,true);
             var board=store.leaderboard(rules.fingerprint(),10);
             assertEquals(List.of(1,1,3),board.stream().map(LeaderboardEntry::rank).toList());

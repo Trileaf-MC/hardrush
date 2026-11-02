@@ -143,12 +143,7 @@ public final class LobbyFoundationGameTest {
         }
         void place(BlockPos pos, net.minecraft.world.level.block.Block block) {
             // Fixture terrain only; production protection is restored BEFORE any input packet.
-            try (var scope = dev.hardrush.gametest.RuntimeFixtures.protection(f.server,
-                    new dev.hardrush.protection.ProtectionRuntime.Access() {
-                        public java.util.Optional<dev.hardrush.protection.ProtectionRuntime.Zone> zone(net.minecraft.server.level.ServerLevel level) { return java.util.Optional.empty(); }
-                        public java.util.Optional<dev.hardrush.core.round.Participant> participant(UUID id) { return java.util.Optional.empty(); }
-                        public boolean leaveProtection(UUID round, UUID player, int life) { return false; }
-                    })) {
+            try (var scope = dev.hardrush.gametest.RuntimeFixtures.protection(f.server, level -> false)) {
                 var level = LobbyWorld.open(f.server).holdingLevel();
                 level.setBlockAndUpdate(pos, block.defaultBlockState());
                 test.assertTrue(level.getBlockState(pos).is(block), "Fixture places dedicated block idempotently");

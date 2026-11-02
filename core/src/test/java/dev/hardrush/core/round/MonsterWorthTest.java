@@ -89,15 +89,15 @@ class MonsterWorthTest {
 
     private static RulesConfig rules(Map<String, Double> values) {
         return new RulesConfig(RULES.schemaVersion(), GameMode.HARDCORE, RULES.minecraftVersion(), RULES.difficulty(),
-                RULES.generationRule(), values, RULES.protectionRadius(), RULES.startCountdownMillis(),
+                RULES.generationRule(), values, RULES.startCountdownMillis(),
                 RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
     }
 
     /** A running round with one human and a monster deployed as sortie 3. */
     private RoundEngine engine() {
         var players = new LinkedHashMap<UUID, Participant>();
-        players.put(human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, true, false, 100, 50, 1, false, true));
-        players.put(monster, new Participant(monster, "Monster", ParticipantRole.MONSTER_LOBBY, true, false, 70, 20, 1, 0, true,
+        players.put(human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, true, false, 100, 50, 1, false));
+        players.put(monster, new Participant(monster, "Monster", ParticipantRole.MONSTER_LOBBY, true, false, 70, 20, 1, 0,
                 MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 2, Map.of()));
         var engine = RoundEngine.restore(new RoundSnapshot(round, 1, 2, 0, RULES, RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
                 100, 0, players, true, false, null), clock);

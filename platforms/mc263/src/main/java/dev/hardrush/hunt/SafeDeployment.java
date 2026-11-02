@@ -432,7 +432,7 @@ public final class SafeDeployment {
     }
 
     private static boolean allowed(ServerLevel level, Vec3 point, Vec3 target, List<Vec3> humans, double radius) {
-        if (point.distanceToSqr(target) > radius * radius || ProtectionRuntime.protectedAt(level, point)) return false;
+        if (point.distanceToSqr(target) > radius * radius || ProtectionRuntime.protectedLevel(level)) return false;
         // Above a ceiling (the Nether bedrock roof) only when the quarry is up there too.
         int ceiling = level.getMinY() + level.dimensionType().logicalHeight();
         if (target.y < ceiling && point.y >= ceiling) return false;

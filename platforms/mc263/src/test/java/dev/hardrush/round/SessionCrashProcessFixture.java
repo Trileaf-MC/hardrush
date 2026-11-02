@@ -150,7 +150,7 @@ public final class SessionCrashProcessFixture {
 
     private static void seed(Path database) throws Exception {
         var hunter = new Participant(HUNTER, "Hunter", ParticipantRole.MONSTER_LOBBY, false, false,
-                100, 0, 1, false, true, MonsterRole.CREEPER, MonsterDimension.OVERWORLD, 0, 0);
+                100, 0, 1, false, MonsterRole.CREEPER, MonsterDimension.OVERWORLD, 0, 0);
         var victim = new Participant(VICTIM, "Victim", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false);
         var winner = new Participant(WINNER, "Winner", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false);
         var initial = new RoundSnapshot(ROUND, 3, 12345, 0, RulesConfig.defaults(), RoundPhase.RUNNING,

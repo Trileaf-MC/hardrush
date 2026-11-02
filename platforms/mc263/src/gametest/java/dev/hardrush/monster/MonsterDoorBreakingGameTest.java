@@ -1,15 +1,11 @@
 package dev.hardrush.monster;
 
-import dev.hardrush.core.round.Participant;
 import dev.hardrush.gametest.MonsterRoleGameTest;
 import dev.hardrush.gametest.RuntimeFixtures;
-import dev.hardrush.protection.ProtectionRuntime;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -143,13 +139,10 @@ public final class MonsterDoorBreakingGameTest {
             }
             f.door(Blocks.OAK_DOOR);
             test.assertTrue(f.use(), "Begin outside protection"); f.hold(200);
-            try (var ignored = f.protect(Vec3.atCenterOf(f.lower))) {
+            try (var ignored = f.protect()) {
                 f.tick(40);
                 test.assertTrue(f.level.getBlockState(f.lower).is(Blocks.OAK_DOOR), "New protection cancels an in-progress break");
-                test.assertFalse(f.use(), "Protected target cannot start another break");
-            }
-            try (var ignored = f.protect(f.player.position())) {
-                test.assertFalse(f.use(), "A protected player cannot break an unprotected target");
+                test.assertFalse(f.use(), "A protected level cannot start another break");
             }
         }
         test.succeed();
@@ -303,14 +296,8 @@ public final class MonsterDoorBreakingGameTest {
             } else level.setBlockAndUpdate(lower, state);
         }
         void open() { ((DoorBlock) level.getBlockState(lower).getBlock()).setOpen(player, level, level.getBlockState(lower), lower, true); }
-        RuntimeFixtures.Scope protect(Vec3 center) {
-            return RuntimeFixtures.protection(level.getServer(), new ProtectionRuntime.Access() {
-                public Optional<ProtectionRuntime.Zone> zone(ServerLevel candidate) {
-                    return candidate == level ? Optional.of(new ProtectionRuntime.Zone(UUID.randomUUID(), center, .1, false)) : Optional.empty();
-                }
-                public Optional<Participant> participant(UUID id) { return Optional.empty(); }
-                public boolean leaveProtection(UUID id, UUID playerId, int life) { return false; }
-            });
+        RuntimeFixtures.Scope protect() {
+            return RuntimeFixtures.protection(level.getServer(), candidate -> candidate == level);
         }
         @Override public void close() {
             MonsterRoles.clear(player);

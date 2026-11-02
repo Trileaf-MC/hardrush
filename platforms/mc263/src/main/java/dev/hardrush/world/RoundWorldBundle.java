@@ -154,7 +154,7 @@ public final class RoundWorldBundle implements AutoCloseable {
             };
             generators.put(dimension, ChunkGenerator.CODEC.encodeStart(ops, worldDimensions.get(key).orElseThrow().generator()).getOrThrow());
         }
-        var initial = new RoundWorldManifest(snapshot.roundId(), snapshot.seed(), snapshot.rules().encode(), generators, null, List.of());
+        var initial = new RoundWorldManifest(snapshot.roundId(), snapshot.seed(), snapshot.rules().encode(), generators, null);
         manifestIo = CompletableFuture.supplyAsync(() -> {
             try {
                 StorageGuard.requireWorldPreparation(root);
@@ -363,7 +363,7 @@ public final class RoundWorldBundle implements AutoCloseable {
         }
         if (!edits.isEmpty()) return;
         if (!safeStanding(rawLevel("overworld"), candidate)) throw new IllegalStateException("自然出生点安全校验失败");
-        var prepared = manifest.prepared(candidate, List.of());
+        var prepared = manifest.prepared(candidate);
         manifestIo = CompletableFuture.supplyAsync(() -> {
             try { StorageGuard.requireCapacity(root); prepared.write(root, manifestPath); return prepared; }
             catch (Exception error) { throw new java.util.concurrent.CompletionException(error); }
@@ -399,7 +399,6 @@ public final class RoundWorldBundle implements AutoCloseable {
         return state + ", queued=" + requested.size() + ", held=" + held.size() + ", requests=" + details + ", metrics=" + metrics();
     }
     public BlockPos spawn() { requireReady(); return manifest.spawn; }
-    public List<BlockPos> exits() { requireReady(); return manifest.exits; }
     public ServerLevel level(ResourceKey<Level> semantic) { requireReady(); return rawLevel(name(semantic)); }
     public Path manifestPath() { return manifestPath; }
 
