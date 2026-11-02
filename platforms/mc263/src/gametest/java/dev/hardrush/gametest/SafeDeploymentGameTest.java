@@ -161,6 +161,13 @@ public final class SafeDeploymentGameTest {
                 "The control ceiling is too low for the native zombie spawn box");
         test.assertTrue(SafeDeployment.canDeployAt(fixture.level, fixture.hunter, point),
                 "A ceiling above the player's real head may be below the visual monster's head");
+        fixture.level.setBlock(landing.above(), Blocks.STONE_SLAB.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.SlabBlock.TYPE, net.minecraft.world.level.block.state.properties.SlabType.TOP), 2);
+        fixture.hunter.setPose(net.minecraft.world.entity.Pose.CROUCHING);
+        test.assertTrue(fixture.hunter.getBoundingBox().getYsize() < 1.6, "The control body is actually crouching");
+        test.assertTrue(!SafeDeployment.canDeployAt(fixture.level, fixture.hunter, point),
+                "A crouching hunter still needs room to stand up at its landing");
+        fixture.hunter.setPose(net.minecraft.world.entity.Pose.STANDING);
         fixture.level.setBlock(landing.above(), Blocks.AIR.defaultBlockState(), 2);
         for (var floor : List.of(Blocks.GLASS, Blocks.OAK_LEAVES, Blocks.STONE_SLAB)) {
             fixture.level.setBlock(landing.below(), floor.defaultBlockState(), 2);
