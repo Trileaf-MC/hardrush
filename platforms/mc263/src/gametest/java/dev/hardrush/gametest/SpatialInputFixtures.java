@@ -27,7 +27,13 @@ final class SpatialInputFixtures {
         move(player, LobbyWorld.open(player.level().getServer()).landing(LobbyLayout.Landing.RESTORE_READY));
         dev.hardrush.lobby.HumanEntry.tick(player.level().getServer());
     }
+    /** The historical revive command: stand on the altar's north-west gold cell; the rite submits after the portal delay. */
+    static void standOnAltar(ServerPlayer player) {
+        var lobby = LobbyWorld.open(player.level().getServer());
+        move(player, lobby.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.ALTAR)).add(-1, 1, -1));
+    }
     static boolean handle(ServerPlayer player, String command) {
+        if (command.equals("hardrush revive")) { standOnAltar(player); return true; }
         if (!command.equals("hardrush join") && !command.equals("hardrush ready") && !command.equals("hardrush unready")) return false;
         var server = player.level().getServer();
         var round = RoundRuntime.snapshot(server).orElseThrow(); var lobby = LobbyWorld.open(server);

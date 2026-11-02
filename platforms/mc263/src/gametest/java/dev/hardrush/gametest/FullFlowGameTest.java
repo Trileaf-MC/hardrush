@@ -134,7 +134,7 @@ public final class FullFlowGameTest {
         if (System.getProperty(TestProperties.FULL_FLOW_FAULT,"none").equals("revival")) {
             seq.thenExecute(state::revivalFault)
                     .thenWaitUntil(()->f.await(state.io.isDone(),"Real SQLite revival fault installed"))
-                    .thenExecute(()->{state.io.join();state.expectedFailure=true;state.facility(f.monster.player,LobbyLayout.Facility.ALTAR);state.click(f.monster.player,"确认复生");})
+                    .thenExecute(()->{state.io.join();state.expectedFailure=true;state.altar(f.monster.player);})
                     .thenWaitUntil(()->f.await(f.session.state()==RoundSession.State.FAILED,"Revival write rejection enters isolation"))
                     .thenExecute(()->{
                         test.assertTrue(f.monster.participant().revivalEntitled(),"Failed transaction does not consume qualification");
@@ -147,13 +147,22 @@ public final class FullFlowGameTest {
         }
         seq.thenExecute(()->{
                     test.assertTrue(f.monster.participant().monsterCooldownNanos()>0,"Return starts sortie cooldown");
-                    state.facility(f.monster.player,LobbyLayout.Facility.ALTAR);
-                    test.assertTrue(state.has(f.monster.player,"剩余复生次数：1"),"Altar shows the viewer's entitlement");
-                    f.monster.player.connection.handleContainerClose(new ServerboundContainerClosePacket(f.monster.player.containerMenu.containerId));
-                    test.assertTrue(f.monster.participant().revivalEntitled(),"Closing confirmation consumes nothing");
-                    state.facility(f.monster.player,LobbyLayout.Facility.ALTAR);
-                    state.click(f.monster.player,"确认复生");state.clickIfPresent(f.monster.player,"确认复生");
-                    f.monster.player.connection.handleContainerClose(new ServerboundContainerClosePacket(f.monster.player.containerMenu.containerId));
+                    f.monster.player=f.monster.current();
+                    if(dev.hardrush.core.round.MonsterCoins.enabled(f.round().rules()))
+                        test.assertTrue(f.monster.player.position().distanceTo(LobbyWorld.open(f.server).landing(LobbyLayout.Landing.ALTAR))<.1,"A revival-earning kill summons the hunter to the altar steps");
+                    test.assertFalse(dev.hardrush.lobby.RevivalAltar.channeling(f.monster.player),"Arriving at the steps starts no rite");
+                    state.altar(f.monster.player);
+                })
+                .thenIdle(40)
+                .thenExecute(()->{
+                    test.assertTrue(dev.hardrush.lobby.RevivalAltar.channeling(f.monster.player),"Standing on the gold pad starts the rite");
+                    state.offAltar(f.monster.player);
+                })
+                .thenIdle(2)
+                .thenExecute(()->{
+                    test.assertFalse(dev.hardrush.lobby.RevivalAltar.channeling(f.monster.player),"Stepping off cancels the rite");
+                    test.assertTrue(f.monster.participant().revivalEntitled()&&f.monster.participant().role()==ParticipantRole.MONSTER_LOBBY,"A cancelled rite consumes nothing");
+                    state.altar(f.monster.player);
                 })
                 .thenWaitUntil(()->f.await(f.round().phase()==RoundPhase.RUNNING&&f.monster.participant().role()==ParticipantRole.HUMAN_ACTIVE&&f.monster.participant().online()
                         && !dev.hardrush.player.PlayerProfiles.isLocked(f.monster.player)&&!f.session.mutationPending(),"Altar restores challenge and one empty life during cooldown"))
@@ -182,7 +191,7 @@ public final class FullFlowGameTest {
                 })
                 .thenWaitUntil(()->f.await(f.round().phase()==RoundPhase.RUNNING&&visitor.participant()!=null&&visitor.participant().online()
                         &&!dev.hardrush.player.PlayerProfiles.isLocked(visitor.player)&&!f.session.mutationPending(),"Standing in the circle independently rescues challenge"))
-                .thenExecute(()->{state.facility(f.target.player,LobbyLayout.Facility.ALTAR);state.click(f.target.player,"确认复生");})
+                .thenExecute(()->state.altar(f.target.player))
                 .thenWaitUntil(()->f.await(f.target.participant().role()==ParticipantRole.HUMAN_ACTIVE&&f.target.participant().online()
                         &&!dev.hardrush.player.PlayerProfiles.isLocked(f.target.player)&&!f.session.mutationPending(),"Second altar consumes entitlement once"))
                 .thenWaitUntil(()->f.await(f.monster.current()!=null&&f.monster.current().isAlive()&&f.profiles.isReady(f.monster.profile.id(),f.round()),"Other dead human replacement verified"))
@@ -330,6 +339,9 @@ public final class FullFlowGameTest {
             test.assertTrue(f.monster.participant().equals(participant) && !f.session.mutationPending(), "Opening and closing never commits a monster exit");
         }
         void use(ServerPlayer p,int slot){p.connection.handleSetCarriedItem(new ServerboundSetCarriedItemPacket(slot));p.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND,1,0,0));}
+        /** Stand on the altar's north-west gold cell; the rite itself runs on server ticks. */
+        void altar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),l.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.ALTAR)).add(-1,1,-1));}
+        void offAltar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),l.landing(LobbyLayout.Landing.ALTAR));}
         void facility(ServerPlayer p,LobbyLayout.Facility facility){var l=LobbyWorld.open(f.server);var pos=BlockPos.containing(l.layoutPosition(LobbyLayout.facility(facility)));move(p,l.holdingLevel(),Vec3.atBottomCenterOf(pos.south(2)));p.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,new BlockHitResult(Vec3.atCenterOf(pos),Direction.UP,pos,false),2));test.assertTrue(LobbyMenus.isMenu(p),"Physical facility opened "+facility);}
         boolean has(ServerPlayer p,String label){for(int n=0;n<45&&n<p.containerMenu.slots.size();n++)if(p.containerMenu.getSlot(n).getItem().getHoverName().getString().contains(label))return true;return false;}
         void click(ServerPlayer p,String label){java.util.concurrent.locks.LockSupport.parkNanos(LobbyMenus.BUTTON_COOLDOWN_NANOS+1_000_000);test.assertTrue(clickIfPresent(p,label),"Expected native menu action: "+label);}

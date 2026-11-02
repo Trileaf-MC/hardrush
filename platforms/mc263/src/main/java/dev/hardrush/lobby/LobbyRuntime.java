@@ -104,7 +104,7 @@ public final class LobbyRuntime {
                         if (!LobbyMenus.open(player)) tell(player, "大厅档案尚未就绪，或当前身份不能打开菜单。");
                         return 1;
                     }));
-            for (String action : List.of("deploy", "return", "revive", "skill")) {
+            for (String action : List.of("deploy", "return", "skill")) {
                 root.then(Commands.literal(action).executes(ctx -> {
                     command(ctx.getSource().getPlayerOrException(), action, ""); return 1;
                 }));
@@ -176,7 +176,6 @@ public final class LobbyRuntime {
             @Override public List<LobbyMenus.Button> buttons(ServerPlayer player, LobbyContext context) {
                 if (context == LobbyContext.WITHDRAWAL) return dev.hardrush.participation.ParticipationControl.withdrawalButtons(player);
                 if (context == LobbyContext.COMPETITION) return buttons(player);
-                if (context == LobbyContext.REVIVAL) return altarButtons(player, binding);
                 if (context == LobbyContext.HISTORY) return dev.hardrush.record.HistoryLibrary.buttons(player);
                 var round = session.snapshot().orElseThrow();
                 return List.of(new LobbyMenus.Button(Items.BOOK, "站入集结区参加，离开取消准备", "info", ""),
@@ -184,10 +183,10 @@ public final class LobbyRuntime {
                         new LobbyMenus.Button(Items.CLOCK, "右键快捷栏技能；回响碎片归返营地，追迹罗盘发光时可循迹回到目标附近；引导中移动、攻击、用物或受伤会中断", "info", ""),
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "极限：人类击杀在赛人类每人 +1 次复生；击杀怪物不奖励", "info", ""),
                         new LobbyMenus.Button(Items.ROTTEN_FLESH, "怪物击杀在赛人类：每人 +1 次复生，可累计", "info", ""),
-                        new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "死亡后到营地祭坛消耗一次空装复生，冷却中可用", "info", ""),
+                        new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "死亡后走上营地北侧的复生祭坛，站在金块上 4 秒消耗一次空装复生，冷却中可用", "info", ""),
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "营地背包的复生图腾数量即剩余次数；丢出可转赠营地怪物，落地5分钟作废", "info", ""),
                         new LobbyMenus.Button(Items.EMERALD, "怪物币：伤害人类、近期受玩家伤害后阵亡都能赚，领先者有悬赏倍率；找营地女巫购买下次出场的增强", "info", ""),
-                        new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "持有复生次数的怪物不能追猎、选角或交易，须先到祭坛复生；击杀人类后立即传回营地；复生时怪物币清空", "info", ""),
+                        new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "持有复生次数的怪物不能追猎、选角或交易，须先到祭坛复生；击杀人类后立即被召回祭坛前；复生时怪物币清空", "info", ""),
                         new LobbyMenus.Button(Items.TRIAL_KEY, "试炼钥匙插入营地宝库抽一件一次性装备；穿戴的装备被玩家击杀时按原版概率掉落", "info", ""),
                         new LobbyMenus.Button(Items.EXPERIENCE_BOTTLE, "出场时经验条就是你的身价：从 10 级起，伤害人类会上涨，最高 30 级；近期受玩家伤害后阵亡会喷出经验，满 15 级再掉一本同等级附魔台的署名附魔书", "info", ""),
                         new LobbyMenus.Button(Items.GRASS_BLOCK, "挑战中站入集结区 4 秒空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),
@@ -200,10 +199,6 @@ public final class LobbyRuntime {
                 if (context == LobbyContext.WITHDRAWAL) {
                     if (action.equals("withdraw-confirm")) dev.hardrush.participation.ParticipationControl.confirmWithdrawal(player, round, value);
                     else if (action.equals("withdraw-cancel")) player.closeContainer();
-                }
-                else if (context == LobbyContext.REVIVAL && action.equals("revive")) {
-                    var p = session.snapshot().orElseThrow().participants().get(player.getUUID());
-                    if (p != null && value.equals(p.lifeSequence() + ":" + p.monsterDeploymentSequence())) request(player, round, action, value);
                 }
                 else if (context == LobbyContext.HISTORY) dev.hardrush.record.HistoryLibrary.act(player, action, value);
                 else if (context == LobbyContext.COMPETITION) request(player, round, action, value);
@@ -235,7 +230,6 @@ public final class LobbyRuntime {
             case WITHDRAWAL -> dev.hardrush.participation.ParticipationControl.canWithdraw(player);
             case RULES -> verified;
             case HISTORY -> verified;
-            case REVIVAL -> verified && revivalAvailable(player, b);
             case DISPLAY -> verified && dev.hardrush.round.RoundRuntime.lobbyActivityAllowed(player);
             case COMPETITION -> verified && dev.hardrush.round.RoundRuntime.lobbyActivityAllowed(player)
                     && b.worlds.get() != null && b.worlds.get().ready()
@@ -731,6 +725,7 @@ public final class LobbyRuntime {
             var old = before.participants().get(p.id());
             if (old != null && old.role().isMonster() && p.role() == ParticipantRole.HUMAN_ACTIVE) {
                 b.reviving.add(p.id());
+                RevivalAltar.revived(server, p.id());
                 var revived = server.getPlayerList().getPlayer(p.id());
                 if (revived != null && MonsterRoles.isMonster(revived)) MonsterRoles.clear(revived);
                 b.channels.remove(p.id()); b.retracks.remove(p.id()); b.searches.remove(p.id()); b.resumptions.remove(p.id());
@@ -745,7 +740,7 @@ public final class LobbyRuntime {
                     boolean recalled = old.role() == ParticipantRole.MONSTER_DEPLOYED && p.role() == ParticipantRole.MONSTER_LOBBY
                             && dev.hardrush.core.round.MonsterCoins.enabled(after.rules());
                     tell(owner, "复生次数增加 " + (p.revivalCharges() - old.revivalCharges()) + "，剩余 " + p.revivalCharges()
-                            + (recalled ? " 次；已传回营地，请前往复生祭坛复生。" : " 次；成为大厅怪物后可在祭坛确认空装复生。"));
+                            + (recalled ? " 次；已被召回复生祭坛前，走上祭坛站立 4 秒复生。" : " 次；回到营地后走上复生祭坛站立 4 秒空装复生。"));
                     sound(owner, true);
                 }
             }
@@ -755,6 +750,13 @@ public final class LobbyRuntime {
             b.channels.remove(p.id()); b.retracks.remove(p.id());
             MonsterRoles.clear(player);
             b.profiles.returnMonsterToLobby(player, after);
+            // A kill that earned a revival in a coin round is summoned to the altar's steps, facing the beam.
+            // A dead body was replaced by its native respawn, so look the player up again.
+            var summoned = server.getPlayerList().getPlayer(p.id());
+            if (dev.hardrush.core.round.MonsterCoins.enabled(after.rules()) && p.revivalCharges() > old.revivalCharges()
+                    && summoned != null && dev.hardrush.world.LobbyWorld.isLobby(summoned.level())
+                    && dev.hardrush.world.LobbyWorld.open(server).safeLanding(LobbyLayout.Landing.ALTAR))
+                b.profiles.placeInLobby(summoned, LobbyLayout.Landing.ALTAR);
         }
     }
     /** A camp monster holding a revival is pointed to the altar instead of hunting, choosing or shopping. */
@@ -889,7 +891,7 @@ public final class LobbyRuntime {
                         : validTarget(b, player, player.level()) && !dimension(b, player.level()).equals("lobby")
                         ? LobbyProjections.State.AVAILABLE : LobbyProjections.State.CLOSED;
                 if (state == LobbyProjections.State.AVAILABLE && b.reviving.remove(p.id()) && player != null) {
-                    tell(player, "复生完成：已空装恢复人类，位于本轮自然出生点，无出生保护。"); sound(player, true);
+                    tell(player, "复生完成：已空装恢复人类，位于本轮自然出生点，无出生保护。");
                 }
             }
             targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state,
@@ -1011,32 +1013,42 @@ public final class LobbyRuntime {
             buttons.add(new LobbyMenus.Button(Items.OAK_DOOR, "引导返回大厅（5 秒）", "return", ""));
             buttons.add(new LobbyMenus.Button(Items.PLAYER_HEAD, "右键庭院模型直接追猎 · 当前 " + kindName(p.monsterRole())
                     + " · 出场冷却 " + seconds(p.monsterCooldownNanos()) + " 秒", "info", ""));
-            buttons.add(new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "剩余复生次数：" + p.revivalCharges() + " · 请到祭坛确认空装复生", "info", ""));
+            buttons.add(new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "剩余复生次数：" + p.revivalCharges() + " · 走上营地北侧复生祭坛站立 4 秒空装复生", "info", ""));
 
         }
         return buttons;
     }
-    private static boolean revivalAvailable(ServerPlayer player, Binding b) {
-        var r = b.session.snapshot().orElse(null);
-        var p = r == null ? null : r.participants().get(player.getUUID());
-        return r != null && !b.session.competitionLocked() && (r.phase() == RoundPhase.RUNNING || r.phase() == RoundPhase.RESCUE)
-                && p != null && p.online() && p.role() == ParticipantRole.MONSTER_LOBBY
-                && player.position().distanceToSqr(dev.hardrush.world.LobbyWorld.open(player.level().getServer())
-                    .layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.ALTAR))) <= 25;
-    }
-    public static void altar(ServerPlayer player) {
+    /** Why the altar cannot begin a rite for this camp body now; null when it can. */
+    static String altarRefusal(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());
-        if (b == null || !contextAvailable(player, b, LobbyContext.REVIVAL)) { tell(player, "祭坛仅供极限挑战／救场中的大厅怪物使用。"); return; }
-        LobbyMenus.open(player, LobbyContext.REVIVAL);
+        var r = b == null ? null : b.session.snapshot().orElse(null);
+        if (r == null || b.session.state() != RoundSession.State.OPEN || r.phase() == RoundPhase.RECOVERY_REQUIRED) return "恢复核验中，祭坛暂停";
+        if (r.rules().mode() == dev.hardrush.core.config.GameMode.NORMAL) return "普通模式死亡后按原版重生，祭坛不开放";
+        var p = r.participants().get(player.getUUID());
+        if (p != null && p.role() == ParticipantRole.WITHDRAWN) return "你已退出本轮，下一轮恢复资格";
+        if (p != null && p.role() == ParticipantRole.DISQUALIFIED) return "你已被取消本轮资格，下一轮恢复资格";
+        if (r.phase() != RoundPhase.RUNNING && r.phase() != RoundPhase.RESCUE) return "祭坛沉寂中 · 极限挑战中死去的玩家会在这里复生";
+        if (p == null || !p.role().isMonster()) return "祭坛只回应持有复生图腾的怪物 · 参赛请到集结区";
+        if (p.role() != ParticipantRole.MONSTER_LOBBY || !p.online()) return "身份转换中，请稍候";
+        if (b.session.competitionLocked() || !lobbyAvailable(player, b)) return "本轮正在保存 · 稍候即可复生";
+        if (p.revivalCharges() - CampTransfers.pending(player, CampTransfers.Kind.REVIVAL) <= 0)
+            return "尚无复生图腾 · 击杀在赛人类可获得，也可接住同伴丢来的图腾";
+        var worlds = b.worlds.get();
+        if (worlds == null || !worlds.ready() || !RoundWorldBundle.safeStanding(worlds.level(Level.OVERWORLD), worlds.spawn()))
+            return "本轮出生点暂不安全，保留资格，请联系管理员";
+        UUID id = player.getUUID();
+        if (b.committing.contains(id) || b.resumptions.containsKey(id) || b.pending.containsKey(id)) return "身份提交中，请稍候";
+        return null;
     }
-    private static List<LobbyMenus.Button> altarButtons(ServerPlayer player, Binding b) {
-        var p = b.session.snapshot().orElseThrow().participants().get(player.getUUID());
-        var buttons = new ArrayList<LobbyMenus.Button>();
-        buttons.add(new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, p.revivalEntitled() ? "剩余复生次数：" + p.revivalCharges() : "尚无复生资格 · 击杀在赛人类后获得", "info", ""));
-        buttons.add(new LobbyMenus.Button(Items.GRASS_BLOCK, "消耗一次复生，空装恢复人类 · 主世界自然出生点，无出生保护", "info", ""));
-        buttons.add(new LobbyMenus.Button(Items.PAPER, "保留本轮进度战绩；旧掉落不找回；出场冷却期间也可复生", "info", ""));
-        if (p.revivalEntitled()) buttons.add(new LobbyMenus.Button(Items.EMERALD, b.committing.contains(p.id()) ? "正在复生" : "确认复生", b.committing.contains(p.id()) ? "info" : "revive", p.lifeSequence() + ":" + p.monsterDeploymentSequence()));
-        return buttons;
+    /** A completed altar rite: the same durable revival request; its reply is told to the player. */
+    static void beginRevival(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        var round = b == null ? null : b.session.snapshot().orElse(null);
+        if (round != null) request(player, round.roundId(), "revive", "");
+    }
+    static boolean reviveCommitting(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        return b != null && b.committing.contains(player.getUUID());
     }
     private static void hint(ServerPlayer player, String source, dev.hardrush.core.lobby.LobbyHints.Priority priority, String text) {
         LobbyInteractions.get(player.level().getServer()).ifPresent(router -> router.hints(player).offer(source, priority, text, System.nanoTime() / 1_000_000 + 300));

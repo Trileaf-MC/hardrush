@@ -20,6 +20,15 @@ class LobbyFoundationTest {
             assertTrue(a.x() >= LobbyLayout.MIN_X && a.x() <= LobbyLayout.MAX_X && a.z() >= LobbyLayout.MIN_Z && a.z() <= LobbyLayout.MAX_Z);
         }
         assertTrue(16 - LobbyLayout.ASSEMBLY.radius() >= 6);
+        var altar = LobbyLayout.facility(LobbyLayout.Facility.ALTAR);
+        var foot = LobbyLayout.landing(LobbyLayout.Landing.ALTAR);
+        assertFalse(LobbyLayout.onAltarPad(0, 0), "The beacon is not a standing cell");
+        assertFalse(LobbyLayout.onAltarPad((int)(foot.x() - altar.x()), (int)(foot.z() - altar.z())), "Arrival never starts a rite");
+        for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
+            assertEquals(Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && (dx != 0 || dz != 0), LobbyLayout.onAltarPad(dx, dz));
+            assertFalse(LobbyLayout.ASSEMBLY.contains(altar.x() + dx, altar.z() + dz));
+            assertFalse(LobbyLayout.MONSTER_CAMP.contains(altar.x() + dx, altar.z() + dz));
+        }
     }
     @Test void progressAndRecoveryBeatFacilityHintsAndExpireDeterministically() {
         var hints = new LobbyHints();

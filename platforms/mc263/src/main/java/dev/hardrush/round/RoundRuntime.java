@@ -333,6 +333,9 @@ public final class RoundRuntime {
             finally {
                 try { dev.hardrush.pact.DuskPactRuntime.tick(server); }
                 catch (RuntimeException error) { session.adapterFailure("黄昏契约状态更新失败", error); }
+                // The altar's hints feed the same action bar, so it runs before feedback renders.
+                try { session.snapshot().ifPresent(round -> dev.hardrush.lobby.RevivalAltar.tick(server, round, session)); }
+                catch (RuntimeException error) { LOGGER.error("Revival altar update failed", error); }
                 session.view().ifPresent(round -> dev.hardrush.lobby.PlayerFeedback.tick(server, round, session));
                 try { session.view().ifPresent(round -> dev.hardrush.hunt.HuntBossBars.tick(server, round, session)); }
                 catch (RuntimeException error) { LOGGER.error("Hunt boss bar update failed", error); }
@@ -343,6 +346,7 @@ public final class RoundRuntime {
             LobbyRuntime.disconnected(handler.player);
             dev.hardrush.record.HistoryLibrary.disconnected(handler.player);
             dev.hardrush.lobby.HumanEntry.disconnected(handler.player);
+            dev.hardrush.lobby.RevivalAltar.disconnected(handler.player);
             dev.hardrush.hunt.HuntBossBars.disconnected(handler.player);
             var session = SESSIONS.get(server);
             if (session != null) session.onOnline(handler.player.getUUID(), handler.player.getScoreboardName(), false);
@@ -453,6 +457,7 @@ public final class RoundRuntime {
             CombatRuntime.unconfigure(server);
             dev.hardrush.pact.DuskPactRuntime.close(server);
             dev.hardrush.lobby.HumanEntry.close(server);
+            dev.hardrush.lobby.RevivalAltar.close(server);
             LobbyWorld.shutdown(server);
         });
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->

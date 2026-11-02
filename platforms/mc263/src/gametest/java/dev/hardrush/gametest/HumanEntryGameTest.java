@@ -187,6 +187,13 @@ public final class HumanEntryGameTest {
                     var hint = f.hint(f.a);
                     test.assertTrue(hint.contains("本轮世界准备中"), "A closed circle explains itself instead of relocating: " + hint);
                     test.assertTrue(LobbyWorld.open(f.server).inAssembly(f.a.player, true), "Preparation never relocates the waiting player");
+                    test.assertTrue(f.altarGlass().is(Blocks.TINTED_GLASS), "A dormant altar's tinted glass stops the beam");
+                    f.altar(f.b);
+                })
+                .thenIdle(3)
+                .thenExecute(() -> {
+                    test.assertTrue(f.hint(f.b).contains("祭坛沉寂中"), "The altar explains itself outside a challenge: " + f.hint(f.b));
+                    test.assertFalse(dev.hardrush.lobby.RevivalAltar.channeling(f.b.player), "A dormant altar starts no rite");
                 })
                 .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.COUNTDOWN && f.ready(f.a) && f.idle(), "Standing in the circle when it opens prepares automatically"))
                 .thenExecute(() -> f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY))
@@ -209,6 +216,15 @@ public final class HumanEntryGameTest {
                     test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(f.a.player), "A dead UUID cannot start admission guidance");
                     test.assertTrue(f.hint(f.a).contains("化身怪物"), "The circle points a monster to the courtyard and altar");
                     test.assertValueEqual(f.round().participants().get(f.a.profile.id()).role(), dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY, "The circle cannot restore a dead UUID");
+                    test.assertTrue(f.altarGlass().is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW)), "A hardcore challenge lights the altar's beam");
+                    f.altar(f.a);
+                })
+                .thenIdle(10)
+                .thenExecute(() -> {
+                    test.assertTrue(LobbyWorld.open(f.server).onAltar(f.a.player), "The gold pad is a standing cell");
+                    test.assertFalse(dev.hardrush.lobby.RevivalAltar.channeling(f.a.player), "A monster without totems starts no rite");
+                    test.assertTrue(f.hint(f.a).contains("尚无复生图腾"), "The altar tells a totemless monster how to earn one: " + f.hint(f.a));
+                    test.assertValueEqual(f.round().participants().get(f.a.profile.id()).role(), dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY, "Standing on the altar without a totem changes nothing");
                     f.a.disconnect(); f.b.disconnect();
                     f.reopenLegacyCamp("PREPARED", false);
                 })
@@ -266,6 +282,16 @@ public final class HumanEntryGameTest {
         boolean idle() { return !session.mutationPending(); }
         boolean ready(Peer peer) { var p = round().participants().get(peer.profile.id()); return p != null && p.ready(); }
         void place(Peer peer, dev.hardrush.core.lobby.LobbyLayout.Landing landing) { profiles.placeInLobby(peer.player, landing); peer.acknowledge(); }
+        /** Onto the altar's north-west gold cell. */
+        void altar(Peer peer) {
+            var lobby = LobbyWorld.open(server);
+            var pos = lobby.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(dev.hardrush.core.lobby.LobbyLayout.Facility.ALTAR)).add(-1, 1, -1);
+            peer.player.teleportTo(lobby.holdingLevel(), pos.x, pos.y, pos.z, java.util.Set.of(), 0, 0, true); peer.acknowledge();
+        }
+        net.minecraft.world.level.block.state.BlockState altarGlass() {
+            var lobby = LobbyWorld.open(server);
+            return lobby.holdingLevel().getBlockState(dev.hardrush.world.CampBlueprint.altarGlass(BlockPos.containing(lobby.holdingSpawn())));
+        }
         final java.util.concurrent.LinkedBlockingQueue<Runnable> held = new java.util.concurrent.LinkedBlockingQueue<>();
         boolean hold, cancelSeen;
         void callbacks() {

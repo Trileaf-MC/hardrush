@@ -719,7 +719,7 @@ public final class RoundEngine {
         return player;
     }
 
-    public static final String REVIVAL_FIRST = "你持有复生次数，请先到营地的复生祭坛复生。";
+    public static final String REVIVAL_FIRST = "你持有复生次数，请先走上营地北侧的复生祭坛站立 4 秒复生。";
 
     /** In a coin round, a monster holding a revival returns to the race instead of hunting on. */
     private static void requireNoRevival(RulesConfig rules, Participant player) {

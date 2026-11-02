@@ -59,9 +59,9 @@ public final class PlayerFeedback {
             else if(PlayerProfiles.simulationFrozen(player) && !dev.hardrush.celebration.CelebrationRuntime.arena(player))
                 hints.offer("profile",LobbyHints.Priority.RECOVERY,"正在核验／应用个人档案，请稍候",now+300);
             if(p!=null&&p.role()==ParticipantRole.MONSTER_LOBBY&&p.revivalEntitled()&&dev.hardrush.core.round.MonsterCoins.enabled(r.rules()))
-                hints.offer("revival",LobbyHints.Priority.FACILITY,"持有复生次数 "+p.revivalCharges()+" · 请到复生祭坛右键复生，复生前不能追猎或交易",now+300);
+                hints.offer("revival",LobbyHints.Priority.FACILITY,"持有复生图腾 "+p.revivalCharges()+" 个 · 走上营地北侧复生祭坛站立 4 秒复生，复生前不能追猎或交易",now+300);
             if(r.phase()==RoundPhase.RESCUE)
-                hints.offer("rescue",LobbyHints.Priority.FACILITY,"救场剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · 祭坛复生或站入集结区参赛恢复挑战",now+300);
+                hints.offer("rescue",LobbyHints.Priority.FACILITY,"救场剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · 站上祭坛复生或站入集结区参赛恢复挑战",now+300);
             else if(r.phase()==RoundPhase.RUNNING && humans>0 && r.onlineHumans()==0)
                 hints.offer("away",LobbyHints.Priority.FACILITY,"人类暂离，挑战计时暂停；资格保留，暂无可追猎目标",now+300);
             if(dev.hardrush.celebration.CelebrationRuntime.arena(player)) {
@@ -77,7 +77,7 @@ public final class PlayerFeedback {
                     if(player.position().distanceToSqr(lobby.layoutPosition(LobbyLayout.facility(facility)))>16)continue;
                     String text=switch(facility) {
                         case RULES -> "右键规则讲台阅读玩法"; case HISTORY -> "右键书屋 · 轮次／名单／分榜／主册与分卷";
-                        case ALTAR -> p!=null&&p.revivalEntitled()?"剩余复生 " + p.revivalCharges() + " 次 · 右键祭坛确认，冷却期间可用":"尚无复生资格 · 击杀在赛人类后获得";
+                        case ALTAR -> p!=null&&p.role()==ParticipantRole.MONSTER_LOBBY&&p.revivalEntitled()?"剩余复生 " + p.revivalCharges() + " 次 · 走上金块站立 4 秒复生，冷却期间可用":"复生祭坛 · 持复生图腾的怪物站上金块 4 秒复生";
                         case ZOMBIE, SKELETON, CREEPER -> "右键怪物模型选择角色，之后右键目标模型追猎";
                         case PREVIOUS, NEXT -> "右键翻阅本人的追猎庭院";
                         case MERCHANT -> "女巫商人 · 选好角色后右键，用怪物币购买下次出场的增强";
