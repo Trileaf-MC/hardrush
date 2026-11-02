@@ -49,7 +49,10 @@ public final class MonsterShop {
     public static boolean isShop(ServerPlayer player) { return player.containerMenu instanceof ShopMenu; }
 
     /** What the witch sells, also used for the camp projection of paid goods. */
-    public static ItemStack goods(ShopOffer offer, dev.hardrush.core.config.RulesConfig rules) {
+    public static ItemStack goods(ShopOffer offer, dev.hardrush.core.config.RulesConfig rules) { return goods(offer, rules, 0); }
+
+    /** {@code owned} names the next soulcatcher step; other goods ignore it. */
+    private static ItemStack goods(ShopOffer offer, dev.hardrush.core.config.RulesConfig rules, int owned) {
         int arrows = MonsterCoins.amount(rules, MonsterCoins.ARROWS_PER_BUNDLE);
         var stack = switch (offer) {
             case ADULT_EGG, BABY_EGG -> new ItemStack(Items.ZOMBIE_SPAWN_EGG);
@@ -61,15 +64,28 @@ public final class MonsterShop {
             case CHARGED -> new ItemStack(Items.CREEPER_HEAD);
             case TRIAL_KEY -> new ItemStack(Items.TRIAL_KEY);
             case OMINOUS_KEY -> new ItemStack(Items.OMINOUS_TRIAL_KEY);
+            case SOULCATCHER_TIER -> new ItemStack(Items.DYED_BUNDLE.pick(SOULCATCHER_COLORS[Math.min(owned + 1, 3)]));
+            case SOULCATCHER_CAPACITY -> new ItemStack(Items.BUNDLE);
         };
         stack.set(DataComponents.CUSTOM_NAME, Component.literal(offer.title())
-                .withStyle(Style.EMPTY.withItalic(false).withColor(offer.key() ? ChatFormatting.AQUA : ChatFormatting.YELLOW)));
-        stack.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(description(offer))
-                .withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GRAY)))));
+                .withStyle(Style.EMPTY.withItalic(false).withColor(offer.key() ? ChatFormatting.AQUA
+                        : offer.permanent() ? ChatFormatting.LIGHT_PURPLE : ChatFormatting.YELLOW)));
+        var lore = new ArrayList<Component>();
+        lore.add(Component.literal(description(offer, owned)).withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GRAY)));
+        if (offer.permanent()) lore.add(Component.literal("本轮内以僵尸出场一直有效；复生为人类后清空")
+                .withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.DARK_GRAY)));
+        stack.set(DataComponents.LORE, new ItemLore(lore));
         return stack;
     }
 
-    private static String description(ShopOffer offer) {
+    private static final net.minecraft.world.item.DyeColor[] SOULCATCHER_COLORS = {net.minecraft.world.item.DyeColor.WHITE,
+            net.minecraft.world.item.DyeColor.YELLOW, net.minecraft.world.item.DyeColor.CYAN, net.minecraft.world.item.DyeColor.PURPLE};
+    private static final String[] SOULCATCHER_STEPS = {
+            "升为罕见拘魂袋：可收编骷髅类、蜘蛛类、蠹虫、末影螨、史莱姆、岩浆怪、幻翼",
+            "升为稀有拘魂袋：可收编苦力怕、女巫、掠夺者、卫道士、凋灵骷髅、烈焰人、猪灵、疣猪兽及中立与被动生物",
+            "升为史诗拘魂袋：可收编唤魔者、劫掠兽、猪灵蛮兵、旋风人、恶魂、恼鬼、凋灵、监守者、远古守卫者"};
+
+    private static String description(ShopOffer offer, int owned) {
         return switch (offer) {
             case ADULT_EGG -> "下次出场多带 1 枚成年僵尸蛋";
             case BABY_EGG -> "下次出场多带 1 枚幼年僵尸蛋";
@@ -81,6 +97,8 @@ public final class MonsterShop {
             case CHARGED -> "下次出场成为闪电苦力怕，爆炸威力翻倍";
             case TRIAL_KEY -> "插入营地的试炼宝库，抽取一件装备";
             case OMINOUS_KEY -> "插入营地的不祥宝库，奖池更好";
+            case SOULCATCHER_TIER -> SOULCATCHER_STEPS[Math.min(owned, SOULCATCHER_STEPS.length - 1)];
+            case SOULCATCHER_CAPACITY -> "拘魂袋多装 1 只生物";
         };
     }
 
@@ -116,7 +134,8 @@ public final class MonsterShop {
                     sound(player, SoundEvents.WITCH_CELEBRATE);
                     menu.afterPurchase();
                     var after = access.committed().map(s -> s.participants().get(player.getUUID())).orElse(null);
-                    if (after != null) tell(player, "已购买" + offer.title() + "，剩余 " + after.wallet().coins() + " 枚怪物币；下次出场自动带入。");
+                    if (after != null) tell(player, "已购买" + offer.title() + "，剩余 " + after.wallet().coins() + " 枚怪物币；"
+                            + (offer.permanent() ? "本轮以僵尸出场时一直有效。" : "下次出场自动带入。"));
                 });
     }
 
@@ -141,21 +160,31 @@ public final class MonsterShop {
             var built = new MerchantOffers();
             mapping.clear();
             for (var offer : ShopOffer.values()) {
-                if (!offer.sellableTo(role)) continue;
+                if (!offer.sellableTo(role) || !MonsterCoins.offered(rules, offer)) continue;
                 int bought = buyer.wallet().bought(offer), limit = MonsterCoins.limit(rules, offer);
                 int base = MonsterCoins.price(rules, offer, 0);
                 int price = MonsterCoins.price(rules, offer, Math.min(bought, limit - 1));
-                var cost = new ItemCost(Items.EMERALD, base).withComponents(builder -> builder
-                        .expect(DataComponents.CUSTOM_DATA, CampKit.coin(1).get(DataComponents.CUSTOM_DATA))
-                        .expect(DataComponents.CUSTOM_NAME, CampKit.coinName()));
-                var trade = new MerchantOffer(cost, Optional.empty(), goods(offer, rules),
-                        Math.min(bought, limit), limit, 0, 0);
-                // The native screen strikes through the base price once the doubling ladder has started.
-                trade.setSpecialPriceDiff(price - base);
+                var goods = goods(offer, rules, Math.min(bought, limit - 1));
+                MerchantOffer trade;
+                if (price <= MonsterCoins.STACK_PRICE) {
+                    trade = new MerchantOffer(coins(base), Optional.empty(), goods, Math.min(bought, limit), limit, 0, 0);
+                    // The native screen strikes through the base price once the doubling ladder has started.
+                    trade.setSpecialPriceDiff(price - base);
+                } else {
+                    // One native stack per payment slot: the remainder asks for the second slot.
+                    trade = new MerchantOffer(coins(MonsterCoins.STACK_PRICE), Optional.of(coins(price - MonsterCoins.STACK_PRICE)),
+                            goods, Math.min(bought, limit), limit, 0, 0);
+                }
                 built.add(trade);
                 mapping.put(trade, offer);
             }
             offers = built;
+        }
+
+        private static ItemCost coins(int count) {
+            return new ItemCost(Items.EMERALD, count).withComponents(builder -> builder
+                    .expect(DataComponents.CUSTOM_DATA, CampKit.coin(1).get(DataComponents.CUSTOM_DATA))
+                    .expect(DataComponents.CUSTOM_NAME, CampKit.coinName()));
         }
 
         @Override public void setTradingPlayer(Player player) {}
@@ -189,7 +218,9 @@ public final class MonsterShop {
                     && !slots.get(2).getItem().isEmpty()) {
                 var active = container.getActiveOffer();
                 var offer = trader.mapping.get(active);
-                if (offer != null) { purchase(server, this, offer, active.getCostA().getCount()); resync(); return; }
+                if (offer != null) {
+                    purchase(server, this, offer, active.getCostA().getCount() + active.getCostB().getCount()); resync(); return;
+                }
             }
             resync();
         }

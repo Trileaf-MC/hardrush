@@ -19,8 +19,8 @@ public final class MonsterCoins {
     public static final String SWIFTNESS_SECONDS = "coin.potion.swiftnessSeconds";
     public static final String FIRE_RESISTANCE_SECONDS = "coin.potion.fireResistanceSeconds";
     public static final String REGENERATION_SECONDS = "coin.potion.regenerationSeconds";
-    /** One trade slot holds one native emerald stack. */
-    public static final int MAX_PRICE = 64;
+    /** One trade slot holds one native emerald stack; a price above it spills into the second payment slot. */
+    public static final int STACK_PRICE = 64;
 
     private MonsterCoins() {}
 
@@ -33,6 +33,16 @@ public final class MonsterCoins {
         Double value = rules.combatValues().get(key);
         if (value == null) throw new IllegalStateException("本轮规则缺少怪物币参数：" + key);
         return (int) Math.min(Integer.MAX_VALUE, Math.round(value));
+    }
+
+    /** Base number of creatures a zombie's soulcatcher holds; rounds without it carry no soulcatcher. */
+    public static final String SOULCATCHER_CAPACITY = "soulcatcher.capacity";
+
+    public static boolean soulcatcher(RulesConfig rules) { return rules.combatValues().containsKey(SOULCATCHER_CAPACITY); }
+
+    /** Rounds saved before an offer existed have neither its price nor its limit, and the witch never stocks it. */
+    public static boolean offered(RulesConfig rules, ShopOffer offer) {
+        return rules.combatValues().containsKey(offer.priceKey()) && rules.combatValues().containsKey(offer.limitKey());
     }
 
     public static int limit(RulesConfig rules, ShopOffer offer) { return amount(rules, offer.limitKey()); }

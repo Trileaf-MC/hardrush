@@ -55,6 +55,7 @@
       "dev.hardrush.monster.MonsterCreeperGameTest",
       "dev.hardrush.monster.MonsterDoorBreakingGameTest",
       "dev.hardrush.gametest.MonsterCompanionGameTest",
+      "dev.hardrush.monster.MonsterSoulcatcherGameTest",
       "dev.hardrush.gametest.MonsterCloudGameTest",
       "dev.hardrush.monster.MonsterInventoryFormGameTest",
       "dev.hardrush.monster.MonsterSeaGameTest"

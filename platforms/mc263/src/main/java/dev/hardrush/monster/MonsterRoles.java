@@ -73,6 +73,9 @@ public final class MonsterRoles {
         UseBlockCallback.EVENT.register((p, l, hand, hit) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
             MonsterDoorBreaking.useBlock(owner, hit.getBlockPos());
+            if (MonsterSoulcatcher.holds(owner, hand)) {
+                markBagUse(owner); MonsterSoulcatcher.releaseOn(owner, hand, hit); return InteractionResult.CONSUME;
+            }
             if (isEgg(owner, owner.getItemInHand(hand))) {
                 MonsterCompanions.useOn(owner, hand, hit); return InteractionResult.CONSUME;
             }
@@ -83,6 +86,12 @@ public final class MonsterRoles {
         UseEntityCallback.EVENT.register((p, l, hand, target, hit) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
             MonsterDoorBreaking.clear(owner);
+            if (MonsterSoulcatcher.holds(owner, hand)) {
+                // The native client sends a positioned and a plain interaction for one click; only the plain one acts.
+                markBagUse(owner);
+                if (hit == null) MonsterSoulcatcher.capture(owner, hand, target);
+                return InteractionResult.CONSUME;
+            }
             if (useControl(owner, hand)) return InteractionResult.CONSUME;
             return MonsterRoundRuntime.canAct(owner) && MonsterInventory.storageEntity(target)
                     ? InteractionResult.PASS : InteractionResult.FAIL;
@@ -90,6 +99,11 @@ public final class MonsterRoles {
         UseItemCallback.EVENT.register((p, l, hand) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
             MonsterDoorBreaking.clear(owner);
+            if (MonsterSoulcatcher.holds(owner, hand)) {
+                // A click already spent on a creature or block also reaches here as an air use; it must not release.
+                if (!recentBagUse(owner)) MonsterSoulcatcher.releaseInLiquid(owner, hand);
+                return InteractionResult.CONSUME;
+            }
             useControl(owner, hand); return InteractionResult.CONSUME;
         });
         ServerLivingEntityEvents.ALLOW_DAMAGE.register(MonsterRoles::allowDamage);
@@ -160,6 +174,7 @@ public final class MonsterRoles {
                     .copyWithCount(1 + kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG)));
             player.getInventory().setItem(2, MonsterCompanions.egg(player, false, false)
                     .copyWithCount(1 + kit.carried(dev.hardrush.core.round.ShopOffer.ADULT_EGG)));
+            if (MonsterSoulcatcher.enabled(player)) player.getInventory().setItem(3, MonsterSoulcatcher.bag(player));
         } else if (form == MonsterForm.CREEPER) player.getInventory().setItem(0, MonsterCreeper.createIgniter(player));
         // A skeleton's volley lives on whichever bow it holds; MonsterBowDisplay explains it on the bow itself.
         player.getInventory().setItem(7, MonsterItems.bind(player,
@@ -193,6 +208,7 @@ public final class MonsterRoles {
             else leftovers.add(stack);
         }
         for (var stack : leftovers) inventory.add(stack);
+        if (role.form.zombie()) refreshSoulcatcher(player);
         if (body.selected() >= 0 && body.selected() < 9) inventory.setSelectedSlot(body.selected());
         if (body.charged()) MonsterCreeper.charge(player);
         for (var effect : body.effects()) player.addEffect(effect);
@@ -208,6 +224,38 @@ public final class MonsterRoles {
         }
         applyPurchases(player, kit, role.form, spares);
         repairLoadout(player);
+    }
+
+    /** The parked bag takes this deployment's tier and capacity; a body parked before the soulcatcher receives one. */
+    private static void refreshSoulcatcher(ServerPlayer player) {
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            if (MonsterItems.matches(player, inventory.getItem(i), MonsterSoulcatcher.PURPOSE)) {
+                inventory.setItem(i, MonsterSoulcatcher.refresh(player, inventory.getItem(i))); return;
+            }
+        }
+        if (MonsterSoulcatcher.enabled(player)) inventory.add(MonsterSoulcatcher.bag(player));
+    }
+
+    /** A zombie hatched from the role's own egg folds back into that egg; it never takes a soulcatcher place. */
+    static boolean returnEgg(ServerPlayer player, boolean baby) {
+        var role = ROLES.get(player.getUUID());
+        if (role == null) return false;
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            var stack = inventory.getItem(i);
+            if (MonsterItems.matches(player, stack, baby ? "baby_egg" : "adult_egg") && stack.getCount() < stack.getMaxStackSize()) {
+                stack.grow(1); return true;
+            }
+        }
+        return inventory.add(MonsterCompanions.egg(player, baby, role.form == MonsterForm.DROWNED));
+    }
+
+    private static final java.util.WeakHashMap<ServerPlayer, Integer> BAG_USE = new java.util.WeakHashMap<>();
+    private static void markBagUse(ServerPlayer player) { BAG_USE.put(player, player.level().getServer().getTickCount()); }
+    private static boolean recentBagUse(ServerPlayer player) {
+        Integer tick = BAG_USE.get(player);
+        return tick != null && player.level().getServer().getTickCount() - tick <= 1;
     }
 
     private static long channelSeconds(Role role) { return Math.max(1, (role.millis("monster.returnChannelMillis") + 999) / 1000); }

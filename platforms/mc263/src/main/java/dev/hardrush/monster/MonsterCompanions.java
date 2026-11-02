@@ -43,6 +43,8 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
+import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
+import net.minecraft.world.entity.monster.Vex;
 import net.minecraft.world.entity.monster.zombie.Drowned;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.npc.villager.Villager;
@@ -62,13 +64,18 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
-/** Native zombies with a persistent sortie owner; ordinary equipment, damage and death stay vanilla. */
+/**
+ * Native mobs with a persistent sortie owner: zombies hatched from the role's eggs, and creatures a
+ * soulcatcher releases as companions. Ordinary equipment, damage and death stay vanilla.
+ */
 public final class MonsterCompanions {
     private static final String OWNER = "hardrush.summon-owner=";
     private static final String EVENT = "hardrush.summon-event=";
     private static final String BINDING = "hardrush.companion-binding=";
     private static final String COMMAND = "hardrush.companion-target=";
     private static final String DISMISSING = "hardrush.companion-dismissing";
+    /** The role egg a companion hatched from; descendants never inherit it, so only that body folds back into the egg. */
+    private static final String HATCHED = "hardrush.companion-egg=";
     private static final Map<MinecraftServer, Map<UUID, Mob>> LOADED = new IdentityHashMap<>();
     private static final ThreadLocal<Deque<Entity>> INFECTION = ThreadLocal.withInitial(ArrayDeque::new);
     private static boolean initialized;
@@ -82,7 +89,11 @@ public final class MonsterCompanions {
             if (entity instanceof Mob mob && owner(mob) != null) {
                 LOADED.computeIfAbsent(level.getServer(), ignored -> new HashMap<>()).put(mob.getUUID(), mob);
                 if (activeOwner(mob) == null || isDismissing(mob)) dismiss(mob);
-                else if (mob instanceof Zombie zombie) configure(zombie);
+                else configure(mob);
+            } else if (entity instanceof Vex vex && owner(vex) == null && vex.getOwner() != null && owner(vex.getOwner()) != null) {
+                // An evoker companion's spell joins its vexes to the same sortie; the vex copies its evoker's target natively.
+                inherit(vex.getOwner(), vex);
+                LOADED.computeIfAbsent(level.getServer(), ignored -> new HashMap<>()).put(vex.getUUID(), vex);
             }
         });
         ServerEntityEvents.ENTITY_UNLOAD.register((entity, level) -> {
@@ -120,27 +131,58 @@ public final class MonsterCompanions {
     public static boolean useOn(ServerPlayer player, InteractionHand hand, BlockHitResult hit) {
         ItemStack stack = player.getItemInHand(hand);
         if (!usableEgg(player, stack)) return false;
-        var level = player.level();
-        BlockPos clicked = hit.getBlockPos();
-        if (!withinReach(player, clicked) || !loaded(level, clicked)
-                || level.getBlockEntity(clicked) instanceof Spawner
-                || ProtectionRuntime.rejectInteraction(player, level, clicked)) return false;
-        BlockPos spawn = level.getBlockState(clicked).getCollisionShape(level, clicked).isEmpty()
-                ? clicked : clicked.relative(hit.getDirection());
-        return spawn(player, stack, spawn, true, !clicked.equals(spawn) && hit.getDirection() == Direction.UP);
+        var landing = landingOn(player, hit);
+        return landing != null && spawn(player, stack, landing);
     }
 
     /** Vanilla egg air-use raycasts source liquids; ordinary air does not create a companion. */
     public static boolean use(ServerPlayer player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!usableEgg(player, stack)) return false;
+        var landing = landingInLiquid(player);
+        return landing != null && spawn(player, stack, landing);
+    }
+
+    /** Where a native spawn egg would put its mob; {@code moveDown} applies the native floor offset. */
+    public record Landing(BlockPos pos, boolean moveDown, boolean movedUp) {}
+
+    /** The clicked face, or the clicked block itself when it has no collision, as {@code SpawnEggItem.useOn} picks it. */
+    public static Landing landingOn(ServerPlayer player, BlockHitResult hit) {
+        var level = player.level();
+        BlockPos clicked = hit.getBlockPos();
+        if (!withinReach(player, clicked) || !loaded(level, clicked)
+                || level.getBlockEntity(clicked) instanceof Spawner
+                || ProtectionRuntime.rejectInteraction(player, level, clicked)) return null;
+        BlockPos spawn = level.getBlockState(clicked).getCollisionShape(level, clicked).isEmpty()
+                ? clicked : clicked.relative(hit.getDirection());
+        return new Landing(spawn, true, !clicked.equals(spawn) && hit.getDirection() == Direction.UP);
+    }
+
+    /** The first liquid source along the view, as {@code SpawnEggItem.use} finds it; under water that is the eye's own block. */
+    public static Landing landingInLiquid(ServerPlayer player) {
         Vec3 start = player.getEyePosition();
         Vec3 end = start.add(player.getViewVector(1).scale(player.getAttributeValue(Attributes.BLOCK_INTERACTION_RANGE)));
         BlockHitResult hit = player.level().clip(new ClipContext(start, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.SOURCE_ONLY, player));
         if (hit.getType() != HitResult.Type.BLOCK || !loaded(player.level(), hit.getBlockPos())
                 || !(player.level().getBlockState(hit.getBlockPos()).getBlock() instanceof LiquidBlock)
-                || ProtectionRuntime.rejectInteraction(player, player.level(), hit.getBlockPos())) return false;
-        return spawn(player, stack, hit.getBlockPos(), false, false);
+                || ProtectionRuntime.rejectInteraction(player, player.level(), hit.getBlockPos())) return null;
+        return new Landing(hit.getBlockPos(), false, false);
+    }
+
+    /** Positions {@code mob} at the landing like a native egg; false when the spot is unloaded, protected or obstructed. */
+    public static boolean place(ServerPlayer player, Mob mob, Landing landing) {
+        var level = player.level();
+        var pos = landing.pos();
+        if (!loaded(level, pos) || !level.getWorldBorder().isWithinBounds(pos) || ProtectionRuntime.protectedBlock(level, pos)) return false;
+        double offset = 0;
+        if (landing.moveDown()) {
+            mob.setPos(pos.getX() + .5, pos.getY() + 1, pos.getZ() + .5);
+            offset = CompanionSpawnAccessor.hardrush$spawnYOffset(level, pos, landing.movedUp(), mob.getBoundingBox());
+        }
+        mob.snapTo(pos.getX() + .5, pos.getY() + offset, pos.getZ() + .5,
+                Mth.wrapDegrees(level.getRandom().nextFloat() * 360), 0);
+        mob.yHeadRot = mob.getYRot(); mob.yBodyRot = mob.getYRot();
+        return safeBox(level, mob, mob.getBoundingBox());
     }
 
     private static boolean usableEgg(ServerPlayer player, ItemStack stack) {
@@ -149,24 +191,15 @@ public final class MonsterCompanions {
                 && (MonsterItems.matches(player, stack, "baby_egg") || MonsterItems.matches(player, stack, "adult_egg"));
     }
 
-    private static boolean spawn(ServerPlayer player, ItemStack stack, BlockPos pos, boolean moveDown, boolean movedUp) {
+    private static boolean spawn(ServerPlayer player, ItemStack stack, Landing landing) {
         var level = player.level();
-        if (!loaded(level, pos) || !level.getWorldBorder().isWithinBounds(pos)
-                || ProtectionRuntime.protectedBlock(level, pos)) return false;
+        var pos = landing.pos();
         boolean baby = MonsterItems.matches(player, stack, "baby_egg");
         EntityType<? extends Zombie> type = stack.is(Items.DROWNED_SPAWN_EGG) ? EntityTypes.DROWNED : EntityTypes.ZOMBIE;
         Zombie zombie = type.create(level, EntitySpawnReason.SPAWN_ITEM_USE);
         if (zombie == null) return false;
         zombie.setBaby(baby);
-        double offset = 0;
-        if (moveDown) {
-            zombie.setPos(pos.getX() + .5, pos.getY() + 1, pos.getZ() + .5);
-            offset = CompanionSpawnAccessor.hardrush$spawnYOffset(level, pos, movedUp, zombie.getBoundingBox());
-        }
-        zombie.snapTo(pos.getX() + .5, pos.getY() + offset, pos.getZ() + .5,
-                Mth.wrapDegrees(level.getRandom().nextFloat() * 360), 0);
-        zombie.yHeadRot = zombie.getYRot(); zombie.yBodyRot = zombie.getYRot();
-        if (!safeBox(level, zombie, zombie.getBoundingBox())) { zombie.discard(); return false; }
+        if (!place(player, zombie, landing)) { zombie.discard(); return false; }
         var difficulty = level.getCurrentDifficultyAt(zombie.blockPosition());
         // Explicit group data prevents vanilla creating an extra chicken before applying egg NBT.
         zombie.finalizeSpawn(level, difficulty, EntitySpawnReason.SPAWN_ITEM_USE, new Zombie.ZombieGroupData(baby, false));
@@ -178,6 +211,7 @@ public final class MonsterCompanions {
         zombie.entityTags().add(OWNER + player.getUUID());
         zombie.entityTags().add(EVENT + UUID.randomUUID());
         zombie.entityTags().add(BINDING + MonsterRoles.binding(player));
+        zombie.entityTags().add(HATCHED + (baby ? "baby" : "adult"));
         MonsterCombatRuntime.stampSource(zombie, player);
         configure(zombie);
         if (!level.addFreshEntity(zombie)) { zombie.discard(); return false; }
@@ -188,6 +222,11 @@ public final class MonsterCompanions {
     }
 
     public static UUID owner(Entity entity) { return uuidTag(entity, OWNER); }
+    /** Whether this companion hatched from the role's baby egg, adult egg, or neither. */
+    public static Optional<Boolean> hatchedBaby(Entity entity) {
+        String value = tag(entity, HATCHED);
+        return value == null ? Optional.empty() : Optional.of(value.equals("baby"));
+    }
     public static UUID event(Entity entity) { return uuidTag(entity, EVENT); }
     public static boolean isDismissing(Entity entity) { return entity != null && entity.entityTags().contains(DISMISSING); }
 
@@ -233,22 +272,42 @@ public final class MonsterCompanions {
         if (!MonsterRoundRuntime.canAct(player) || !target.isAlive() || target == player
                 || !MonsterRoles.legalTarget(player.getUUID(), player.level(), target)) return;
         for (Mob mob : companions(player.level().getServer())) {
-            if (!(mob instanceof Zombie zombie) || activeOwner(zombie) != player
-                    || zombie.level() != target.level() || !zombie.isAlive() || zombie == target) continue;
-            replaceTag(zombie, COMMAND, target.getUUID().toString());
-            if (allowedTarget(zombie, target) && !MonsterCombatRuntime.reject(zombie, target)) zombie.setTarget(target);
-            else replaceTag(zombie, COMMAND, null);
+            if (activeOwner(mob) != player || mob.level() != target.level() || !mob.isAlive() || mob == target) continue;
+            replaceTag(mob, COMMAND, target.getUUID().toString());
+            if (allowedTarget(mob, target) && !MonsterCombatRuntime.reject(mob, target)) mob.setTarget(target);
+            else replaceTag(mob, COMMAND, null);
         }
     }
 
-    /** Does not reset vanilla equipment, attributes, loot or existing target goals. */
-    public static void configure(Zombie zombie) {
-        if (owner(zombie) == null || isDismissing(zombie)) return;
-        var access = (MonsterMobAccessor) zombie;
+    /**
+     * Does not reset vanilla equipment, attributes, loot or existing target goals. Only goal-driven
+     * companions take orders; a walker also follows. A mount a jockey brought along keeps its own AI.
+     */
+    public static void configure(Mob mob) {
+        if (owner(mob) == null || isDismissing(mob)) return;
+        if (!(mob instanceof Zombie) && !(mob instanceof Vex) && !MonsterSoulcatcher.companionType(mob.getType())) return;
+        var access = (MonsterMobAccessor) mob;
         access.hardrush$goalSelector().removeAllGoals(goal -> goal instanceof CompanionFollowGoal);
         access.hardrush$targetSelector().removeAllGoals(goal -> goal instanceof CompanionCommandGoal);
-        access.hardrush$goalSelector().addGoal(4, new CompanionFollowGoal(zombie));
-        access.hardrush$targetSelector().addGoal(0, new CompanionCommandGoal(zombie));
+        if (!(mob instanceof Vex) && mob.getNavigation() instanceof GroundPathNavigation)
+            access.hardrush$goalSelector().addGoal(4, new CompanionFollowGoal(mob));
+        access.hardrush$targetSelector().addGoal(0, new CompanionCommandGoal(mob));
+    }
+
+    /** A creature the soulcatcher releases as this sortie's companion, with a fresh creation event. */
+    public static void adopt(ServerPlayer player, Mob mob) {
+        release(mob);
+        mob.entityTags().add(OWNER + player.getUUID());
+        mob.entityTags().add(EVENT + UUID.randomUUID());
+        mob.entityTags().add(BINDING + MonsterRoles.binding(player));
+        MonsterCombatRuntime.stampSource(mob, player);
+        configure(mob);
+    }
+
+    /** Strips every trace of an earlier sortie; the creature returns to its native allegiances. */
+    public static void release(Mob mob) {
+        for (String prefix : List.of(OWNER, EVENT, BINDING, COMMAND, HATCHED)) replaceTag(mob, prefix, null);
+        mob.entityTags().remove(DISMISSING);
     }
 
     public static void clearOwner(ServerPlayer player) {
@@ -293,7 +352,7 @@ public final class MonsterCompanions {
             catch (IllegalArgumentException exhaustedChain) { inherited = Optional.empty(); }
             holder.hardrush$sealCombatOrigin(inherited);
         }
-        if (child instanceof Zombie zombie) configure(zombie);
+        configure(child);
     }
 
     public interface InheritanceScope extends AutoCloseable { @Override void close(); }
@@ -324,9 +383,9 @@ public final class MonsterCompanions {
     }
 
     private static final class CompanionCommandGoal extends TargetGoal {
-        private final Zombie zombie;
+        private final Mob zombie;
         private LivingEntity ordered;
-        CompanionCommandGoal(Zombie zombie) { super(zombie, false); this.zombie = zombie; }
+        CompanionCommandGoal(Mob zombie) { super(zombie, false); this.zombie = zombie; }
         @Override public boolean canUse() {
             UUID targetId = uuidTag(zombie, COMMAND);
             Entity candidate = targetId == null ? null : ((ServerLevel) zombie.level()).getEntity(targetId);
@@ -349,11 +408,11 @@ public final class MonsterCompanions {
 
     /** Wolf-like same-dimension follow, with native pathing and a loaded, protected-area-safe teleport. */
     private static final class CompanionFollowGoal extends Goal {
-        private final Zombie zombie;
+        private final Mob zombie;
         private ServerPlayer player;
         private int recalc;
         private float waterCost;
-        CompanionFollowGoal(Zombie zombie) { this.zombie = zombie; setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK)); }
+        CompanionFollowGoal(Mob zombie) { this.zombie = zombie; setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK)); }
         @Override public boolean canUse() {
             player = activeOwner(zombie);
             return player != null && player.level() == zombie.level() && !zombie.isPassenger() && !zombie.isLeashed()

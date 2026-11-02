@@ -46,6 +46,6 @@ public abstract class MonsterCombatEntityMixin implements MonsterSourceHolder {
     }
     @Inject(method="ignoreExplosion", at=@At("HEAD"), cancellable=true)
     private void explosion(Explosion explosion, CallbackInfoReturnable<Boolean> ci) {
-        if (MonsterCombatRuntime.reject(explosion.getDirectSourceEntity(), (Entity)(Object)this)) ci.setReturnValue(true);
+        if (MonsterCombatRuntime.rejectExplosion(explosion.getDirectSourceEntity(), (Entity)(Object)this)) ci.setReturnValue(true);
     }
 }

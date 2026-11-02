@@ -276,12 +276,47 @@ class MonsterCoinsTest {
         assertEquals(snapshot, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(snapshot)));
     }
 
-    @Test void pricesMustFitOneEmeraldStackAfterDoubling() {
+    @Test void pricesMustFitTwoEmeraldStacksAfterDoubling() {
         var values = new TreeMap<>(RULES.combatValues());
-        values.put("coin.price.babyEgg", 40.0);
+        values.put("coin.price.babyEgg", 70.0);
         assertThrows(IllegalArgumentException.class, () -> new RulesConfig(RULES.schemaVersion(), RULES.mode(),
                 RULES.minecraftVersion(), RULES.difficulty(), RULES.generationRule(), values, RULES.protectionRadius(),
                 RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis()));
+    }
+
+    @Test void soulcatcherUpgradesLastTheWholeMonsterLifeAndAreNeverQueued() {
+        var wallet = chosen(400);
+        for (int price : new int[] {30, 60, 120}) wallet = wallet.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.SOULCATCHER_TIER, price);
+        wallet = wallet.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.SOULCATCHER_CAPACITY, 20);
+        assertEquals(3, wallet.owned(ShopOffer.SOULCATCHER_TIER));
+        assertEquals(0, wallet.ordered(ShopOffer.SOULCATCHER_TIER));
+        var topped = wallet;
+        var error = assertThrows(IllegalStateException.class,
+                () -> topped.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.SOULCATCHER_TIER, 240));
+        assertTrue(error.getMessage().contains("升到顶"));
+        // Deploying, ending sorties and choosing a role that cannot use it neither spend nor refund an upgrade.
+        wallet = wallet.deploy(RULES, MonsterRole.ZOMBIE).endSortie().chooseRole(RULES, MonsterRole.SKELETON)
+                .chooseRole(RULES, MonsterRole.ZOMBIE).deploy(RULES, MonsterRole.ZOMBIE).endSortie();
+        assertEquals(3, wallet.owned(ShopOffer.SOULCATCHER_TIER));
+        assertEquals(1, wallet.owned(ShopOffer.SOULCATCHER_CAPACITY));
+        assertEquals(400 - 30 - 60 - 120 - 20, wallet.coins());
+        assertEquals(40, wallet.nextPrice(RULES, ShopOffer.SOULCATCHER_CAPACITY), "The ladder continues across sorties");
+        assertThrows(IllegalStateException.class, () -> chosen(100).buy(RULES, MonsterRole.SKELETON, ShopOffer.SOULCATCHER_TIER, 30));
+    }
+
+    @Test void roundsSavedBeforeTheSoulcatcherNeitherCarryNorSellIt() {
+        var values = new TreeMap<>(RULES.combatValues());
+        values.keySet().removeIf(key -> key.contains("soulcatcher"));
+        var legacy = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+                RULES.generationRule(), values, RULES.protectionRadius(), RULES.startCountdownMillis(),
+                RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
+        assertFalse(MonsterCoins.soulcatcher(legacy));
+        assertFalse(MonsterCoins.offered(legacy, ShopOffer.SOULCATCHER_TIER));
+        assertTrue(MonsterCoins.soulcatcher(RULES));
+        var error = assertThrows(IllegalStateException.class,
+                () -> MonsterWallet.EMPTY.credit(30).chooseRole(legacy, MonsterRole.ZOMBIE)
+                        .buy(legacy, MonsterRole.ZOMBIE, ShopOffer.SOULCATCHER_TIER, 30));
+        assertTrue(error.getMessage().contains("不出售"));
     }
 
     @Test void roundsWithoutCoinRulesKeepTheEconomyDisabled() {
