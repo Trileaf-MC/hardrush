@@ -8,7 +8,7 @@ public final class LobbyLayout {
     public static final int MIN_X = -32, MAX_X = 31, MIN_Z = -24, MAX_Z = 23;
     public static final int DISPLAY_CAPACITY = 20;
     public enum Landing { CENTRAL, MONSTER, WAIT_OUTSIDE, RESTORE_READY }
-    public enum Facility { RULES, HISTORY, MIDROUND, ZOMBIE, SKELETON, CREEPER, PREVIOUS, NEXT, ALTAR, MERCHANT, VAULT, OMINOUS_VAULT }
+    public enum Facility { RULES, HISTORY, ZOMBIE, SKELETON, CREEPER, PREVIOUS, NEXT, ALTAR, MERCHANT, VAULT, OMINOUS_VAULT }
     public static final List<Facility> MONSTER_FACILITIES = List.of(Facility.ZOMBIE, Facility.SKELETON, Facility.CREEPER);
     /** The witch is a packet model like the role models; the two vaults are owned blocks added to existing camps. */
     public static final List<Facility> SHOP_FACILITIES = List.of(Facility.MERCHANT, Facility.VAULT, Facility.OMINOUS_VAULT);
@@ -35,7 +35,6 @@ public final class LobbyLayout {
         return switch (facility) {
             case RULES -> new Point(-16, -2, 90);
             case HISTORY -> new Point(-22, 3, 90);
-            case MIDROUND -> new Point(14, -16, 180);
             case ZOMBIE -> new Point(17, -4, 0);
             case SKELETON -> new Point(21, -4, 0);
             case CREEPER -> new Point(25, -4, 0);

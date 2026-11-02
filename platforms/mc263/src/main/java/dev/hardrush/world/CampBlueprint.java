@@ -32,32 +32,30 @@ public final class CampBlueprint {
         }
         // Nonfunctional areas are visibly marked closed until their delivery round.
         for (var p : LobbyLayout.displaySlots()) blocks.put(anchor.offset((int)p.x(), -1, (int)p.z()), Blocks.POLISHED_ANDESITE.defaultBlockState());
-        for (int x : new int[]{10, 18}) for (int y = 0; y <= 3; y++) blocks.put(anchor.offset(x, y, -18), Blocks.OAK_LOG.defaultBlockState());
-        for (int x = 10; x <= 18; x++) blocks.put(anchor.offset(x, 4, -18), Blocks.OAK_PLANKS.defaultBlockState());
         for (var pos : labels(anchor).keySet()) blocks.put(pos, Blocks.OAK_SIGN.defaultBlockState());
         return java.util.Collections.unmodifiableMap(blocks);
     }
     public static Map<BlockPos, String[]> labels(BlockPos anchor) {
         var labels = new LinkedHashMap<BlockPos, String[]>();
-        labels.put(anchor.offset(-4, 0, -8), new String[]{"人类集结区", "站入即准备", "离开取消", "一人即可出发"});
-        labels.put(anchor.offset(4, 0, 1), new String[]{"HardRush 营地", "正在准备", "前方：人类集结", "右侧：中途门"});
+        labels.put(anchor.offset(-4, 0, -8), new String[]{"人类集结区", "开局前站入即准备", "挑战中站4秒加入", "离开即取消"});
+        labels.put(anchor.offset(4, 0, 1), new String[]{"HardRush 营地", "正在准备", "前方：人类集结区", ""});
         for (var facility : LobbyLayout.Facility.values()) {
             var p = LobbyLayout.facility(facility);
             String name = switch (facility) {
-                case RULES -> "规则讲台"; case HISTORY -> "战绩书屋"; case MIDROUND -> "中途入场门";
+                case RULES -> "规则讲台"; case HISTORY -> "战绩书屋";
                 case ZOMBIE -> "僵尸展位"; case SKELETON -> "骷髅展位"; case CREEPER -> "苦力怕展位";
                 case PREVIOUS -> "庭院上一页"; case NEXT -> "庭院下一页"; case ALTAR -> "复生祭坛";
                 case MERCHANT -> "女巫商人"; case VAULT -> "试炼宝库"; case OMINOUS_VAULT -> "不祥宝库";
             };
             labels.put(anchor.offset((int)p.x(), 0, (int)p.z() + 2), new String[]{name,
                     switch (facility) {
-                        case RULES -> "右键阅读"; case MIDROUND -> "右键确认加入"; case HISTORY -> "右键查战绩领书";
+                        case RULES -> "右键阅读"; case HISTORY -> "右键查战绩领书";
                         case ALTAR -> "右键查看复生资格"; case MERCHANT -> "怪物币换出场增强";
                         case VAULT -> "手持试炼钥匙右键"; case OMINOUS_VAULT -> "手持不祥钥匙右键";
                         default -> "极限挑战时开放";
                     },
                     switch (facility) {
-                        case MIDROUND -> "挑战／救场时开放"; case MERCHANT -> "先选角色再右键";
+                        case MERCHANT -> "先选角色再右键";
                         case VAULT, OMINOUS_VAULT -> "抽取一次性装备"; default -> "";
                     }, ""});
         }

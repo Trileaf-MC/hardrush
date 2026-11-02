@@ -12,13 +12,14 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /** Native spatial input and confirmation. No UI close event owns an accepted conversion. */
 public final class HumanEntry {
     private static final Map<MinecraftServer, HumanEntry> SERVICES = new IdentityHashMap<>();
+    /** Vanilla playersNetherPortalDefaultDelay default (NetherPortalBlock.getPortalTransitionTime). */
+    static final int MIDROUND_DWELL_TICKS = 80;
     private final MinecraftServer server;
     private final RoundSession session;
     private final PlayerProfiles profiles;
@@ -31,7 +32,9 @@ public final class HumanEntry {
             UUID.randomUUID(), Component.literal("集结区"), net.minecraft.world.BossEvent.BossBarColor.GREEN, net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS);
     private static final class Intent {
         final ServerPlayer player;
-        boolean inside, pending, cancelled, restoring, gate;
+        boolean inside, pending, cancelled, restoring, joinSpent;
+        int dwell;
+        net.minecraft.server.level.ServerBossEvent joinBar;
         Intent(ServerPlayer player) { this.player = player; }
     }
     private HumanEntry(MinecraftServer server, RoundSession session, PlayerProfiles profiles, Supplier<RoundWorldBundle> worlds) {
@@ -42,10 +45,10 @@ public final class HumanEntry {
         SERVICES.put(server, new HumanEntry(server, session, profiles, worlds));
     }
     public static void close(MinecraftServer server) {
-        var s = SERVICES.remove(server); if (s != null) s.countdownBar.removeAllPlayers();
+        var s = SERVICES.remove(server); if (s != null) { s.countdownBar.removeAllPlayers(); s.intents.values().forEach(HumanEntry::stopJoin); }
     }
     public static void disconnected(ServerPlayer player) {
-        var s = SERVICES.get(player.level().getServer()); if (s != null) { s.intents.remove(player.getUUID()); s.joining.remove(player.getUUID()); }
+        var s = SERVICES.get(player.level().getServer()); if (s != null) { var intent = s.intents.remove(player.getUUID()); if (intent != null) stopJoin(intent); s.joining.remove(player.getUUID()); }
     }
     private boolean verified(ServerPlayer player) {
         var round = session.snapshot().orElse(null);
@@ -59,7 +62,7 @@ public final class HumanEntry {
                 && RoundWorldBundle.safeStanding(bundle.level(net.minecraft.world.level.Level.OVERWORLD), bundle.spawn());
     }
     public static void pause(MinecraftServer server) {
-        var s = SERVICES.get(server); if (s != null) { s.countdownBar.setVisible(false); s.countdownBar.removeAllPlayers(); }
+        var s = SERVICES.get(server); if (s != null) { s.countdownBar.setVisible(false); s.countdownBar.removeAllPlayers(); s.intents.values().forEach(HumanEntry::stopJoin); }
     }
     private boolean validAssembly(UUID id) {
         var i = intents.get(id);
@@ -81,7 +84,7 @@ public final class HumanEntry {
     private void tick() {
         var round = session.snapshot().orElse(null); if (round == null) return;
         var lobby = LobbyWorld.open(server);
-        if (!Objects.equals(registeredRound, round.roundId())) { intents.clear(); joining.clear(); registeredRound = null; }
+        if (!Objects.equals(registeredRound, round.roundId())) { intents.values().forEach(HumanEntry::stopJoin); intents.clear(); joining.clear(); registeredRound = null; }
         if (lobby.ready() && registeredRound == null) {
             var router = LobbyInteractions.get(server).orElseThrow();
             for (var facility : LobbyLayout.Facility.values()) {
@@ -95,7 +98,6 @@ public final class HumanEntry {
                 }
                 router.registerBlock(pos, Blocks.LECTERN, LobbyContext.RULES, player -> {
                     if (facility == LobbyLayout.Facility.RULES) LobbyMenus.open(player, LobbyContext.RULES);
-                    else if (facility == LobbyLayout.Facility.MIDROUND) openGate(player);
                     else if (facility == LobbyLayout.Facility.PREVIOUS || facility == LobbyLayout.Facility.NEXT)
                         dev.hardrush.lobby.LobbyRuntime.facility(player, facility);
                     else if (facility == LobbyLayout.Facility.ALTAR) LobbyRuntime.altar(player);
@@ -110,12 +112,12 @@ public final class HumanEntry {
                     && round.rules().huntRule() == dev.hardrush.core.config.RulesConfig.HuntRule.PERSONAL_TARGET
                     && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE));
             lobby.statusLabel(session.recoveringCountdown() ? "正在恢复上次集结" : switch(round.phase()) {
-                case WAITING, COUNTDOWN -> "站入集结区参加"; case RUNNING, RESCUE -> "集结关闭 · 中途门开放";
-                case PREPARING -> "世界准备中 · 入口关闭";
-                case SETTLING -> RoundResultText.stageLabel(round.result(), "本轮结算") + " · 入口关闭";
-                case CELEBRATING -> RoundResultText.stageLabel(round.result(), "通关庆祝") + " · 入口关闭";
-                case ROTATING -> "正在换轮 · 入口关闭";
-                case RECOVERY_REQUIRED -> "恢复核验中 · 入口关闭";
+                case WAITING, COUNTDOWN -> "站入集结区参加"; case RUNNING, RESCUE -> "挑战中 · 站圈中途加入";
+                case PREPARING -> "世界准备中 · 稍后开放";
+                case SETTLING -> RoundResultText.stageLabel(round.result(), "本轮结算") + " · 集结暂停";
+                case CELEBRATING -> RoundResultText.stageLabel(round.result(), "通关庆祝") + " · 集结暂停";
+                case ROTATING -> "正在换轮 · 集结暂停";
+                case RECOVERY_REQUIRED -> "恢复核验中 · 集结暂停";
             }, round.rules().mode() == dev.hardrush.core.config.GameMode.NORMAL ? "普通模式 · 怪物区关闭" : "极限模式 · 角色／追猎／祭坛"); lastLabel = label;
         }
         var view = session.view().orElse(round);
@@ -125,9 +127,13 @@ public final class HumanEntry {
         countdownBar.setProgress(Math.max(0, Math.min(1, (float)view.remainingPhaseMillis()/round.rules().startCountdownMillis())));
         for (var old : java.util.List.copyOf(countdownBar.getPlayers())) if (!verified(old)) countdownBar.removePlayer(old);
         for (var player : server.getPlayerList().getPlayers()) if (verified(player)) countdownBar.addPlayer(player);
-        intents.entrySet().removeIf(e -> server.getPlayerList().getPlayer(e.getKey()) != e.getValue().player);
+        intents.entrySet().removeIf(e -> {
+            boolean stale = server.getPlayerList().getPlayer(e.getKey()) != e.getValue().player;
+            if (stale) stopJoin(e.getValue());
+            return stale;
+        });
         for (var player : List.copyOf(server.getPlayerList().getPlayers())) {
-            if (!verified(player)) continue;
+            if (!verified(player)) { var held = intents.get(player.getUUID()); if (held != null) stopJoin(held); continue; }
             var intent = intents.computeIfAbsent(player.getUUID(), ignored -> new Intent(player));
             var participant = round.participants().get(player.getUUID());
             if (session.originalReady(round.roundId(), player.getUUID())) {
@@ -153,12 +159,19 @@ public final class HumanEntry {
                     && (round.phase() == RoundPhase.WAITING || round.phase() == RoundPhase.COUNTDOWN) && eligible(player, round);
             boolean inside = lobby.inAssembly(player, intent.inside);
             if (!open) {
-                if (inside) { profiles.placeInLobby(player, LobbyLayout.Landing.WAIT_OUTSIDE); tell(player, "集结区已关闭；挑战或救场期间请使用侧面的中途入场门。" ); }
-                intent.inside = false; intent.cancelled = true;
+                // Never relocate: a closed circle only explains itself. Whoever still stands inside
+                // when it opens again prepares automatically through the cancelled-intention path.
+                intent.inside = inside; intent.cancelled = true;
+                if (midroundOpen(player, round)) midround(player, intent, inside);
+                else {
+                    stopJoin(intent);
+                    if (inside) hint(player, closedReason(player, round));
+                }
             } else {
-                if (intent.inside && !inside) { intent.cancelled = true; tell(player, "已取消准备。"); }
-                intent.inside = inside;
+                stopJoin(intent);
                 boolean ready = participant != null && participant.ready();
+                if (intent.inside && !inside) { intent.cancelled = true; if (ready || intent.pending) tell(player, "已取消准备。"); }
+                intent.inside = inside;
                 // Once an in-flight intention is cancelled, re-entry cannot resurrect it. First
                 // durably clear the old ready bit, then accept a new intention on a later tick.
                 boolean wanted = inside && !intent.cancelled;
@@ -181,9 +194,6 @@ public final class HumanEntry {
                         + (session.view().orElse(round).remainingPhaseMillis() + 999) / 1000 + " 秒后出发 · 离开集结区可取消");
                 else hint(player, "站入集结区参加，离开取消准备");
             }
-            boolean gate = gateDistance(player, 1.8);
-            if (gate && !intent.gate && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE)) openGate(player);
-            intent.gate = gate;
         }
     }
     private void hint(ServerPlayer player, String message) {
@@ -196,37 +206,77 @@ public final class HumanEntry {
             hints.offer("assembly", message.startsWith("站入") ? LobbyHints.Priority.FACILITY : LobbyHints.Priority.READY, message, now + 150);
         });
     }
-    private boolean gateDistance(ServerPlayer player, double range) {
-        var lobby = LobbyWorld.open(server);
-        return lobby.ready() && LobbyWorld.isLobby(player.level())
-                && player.position().distanceToSqr(lobby.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.MIDROUND))) <= range * range;
+    /** Why standing in the circle does nothing right now; only shown to someone inside it. */
+    private String closedReason(ServerPlayer player, RoundSnapshot round) {
+        var participant = round.participants().get(player.getUUID());
+        if (participant != null && participant.role().isMonster()) return "你已化身怪物 · 去怪物庭院追猎，或到复生祭坛复生";
+        if (participant != null && participant.role() == ParticipantRole.WITHDRAWN) return "你已退出本轮，下一轮可重新集结";
+        if (participant != null && participant.role() == ParticipantRole.DISQUALIFIED) return "你已被取消本轮资格，下一轮可重新集结";
+        if (session.state() != RoundSession.State.OPEN || round.phase() == RoundPhase.RECOVERY_REQUIRED) return "恢复核验中 · 集结区暂停";
+        if (session.recoveringCountdown()) return "正在恢复上次集结 · 原准备者核验后续计";
+        return switch (round.phase()) {
+            case PREPARING, WAITING, COUNTDOWN -> "本轮世界准备中 · 开放后站在圈内自动准备";
+            case SETTLING, CELEBRATING -> "本轮结束中 · 换轮后重新开放";
+            case ROTATING -> "正在换轮 · 稍后重新开放";
+            // Running with a temporary lock (checkpoint save, pending terminal result) or an in-flight identity change.
+            default -> eligible(player, round) ? "本轮正在保存 · 稍候即可加入" : "身份转换中，请稍候";
+        };
     }
-    public static boolean gateAvailable(ServerPlayer player) {
+    private boolean midroundOpen(ServerPlayer player, RoundSnapshot round) {
+        return (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE)
+                && worldReady() && !session.competitionLocked() && eligible(player, round);
+    }
+    /** Mid-round admission: test seam for eligibility, independent of where the player stands. */
+    public static boolean midroundAvailable(ServerPlayer player) {
         var s = SERVICES.get(player.level().getServer()); if (s == null) return false;
         var round = s.session.snapshot().orElse(null);
-        return s.verified(player) && s.worldReady() && round != null && !s.session.competitionLocked()
-                && s.gateDistance(player, 5) && s.eligible(player, round);
+        return round != null && s.verified(player) && s.midroundOpen(player, round);
     }
-    public static boolean openGate(ServerPlayer player) {
-        var s = SERVICES.get(player.level().getServer()); if (s == null) return false;
-        if (!gateAvailable(player)) {
-            tell(player, "中途门当前关闭，或你已参赛。极限死者请前往怪物庭院；有资格时使用祭坛。"); return false;
+    /** Like a Nether portal: stand the vanilla default delay inside, leave to cancel. Submitted requests are final. */
+    private void midround(ServerPlayer player, Intent intent, boolean inside) {
+        if (!inside) {
+            stopJoin(intent); intent.joinSpent = false;
+            hint(player, "站入集结区 4 秒中途加入"); return;
         }
-        return LobbyMenus.open(player, LobbyContext.ENTRY);
-    }
-    public static List<LobbyMenus.Button> gateButtons(ServerPlayer player) {
-        var s = SERVICES.get(player.level().getServer()); var round = s.session.view().orElseThrow();
-        return List.of(new LobbyMenus.Button(Items.PAPER, "第 " + round.sequence() + " 轮 · " + (round.rules().mode() == dev.hardrush.core.config.GameMode.NORMAL ? "普通模式" : "极限模式") + " · 挑战 " + round.challengeMillis() / 1000 + " 秒", "info", ""),
-                new LobbyMenus.Button(Items.GRASS_BLOCK, "空装进入主世界自然出生点，无出生保护", "info", ""),
-                new LobbyMenus.Button(Items.EMERALD, s.joining.contains(player.getUUID()) ? "正在加入" : "加入本轮", "enter", ""));
-    }
-    public static void confirm(ServerPlayer player, UUID expectedRound) {
-        var s = SERVICES.get(player.level().getServer()); if (s == null || !gateAvailable(player) || !s.session.snapshot().orElseThrow().roundId().equals(expectedRound)
-                || !s.joining.add(player.getUUID())) return;
-        s.session.requestJoin(player.getUUID(), player.getScoreboardName(), reply -> {
-            s.joining.remove(player.getUUID());
-            if (s.server.getPlayerList().getPlayer(player.getUUID()) == player) tell(player, reply.message());
+        if (intent.joinSpent) { hint(player, joining.contains(player.getUUID()) ? "正在加入本轮" : "出圈后可重新站入加入"); return; }
+        if (intent.joinBar == null) {
+            intent.joinBar = new net.minecraft.server.level.ServerBossEvent(UUID.randomUUID(), Component.empty(),
+                    net.minecraft.world.BossEvent.BossBarColor.PURPLE, net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS);
+            intent.joinBar.addPlayer(player);
+            if (player.connection != null) player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                    net.minecraft.core.Holder.direct(net.minecraft.sounds.SoundEvents.PORTAL_TRIGGER), net.minecraft.sounds.SoundSource.AMBIENT,
+                    player.getX(), player.getY(), player.getZ(), .25f, .8f + player.getRandom().nextFloat() * .4f, 0));
+        }
+        intent.dwell++;
+        intent.joinBar.setName(Component.literal(worldAge() + " · 中途加入无出生保护 · 祝你好运"));
+        intent.joinBar.setProgress(Math.max(0, 1 - (float)intent.dwell / MIDROUND_DWELL_TICKS));
+        if (intent.dwell % 4 == 0) player.level().sendParticles(net.minecraft.core.particles.ParticleTypes.PORTAL,
+                player.getX(), player.getY() + .8, player.getZ(), 6, .4, .6, .4, .3);
+        hint(player, "离开集结区取消引导");
+        if (intent.dwell < MIDROUND_DWELL_TICKS) return;
+        stopJoin(intent); intent.joinSpent = true;
+        if (!joining.add(player.getUUID())) return;
+        session.requestJoin(player.getUUID(), player.getScoreboardName(), reply -> {
+            joining.remove(player.getUUID());
+            if (server.getPlayerList().getPlayer(player.getUUID()) == player) tell(player, reply.message());
         });
+    }
+    /** Test seam: the player is currently counting down a mid-round admission. */
+    public static boolean guiding(ServerPlayer player) {
+        var s = SERVICES.get(player.level().getServer()); if (s == null) return false;
+        var intent = s.intents.get(player.getUUID());
+        return intent != null && intent.player == player && intent.dwell > 0;
+    }
+    private static void stopJoin(Intent intent) {
+        intent.dwell = 0;
+        if (intent.joinBar != null) { intent.joinBar.removeAllPlayers(); intent.joinBar = null; }
+    }
+    /** Elapsed time of this round's overworld default clock, as F3 counts days (skipped nights included). */
+    private String worldAge() {
+        var level = worlds.get().level(net.minecraft.world.level.Level.OVERWORLD);
+        long ticks = level.dimensionTypeRegistration().value().defaultClock()
+                .map(clock -> level.clockManager().getInstance(clock).totalTicks()).orElse(level.getGameTime());
+        return "世界已运转 " + ticks / 24000 + " 天 " + ticks % 24000 / 1000 + " 小时";
     }
     private static void tell(ServerPlayer player, String text) { if (player.connection != null) player.sendSystemMessage(Component.literal(text)); }
 }

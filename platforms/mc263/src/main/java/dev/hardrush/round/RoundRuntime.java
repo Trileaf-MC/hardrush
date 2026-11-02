@@ -485,7 +485,7 @@ public final class RoundRuntime {
                             var session = SESSIONS.get(source.getServer());
                             if (session == null) return reply(source, disabled());
                             if (!profileReady(player)) return reply(source, new RoundSession.Reply(false, "玩家档案仍在隔离／转换，请稍后重试。"));
-                            source.sendFailure(Component.literal("开局请站入集结区；挑战中请到中途入场门确认。"));
+                            source.sendFailure(Component.literal("开局请站入集结区；挑战中站入集结区 4 秒中途加入。"));
                             return 0;
                         }))
                         .then(Commands.literal("ready").executes(context -> ready(context.getSource(), true)))

@@ -4,9 +4,7 @@ import dev.hardrush.HardRushProperties;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.GameMode;
-import dev.hardrush.core.lobby.LobbyLayout;
 import dev.hardrush.core.round.*;
-import dev.hardrush.lobby.LobbyMenus;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.world.LobbyWorld;
 import dev.hardrush.round.RoundSession;
@@ -32,11 +30,9 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
-import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
-import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -45,14 +41,12 @@ import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /** Dedicated opt-in server run: production listeners and storage, with an embedded native peer. */
@@ -275,20 +269,12 @@ public final class IdentityRuntimeGameTest {
                     .filter(stack -> stack.is(Items.DIAMOND)).mapToInt(ItemStack::getCount).sum();
         }
         void rejectMidroundGate() {
+            player = server.getPlayerList().getPlayer(profile.id());
             var before = participant();
-            var lobby = LobbyWorld.open(server);
-            var pos = BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.MIDROUND)));
-            var standing = Vec3.atBottomCenterOf(pos.south(2));
-            player.teleportTo(lobby.holdingLevel(), standing.x, standing.y, standing.z, java.util.Set.of(), 0, 0, true);
+            SpatialInputFixtures.standInAssembly(player);
             acknowledge();
-            int feedbackStart = connection.packets.size();
-            player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,
-                    new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false), 90));
-            test.assertTrue(connection.packets.subList(feedbackStart, connection.packets.size()).stream()
-                    .filter(ClientboundSystemChatPacket.class::isInstance).map(ClientboundSystemChatPacket.class::cast)
-                    .anyMatch(packet -> packet.content().getString().contains("中途门当前关闭")),
-                    "The real gate click tells the reconnected monster that admission is closed");
-            test.assertFalse(LobbyMenus.isMenu(player), "A committed monster cannot reopen the human admission menu");
+            test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(player), "A committed monster cannot start human admission");
+            test.assertTrue(LobbyWorld.open(server).inAssembly(player, true), "The circle never relocates the monster");
             test.assertValueEqual(participant().role(), before.role(), "Rejected admission preserves the monster role");
             test.assertValueEqual(participant().lifeSequence(), before.lifeSequence(), "Rejected admission cannot create another human life");
         }

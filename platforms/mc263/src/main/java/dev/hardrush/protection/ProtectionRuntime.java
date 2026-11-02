@@ -44,6 +44,7 @@ public final class ProtectionRuntime {
     }
     private record Binding(Access access, Map<UUID, PlayerState> players) {}
     private static final Map<MinecraftServer, Binding> BINDINGS = new IdentityHashMap<>();
+    private static final Map<ServerPlayer, Long> SPECTATOR_FEEDBACK = new WeakHashMap<>();
     private static final ThreadLocal<Integer> RELOCATION = ThreadLocal.withInitial(() -> 0);
     private ProtectionRuntime() {}
 
@@ -152,6 +153,7 @@ public final class ProtectionRuntime {
     public static void correct(ServerPlayer player) {
         // Spectators may hover or occupy solid blocks; rejection must not require a survival landing.
         if (PlayerProfiles.isAdministrativeSpectator(player)) {
+            spectatorRejected(player);
             stopUnsafeMotion(player);
             if (player.connection != null) player.connection.teleport(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
             return;
@@ -184,6 +186,18 @@ public final class ProtectionRuntime {
                 player.connection.teleport(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
             }
         } finally { endRelocation(); }
+    }
+    /** Explain the pull-back instead of a silent snap; the vault refusal plays at most once per two seconds. */
+    private static void spectatorRejected(ServerPlayer player) {
+        long now = System.nanoTime() / 1_000_000;
+        dev.hardrush.lobby.LobbyInteractions.get(player.level().getServer()).ifPresent(router -> router.hints(player).offer("spectator",
+                dev.hardrush.core.lobby.LobbyHints.Priority.RECOVERY, "管理旁观只能前往大厅与本轮世界", now + 2000));
+        Long last = SPECTATOR_FEEDBACK.get(player);
+        if (last != null && now - last < 2000 || player.connection == null) return;
+        SPECTATOR_FEEDBACK.put(player, now);
+        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                net.minecraft.core.Holder.direct(net.minecraft.sounds.SoundEvents.VAULT_REJECT_REWARDED_PLAYER), net.minecraft.sounds.SoundSource.PLAYERS,
+                player.getX(), player.getY(), player.getZ(), 1, 1, 0));
     }
     /** Consume the in-memory pending exit at the actual native position change, including same-tick input. */
     public static void positionAccepted(Entity entity) {

@@ -239,7 +239,7 @@ public final class ServerCrashRegression implements ModInitializer {
             quarantinedLogin(a); quarantinedLogin(b);
             waitFor("repeated quarantine ticks", () -> ++recoveryTicks >= 20);
             act("reject repeated consumption and new participation", () -> {
-                command(a, "hardrush revive"); SpatialInputFixtures.closedGate(a.player);
+                command(a, "hardrush revive"); SpatialInputFixtures.closedAssembly(a.player);
                 require(round().version() == expected.version() && round().challengeNanos() == expected.challengeNanos(), "recovery never consumes or advances time");
                 for (var actor : List.of(a, b)) require(actor.player.level() == LobbyWorld.open(server).holdingLevel() && PlayerProfiles.isLocked(actor.player), "native reconnect remains in permanent lobby");
                 stopping = true; server.halt(false);

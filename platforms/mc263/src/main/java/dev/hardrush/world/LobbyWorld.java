@@ -201,7 +201,7 @@ public final class LobbyWorld {
     }
     public void statusLabel(String stage, String mode) {
         if (!ready) return;
-        label(spawn.offset(4, 0, 1), new String[]{"HardRush 营地", stage, mode, "前方集结／右侧中途门"});
+        label(spawn.offset(4, 0, 1), new String[]{"HardRush 营地", stage, mode, "前方：人类集结区"});
     }
     /** Refresh only owned facility text, never rebuild terrain in a completed camp. */
     public void huntLabels(boolean enabled) {
