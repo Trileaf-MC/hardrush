@@ -29,8 +29,7 @@ public abstract class ProtectionNetworkMixin {
     @Inject(method="handleMovePlayer", at=@At("HEAD"), cancellable=true)
     private void move(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
         if (!mainThread()) return;
-        if (new Vec3(packet.getX(player.getX()), packet.getY(player.getY()), packet.getZ(player.getZ()))
-                .distanceToSqr(player.position()) > .000001) dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "移动");
+        // Channels read the movement keys instead: water and pushes also move the reported position.
         if (ProtectionRuntime.rejectMove(player, player.level(), new Vec3(packet.getX(player.getX()), packet.getY(player.getY()), packet.getZ(player.getZ())))) {
             ProtectionRuntime.correct(player); ci.cancel();
         }
@@ -38,8 +37,6 @@ public abstract class ProtectionNetworkMixin {
     @Inject(method="handleMoveVehicle", at=@At("HEAD"), cancellable=true)
     private void vehicle(ServerboundMoveVehiclePacket packet, CallbackInfo ci) {
         if (!mainThread()) return;
-        if (packet.movingTo().position().distanceToSqr(player.getRootVehicle().position()) > .000001)
-            dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "移动");
         var vehicle = player.getRootVehicle();
         if (ProtectionRuntime.rejectMove(vehicle, player.level(), packet.movingTo().position())) {
             ProtectionRuntime.correct(player); ci.cancel();

@@ -416,21 +416,31 @@ public final class LobbyRuntime {
         }
         for (var entry : List.copyOf(b.channels.entrySet())) {
             var ch = entry.getValue(); var p = round.participants().get(entry.getKey());
+            if (current(ch.player, b) && ChannelEffects.moving(ch.player)) { interruptReturn(ch.player, "移动"); continue; }
             if (!current(ch.player, b) || p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED
                     || p.lifeSequence() != ch.life || p.monsterDeploymentSequence() != ch.sortie
-                    || ch.player.level() != ch.level || ch.player.position().distanceToSqr(ch.origin) > .000001
-                    || MonsterRoles.isIgniting(ch.player)) { interruptReturn(ch.player, "移动或身份／阶段变化"); continue; }
-            long duration = round.rules().combatValues().get("monster.returnChannelMillis").longValue() * 1_000_000L;
+                    || ch.player.level() != ch.level || MonsterRoles.isIgniting(ch.player)) {
+                interruptReturn(ch.player, "身份／阶段变化"); continue;
+            }
+            long duration = channelNanos(round);
             long elapsed = System.nanoTime() - ch.started;
+            ChannelEffects.tick(ch.player, ch.retrack, elapsed, duration);
             hint(ch.player, "return", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS,
                     (ch.retrack ? "正在循迹" : "正在返回营地") + " · 还需 " + Math.max(0, (duration - elapsed + 999_999_999L) / 1_000_000_000L) + " 秒");
             if (ch.retrack && elapsed >= duration) {
                 b.channels.remove(entry.getKey());
+                ChannelEffects.complete(ch.player, true);
                 beginRetrackSearch(b, ch, p);
             } else if (elapsed >= duration && !b.session.mutationPending()) {
                 b.channels.remove(entry.getKey());
+                ChannelEffects.complete(ch.player, false);
+                var from = ch.player.position(); var level = (ServerLevel) ch.player.level();
                 b.session.requestMonsterReturn(round.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
-                        reply -> { tell(ch.player, reply.message()); sound(ch.player, reply.success()); });
+                        reply -> {
+                            tell(ch.player, reply.message());
+                            if (reply.success()) ChannelEffects.departed(ch.player, level, from, false);
+                            else sound(ch.player, false);
+                        });
             }
         }
         for (var r : List.copyOf(b.retracks.values())) tickRetrack(b, round, r);
@@ -566,11 +576,19 @@ public final class LobbyRuntime {
         if (p.role() != ParticipantRole.MONSTER_DEPLOYED || MonsterRoles.isIgniting(player) || MonsterRoles.performingSkill(player)) {
             tell(player, "只有已出场、未引爆且未在施放技能的怪物可以引导回大厅。"); return;
         }
-        if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) { tell(player, "正在引导；移动、攻击、技能或受伤会取消。"); return; }
+        // Holding the item, or right-clicking again, neither restarts nor repeats a running channel.
+        if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) return;
+        if (ChannelEffects.moving(player)) { tell(player, "请先松开方向键和跳跃，原地站定后再引导归返。"); sound(player, false); return; }
+        var round = b.session.view().orElseThrow();
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), player.position(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), false));
-        tell(player, "开始 5 秒回大厅引导；移动、攻击、使用物品／技能或受伤会取消。");
+        ChannelEffects.start(player, false, channelNanos(round));
+        tell(player, "开始 " + channelSeconds(round) + " 秒归返引导；按方向键、跳跃、攻击、使用其他物品或受伤会中断，水流推动不会。");
     }
+    private static long channelNanos(RoundSnapshot round) {
+        return round.rules().combatValues().get("monster.returnChannelMillis").longValue() * 1_000_000L;
+    }
+    private static long channelSeconds(RoundSnapshot round) { return Math.max(1, (channelNanos(round) + 999_999_999L) / 1_000_000_000L); }
     private static final String CELEBRATION_RETRACK = "庆祝期间追迹罗盘无效。";
 
     /** Right-click on the bound tracking compass: a five-second channel, then the quarry's trail again. */
@@ -584,7 +602,7 @@ public final class LobbyRuntime {
         if (p.role() != ParticipantRole.MONSTER_DEPLOYED || MonsterRoles.isIgniting(player) || MonsterRoles.performingSkill(player)) {
             tell(player, "只有已出场、未引爆且未在施放技能的怪物可以循迹。"); return false;
         }
-        if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) { tell(player, "正在引导；移动、攻击、技能或受伤会取消。"); return true; }
+        if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) return true;
         if (player.getCooldowns().isOnCooldown(compass)) { tell(player, "追迹罗盘还在冷却。"); return false; }
         var target = HuntRetracks.quarry(player).orElse(null);
         if (target == null || !validTarget(b, target, (ServerLevel) target.level()) || dimension(b, (ServerLevel) target.level()).equals("lobby")) {
@@ -594,9 +612,11 @@ public final class LobbyRuntime {
             tell(player, "目标就在附近；离它 " + HuntRetracks.FAR_DISTANCE + " 格以上持续 " + HuntRetracks.FAR_SECONDS
                     + " 秒，或它去了其他维度时，罗盘才会发光可用。"); return false;
         }
+        if (ChannelEffects.moving(player)) { tell(player, "请先松开方向键和跳跃，原地站定后再引导循迹。"); sound(player, false); return false; }
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), player.position(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), true));
-        tell(player, "开始 5 秒循迹引导；移动、攻击、使用物品／技能或受伤会取消。");
+        ChannelEffects.start(player, true, channelNanos(r));
+        tell(player, "开始 " + channelSeconds(r) + " 秒循迹引导；按方向键、跳跃、攻击、使用其他物品或受伤会中断，水流推动不会。");
         return true;
     }
     private static void beginRetrackSearch(Binding b, Channel ch, dev.hardrush.core.round.Participant p) {
@@ -621,10 +641,10 @@ public final class LobbyRuntime {
         var p = round.participants().get(r.player.getUUID());
         var target = r.targetPlayer;
         var targetIdentity = round.participants().get(target.getUUID());
+        if (current(r.player, b) && ChannelEffects.moving(r.player)) { interruptReturn(r.player, "移动"); return; }
         if (!current(r.player, b) || p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED || !r.player.isAlive()
                 || p.lifeSequence() != r.life || p.monsterDeploymentSequence() != r.sortie
-                || r.player.level() != r.origLevel || r.player.position().distanceToSqr(r.origin) > .000001
-                || MonsterRoles.isIgniting(r.player)) { interruptReturn(r.player, "移动或身份／阶段变化"); return; }
+                || r.player.level() != r.origLevel || MonsterRoles.isIgniting(r.player)) { interruptReturn(r.player, "身份／阶段变化"); return; }
         if (target.level().getServer().getPlayerList().getPlayer(target.getUUID()) != target || targetIdentity == null
                 || targetIdentity.lifeSequence() != r.targetLife || !validTarget(b, target, (ServerLevel) target.level())
                 || dimension(b, (ServerLevel) target.level()).equals("lobby")) {
@@ -641,10 +661,12 @@ public final class LobbyRuntime {
             tell(r.player, "没有找到能循迹过去的位置，罗盘未进入冷却，可以稍后再试。"); sound(r.player, false); return;
         }
         var landing = result.position();
+        var from = r.player.position(); var fromLevel = (ServerLevel) r.player.level();
         if (!r.player.teleportTo(level, landing.x, landing.y, landing.z, java.util.Set.of(), r.search.yaw(target.position()), 0, true)) {
             tell(r.player, "循迹落点被保护或已失效，罗盘未进入冷却。"); sound(r.player, false); return;
         }
         HuntRetracks.retracked(r.player, target);
+        ChannelEffects.departed(r.player, fromLevel, from, true);
         sound(r.player, true);
         tell(r.player, result.fallback() ? "已循迹：目标切断了来路，这里是能走到的离它最近的地方。" : "已循迹到 " + target.getScoreboardName() + " 附近。");
     }
@@ -655,7 +677,9 @@ public final class LobbyRuntime {
         var channel = b.channels.remove(player.getUUID());
         var retrack = b.retracks.remove(player.getUUID());
         if (channel == null && retrack == null) return;
-        String what = channel == null || channel.retrack() ? "循迹" : "归返";
+        boolean tracking = channel == null || channel.retrack();
+        String what = tracking ? "循迹" : "归返";
+        ChannelEffects.interrupted(player, tracking);
         tell(player, what + "已中断：" + reason + "。");
         LobbyInteractions.get(player.level().getServer()).ifPresent(router -> router.hints(player).clear("return"));
         hint(player, "return-result", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, what + "已中断：" + reason);

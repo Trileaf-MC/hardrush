@@ -91,10 +91,11 @@ public final class FullFlowGameTest {
                 .thenExecute(()->{
                     test.assertTrue(f.monster.player.getInventory().getItem(7).is(Items.ECHO_SHARD),"Tick repair preserves fixed return control");
                     test.assertTrue(state.actionBar(f.monster.connection.packets,"正在返回营地"),"Actual progress action bar was emitted; channel="+LobbyRuntime.channeling(f.monster.player)+" feedback="+f.monster.connection.packets.stream().filter(ClientboundSystemChatPacket.class::isInstance).map(ClientboundSystemChatPacket.class::cast).map(p->p.content().getString()).toList());
-                    f.monster.move(f.monster.player.position().add(.2,0,0));
+                    f.monster.keys(true);
                 })
-                .thenWaitUntil(()->f.await(!LobbyRuntime.channeling(f.monster.player),"Movement cancels return"))
+                .thenWaitUntil(()->f.await(!LobbyRuntime.channeling(f.monster.player),"Movement keys cancel return"))
                 .thenExecute(()->{
+                    f.monster.keys(false);
                     state.use(f.monster.player,7); f.monster.player.connection.handlePunch(ServerboundPunchPacket.INSTANCE);
                     test.assertFalse(LobbyRuntime.channeling(f.monster.player),"Punch cancels return");
                     state.use(f.monster.player,7); state.use(f.monster.player,2);
