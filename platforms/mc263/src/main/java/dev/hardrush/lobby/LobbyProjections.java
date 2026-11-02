@@ -20,9 +20,10 @@ import net.minecraft.world.phys.Vec3;
 /** Per-connection, packet-only FULL mannequins. Never added to a world, player list or tracker. */
 public final class LobbyProjections {
     public enum State { AVAILABLE, AWAY, DEAD, EMPTY, RESTORING, CLOSED }
-    /** {@code bountyPermille} above 1000 is shown on a huntable target's name tag. */
-    public record Target(GameProfile originalProfile, int life, State state, int bountyPermille) {
+    /** Bounty and optional live location are shown only on a huntable target's name tag. */
+    public record Target(GameProfile originalProfile, int life, State state, int bountyPermille, Component location) {
         public Target { Objects.requireNonNull(originalProfile); Objects.requireNonNull(state); if (life < 1) throw new IllegalArgumentException("life"); }
+        public Target(GameProfile originalProfile, int life, State state, int bountyPermille) { this(originalProfile, life, state, bountyPermille, null); }
         public Target(GameProfile originalProfile, int life, State state) { this(originalProfile, life, state, 1000); }
     }
     public record Selection(UUID round, UUID target, int life, long generation, int entityId) {}
@@ -67,10 +68,13 @@ public final class LobbyProjections {
             model.setComponent(DataComponents.PROFILE, ResolvableProfile.createResolved(target.originalProfile));
             String bounty = target.state == State.AVAILABLE && target.bountyPermille > 1000
                     ? " · 悬赏 ×" + dev.hardrush.core.round.MonsterCoins.multiplier(target.bountyPermille) : "";
-            model.setCustomName(Component.literal(target.originalProfile.name() + bounty + " · " + switch (target.state) {
-                case AVAILABLE -> "右键追猎"; case AWAY -> "暂离，无法追猎"; case DEAD -> "已死亡";
-                case RESTORING -> "复生核验中"; case CLOSED, EMPTY -> "暂不可追猎";
-            }));
+            var name = Component.literal(target.originalProfile.name() + bounty);
+            if (target.state == State.AVAILABLE && target.location != null) name.append(" · ").append(target.location);
+            if (target.state != State.AVAILABLE) name.append(" · " + switch (target.state) {
+                case AWAY -> "暂离，无法追猎"; case DEAD -> "已死亡";
+                case RESTORING -> "复生核验中"; case AVAILABLE, CLOSED, EMPTY -> "暂不可追猎";
+            });
+            model.setCustomName(name);
             model.setCustomNameVisible(true);
             var selection = new Selection(round, target.originalProfile.id(), target.life, next, id);
             models.put(id, new Model(model, target, selection));
