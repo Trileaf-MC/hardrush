@@ -48,7 +48,7 @@ class MonsterSessionTest {
             pump(() -> !session.mutationPending());
             assertEquals(ParticipantRole.MONSTER_DEPLOYED, session.snapshot().orElseThrow().participants().get(player).role());
             assertEquals(6, session.snapshot().orElseThrow().participants().get(player).monsterDeploymentSequence());
-            request(reply -> session.requestMonsterReturn(round, player, 3, 6, reply));
+            request(reply -> session.requestMonsterReturn(round, player, 3, 6, "{\"form\":\"CREEPER\"}", reply));
             var saved = session.snapshot().orElseThrow().participants().get(player);
             assertEquals(MonsterRole.CREEPER, saved.monsterRole());
             assertEquals(MonsterDimension.OVERWORLD, saved.monsterDimension());
@@ -58,7 +58,8 @@ class MonsterSessionTest {
             var saved = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload());
             assertTrue(saved.cleanShutdown());
             assertEquals(6, saved.participants().get(player).monsterDeploymentSequence());
-            assertEquals(30_000_000_000L, saved.participants().get(player).monsterCooldownNanos());
+            assertEquals(0, saved.participants().get(player).monsterCooldownNanos(), "A deliberate return needs no deploy wait");
+            assertEquals("{\"form\":\"CREEPER\"}", saved.participants().get(player).wallet().parked(), "The paused body is durable in SQLite");
         }
     }
 

@@ -1049,8 +1049,17 @@ public final class RoundSession implements AutoCloseable {
 
     public void requestMonsterReturn(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             Consumer<Reply> reply) {
+        requestMonsterReturn(roundId, playerId, lifeSequence, deploymentSequence, "", reply);
+    }
+
+    /** A non-empty {@code parkedBody} pauses the sortie instead of ending it. */
+    public void requestMonsterReturn(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
+            String parkedBody, Consumer<Reply> reply) {
+        long seconds = snapshot().map(r -> (RoundEngine.returnCooldownNanos(r.rules()) + 999_999_999L) / 1_000_000_000L).orElse(0L);
+        String wait = seconds == 0 ? "随时可以再次追猎。" : seconds + " 秒后可以再次追猎。";
         requestAction(() -> engine.proposeMonsterReturn(UUID.randomUUID(), roundId, playerId,
-                lifeSequence, deploymentSequence), reply, "已返回怪物大厅；再次出场需等待 30 秒。");
+                lifeSequence, deploymentSequence, parkedBody), reply,
+                parkedBody.isEmpty() ? "已返回怪物营地；" + wait : "已返回怪物营地，本次出场已暂存；" + wait);
     }
 
     /** Internal platform compensation; no player command may invoke this cooldown refund. */

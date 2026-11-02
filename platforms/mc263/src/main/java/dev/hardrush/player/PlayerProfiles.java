@@ -459,7 +459,8 @@ public final class PlayerProfiles implements AutoCloseable {
         if (entry.admitted && player.level() == level) return true;
         closeSuspendedContainer(player);
         clearMonsterLobbyState(player);
-        player.setHealth(player.getMaxHealth());
+        // A resumed sortie keeps the health the camp body has healed back to.
+        if (!participant.wallet().hasParkedBody()) player.setHealth(player.getMaxHealth());
         if (!player.teleportTo(level, position.x, position.y, position.z, Set.of(), yaw, 0, true)) return false;
         player.setGameMode(GameType.SURVIVAL);
         ((ProfileTagged) player).hardrush$isolated(false);
@@ -478,6 +479,11 @@ public final class PlayerProfiles implements AutoCloseable {
         if (entry == null || entry.player != player) return;
         entry.monsterLobbyInitialized = false;
         if (!enterMonsterLobby(player, round)) throw new IllegalStateException("已提交怪物无法安全返回大厅");
+        // A paused sortie brings its wounds to camp; the camp's native peaceful regeneration heals them.
+        var participant = round.participants().get(player.getUUID());
+        if (participant != null && participant.role() == ParticipantRole.MONSTER_LOBBY)
+            dev.hardrush.monster.MonsterParking.health(participant.wallet().parked())
+                    .ifPresent(health -> player.setHealth(Math.max(1, Math.min(health, player.getMaxHealth()))));
     }
 
     public void onMonsterRespawn(ServerPlayer previous, ServerPlayer replacement, RoundSnapshot round) {

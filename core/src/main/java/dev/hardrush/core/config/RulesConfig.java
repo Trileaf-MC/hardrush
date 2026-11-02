@@ -162,13 +162,18 @@ public record RulesConfig(
             Map.entry("worth.xpPerLevel", 10.0),
             Map.entry("worth.bookMinLevel", 15.0));
 
-    /** Adds missing coin and worth values to stored pending rules; values an operator already set are kept. */
+    /** A deliberate return pauses the sortie, so hunting again may follow at once; death keeps the deploy cooldown. */
+    private static final Map<String, Double> SORTIE_DEFAULTS = Map.of("monster.returnCooldownMillis", 0.0);
+
+    /** Adds missing coin, worth and sortie values to stored pending rules; values an operator already set are kept. */
     public RulesConfig withEconomyDefaults() {
         if (COIN_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
-                && WORTH_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)) return this;
+                && WORTH_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
+                && SORTIE_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)) return this;
         var values = new TreeMap<>(combatValues);
         COIN_DEFAULTS.forEach(values::putIfAbsent);
         WORTH_DEFAULTS.forEach(values::putIfAbsent);
+        SORTIE_DEFAULTS.forEach(values::putIfAbsent);
         return new RulesConfig(schemaVersion, mode, minecraftVersion, difficulty, generationRule, values,
                 protectionRadius, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
@@ -304,6 +309,8 @@ public record RulesConfig(
     }
 
     private static void validateCombatValue(String key, double value) {
+        // An immediate re-hunt after a deliberate return is the default, not a misconfiguration.
+        if (value == 0 && key.equals("monster.returnCooldownMillis")) return;
         if (value == 0 && !key.endsWith("armor") && !key.endsWith("Resistance")) {
             throw new IllegalArgumentException("战斗参数必须为正数（护甲／抗性可为零）: " + key);
         }

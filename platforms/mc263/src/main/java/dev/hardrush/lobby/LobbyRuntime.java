@@ -32,6 +32,8 @@ import net.minecraft.world.phys.Vec3;
 
 /** Main-thread lobby requests. Native admission follows the durable sortie transition. */
 public final class LobbyRuntime {
+    /** A role click that would discard a paused sortie, waiting for a separate second click; times are server ticks. */
+    private record AbandonAsk(MonsterRole role, long asked, long lastClick) {}
     /** A five-second standing channel: back to camp, or (retrack) onto the quarry's trail again. */
     private record Channel(ServerPlayer player, ServerLevel level, Vec3 origin, long started, int life, int sortie, boolean retrack) {}
     /** The in-place search after a completed retrack channel; the body must keep standing still. */
@@ -83,6 +85,7 @@ public final class LobbyRuntime {
         final Map<UUID, Retrack> retracks = new HashMap<>();
         final Map<UUID, Long> retryAt = new HashMap<>();
         final Set<UUID> committing = new HashSet<>();
+        final Map<UUID, AbandonAsk> abandoning = new HashMap<>();
         Binding(RoundSession session, PlayerProfiles profiles, Supplier<RoundWorldBundle> worlds) {
             this.session = session; this.profiles = profiles; this.worlds = worlds;
         }
@@ -222,7 +225,7 @@ public final class LobbyRuntime {
     public static void prepareStop(MinecraftServer server) {
         var b = BINDINGS.get(server); if (b == null) return;
         b.pending.values().forEach(d -> d.cancelled = true);
-        b.channels.clear(); b.retracks.clear(); b.searches.clear(); b.resumptions.clear(); b.displays.clear(); b.cooling.clear();
+        b.channels.clear(); b.retracks.clear(); b.searches.clear(); b.resumptions.clear(); b.displays.clear(); b.cooling.clear(); b.abandoning.clear();
         LobbyInteractions.get(server).ifPresent(r -> r.projections().clear());
         for (var player : List.copyOf(server.getPlayerList().getPlayers())) {
             if (MonsterRoles.isMonster(player)) MonsterRoles.clear(player);
@@ -434,9 +437,10 @@ public final class LobbyRuntime {
             } else if (elapsed >= duration && !b.session.mutationPending()) {
                 b.channels.remove(entry.getKey());
                 ChannelEffects.complete(ch.player, false);
+                // Only the sortie's own bound items are parked; world items settle here when the return commits.
                 var from = ch.player.position(); var level = (ServerLevel) ch.player.level();
                 b.session.requestMonsterReturn(round.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
-                        reply -> {
+                        dev.hardrush.monster.MonsterParking.capture(ch.player), reply -> {
                             tell(ch.player, reply.message());
                             if (reply.success()) ChannelEffects.departed(ch.player, level, from, false);
                             else sound(ch.player, false);
@@ -794,7 +798,7 @@ public final class LobbyRuntime {
         var round = b.session.snapshot().orElse(null); if (round == null) return;
         if (!round.roundId().equals(b.round)) {
             b.round = round.roundId(); b.searchRandom = new Random(round.seed() ^ 0x4841524452555348L);
-            b.slots.clear(); b.deadAt.clear(); b.displays.clear(); b.cooling.clear(); b.reviving.clear();
+            b.slots.clear(); b.deadAt.clear(); b.displays.clear(); b.cooling.clear(); b.abandoning.clear(); b.reviving.clear();
         }
     }
     /** Role models and paging blocks use the same guarded facility action. */
@@ -825,6 +829,7 @@ public final class LobbyRuntime {
         }
         if (role != null && revivalFirst(player, r, p)) return;
         if (role == null) return;
+        if (p.wallet().hasParkedBody() && role != p.monsterRole() && !confirmAbandon(b, player, p, role)) return;
         b.committing.add(p.id());
         b.session.requestMonsterRole(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), role, reply -> {
             b.committing.remove(p.id());
@@ -833,6 +838,24 @@ public final class LobbyRuntime {
                 case SKELETON -> "潜行拉满弓松手可三连射；粉雪可转化为流浪者"; case CREEPER -> "引爆器：按住膨胀，松开消退";
             } : reply.message());
         });
+    }
+    /**
+     * Another role discards the paused sortie, so it takes a second click within a few seconds.
+     * A native held right-click repeats every 4 ticks; such repeats count as the same click.
+     */
+    private static boolean confirmAbandon(Binding b, ServerPlayer player, Participant p, MonsterRole role) {
+        long now = player.level().getServer().getTickCount();
+        var ask = b.abandoning.get(p.id());
+        if (ask != null && ask.role() == role && now - ask.lastClick() <= 5) {
+            b.abandoning.put(p.id(), new AbandonAsk(role, ask.asked(), now)); return false;
+        }
+        if (ask != null && ask.role() == role && now - ask.asked() <= 120) { b.abandoning.remove(p.id()); return true; }
+        b.abandoning.put(p.id(), new AbandonAsk(role, now, now));
+        String parked = dev.hardrush.monster.MonsterParking.describe(p.wallet().parked()).orElse(kindName(p.monsterRole()));
+        tell(player, "你有一次暂存的" + parked + "出场；改选" + kindName(role) + "会放弃它，出生物资、宝库装备和身价都不保留。"
+                + "5 秒内再右键一次确认。");
+        sound(player, false);
+        return false;
     }
     private static void updateDisplays(MinecraftServer server, Binding b) {
         var r = b.session.snapshot().orElse(null); if (r == null) return;
@@ -900,9 +923,16 @@ public final class LobbyRuntime {
                                 + " · 已等待 " + waited + " 秒 · 再次右键模型取消", now + 300);
                     } else if (attempt != null || b.committing.contains(p.id()) || b.resumptions.containsKey(p.id()))
                         hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "正在提交出场", now + 300);
-                    else projections.aimed(observer).ifPresent(selected -> hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
-                            "目标：" + r.participants().get(selected.target()).name() + " · 当前角色：" + kindName(p.monsterRole())
-                                    + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒" : " · 右键追猎"), now + 300));
+                    else {
+                        projections.aimed(observer).ifPresent(selected -> hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
+                                "目标：" + r.participants().get(selected.target()).name() + " · 当前角色：" + kindName(p.monsterRole())
+                                        + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒" : " · 右键追猎"), now + 300));
+                        dev.hardrush.monster.MonsterParking.describe(p.wallet().parked()).ifPresent(parked -> hints.offer("parked",
+                                dev.hardrush.core.lobby.LobbyHints.Priority.FACILITY, "上次出场已暂存：" + parked
+                                        + (dev.hardrush.core.round.MonsterWorth.enabled(r.rules()) ? " · 身价 "
+                                        + dev.hardrush.core.round.MonsterWorth.level(dev.hardrush.core.round.MonsterWorth.milliLevels(r.rules(), p.wallet())) + " 级" : "")
+                                        + "；右键目标继续追猎", now + 300));
+                    }
                 }
             }
         }

@@ -21,14 +21,17 @@ import java.util.UUID;
  * @param gear         vault results waiting for a role that can wear them
  * @param activeGear   vault results carried by the current deployment
  * @param sortieDamage per-human damage credit of the current or most recently ended deployment
+ * @param parked       the platform's encoded body of a sortie paused by a deliberate return, empty when
+ *                     none; a resumed deployment keeps it until the sortie parks again or ends
  */
 public record MonsterWallet(int coins, boolean roleChosen,
                             Map<ShopOffer, Integer> bought, Map<ShopOffer, Integer> order,
                             Map<ShopOffer, Integer> active, List<GearPiece> gear, List<GearPiece> activeGear,
-                            int nextGearSerial, Map<UUID, DamageCredit> sortieDamage) {
+                            int nextGearSerial, Map<UUID, DamageCredit> sortieDamage, String parked) {
     public static final int MAX_GEAR = 16;
     public static final int MAX_GEAR_TEXT = 8192;
     public static final int MAX_DAMAGE_VICTIMS = 256;
+    public static final int MAX_PARKED_TEXT = 65_536;
     public static final MonsterWallet EMPTY = new MonsterWallet(0, false, Map.of(), Map.of(), Map.of(),
             List.of(), List.of(), 0, Map.of());
 
@@ -57,13 +60,21 @@ public record MonsterWallet(int coins, boolean roleChosen,
         bought = counts(bought); order = counts(order); active = counts(active);
         gear = List.copyOf(gear); activeGear = List.copyOf(activeGear);
         sortieDamage = Map.copyOf(sortieDamage);
+        Objects.requireNonNull(parked);
         if (coins < 0 || nextGearSerial < 0 || gear.size() + activeGear.size() > MAX_GEAR
-                || sortieDamage.size() > MAX_DAMAGE_VICTIMS) {
+                || sortieDamage.size() > MAX_DAMAGE_VICTIMS || parked.length() > MAX_PARKED_TEXT) {
             throw new IllegalArgumentException("Invalid monster wallet");
         }
         if (active.keySet().stream().anyMatch(ShopOffer::key)) {
             throw new IllegalArgumentException("Vault keys are never carried into a sortie");
         }
+    }
+
+    /** A wallet with no paused sortie, as stored before deliberate returns could pause one. */
+    public MonsterWallet(int coins, boolean roleChosen, Map<ShopOffer, Integer> bought, Map<ShopOffer, Integer> order,
+                         Map<ShopOffer, Integer> active, List<GearPiece> gear, List<GearPiece> activeGear,
+                         int nextGearSerial, Map<UUID, DamageCredit> sortieDamage) {
+        this(coins, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage, "");
     }
 
     private static Map<ShopOffer, Integer> counts(Map<ShopOffer, Integer> source) {
@@ -79,13 +90,18 @@ public record MonsterWallet(int coins, boolean roleChosen,
     public int bought(ShopOffer offer) { return bought.getOrDefault(offer, 0); }
     public int ordered(ShopOffer offer) { return order.getOrDefault(offer, 0); }
     public int carried(ShopOffer offer) { return active.getOrDefault(offer, 0); }
+    public boolean hasParkedBody() { return !parked.isEmpty(); }
 
     private MonsterWallet with(int newCoins, boolean chosen, Map<ShopOffer, Integer> newBought,
                                Map<ShopOffer, Integer> newOrder, Map<ShopOffer, Integer> newActive,
                                List<GearPiece> newGear, List<GearPiece> newActiveGear, int serial,
                                Map<UUID, DamageCredit> damage) {
         return new MonsterWallet(newCoins, chosen, newBought, newOrder, newActive, newGear, newActiveGear,
-                serial, damage);
+                serial, damage, parked);
+    }
+
+    private MonsterWallet withParked(String body) {
+        return new MonsterWallet(coins, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage, body);
     }
 
     public MonsterWallet credit(int amount) {
@@ -162,7 +178,11 @@ public record MonsterWallet(int coins, boolean roleChosen,
                 Math.addExact(nextGearSerial, 1), sortieDamage);
     }
 
-    /** Unopened keys are refunded; the role's goods and wearable gear are frozen for this sortie. */
+    /**
+     * Unopened keys are refunded; the role's goods and wearable gear are frozen for this sortie.
+     * Resuming a paused sortie freezes only what was bought since it paused, since the parked body
+     * already holds the rest, and keeps the sortie's damage credit.
+     */
     public MonsterWallet deploy(RulesConfig rules, MonsterRole role) {
         var wallet = refund(rules, ShopOffer::key);
         var carriedGear = wallet.gear.stream().filter(piece -> piece.wearableBy(role)).toList();
@@ -171,7 +191,7 @@ public record MonsterWallet(int coins, boolean roleChosen,
         var kept = new EnumMap<ShopOffer, Integer>(ShopOffer.class);
         wallet.order.forEach((offer, count) -> (offer.sellableTo(role) ? carried : kept).put(offer, count));
         return with(wallet.coins, roleChosen, wallet.bought, kept, carried, keptGear, carriedGear,
-                nextGearSerial, Map.of());
+                nextGearSerial, hasParkedBody() ? sortieDamage : Map.of());
     }
 
     /** Compensation for an outing that never opened: everything frozen returns to the camp. */
@@ -181,18 +201,28 @@ public record MonsterWallet(int coins, boolean roleChosen,
         var restoredGear = new ArrayList<>(gear); restoredGear.addAll(activeGear);
         restoredGear.sort(Comparator.comparingInt(GearPiece::serial));
         return with(coins, roleChosen, bought, restored, Map.of(), restoredGear, List.of(),
-                nextGearSerial, Map.of());
+                nextGearSerial, hasParkedBody() ? sortieDamage : Map.of());
     }
 
     /**
-     * Return, death or disconnect: the carried goods are spent and the price ladder restarts. The
+     * A deliberate return pauses the sortie: {@code body} now holds everything carried, while the
+     * price ladder and per-human damage credit continue until the sortie truly ends.
+     */
+    public MonsterWallet park(String body) {
+        if (Objects.requireNonNull(body).isEmpty()) throw new IllegalArgumentException("Empty parked body");
+        return new MonsterWallet(coins, roleChosen, bought, order, Map.of(), gear, List.of(), nextGearSerial, sortieDamage, body);
+    }
+
+    /**
+     * Death, disconnect, recall or an abandoned pause: the carried goods are spent, any parked body
+     * is discarded and the price ladder restarts. The
      * sortie's damage credit stays until the next deployment, so late buffered damage keeps its cap.
      */
     public MonsterWallet endSortie() {
         // Goods still waiting in the camp keep their paid ladder steps for an exact refund.
         var waiting = new EnumMap<ShopOffer, Integer>(ShopOffer.class);
         bought.forEach((offer, count) -> { if (order.containsKey(offer)) waiting.put(offer, count); });
-        return with(coins, roleChosen, waiting, order, Map.of(), gear, List.of(), nextGearSerial, sortieDamage);
+        return with(coins, roleChosen, waiting, order, Map.of(), gear, List.of(), nextGearSerial, sortieDamage).withParked("");
     }
 
     /**

@@ -135,6 +135,11 @@ public final class MonsterCreeper {
         MonsterDisguise.setCreeperState(player, state.direction, true);
     }
 
+    public static boolean charged(ServerPlayer player) {
+        State state = STATES.get(player.getUUID());
+        return state != null && state.charged;
+    }
+
     /** A purchased charged sortie starts in the same powered state a real lightning strike leaves. */
     public static void charge(ServerPlayer player) {
         if (!(MonsterRoles.nativeModel(player) instanceof Creeper)) return;
