@@ -363,7 +363,10 @@ public final class SafeDeployment {
     /** Terrain admission only: vanilla ground semantics, relaxed to other physically supported floors.
      * Uses the real player's current body, never the visual monster's larger spawn box. */
     public static boolean canDeployAt(ServerLevel level, ServerPlayer player, Vec3 point) {
-        var body = player.getBoundingBox().move(point.subtract(player.position())).deflate(EPSILON);
+        // The actual body, but never shorter than standing: a crouching hunter must be able to stand up there.
+        var actual = player.getBoundingBox().move(point.subtract(player.position()));
+        double standing = player.getDimensions(net.minecraft.world.entity.Pose.STANDING).height();
+        var body = actual.setMaxY(Math.max(actual.maxY, actual.minY + standing)).deflate(EPSILON);
         var support = body.expandTowards(0, -1, 0);
         // Guard every column the body/support queries can read; never load a missing chunk.
         if (!loaded(level, support) || !level.getWorldBorder().isWithinBounds(BlockPos.containing(point))
