@@ -182,9 +182,12 @@ public final class DuskPactRuntime {
             }
             for (var player : viewers) {
                 if (barShown) binding.bar.addPlayer(player);
-                // Wait for the loading screen to close; one entry title per player and round, never on respawn or reconnect.
-                if (player.connection.hasClientLoaded() && binding.introduced.add(player.getUUID()))
+                // Wait for loading to finish; play the entire introduction once per player and round.
+                if (player.connection.hasClientLoaded() && binding.introduced.add(player.getUUID())) {
+                    // Vanilla renders the ghost and plays its curse sound; this packet applies no mining fatigue.
+                    player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.GUARDIAN_ELDER_EFFECT, 1F));
                     title(player, 10, 80, 20, DuskPact.TITLE, DuskPact.INTRO);
+                }
                 Long previous = binding.viewers.put(player, display.seconds());
                 if (previous != null && display.seconds() < previous && display.advancing()) {
                     if (previous > DuskPact.WARNING_SECONDS && display.seconds() <= DuskPact.WARNING_SECONDS)
