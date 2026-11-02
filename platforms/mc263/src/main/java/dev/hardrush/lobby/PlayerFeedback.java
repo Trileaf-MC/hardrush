@@ -32,7 +32,7 @@ public final class PlayerFeedback {
         stageBar.setVisible(recovery||rescue||displaying);
         String terminalText=displaying?RoundResultText.stageLabel(round.result(), celebrating?"通关庆祝 · 胜者跳入龙池／阵亡／离线即结束":"结算展示"):"结算展示";
         if(displaying&&round.result().kind()==RoundResult.Kind.FAILED)terminalText="全员挑战失败";
-        stageBar.setName(Component.literal(recovery ? "恢复隔离 · 竞技入口关闭，请联系管理员" : (rescue?"救场 · 祭坛复生／中途门加入":terminalText)
+        stageBar.setName(Component.literal(recovery ? "恢复隔离 · 竞技入口关闭，请联系管理员" : (rescue?"救场 · 祭坛复生／集结区加入":terminalText)
                 + " · 剩余 " + (round.remainingPhaseMillis()+999)/1000 + " 秒"));
         long total=rescue?round.rules().combatValues().get("round.rescueMillis").longValue():completed
                 ?RoundEngine.successCelebrationMillis(round.rules()):round.rules().failureDisplayMillis();
@@ -61,7 +61,7 @@ public final class PlayerFeedback {
             if(p!=null&&p.role()==ParticipantRole.MONSTER_LOBBY&&p.revivalEntitled()&&dev.hardrush.core.round.MonsterCoins.enabled(r.rules()))
                 hints.offer("revival",LobbyHints.Priority.FACILITY,"持有复生次数 "+p.revivalCharges()+" · 请到复生祭坛右键复生，复生前不能追猎或交易",now+300);
             if(r.phase()==RoundPhase.RESCUE)
-                hints.offer("rescue",LobbyHints.Priority.FACILITY,"救场剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · 祭坛复生或中途门参赛恢复挑战",now+300);
+                hints.offer("rescue",LobbyHints.Priority.FACILITY,"救场剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · 祭坛复生或站入集结区参赛恢复挑战",now+300);
             else if(r.phase()==RoundPhase.RUNNING && humans>0 && r.onlineHumans()==0)
                 hints.offer("away",LobbyHints.Priority.FACILITY,"人类暂离，挑战计时暂停；资格保留，暂无可追猎目标",now+300);
             if(dev.hardrush.celebration.CelebrationRuntime.arena(player)) {
@@ -78,7 +78,6 @@ public final class PlayerFeedback {
                     String text=switch(facility) {
                         case RULES -> "右键规则讲台阅读玩法"; case HISTORY -> "右键书屋 · 轮次／名单／分榜／主册与分卷";
                         case ALTAR -> p!=null&&p.revivalEntitled()?"剩余复生 " + p.revivalCharges() + " 次 · 右键祭坛确认，冷却期间可用":"尚无复生资格 · 击杀在赛人类后获得";
-                        case MIDROUND -> "中途门 · 挑战／救场中确认空装加入";
                         case ZOMBIE, SKELETON, CREEPER -> "右键怪物模型选择角色，之后右键目标模型追猎";
                         case PREVIOUS, NEXT -> "右键翻阅本人的追猎庭院";
                         case MERCHANT -> "女巫商人 · 选好角色后右键，用怪物币购买下次出场的增强";

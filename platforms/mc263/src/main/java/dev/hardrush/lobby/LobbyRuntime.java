@@ -176,7 +176,6 @@ public final class LobbyRuntime {
             @Override public List<LobbyMenus.Button> buttons(ServerPlayer player, LobbyContext context) {
                 if (context == LobbyContext.WITHDRAWAL) return dev.hardrush.participation.ParticipationControl.withdrawalButtons(player);
                 if (context == LobbyContext.COMPETITION) return buttons(player);
-                if (context == LobbyContext.ENTRY) return dev.hardrush.lobby.HumanEntry.gateButtons(player);
                 if (context == LobbyContext.REVIVAL) return altarButtons(player, binding);
                 if (context == LobbyContext.HISTORY) return dev.hardrush.record.HistoryLibrary.buttons(player);
                 var round = session.snapshot().orElseThrow();
@@ -191,7 +190,7 @@ public final class LobbyRuntime {
                         new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "持有复生次数的怪物不能追猎、选角或交易，须先到祭坛复生；击杀人类后立即传回营地；复生时怪物币清空", "info", ""),
                         new LobbyMenus.Button(Items.TRIAL_KEY, "试炼钥匙插入营地宝库抽一件一次性装备；穿戴的装备被玩家击杀时按原版概率掉落", "info", ""),
                         new LobbyMenus.Button(Items.EXPERIENCE_BOTTLE, "出场时经验条就是你的身价：从 10 级起，伤害人类会上涨，最高 30 级；近期受玩家伤害后阵亡会喷出经验，满 15 级再掉一本同等级附魔台的署名附魔书", "info", ""),
-                        new LobbyMenus.Button(Items.GRASS_BLOCK, "中途门确认空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),
+                        new LobbyMenus.Button(Items.GRASS_BLOCK, "挑战中站入集结区 4 秒空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),
                         new LobbyMenus.Button(Items.DRAGON_EGG, "人类尾刀首龙通关；全员集结末地为胜者庆祝，胜者跳龙池结束，最长"
                                 + (RoundEngine.successCelebrationMillis(round.rules()) + 999) / 1000
                                 + "秒（现实时间）；书屋查战绩领书", "info", ""),
@@ -202,7 +201,6 @@ public final class LobbyRuntime {
                     if (action.equals("withdraw-confirm")) dev.hardrush.participation.ParticipationControl.confirmWithdrawal(player, round, value);
                     else if (action.equals("withdraw-cancel")) player.closeContainer();
                 }
-                else if (context == LobbyContext.ENTRY && action.equals("enter")) dev.hardrush.lobby.HumanEntry.confirm(player, round);
                 else if (context == LobbyContext.REVIVAL && action.equals("revive")) {
                     var p = session.snapshot().orElseThrow().participants().get(player.getUUID());
                     if (p != null && value.equals(p.lifeSequence() + ":" + p.monsterDeploymentSequence())) request(player, round, action, value);
@@ -236,7 +234,6 @@ public final class LobbyRuntime {
         return switch (context) {
             case WITHDRAWAL -> dev.hardrush.participation.ParticipationControl.canWithdraw(player);
             case RULES -> verified;
-            case ENTRY -> dev.hardrush.lobby.HumanEntry.gateAvailable(player);
             case HISTORY -> verified;
             case REVIVAL -> verified && revivalAvailable(player, b);
             case DISPLAY -> verified && dev.hardrush.round.RoundRuntime.lobbyActivityAllowed(player);
@@ -276,7 +273,7 @@ public final class LobbyRuntime {
             tell(player, "本轮采用个人追猎规则；请到追猎庭院右键目标模型，系统自动决定维度。"); return;
         }
         if (action.equals("join") || action.equals("ready") || action.equals("unready")) {
-            tell(player, "开局请站入集结区，离开取消准备；挑战中请到中途入场门确认。"); return;
+            tell(player, "开局请站入集结区，离开取消准备；挑战中站入集结区 4 秒中途加入。"); return;
         }
         if (action.equals("history")) {
             dev.hardrush.record.HistoryLibrary.open(player); return;

@@ -178,10 +178,10 @@ public final class FullFlowGameTest {
                         && f.target.participant().role()==ParticipantRole.MONSTER_LOBBY&&f.target.current().isAlive()&&!f.session.mutationPending(),"Explosion award and self return precede wipe adjudication"))
                 .thenExecute(()->{
                     f.monster.player=f.monster.current();f.target.player=f.target.current();
-                    state.facility(visitor.player,LobbyLayout.Facility.MIDROUND);state.click(visitor.player,"加入本轮");
+                    state.assembly(visitor.player);
                 })
                 .thenWaitUntil(()->f.await(f.round().phase()==RoundPhase.RUNNING&&visitor.participant()!=null&&visitor.participant().online()
-                        &&!dev.hardrush.player.PlayerProfiles.isLocked(visitor.player)&&!f.session.mutationPending(),"Physical midround gate independently rescues challenge"))
+                        &&!dev.hardrush.player.PlayerProfiles.isLocked(visitor.player)&&!f.session.mutationPending(),"Standing in the circle independently rescues challenge"))
                 .thenExecute(()->{state.facility(f.target.player,LobbyLayout.Facility.ALTAR);state.click(f.target.player,"确认复生");})
                 .thenWaitUntil(()->f.await(f.target.participant().role()==ParticipantRole.HUMAN_ACTIVE&&f.target.participant().online()
                         &&!dev.hardrush.player.PlayerProfiles.isLocked(f.target.player)&&!f.session.mutationPending(),"Second altar consumes entitlement once"))

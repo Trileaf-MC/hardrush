@@ -135,7 +135,7 @@ public final class ParticipationExitGameTest {
                 .thenIdle(3)
                 .thenExecute(() -> {
                     test.assertTrue(role(f, f.b.profile.id()) == ParticipantRole.DISQUALIFIED && !f.ready(f.b), "Assembly cannot restore eligibility");
-                    test.assertFalse(dev.hardrush.lobby.HumanEntry.gateAvailable(f.b.player), "Middle gate cannot restore eligibility");
+                    test.assertFalse(dev.hardrush.lobby.HumanEntry.midroundAvailable(f.b.player), "Mid-round circle cannot restore eligibility");
                     execute(f.server.createCommandSourceStack(), "gamemode spectator CampHumanB");
                     test.assertTrue(PlayerProfiles.isAdministrativeSpectator(f.b.player), "Operator may explicitly grant observation");
                     execute(f.server.createCommandSourceStack(), "hardrush admin disqualify CampHumanA 退赛后追加处罚");

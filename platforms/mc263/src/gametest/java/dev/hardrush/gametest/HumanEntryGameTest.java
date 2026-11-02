@@ -151,13 +151,28 @@ public final class HumanEntryGameTest {
                     test.assertTrue(f.a.player.level() == f.savedLevel && f.a.player.position().distanceTo(f.savedPosition) < .1, "Living reconnect restores saved native location");
                     test.assertValueEqual(f.a.player.getInventory().getItem(4).getCount(), 7, "Living reconnect preserves inventory");
                     test.assertValueEqual(f.round().participants().get(f.a.profile.id()).lifeSequence(), 5, "Reconnect never creates another life");
-                    f.gate(f.b); f.b.player.connection.handleContainerClose(new ServerboundContainerClosePacket(f.b.player.containerMenu.containerId));
-                    test.assertValueEqual(f.round().participants().get(f.b.profile.id()).lifeSequence(), 0, "Close before confirmation abandons admission");
-                    f.gate(f.b); f.hold = true; f.click(f.b, (short)2);
-                    test.assertTrue(f.session.mutationPending(), "Confirmation accepted once");
-                    f.click(f.b, (short)2); f.b.player.connection.handleContainerClose(new ServerboundContainerClosePacket(f.b.player.containerMenu.containerId)); f.hold = false;
+                    f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY);
                 })
-                .thenWaitUntil(() -> f.await(!PlayerProfiles.isLocked(f.b.player) && f.idle(), "Accepted conversion survives close and duplicate clicks"))
+                .thenIdle(40)
+                .thenExecute(() -> {
+                    test.assertTrue(dev.hardrush.lobby.HumanEntry.guiding(f.b.player), "Standing in the circle mid-round starts portal guidance");
+                    test.assertValueEqual(f.hint(f.b), "离开集结区取消引导", "Guidance explains how to cancel");
+                    test.assertTrue(LobbyWorld.open(f.server).inAssembly(f.b.player, true), "Mid-round circle never relocates an eligible visitor");
+                    f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE);
+                })
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(f.b.player), "Leaving the circle cancels guidance");
+                    test.assertValueEqual(f.round().participants().get(f.b.profile.id()).lifeSequence(), 0, "Leaving before the portal delay abandons admission");
+                    f.hold = true; f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY); f.guideStarted = f.server.getTickCount();
+                })
+                .thenWaitUntil(() -> f.await(f.session.mutationPending(), "Portal delay submits one admission"))
+                .thenExecute(() -> {
+                    test.assertTrue(f.server.getTickCount() - f.guideStarted >= 80, "Admission waits the vanilla portal delay");
+                    test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(f.b.player), "Submitted admission ends guidance");
+                    f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE); f.hold = false;
+                })
+                .thenWaitUntil(() -> f.await(!PlayerProfiles.isLocked(f.b.player) && f.idle(), "Submitted admission survives leaving the circle"))
                 .thenExecute(() -> {
                     test.assertValueEqual(f.round().participants().get(f.b.profile.id()).lifeSequence(), 1, "One middle admission");
                     test.assertTrue(f.round().participants().values().stream().allMatch(p -> p.role() == dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE), "Both are active ordinary humans");
@@ -165,9 +180,16 @@ public final class HumanEntryGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.reply.get() != null && f.reply.get().success() && f.idle(), "Next mode persisted for isolated hardcore refusal test"))
                 .thenExecute(() -> { f.reply.set(null); f.session.adminAbort("fixture", "结束普通模式入场测试，验证极限死者拒绝", f.reply::set); })
-                .thenWaitUntil(() -> f.await(f.round().sequence() == 2 && f.round().phase() == RoundPhase.WAITING && f.idle()
-                        && PlayerProfiles.canMoveInLobby(f.a.player) && PlayerProfiles.canMoveInLobby(f.b.player), "Hardcore round prepared independently"))
-                .thenExecute(() -> { f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY); f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY); })
+                .thenWaitUntil(() -> f.await(f.round().sequence() == 2 && f.round().phase() == RoundPhase.PREPARING
+                        && PlayerProfiles.canMoveInLobby(f.a.player) && PlayerProfiles.canMoveInLobby(f.b.player), "Hardcore round preparing with both back in camp"))
+                .thenExecute(() -> {
+                    f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY);
+                    var hint = f.hint(f.a);
+                    test.assertTrue(hint.contains("本轮世界准备中"), "A closed circle explains itself instead of relocating: " + hint);
+                    test.assertTrue(LobbyWorld.open(f.server).inAssembly(f.a.player, true), "Preparation never relocates the waiting player");
+                })
+                .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.COUNTDOWN && f.ready(f.a) && f.idle(), "Standing in the circle when it opens prepares automatically"))
+                .thenExecute(() -> f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.ready(f.b) && f.idle(), "Two hardcore humans prepared"))
                 .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
                 .thenWaitUntil(() -> f.await(!PlayerProfiles.isLocked(f.a.player) && !PlayerProfiles.isLocked(f.b.player) && f.idle(), "Hardcore natural admissions"))
@@ -181,10 +203,12 @@ public final class HumanEntryGameTest {
                     test.assertTrue(f.a.player.position().distanceTo(LobbyWorld.open(f.server).landing(dev.hardrush.core.lobby.LobbyLayout.Landing.MONSTER)) < .1, "Monster purpose landing is used");
                     f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY);
                 })
-                .thenWaitUntil(() -> f.await(!LobbyWorld.open(f.server).inAssembly(f.a.player, true), "Dead UUID ejected from assembly"))
+                .thenIdle(100)
                 .thenExecute(() -> {
-                    f.gate(f.a, false);
-                    test.assertValueEqual(f.round().participants().get(f.a.profile.id()).role(), dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY, "Gate and assembly cannot restore a dead UUID");
+                    test.assertTrue(LobbyWorld.open(f.server).inAssembly(f.a.player, true), "A dead UUID is never relocated out of the circle");
+                    test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(f.a.player), "A dead UUID cannot start admission guidance");
+                    test.assertTrue(f.hint(f.a).contains("化身怪物"), "The circle points a monster to the courtyard and altar");
+                    test.assertValueEqual(f.round().participants().get(f.a.profile.id()).role(), dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY, "The circle cannot restore a dead UUID");
                     f.a.disconnect(); f.b.disconnect();
                     f.reopenLegacyCamp("PREPARED", false);
                 })
@@ -298,13 +322,10 @@ public final class HumanEntryGameTest {
                 var state = entry.getClass().getDeclaredField("ready"); state.setAccessible(true); state.set(entry, ready);
             } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
         }
-        void gate(Peer peer) { gate(peer, true); }
-        void gate(Peer peer, boolean expected) {
-            var lobby = LobbyWorld.open(server); var pos = lobby.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(dev.hardrush.core.lobby.LobbyLayout.Facility.MIDROUND));
-            peer.player.teleportTo(lobby.holdingLevel(), pos.x, pos.y, pos.z + 2, java.util.Set.of(), 180, 0, true); peer.acknowledge();
-            var block = BlockPos.containing(pos);
-            peer.player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.atCenterOf(block), Direction.UP, block, false), 10));
-            test.assertValueEqual(LobbyMenus.isMenu(peer.player), expected, "Registered middle gate validates current identity");
+        int guideStarted;
+        String hint(Peer peer) {
+            dev.hardrush.lobby.HumanEntry.tick(server);
+            return LobbyInteractions.get(server).orElseThrow().hints(peer.player).current(System.nanoTime() / 1_000_000).orElse("");
         }
         void click(Peer peer, short slot) {
             var menu = peer.player.containerMenu;
