@@ -53,7 +53,7 @@ public final class RevivalTotems {
     public static ItemStack held(UUID round, int charges, int count) {
         return totem(round, null, count, List.of(
                 "数量即你本轮剩余的复生次数（共 " + charges + " 次）",
-                "前往营地祭坛右键确认：消耗 1 次，空装复生为人类",
+                "走上营地北侧复生祭坛，站在金块上 4 秒：消耗 1 次，空装复生为人类",
                 "丢出可转赠给营地里的其他怪物",
                 "落地 5 分钟无人拾取即作废；本轮结束全部清空"));
     }

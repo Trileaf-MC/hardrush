@@ -356,15 +356,14 @@ public final class LobbyRuntimeGameTest {
                                 // Simulate a damaged natural spawn without changing any surrounding terrain.
                                 f.level.getChunkAt(floor).setBlockState(floor, Blocks.AIR.defaultBlockState(), 2);
                                 f.test.assertFalse(RoundWorldBundle.safeStanding(f.level, worlds.spawn()), "The fixture really removed the natural spawn floor");
-                                int packetsBefore = hunter.connection.packets.size();
                                 hunter.command("hardrush revive");
+                                dev.hardrush.lobby.RevivalAltar.tick(f.server, f.round(), f.session);
+                                var hint = dev.hardrush.lobby.LobbyInteractions.get(f.server).orElseThrow().hints(hunter.player)
+                                        .current(System.nanoTime() / 1_000_000).orElse("");
                                 f.test.assertTrue(hunter.participant().revivalEntitled()
                                                 && hunter.participant().role() == ParticipantRole.MONSTER_LOBBY
-                                                && hunter.connection.packets.subList(packetsBefore, hunter.connection.packets.size()).stream()
-                                                    .filter(net.minecraft.network.protocol.game.ClientboundSystemChatPacket.class::isInstance)
-                                                    .map(net.minecraft.network.protocol.game.ClientboundSystemChatPacket.class::cast)
-                                                    .anyMatch(packet -> packet.content().getString().contains("出生点暂不安全")),
-                                        "An unsafe spawn rejects admission and keeps the entitlement");
+                                                && !dev.hardrush.lobby.RevivalAltar.channeling(hunter.player) && hint.contains("出生点暂不安全"),
+                                        "An unsafe spawn keeps the altar from starting a rite and keeps the entitlement: " + hint);
                             } finally { f.level.getChunkAt(floor).setBlockState(floor, original, 2); }
                         }
                         hunter.openAndClick(Items.TOTEM_OF_UNDYING);

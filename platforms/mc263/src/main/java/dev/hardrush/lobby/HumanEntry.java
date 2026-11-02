@@ -88,7 +88,9 @@ public final class HumanEntry {
         if (lobby.ready() && registeredRound == null) {
             var router = LobbyInteractions.get(server).orElseThrow();
             for (var facility : LobbyLayout.Facility.values()) {
-                if (LobbyLayout.MONSTER_FACILITIES.contains(facility) || facility == LobbyLayout.Facility.MERCHANT) continue;
+                // The altar is stood on, not clicked; see RevivalAltar.
+                if (LobbyLayout.MONSTER_FACILITIES.contains(facility) || facility == LobbyLayout.Facility.MERCHANT
+                        || facility == LobbyLayout.Facility.ALTAR) continue;
                 var pos = BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(facility)));
                 if (facility == LobbyLayout.Facility.VAULT || facility == LobbyLayout.Facility.OMINOUS_VAULT) {
                     var key = facility == LobbyLayout.Facility.VAULT ? dev.hardrush.core.round.ShopOffer.TRIAL_KEY
@@ -100,7 +102,6 @@ public final class HumanEntry {
                     if (facility == LobbyLayout.Facility.RULES) LobbyMenus.open(player, LobbyContext.RULES);
                     else if (facility == LobbyLayout.Facility.PREVIOUS || facility == LobbyLayout.Facility.NEXT)
                         dev.hardrush.lobby.LobbyRuntime.facility(player, facility);
-                    else if (facility == LobbyLayout.Facility.ALTAR) LobbyRuntime.altar(player);
                     else if (facility == LobbyLayout.Facility.HISTORY) dev.hardrush.record.HistoryLibrary.open(player);
                 });
             }

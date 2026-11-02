@@ -72,7 +72,7 @@ public final class LobbyMenus {
         return player.openMenu(new SimpleMenuProvider((id, inventory, actor) ->
                 actor == player ? new LobbyMenu(id, player, binding, round, context) : null,
                 Component.literal(context == LobbyContext.WITHDRAWAL ? "退出本轮并观战 · 确认"
-                        : context == LobbyContext.RULES ? "HardRush 规则" : context == LobbyContext.HISTORY ? "HardRush 历史" : context == LobbyContext.REVIVAL ? "复生祭坛确认" : "HardRush 大厅"))).isPresent();
+                        : context == LobbyContext.RULES ? "HardRush 规则" : context == LobbyContext.HISTORY ? "HardRush 历史" : "HardRush 大厅"))).isPresent();
     }
 
     /** Also identifies stale menus so the network adapter keeps creative-slot packets sealed. */
@@ -223,7 +223,7 @@ public final class LobbyMenus {
             if (page > 0) getContainer().setItem(45, icon(Items.ARROW, "上一页"));
             getContainer().setItem(49, icon(Items.COMPASS, "刷新"));
             getContainer().setItem(50, icon(Items.PAPER, "第 " + (page + 1) + " / " + pageCount + " 页"));
-            getContainer().setItem(51, icon(Items.BARRIER, context == LobbyContext.REVIVAL ? "继续作为怪物（不消费资格）" : "关闭"));
+            getContainer().setItem(51, icon(Items.BARRIER, "关闭"));
             if (page + 1 < pageCount) getContainer().setItem(53, icon(Items.ARROW, "下一页"));
         }
 

@@ -137,7 +137,8 @@ public final class LobbyWorld {
                         var actual = level.getBlockState(entry.getKey());
                         boolean natural = entry.getKey().getY() == spawn.getY() - 1 ? actual.is(Blocks.GRASS_BLOCK) : actual.isAir();
                         if (!natural && !(saved.equals(identity + "PREPARED\n") && (actual.equals(entry.getValue())
-                                || CampBlueprint.legacyMonsterLectern(spawn, entry.getKey(), actual))))
+                                || CampBlueprint.legacyMonsterLectern(spawn, entry.getKey(), actual)
+                                || CampBlueprint.litAltarGlass(spawn, entry.getKey(), actual))))
                             throw new IllegalStateException("未拥有或施工期间被修改的营地方块：" + entry.getKey());
                     }
                     // Check the entire walking volume before claiming it, not just the blocks we place.
@@ -145,7 +146,8 @@ public final class LobbyWorld {
                         for (int y = 0; y < 4; y++) {
                             var pos = spawn.offset(x, y, z); var actual = level.getBlockState(pos);
                             if (!actual.isAir() && !(saved.equals(identity + "PREPARED\n") && (actual.equals(blueprint.get(pos))
-                                    || CampBlueprint.legacyMonsterLectern(spawn, pos, actual))))
+                                    || CampBlueprint.legacyMonsterLectern(spawn, pos, actual)
+                                    || CampBlueprint.litAltarGlass(spawn, pos, actual))))
                                 throw new IllegalStateException("营地行走空间存在未拥有方块：" + pos);
                         }
                     construction.addAll(blueprint.entrySet());
@@ -206,12 +208,8 @@ public final class LobbyWorld {
     /** Refresh only owned facility text, never rebuild terrain in a completed camp. */
     public void huntLabels(boolean enabled) {
         if (!ready) return;
-        for (var facility : new LobbyLayout.Facility[]{LobbyLayout.Facility.HISTORY, LobbyLayout.Facility.ALTAR}) {
-            var point = LobbyLayout.facility(facility);
-            var pos = spawn.offset((int)point.x(), 0, (int)point.z()+2);
-            label(pos, new String[]{facility == LobbyLayout.Facility.HISTORY ? "战绩书屋" : "复生祭坛",
-                    facility == LobbyLayout.Facility.HISTORY ? "右键查战绩领书" : "右键查看本人资格", "", ""});
-        }
+        label(CampBlueprint.sign(spawn, LobbyLayout.Facility.HISTORY), new String[]{"战绩书屋", "右键查战绩领书", "", ""});
+        label(CampBlueprint.sign(spawn, LobbyLayout.Facility.ALTAR), CampBlueprint.ALTAR_SIGN);
         for (var facility : new LobbyLayout.Facility[]{LobbyLayout.Facility.ZOMBIE, LobbyLayout.Facility.SKELETON,
                 LobbyLayout.Facility.CREEPER, LobbyLayout.Facility.PREVIOUS, LobbyLayout.Facility.NEXT}) {
             var point = LobbyLayout.facility(facility);
@@ -248,6 +246,28 @@ public final class LobbyWorld {
                 && RoundWorldBundle.safeStanding(level, new BlockPos(net.minecraft.util.Mth.floor(player.getX()), spawn.getY(), net.minecraft.util.Mth.floor(player.getZ())))
                 && Math.hypot(relative.x - LobbyLayout.ASSEMBLY.x(), relative.z - LobbyLayout.ASSEMBLY.z())
                 <= LobbyLayout.ASSEMBLY.radius() + (staying ? .35 : -.15);
+    }
+    /** Standing on one of the altar's eight gold cells (jumping included); the beacon cell is solid anyway. */
+    public boolean onAltar(net.minecraft.server.level.ServerPlayer player) {
+        if (!ready || player.level() != level || !player.isAlive()) return false;
+        var altar = LobbyLayout.facility(LobbyLayout.Facility.ALTAR);
+        double dy = player.getY() - (spawn.getY() + 1);
+        return dy >= -.1 && dy <= 1.5 && LobbyLayout.onAltarPad(
+                net.minecraft.util.Mth.floor(player.getX()) - spawn.getX() - (int)altar.x(),
+                net.minecraft.util.Mth.floor(player.getZ()) - spawn.getZ() - (int)altar.z());
+    }
+    /**
+     * Light or darken the altar's beam by swapping the owned glass above its beacon. Vanilla does the
+     * rest: tinted glass stops a beam, and the beacon plays its own activate/deactivate sound.
+     */
+    public void altarLit(boolean lit) {
+        if (!ready) return;
+        var pos = CampBlueprint.altarGlass(spawn);
+        var actual = level.getBlockState(pos);
+        // Never overwrite an administrator's edit, or a camp built before the altar existed.
+        if (!actual.is(Blocks.TINTED_GLASS) && !CampBlueprint.litAltarGlass(spawn, pos, actual)) return;
+        var want = lit ? Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW) : Blocks.TINTED_GLASS;
+        if (!actual.is(want)) level.setBlockAndUpdate(pos, want.defaultBlockState());
     }
     /** Loaded, built camp coordinates; teleport callers must still recheck standing safety. */
     public Vec3 layoutPosition(dev.hardrush.core.lobby.LobbyLayout.Point point) {

@@ -424,18 +424,10 @@ public final class ServerRestartRegression implements ModInitializer {
             act("saved rescue and qualification", () -> {
                 require(round().phase()==RoundPhase.RESCUE&&session.view().orElseThrow().remainingPhaseMillis()==50000,"downtime preserves fifty seconds of rescue");
                 require(round().participants().get(a.profile.id()).revivalEntitled()&&!round().participants().get(b.profile.id()).revivalEntitled(),"exactly original owner keeps qualification");
+                // Stand on the rebuilt altar's gold pad; the rite submits once after the portal delay.
                 var lobby=LobbyWorld.open(server);var point=dev.hardrush.core.lobby.LobbyLayout.facility(dev.hardrush.core.lobby.LobbyLayout.Facility.ALTAR);
-                var pos=BlockPos.containing(lobby.layoutPosition(point));move(a,lobby.holdingLevel(),Vec3.atBottomCenterOf(pos.south(2)));
-                a.player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(net.minecraft.world.InteractionHand.MAIN_HAND,
-                        new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos),net.minecraft.core.Direction.UP,pos,false),2));
-                require(dev.hardrush.lobby.LobbyMenus.isMenu(a.player),"physical altar opens after restart");
-                var menu=a.player.containerMenu;
-                for(short n=0;n<45;n++)if(menu.getSlot(n).getItem().getHoverName().getString().contains("确认复生")){
-                    var click=new ServerboundContainerClickPacket(menu.containerId,menu.getStateId(),n,(byte)0,net.minecraft.world.inventory.ContainerInput.PICKUP,
-                            new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(),net.minecraft.network.HashedStack.EMPTY);
-                    a.player.connection.handleContainerClick(click);a.player.connection.handleContainerClick(click);return;
-                }
-                throw new AssertionError("recovered altar confirmation missing");
+                move(a,lobby.holdingLevel(),lobby.layoutPosition(point).add(-1,1,-1));
+                require(lobby.onAltar(a.player),"recovered body stands on the altar pad");
             });
             waitFor("one recovered revival restores challenge", () -> idle()&&round().phase()==RoundPhase.RUNNING
                     &&round().participants().get(a.profile.id()).lifeSequence()==2&&!PlayerProfiles.isLocked(a.player));
