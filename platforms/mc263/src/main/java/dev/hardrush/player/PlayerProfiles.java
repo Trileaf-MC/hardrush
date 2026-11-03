@@ -342,7 +342,6 @@ public final class PlayerProfiles implements AutoCloseable {
         // quarantined until this first safe opportunity to clear and close the native menu.
         closeSuspendedContainer(player);
         moveToLobby(player);
-        player.sendSystemMessage(Component.literal("玩家档案正在隔离并核验；完成后才允许加入本轮。"));
         String recovery = dev.hardrush.round.RoundRuntime.recoveryNotice(player.level().getServer());
         if (!recovery.isEmpty()) player.sendSystemMessage(Component.literal(recovery));
     }

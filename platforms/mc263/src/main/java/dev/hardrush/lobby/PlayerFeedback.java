@@ -16,6 +16,9 @@ import net.minecraft.server.MinecraftServer;
  */
 public final class PlayerFeedback {
     private static final java.util.Map<MinecraftServer, net.minecraft.server.level.ServerBossEvent> BARS = new java.util.IdentityHashMap<>();
+    /** Profile checks normally finish within a tick or two; only a freeze that lasts is worth a hint. */
+    private static final long FROZEN_HINT_DELAY_MILLIS = 2000;
+    private static final java.util.Map<net.minecraft.server.level.ServerPlayer, Long> FROZEN_SINCE = new java.util.WeakHashMap<>();
     private PlayerFeedback() {}
     public static void close(MinecraftServer server) { var bar=BARS.remove(server); if(bar!=null)bar.removeAllPlayers(); }
     private static void stage(MinecraftServer server, RoundSnapshot round) {
@@ -56,8 +59,10 @@ public final class PlayerFeedback {
             if(frozen) dev.hardrush.lobby.LobbyRuntime.interruptReturn(player,"阶段变化／恢复隔离");
             if(session.state()!=RoundSession.State.OPEN||r.phase()==RoundPhase.RECOVERY_REQUIRED)
                 hints.offer("recovery",LobbyHints.Priority.RECOVERY,"恢复隔离 · 竞技入口关闭；可用的规则与历史仍可阅读",now+300);
-            else if(PlayerProfiles.simulationFrozen(player) && !dev.hardrush.celebration.CelebrationRuntime.arena(player))
-                hints.offer("profile",LobbyHints.Priority.RECOVERY,"正在核验／应用个人档案，请稍候",now+300);
+            else if(PlayerProfiles.simulationFrozen(player) && !dev.hardrush.celebration.CelebrationRuntime.arena(player)) {
+                if(now-FROZEN_SINCE.computeIfAbsent(player,ignored->now)>=FROZEN_HINT_DELAY_MILLIS)
+                    hints.offer("profile",LobbyHints.Priority.RECOVERY,"正在整理你的行囊，稍等片刻…",now+300);
+            } else FROZEN_SINCE.remove(player);
             if(p!=null&&p.role()==ParticipantRole.MONSTER_LOBBY&&p.revivalEntitled()&&dev.hardrush.core.round.MonsterCoins.enabled(r.rules()))
                 hints.offer("revival",LobbyHints.Priority.FACILITY,"持有复生图腾 "+p.revivalCharges()+" 个 · 走上营地北侧复生祭坛站立 4 秒复生，复生前不能追猎或交易",now+300);
             dev.hardrush.world.FarLandings.arrived(player).ifPresent(text->hints.offer("landing",LobbyHints.Priority.TARGET,text,now+6000));
