@@ -33,8 +33,8 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Observer-only monster appearance. The server player is the sole movement and
  * combat entity; the unregistered mob is only a metadata template. The owner
- * receives native player packets and a temporary Steve skin, never a self mob,
- * invisibility flag, private team, or camera replacement.
+ * receives native player packets and a temporary skin themed after the form, never
+ * a self mob, invisibility flag, private team, or camera replacement.
  *
  * <p>Selection survives vanilla respawn, dimension transfer and reconnect within
  * this server session. The future race controller owns durable identity and calls
@@ -70,9 +70,11 @@ public final class MonsterDisguise {
         Selection selection = new Selection(kind, type);
         SELECTED.put(player.getUUID(), selection);
         bind(player, selection);
-        selection.skinRefreshPending = previous == null || previous.skinRefreshPending;
-        refreshSkinIfSafe(player, selection);
-        return "已设置旁人怪物外观，本人使用原版玩家模型／Steve 皮肤。" + status(player);
+        // Each form has its own owner skin, so a conversion refreshes it too. The
+        // refresh waits for this tick's end: a zombie rising from the sea is bound
+        // and converted in one tick and must reset the owner's client only once.
+        selection.skinRefreshPending = previous == null || previous.skinRefreshPending || !previous.kind.equals(kind);
+        return "已设置旁人怪物外观，本人使用原版玩家模型／" + kind + " 主题皮肤。" + status(player);
     }
 
     public static void clear(ServerPlayer player) {
@@ -147,7 +149,7 @@ public final class MonsterDisguise {
         Selection selection = SELECTED.get(player.getUUID());
         if (selection == null) return "disguise=off; realId=" + player.getId();
         return "disguise=" + selection.kind + "; realId=" + player.getId()
-            + "; selfView=player; selfSpawned=false; selfSkin=steve"
+            + "; selfView=player; selfSpawned=false; selfSkin=" + selection.kind
             + "; skinRefresh=" + (selection.skinRefreshPending ? "pending-safe-point" : "sent")
             + "; physics=player; equipment=preserved; visualAcceptance=pending";
     }
@@ -186,7 +188,8 @@ public final class MonsterDisguise {
                 return new ClientboundSetEquipmentPacket(state.realId,state.equipment);
             }
         }
-        return OwnerSkin.rewrite(observer, packet, SELECTED.containsKey(observer.getUUID()));
+        Selection own = SELECTED.get(observer.getUUID());
+        return OwnerSkin.rewrite(observer, packet, own == null ? null : own.kind);
     }
 
     public static boolean captureCosmeticBatch(ServerPlayer player, Packet<?> packet) {
@@ -256,7 +259,7 @@ public final class MonsterDisguise {
 
     private static void refreshSkinIfSafe(ServerPlayer player, Selection selection) {
         if (selection.skinRefreshPending && OwnerSkin.canRefresh(player)) {
-            OwnerSkin.steve(player);
+            OwnerSkin.apply(player, selection.kind);
             selection.skinRefreshPending = false;
         }
     }

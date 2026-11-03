@@ -35,6 +35,6 @@ HardRush 的怪物外观实现为本项目代码，未嵌入 DisguiseLib、Polym
 
 许可证索引区分 POM／父 POM、原 JAR 中的文本／模组声明与固定上游源码快照。部分 Mojang 官方运行库没有在 POM／JAR 声明独立许可证，已明确记录这种情况；这些文件仅存在 Minecraft 构建缓存，未嵌入或随仓库分发。不将该记录当作这些组件可任意重新分发的授权。完整发布组合仍需审查。
 
-## 本人 Steve 外观资料
+## 本人主题皮肤资料
 
-2026-10-14 固定的 [Mojang MHF_Steve 公开皮肤描述](https://sessionserver.mojang.com/session/minecraft/profile/c06f89064c8a49119c29ea1dbd1aab82?unsigned=false) 保存于 `platforms/mc263/src/main/resources/hardrush/steve-profile.json`。仅包含公开的纹理描述与来源，不打包 Minecraft 图片、账户凭据或客户端代码；由原版客户端从 `textures.minecraft.net` 加载。本人的临时外观属性无签名，仅限本人的原版本地皮肤路径，真实认证 profile 和其他观察者的数据保持权威来源。不能据此宣称该皮肤图片可以任意重新分发。
+2026-11-03 起，本人外观改为按怪物形态区分的主题皮肤，取代原先固定的 MHF_Steve 描述。五条纹理描述保存于 `platforms/mc263/src/main/resources/hardrush/owner-skins.json`，每条记录 [MineSkin](https://mineskin.org) 公开图库中的来源条目和纹理地址，属性值原样复制。这些皮肤由图库用户上传，按与原版贴图的逐像素相似度及原版客户端的皮肤处理规则挑选。仓库中只有公开的纹理描述与来源，不打包任何图片、账户凭据或客户端代码；由原版客户端从 `textures.minecraft.net` 加载。本人的临时外观属性无签名，仅限本人的原版本地皮肤路径，真实认证 profile 和其他观察者的数据保持权威来源。不能据此宣称该皮肤图片可以任意重新分发。
