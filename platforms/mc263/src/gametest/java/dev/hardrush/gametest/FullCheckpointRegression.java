@@ -164,6 +164,7 @@ public final class FullCheckpointRegression implements ModInitializer {
         java.nio.file.Path publishOnline() {
             FullCheckpointRuntime.close(server);
             FullCheckpointRuntime.tick(server, session, worlds, profiles);
+            FullCheckpointRuntime.awaitPublished(server);
             try { return root.resolve("hardrush/full-checkpoints").resolve(Files.readString(root.resolve("hardrush/full-checkpoints/latest")).strip()); }
             catch (Exception error) { throw new IllegalStateException(error); }
         }
@@ -192,6 +193,7 @@ public final class FullCheckpointRegression implements ModInitializer {
             act("publish actual full native checkpoint", () -> {
                 FullCheckpointRuntime.close(server);
                 FullCheckpointRuntime.tick(server, session, worlds, profiles);
+                FullCheckpointRuntime.awaitPublished(server);
                 try {
                     var saved = root.resolve("hardrush/full-checkpoints").resolve(Files.readString(root.resolve("hardrush/full-checkpoints/latest")).strip());
                     expected = SqliteRoundStore.inspectLatest(saved.resolve("data/" + dev.hardrush.storage.RoundStoragePaths.DATABASE)).orElseThrow();

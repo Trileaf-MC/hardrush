@@ -13,13 +13,18 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /** Immutable full save points. Restore runs before formal worlds, profiles or SQLite are opened. */
 public final class FullCheckpoint {
@@ -31,6 +36,9 @@ public final class FullCheckpoint {
     public record Search(List<Candidate> candidates, List<String> failures) {
         public Search { candidates = List.copyOf(candidates); failures = List.copyOf(failures); }
     }
+    private static final long UNTRUSTED = Long.MIN_VALUE;
+    /** Above FAT's 2-second timestamps; a newer timestamp is never reused. */
+    static final long RACY_MILLIS = 3000;
     private final Path root;
     private final Path directory;
 
@@ -71,39 +79,117 @@ public final class FullCheckpoint {
         publish(pending, round, deadlineNanos, java.util.Map.of());
     }
 
-    public void publish(Path pending, RoundSnapshot round, long deadlineNanos, java.util.Map<UUID, byte[]> liveBodies) throws Exception {
+    public void publish(Path pending, RoundSnapshot round, long deadlineNanos, Map<UUID, byte[]> liveBodies) throws Exception {
+        complete(stage(pending, round, deadlineNanos, true), liveBodies);
+    }
+
+    /**
+     * One file of the image as it stood at the barrier. {@code modified} is {@link #UNTRUSTED} when the
+     * timestamp cannot prove a later write; {@code reuse} is the identical file of the previous image.
+     */
+    private record Source(String path, long size, long modified, String sha256, Path reuse) {}
+
+    /** The server-thread half of a save point: changed files are copied, unchanged ones are only planned. */
+    public static final class Staged {
+        private final Path pending;
+        private final RoundSnapshot round;
+        private final long savedAt;
+        private final List<Source> files;
+        private Staged(Path pending, RoundSnapshot round, long savedAt, List<Source> files) {
+            this.pending = pending; this.round = round; this.savedAt = savedAt; this.files = List.copyOf(files);
+        }
+        public Path pending() { return pending; }
+        public int copied() { return (int) files.stream().filter(file -> file.reuse() == null).count(); }
+        public int reused() { return files.size() - copied(); }
+        public long copiedBytes() { return files.stream().filter(file -> file.reuse() == null).mapToLong(Source::size).sum(); }
+    }
+
+    /**
+     * Barrier work only, while the caller holds the server thread after native flushes: copies the files that
+     * changed since the previous complete image of this round and plans the rest. {@code incremental} false
+     * copies everything, for a first point or after a publication failed. Nothing is hashed or synced here.
+     */
+    public Staged stage(Path pending, RoundSnapshot round, long deadlineNanos, boolean incremental) throws Exception {
         requireImagePath(pending);
         if (round.phase() != RoundPhase.RUNNING || round.result() != null) throw new IOException("保存点必须属于进行中的对局");
+        long savedAt = System.currentTimeMillis();
+        var previous = incremental ? previousFiles(round) : Map.<String, Source>of();
+        var files = new ArrayList<Source>();
+        Path data = pending.resolve("data");
+        for (String name : roots(round)) {
+            if (name.equals(RoundStoragePaths.DATABASE)) continue;
+            Path source = root.resolve(name);
+            if (!Files.exists(source, LinkOption.NOFOLLOW_LINKS)) throw new IOException("完整保存点缺少 " + name);
+            checked(source, Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS));
+            Path target = data.resolve(name);
+            try (var walk = Files.walk(source)) {
+                for (Path entry : walk.toList()) {
+                    checkDeadline(deadlineNanos);
+                    if (Files.isSymbolicLink(entry)) throw new IOException("保存目录包含符号链接：" + entry);
+                    Path out = target.resolve(source.relativize(entry));
+                    if (Files.isDirectory(entry, LinkOption.NOFOLLOW_LINKS)) { Files.createDirectories(out); continue; }
+                    var attributes = Files.readAttributes(entry, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+                    if (!attributes.isRegularFile()) throw new IOException("保存点文件缺失或不是普通文件：" + entry.getFileName());
+                    String path = portable(data.relativize(out));
+                    long modified = attributes.lastModifiedTime().to(TimeUnit.NANOSECONDS);
+                    Files.createDirectories(out.getParent());
+                    var prior = previous.get(path);
+                    if (prior != null && prior.size() == attributes.size() && prior.modified() == modified) {
+                        files.add(new Source(path, prior.size(), modified, prior.sha256(), prior.reuse()));
+                        continue;
+                    }
+                    // Clones on APFS, Btrfs and XFS, else an in-kernel copy; durability is complete()'s job.
+                    Files.copy(entry, out);
+                    if (Files.size(out) != attributes.size()) throw new IOException("保存期间文件发生变化：" + path);
+                    files.add(new Source(path, attributes.size(), reusable(name, modified, savedAt), null, null));
+                }
+            }
+        }
+        return new Staged(pending, round, savedAt, files);
+    }
+
+    /**
+     * Off the server thread: fills unchanged files from the previous immutable image, seals live bodies,
+     * hashes, makes every file durable and only then moves the latest pointer. The SQLite image must exist.
+     */
+    public void complete(Staged staged, Map<UUID, byte[]> liveBodies) throws Exception {
+        Path pending = staged.pending;
+        RoundSnapshot round = staged.round;
+        requireImagePath(pending);
+        Path data = pending.resolve("data");
+        var known = new HashMap<String, Source>();
+        for (var file : staged.files) {
+            known.put(file.path(), file);
+            if (file.reuse() == null) continue;
+            checked(file.reuse(), false);
+            requireRegular(file.reuse());
+            Path out = data.resolve(file.path());
+            Files.copy(file.reuse(), out);
+            if (Files.size(out) != file.size()) throw new IOException("上一个保存点文件已变化：" + file.path());
+        }
+        var journal = new dev.hardrush.player.ProfileJournal(data.resolve("hardrush/profiles"));
+        for (var body : liveBodies.entrySet()) journal.suspend(body.getKey(),
+                new dev.hardrush.player.ProfileJournal.Generation(round.roundId(), round.sequence()), body.getValue());
         var manifest = new Properties();
         manifest.setProperty("format", "1");
         manifest.setProperty("round", round.roundId().toString());
         manifest.setProperty("sequence", Long.toString(round.sequence()));
         manifest.setProperty("version", Long.toString(round.version()));
-        manifest.setProperty("savedAt", Long.toString(System.currentTimeMillis()));
-        List<String> roots = roots(round);
+        manifest.setProperty("savedAt", Long.toString(staged.savedAt));
         int count = 0;
-        for (String name : roots) {
-            Path source = root.resolve(name);
-            Path target = pending.resolve("data").resolve(name);
-            if (!name.equals(RoundStoragePaths.DATABASE)) {
-                if (!Files.exists(source, LinkOption.NOFOLLOW_LINKS)) throw new IOException("完整保存点缺少 " + name);
-                copyTree(source, target, deadlineNanos);
-            }
-            if (name.equals("hardrush/profiles")) {
-                var journal = new dev.hardrush.player.ProfileJournal(target);
-                for (var body : liveBodies.entrySet()) journal.suspend(body.getKey(),
-                        new dev.hardrush.player.ProfileJournal.Generation(round.roundId(), round.sequence()), body.getValue());
-            }
-            try (var entries = Files.walk(target)) {
-                for (Path file : entries.sorted().toList()) {
-                    if (Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)) continue;
-                    checkDeadline(deadlineNanos);
-                    requireRegular(file);
-                    String key = "file." + count++;
-                    manifest.setProperty(key + ".path", portable(pending.resolve("data").relativize(file)));
-                    manifest.setProperty(key + ".size", Long.toString(Files.size(file)));
-                    manifest.setProperty(key + ".sha256", digest(file));
-                }
+        try (var entries = Files.walk(data)) {
+            for (Path file : entries.sorted().toList()) {
+                if (Files.isSymbolicLink(file)) throw new IOException("保存点包含符号链接");
+                if (Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)) { forceDirectory(file); continue; }
+                requireRegular(file);
+                String path = portable(data.relativize(file));
+                var source = known.get(path);
+                String key = "file." + count++;
+                manifest.setProperty(key + ".path", path);
+                manifest.setProperty(key + ".size", Long.toString(Files.size(file)));
+                manifest.setProperty(key + ".sha256", source != null && source.sha256() != null ? source.sha256() : digest(file));
+                if (source != null && source.modified() != UNTRUSTED) manifest.setProperty(key + ".modified", Long.toString(source.modified()));
+                forceFile(file);
             }
         }
         var exported = SqliteRoundStore.inspectLatest(database(pending)).orElseThrow();
@@ -111,7 +197,6 @@ public final class FullCheckpoint {
         manifest.setProperty("files", Integer.toString(count));
         var bytes = new java.io.ByteArrayOutputStream();
         manifest.store(bytes, "HardRush complete checkpoint");
-        checkDeadline(deadlineNanos);
         atomicWrite(pending.resolve("complete.properties"), bytes.toByteArray());
         String previous = null;
         if (Files.exists(directory.resolve("latest"))) {
@@ -327,6 +412,44 @@ public final class FullCheckpoint {
         forceDirectory(directory);
     }
 
+    /**
+     * Whether a later image may reuse this copy when the live file keeps its size and timestamp. A write just
+     * after the barrier can keep a timestamp set just before it on coarse clocks, so only a timestamp older
+     * than {@link #RACY_MILLIS} proves the file unchanged. Live bodies rewrite the profile copy itself.
+     */
+    private static long reusable(String root, long modifiedNanos, long savedAtMillis) {
+        if (root.equals("hardrush/profiles")) return UNTRUSTED;
+        return savedAtMillis - TimeUnit.NANOSECONDS.toMillis(modifiedNanos) >= RACY_MILLIS ? modifiedNanos : UNTRUSTED;
+    }
+
+    /** Reusable files of this round's latest complete image; any doubt about it means copying everything. */
+    private Map<String, Source> previousFiles(RoundSnapshot round) {
+        try {
+            Path pointer = directory.resolve("latest");
+            if (!Files.exists(pointer, LinkOption.NOFOLLOW_LINKS)) return Map.of();
+            Path image = directory.resolve(readPointer(pointer).toString());
+            requireImagePath(image);
+            Path file = image.resolve("complete.properties");
+            requireRegular(file);
+            var manifest = new Properties();
+            try (var in = Files.newInputStream(file)) { manifest.load(in); }
+            if (!round.roundId().toString().equals(manifest.getProperty("round"))) return Map.of();
+            var allowed = roots(round);
+            var files = new HashMap<String, Source>();
+            int count = Integer.parseInt(manifest.getProperty("files"));
+            for (int i = 0; i < count; i++) {
+                String key = "file." + i;
+                String modified = manifest.getProperty(key + ".modified");
+                if (modified == null) continue;
+                String path = manifest.getProperty(key + ".path");
+                requireRelative(path, allowed);
+                files.put(path, new Source(path, Long.parseLong(manifest.getProperty(key + ".size")), Long.parseLong(modified),
+                        Objects.requireNonNull(manifest.getProperty(key + ".sha256")), image.resolve("data").resolve(path)));
+            }
+            return files;
+        } catch (Exception unreadable) { return Map.of(); }
+    }
+
     private List<String> roots(RoundSnapshot round) { return rootNames(round.roundId()); }
     private List<String> rootNames(UUID round) {
         var names = new ArrayList<String>();
@@ -391,20 +514,15 @@ public final class FullCheckpoint {
                 else {
                     requireRegular(entry);
                     Files.createDirectories(out.getParent());
-                    try (var input = FileChannel.open(entry, StandardOpenOption.READ);
-                         var output = FileChannel.open(out, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
-                        var buffer = ByteBuffer.allocate(1024 * 1024);
-                        while (input.read(buffer) != -1) {
-                            checkDeadline(deadline);
-                            buffer.flip();
-                            while (buffer.hasRemaining()) output.write(buffer);
-                            buffer.clear();
-                        }
-                        output.force(true);
-                    }
+                    Files.copy(entry, out);
+                    forceFile(out);
                 }
             }
         }
+    }
+    private static void forceFile(Path file) throws IOException {
+        // WRITE without TRUNCATE leaves the bytes alone; Windows refuses to flush a read-only handle.
+        try (var channel = FileChannel.open(file, StandardOpenOption.WRITE)) { channel.force(true); }
     }
     private static void atomicWrite(Path path, byte[] bytes) throws IOException {
         checked(path, false);

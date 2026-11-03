@@ -123,6 +123,7 @@ public final class RecoveryRuntime implements AutoCloseable {
     private int find(CommandSourceStack source, boolean fresh) {
         if (!authorized(source)) return failure(source, "在线恢复需要管理员权限等级 4。");
         if (closed || stage == Stage.SEARCH || busy(server)) return failure(source, "恢复检查或恢复操作正在进行，请稍候。");
+        if (FullCheckpointRuntime.publishing(server)) return failure(source, "完整保存点正在后台写入，请几秒后重试。");
         if (!session.canRetryRecovery()) return failure(source, "仅可在故障隔离状态重试；请等待已受理的写入排空。");
         requester = source;
         if (fresh) { original = session.snapshot().orElseThrow(); rejected.clear(); }
