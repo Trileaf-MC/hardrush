@@ -6,6 +6,7 @@ import dev.hardrush.player.mixin.PlayerAdvancementProfileAccessor;
 import dev.hardrush.world.RoundWorldRouting;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -33,6 +34,8 @@ public final class ProgressRuntime {
         final ProgressTracker tracker = new ProgressTracker();
         ServerAdvancementManager manager;
         AdvancementCatalog catalog;
+        /** The catalog's holders with their ids, so a tick probes ~100 entries instead of every recipe's progress. */
+        List<Map.Entry<AdvancementHolder, String>> counted;
         Binding(Eligibility eligibility, Consumer<ProgressWrite> writes) {
             this.eligibility = Objects.requireNonNull(eligibility);
             this.writes = Objects.requireNonNull(writes);
@@ -44,6 +47,9 @@ public final class ProgressRuntime {
                 catalog = AdvancementCatalog.from(manager.getAllAdvancements().stream()
                         .map(holder -> new AdvancementCatalog.Entry(holder.id().toString(),
                                 holder.value().display().isPresent(), holder.value().isRoot())).toList());
+                counted = manager.getAllAdvancements().stream()
+                        .map(holder -> Map.entry(holder, holder.id().toString()))
+                        .filter(entry -> catalog.ids().contains(entry.getValue())).toList();
             }
             return catalog;
         }
@@ -83,9 +89,9 @@ public final class ProgressRuntime {
         var completed = new HashSet<String>();
         // Reading the existing map avoids getOrStartProgress allocating recipe/technical progress on every tick.
         var progress = ((PlayerAdvancementProfileAccessor) player.getAdvancements()).hardrush$progress();
-        for (var entry : progress.entrySet()) {
-            var id = entry.getKey().id().toString();
-            if (entry.getValue().isDone() && catalog.ids().contains(id)) completed.add(id);
+        for (var entry : binding.counted) {
+            var done = progress.get(entry.getKey());
+            if (done != null && done.isDone()) completed.add(entry.getValue());
         }
         boolean inEnd = RoundWorldRouting.semanticDimension(player.level()).equals(Level.END);
         binding.tracker.observe(current.roundId(), player.getUUID(), player.getScoreboardName(), catalog,
