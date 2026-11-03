@@ -1,6 +1,10 @@
 .gradle/
 .local/
 **/build/
+# Java IDE compilation output
+/core/bin/
+/persistence/bin/
+/platforms/mc263/bin/
 **/run/
 .idea/
 *.iml
