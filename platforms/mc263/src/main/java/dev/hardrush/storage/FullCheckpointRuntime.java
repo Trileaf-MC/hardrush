@@ -86,7 +86,7 @@ public final class FullCheckpointRuntime {
             exported = export.written();
             var snapshot = export.snapshot();
             long flushStarted = System.nanoTime();
-            worlds.save();
+            worlds.saveForCheckpoint();
             server.getPlayerList().saveAll();
             profiles.flushForFullCheckpoint();
             long flushed = System.nanoTime();
