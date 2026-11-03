@@ -125,6 +125,7 @@ public final class RoundRuntime {
                         dev.hardrush.storage.FullCheckpointRuntime.close(server);
                     });
             dev.hardrush.participation.ParticipationControl.configure(server, session, profiles);
+            dev.hardrush.observe.Observation.configure(server, session, profiles);
             LobbyRuntime.configure(server, session, profiles, () -> WORLDS.get(server));
             dev.hardrush.record.HistoryLibrary.configure(server, session);
             dev.hardrush.lobby.HumanEntry.configure(server, session, profiles, () -> WORLDS.get(server));
@@ -341,6 +342,11 @@ public final class RoundRuntime {
                 } catch (RuntimeException error) { LOGGER.error("Far landing preparation failed", error); }
                 try { dev.hardrush.pact.DuskPactRuntime.tick(server); }
                 catch (RuntimeException error) { session.adapterFailure("黄昏契约状态更新失败", error); }
+                // Observers follow the same committed phase; their hints also feed the action bar.
+                try {
+                    dev.hardrush.observe.Observation.tick(server);
+                    dev.hardrush.observe.Spyglass.tick(server, session.snapshot().orElse(null));
+                } catch (RuntimeException error) { LOGGER.error("Observation update failed", error); }
                 // The altar's hints feed the same action bar, so it runs before feedback renders.
                 try { session.snapshot().ifPresent(round -> dev.hardrush.lobby.RevivalAltar.tick(server, round, session)); }
                 catch (RuntimeException error) { LOGGER.error("Revival altar update failed", error); }
@@ -351,6 +357,7 @@ public final class RoundRuntime {
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             CelebrationRuntime.disconnected(handler.player);
+            dev.hardrush.observe.Observation.disconnected(handler.player);
             LobbyRuntime.disconnected(handler.player);
             dev.hardrush.record.HistoryLibrary.disconnected(handler.player);
             dev.hardrush.lobby.HumanEntry.disconnected(handler.player);
@@ -451,6 +458,7 @@ public final class RoundRuntime {
             catch (Exception error) { LOGGER.error("Round stop flush failed; retain database and inspect diagnostics", error); }
             SESSIONS.remove(server);
             dev.hardrush.participation.ParticipationControl.close(server);
+            dev.hardrush.observe.Observation.close(server);
             dev.hardrush.storage.FullCheckpointRuntime.close(server);
             ProtectionRuntime.unconfigure(server);
             LobbyRuntime.unconfigure(server);

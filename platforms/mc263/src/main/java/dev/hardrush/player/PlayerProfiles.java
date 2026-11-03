@@ -159,7 +159,7 @@ public final class PlayerProfiles implements AutoCloseable {
     public static boolean simulationFrozen(ServerPlayer player) {
         if (dev.hardrush.participation.ParticipationControl.pending(player)) return true;
         if (dev.hardrush.storage.FullCheckpointRuntime.saving(player.level().getServer())) return true;
-        return isLocked(player) && !canMoveInLobby(player) && !isAdministrativeSpectator(player);
+        return isLocked(player) && !canMoveInLobby(player) && !isAdministrativeSpectator(player) && !observing(player);
     }
 
     private static boolean administrativeBody(PlayerProfiles service, Entry entry, ServerPlayer player) {
@@ -175,6 +175,46 @@ public final class PlayerProfiles implements AutoCloseable {
         var entry = service == null ? null : service.players.get(player.getUUID());
         return administrativeBody(service, entry, player) && entry.adminSpectating && player.isSpectator()
                 && dev.hardrush.round.RoundRuntime.administrativeSpectatingAllowed(player, player.level());
+    }
+
+    /** A camp or excluded lobby body attached to a round player's camera; it is never admitted. */
+    public static boolean observing(ServerPlayer player) {
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        return administrativeBody(service, entry, player) && entry.observing && player.isSpectator();
+    }
+
+    /** Only a verified, standing lobby body may leave the camp as an observer. */
+    public static boolean beginObservation(ServerPlayer player) {
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        if (!administrativeBody(service, entry, player) || entry.adminSpectating || entry.observing
+                || !verifiedLobbyBody(player)) return false;
+        closeSuspendedContainer(player);
+        player.stopUsingItem();
+        entry.observing = true;
+        player.setGameMode(GameType.SPECTATOR);
+        return true;
+    }
+
+    /** Detach the camera and stand the body where it left the camp, or on {@code fallback} when that spot is gone. */
+    public void endObservation(ServerPlayer player, Vec3 position, float yaw, dev.hardrush.core.lobby.LobbyLayout.Landing fallback) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        if (entry == null || entry.player != player || !entry.observing) return;
+        entry.observing = false;
+        player.setCamera(player);
+        var camp = dev.hardrush.world.LobbyWorld.open(server);
+        if (!camp.ready() || lobby.get() != camp.holdingLevel()) { moveToLobby(player); return; }
+        if (!dev.hardrush.world.RoundWorldBundle.safeStanding(camp.holdingLevel(), net.minecraft.core.BlockPos.containing(position))) {
+            if (camp.safeLanding(fallback)) placeInLobby(player, fallback); else moveToLobby(player);
+            return;
+        }
+        if (!player.teleportTo(camp.holdingLevel(), position.x, position.y, position.z, Set.of(), yaw, 0, true))
+            throw new IllegalStateException("观战结束返回营地的传送被拒绝");
+        player.setDeltaMovement(Vec3.ZERO);
+        player.resetFallDistance();
+        applyLobbyMode(player);
     }
 
     public static boolean administrativeCommandAllowed(ServerPlayer player, String command) {
@@ -202,6 +242,16 @@ public final class PlayerProfiles implements AutoCloseable {
             return Optional.of(false);
         }
         if (mode == GameType.SPECTATOR) {
+            // Free flight is an operator's own tool; excluded players watch by riding a camera from the camp.
+            if (entry.observing) {
+                source.sendFailure(Component.literal("该玩家正在附身观战，潜行退出后才能切换。"));
+                return Optional.of(false);
+            }
+            if (dev.hardrush.participation.ParticipationControl.disabled(player.level().getServer(), player.getUUID())
+                    && !Commands.hasPermission(Commands.LEVEL_GAMEMASTERS).test(player.createCommandSourceStack())) {
+                source.sendFailure(Component.literal("已退出本轮的玩家请在营地使用望远镜附身观战，不再授予自由旁观。"));
+                return Optional.of(false);
+            }
             if (!administrativeBody(service, entry, player)
                     || !dev.hardrush.round.RoundRuntime.administrativeSpectatingAllowed(player, player.level())) {
                 source.sendFailure(Component.literal("管理旁观仅允许本轮未参赛且未准备，或已退出／取消资格的玩家；档案与轮次均须核验就绪。"));
@@ -372,8 +422,9 @@ public final class PlayerProfiles implements AutoCloseable {
         if (entry.exclusionInitialized && entry.exclusionRole != participant.role()) {
             entry.exclusionRole = participant.role();
             entry.adminSpectating = false;
-            entry.exitObservationApplied = true;
-            moveToLobby(player);
+            entry.observing = false;
+            player.setCamera(player);
+            placeExcluded(player);
         }
         if (!entry.exclusionInitialized) {
             if (player.isDeadOrDying()) {
@@ -386,15 +437,15 @@ public final class PlayerProfiles implements AutoCloseable {
                     onExcludedRespawn(player, replacement, round);
                 } finally { MONSTER_RESPAWN.remove(); }
             } else onExcludedRespawn(player, player, round);
-            return;
         }
-        if (participant.role() == ParticipantRole.WITHDRAWN && !entry.exitObservationApplied
-                && isReady(player.getUUID(), round)
-                && dev.hardrush.round.RoundRuntime.administrativeSpectatingAllowed(player, player.level())) {
-            entry.exitObservationApplied = true;
-            entry.adminSpectating = true;
-            player.setGameMode(GameType.SPECTATOR);
-        }
+    }
+
+    /** An excluded body stands among the camp's arrivals; its spyglass is projected there. */
+    private void placeExcluded(ServerPlayer player) {
+        var camp = dev.hardrush.world.LobbyWorld.open(server);
+        if (camp.ready() && lobby.get() == camp.holdingLevel() && camp.safeLanding(dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL))
+            placeInLobby(player, dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL);
+        else moveToLobby(player);
     }
 
     public void onExcludedRespawn(ServerPlayer previous, ServerPlayer replacement, RoundSnapshot round) {
@@ -420,7 +471,7 @@ public final class PlayerProfiles implements AutoCloseable {
         ((ProfileTagged) replacement).hardrush$isolated(true);
         ((ProfileTagged) replacement).hardrush$respawnPermitted(false);
         ((ProfileTagged) replacement).hardrush$suspensionId(UUID.randomUUID().toString());
-        moveToLobby(replacement);
+        placeExcluded(replacement);
         var rebound = new Entry(replacement, Optional.of(old.target), false, capture(replacement, false));
         rebound.target = old.target;
         rebound.exclusionInitialized = true;
@@ -457,6 +508,9 @@ public final class PlayerProfiles implements AutoCloseable {
                 || participant == null || participant.role() != ParticipantRole.MONSTER_DEPLOYED
                 || !dev.hardrush.world.RoundWorldBundle.owns(level)) return false;
         if (entry.admitted && player.level() == level) return true;
+        // A hunt launched while watching the quarry lands straight from the camera.
+        entry.observing = false;
+        player.setCamera(player);
         closeSuspendedContainer(player);
         clearMonsterLobbyState(player);
         // A resumed sortie keeps the health the camp body has healed back to.
@@ -735,6 +789,12 @@ public final class PlayerProfiles implements AutoCloseable {
                 entry.adminSpectating = false;
                 moveToLobby(entry.player);
             }
+            if (entry.observing) {
+                if (observing(entry.player)) continue;
+                entry.observing = false;
+                entry.player.setCamera(entry.player);
+                moveToLobby(entry.player);
+            }
             // A new human life may already be at its round spawn while its journal is saving.
             // Only a completed profile can be reconciled as a movable lobby body.
             if (entry.ready && !entry.admitted && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit
@@ -965,8 +1025,7 @@ public final class PlayerProfiles implements AutoCloseable {
         entry.deathHeld = false;
         entry.awaitingRespawn = false;
         entry.deathScreenPermit = false;
-        // A withdrawn visitor must not be pulled into administrative observation while gathered.
-        entry.exitObservationApplied = true;
+        entry.observing = false;
     }
 
     private static void placeInCelebration(ServerPlayer player, ServerLevel level, Vec3 position, float yaw) {
@@ -1005,7 +1064,6 @@ public final class PlayerProfiles implements AutoCloseable {
         rebound.fresh = old.fresh;
         rebound.exclusionInitialized = old.exclusionInitialized;
         rebound.exclusionRole = old.exclusionRole;
-        rebound.exitObservationApplied = old.exitObservationApplied;
         rebound.monsterLobbyInitialized = old.monsterLobbyInitialized;
         players.put(replacement.getUUID(), rebound);
         return rebound;
@@ -1113,7 +1171,11 @@ public final class PlayerProfiles implements AutoCloseable {
         dev.hardrush.monster.MonsterRoles.suspend(player);
         if (recoveryPaused) { moveToLobby(player); return; }
         var entry = players.get(player.getUUID());
-        if (entry != null && entry.player == player) entry.adminSpectating = false;
+        if (entry != null && entry.player == player) {
+            entry.adminSpectating = false;
+            entry.observing = false;
+            player.setCamera(player);
+        }
         if (entry != null && entry.player == player && !entry.admitted) {
             if (player.level() != lobby.get()) moveToLobby(player);
             else applyLobbyMode(player);
@@ -1502,7 +1564,7 @@ public final class PlayerProfiles implements AutoCloseable {
         boolean adminSpectating;
         boolean exclusionInitialized;
         ParticipantRole exclusionRole;
-        boolean exitObservationApplied;
+        boolean observing;
         boolean awaitingRespawn;
         int expectedRespawnLife;
         boolean deathScreenPermit;

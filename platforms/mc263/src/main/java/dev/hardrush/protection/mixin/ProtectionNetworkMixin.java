@@ -83,7 +83,7 @@ public abstract class ProtectionNetworkMixin {
     }
     @Inject(method="handleContainerClick", at=@At("HEAD"), cancellable=true)
     private void inventory(ServerboundContainerClickPacket packet, CallbackInfo ci) {
-        if (dev.hardrush.lobby.LobbyMenus.isMenu(player)) return;
+        if (dev.hardrush.lobby.LobbyMenus.isMenu(player) || dev.hardrush.observe.ObservationMenu.isMenu(player)) return;
         // The witch's menu accepts only its own guarded result click; see MonsterShop.ShopMenu.
         if (mainThread() && dev.hardrush.lobby.MonsterShop.isShop(player)) return;
         if (!mainThread() || !ProtectionRuntime.protectedEntity(player)) return;
@@ -95,9 +95,15 @@ public abstract class ProtectionNetworkMixin {
             player.containerMenu.sendAllDataToRemote(); ci.cancel();
         }
     }
-    @Inject(method={"handleAttack", "handlePunch", "handleContainerButtonClick", "handlePlaceRecipe"},
+    @Inject(method={"handlePunch", "handleContainerButtonClick", "handlePlaceRecipe"},
             at=@At("HEAD"), cancellable=true)
     private void protectedInput(CallbackInfo ci) {
+        if (mainThread() && ProtectionRuntime.protectedEntity(player)) ci.cancel();
+    }
+    // Left-clicking a courtyard model watches its player through the same router as the isolation guard.
+    @Inject(method="handleAttack", at=@At("HEAD"), cancellable=true)
+    private void protectedAttack(net.minecraft.network.protocol.game.ServerboundAttackPacket packet, CallbackInfo ci) {
+        if (mainThread() && LobbyInteractions.consumed(LobbyInteractions.attack(player, packet))) { ci.cancel(); return; }
         if (mainThread() && ProtectionRuntime.protectedEntity(player)) ci.cancel();
     }
 }

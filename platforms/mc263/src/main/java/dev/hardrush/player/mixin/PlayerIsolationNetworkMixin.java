@@ -14,6 +14,9 @@ import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import dev.hardrush.celebration.CelebrationRuntime;
+import dev.hardrush.observe.Observation;
+import dev.hardrush.observe.ObservationMenu;
+import dev.hardrush.observe.Spyglass;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundChatCommandSignedPacket;
 import net.minecraft.network.chat.LastSeenMessages;
@@ -31,7 +34,7 @@ public abstract class PlayerIsolationNetworkMixin {
     @Shadow public ServerPlayer player;
 
     // Off-thread invocations proceed to vanilla's PacketUtils scheduling. The replay on the server thread is cancelled here.
-    @Inject(method = {"handleMoveVehicle", "handleAttack", "handlePunch", "handlePaddleBoat",
+    @Inject(method = {"handleMoveVehicle", "handlePunch", "handlePaddleBoat",
             "handlePlaceRecipe", "handleContainerButtonClick", "handleSetCreativeModeSlot",
             "handlePlayerAbilities",
             "handleRenameItem", "handleSetBeaconPacket", "handleEditBook", "handleSignUpdate",
@@ -51,11 +54,29 @@ public abstract class PlayerIsolationNetworkMixin {
                 && !dev.hardrush.lobby.MonsterShop.isShop(player)) ci.cancel();
     }
 
-    @Inject(method = {"handleSpectatorAction", "handleTeleportToEntityPacket"}, at = @At("HEAD"), cancellable = true)
-    private void hardrush$authorizedObservation(CallbackInfo ci) {
-        if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)
-                && (!PlayerProfiles.isAdministrativeSpectator(player) || PlayerProfiles.simulationFrozen(player))) ci.cancel();
+    // A camp/excluded observer only ever rides a camera; its clicks and menu heads choose the next camera.
+    @Inject(method = "handleSpectatorAction", at = @At("HEAD"), cancellable = true)
+    private void hardrush$authorizedSpectate(net.minecraft.network.protocol.game.ServerboundSpectatorActionPacket packet, CallbackInfo ci) {
+        if (!player.level().getServer().isSameThread()) return;
+        if (Observation.spectate(player, packet) || hardrush$unauthorizedObservation()) ci.cancel();
+    }
+
+    @Inject(method = "handleTeleportToEntityPacket", at = @At("HEAD"), cancellable = true)
+    private void hardrush$authorizedTeleport(net.minecraft.network.protocol.game.ServerboundTeleportToEntityPacket packet, CallbackInfo ci) {
+        if (!player.level().getServer().isSameThread()) return;
+        if (Observation.teleport(player, packet) || hardrush$unauthorizedObservation()) ci.cancel();
+    }
+
+    private boolean hardrush$unauthorizedObservation() {
         // Destination admission remains owned by the player teleport/protection hooks.
+        return PlayerProfiles.isLocked(player) && (!PlayerProfiles.isAdministrativeSpectator(player) || PlayerProfiles.simulationFrozen(player));
+    }
+
+    // Left-clicking a courtyard model watches its player; every other locked attack stays sealed.
+    @Inject(method = "handleAttack", at = @At("HEAD"), cancellable = true)
+    private void hardrush$facilityAttack(net.minecraft.network.protocol.game.ServerboundAttackPacket packet, CallbackInfo ci) {
+        if (!player.level().getServer().isSameThread()) return;
+        if (LobbyInteractions.consumed(LobbyInteractions.attack(player, packet)) || PlayerProfiles.isLocked(player)) ci.cancel();
     }
 
     @Inject(method = "handleTeleportToEntityPacket", at = @At("HEAD"), cancellable = true)
@@ -74,16 +95,18 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = "handleMovePlayer", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdMovement(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
-        if (player.level().getServer().isSameThread() && PlayerProfiles.simulationFrozen(player)) {
+        if (player.level().getServer().isSameThread() && (PlayerProfiles.simulationFrozen(player) || Observation.holdMovement(player))) {
             // Reject the prediction too; otherwise a frozen client appears able to walk locally.
             player.connection.teleport(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
             ci.cancel();
         }
     }
 
+    // An observer's movement keys steer its camera; vanilla must never see its sneak and detach.
     @Inject(method = "handlePlayerInput", at = @At("HEAD"), cancellable = true)
-    private void hardrush$holdInput(CallbackInfo ci) {
-        if (player.level().getServer().isSameThread() && PlayerProfiles.simulationFrozen(player)) ci.cancel();
+    private void hardrush$holdInput(net.minecraft.network.protocol.game.ServerboundPlayerInputPacket packet, CallbackInfo ci) {
+        if (!player.level().getServer().isSameThread()) return;
+        if (Observation.input(player, packet.input()) || PlayerProfiles.simulationFrozen(player)) ci.cancel();
     }
 
     @Inject(method = "handlePlayerCommand", at = @At("HEAD"), cancellable = true)
@@ -129,7 +152,7 @@ public abstract class PlayerIsolationNetworkMixin {
     private void hardrush$lobbyMenuClick(net.minecraft.network.protocol.game.ServerboundContainerClickPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && CampTransfers.throwsFromInventory(player, packet)) return;
         if (player.level().getServer().isSameThread() && !dev.hardrush.lobby.LobbyMenus.isMenu(player)
-                && !dev.hardrush.lobby.MonsterShop.isShop(player)
+                && !dev.hardrush.lobby.MonsterShop.isShop(player) && !ObservationMenu.isMenu(player)
                 && (PlayerProfiles.isLocked(player) || CombatRuntime.competitionFrozen(player.level()))) {
             player.containerMenu.sendAllDataToRemote();
             ci.cancel();
@@ -139,12 +162,13 @@ public abstract class PlayerIsolationNetworkMixin {
     @Inject(method = "handleContainerClose", at = @At("HEAD"), cancellable = true)
     private void hardrush$lobbyMenuClose(CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)
-                && !dev.hardrush.lobby.LobbyMenus.isMenu(player) && !dev.hardrush.lobby.MonsterShop.isShop(player)) ci.cancel();
+                && !dev.hardrush.lobby.LobbyMenus.isMenu(player) && !dev.hardrush.lobby.MonsterShop.isShop(player)
+                && !ObservationMenu.isMenu(player)) ci.cancel();
     }
 
     @Inject(method = "handleSetCreativeModeSlot", at = @At("HEAD"), cancellable = true)
     private void hardrush$immutableMenu(CallbackInfo ci) {
-        if (player.level().getServer().isSameThread() && dev.hardrush.lobby.LobbyMenus.isMenu(player)) ci.cancel();
+        if (player.level().getServer().isSameThread() && (dev.hardrush.lobby.LobbyMenus.isMenu(player) || ObservationMenu.isMenu(player))) ci.cancel();
     }
 
     @Inject(method = {"handleAttack", "handlePunch"}, at = @At("HEAD"))
@@ -213,6 +237,7 @@ public abstract class PlayerIsolationNetworkMixin {
     @Inject(method = "handleUseItem", at = @At("HEAD"), cancellable = true)
     private void hardrush$readHistoryBook(ServerboundUseItemPacket packet, CallbackInfo ci) {
         if (!player.level().getServer().isSameThread()) return;
+        if (Spyglass.use(player, packet.hand())) { ci.cancel(); return; }
         boolean locked = PlayerProfiles.isLocked(player);
         if (!locked && !CombatRuntime.competitionFrozen(player.level())) return;
         // Only a generated written book can be used while other item/gameplay input stays sealed.

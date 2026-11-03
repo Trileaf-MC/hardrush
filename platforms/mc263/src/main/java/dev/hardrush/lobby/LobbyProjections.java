@@ -31,7 +31,7 @@ public final class LobbyProjections {
     private record Model(Mannequin entity, Target target, Selection selection) {}
     private record Page(ServerPlayer owner, ServerGamePacketListenerImpl connection, UUID round,
                         long generation, int page, int pages, List<Target> targets, Map<Integer, Model> models,
-                        BiConsumer<ServerPlayer, Selection> action) {}
+                        BiConsumer<ServerPlayer, Selection> action, BiConsumer<ServerPlayer, Selection> watch) {}
     private final LobbyInteractions router;
     private final Map<UUID, Page> pages = new HashMap<>();
     private long generation;
@@ -41,9 +41,13 @@ public final class LobbyProjections {
     LobbyProjections(LobbyInteractions router) { this.router = router; }
 
     /** Supply stable UUID slots (including DEAD holes); ordering/state is the round service's responsibility. */
+    public View show(ServerPlayer observer, UUID round, List<Target> targets, int page, BiConsumer<ServerPlayer, Selection> action) {
+        return show(observer, round, targets, page, action, (actor, selected) -> { });
+    }
+    /** Right-click runs {@code action} (hunt); left-click runs {@code watch} (ride the target's camera). */
     public View show(ServerPlayer observer, UUID round, List<Target> targets, int page,
-                     BiConsumer<ServerPlayer, Selection> action) {
-        router.requireThread(); Objects.requireNonNull(action); targets = List.copyOf(targets);
+                     BiConsumer<ServerPlayer, Selection> action, BiConsumer<ServerPlayer, Selection> watch) {
+        router.requireThread(); Objects.requireNonNull(action); Objects.requireNonNull(watch); targets = List.copyOf(targets);
         var origin = LobbyWorld.open(observer.level().getServer()).holdingSpawn();
         if (router.validate(observer, round, LobbyContext.DISPLAY, observer.getEyePosition()) != LobbyInteractions.Result.ACCEPTED)
             throw new IllegalStateException("Display not available to this connection");
@@ -80,7 +84,7 @@ public final class LobbyProjections {
             models.put(id, new Model(model, target, selection));
         }
         // Build the entire immutable mapping first. There is no target remap window.
-        var display = new Page(observer, observer.connection, round, next, page, count, targets, Map.copyOf(models), action);
+        var display = new Page(observer, observer.connection, round, next, page, count, targets, Map.copyOf(models), action, watch);
         for (var model : models.values()) {
             var entity = model.entity;
             observer.connection.send(new ClientboundAddEntityPacket(entity, 0, entity.blockPosition()));
@@ -97,7 +101,7 @@ public final class LobbyProjections {
         if (current == null || current.owner != observer || current.connection != observer.connection) return Optional.empty();
         int next = current.page + delta;
         if (next < 0 || next >= current.pages) return Optional.empty();
-        return Optional.of(show(observer, current.round, current.targets, next, current.action));
+        return Optional.of(show(observer, current.round, current.targets, next, current.action, current.watch));
     }
 
     public Optional<View> view(ServerPlayer observer) {
@@ -128,6 +132,16 @@ public final class LobbyProjections {
             result = LobbyInteractions.Result.INPUT;
         if (result == LobbyInteractions.Result.ACCEPTED && model.target.state != State.AVAILABLE) result = LobbyInteractions.Result.UNAVAILABLE;
         if (result == LobbyInteractions.Result.ACCEPTED) page.action.accept(observer, model.selection);
+        return result;
+    }
+    LobbyInteractions.Result attack(ServerPlayer observer, int entityId) {
+        var page = pages.get(observer.getUUID());
+        if (page == null || page.owner != observer || page.connection != observer.connection) return LobbyInteractions.Result.UNREGISTERED;
+        var model = page.models.get(entityId);
+        if (model == null) return LobbyInteractions.Result.UNREGISTERED;
+        var result = router.validate(observer, page.round, LobbyContext.DISPLAY, model.entity.position().add(0, 1, 0));
+        if (result == LobbyInteractions.Result.ACCEPTED && model.target.state != State.AVAILABLE) result = LobbyInteractions.Result.UNAVAILABLE;
+        if (result == LobbyInteractions.Result.ACCEPTED) page.watch.accept(observer, model.selection);
         return result;
     }
     public void remove(ServerPlayer observer) {

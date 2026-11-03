@@ -53,6 +53,10 @@ final class HuntInputFixtures {
     static void hunt(ServerPlayer player, UUID target, List<Packet<?>> packets) {
         click(player, model(player, target, packets).entityId(), InteractionHand.MAIN_HAND);
     }
+    /** Left-click: the native attack packet a vanilla client sends for a pickable model. */
+    static void watch(ServerPlayer player, UUID target, List<Packet<?>> packets) {
+        player.connection.handleAttack(new ServerboundAttackPacket(model(player, target, packets).entityId()));
+    }
     static void click(ServerPlayer player, int entity, InteractionHand hand) {
         var bytes = io.netty.buffer.Unpooled.buffer();
         try {

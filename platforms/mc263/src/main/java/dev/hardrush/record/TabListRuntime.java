@@ -28,6 +28,8 @@ public final class TabListRuntime {
         for (var player : server.getPlayerList().getPlayers()) {
             var footer = Component.literal(text.footer() + pact);
             if (ParticipationControl.canWithdraw(player)) footer.append("\n").append(ParticipationControl.shortcutHint());
+            int audience = dev.hardrush.observe.Observation.audience(player);
+            if (audience > 0) footer.append("\n正在被 " + audience + " 名玩家观看");
             var personal = new TabText(Component.literal(text.header()), footer);
             if (personal.equals(displayed.get(player.connection))) continue;
             player.connection.send(new ClientboundTabListPacket(personal.header(), personal.footer()));

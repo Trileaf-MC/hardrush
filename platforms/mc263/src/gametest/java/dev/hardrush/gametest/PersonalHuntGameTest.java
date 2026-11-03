@@ -5,6 +5,7 @@ import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.lobby.LobbyLayout;
 import dev.hardrush.core.round.*;
 import dev.hardrush.monster.MonsterRoles;
+import dev.hardrush.observe.Observation;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.lobby.LobbyInteractions;
@@ -37,6 +38,7 @@ import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -100,8 +102,32 @@ public final class PersonalHuntGameTest {
                     f.c.player = f.c.current(); f.d.player = f.d.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31));
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterCooldownNanos() == 0 && f.d.participant().monsterCooldownNanos() == 0, "second cooldown"))
-                .thenExecute(() -> { f.c.hunt(f.a); f.d.hunt(f.a); })
-                .thenWaitUntil(() -> f.await(f.deployed(f.c, 2) && f.deployed(f.d, 2), "both select same End human without quota"))
+                .thenExecute(() -> {
+                    // C left-clicks A's courtyard model and rides A's camera from the camp into the End.
+                    var camp = f.c.player.position();
+                    f.c.watch(f.a);
+                    test.assertTrue(Observation.observing(f.c.player) && f.c.player.getCamera() == f.a.player
+                            && f.c.player.level() == f.levels[2] && f.c.player.isSpectator(), "Left-click rides the human's camera across worlds");
+                    f.c.input(new Input(false, false, false, true, false, false, false));
+                    test.assertTrue(f.c.player.getCamera() == f.b.player && f.c.player.level() == f.levels[1], "D moves the camera to the next human");
+                    f.c.input(new Input(false, false, true, false, false, false, false));
+                    test.assertTrue(f.c.player.getCamera() == f.a.player && f.c.player.level() == f.levels[2], "A moves back");
+                    f.c.input(new Input(false, false, false, false, false, false, false));
+                    f.c.player.connection.handleTeleportToEntityPacket(new ServerboundTeleportToEntityPacket(f.d.id()));
+                    test.assertTrue(f.c.player.getCamera() == f.a.player, "A camp monster cannot pick a monster from the spectator menu");
+                    test.assertFalse(f.c.player.position().closerThan(camp, 1), "The camp body went with the camera");
+                })
+                .thenWaitUntil(() -> f.await(Observation.audience(f.a.player) == 1 && f.a.connection.packets.stream()
+                        .anyMatch(packet -> packet instanceof ClientboundSoundPacket sound && sound.getSound().value() == net.minecraft.sounds.SoundEvents.SPYGLASS_USE),
+                        "the watched human counts one camera and hears a spyglass"))
+                .thenExecute(() -> { f.c.input(new Input(false, false, false, false, true, false, false)); f.d.hunt(f.a); })
+                .thenIdle(5)
+                .thenExecute(() -> test.assertFalse(f.searches().containsKey(f.c.id()), "Jump held under a second never hunts"))
+                .thenWaitUntil(() -> f.await(f.searches().containsKey(f.c.id()) || f.pending().containsKey(f.c.id()) || f.deployed(f.c, 2),
+                        "holding jump for a second hunts the watched human"))
+                .thenWaitUntil(() -> f.await(f.deployed(f.c, 2) && f.deployed(f.d, 2) && !Observation.observing(f.c.player)
+                        && f.c.player.getCamera() == f.c.player, "both select same End human without quota; C lands straight from the camera"))
+                .thenExecute(() -> f.c.input(new Input(false, false, false, false, false, false, false)))
                 .thenExecute(() -> { f.kill(f.c); f.kill(f.d); })
                 .thenWaitUntil(() -> f.await(f.lobby(f.c) && f.lobby(f.d), "budget case camp"))
                 .thenExecute(() -> {
@@ -517,6 +543,8 @@ public final class PersonalHuntGameTest {
             }
             void role(String role) { HuntInputFixtures.role(player,role); ack(); }
             void hunt(Peer target) { HuntInputFixtures.hunt(player,target.id(),connection.packets); ack(); }
+            void watch(Peer target) { HuntInputFixtures.watch(player,target.id(),connection.packets); ack(); }
+            void input(net.minecraft.world.entity.player.Input keys) { player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(keys)); ack(); }
             void ack() {
                 var body=current(); if(connection==null || body==null) return;
                 connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
