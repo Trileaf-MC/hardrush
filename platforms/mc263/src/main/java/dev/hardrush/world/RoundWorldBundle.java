@@ -435,6 +435,14 @@ public final class RoundWorldBundle implements AutoCloseable {
         for (var handle : handles.values()) handle.asLevel().save(null, true, false);
     }
 
+    /** Like {@link #save()}, with every write finished but not forced to disk; see {@link CheckpointFlush}. */
+    public void saveForCheckpoint() {
+        requireMainThread(server);
+        if (state == State.CLOSED || unloadQueued) throw new IllegalStateException("本轮世界正在关闭或已经关闭，不能再次保存");
+        requireOwnedHandles(true);
+        for (var handle : handles.values()) CheckpointFlush.save(handle.asLevel());
+    }
+
     /**
      * Starts a verified save/unload on the main thread after evacuation. Call tick() until the
      * completion finishes: Fantasy unload is queued and does not close native region IO itself.
