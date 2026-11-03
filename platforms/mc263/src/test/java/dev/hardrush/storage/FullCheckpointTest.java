@@ -184,6 +184,59 @@ class FullCheckpointTest {
         assertTrue(Files.exists(second)); assertTrue(Files.exists(third));
     }
 
+    @Test void unchangedFilesComeFromThePreviousImageAsIndependentCopiesAndChangesAreCopiedAgain() throws Exception {
+        // Fresh writes are never trusted: their timestamp could survive a same-size write right after the barrier.
+        Path first = save();
+        var fresh = stage();
+        assertEquals(0, fresh.reused());
+        checkpoints.discardIncomplete(fresh.pending());
+        long old = System.currentTimeMillis() - 3_600_000;
+        try (var files = java.util.stream.Stream.concat(Files.walk(root.resolve("dimensions")), Files.walk(root.resolve("hardrush/round-worlds")))) {
+            for (Path file : files.filter(Files::isRegularFile).toList()) Files.setLastModifiedTime(file, java.nio.file.attribute.FileTime.fromMillis(old));
+        }
+        Path trusted = save();
+        var reuse = stage();
+        assertEquals(4, reuse.reused(), "three dimensions and the world manifest are unchanged");
+        try (var store = new SqliteRoundStore(database)) { store.exportCheckpoint(checkpoints.database(reuse.pending())); }
+        checkpoints.complete(reuse, Map.of());
+        Path reused = reuse.pending();
+        Path saved = reused.resolve("data").resolve(root.relativize(world()));
+        assertEquals("world-before-overworld", Files.readString(saved));
+        assertFalse(Files.isSameFile(saved, trusted.resolve("data").resolve(root.relativize(world()))), "images never share a writable file");
+        assertFalse(Files.exists(first), "only two images are retained");
+
+        // Same size, older but different timestamp: a real change the size alone cannot reveal.
+        Files.writeString(world(), "world-change-overworld");
+        Files.setLastModifiedTime(world(), java.nio.file.attribute.FileTime.fromMillis(old - 60_000));
+        var changed = stage();
+        assertEquals(3, changed.reused());
+        try (var store = new SqliteRoundStore(database)) { store.exportCheckpoint(checkpoints.database(changed.pending())); }
+        checkpoints.complete(changed, Map.of());
+        Files.writeString(world(), "world-after-crash");
+        try (var store = new SqliteRoundStore(database)) { commit(store, snapshot(round, 1, false, null), 0); }
+        assertTrue(checkpoints.restore().restored());
+        assertEquals("world-change-overworld", Files.readString(world()));
+    }
+
+    @Test void damagedPreviousImageFailsTheNewImageAndAFullCopyRecovers() throws Exception {
+        save();
+        long old = System.currentTimeMillis() - 3_600_000;
+        Files.setLastModifiedTime(world(), java.nio.file.attribute.FileTime.fromMillis(old));
+        Path latest = save();
+        Files.writeString(latest.resolve("data").resolve(root.relativize(world())), "truncated");
+        var damaged = stage();
+        assertEquals(1, damaged.reused());
+        try (var store = new SqliteRoundStore(database)) { store.exportCheckpoint(checkpoints.database(damaged.pending())); }
+        assertThrows(java.io.IOException.class, () -> checkpoints.complete(damaged, Map.of()));
+        checkpoints.discardIncomplete(damaged.pending());
+        assertEquals(latest.getFileName().toString(), Files.readString(root.resolve("hardrush/full-checkpoints/latest")).strip());
+        var full = checkpoints.stage(checkpoints.begin(), initial, Long.MAX_VALUE, false);
+        assertEquals(0, full.reused());
+        try (var store = new SqliteRoundStore(database)) { store.exportCheckpoint(checkpoints.database(full.pending())); }
+        checkpoints.complete(full, Map.of());
+        assertEquals("world-before-overworld", Files.readString(full.pending().resolve("data").resolve(root.relativize(world()))));
+    }
+
     @Test void checkpointCannotRestoreANewerNonPlayableIdentityAfterItWasSaved() throws Exception {
         save();
         // Exercise an optional sanction role when installed; the base adapter also retains pending transitions.
@@ -211,6 +264,7 @@ class FullCheckpointTest {
         checkpoints.publish(image, initial, Long.MAX_VALUE);
         return image;
     }
+    private FullCheckpoint.Staged stage() throws Exception { return checkpoints.stage(checkpoints.begin(), initial, Long.MAX_VALUE, true); }
     private Path world() { return RoundWorldPaths.world(root, round, "overworld").resolve("region/r.0.0.mca"); }
     private RoundSnapshot snapshot(UUID id, long version, boolean clean, RoundResult result) {
         var participant = new Participant(player, "ResumeHuman", ParticipantRole.HUMAN_ACTIVE, true, false, 700, 0, 1, false);

@@ -13,6 +13,8 @@ public final class HardRushProperties {
 
     public static boolean competitionEnabled() { return Boolean.getBoolean(COMPETITION_ENABLED); }
     public static String initialMode() { return System.getProperty(ROUND_INITIAL_MODE, "hardcore"); }
-    public static long fullCheckpointIntervalSeconds() { return Long.getLong(STORAGE_FULL_CHECKPOINT_INTERVAL_SECONDS, 60L); }
+    /** Vanilla's own autosave period; each point still costs one native save on the server thread. */
+    public static final long DEFAULT_FULL_CHECKPOINT_INTERVAL_SECONDS = 300L;
+    public static long fullCheckpointIntervalSeconds() { return Long.getLong(STORAGE_FULL_CHECKPOINT_INTERVAL_SECONDS, DEFAULT_FULL_CHECKPOINT_INTERVAL_SECONDS); }
     public static String minimumFreeBytes() { return System.getProperty(STORAGE_MINIMUM_FREE_BYTES); }
 }

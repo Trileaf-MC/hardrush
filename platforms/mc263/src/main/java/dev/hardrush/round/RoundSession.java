@@ -475,6 +475,19 @@ public final class RoundSession implements AutoCloseable {
     }
 
     public RoundSnapshot exportFullCheckpoint(Path target) throws Exception {
+        var export = exportFullCheckpointAsync(target);
+        export.written().get(15, TimeUnit.SECONDS);
+        return export.snapshot();
+    }
+
+    /** The committed checkpoint snapshot and its SQLite image, which is still being written. */
+    public record CheckpointExport(RoundSnapshot snapshot, CompletableFuture<Void> written) {}
+
+    /**
+     * Commits the checkpoint marker and queues the SQLite image without waiting for it. The single IO
+     * thread runs the export before any later write, so the image is exactly this committed state.
+     */
+    public CheckpointExport exportFullCheckpointAsync(Path target) throws Exception {
         if (!fullCheckpointSaving) throw new IllegalStateException("Full checkpoint barrier is not held");
         var transition = engine.proposeCheckpoint(UUID.randomUUID(), false);
         try {
@@ -486,8 +499,8 @@ public final class RoundSession implements AutoCloseable {
             if (engine.pending()) { engine.reject(transition, "完整保存点状态提交失败"); fail("完整保存点状态提交失败", error); }
             throw error;
         }
-        supplyIo(() -> { store.exportCheckpoint(target); return null; }).get(15, TimeUnit.SECONDS);
-        return engine.committed();
+        CompletableFuture<Void> written = supplyIo(() -> { store.exportCheckpoint(target); return null; });
+        return new CheckpointExport(engine.committed(), written);
     }
 
     /** True only inside the periodic checkpoint barrier, which locks competition for at most one blocking save. */
