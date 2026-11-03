@@ -34,8 +34,10 @@ public final class MonsterAiIdentity {
         if (entity instanceof ServerPlayer player) {
             var model = MonsterRoles.nativeModel(player);
             if (model != null && model.level() == player.level()) {
-                model.snapTo(player.position());
-                model.setHealth(Math.min(player.getHealth(), model.getMaxHealth()));
+                // Every targeting test of every nearby mob lands here; write the template only when it drifted.
+                if (!model.position().equals(player.position())) model.snapTo(player.position());
+                float health = Math.min(player.getHealth(), model.getMaxHealth());
+                if (model.getHealth() != health) model.setHealth(health);
                 return model;
             }
         }
