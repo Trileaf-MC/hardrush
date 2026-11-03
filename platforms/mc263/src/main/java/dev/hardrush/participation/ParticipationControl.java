@@ -97,7 +97,7 @@ public final class ParticipationControl {
         var b = BINDINGS.get(player.level().getServer());
         var p = b.session.snapshot().orElseThrow().participants().get(player.getUUID());
         return List.of(new LobbyMenus.Button(Items.PAPER, "退出本轮后不能重新加入、追猎或复生；下轮恢复资格", "info", ""),
-                new LobbyMenus.Button(Items.CHEST, "比赛物资封存，观战身体清空；不会发放死亡或击杀奖励", "info", ""),
+                new LobbyMenus.Button(Items.CHEST, "比赛物资封存，空身回到营地，右键望远镜附身观战；不会发放死亡或击杀奖励", "info", ""),
                 new LobbyMenus.Button(Items.EMERALD, "确认退出本轮并观战", "withdraw-confirm", token(p)),
                 new LobbyMenus.Button(Items.BARRIER, "取消，继续游戏", "withdraw-cancel", ""));
     }

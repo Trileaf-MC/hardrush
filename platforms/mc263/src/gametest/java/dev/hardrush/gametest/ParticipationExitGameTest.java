@@ -11,6 +11,11 @@ import dev.hardrush.record.TabListRuntime;
 import dev.hardrush.world.LobbyWorld;
 import dev.hardrush.combat.MonsterCombatRuntime;
 import dev.hardrush.lobby.LobbyMenus;
+import dev.hardrush.observe.Observation;
+import dev.hardrush.observe.ObservationMenu;
+import dev.hardrush.observe.Spyglass;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
@@ -39,7 +44,7 @@ public final class ParticipationExitGameTest {
     public void durableExitsKeepObservationSeparateFromEligibility(GameTestHelper test) {
         if (!Boolean.getBoolean(TestProperties.PARTICIPATION_EXIT)) { test.succeed(); return; }
         var f = new HumanEntryGameTest.Fixture(test); var c = f.new Peer("CampHumanC");
-        var arrow = new Arrow[1]; var archive = new Path[1]; var sealed = new byte[1][];
+        var arrow = new Arrow[1]; var archive = new Path[1]; var sealed = new byte[1][]; var home = new net.minecraft.world.phys.Vec3[1];
         test.onEachTick(() -> { f.drain(); f.a.tickConnection(); f.b.tickConnection(); c.tickConnection(); });
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready()
                 && RoundRuntime.snapshot(f.server).filter(r -> r.phase() == RoundPhase.WAITING).isPresent()
@@ -105,7 +110,8 @@ public final class ParticipationExitGameTest {
                     f.a.assertFrozen();
                 })
                 .thenWaitUntil(() -> f.await(role(f, f.a.profile.id()) == ParticipantRole.WITHDRAWN
-                        && PlayerProfiles.isAdministrativeSpectator(f.a.player) && f.idle(), "Voluntary exit and empty spectator body ready"))
+                        && PlayerProfiles.canMoveInLobby(f.a.player) && spyglasses(f.a.player) == 1 && f.idle(),
+                        "Voluntary exit returns an empty body to the camp with one spyglass"))
                 .thenExecute(() -> {
                     new TabListRuntime().refresh(f.server, f.round(), 0, null, true);
                     test.assertFalse(latestFooter(f.a).contains("退出本轮并观战"), "Excluded observer no longer receives an actionable shortcut hint");
@@ -119,8 +125,39 @@ public final class ParticipationExitGameTest {
                     var source = f.b.player.damageSources().arrow(arrow[0], f.a.player);
                     test.assertTrue(MonsterCombatRuntime.rejectDamage(f.b.player, source), "Old arrow loses permission");
                     test.assertFalse(f.b.player.hurtServer(f.b.player.level(), source, 4), "Native delayed damage is rejected");
+                    test.assertFalse(PlayerProfiles.isAdministrativeSpectator(f.a.player) || f.a.player.isSpectator(), "Withdrawal never grants free flight");
                     f.a.player.connection.handleTeleportToEntityPacket(new net.minecraft.network.protocol.game.ServerboundTeleportToEntityPacket(f.b.profile.id()));
-                    test.assertTrue(f.a.player.level() == f.b.player.level(), "A non-OP withdrawer can use the vanilla spectator menu to watch the match");
+                    test.assertTrue(LobbyWorld.isLobby(f.a.player.level()), "A camp body cannot use the vanilla spectator teleport");
+                    home[0] = f.a.player.position();
+                    f.a.player.getInventory().setSelectedSlot(slot(f.a.player));
+                    f.a.player.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, 0, 0, 0));
+                    test.assertTrue(ObservationMenu.isMenu(f.a.player), "Right-clicking the bound spyglass opens the head menu");
+                    var heads = f.a.player.containerMenu.getItems();
+                    int b = -1;
+                    for (int i = 0; i < 54; i++) if (heads.get(i).is(Items.PLAYER_HEAD) && heads.get(i).getHoverName().getString().equals("CampHumanB")) b = i;
+                    test.assertTrue(b >= 0 && heads.get(b).get(DataComponents.LORE).lines().getFirst().getString().startsWith("已存活 "),
+                            "Each living human is a named head with its survival time");
+                    f.click(f.a, (short) b);
+                    test.assertTrue(Observation.observing(f.a.player) && f.a.player.getCamera() == f.b.player
+                            && f.a.player.level() == f.b.player.level() && f.a.player.isSpectator(), "Clicking a head rides that human's camera");
+                    f.a.player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(new Input(false, false, false, true, false, false, false)));
+                    test.assertTrue(f.a.player.getCamera() == c.player, "D moves to the other living human");
+                    f.a.player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(new Input(false, false, false, false, false, false, false)));
+                    f.a.player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(new Input(false, false, false, true, false, false, false)));
+                    test.assertTrue(f.a.player.getCamera() == f.b.player, "The order wraps around");
+                    f.a.player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(new Input(false, false, false, false, false, false, false)));
+                    test.assertValueEqual(execute(f.server.createCommandSourceStack(), "gamemode spectator CampHumanA"), 0, "An observer is never granted free flight");
+                })
+                .thenWaitUntil(() -> f.await(dev.hardrush.observe.Observation.audience(f.b.player) == 1, "Watched human counts the camera"))
+                .thenExecute(() -> {
+                    new TabListRuntime().refresh(f.server, f.round(), 0, null, true);
+                    test.assertTrue(latestFooter(f.b).contains("正在被 1 名玩家观看"), "The watched human's TAB shows the audience");
+                    sneak(f.a.player, true);
+                    test.assertTrue(!Observation.observing(f.a.player) && LobbyWorld.isLobby(f.a.player.level())
+                            && f.a.player.gameMode() == GameType.ADVENTURE && f.a.player.position().distanceToSqr(home[0]) < .01,
+                            "Sneaking stands the body back where it raised the spyglass");
+                    sneak(f.a.player, false);
+                    test.assertValueEqual(execute(f.server.createCommandSourceStack(), "gamemode spectator CampHumanA"), 0, "A withdrawn player is refused free flight");
                     archive[0] = f.server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profiles/" + f.a.profile.id()
                             + "/archives/exit-" + f.round().roundId() + ".bin");
                     try { sealed[0] = Files.readAllBytes(archive[0]); } catch (Exception e) { throw new IllegalStateException(e); }
@@ -136,12 +173,12 @@ public final class ParticipationExitGameTest {
                 .thenExecute(() -> {
                     test.assertTrue(role(f, f.b.profile.id()) == ParticipantRole.DISQUALIFIED && !f.ready(f.b), "Assembly cannot restore eligibility");
                     test.assertFalse(dev.hardrush.lobby.HumanEntry.midroundAvailable(f.b.player), "Mid-round circle cannot restore eligibility");
-                    execute(f.server.createCommandSourceStack(), "gamemode spectator CampHumanB");
-                    test.assertTrue(PlayerProfiles.isAdministrativeSpectator(f.b.player), "Operator may explicitly grant observation");
+                    test.assertValueEqual(execute(f.server.createCommandSourceStack(), "gamemode spectator CampHumanB"), 0, "Sanctioned players watch with the spyglass, never free flight");
+                    test.assertFalse(PlayerProfiles.isAdministrativeSpectator(f.b.player), "No free spectator was granted");
                     execute(f.server.createCommandSourceStack(), "hardrush admin disqualify CampHumanA 退赛后追加处罚");
                 })
                 .thenWaitUntil(() -> f.await(role(f, f.a.profile.id()) == ParticipantRole.DISQUALIFIED
-                        && PlayerProfiles.canMoveInLobby(f.a.player) && f.idle(), "Sanction upgrades withdrawal and revokes automatic observation"))
+                        && PlayerProfiles.canMoveInLobby(f.a.player) && spyglasses(f.a.player) == 1 && f.idle(), "Sanction upgrades withdrawal and keeps the spyglass"))
                 .thenExecute(() -> {
                     try { test.assertTrue(java.util.Arrays.equals(sealed[0], Files.readAllBytes(archive[0])), "First equipment archive is immutable"); }
                     catch (Exception e) { throw new IllegalStateException(e); }
@@ -161,10 +198,19 @@ public final class ParticipationExitGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.round().sequence() == 2 && f.round().phase() == RoundPhase.WAITING
                         && PlayerProfiles.canMoveInLobby(f.a.player) && PlayerProfiles.canMoveInLobby(f.b.player)
-                        && PlayerProfiles.canMoveInLobby(c.player), "Next round restores eligibility"))
+                        && PlayerProfiles.canMoveInLobby(c.player) && spyglasses(f.a.player) == 0, "Next round restores eligibility and takes back the spyglass"))
                 .thenExecute(() -> f.place(f.a, LobbyLayout.Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "Formerly excluded player can prepare next round"))
                 .thenExecute(() -> { f.a.disconnect(); f.b.disconnect(); c.disconnect(); }).thenSucceed();
+    }
+    private static int spyglasses(net.minecraft.server.level.ServerPlayer player) {
+        int count = 0;
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) if (Spyglass.is(player.getInventory().getItem(i))) count += player.getInventory().getItem(i).getCount();
+        return count;
+    }
+    private static int slot(net.minecraft.server.level.ServerPlayer player) {
+        for (int i = 0; i < 9; i++) if (Spyglass.is(player.getInventory().getItem(i))) return i;
+        throw new IllegalStateException("Spyglass outside the hotbar");
     }
     private static String latestFooter(HumanEntryGameTest.Fixture.Peer peer) {
         return peer.receivedPackets().stream().filter(ClientboundTabListPacket.class::isInstance)

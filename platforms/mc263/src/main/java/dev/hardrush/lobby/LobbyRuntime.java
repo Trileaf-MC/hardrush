@@ -330,12 +330,24 @@ public final class LobbyRuntime {
         var round = b.session.view().orElse(null);
         if (round == null || !selected.round().equals(round.roundId()) || !personalOpen(b, round)
                 || !contextAvailable(player, b, LobbyContext.DISPLAY)) return;
+        hunt(player, b, round, selected.target(), selected.life(), false);
+    }
+    /** Holding jump while riding a human's camera is the same request as right-clicking its model. */
+    public static void huntObserved(ServerPlayer player, UUID target) {
+        var b = BINDINGS.get(player.level().getServer());
+        var round = b == null ? null : b.session.view().orElse(null);
+        if (round == null || !personalOpen(b, round) || !current(player, b) || !dev.hardrush.observe.Observation.observing(player)) return;
+        var quarry = round.participants().get(target);
+        if (quarry == null || quarry.role() != ParticipantRole.HUMAN_ACTIVE) { tell(player, "此人已不是在赛人类，无法追猎。"); return; }
+        hunt(player, b, round, target, quarry.lifeSequence(), true);
+    }
+    private static void hunt(ServerPlayer player, Binding b, RoundSnapshot round, UUID targetId, int targetLife, boolean observed) {
         var p = round.participants().get(player.getUUID());
         if (p == null || p.role() != ParticipantRole.MONSTER_LOBBY || !p.online()) {
             tell(player, "只有大厅怪物可以追猎；极限死亡后前往角色展位。"); return;
         }
         var waiting = b.searches.get(p.id());
-        if (waiting != null && waiting.identity.target().equals(selected.target())) {
+        if (waiting != null && waiting.identity.target().equals(targetId)) {
             // Holding right-click repeats the interaction every few ticks; only a deliberate second click cancels.
             if (b.searchClock.getAsLong() - waiting.started < 1_000_000_000L) return;
             cancelSearch(b, waiting, "已取消对 " + waiting.targetPlayer.getScoreboardName() + " 的追猎。"); sound(player, false); return;
@@ -349,14 +361,14 @@ public final class LobbyRuntime {
         Long retry = b.retryAt.get(p.id());
         if (retry != null && now - retry < 0) { tell(player, "搜索失败后请等待 3 秒；换目标不能跳过等待。"); return; }
         var identity = new PersonalHuntRequest(round.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
-                p.monsterRole(), selected.target(), selected.life());
+                p.monsterRole(), targetId, targetLife);
         var target = player.level().getServer().getPlayerList().getPlayer(identity.target());
         var d = new Deployment(player, target, identity, now);
         if (target == null || !requestTarget(b, d)) { searchFailed(b, d, "目标已离线、死亡或生命改变，请重新选择。"); return; }
         if (waiting != null) cancelSearch(b, waiting, null);
         restartSearch(b, d);
         if (b.searches.containsKey(p.id())) tell(player, (waiting != null ? "已改为追猎 " : "正在追踪 ") + target.getScoreboardName()
-                + " 的足迹，找到合适的位置就会自动出场；再次右键同一模型或离开营地可取消。");
+                + " 的足迹，找到合适的位置就会自动出场；" + (observed ? "对此人再次长按空格可取消。" : "再次右键同一模型或离开营地可取消。"));
     }
     private static boolean personalOpen(Binding b, RoundSnapshot r) {
         return r.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE
@@ -443,7 +455,8 @@ public final class LobbyRuntime {
             if (!requestHunter(b, d, ParticipantRole.MONSTER_LOBBY, d.sortie) || !requestTarget(b, d)) {
                 searchFailed(b, d, "目标离线、死亡或身份／生命已改变，本次追猎已取消。"); continue;
             }
-            if (!inCamp(d.player)) { cancelSearch(b, d, "已离开怪物营地，追猎已取消。"); continue; }
+            // Watching the quarry from its camera keeps the hunt; the body returns to the courtyard it left.
+            if (!inCamp(d.player) && !dev.hardrush.observe.Observation.observing(d.player)) { cancelSearch(b, d, "已离开怪物营地，追猎已取消。"); continue; }
             var target = d.targetPlayer;
             if (target.level() != d.level) { restartSearch(b, d); continue; }
             var result = d.search.tick(SafeDeployment.Quarry.of(target), humans(b, d.level));
@@ -784,6 +797,26 @@ public final class LobbyRuntime {
                 net.minecraft.sounds.SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(), 0.3f, 1.2f,
                 player.getRandom().nextLong()));
     }
+    /** The courtyard's append-only slot order; observers cycle through players in the same order. */
+    public static List<UUID> courtyardOrder(MinecraftServer server) {
+        var b = BINDINGS.get(server);
+        return b == null ? List.of() : List.copyOf(b.slots.keySet());
+    }
+    /** A sortie being committed or compensated; a camp body must not leave for a camera meanwhile. */
+    public static boolean submitting(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        UUID id = player.getUUID();
+        return b != null && (b.committing.contains(id) || b.pending.containsKey(id) || b.resumptions.containsKey(id));
+    }
+    /** Whom this camp monster is currently waiting to hunt, if anyone. */
+    public static Optional<UUID> huntTarget(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        if (b == null) return Optional.empty();
+        var d = b.searches.get(player.getUUID());
+        if (d == null) d = b.resumptions.get(player.getUUID());
+        if (d == null) d = b.pending.get(player.getUUID());
+        return d == null ? Optional.empty() : Optional.of(d.identity.target());
+    }
     public static void disconnected(ServerPlayer player) {
         LobbyInteractions.disconnected(player);
         MonsterVaults.disconnected(player);
@@ -910,11 +943,15 @@ public final class LobbyRuntime {
             }
             if (old == null || old.player != observer || old.connection != observer.connection || !old.targets.equals(targets) || view.isEmpty()) {
                 int page = view.map(LobbyProjections.View::page).orElse(0);
-                projections.show(observer, r.roundId(), targets, page, (actor, selected) -> beginDeployment(actor, b, selected));
+                projections.show(observer, r.roundId(), targets, page, (actor, selected) -> beginDeployment(actor, b, selected),
+                        (actor, selected) -> dev.hardrush.observe.Observation.watch(actor, selected.target()));
                 b.displays.put(observer.getUUID(), new Display(observer, observer.connection, List.copyOf(targets)));
             }
             if (server.getTickCount() % 5 == 0) {
                 var p = r.participants().get(observer.getUUID());
+                if (p != null && p.role().isExcluded()) projections.aimed(observer).ifPresent(selected -> LobbyInteractions.get(server).orElseThrow()
+                        .hints(observer).offer("watch-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
+                                "目标：" + r.participants().get(selected.target()).name() + " · 左键观察", System.nanoTime() / 1_000_000 + 300));
                 if (p != null && p.role() == ParticipantRole.MONSTER_LOBBY) {
                     var hints = LobbyInteractions.get(server).orElseThrow().hints(observer);
                     long now = System.nanoTime() / 1_000_000;
@@ -948,7 +985,7 @@ public final class LobbyRuntime {
                         }
                         projections.aimed(observer).ifPresent(selected -> hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
                                 "目标：" + r.participants().get(selected.target()).name() + " · 当前角色：" + kindName(p.monsterRole())
-                                        + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒" : " · 右键追猎"), now + 300));
+                                        + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒" : " · 右键追猎") + " · 左键观察", now + 300));
                         dev.hardrush.monster.MonsterParking.describe(p.wallet().parked()).ifPresent(parked -> hints.offer("parked",
                                 dev.hardrush.core.lobby.LobbyHints.Priority.FACILITY, "上次出场已暂存：" + parked
                                         + (dev.hardrush.core.round.MonsterWorth.enabled(r.rules()) ? " · 身价 "

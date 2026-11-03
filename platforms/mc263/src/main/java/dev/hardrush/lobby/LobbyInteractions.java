@@ -114,6 +114,12 @@ public final class LobbyInteractions {
             return consumed(result) ? result : service.projections.click(player, packet);
         });
     }
+    /** Left-clicking a packet-only courtyard model; the model never exists in the world. */
+    public static Result attack(ServerPlayer player, net.minecraft.network.protocol.game.ServerboundAttackPacket packet) {
+        var service = SERVICES.get(player.level().getServer());
+        if (service == null || !player.level().getServer().isSameThread()) return Result.UNREGISTERED;
+        return service.dispatch(player, packet, () -> service.projections.attack(player, packet.entityId()));
+    }
     private Result dispatch(ServerPlayer player, Object packet, java.util.function.Supplier<Result> action) {
         var previous = dispatches.get(player.getUUID());
         if (previous != null && previous.packet == packet && previous.connection == player.connection) return previous.result;
