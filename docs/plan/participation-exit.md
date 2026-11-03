@@ -45,4 +45,4 @@ TAB 提示为每位玩家单独生成，只在当前可以主动退出时显示�
 - 核心规则：`./gradlew :core:test`。
 - SQLite、原子回滚与档案：`./gradlew :platforms:mc263:test --tests dev.hardrush.round.ParticipationExitSessionTest --tests dev.hardrush.player.ProfileJournalTest`。
 - 隔离无图形完整流程（含望远镜附身、A/D、潜行退出、TAB 观看人数）：`./gradlew :platforms:mc263:runGameTest -PhardrushCompetition=true -PhardrushParticipationExit=true`。
-- 人工原版客户端：[取消资格与主动退出观战](人工客户端测试/取消资格与主动退出观战.md)、[观战](人工客户端测试/观战.md)。
+- 人工原版客户端：[2026-11-03 测试](人工客户端测试/2026-11-03-营地改版与怪物新玩法.md)。
