@@ -28,7 +28,7 @@ import net.minecraft.world.entity.PositionMoveRotation;
 
 /** Per-owner cosmetic profile; never modifies authenticated identity or properties. */
 final class OwnerSkin {
-    private static final Property STEVE = loadSteve();
+    private static final Map<String, Property> SKINS = loadSkins();
     private static final Map<UUID, Boolean> RESTORE_PENDING = new ConcurrentHashMap<>();
     private static final java.util.Set<UUID> OVERRIDDEN = ConcurrentHashMap.newKeySet();
     private static final ThreadLocal<Batch> BATCH = new ThreadLocal<>();
@@ -41,16 +41,17 @@ final class OwnerSkin {
             && player.containerMenu == player.inventoryMenu;
     }
 
-    static void steve(ServerPlayer player) {
+    /** Shows the owner a skin themed after the monster form, on the native player model. */
+    static void apply(ServerPlayer player, String kind) {
         RESTORE_PENDING.remove(player.getUUID());
-        refresh(player, true);
+        refresh(player, kind);
         OVERRIDDEN.add(player.getUUID());
     }
 
     static void restore(ServerPlayer player) {
         if (!OVERRIDDEN.contains(player.getUUID())) return;
         if (canRefresh(player)) {
-            refresh(player, false);
+            refresh(player, null);
             OVERRIDDEN.remove(player.getUUID());
         }
         else RESTORE_PENDING.put(player.getUUID(), true);
@@ -67,18 +68,20 @@ final class OwnerSkin {
         for (UUID uuid : RESTORE_PENDING.keySet()) {
             ServerPlayer player = server.getPlayerList().getPlayer(uuid);
             if (player != null && canRefresh(player)) {
-                refresh(player, false);
+                refresh(player, null);
                 RESTORE_PENDING.remove(uuid);
                 OVERRIDDEN.remove(uuid);
             }
         }
     }
 
-    static Packet<?> rewrite(ServerPlayer owner, Packet<?> packet, boolean disguised) {
-        if (!disguised || !(packet instanceof ClientboundPlayerInfoUpdatePacket info)
+    /** {@code kind} is the owner's monster form, or null when the owner is not disguised. */
+    static Packet<?> rewrite(ServerPlayer owner, Packet<?> packet, String kind) {
+        if (kind == null || !(packet instanceof ClientboundPlayerInfoUpdatePacket info)
                 || !info.actions().contains(ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER)) return packet;
+        Property skin = skin(kind);
         var entries = info.entries().stream().map(entry -> entry.profileId().equals(owner.getUUID())
-            ? withSteve(entry) : entry).toList();
+            ? withSkin(entry, skin) : entry).toList();
         if (entries.equals(info.entries())) return packet;
         OVERRIDDEN.add(owner.getUUID());
         var replacement = new ClientboundPlayerInfoUpdatePacket(info.actions().clone(), List.of());
@@ -86,23 +89,24 @@ final class OwnerSkin {
         return replacement;
     }
 
-    private static ClientboundPlayerInfoUpdatePacket.Entry withSteve(ClientboundPlayerInfoUpdatePacket.Entry entry) {
+    private static ClientboundPlayerInfoUpdatePacket.Entry withSkin(ClientboundPlayerInfoUpdatePacket.Entry entry, Property skin) {
         var properties = ImmutableMultimap.<String, Property>builder();
         entry.profile().properties().entries().stream().filter(property -> !property.getKey().equals("textures"))
             .forEach(property -> properties.put(property.getKey(), property.getValue()));
-        properties.put("textures", STEVE);
+        properties.put("textures", skin);
         var profile = new GameProfile(entry.profile().id(), entry.profile().name(), new PropertyMap(properties.build()));
         return new ClientboundPlayerInfoUpdatePacket.Entry(entry.profileId(), profile, entry.listed(), entry.latency(),
             entry.gameMode(), entry.displayName(), entry.showHat(), entry.listOrder(), entry.chatSession());
     }
 
-    private static void refresh(ServerPlayer player, boolean steve) {
+    /** {@code kind} null restores the authenticated skin. */
+    private static void refresh(ServerPlayer player, String kind) {
         if (BATCH.get() != null) throw new IllegalStateException("Nested cosmetic refresh");
         Batch batch = new Batch(player, new java.util.ArrayList<>());
         BATCH.set(batch);
         try {
         var info = ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(player));
-        if (steve) info = (ClientboundPlayerInfoUpdatePacket) rewrite(player, info, true);
+        if (kind != null) info = (ClientboundPlayerInfoUpdatePacket) rewrite(player, info, kind);
         MonsterDisguise.sendRaw(player, new ClientboundPlayerInfoRemovePacket(List.of(player.getUUID())));
         MonsterDisguise.sendRaw(player, info);
         // LocalPlayer caches PlayerInfo in 26.3. This replaces only the client's
@@ -140,15 +144,24 @@ final class OwnerSkin {
 
     private record Batch(ServerPlayer player, java.util.List<Packet<? super ClientGamePacketListener>> packets) {}
 
-    private static Property loadSteve() {
-        try (var input = OwnerSkin.class.getResourceAsStream("/hardrush/steve-profile.json")) {
-            if (input == null) throw new IllegalStateException("Missing pinned Steve texture property");
-            var property = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8))
-                .getAsJsonObject().getAsJsonObject("property");
+    private static Property skin(String kind) {
+        Property skin = SKINS.get(kind);
+        if (skin == null) throw new IllegalArgumentException("No owner skin for monster form " + kind);
+        return skin;
+    }
+
+    private static Map<String, Property> loadSkins() {
+        try (var input = OwnerSkin.class.getResourceAsStream("/hardrush/owner-skins.json")) {
+            if (input == null) throw new IllegalStateException("Missing pinned owner skin texture properties");
+            var skins = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8))
+                .getAsJsonObject().getAsJsonObject("skins");
+            var loaded = new java.util.HashMap<String, Property>();
             // Native local skins allow unsigned textures. This owner-only
             // cosmetic property neither changes auth nor asserts another
             // account's signature. Other players never receive it.
-            return new Property("textures", property.get("value").getAsString());
-        } catch (java.io.IOException failure) { throw new IllegalStateException("Cannot read Steve texture property", failure); }
+            for (var entry : skins.entrySet()) loaded.put(entry.getKey(),
+                new Property("textures", entry.getValue().getAsJsonObject().get("value").getAsString()));
+            return Map.copyOf(loaded);
+        } catch (java.io.IOException failure) { throw new IllegalStateException("Cannot read owner skin texture properties", failure); }
     }
 }

@@ -53,6 +53,7 @@ public final class MonsterAppearanceGameTest {
                 for (int cycle = 0; cycle < 20; cycle++) {
                     owner.packets.clear();
                     MonsterDisguise.apply(player, kind);
+                    MonsterDisguise.tick(server);
                     assertSelected(test, player, observer, kind);
                     MonsterDisguise.clear(player);
                     MonsterDisguise.tick(server);
@@ -236,7 +237,8 @@ public final class MonsterAppearanceGameTest {
     }
 
     @GameTest(maxTicks = 200)
-    public void observerOnlyPacketsAndStevePreserveAuthoritativeState(GameTestHelper test) {
+    public void observerOnlyPacketsAndOwnerSkinPreserveAuthoritativeState(GameTestHelper test) {
+        var server = test.getLevel().getServer();
         var owner = test.makeMockServerPlayerInLevel();
         var observer = test.makeMockServerPlayerInLevel();
         try (var owned = new Capture(owner); var watched = new Capture(observer)) {
@@ -251,9 +253,13 @@ public final class MonsterAppearanceGameTest {
             var profile = owner.getGameProfile();
             var position = owner.position();
             var id = owner.getId();
+            var ownerSkins = new java.util.HashSet<String>();
             for (String kind : List.of("zombie", "skeleton", "creeper")) {
                 owned.packets.clear();
                 MonsterDisguise.apply(owner, kind);
+                test.assertTrue(owned.packets.stream().noneMatch(p -> p instanceof ClientboundRespawnPacket),
+                    "Owner skin refresh waits for the tick's end");
+                MonsterDisguise.tick(server);
                 test.assertTrue(owner.getGameProfile() == profile, "Authenticated profile object is unchanged");
                 test.assertValueEqual(owner.getId(), id, "No server-side respawn or replacement player");
                 test.assertValueEqual(owner.position(), position, "Skin refresh preserves position");
@@ -267,20 +273,19 @@ public final class MonsterAppearanceGameTest {
                 test.assertTrue(owned.packets.stream().noneMatch(p -> p instanceof ClientboundAddEntityPacket
                     || p instanceof ClientboundSetPlayerTeamPacket || p instanceof ClientboundSetCameraPacket),
                     "Owner receives no self mob, private team or camera replacement");
-                if (kind.equals("zombie")) {
-                    var selfInfo = owned.packets.stream().filter(p -> p instanceof ClientboundPlayerInfoUpdatePacket)
-                        .map(p -> (ClientboundPlayerInfoUpdatePacket) p).findFirst().orElseThrow();
-                    var selfEntry = selfInfo.entries().getFirst();
-                    test.assertValueEqual(selfEntry.profileId(), profile.id(), "Cosmetic profile preserves UUID");
-                    test.assertValueEqual(selfEntry.profile().name(), profile.name(), "Cosmetic profile preserves name");
-                    test.assertTrue(!selfEntry.profile().properties().get("textures").isEmpty(), "Steve property sent only to owner");
-                    test.assertTrue(owned.packets.stream().anyMatch(p -> p instanceof ClientboundRespawnPacket r
-                        && r.dataToKeep() == ClientboundRespawnPacket.KEEP_ALL_DATA
-                        && r.commonPlayerSpawnInfo().dimension().equals(owner.level().dimension())), "Native same-dimension client refresh");
-                } else {
-                    test.assertTrue(owned.packets.stream().noneMatch(p -> p instanceof ClientboundRespawnPacket),
-                        "Changing monster kind does not reset the owner client again");
-                }
+                var selfInfo = owned.packets.stream().filter(p -> p instanceof ClientboundPlayerInfoUpdatePacket)
+                    .map(p -> (ClientboundPlayerInfoUpdatePacket) p).findFirst().orElseThrow();
+                var selfEntry = selfInfo.entries().getFirst();
+                test.assertValueEqual(selfEntry.profileId(), profile.id(), "Cosmetic profile preserves UUID");
+                test.assertValueEqual(selfEntry.profile().name(), profile.name(), "Cosmetic profile preserves name");
+                var textures = selfEntry.profile().properties().get("textures");
+                test.assertTrue(textures.size() == 1 && textures.iterator().next().signature() == null,
+                    "One unsigned owner-only skin property");
+                test.assertTrue(ownerSkins.add(textures.iterator().next().value()), "Each monster kind has its own owner skin");
+                test.assertValueEqual(owned.packets.stream().filter(p -> p instanceof ClientboundRespawnPacket r
+                    && r.dataToKeep() == ClientboundRespawnPacket.KEEP_ALL_DATA
+                    && r.commonPlayerSpawnInfo().dimension().equals(owner.level().dimension())).count(), 1L,
+                    "One native same-dimension client refresh, also when the kind changes");
 
                 var spawn = spawn(owner);
                 owner.connection.send(spawn);
@@ -302,13 +307,14 @@ public final class MonsterAppearanceGameTest {
                 var copy = (ClientboundBundlePacket) MonsterDisguise.rewrite(observer, nested);
                 test.assertTrue(copy != nested, "Bundled tracking packets get an independent copy");
                 var originalInfo = ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(owner, observer));
-                test.assertTrue(MonsterDisguise.rewrite(observer, originalInfo) == originalInfo, "Steve does not leak to another observer");
+                test.assertTrue(MonsterDisguise.rewrite(observer, originalInfo) == originalInfo, "Owner skin does not leak to another observer");
                 var attributes = new ClientboundUpdateAttributesPacket(owner.getId(), owner.getAttributes().getSyncableAttributes());
                 var displayed = (ClientboundUpdateAttributesPacket) MonsterDisguise.rewrite(observer, attributes);
                 var speed = displayed.getValues().stream().filter(a -> a.attribute().equals(Attributes.MOVEMENT_SPEED)).findFirst().orElseThrow();
                 test.assertValueEqual(speed.base(), 0.13, "Mob display uses authoritative player speed");
                 int sent = owned.packets.size();
                 MonsterDisguise.apply(owner, kind);
+                MonsterDisguise.tick(server);
                 test.assertValueEqual(owned.packets.size(), sent, "Repeated apply is idempotent");
             }
             MonsterDisguise.clear(owner);
@@ -325,6 +331,44 @@ public final class MonsterAppearanceGameTest {
             observer.level().getServer().getPlayerList().remove(observer);
         }
         test.succeed();
+    }
+
+    @GameTest(maxTicks = 200)
+    public void conversionInOneTickRefreshesOwnerSkinOnce(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var player = test.makeMockServerPlayerInLevel();
+        try (var capture = new Capture(player)) {
+            MonsterDisguise.apply(player, "zombie");
+            MonsterDisguise.tick(server);
+            var zombieSkin = ownerTextures(capture);
+            capture.packets.clear();
+            MonsterDisguise.apply(player, "drowned");
+            MonsterDisguise.tick(server);
+            test.assertValueEqual(capture.packets.stream().filter(p -> p instanceof ClientboundRespawnPacket).count(), 1L,
+                "Conversion refreshes the owner skin");
+            test.assertTrue(!ownerTextures(capture).equals(zombieSkin), "Drowned owner skin differs from zombie");
+            capture.packets.clear();
+            // A zombie rising from the sea is bound and converted within one tick.
+            MonsterDisguise.clear(player);
+            MonsterDisguise.tick(server);
+            capture.packets.clear();
+            MonsterDisguise.apply(player, "zombie");
+            MonsterDisguise.apply(player, "drowned");
+            MonsterDisguise.tick(server);
+            test.assertValueEqual(capture.packets.stream().filter(p -> p instanceof ClientboundRespawnPacket).count(), 1L,
+                "Bind and conversion in one tick reset the owner client once");
+            test.assertTrue(MonsterDisguise.status(player).contains("selfSkin=drowned"), "Final form decides the owner skin");
+        } finally {
+            MonsterDisguise.clear(player);
+            server.getPlayerList().remove(player);
+        }
+        test.succeed();
+    }
+
+    private static String ownerTextures(Capture capture) {
+        var info = capture.packets.stream().filter(p -> p instanceof ClientboundPlayerInfoUpdatePacket)
+            .map(p -> (ClientboundPlayerInfoUpdatePacket) p).reduce((a, b) -> b).orElseThrow();
+        return info.entries().getFirst().profile().properties().get("textures").iterator().next().value();
     }
 
     @GameTest(maxTicks = 200)
@@ -375,7 +419,7 @@ public final class MonsterAppearanceGameTest {
             test.assertTrue(capture.packets.stream().noneMatch(p -> p instanceof ClientboundRespawnPacket), "No disruptive refresh while riding");
             player.stopRiding();
             MonsterDisguise.tick(server);
-            test.assertTrue(capture.packets.stream().anyMatch(p -> p instanceof ClientboundRespawnPacket), "Steve applied at safe point");
+            test.assertTrue(capture.packets.stream().anyMatch(p -> p instanceof ClientboundRespawnPacket), "Owner skin applied at safe point");
         } finally {
             player.stopRiding();
             MonsterDisguise.clear(player);

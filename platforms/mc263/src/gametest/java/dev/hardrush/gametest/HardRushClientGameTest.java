@@ -24,6 +24,12 @@ import net.minecraft.world.phys.EntityHitResult;
 
 /** Exercises actual server packets with an isolated Fabric test client. */
 public final class HardRushClientGameTest implements FabricClientGameTest {
+    // Client texture ids are SHA-1 of the texture hash as UTF-16LE (SkinManager.TextureCache), from owner-skins.json.
+    private static final java.util.Map<String, String> OWNER_SKIN_TEXTURES = java.util.Map.of(
+        "zombie", "minecraft:skins/8ee56fd13fe2ee6ad6a0412ac3318a8c46c9bae7",
+        "skeleton", "minecraft:skins/17cde5d965dd3433d5418e47d1cac7481f2cf268",
+        "creeper", "minecraft:skins/443ea076fd42c2d67c5c16aba7c33aa6d40b48b8");
+
     @Override
     public void runTest(ClientGameTestContext test) {
         command("hardrushdev status"); // Fail early if the debug server is unavailable.
@@ -59,15 +65,15 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
                 evidence.add(snapshot(test, kind + "-after-profile-refresh"));
                 test.waitFor(client -> client.player != null && !client.player.isInvisible()
                     && client.getCameraEntity() == client.player && !hasSelfBody(client)
-                    && client.player.getSkin().body().texturePath().toString().equals("minecraft:skins/a37f02d925dbe17722606a1d624d0b4ddeaf398d"), 1200);
+                    && client.player.getSkin().body().texturePath().toString().equals(OWNER_SKIN_TEXTURES.get(kind)), 1200);
                 test.waitForScreen(null);
                 test.runOnClient(client -> {
                     if (!client.player.getMainHandItem().is(net.minecraft.world.item.Items.DIAMOND_SWORD)
                         || !client.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).is(net.minecraft.world.item.Items.DIAMOND_CHESTPLATE)
                         || client.player.experienceLevel != 7) throw new AssertionError("Skin refresh lost inventory or experience");
                 });
-                evidence.add(snapshot(test, kind + "-owner-steve-first-person"));
-                screenshot(test, "hardrush-" + kind + "-owner-steve-first-person");
+                evidence.add(snapshot(test, kind + "-owner-skin-first-person"));
+                screenshot(test, "hardrush-" + kind + "-owner-skin-first-person");
                 for (CameraType perspective : new CameraType[]{CameraType.THIRD_PERSON_BACK, CameraType.THIRD_PERSON_FRONT, CameraType.FIRST_PERSON}) {
                     test.getInput().pressKey(options -> options.keyTogglePerspective);
                     test.waitFor(client -> client.options.getCameraType() == perspective);

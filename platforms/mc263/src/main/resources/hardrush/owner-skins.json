@@ -1,0 +1,35 @@
+{
+  "use": "Unsigned owner-only cosmetic textures per monster form; authenticated player profile stays unchanged. Values are copied verbatim from the MineSkin public gallery entries named in source; textures are hosted on textures.minecraft.net.",
+  "skins": {
+    "zombie": {
+      "source": "https://api.mineskin.org/v2/skins/72d4a47409bb4e0e80c3894aa499ca30",
+      "texture": "http://textures.minecraft.net/texture/34c51fb741d587986c018842fcd962f207c4711a04b9fce4976778322a066d6a",
+      "model": "classic",
+      "value": "eyJ0aW1lc3RhbXAiOjE1NDI0MTU1NTIyMzEsInByb2ZpbGVJZCI6ImUzYjQ0NWM4NDdmNTQ4ZmI4YzhmYTNmMWY3ZWZiYThlIiwicHJvZmlsZU5hbWUiOiJNaW5pRGlnZ2VyVGVzdCIsInNpZ25hdHVyZVJlcXVpcmVkIjp0cnVlLCJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzRjNTFmYjc0MWQ1ODc5ODZjMDE4ODQyZmNkOTYyZjIwN2M0NzExYTA0YjlmY2U0OTc2Nzc4MzIyYTA2NmQ2YSJ9fX0="
+    },
+    "drowned": {
+      "source": "https://api.mineskin.org/v2/skins/818b56092c6e4d91bf1fb9463bfc65de",
+      "texture": "http://textures.minecraft.net/texture/ae7c358bdbf410d71859e84387d38205f6d2438f06f7f1fd5a459e7ea122041b",
+      "model": "classic",
+      "value": "ewogICJ0aW1lc3RhbXAiIDogMTY4NzQwMDA5MjE5MSwKICAicHJvZmlsZUlkIiA6ICIxYmY4ZjBiZDRkZjc0Njg1ODQwNjU2NDc2ZGU0NmNmMyIsCiAgInByb2ZpbGVOYW1lIiA6ICJDcnV6YWRhMjIiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYWU3YzM1OGJkYmY0MTBkNzE4NTllODQzODdkMzgyMDVmNmQyNDM4ZjA2ZjdmMWZkNWE0NTllN2VhMTIyMDQxYiIKICAgIH0KICB9Cn0="
+    },
+    "skeleton": {
+      "source": "https://api.mineskin.org/v2/skins/16bb193a3c73451a85e9b03f7965529b",
+      "texture": "http://textures.minecraft.net/texture/947b8deecba03234c96906aa285110f13f01a858bccf2ba7cfbe92c0e4609f1c",
+      "model": "classic",
+      "value": "ewogICJ0aW1lc3RhbXAiIDogMTc5MDUxMDMyMzI4NywKICAicHJvZmlsZUlkIiA6ICI3OTI0MDQ0N2ViNTk0ZDBkOTVmY2E3YmJiMWZiMjVhNSIsCiAgInByb2ZpbGVOYW1lIiA6ICJqdW5pb3JraW9iciIsCiAgInNpZ25hdHVyZVJlcXVpcmVkIiA6IHRydWUsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS85NDdiOGRlZWNiYTAzMjM0Yzk2OTA2YWEyODUxMTBmMTNmMDFhODU4YmNjZjJiYTdjZmJlOTJjMGU0NjA5ZjFjIgogICAgfQogIH0KfQ=="
+    },
+    "stray": {
+      "source": "https://api.mineskin.org/v2/skins/d886ad58814946d5b37026cb923d0542",
+      "texture": "http://textures.minecraft.net/texture/58c1be70778f1a4527e784f6f6d787a410873bc8c0b20cf7e96a81b1f985d963",
+      "model": "slim",
+      "value": "ewogICJ0aW1lc3RhbXAiIDogMTcyMDQxMzM0OTM4OSwKICAicHJvZmlsZUlkIiA6ICI1MDMyYTA2NWQ5MWQ0NTgyYjZmODM0MDRlMGYyOTA4MiIsCiAgInByb2ZpbGVOYW1lIiA6ICJNYWNCb29rUHJvTTIiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNThjMWJlNzA3NzhmMWE0NTI3ZTc4NGY2ZjZkNzg3YTQxMDg3M2JjOGMwYjIwY2Y3ZTk2YTgxYjFmOTg1ZDk2MyIsCiAgICAgICJtZXRhZGF0YSIgOiB7CiAgICAgICAgIm1vZGVsIiA6ICJzbGltIgogICAgICB9CiAgICB9CiAgfQp9"
+    },
+    "creeper": {
+      "source": "https://api.mineskin.org/v2/skins/d83949b2d1ac45b59c4b3d125835d5db",
+      "texture": "http://textures.minecraft.net/texture/aa3f9bdb3e9ff1ddb0eb81b19430c29d0f6e458b75c257df415cde4f105958b7",
+      "model": "classic",
+      "value": "ewogICJ0aW1lc3RhbXAiIDogMTcyNjkzOTIxMTAxNSwKICAicHJvZmlsZUlkIiA6ICJhODEzMzJmNjA5MmE0NDQ1Yjk1YzVhZGFjNDA2OTQzYiIsCiAgInByb2ZpbGVOYW1lIiA6ICJTbmFwcHliM2FzdCIsCiAgInNpZ25hdHVyZVJlcXVpcmVkIiA6IHRydWUsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9hYTNmOWJkYjNlOWZmMWRkYjBlYjgxYjE5NDMwYzI5ZDBmNmU0NThiNzVjMjU3ZGY0MTVjZGU0ZjEwNTk1OGI3IgogICAgfQogIH0KfQ=="
+    }
+  }
+}
