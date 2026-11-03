@@ -38,6 +38,33 @@ public final class LobbyLayout {
             case ALTAR -> new Point(21, -11, 180);
         };
     }
+    /** The altar's arrival scatter stays at the foot of its steps, whatever the camp's respawn radius. */
+    public static final int ALTAR_SCATTER_RADIUS = 2;
+    /**
+     * Whether a purpose's vanilla-style scatter may land on layout cell {@code (x, z)}. Every purpose keeps
+     * clear of facilities, target models and the altar plinth; only the restore landing may enter the
+     * assembly circle (and then wholly inside it), so an arrival never prepares or cancels by accident.
+     */
+    public static boolean scatterAllowed(Landing purpose, int x, int z) {
+        if (x <= MIN_X || x >= MAX_X || z <= MIN_Z || z >= MAX_Z) return false;
+        for (var facility : Facility.values()) {
+            var p = facility(facility);
+            int reach = facility == Facility.ALTAR ? 3 : 1;
+            if (Math.abs(x - p.x()) <= reach && Math.abs(z - p.z()) <= reach) return false;
+        }
+        for (var p : displaySlots()) if (Math.abs(x - p.x()) <= 1 && Math.abs(z - p.z()) <= 1) return false;
+        double fromAssembly = Math.hypot(x - ASSEMBLY.x(), z - ASSEMBLY.z());
+        boolean monsterCamp = x > MONSTER_CAMP.minX() && x < MONSTER_CAMP.maxX() && z > MONSTER_CAMP.minZ() && z < MONSTER_CAMP.maxZ();
+        return switch (purpose) {
+            case CENTRAL, WAIT_OUTSIDE -> fromAssembly > ASSEMBLY.radius() + 1.5 && !MONSTER_CAMP.contains(x, z);
+            case RESTORE_READY -> fromAssembly <= ASSEMBLY.radius() - 1;
+            case MONSTER -> monsterCamp;
+            case ALTAR -> {
+                var foot = landing(Landing.ALTAR);
+                yield Math.abs(x - foot.x()) <= ALTAR_SCATTER_RADIUS && Math.abs(z - foot.z()) <= ALTAR_SCATTER_RADIUS;
+            }
+        };
+    }
     public static Point facility(Facility facility) {
         return switch (facility) {
             case RULES -> new Point(-16, -2, 90);

@@ -119,6 +119,8 @@ public final class HumanEntryGameTest {
                     test.assertTrue(PlayerProfiles.isLocked(f.b.player), "Outside visitor was not admitted");
                     var worlds = (dev.hardrush.world.RoundWorldBundle) f.service("WORLDS");
                     test.assertTrue(f.a.player.level() == worlds.level(net.minecraft.world.level.Level.OVERWORLD), "Natural round overworld admission");
+                    test.assertTrue(Math.abs(f.a.player.getBlockX() - worlds.spawn().getX()) <= 10 && Math.abs(f.a.player.getBlockZ() - worlds.spawn().getZ()) <= 10
+                            && dev.hardrush.world.RoundWorldBundle.safeStanding(f.a.player.level(), f.a.player.blockPosition()), "An opening life lands in vanilla's respawn square");
                     f.a.player.setRespawnPosition(new ServerPlayer.RespawnConfig(net.minecraft.world.level.storage.LevelData.RespawnData.of(f.a.player.level().dimension(), worlds.spawn(), 0, 0), true), false);
                     f.a.player.getEnderChestInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));
                     f.a.player.hurtServer(f.a.player.level(), f.a.player.damageSources().genericKill(), Float.MAX_VALUE);
@@ -175,6 +177,15 @@ public final class HumanEntryGameTest {
                 .thenWaitUntil(() -> f.await(!PlayerProfiles.isLocked(f.b.player) && f.idle(), "Submitted admission survives leaving the circle"))
                 .thenExecute(() -> {
                     test.assertValueEqual(f.round().participants().get(f.b.profile.id()).lifeSequence(), 1, "One middle admission");
+                    var worlds = (dev.hardrush.world.RoundWorldBundle) f.service("WORLDS");
+                    double far = Math.hypot(f.b.player.getX() - worlds.spawn().getX() - .5, f.b.player.getZ() - worlds.spawn().getZ() - .5);
+                    test.assertTrue(f.b.player.level() == worlds.level(net.minecraft.world.level.Level.OVERWORLD) && far >= 127 && far <= 1001
+                            && dev.hardrush.world.RoundWorldBundle.safeStanding(f.b.player.level(), f.b.player.blockPosition()), "A mid-round life lands in the far ring: " + far);
+                    f.b.player.connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
+                })
+                .thenWaitUntil(() -> f.await(f.hint(f.b).startsWith("你位于出生点"), "The far landing's bearing reaches the action bar"))
+                .thenExecute(() -> {
+                    test.assertTrue(f.hint(f.b).endsWith(" 格"), "Bearing names a rounded distance: " + f.hint(f.b));
                     test.assertTrue(f.round().participants().values().stream().allMatch(p -> p.role() == dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE), "Both are active ordinary humans");
                     f.reply.set(null); f.session.updateNextMode(dev.hardrush.core.config.GameMode.HARDCORE, "fixture", f.reply::set);
                 })
@@ -207,7 +218,9 @@ public final class HumanEntryGameTest {
                             && PlayerProfiles.canMoveInLobby(f.a.player), "Hardcore death enters monster camp");
                 })
                 .thenExecute(() -> {
-                    test.assertTrue(f.a.player.position().distanceTo(LobbyWorld.open(f.server).landing(dev.hardrush.core.lobby.LobbyLayout.Landing.MONSTER)) < .1, "Monster purpose landing is used");
+                    var anchor = BlockPos.containing(LobbyWorld.open(f.server).holdingSpawn());
+                    test.assertTrue(dev.hardrush.core.lobby.LobbyLayout.scatterAllowed(dev.hardrush.core.lobby.LobbyLayout.Landing.MONSTER,
+                            f.a.player.getBlockX() - anchor.getX(), f.a.player.getBlockZ() - anchor.getZ()), "A monster scatters inside the monster camp");
                     f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY);
                 })
                 .thenIdle(100)

@@ -540,13 +540,21 @@ public final class PlayerProfiles implements AutoCloseable {
 
     /** A consumed entitlement starts an empty human life while retaining this round's progress and ender storage. */
     public boolean revive(ServerPlayer player, RoundSnapshot round, ServerLevel spawnLevel, Vec3 spawn) {
+        return revive(player, round, () -> new dev.hardrush.world.NativeScatter.Arrival(spawnLevel, spawn, 0));
+    }
+
+    /** {@code arrival} is resolved only after the committed identity has been checked. */
+    public boolean revive(ServerPlayer player, RoundSnapshot round, Supplier<dev.hardrush.world.NativeScatter.Arrival> arrival) {
         requireMainThread();
         var entry = players.get(player.getUUID());
         var participant = round.participants().get(player.getUUID());
         if (closed || entry == null || entry.player != player || !entry.monsterLobbyInitialized
                 || !isReady(player.getUUID(), round) || participant == null
-                || participant.role() != ParticipantRole.HUMAN_ACTIVE || round.phase() != RoundPhase.RUNNING
-                || !dev.hardrush.world.RoundWorldBundle.owns(spawnLevel)
+                || participant.role() != ParticipantRole.HUMAN_ACTIVE || round.phase() != RoundPhase.RUNNING) return false;
+        var landing = arrival.get();
+        var spawnLevel = landing.level();
+        var spawn = landing.position();
+        if (!dev.hardrush.world.RoundWorldBundle.owns(spawnLevel)
                 || !dev.hardrush.world.RoundWorldBundle.safeStanding(spawnLevel, net.minecraft.core.BlockPos.containing(spawn))) return false;
         try {
             clearMonsterLobbyState(player);
@@ -566,7 +574,7 @@ public final class PlayerProfiles implements AutoCloseable {
             }
             ((ProfileTagged) player).hardrush$lifeSequence(participant.lifeSequence());
             ((ProfileTagged) player).hardrush$respawnPermitted(false);
-            if (!player.teleportTo(spawnLevel, spawn.x, spawn.y, spawn.z, Set.of(), 0, 0, true)) {
+            if (!player.teleportTo(spawnLevel, spawn.x, spawn.y, spawn.z, Set.of(), landing.yaw(), 0, true)) {
                 applyLobbyMode(player);
                 return false;
             }
@@ -1021,16 +1029,22 @@ public final class PlayerProfiles implements AutoCloseable {
     /** Called only after the participant/online transition has committed. Returns false without unlocking on failure. */
     public boolean admit(ServerPlayer player, RoundSnapshot round, ServerLevel spawnLevel, Vec3 spawn,
             Predicate<ServerLevel> belongsToRound) {
-        return admit(player, round, spawnLevel, spawn, belongsToRound, false);
+        return admit(player, round, () -> new dev.hardrush.world.NativeScatter.Arrival(spawnLevel, spawn, 0), belongsToRound, false);
+    }
+
+    /** {@code arrival} is resolved only when a fresh life actually enters, never for a resumed one. */
+    public boolean admit(ServerPlayer player, RoundSnapshot round, Supplier<dev.hardrush.world.NativeScatter.Arrival> arrival,
+            Predicate<ServerLevel> belongsToRound) {
+        return admit(player, round, arrival, belongsToRound, false);
     }
 
     /** Restore an already active same-round life to view results; no admission or timing event is created. */
     public boolean admitCelebration(ServerPlayer player, RoundSnapshot round, ServerLevel spawnLevel, Vec3 spawn,
             Predicate<ServerLevel> belongsToRound) {
-        return admit(player, round, spawnLevel, spawn, belongsToRound, true);
+        return admit(player, round, () -> new dev.hardrush.world.NativeScatter.Arrival(spawnLevel, spawn, 0), belongsToRound, true);
     }
 
-    private boolean admit(ServerPlayer player, RoundSnapshot round, ServerLevel spawnLevel, Vec3 spawn,
+    private boolean admit(ServerPlayer player, RoundSnapshot round, Supplier<dev.hardrush.world.NativeScatter.Arrival> arrival,
             Predicate<ServerLevel> belongsToRound, boolean celebration) {
         requireMainThread();
         var entry = players.get(player.getUUID());
@@ -1065,9 +1079,11 @@ public final class PlayerProfiles implements AutoCloseable {
                     throw new IllegalStateException("本轮人类档案恢复传送被拒绝");
                 }
             } else {
-                if (!belongsToRound.test(spawnLevel) || !dev.hardrush.world.RoundWorldBundle.safeStanding(spawnLevel, net.minecraft.core.BlockPos.containing(spawn)))
-                    throw new IllegalStateException("本轮自然出生点未就绪或不安全，保留档案并留厅核验");
-                if (!player.teleportTo(spawnLevel, spawn.x, spawn.y, spawn.z, Set.of(), 0, 0, true)) {
+                var landing = arrival.get();
+                if (!belongsToRound.test(landing.level()) || !dev.hardrush.world.RoundWorldBundle.safeStanding(landing.level(), net.minecraft.core.BlockPos.containing(landing.position())))
+                    throw new IllegalStateException("本轮入场落点未就绪或不安全，保留档案并留厅核验");
+                var spawn = landing.position();
+                if (!player.teleportTo(landing.level(), spawn.x, spawn.y, spawn.z, Set.of(), landing.yaw(), 0, true)) {
                     throw new IllegalStateException("本轮新生命入场传送被拒绝");
                 }
             }
@@ -1263,7 +1279,7 @@ public final class PlayerProfiles implements AutoCloseable {
         requireMainThread();
         var camp = dev.hardrush.world.LobbyWorld.open(server);
         if (!camp.ready() || !camp.safeLanding(purpose)) throw new IllegalStateException("大厅落点未就绪：" + purpose);
-        var pos = camp.landing(purpose);
+        var pos = camp.scatteredLanding(purpose);
         if (!player.teleportTo(camp.holdingLevel(), pos.x, pos.y, pos.z, Set.of(), dev.hardrush.core.lobby.LobbyLayout.landing(purpose).yaw(), 0, true))
             throw new IllegalStateException("大厅落点传送失败");
         player.setDeltaMovement(Vec3.ZERO); player.resetFallDistance(); applyLobbyMode(player);

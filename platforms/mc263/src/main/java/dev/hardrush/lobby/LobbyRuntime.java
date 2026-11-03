@@ -891,7 +891,7 @@ public final class LobbyRuntime {
                         : validTarget(b, player, player.level()) && !dimension(b, player.level()).equals("lobby")
                         ? LobbyProjections.State.AVAILABLE : LobbyProjections.State.CLOSED;
                 if (state == LobbyProjections.State.AVAILABLE && b.reviving.remove(p.id()) && player != null) {
-                    tell(player, "复生完成：已空装恢复人类，位于本轮自然出生点，无出生保护。");
+                    tell(player, "复生完成：已空装恢复人类，降落在远离出生点的荒野，无出生保护。");
                 }
             }
             targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state,

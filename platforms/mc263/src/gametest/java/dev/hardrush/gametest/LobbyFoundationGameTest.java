@@ -155,6 +155,8 @@ public final class LobbyFoundationGameTest {
         }
         void facilities() {
             test.assertTrue(dev.hardrush.protection.ProtectionRuntime.protectedEntity(f.a.player), "Actual production protection is enabled");
+            // Camp arrivals scatter like vanilla respawns; stand at the anchor beside the fixture lectern.
+            teleport(f.a.player, LobbyWorld.open(f.server).holdingSpawn());
             useBlock(f.a.player, rules, 1, InteractionHand.MAIN_HAND);
             test.assertValueEqual(ruleClicks, 1, "Registered lectern reaches both guards: result=" + router.lastResult(f.a.player)
                     + ", verified=" + PlayerProfiles.verifiedLobbyBody(f.a.player));
