@@ -65,6 +65,8 @@ public final class RoundRuntime {
     private static final Map<MinecraftServer, RoundWorldBundle> WORLDS = new IdentityHashMap<>();
     private static final Map<MinecraftServer, PlayerProfiles> PROFILES = new IdentityHashMap<>();
     private static final Map<MinecraftServer, Map<java.util.UUID, String>> ADMITTED = new IdentityHashMap<>();
+    /** Player → round whose life began after the challenge started. In memory; after a restart, challenge time decides. */
+    private static final Map<MinecraftServer, Map<java.util.UUID, java.util.UUID>> LATE_ENTRANTS = new IdentityHashMap<>();
     private static final Map<MinecraftServer, CompletableFuture<Void>> RELEASES = new IdentityHashMap<>();
     private static final Map<MinecraftServer, ReplayPort> RECORDINGS = new IdentityHashMap<>();
     private static final Map<MinecraftServer, CompletableFuture<Void>> REPLAY_FLUSHES = new IdentityHashMap<>();
@@ -95,10 +97,11 @@ public final class RoundRuntime {
             if (!recovery.message().isEmpty()) LOGGER.warn("{}", recovery.message());
             var lobby = LobbyWorld.open(server);
             var profiles = new PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profiles"),
-                    lobby::holdingLevel, lobby::holdingSpawn);
+                    lobby::holdingLevel, () -> lobby.ready() ? lobby.scatteredLanding(dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL) : lobby.holdingSpawn());
             PlayerProfiles.install(server, profiles);
             PROFILES.put(server, profiles);
             ADMITTED.put(server, new java.util.HashMap<>());
+            LATE_ENTRANTS.put(server, new java.util.HashMap<>());
             ServerDifficulty.applyFirstRunDefault(server);
             var reference = new RoundSession[1];
             var bootstrapCallbacks = new ArrayDeque<Runnable>();
@@ -311,7 +314,7 @@ public final class RoundRuntime {
                     }
                     if (participant != null && participant.role() == ParticipantRole.HUMAN_ACTIVE
                             && worlds != null && worlds.ready() && PlayerProfiles.isLocked(player)) {
-                        if (!profiles.admit(player, round, worlds.level(Level.OVERWORLD), Vec3.atBottomCenterOf(worlds.spawn()),
+                        if (!profiles.admit(player, round, arrival(server, worlds, round, participant),
                                 level -> RoundWorldBundle.sameRound(activeWorlds.level(Level.OVERWORLD), level))) continue;
                         names.put(player.getUUID(), player.getScoreboardName());
                         session.onOnline(player.getUUID(), player.getScoreboardName(), true);
@@ -331,6 +334,11 @@ public final class RoundRuntime {
                 session.tick();
             } catch (RuntimeException error) { session.adapterFailure("世界／档案适配失败", error); }
             finally {
+                try {
+                    var round = session.snapshot().orElse(null);
+                    dev.hardrush.world.FarLandings.tick(server, WORLDS.get(server), session.state() == RoundSession.State.OPEN
+                            && round != null && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE));
+                } catch (RuntimeException error) { LOGGER.error("Far landing preparation failed", error); }
                 try { dev.hardrush.pact.DuskPactRuntime.tick(server); }
                 catch (RuntimeException error) { session.adapterFailure("黄昏契约状态更新失败", error); }
                 // The altar's hints feed the same action bar, so it runs before feedback renders.
@@ -435,6 +443,7 @@ public final class RoundRuntime {
                 PlayerProfiles.uninstall(server);
             }
             ADMITTED.remove(server);
+            LATE_ENTRANTS.remove(server);
             RELEASES.remove(server);
             RECORDINGS.remove(server);
             REPLAY_FLUSHES.remove(server);
@@ -458,6 +467,7 @@ public final class RoundRuntime {
             dev.hardrush.pact.DuskPactRuntime.close(server);
             dev.hardrush.lobby.HumanEntry.close(server);
             dev.hardrush.lobby.RevivalAltar.close(server);
+            dev.hardrush.world.FarLandings.close(server);
             LobbyWorld.shutdown(server);
         });
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
@@ -623,9 +633,12 @@ public final class RoundRuntime {
         var profiles = PROFILES.get(server);
         if (worlds == null || profiles == null || !worlds.ready()) return;
         for (var participant : after.participants().values()) {
+            var previous = before.participants().get(participant.id());
+            if (participant.role() == ParticipantRole.HUMAN_ACTIVE && (previous == null || previous.role() == ParticipantRole.LOBBY)
+                    && (before.phase() == RoundPhase.RUNNING || before.phase() == RoundPhase.RESCUE))
+                LATE_ENTRANTS.get(server).put(participant.id(), after.roundId());
             var player = server.getPlayerList().getPlayer(participant.id());
             if (player == null || !profiles.isReady(participant.id(), after)) continue;
-            var previous = before.participants().get(participant.id());
             if (participant.role() == ParticipantRole.HUMAN_RESPAWNING) {
                 // Durable death admission and native respawn permission share the callback;
                 // an immediate respawn packet must not race the next END_SERVER_TICK.
@@ -637,10 +650,10 @@ public final class RoundRuntime {
                         || previous.role() == ParticipantRole.HUMAN_RESPAWNING || !previous.online())) {
                 boolean revived = previous != null && previous.role() == ParticipantRole.MONSTER_LOBBY;
                 boolean admitted = revived
-                        ? profiles.revive(player, after, worlds.level(Level.OVERWORLD), Vec3.atBottomCenterOf(worlds.spawn()))
+                        ? profiles.revive(player, after, () -> dev.hardrush.world.FarLandings.take(server, worlds, player.getUUID()))
                         : previous != null && previous.role() == ParticipantRole.HUMAN_RESPAWNING
                         ? profiles.confirmRespawn(player, after)
-                        : profiles.admit(player, after, worlds.level(Level.OVERWORLD), Vec3.atBottomCenterOf(worlds.spawn()),
+                        : profiles.admit(player, after, arrival(server, worlds, after, participant),
                             level -> RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), level));
                 if (!admitted) {
                     throw new IllegalStateException("已提交参与者的档案无法入场：" + participant.id());
@@ -649,6 +662,15 @@ public final class RoundRuntime {
                     SESSIONS.get(server).onOnline(player.getUUID(), player.getScoreboardName(), true);
             }
         }
+    }
+
+    /** An opening life scatters like vanilla's first join; a mid-round one lands far out, away from any spawn camp. */
+    private static java.util.function.Supplier<dev.hardrush.world.NativeScatter.Arrival> arrival(MinecraftServer server,
+            RoundWorldBundle worlds, RoundSnapshot round, dev.hardrush.core.round.Participant participant) {
+        boolean late = round.roundId().equals(LATE_ENTRANTS.get(server).get(participant.id())) || participant.joinedAtChallengeNanos() > 0;
+        return () -> late
+                ? dev.hardrush.world.FarLandings.take(server, worlds, participant.id())
+                : dev.hardrush.world.NativeScatter.opening(worlds.level(Level.OVERWORLD), worlds.spawn());
     }
 
     private static void refreshTab(MinecraftServer server, boolean immediate) {
@@ -821,7 +843,7 @@ public final class RoundRuntime {
             else if (worlds != null && RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), player.level())) {
                 player.stopRiding(); player.ejectPassengers(); player.closeContainer();
                 var lobby = LobbyWorld.open(server);
-                var spawn = lobby.holdingSpawn();
+                var spawn = lobby.ready() ? lobby.scatteredLanding(dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL) : lobby.holdingSpawn();
                 player.teleportTo(lobby.holdingLevel(), spawn.x, spawn.y, spawn.z,
                         java.util.Set.of(), 0, 0, true);
                 player.setGameMode(net.minecraft.world.level.GameType.ADVENTURE);

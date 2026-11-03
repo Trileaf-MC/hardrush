@@ -149,7 +149,8 @@ public final class FullFlowGameTest {
                     test.assertTrue(f.monster.participant().monsterCooldownNanos()>0,"Return starts sortie cooldown");
                     f.monster.player=f.monster.current();
                     if(dev.hardrush.core.round.MonsterCoins.enabled(f.round().rules()))
-                        test.assertTrue(f.monster.player.position().distanceTo(LobbyWorld.open(f.server).landing(LobbyLayout.Landing.ALTAR))<.1,"A revival-earning kill summons the hunter to the altar steps");
+                        test.assertTrue(LobbyLayout.scatterAllowed(LobbyLayout.Landing.ALTAR,f.monster.player.getBlockX()-net.minecraft.core.BlockPos.containing(LobbyWorld.open(f.server).holdingSpawn()).getX(),
+                                f.monster.player.getBlockZ()-net.minecraft.core.BlockPos.containing(LobbyWorld.open(f.server).holdingSpawn()).getZ()),"A revival-earning kill summons the hunter to the altar steps");
                     test.assertFalse(dev.hardrush.lobby.RevivalAltar.channeling(f.monster.player),"Arriving at the steps starts no rite");
                     state.altar(f.monster.player);
                 })

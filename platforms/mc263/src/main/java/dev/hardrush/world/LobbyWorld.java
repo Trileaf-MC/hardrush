@@ -277,6 +277,20 @@ public final class LobbyWorld {
     public Vec3 landing(dev.hardrush.core.lobby.LobbyLayout.Landing purpose) {
         return layoutPosition(dev.hardrush.core.lobby.LobbyLayout.landing(purpose));
     }
+    /**
+     * Vanilla's respawn scatter around a purpose landing, so arrivals do not stack: the camp's own
+     * {@code respawn_radius}, limited to the purpose's zone and to open floor. Keeps the exact landing otherwise.
+     */
+    public Vec3 scatteredLanding(LobbyLayout.Landing purpose) {
+        var exact = landing(purpose);
+        var feet = NativeScatter.first(BlockPos.containing(exact), NativeScatter.radius(level, BlockPos.containing(exact)), column -> {
+            int x = column.getX() - spawn.getX(), z = column.getZ() - spawn.getZ();
+            var standing = new BlockPos(column.getX(), spawn.getY(), column.getZ());
+            return LobbyLayout.scatterAllowed(purpose, x, z) && RoundWorldBundle.safeStanding(level, standing)
+                    && level.getBlockState(standing).isAir() && level.getBlockState(standing.above()).isAir() ? standing : null;
+        });
+        return feet == null ? exact : Vec3.atBottomCenterOf(feet);
+    }
 
     public boolean ready() { return ready; }
     public Optional<String> failure() { return Optional.ofNullable(failure); }

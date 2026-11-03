@@ -60,6 +60,7 @@ public final class PlayerFeedback {
                 hints.offer("profile",LobbyHints.Priority.RECOVERY,"正在核验／应用个人档案，请稍候",now+300);
             if(p!=null&&p.role()==ParticipantRole.MONSTER_LOBBY&&p.revivalEntitled()&&dev.hardrush.core.round.MonsterCoins.enabled(r.rules()))
                 hints.offer("revival",LobbyHints.Priority.FACILITY,"持有复生图腾 "+p.revivalCharges()+" 个 · 走上营地北侧复生祭坛站立 4 秒复生，复生前不能追猎或交易",now+300);
+            dev.hardrush.world.FarLandings.arrived(player).ifPresent(text->hints.offer("landing",LobbyHints.Priority.TARGET,text,now+6000));
             if(r.phase()==RoundPhase.RESCUE)
                 hints.offer("rescue",LobbyHints.Priority.FACILITY,"救场剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · 站上祭坛复生或站入集结区参赛恢复挑战",now+300);
             else if(r.phase()==RoundPhase.RUNNING && humans>0 && r.onlineHumans()==0)

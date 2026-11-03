@@ -968,7 +968,7 @@ public final class RoundSession implements AutoCloseable {
     public void requestRevival(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             Consumer<Reply> reply) {
         requestAction(() -> engine.proposeAdmissionRevival(UUID.randomUUID(), roundId, playerId,
-                lifeSequence, deploymentSequence), reply, "复生资格已消费，正在空装返回本轮出生点。");
+                lifeSequence, deploymentSequence), reply, "复生资格已消费，正在空装降落到远离出生点的荒野。");
     }
 
     public void requestRevivalTotemDrop(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,

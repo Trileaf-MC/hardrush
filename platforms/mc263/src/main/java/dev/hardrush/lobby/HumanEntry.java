@@ -253,8 +253,12 @@ public final class HumanEntry {
         intent.joinBar.setProgress(Math.max(0, 1 - (float)intent.dwell / MIDROUND_DWELL_TICKS));
         if (intent.dwell % 4 == 0) player.level().sendParticles(net.minecraft.core.particles.ParticleTypes.PORTAL,
                 player.getX(), player.getY() + .8, player.getZ(), 6, .4, .6, .4, .3);
-        hint(player, "离开集结区取消引导");
-        if (intent.dwell < MIDROUND_DWELL_TICKS) return;
+        if (intent.dwell < MIDROUND_DWELL_TICKS) { hint(player, "离开集结区取消引导"); return; }
+        // Late lives land far from spawn; hold the portal open until a prepared landing is claimed.
+        if (!dev.hardrush.world.FarLandings.reserve(server, player.getUUID())) {
+            intent.joinBar.setName(Component.literal("正在寻找远方的落点…"));
+            hint(player, "正在寻找远方的落点 · 离开集结区取消引导"); return;
+        }
         stopJoin(intent); intent.joinSpent = true;
         if (!joining.add(player.getUUID())) return;
         session.requestJoin(player.getUUID(), player.getScoreboardName(), reply -> {
