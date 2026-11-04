@@ -107,11 +107,11 @@ public final class MonsterShop {
         var r = access == null ? null : access.committed().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
         if (p == null || !MonsterCoins.enabled(r.rules()) || !access.eligible(player)) {
-            tell(player, "女巫商人只在极限挑战或救场期间，与营地里待命的怪物交易。"); return;
+            tell(player, "女巫：我只和庭院里待命的怪物做生意"); sound(player, SoundEvents.WITCH_AMBIENT); return;
         }
         if (LobbyRuntime.revivalFirst(player, r, p)) return;
         if (!p.wallet().roleChosen()) {
-            tell(player, "女巫：先在展位右键选择本次要化身的怪物，再来找我。"); sound(player, SoundEvents.WITCH_AMBIENT); return;
+            tell(player, "女巫：先去展位选个角色，再来找我"); sound(player, SoundEvents.WITCH_AMBIENT); return;
         }
         var trader = new Trader(player, p.monsterRole());
         trader.rebuild(r.rules(), p);
@@ -130,18 +130,14 @@ public final class MonsterShop {
                 offer, price, reply -> {
                     menu.buying = false;
                     if (player.containerMenu != menu) return;
-                    if (!reply.success()) { tell(player, reply.message()); sound(player, SoundEvents.VILLAGER_NO); menu.resync(); return; }
+                    if (!reply.success()) { tell(player, dev.hardrush.notice.Replies.text(reply, "女巫：这笔交易现在做不了")); sound(player, SoundEvents.VILLAGER_NO); menu.resync(); return; }
                     sound(player, SoundEvents.WITCH_CELEBRATE);
+                    // The witch's cheer, the coin count and the goods' description tell the rest.
                     menu.afterPurchase();
-                    var after = access.committed().map(s -> s.participants().get(player.getUUID())).orElse(null);
-                    if (after != null) tell(player, "已购买" + offer.title() + "，剩余 " + after.wallet().coins() + " 枚怪物币；"
-                            + (offer.permanent() ? "本轮以僵尸出场时一直有效。" : "下次出场自动带入。"));
                 });
     }
 
-    private static void tell(ServerPlayer player, String message) {
-        if (player.connection != null) player.sendSystemMessage(Component.literal(message));
-    }
+    private static void tell(ServerPlayer player, String message) { dev.hardrush.notice.Notices.hint(player, message); }
 
     private static void sound(ServerPlayer player, SoundEvent sound) {
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), sound, SoundSource.NEUTRAL, 1, 1);

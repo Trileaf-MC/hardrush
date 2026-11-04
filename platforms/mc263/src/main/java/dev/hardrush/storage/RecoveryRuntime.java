@@ -234,8 +234,10 @@ public final class RecoveryRuntime implements AutoCloseable {
                     session.adaptersReady(round.roundId());
                     if (session.competitionLocked()) return true;
                     stage = Stage.IDLE;
-                    server.getPlayerList().broadcastSystemMessage(Component.literal("管理员已在线恢复本轮到 "
-                            + java.time.Instant.ofEpochMilli(candidate.savedAt()) + "；玩家将自动返回对局，成绩待核验。"), false);
+                    String savedAt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+                            .format(java.time.Instant.ofEpochMilli(candidate.savedAt()).atZone(java.time.ZoneId.systemDefault()));
+                    dev.hardrush.notice.Notices.broadcast(server, "管理员把本轮恢复到了 " + dev.hardrush.notice.Notices.key(savedAt)
+                            + " 的存档，所有人将自动回到对局中。本轮成绩需管理员复核");
                     say(requester, "续局恢复成功，服务器已返回正常状态。");
                 }
             }

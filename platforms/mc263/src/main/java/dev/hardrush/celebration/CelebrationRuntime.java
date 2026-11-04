@@ -33,6 +33,8 @@ public final class CelebrationRuntime {
     private final Map<UUID, ServerPlayer> gathered = new HashMap<>();
     private final Set<UUID> fallen = new HashSet<>();
     private final Map<UUID, Integer> deathTicks = new HashMap<>();
+    /** The round's result title, held until the gathered body has loaded the End so the move cannot clear it. */
+    private final Map<UUID, String[]> titles = new HashMap<>();
     private final Map<UUID, Map<MonsterSkill, Long>> skillReadyAt = new HashMap<>();
     private UUID roundId;
     private UUID winner;
@@ -75,7 +77,7 @@ public final class CelebrationRuntime {
     }
 
     private void reset(RoundSnapshot round) {
-        gathered.clear(); fallen.clear(); deathTicks.clear(); skillReadyAt.clear();
+        gathered.clear(); fallen.clear(); deathTicks.clear(); skillReadyAt.clear(); titles.clear();
         roundId = round == null ? null : round.roundId();
         winner = round == null ? null : round.result().winner();
         var participant = winner == null ? null : round.participants().get(winner);
@@ -103,6 +105,13 @@ public final class CelebrationRuntime {
             catch (RuntimeException failure) { session.adapterFailure("庆祝集结失败", failure); return false; }
             if (endReason != null) return true;
         }
+        titles.entrySet().removeIf(entry -> {
+            var body = gathered.get(entry.getKey());
+            if (body == null || server.getPlayerList().getPlayer(entry.getKey()) != body) return true;
+            if (body.level() != end || body.connection == null || !body.connection.hasClientLoaded()) return false;
+            dev.hardrush.notice.Notices.title(body, entry.getValue()[0], entry.getValue()[1]);
+            return true;
+        });
         return false;
     }
 
@@ -132,16 +141,17 @@ public final class CelebrationRuntime {
                 body = player;
             } else body = guest(round, end, player, GameType.SURVIVAL);
             if (!awarded) { CelebrationKit.award(body); awarded = true; }
-            tell(body, "你是本轮胜者！已获得不可损坏的鞘翅和 16 色烟花，原物资全部保留。跳入龙池即结束庆祝。");
+            titles.putIfAbsent(id, new String[] {"你获胜了", "奖励你鞘翅和烟花，尽情庆祝吧"});
         } else if (fallen.contains(id)) {
             body = guest(round, end, player, GameType.SPECTATOR);
+            titles.putIfAbsent(id, new String[] {winnerName + " 击败了末影龙", "下一次再努力吧"});
         } else if (profiles.realRoundBody(player)) {
             move(end, player);
             body = player;
-            tell(body, "已集结到末地龙池旁，为胜者 " + winnerName + " 庆祝：原版生存，可 PvP 和建造，一切不计战绩。");
+            titles.putIfAbsent(id, new String[] {winnerName + " 最终击败了末影龙", "下一次再努力吧"});
         } else {
             body = guest(round, end, player, GameType.SURVIVAL);
-            tell(body, "以空手生存身份来到末地龙池旁，为胜者 " + winnerName + " 庆祝：可 PvP 和建造，一切不计战绩。");
+            titles.putIfAbsent(id, new String[] {winnerName + " 击败了末影龙", "下一次再努力吧"});
         }
         gathered.put(id, body);
         LOGGER.info("Gathered {} for winner {}: {} in {}", id, winner, body.gameMode.getGameModeForPlayer(), body.level().dimension().identifier());
@@ -188,10 +198,8 @@ public final class CelebrationRuntime {
         if (endReason != null) return;
         endReason = reason;
         LOGGER.info("Celebration of round {} ends: {}", roundId, reason);
-        server.getPlayerList().broadcastSystemMessage(Component.literal("庆祝结束（" + reason + "），全员返回独立大厅并换轮。"), false);
+        // Everybody is simply brought back to camp; the end of the celebration needs no announcement.
     }
-
-    private static void tell(ServerPlayer player, String text) { player.sendSystemMessage(Component.literal(text)); }
 
     /** The End during a successful celebration: native survival rules, with combat attribution still sealed. */
     public static boolean arena(ServerLevel level) {
@@ -281,7 +289,6 @@ public final class CelebrationRuntime {
                 try { player = profiles.finishCelebration(player, round); }
                 catch (RuntimeException failure) { session.adapterFailure("庆祝撤离失败", failure); return false; }
                 gathered.remove(id);
-                tell(player, "庆祝结束，已返回独立大厅；旧世界安全释放后换轮，下一轮需重新主动进入集结区。");
             }
             if (!profiles.isReady(id, round) || !LobbyWorld.isLobby(player.level())) returned = false;
         }

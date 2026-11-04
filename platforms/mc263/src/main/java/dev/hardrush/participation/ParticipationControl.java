@@ -110,7 +110,8 @@ public final class ParticipationControl {
         if (!round.roundId().equals(expectedRound) || !token(p).equals(token)) return;
         b.session.requestParticipationExit(expectedRound, p.id(), p.role(), p.lifeSequence(), p.monsterDeploymentSequence(),
                 ParticipantRole.WITHDRAWN, "player:" + p.id(), "玩家主动确认退出本轮并观战", reply -> {
-                    player.sendSystemMessage(Component.literal(reply.message()));
+                    // Success is told once by the round's identity change; only a refusal needs words here.
+                    if (!reply.success()) dev.hardrush.notice.Replies.refuse(player, reply, "现在不能退出本轮");
                     if (reply.success() && player.containerMenu != player.inventoryMenu) player.closeContainer();
                 });
     }

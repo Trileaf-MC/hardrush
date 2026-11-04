@@ -35,7 +35,7 @@ public final class PlayerFeedback {
         stageBar.setVisible(recovery||rescue||displaying);
         String terminalText=displaying?RoundResultText.stageLabel(round.result(), celebrating?"通关庆祝 · 胜者跳入龙池／阵亡／离线即结束":"结算展示"):"结算展示";
         if(displaying&&round.result().kind()==RoundResult.Kind.FAILED)terminalText="全员挑战失败";
-        stageBar.setName(Component.literal(recovery ? "恢复隔离 · 竞技入口关闭，请联系管理员" : (rescue?"救场 · 祭坛复生／集结区加入":terminalText)
+        stageBar.setName(Component.literal(recovery ? "比赛已暂停 · 等待管理员处理" : (rescue?"救场 · 祭坛复生／集结区加入":terminalText)
                 + " · 剩余 " + (round.remainingPhaseMillis()+999)/1000 + " 秒"));
         long total=rescue?round.rules().combatValues().get("round.rescueMillis").longValue():completed
                 ?RoundEngine.successCelebrationMillis(round.rules()):round.rules().failureDisplayMillis();
@@ -56,7 +56,7 @@ public final class PlayerFeedback {
             if(!LobbyWorld.isLobby(player.level()))hints.clear("assembly");
             if(p==null||p.role()!=ParticipantRole.MONSTER_LOBBY){hints.clear("hunt");hints.clear("hunt-target");hints.clear("hunt-guide");}
             if(!dev.hardrush.lobby.LobbyRuntime.channeling(player))hints.clear("return");
-            if(frozen) dev.hardrush.lobby.LobbyRuntime.interruptReturn(player,"阶段变化／恢复隔离");
+            if(frozen) dev.hardrush.lobby.LobbyRuntime.interruptReturn(player,"比赛状态变化");
             if(session.state()!=RoundSession.State.OPEN||r.phase()==RoundPhase.RECOVERY_REQUIRED)
                 hints.offer("recovery",LobbyHints.Priority.RECOVERY,"恢复隔离 · 竞技入口关闭；可用的规则与历史仍可阅读",now+300);
             else if(PlayerProfiles.simulationFrozen(player) && !dev.hardrush.celebration.CelebrationRuntime.arena(player)) {
@@ -92,7 +92,7 @@ public final class PlayerFeedback {
                     hints.offer("facility",LobbyHints.Priority.FACILITY,text,now+300); break;
                 }
             }
-            if(server.getTickCount()%5==0)hints.current(now).ifPresent(text->player.connection.send(new ClientboundSetActionBarTextPacket(Component.literal(text))));
+            if(server.getTickCount()%5==0)hints.current(now).ifPresent(text->player.connection.send(new ClientboundSetActionBarTextPacket(dev.hardrush.notice.Notices.format(text))));
         }
     }
 }

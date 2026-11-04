@@ -63,7 +63,7 @@ public final class MonsterDoorBreaking {
         if (current != null && current.valid(player, target)) return true;
         cancel(player);
         var goal = new DoorGoal(player, (Zombie) MonsterRoles.nativeModel(player), target);
-        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "破门");
+        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "敲门");
         goal.start();
         ACTIVE.put(player.getUUID(), goal);
         player.sendSystemMessage(Component.literal("按住左键敲门约 12 秒；松开或移开准星即中断"), true);

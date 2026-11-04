@@ -9,12 +9,8 @@ import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.world.LobbyWorld;
 import java.util.*;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
-import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
-import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerPlayer;
@@ -146,9 +142,12 @@ public final class RevivalAltar {
     /** The revived body has loaded into the formal world: the client plays its own totem animation. */
     private static void arrive(ServerPlayer player) {
         player.level().broadcastEntityEvent(player, (byte) 35);
-        player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 50, 20));
-        player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("重获人身").withStyle(ChatFormatting.GOLD)));
-        player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("空装 · 无出生保护").withStyle(ChatFormatting.GRAY)));
+        var server = player.level().getServer();
+        String age = HumanEntry.challengeWorldAge(server).map(days -> "世界已过去 " + dev.hardrush.notice.Notices.key(days) + "，")
+                .orElse("");
+        dev.hardrush.notice.Notices.title(player, "重获新生", age + "祝你好运");
+        dev.hardrush.notice.Notices.broadcast(server, dev.hardrush.notice.Notices.name(player.getScoreboardName())
+                + " 在祭坛重获新生，以人类身份重返挑战");
     }
 
     private static void fizzle(ServerPlayer player) {

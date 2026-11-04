@@ -46,7 +46,7 @@ public abstract class ProtectionNetworkMixin {
         if (!mainThread()) return;
         switch (packet.getAction()) {
             case START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> {
-                dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "攻击方块");
+                dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "攻击");
                 if (ProtectionRuntime.rejectInteraction(player, player.level())) {
                     player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.getPos())); ci.cancel();
                 }

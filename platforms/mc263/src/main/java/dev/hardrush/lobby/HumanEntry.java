@@ -150,7 +150,6 @@ public final class HumanEntry {
                     boolean safe = !intent.cancelled && lobby.inAssembly(player, true) && lobby.safeLanding(LobbyLayout.Landing.RESTORE_READY);
                     session.restoreReady(round.roundId(), player.getUUID(), player.getScoreboardName(), safe, reply -> {
                         intent.pending = false;
-                        if (reply.success()) tell(player, reply.message());
                     });
                 }
                 hint(player, "正在恢复上次集结 · 原准备者核验后按保存余量续计");
@@ -171,7 +170,7 @@ public final class HumanEntry {
             } else {
                 stopJoin(intent);
                 boolean ready = participant != null && participant.ready();
-                if (intent.inside && !inside) { intent.cancelled = true; if (ready || intent.pending) tell(player, "已取消准备。"); }
+                if (intent.inside && !inside) { intent.cancelled = true; if (ready || intent.pending) cancelled(player); }
                 intent.inside = inside;
                 // Once an in-flight intention is cancelled, re-entry cannot resurrect it. First
                 // durably clear the old ready bit, then accept a new intention on a later tick.
@@ -183,8 +182,9 @@ public final class HumanEntry {
                     session.requestAssembly(round.roundId(), player.getUUID(), player.getScoreboardName(), wanted,
                             reply -> {
                                 intent.pending = false;
-                                if (reply.success() && preparing && validAssembly(player.getUUID())) {
-                                    tell(player, "已准备，离开集结区可取消。");
+                                if (!reply.success()) {
+                                    if (preparing) dev.hardrush.notice.Replies.refuse(player, reply, "现在不能准备");
+                                } else if (preparing && validAssembly(player.getUUID())) {
                                     player.level().playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,
                                             net.minecraft.sounds.SoundSource.PLAYERS, .5f, 1.2f);
                                     player.level().sendParticles(net.minecraft.core.particles.ParticleTypes.HAPPY_VILLAGER, player.getX(), player.getY()+.5, player.getZ(), 5, .3, .3, .3, 0);
@@ -263,7 +263,12 @@ public final class HumanEntry {
         if (!joining.add(player.getUUID())) return;
         session.requestJoin(player.getUUID(), player.getScoreboardName(), reply -> {
             joining.remove(player.getUUID());
-            if (server.getPlayerList().getPlayer(player.getUUID()) == player) tell(player, reply.message());
+            if (reply.success()) {
+                dev.hardrush.notice.Notices.broadcast(server, dev.hardrush.notice.Notices.name(player.getScoreboardName()) + " 作为人类中途加入了挑战");
+            } else if (server.getPlayerList().getPlayer(player.getUUID()) == player) {
+                dev.hardrush.notice.Notices.refuse(player, reply.refusal() == dev.hardrush.core.round.Refusal.FROZEN
+                        ? "本轮即将结束，暂时不能加入" : dev.hardrush.notice.Replies.text(reply, "现在不能加入"));
+            }
         });
     }
     /** Test seam: the player is currently counting down a mid-round admission. */
@@ -277,11 +282,26 @@ public final class HumanEntry {
         if (intent.joinBar != null) { intent.joinBar.removeAllPlayers(); intent.joinBar = null; }
     }
     /** Elapsed time of this round's overworld default clock, as F3 counts days (skipped nights included). */
-    private String worldAge() {
+    private String worldAge() { return "世界已运转 " + worldDays(); }
+    /** In-game time of this round's overworld default clock, as F3 counts days (skipped nights included). */
+    private String worldDays() {
         var level = worlds.get().level(net.minecraft.world.level.Level.OVERWORLD);
         long ticks = level.dimensionTypeRegistration().value().defaultClock()
                 .map(clock -> level.clockManager().getInstance(clock).totalTicks()).orElse(level.getGameTime());
-        return "世界已运转 " + ticks / 24000 + " 天 " + ticks % 24000 / 1000 + " 小时";
+        return ticks / 24000 + " 天 " + ticks % 24000 / 1000 + " 小时";
     }
-    private static void tell(ServerPlayer player, String text) { if (player.connection != null) player.sendSystemMessage(Component.literal(text)); }
+    /** How long the challenge world has run in game days, for players re-entering it; empty without a world. */
+    public static java.util.Optional<String> challengeWorldAge(MinecraftServer server) {
+        var service = SERVICES.get(server);
+        if (service == null || service.worlds.get() == null) return java.util.Optional.empty();
+        try { return java.util.Optional.of(service.worldDays()); }
+        catch (RuntimeException unavailable) { return java.util.Optional.empty(); }
+    }
+    /** Leaving the circle cancels readiness; a falling click tells it without chat. */
+    private static void cancelled(ServerPlayer player) {
+        if (player.connection == null) return;
+        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, net.minecraft.sounds.SoundSource.PLAYERS,
+                player.getX(), player.getY(), player.getZ(), .4f, .6f, 0));
+    }
 }

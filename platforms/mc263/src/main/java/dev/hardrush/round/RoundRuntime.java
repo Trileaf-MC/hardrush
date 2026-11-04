@@ -594,15 +594,34 @@ public final class RoundRuntime {
         return profiles != null && round != null && profiles.isReady(player.getUUID(), round);
     }
 
+    /** T5 once for everybody and a T2 title; an administrator's own reason goes to gamemasters only. */
+    private static void announceUnfinished(MinecraftServer server, dev.hardrush.core.round.RoundResult result) {
+        boolean aborted = result.kind() == dev.hardrush.core.round.RoundResult.Kind.ABORTED;
+        String reason = dev.hardrush.core.record.RoundResultText.reason(result);
+        String headline = aborted ? "本轮已中止" : "挑战失败";
+        dev.hardrush.notice.Notices.broadcast(server, dev.hardrush.notice.Notices.key(headline) + "：" + reason + "。所有人回到营地，稍后开始新一轮");
+        for (var player : server.getPlayerList().getPlayers()) dev.hardrush.notice.Notices.title(player, headline, aborted ? "" : reason);
+        if (aborted) dev.hardrush.notice.Notices.operators(server, "中止原因：" + result.reason());
+    }
+
+    /** Titles for the celebration are sent by {@link CelebrationRuntime} once everybody stands at the pool. */
+    private static void announceCompleted(MinecraftServer server, RoundSnapshot after) {
+        String time = "用时 " + dev.hardrush.notice.Notices.key(dev.hardrush.notice.Notices.clock(after.challengeMillis()));
+        var winner = after.result().winner() == null ? null : after.participants().get(after.result().winner());
+        dev.hardrush.notice.Notices.broadcast(server, winner == null
+                ? "末影龙已被击败，挑战成功！胜者有待管理员核实 · " + time
+                : dev.hardrush.notice.Notices.name(winner.name()) + " 击败了末影龙，挑战成功！" + time);
+    }
+
     private static void applyPlayers(MinecraftServer server, RoundSnapshot before, RoundSnapshot after) {
         dev.hardrush.participation.ParticipationControl.reconcile(server);
         for (var p : after.participants().values()) {
             var previous = before.participants().get(p.id());
             var player = server.getPlayerList().getPlayer(p.id());
             if (player != null && p.role().isExcluded() && (previous == null || previous.role() != p.role()))
-                player.sendSystemMessage(Component.literal(p.role() == ParticipantRole.DISQUALIFIED
-                        ? "你的本轮参赛资格已取消；本轮不能重新入场、追猎或复生，下轮恢复资格。"
-                        : "你已主动退出本轮；本轮不能重新参赛，下轮恢复资格。"));
+                dev.hardrush.notice.Notices.personal(player, p.role() == ParticipantRole.DISQUALIFIED
+                        ? "你已被取消本轮参赛资格，可以用望远镜观战。下一轮恢复参赛资格"
+                        : "你已退出本轮，可以用望远镜观战。下一轮恢复参赛资格");
         }
         refreshTab(server, true);
         dev.hardrush.pact.DuskPactRuntime.tick(server);
@@ -623,18 +642,10 @@ public final class RoundRuntime {
                 if (profiles != null) for (var player : server.getPlayerList().getPlayers()) {
                     if (profiles.manages(player)) profiles.returnToLobby(player);
                 }
-                server.getPlayerList().broadcastSystemMessage(Component.literal("本轮" + (after.result().kind() == dev.hardrush.core.round.RoundResult.Kind.FAILED ? "挑战失败" : "已中止") + "，原因："
-                        + dev.hardrush.core.book.SafeBookText.literal(after.result().reason().equals("NO_ELIGIBLE_PARTICIPANTS")
-                            ? "没有仍具参赛资格的人类或可复生怪物" : after.result().reason(), 512)
-                        + "。已返回大厅，安全释放旧世界后轮换。"), false);
+                announceUnfinished(server, after.result());
                 return;
             }
-            var winner = after.result().winner() == null ? "胜者待核验"
-                    : dev.hardrush.core.book.SafeBookText.literal(after.participants().get(after.result().winner()).name(), 64);
-            server.getPlayerList().broadcastSystemMessage(Component.literal("本轮已通关：" + winner
-                    + "，有效挑战 " + after.challengeMillis() + " ms。全员集结到末地龙池旁为胜者庆祝：胜者获得鞘翅和烟花；"
-                    + "庆祝期间为原版生存，可 PvP 和建造，一切不计战绩。胜者跳入龙池、阵亡或离线即结束，最长 "
-                    + (RoundEngine.successCelebrationMillis(after.rules()) + 999) / 1000 + " 秒（现实时间）。"), false);
+            announceCompleted(server, after);
         }
         if (after.phase() != RoundPhase.RUNNING && after.phase() != RoundPhase.RESCUE) return;
         var worlds = WORLDS.get(server);

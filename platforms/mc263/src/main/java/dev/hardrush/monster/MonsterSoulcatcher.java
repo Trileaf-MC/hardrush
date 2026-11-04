@@ -169,33 +169,33 @@ public final class MonsterSoulcatcher {
         var bag = player.getItemInHand(hand);
         if (!MonsterItems.matches(player, bag, PURPOSE) || !MonsterRoundRuntime.canAct(player)
                 || target.isRemoved() || !(target instanceof LivingEntity living) || !living.isAlive()) return false;
-        if (!(target instanceof Mob mob) || MonsterRoles.isNativeBody(mob)) { tell(player, "只能收编生物。"); return false; }
+        if (!(target instanceof Mob mob) || MonsterRoles.isNativeBody(mob)) { tell(player, "只能收编生物"); return false; }
         if (ProtectionRuntime.protectedEntity(mob) || ProtectionRuntime.protectedEntity(player)) {
-            tell(player, "保护区里的生物不能收编。"); return false;
+            tell(player, "保护区里的生物不能收编"); return false;
         }
         var owner = MonsterCompanions.owner(mob);
         if (owner != null && (!owner.equals(player.getUUID()) || MonsterCompanions.isDismissing(mob))) {
-            tell(player, "这是别人的随从，不能收编。"); return false;
+            tell(player, "这是别人的随从"); return false;
         }
-        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品／技能");
+        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品");
         var hatched = owner == null ? Optional.<Boolean>empty() : MonsterCompanions.hatchedBaby(mob);
         if (hatched.isPresent()) {
-            if (!MonsterRoles.returnEgg(player, hatched.get())) { tell(player, "背包已满，放不下这枚僵尸蛋。"); return false; }
+            if (!MonsterRoles.returnEgg(player, hatched.get())) { tell(player, "背包满了，放不下僵尸蛋"); return false; }
             vanish(player, mob);
             return true;
         }
         var rule = rule(mob).orElse(null);
-        if (rule == null) { tell(player, mob.getName().getString() + "无法收编。"); return false; }
+        if (rule == null) { tell(player, dev.hardrush.notice.Notices.key(mob.getName().getString()) + " 不能被收编"); return false; }
         int tier = tier(player);
         if (rule.tier() > tier) {
-            tell(player, "需要" + TIER_NAMES[rule.tier()] + "拘魂袋才能收编" + mob.getName().getString() + "。"); return false;
+            tell(player, "需要 " + dev.hardrush.notice.Notices.key(TIER_NAMES[rule.tier()]) + " 拘魂袋才能收编 " + dev.hardrush.notice.Notices.key(mob.getName().getString())); return false;
         }
         var item = SpawnEggItem.byId(mob.getType()).orElse(null);
-        if (item == null) { tell(player, mob.getName().getString() + "没有刷怪蛋，无法收编。"); return false; }
+        if (item == null) { tell(player, dev.hardrush.notice.Notices.key(mob.getName().getString()) + " 不能被收编"); return false; }
         int capacity = capacity(player);
         var egg = MonsterItems.bind(player, sized(egg(player, mob, item.value()), capacity), SOUL);
         var contents = bag.getOrDefault(DataComponents.BUNDLE_CONTENTS, BundleContents.EMPTY).asMutable();
-        if (contents.tryInsert(egg) == 0) { tell(player, "拘魂袋已满（" + capacity + "/" + capacity + "）。"); return false; }
+        if (contents.tryInsert(egg) == 0) { tell(player, "拘魂袋满了（" + dev.hardrush.notice.Notices.key(capacity + "/" + capacity) + "）"); return false; }
         bag.set(DataComponents.BUNDLE_CONTENTS, contents.toImmutable());
         vanish(player, mob);
         return true;
@@ -247,8 +247,8 @@ public final class MonsterSoulcatcher {
     private static boolean release(ServerPlayer player, InteractionHand hand, MonsterCompanions.Landing landing) {
         var bag = player.getItemInHand(hand);
         var contents = bag.getOrDefault(DataComponents.BUNDLE_CONTENTS, BundleContents.EMPTY);
-        if (contents.isEmpty()) { tell(player, "拘魂袋是空的；右键生物把它收进来。"); return false; }
-        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品／技能");
+        if (contents.isEmpty()) { tell(player, "拘魂袋是空的 · 右键生物收编"); return false; }
+        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品");
         var mutable = contents.asMutable();
         var stack = mutable.removeOne();
         var egg = stack.split(1);
@@ -257,10 +257,10 @@ public final class MonsterSoulcatcher {
         Entity created = data == null ? null : data.type().create(level, EntitySpawnReason.SPAWN_ITEM_USE);
         if (!(created instanceof Mob mob)) {
             if (created != null) created.discard();
-            tell(player, "这枚蛋已经损坏，无法放出。"); return false;
+            tell(player, "这枚蛋坏了，放不出来"); return false;
         }
         data.loadInto(mob);
-        if (!MonsterCompanions.place(player, mob, landing)) { mob.discard(); tell(player, "这里放不下" + mob.getName().getString() + "。"); return false; }
+        if (!MonsterCompanions.place(player, mob, landing)) { mob.discard(); tell(player, "这里放不下 " + dev.hardrush.notice.Notices.key(mob.getName().getString())); return false; }
         if (rule(mob).map(Catch::companion).orElse(false)) MonsterCompanions.adopt(player, mob);
         else MonsterCompanions.release(mob);
         mob.setPersistenceRequired();
@@ -275,7 +275,5 @@ public final class MonsterSoulcatcher {
         return true;
     }
 
-    private static void tell(ServerPlayer player, String message) {
-        if (player.connection != null) player.connection.send(new ClientboundSetActionBarTextPacket(Component.literal(message)));
-    }
+    private static void tell(ServerPlayer player, String message) { dev.hardrush.notice.Notices.refuse(player, message); }
 }

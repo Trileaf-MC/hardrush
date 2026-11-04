@@ -123,7 +123,7 @@ public final class MonsterRoundRuntime {
             if (BINDINGS.get(server) != b) return;
             if (!reply.success()) {
                 b.casting.remove(p.id());
-                tell(player, reply.message()); return;
+                dev.hardrush.notice.Replies.refuse(player, reply, "现在不能施放技能"); return;
             }
             var latest = b.session.snapshot().orElseThrow();
             var identity = latest.participants().get(p.id());
@@ -140,14 +140,17 @@ public final class MonsterRoundRuntime {
                 // An unknown partially-applied effect cannot safely be replayed or refunded.
                 b.casting.remove(p.id());
                 LoggerFactory.getLogger(MonsterRoundRuntime.class).error("Monster skill effect failed for " + p.id() + "/" + skill.id(), failure);
-                tell(player, "技能执行异常，已记录日志并保留冷却，请联系管理员。"); return;
+                tell(player, "技能施放失败，请联系管理员");
+                dev.hardrush.notice.Notices.operators(server, player.getScoreboardName() + " 的技能 " + skill.id() + " 执行异常，冷却未退回，详见日志");
+                return;
             }
             // A prepared effect whose safe positions changed must not spend a skill cooldown.
             long consumed = identity.monsterSkillReadyAtMillis().getOrDefault(skill, 0L);
             b.session.requestMonsterSkillCancelled(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
                     skill, consumed, previous, cancelled -> {
                         b.casting.remove(p.id());
-                        tell(player, cancelled.success() ? "安全条件已改变，技能未施放且保留冷却机会。" : cancelled.message());
+                        if (cancelled.success()) tell(player, "技能没有施放，冷却已退回");
+                        else dev.hardrush.notice.Replies.refuse(player, cancelled, "技能没有施放");
                     });
         });
         return Optional.of(true);
@@ -159,10 +162,17 @@ public final class MonsterRoundRuntime {
             if (!effect.getAsBoolean()) return false;
         } catch (RuntimeException failure) {
             LoggerFactory.getLogger(MonsterRoundRuntime.class).error("Celebration monster skill failed for " + player.getUUID() + "/" + skill.id(), failure);
-            tell(player, "技能执行异常，已记录日志。"); return false;
+            tell(player, "技能施放失败，请联系管理员"); return false;
         }
         dev.hardrush.celebration.CelebrationRuntime.consumeSkill(player, skill);
         return true;
     }
-    private static void tell(ServerPlayer player, String text) { player.sendSystemMessage(Component.literal(text)); }
+    /** Why {@link #cast} would refuse right now, worded for the player. */
+    public static String skillRefusal(ServerPlayer player, MonsterSkill skill) {
+        if (skillRemaining(player, skill).orElse(0) > 0) return "技能冷却中";
+        var b = BINDINGS.get(player.level().getServer());
+        if (b != null && b.casting.contains(player.getUUID()) || MonsterRoles.performingSkill(player)) return "已经在施放技能";
+        return "现在不能施放技能";
+    }
+    private static void tell(ServerPlayer player, String text) { dev.hardrush.notice.Notices.hint(player, text); }
 }
