@@ -342,8 +342,6 @@ public final class PlayerProfiles implements AutoCloseable {
         // quarantined until this first safe opportunity to clear and close the native menu.
         closeSuspendedContainer(player);
         moveToLobby(player);
-        String recovery = dev.hardrush.round.RoundRuntime.recoveryNotice(player.level().getServer());
-        if (!recovery.isEmpty()) player.sendSystemMessage(Component.literal(recovery));
     }
 
     public void onDisconnect(ServerPlayer player) {
@@ -1159,7 +1157,6 @@ public final class PlayerProfiles implements AutoCloseable {
             player.onUpdateAbilities();
             player.inventoryMenu.sendAllDataToRemote();
             server.getPlayerList().sendActivePlayerEffects(player);
-            if (!entry.fresh) player.sendSystemMessage(Component.literal("已恢复本轮人类身份，返回离线前的位置继续游戏。"));
             return true;
         } catch (RuntimeException error) { fail(entry, error); moveToLobby(player); return false; }
     }
@@ -1272,8 +1269,8 @@ public final class PlayerProfiles implements AutoCloseable {
             try {
                 resetForNewRound(entry.player, target);
                 if (entry.source.isPresent() && !entry.source.get().equals(target)) {
-                    entry.player.sendSystemMessage(Component.literal("上一轮已结束，当前是第 " + target.sequence()
-                            + " 轮；旧轮档案已封存，请在大厅参加新一轮。"));
+                    dev.hardrush.notice.Notices.personal(entry.player, "你离线期间上一轮已结束，上一轮的物品已封存。现在是第 "
+                            + dev.hardrush.notice.Notices.key(target.sequence()) + " 轮");
                 }
                 ((ProfileTagged) entry.player).hardrush$suspensionId(UUID.randomUUID().toString());
                 entry.resume = capture(entry.player, true);
@@ -1332,7 +1329,10 @@ public final class PlayerProfiles implements AutoCloseable {
         ((ProfileTagged) entry.player).hardrush$isolated(true);
         ((ProfileTagged) entry.player).hardrush$respawnPermitted(false);
         LOGGER.error("{} UUID={}", entry.problem, entry.player.getUUID(), error);
-        if (entry.connected && entry.player.connection != null) entry.player.sendSystemMessage(Component.literal(entry.problem));
+        if (entry.connected && entry.player.connection != null) {
+            dev.hardrush.notice.Notices.personal(entry.player, "你的存档读取出错，本轮暂时不能参赛，请联系管理员");
+            dev.hardrush.notice.Notices.operators(entry.player.level().getServer(), entry.player.getScoreboardName() + "：" + entry.problem);
+        }
     }
 
     /** Purpose-specific native relocation; ordinary lobby reconciliation never calls this every tick. */

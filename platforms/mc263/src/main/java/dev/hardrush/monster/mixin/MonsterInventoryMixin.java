@@ -49,7 +49,7 @@ public abstract class MonsterInventoryMixin {
         serverThread(packet);
         if (!MonsterRoles.isMonster(player)) return;
         switch (packet.getAction()) {
-            case START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "攻击方块");
+            case START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "攻击");
             default -> {}
         }
         switch (packet.getAction()) {

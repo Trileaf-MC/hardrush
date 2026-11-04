@@ -180,20 +180,20 @@ public abstract class PlayerIsolationNetworkMixin {
     private void hardrush$interactReturn(ServerboundInteractPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread()
                 && !dev.hardrush.monster.MonsterRoles.isReturnControl(player, packet.hand()))
-            dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "实体交互");
+            dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "互动");
     }
 
     @Inject(method = "handleUseItem", at = @At("HEAD"))
     private void hardrush$returnItem(ServerboundUseItemPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread()
                 && !dev.hardrush.monster.MonsterRoles.isReturnControl(player, packet.hand()))
-            dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品／技能");
+            dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品");
     }
     @Inject(method = "handleUseItemOn", at = @At("HEAD"))
     private void hardrush$returnBlockItem(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread()
                 && !dev.hardrush.monster.MonsterRoles.isReturnControl(player, packet.hand()))
-            dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品／技能");
+            dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品");
     }
 
     // Celebration allows movement and closing a menu, while sealing all new competitive actions.

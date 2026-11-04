@@ -73,17 +73,17 @@ public final class MonsterVaults {
         var r = access.committed().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
         if (p == null || !MonsterCoins.enabled(r.rules()) || !access.eligible(player)) {
-            tell(player, "宝库只为极限挑战中营地待命的怪物开启。"); fail(player, pos); return;
+            tell(player, "宝库只对庭院里待命的怪物开放"); fail(player, pos); return;
         }
         if (LobbyRuntime.revivalFirst(player, r, p)) { fail(player, pos); return; }
         if (p.monsterRole() == MonsterRole.CREEPER || !p.wallet().roleChosen()) {
-            tell(player, "先在展位选择僵尸或骷髅，再用试炼钥匙开启宝库。"); fail(player, pos); return;
+            tell(player, "僵尸和骷髅才能开启宝库"); fail(player, pos); return;
         }
         if (!CampKit.holdsKey(player, key)) {
-            tell(player, "需要手持" + key.title() + "：向营地的女巫商人购买。"); fail(player, pos); return;
+            tell(player, "需要手持 " + dev.hardrush.notice.Notices.key(key.title()) + " · 可向女巫购买"); fail(player, pos); return;
         }
         if (openings.containsKey(p.id()) || access.busy(p.id()) || access.session().mutationPending()) {
-            tell(player, "宝库正在开启，请稍候。"); return;
+            return; // The vault is already animating for this player.
         }
         var draw = MonsterGacha.draw(player.level(), random, p.monsterRole(), key);
         var opening = new Opening(player, key, draw.stack().copy(), server.getTickCount());
@@ -93,7 +93,7 @@ public final class MonsterVaults {
                 draw.slot(), draw.roles(), MonsterGacha.encode(player.level().registryAccess(), draw.stack()), reply -> {
                     if (!reply.success()) {
                         openings.remove(p.id()); CampKit.hold(player, false);
-                        tell(player, "宝库未能开启，钥匙已保留：" + reply.message()); fail(player, pos); return;
+                        tell(player, dev.hardrush.notice.Replies.text(reply, "宝库没能打开，钥匙还在")); fail(player, pos); return;
                     }
                     opening.committed = true;
                     sound(player, pos, SoundEvents.VAULT_INSERT_ITEM);
@@ -164,7 +164,6 @@ public final class MonsterVaults {
             openings.remove(player.getUUID());
             CampKit.hold(player, false);
             CampKit.refresh(player);
-            tell(player, "宝库抽出了：" + opening.item.getHoverName().getString() + "，下次出场穿戴，只用一次。");
         }
     }
 
@@ -188,9 +187,7 @@ public final class MonsterVaults {
         player.level().playSound(null, pos, sound, SoundSource.BLOCKS, 1, 1);
     }
 
-    private static void tell(ServerPlayer player, String message) {
-        if (player.connection != null) player.sendSystemMessage(Component.literal(message));
-    }
+    private static void tell(ServerPlayer player, String message) { dev.hardrush.notice.Notices.hint(player, message); }
 
     public static void disconnected(ServerPlayer player) {
         var vaults = INSTANCES.get(player.level().getServer());

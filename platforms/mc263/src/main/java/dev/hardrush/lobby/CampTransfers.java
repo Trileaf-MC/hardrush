@@ -23,7 +23,7 @@ import net.minecraft.world.level.entity.EntityTypeTest;
 /** Both camp currencies move through durable balances before a native floor stack can be claimed. */
 public final class CampTransfers {
     enum Kind {
-        REVIVAL("复生图腾", "次"), COIN("怪物币", "枚");
+        REVIVAL("复生图腾", "个"), COIN("怪物币", "枚");
         final String title, unit;
         Kind(String title, String unit) { this.title = title; this.unit = unit; }
         int balance(Participant player) { return this == REVIVAL ? player.revivalCharges() : player.wallet().coins(); }
@@ -86,7 +86,7 @@ public final class CampTransfers {
         if (p == null || !access.eligible(player) || access.busy(p.id()) || access.session().mutationPending()
                 || kind == Kind.COIN && !MonsterCoins.enabled(r.rules())) {
             refresh(player);
-            tell(player, kind.title + "暂时不能丢出，已放回背包；请稍后再试。"); return;
+            dev.hardrush.notice.Notices.refuse(player, "现在不能丢出，物品已放回背包"); return;
         }
         var holder = new Holder(p.id(), kind);
         int n = Math.min(count, kind.balance(p) - pendingDrops.getOrDefault(holder, 0));
@@ -95,14 +95,12 @@ public final class CampTransfers {
         Consumer<RoundSession.Reply> done = reply -> {
             pendingDrops.computeIfPresent(holder, (id, pending) -> pending > n ? pending - n : null);
             refresh(player);
-            if (!reply.success()) { tell(player, kind.title + "未能丢出，已放回背包：" + reply.message()); return; }
+            if (!reply.success()) { dev.hardrush.notice.Replies.refuse(player, reply, "现在不能丢出，物品已放回背包"); return; }
             var token = UUID.randomUUID();
             var entity = player.createItemStackToDrop(thrownStack(r.roundId(), token, kind, n, player.getScoreboardName()), false, true);
             if (entity == null) return;
             player.level().addFreshEntity(entity);
             loose.put(token, new Loose(r.roundId(), player, kind, n, entity));
-            tell(player, "已丢出 " + n + " 个" + kind.title + "，剩余 " + remaining(p.id(), kind) + " " + kind.unit
-                    + "；营地怪物可拾取，5 分钟无人拾取即作废。");
         };
         if (kind == Kind.REVIVAL) access.session().requestRevivalTotemDrop(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), n, done);
         else access.session().requestMonsterCoinDrop(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), n, done);
@@ -149,10 +147,10 @@ public final class CampTransfers {
             loose.remove(token);
             if (!item.isRemoved()) { player.take(item, entry.count); item.discard(); }
             refresh(player);
-            tell(player, "拾取了 " + entry.ownerName + " 的" + entry.kind.title + "：+" + entry.count
-                    + "，剩余 " + remaining(p.id(), entry.kind) + " " + entry.kind.unit + "。");
+            // The picker sees the native pickup; only the thrower, possibly far away, is told.
             var owner = player.level().getServer().getPlayerList().getPlayer(entry.owner);
-            if (owner != null && owner != player) tell(owner, player.getScoreboardName() + " 拾取了你丢出的 " + entry.count + " 个" + entry.kind.title + "。");
+            if (owner != null && owner != player) dev.hardrush.notice.Notices.hint(owner, dev.hardrush.notice.Notices.key(player.getScoreboardName())
+                    + " 捡走了你丢出的 " + dev.hardrush.notice.Notices.key(entry.count) + " " + entry.kind.unit + entry.kind.title);
         };
         if (entry.kind == Kind.REVIVAL) access.session().requestRevivalTotemPickup(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), entry.count, done);
         else access.session().requestMonsterCoinPickup(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), entry.count, done);
@@ -180,10 +178,4 @@ public final class CampTransfers {
         }
     }
 
-    private int remaining(UUID player, Kind kind) {
-        return access.committed().map(r -> r.participants().get(player)).map(kind::balance).orElse(0);
-    }
-    private static void tell(ServerPlayer player, String message) {
-        if (player.connection != null) player.sendSystemMessage(Component.literal(message));
-    }
 }

@@ -526,7 +526,7 @@ public final class MonsterRoles {
         if (announce) {
             player.level().playSound(null, player.blockPosition(), form == MonsterForm.DROWNED
                     ? SoundEvents.ZOMBIE_CONVERTED_TO_DROWNED : SoundEvents.SKELETON_CONVERTED_TO_STRAY, SoundSource.HOSTILE, 1, 1);
-            player.sendSystemMessage(Component.literal(form == MonsterForm.DROWNED ? "已转化为溺尸，剩余刷怪蛋同步转化。" : "已转化为流浪者。"));
+            // The native conversion sound and the changed eggs and model say it; no chat line.
         }
         repairLoadout(player);
     }
@@ -617,7 +617,7 @@ public final class MonsterRoles {
 
     public static boolean attack(ServerPlayer player, Entity target) {
         MonsterDoorBreaking.clear(player);
-        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player);
+        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "攻击");
         var role = ROLES.get(player.getUUID());
         if (role == null || !MonsterRoundRuntime.canAct(player) || !player.isAlive() || role.form == MonsterForm.CREEPER
                 || role.form.skeleton() && player.getMainHandItem().is(Items.BOW)
@@ -640,7 +640,7 @@ public final class MonsterRoles {
         if (MonsterItems.matches(player, item, "return")) return dev.hardrush.lobby.LobbyRuntime.useReturn(player);
         if (MonsterItems.matches(player, item, dev.hardrush.hunt.HuntRetracks.PURPOSE)) return dev.hardrush.lobby.LobbyRuntime.useRetrack(player, item);
         if (!MonsterRoundRuntime.canAct(player)) return false;
-        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品／技能");
+        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品");
         if (isEgg(player, item)) return MonsterCompanions.use(player, hand);
         if (role.form == MonsterForm.CREEPER) return MonsterCreeper.use(player, hand);
         if (role.form.skeleton() && item.is(Items.BOW)) {
@@ -704,7 +704,7 @@ public final class MonsterRoles {
         var role = ROLES.get(player.getUUID());
         if (role == null || !MonsterRoundRuntime.canAct(player) || !player.isAlive() || !role.form.skeleton()
                 || heldBow(player).isEmpty() || role.burstRemaining > 0) return false;
-        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player);
+        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "施放技能");
         var formal = MonsterRoundRuntime.cast(player, MonsterSkill.SKELETON_BURST, () -> {
             if (ROLES.get(player.getUUID()) != role || heldBow(player).isEmpty()) return false;
             startBurst(player, role); return true;
