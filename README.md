@@ -34,10 +34,12 @@ test-server.cmd                      # Windows（参数相同）
 | `--reset world` | 只删除存档，保留配置、白名单、OP 和 mods |
 | `--reset all` | 实例恢复为全新状态，只保留已下载的原版服务端和依赖库，不会重新下载 |
 | `--instance NAME` | 使用另一个独立实例，默认 `default` |
-| `--port` / `--seed` / `--memory` | 端口（默认 25565）、新存档种子、最大内存（默认 2G） |
+| `--port` / `--seed` / `--memory` | 端口（默认 25565）、新存档种子（默认 `3leaves`）、最大内存（默认 2G） |
 | `--mode normal\|hardcore` | 新一轮的初始模式，默认 `hardcore` |
 | `--offline` / `--online` | 关闭／开启正版验证 |
 | `--no-competition` | 关闭比赛运行时 |
 | `--no-build` | 不重新构建，直接启动 |
 
 除 `--reset` 和 `--no-build` 外，其余参数会记在实例的 `server.properties` 和 `launch.properties` 里，之后不用重复传。每次启动时只替换 `mods/` 里的 HardRush 和 Fabric API，你自己放进去的其他模组会保留。控制台输入 `stop` 即可正常保存并退出。
+
+新实例和 `--reset all` 使用 [默认服务端配置](gradle/test-server.properties)：困难难度、固定种子 `3leaves`、正版验证开启、白名单关闭、出生点保护 16 格、空服 60 秒后暂停，以及三葉Leaves 的彩色服务器介绍。管理密钥由 Minecraft 为各实例独立生成。已有实例的配置会保留，`--reset world` 也不会重新套用默认配置；命令行参数优先于默认值。

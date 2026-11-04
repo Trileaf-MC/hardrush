@@ -74,7 +74,7 @@ echo   --instance NAME    实例名，默认 default（test-server\NAME）
 echo   --reset world      删除存档后启动，保留配置、mods 和白名单
 echo   --reset all        实例恢复为全新状态，只保留已下载的原版服务端，不重新下载
 echo   --port PORT        服务端端口，默认 25565
-echo   --seed SEED        新存档种子（配合 --reset world/all 使用）
+echo   --seed SEED        新存档种子，默认 3leaves（配合 --reset world/all 使用）
 echo   --mode MODE        新一轮初始模式 normal ^| hardcore，默认 hardcore
 echo   --memory SIZE      最大内存，如 2G、4096M，默认 2G
 echo   --offline/--online 关闭／开启正版验证，默认开启
