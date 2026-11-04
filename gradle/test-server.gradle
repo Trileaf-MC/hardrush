@@ -94,11 +94,7 @@ tasks.register('prepareTestServer') {
 
         def serverProperties = new File(dir, 'server.properties')
         if (!serverProperties.isFile()) {
-            serverProperties.text = [
-                    'motd=HardRush test server', 'server-port=25565', 'online-mode=true',
-                    'gamemode=survival', 'difficulty=hard', 'max-players=20',
-                    'spawn-protection=0', 'pause-when-empty-seconds=0', 'enable-rcon=false', '',
-            ].join('\n')
+            serverProperties.write(rootProject.file('gradle/test-server.properties').getText('UTF-8'), 'UTF-8')
         }
         def port = option('Port')
         if (port != null && !(port ==~ /\d+/ && (port as int) in 1024..65535)) throw new GradleException("端口必须在 1024-65535：${port}")
