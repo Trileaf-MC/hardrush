@@ -5,6 +5,7 @@ import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.record.LeaderboardEntry;
 import dev.hardrush.core.record.ParticipantRecord;
 import dev.hardrush.core.record.RoundHistory;
+import dev.hardrush.core.record.RoundResultText;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -66,7 +67,7 @@ public final class HistoryBookComposer {
                     + "\n挑战耗时：" + duration(history.challengeMillis()) + "\n胜者：" + winner
                     + "\n计时：" + (history.timingUncertain() ? "待核验" : "已记录")
                     + "\n归因：" + (history.trustedWinner() ? "已核验" : "待核验")
-                    + "\n说明：" + SafeBookText.literal(history.result().reason(), 160));
+                    + "\n说明：" + RoundResultText.reason(history.result()));
             paragraphs.add("当前规则榜前 10\n规则：" + currentRulesFingerprint.substring(0, 12)
                     + "\n同毫秒同名次；异常成绩不入榜。");
             if (leaderboard.isEmpty()) paragraphs.add("暂无合格成绩。");
