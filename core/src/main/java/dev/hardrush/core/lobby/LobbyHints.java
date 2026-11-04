@@ -6,7 +6,8 @@ import java.util.Optional;
 
 /** One arbiter per viewer; callers refresh leases, then render once. Monotonic milliseconds. */
 public final class LobbyHints {
-    public enum Priority { GUIDANCE, FACILITY, TARGET, READY, PROGRESS, RECOVERY }
+    /** {@code NOTICE} is a one-shot reaction to the player's own action; it briefly outranks ongoing progress. */
+    public enum Priority { GUIDANCE, FACILITY, TARGET, READY, PROGRESS, NOTICE, RECOVERY }
     private record Hint(Priority priority, String text, long expires) {}
     private final Map<String, Hint> hints = new HashMap<>();
     public void offer(String source, Priority priority, String text, long expires) {

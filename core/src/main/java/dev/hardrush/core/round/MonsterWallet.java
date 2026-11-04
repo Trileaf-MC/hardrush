@@ -140,7 +140,7 @@ public record MonsterWallet(int coins, boolean roleChosen,
         if (soldOut(rules, offer)) throw new IllegalStateException(offer.title() + (offer.permanent() ? "已升到顶。" : "本次出场已售罄。"));
         int price = nextPrice(rules, offer);
         if (price != expectedPrice) throw new IllegalStateException("价格已变化，请重新选择交易。");
-        if (coins < price) throw new IllegalStateException("怪物币不足：需要 " + price + "，现有 " + coins + "。");
+        if (coins < price) throw new Refusal.Exception(Refusal.NOT_ENOUGH_COINS, "怪物币不足：需要 " + price + "，现有 " + coins + "。");
         return with(coins - price, roleChosen, add(bought, offer, 1), offer.permanent() ? order : add(order, offer, 1), active,
                 gear, activeGear, nextGearSerial, sortieDamage);
     }

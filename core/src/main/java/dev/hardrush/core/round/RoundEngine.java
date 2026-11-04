@@ -503,7 +503,7 @@ public final class RoundEngine {
         requireOpenRescue(before);
         if (player.monsterRole() != skill.role()) throw new IllegalStateException("当前怪物角色不能使用此技能。");
         if (player.monsterSkillRemainingMillis(skill, nowEpochMillis) > 0) {
-            throw new IllegalStateException("技能仍在冷却。");
+            throw new Refusal.Exception(Refusal.SKILL_COOLDOWN, "技能仍在冷却。");
         }
         var key = new SkillKey(playerId, skill);
         var preceding = skillReservations.get(key);
@@ -719,11 +719,12 @@ public final class RoundEngine {
         return player;
     }
 
+    /** Diagnostic text of {@link Refusal#REVIVAL_FIRST}; player wording lives in the platform layer. */
     public static final String REVIVAL_FIRST = "你持有复生次数，请先走上营地北侧的复生祭坛站立 4 秒复生。";
 
     /** In a coin round, a monster holding a revival returns to the race instead of hunting on. */
     private static void requireNoRevival(RulesConfig rules, Participant player) {
-        if (MonsterCoins.enabled(rules) && player.revivalEntitled()) throw new IllegalStateException(REVIVAL_FIRST);
+        if (MonsterCoins.enabled(rules) && player.revivalEntitled()) throw new Refusal.Exception(Refusal.REVIVAL_FIRST, REVIVAL_FIRST);
     }
 
     private static Participant revivalFirst(RulesConfig rules, Participant player) {

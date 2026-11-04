@@ -5,6 +5,7 @@ import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.Difficulty;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
+import dev.hardrush.core.round.Refusal;
 import dev.hardrush.core.round.RoundEngine;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.core.round.RoundSnapshot;
@@ -57,7 +58,18 @@ import java.util.function.Supplier;
  */
 public final class RoundSession implements AutoCloseable {
     public enum State { OPENING, OPEN, FAILED, RECHECKING, CLOSED }
-    public record Reply(boolean success, String message) {}
+    /**
+     * {@code message} is diagnostic text for logs and administrator commands. Player-facing code must word a
+     * rejection from {@code refusal} (see {@code dev.hardrush.notice.Replies}), never show {@code message}.
+     */
+    public record Reply(boolean success, String message, Refusal refusal) {
+        public Reply {
+            Objects.requireNonNull(message);
+            if (success != (refusal == null)) throw new IllegalArgumentException("Only a rejection carries a refusal");
+        }
+        public Reply(boolean success, String message) { this(success, message, success ? null : Refusal.REJECTED); }
+        public static Reply refused(Refusal refusal, String message) { return new Reply(false, message, refusal); }
+    }
 
     private static final long CHECKPOINT_NANOS = TimeUnit.SECONDS.toNanos(1);
     private static final String ADAPTERS_PENDING =
@@ -936,7 +948,7 @@ public final class RoundSession implements AutoCloseable {
         }
         requestAction(() -> engine.proposeAssembly(UUID.randomUUID(), roundId, playerId, name, ready), result ->
                 reply.accept(result.success() && ready && assemblyGuard != null && !assemblyGuard.test(playerId)
-                        ? new Reply(false, "登记期间已离开集结区，本次准备已失效。") : result),
+                        ? Reply.refused(Refusal.LEFT_ASSEMBLY, "登记期间已离开集结区，本次准备已失效。") : result),
                 ready ? "已准备，离开集结区可取消。" : "已取消准备。");
     }
     /** Only the native adapter can prove a saved UUID has verified and safely regained its circle position. */
@@ -1046,7 +1058,7 @@ public final class RoundSession implements AutoCloseable {
     /** Reserves cooldown in SQLite before the success callback can create a native skill effect. */
     public void requestMonsterSkill(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             MonsterSkill skill, long nowEpochMillis, Consumer<Reply> reply) {
-        if (competitionLocked()) { reply.accept(new Reply(false, "本轮已冻结，不能使用怪物技能。")); return; }
+        if (competitionLocked()) { reply.accept(Reply.refused(Refusal.FROZEN, "本轮已冻结，不能使用怪物技能。")); return; }
         requestAction(() -> engine.proposeMonsterSkill(UUID.randomUUID(), roundId, playerId,
                 lifeSequence, deploymentSequence, skill, nowEpochMillis), reply, "技能冷却已保存。");
     }
@@ -1054,7 +1066,7 @@ public final class RoundSession implements AutoCloseable {
     /** Internal compensation for a reserved native effect that failed to begin. */
     public void requestMonsterSkillCancelled(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             MonsterSkill skill, long consumedReadyAtMillis, long previousReadyAtMillis, Consumer<Reply> reply) {
-        if (competitionLocked()) { reply.accept(new Reply(false, "本轮已冻结，不能退回技能冷却。")); return; }
+        if (competitionLocked()) { reply.accept(Reply.refused(Refusal.FROZEN, "本轮已冻结，不能退回技能冷却。")); return; }
         requestAction(() -> engine.proposeMonsterSkillCancelled(UUID.randomUUID(), roundId, playerId,
                 lifeSequence, deploymentSequence, skill, consumedReadyAtMillis, previousReadyAtMillis),
                 reply, "技能未生效，已退回本次冷却。");
@@ -1099,19 +1111,23 @@ public final class RoundSession implements AutoCloseable {
     }
 
     private void requestAction(java.util.function.Supplier<RoundTransition> action, Consumer<Reply> reply, String success) {
-        if (fullCheckpointSaving) { reply.accept(new Reply(false, "正在保存完整对局，请稍候。")); return; }
-        if (terminalCandidate != null || shutdownBoundary != null) { reply.accept(new Reply(false, "本轮已冻结，不能开始新的竞技操作。")); return; }
+        if (fullCheckpointSaving) { reply.accept(Reply.refused(Refusal.BUSY, "正在保存完整对局，请稍候。")); return; }
+        if (terminalCandidate != null || shutdownBoundary != null) {
+            reply.accept(Reply.refused(Refusal.FROZEN, "本轮已冻结，不能开始新的竞技操作。")); return;
+        }
         if (state != State.OPEN || stopping || !adaptersReady) { reply.accept(blockedParticipation()); return; }
         if (recoveringCountdown) {
-            reply.accept(new Reply(false, "正常重启倒计时仍在等待原已就绪玩家完成档案核验，请稍后加入或就绪。")); return;
+            reply.accept(Reply.refused(Refusal.RESTART_WAIT, "正常重启倒计时仍在等待原已就绪玩家完成档案核验，请稍后加入或就绪。")); return;
         }
-        if (mutationPending() || !events.isEmpty()) { reply.accept(new Reply(false, "上一项状态仍在提交，请稍后重试。")); return; }
+        if (mutationPending() || !events.isEmpty()) { reply.accept(Reply.refused(Refusal.BUSY, "上一项状态仍在提交，请稍后重试。")); return; }
         try { submit(action.get(), reply, success); }
+        catch (Refusal.Exception refusal) { reply.accept(Reply.refused(refusal.refusal(), refusal.getMessage())); }
         catch (IllegalStateException | IllegalArgumentException error) { reply.accept(new Reply(false, error.getMessage())); }
     }
 
     private Reply blockedParticipation() {
-        return new Reply(false, state == State.OPEN ? ADAPTERS_PENDING : status());
+        if (stopping) return Reply.refused(Refusal.FROZEN, status());
+        return state == State.OPEN ? Reply.refused(Refusal.NOT_READY, ADAPTERS_PENDING) : Reply.refused(Refusal.SUSPENDED, status());
     }
 
     /** Connection state is reconciled after the current durable transition. */
@@ -1304,7 +1320,7 @@ public final class RoundSession implements AutoCloseable {
             pendingTransition = null;
             complete(transition, result, error);
             if (state == State.OPENING) state = State.OPEN;
-            reply.accept(new Reply(state == State.OPEN, state == State.OPEN ? success : problem));
+            reply.accept(state == State.OPEN ? new Reply(true, success) : Reply.refused(Refusal.SUSPENDED, problem));
             drainEvent();
         }));
     }
