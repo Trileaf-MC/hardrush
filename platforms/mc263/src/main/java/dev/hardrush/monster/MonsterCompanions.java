@@ -337,6 +337,7 @@ public final class MonsterCompanions {
             replaceTag(child, OWNER, null); replaceTag(child, EVENT, null);
             replaceTag(child, BINDING, null); replaceTag(child, COMMAND, null);
             child.entityTags().remove(DISMISSING);
+            MonsterSoulcatcher.clearRelease(child);
             return;
         }
         UUID owner = owner(source);
@@ -345,6 +346,7 @@ public final class MonsterCompanions {
         replaceTag(child, EVENT, tag(source, EVENT));
         replaceTag(child, BINDING, tag(source, BINDING));
         replaceTag(child, COMMAND, tag(source, COMMAND));
+        MonsterSoulcatcher.inheritRelease(source, child);
         if (child instanceof MonsterSourceHolder holder) MonsterCombatRuntime.source(source).ifPresent(holder::hardrush$stampMonsterSource);
         if (child instanceof CombatOriginHolder holder && !holder.hardrush$combatOriginSealed()) {
             Optional<CombatOrigin> inherited = CombatRuntime.originOf(source);
