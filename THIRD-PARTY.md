@@ -37,4 +37,4 @@ HardRush 的怪物外观实现为本项目代码，未嵌入 DisguiseLib、Polym
 
 ## 本人主题皮肤资料
 
-2026-11-03 起，本人外观改为按怪物形态区分的主题皮肤，取代原先固定的 MHF_Steve 描述。五条纹理描述保存于 `platforms/mc263/src/main/resources/hardrush/owner-skins.json`，每条记录 [MineSkin](https://mineskin.org) 公开图库中的来源条目和纹理地址，属性值原样复制。这些皮肤由图库用户上传，按与原版贴图的逐像素相似度及原版客户端的皮肤处理规则挑选。仓库中只有公开的纹理描述与来源，不打包任何图片、账户凭据或客户端代码；由原版客户端从 `textures.minecraft.net` 加载。本人的临时外观属性无签名，仅限本人的原版本地皮肤路径，真实认证 profile 和其他观察者的数据保持权威来源。不能据此宣称该皮肤图片可以任意重新分发。
+2026-11-03 起，本人外观改为按怪物形态区分的主题皮肤，取代原先固定的 MHF_Steve 描述。五条纹理描述保存于 `platforms/mc263/src/main/resources/hardrush/owner-skins.json`，每条记录 [MineSkin](https://mineskin.org) 中的来源条目和纹理地址，属性值原样复制。僵尸、溺尸、流浪者、苦力怕的皮肤由公开图库用户上传，按与原版贴图的逐像素相似度及原版客户端的皮肤处理规则挑选。骷髅皮肤（标有 `generator` 的条目）由 `scripts/OwnerSkinGenerator.java` 从本机原版客户端 JAR 中的骷髅贴图生成，经 MineSkin 以不公开条目上传；生成的图片只写入忽略的 `.local/`，不提交。仓库中只有公开的纹理描述、来源与生成脚本，不打包任何图片、账户凭据或客户端代码；由原版客户端从 `textures.minecraft.net` 加载。本人的临时外观属性无签名，仅限本人的原版本地皮肤路径，真实认证 profile 和其他观察者的数据保持权威来源。不能据此宣称该皮肤图片可以任意重新分发。
