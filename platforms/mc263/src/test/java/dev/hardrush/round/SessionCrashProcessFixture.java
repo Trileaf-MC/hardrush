@@ -129,7 +129,7 @@ public final class SessionCrashProcessFixture {
                 session.requestRevival(ROUND, HUNTER, 1, 1, revived::set);
                 check(revived.get() != null && !revived.get().success(), "Old revival callback cannot consume again");
                 session.onOnline(HUNTER, "Hunter", true);
-                session.captureDeath(ROUND, VICTIM, 1, 0, BATCH);
+                session.captureDeath(ROUND, VICTIM, 1, 0, BATCH, lethal().origin(), false);
                 session.captureLethalEvidence(lethal());
                 session.finishDamageBatch(ROUND, BATCH);
                 finish(session); // A repeated dragon signal must not publish another terminal.
@@ -162,8 +162,8 @@ public final class SessionCrashProcessFixture {
     }
 
     private void award(RoundSession session) {
-        session.captureDeath(ROUND, VICTIM, 1, 0, BATCH);
-        session.captureDeath(ROUND, HUNTER, 1, 1, BATCH);
+        session.captureDeath(ROUND, VICTIM, 1, 0, BATCH, lethal().origin(), false);
+        session.captureDeath(ROUND, HUNTER, 1, 1, BATCH, Optional.empty(), false);
         session.captureLethalEvidence(lethal());
         session.finishDamageBatch(ROUND, BATCH);
     }

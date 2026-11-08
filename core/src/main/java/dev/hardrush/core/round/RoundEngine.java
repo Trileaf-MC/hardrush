@@ -337,17 +337,16 @@ public final class RoundEngine {
             }
         }
         // Qualify against identity at lethal collection, before applying this batch's human deaths.
-        // Human PvP and monster attacks each add one charge per qualifying victim.
+        // Human PvP and monster attacks each add one charge per qualifying victim. The credit is the
+        // vanilla kill credit, so a fall or burn shortly after a player's hit still pays that player.
         if (before.rules().mode() == GameMode.HARDCORE) {
             for (RoundDeath death : deaths) {
-                if (!before.participants().get(death.playerId()).role().isActiveHuman() || death.cause().isEmpty()) continue;
-                CombatEvent cause = death.cause().get();
-                if (cause.origin().isEmpty()) continue;
-                var origin = cause.origin().get();
+                if (!before.participants().get(death.playerId()).role().isActiveHuman() || death.killCredit().isEmpty()) continue;
+                var origin = death.killCredit().get();
                 if (!origin.roundId().equals(roundId)) continue;
                 Participant owner = before.participants().get(origin.actor().playerId());
                 if (owner == null || owner.id().equals(death.playerId())) continue;
-                if (cause.attribution() == CombatEvent.Attribution.HUMAN) {
+                if (origin.actor().identity().isActiveHuman()) {
                     if (directHumanAttack(origin.kind()) && owner.role().isActiveHuman()
                             && origin.actor().lifeSequence() == owner.lifeSequence()
                             && origin.actor().deploymentSequence() == owner.monsterDeploymentSequence()) {
@@ -358,7 +357,6 @@ public final class RoundEngine {
                     }
                     continue;
                 }
-                if (cause.attribution() != CombatEvent.Attribution.MONSTER) continue;
                 boolean directMonsterAttack = switch (origin.kind()) {
                     case MELEE, ARROW, CREEPER, SUMMON -> true;
                     default -> false;
