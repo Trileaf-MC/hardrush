@@ -97,15 +97,19 @@ class RoundEngineTest {
         assertEquals(15_000_000_000L, current.participants().get(A).humanNanos());
     }
 
-    @Test void allHumansOfflinePausesWhileKeepingTheirMembershipAndPositionContract() {
+    @Test void allHumansOfflinePauseTheClockInARescueThatTheirReconnectEnds() {
         RoundEngine engine = running();
         clock.millis(5_000);
         apply(engine, engine.proposeOnline(UUID.randomUUID(), A, "Alice", false));
-        clock.millis(90_000);
+        clock.millis(50_000);
         assertEquals(5_000, engine.view().challengeMillis());
-        assertEquals(PauseReason.NO_ONLINE_HUMANS, engine.view().pauseReason());
+        assertEquals(RoundPhase.RESCUE, engine.view().phase());
+        assertTrue(engine.view().awaitingReconnect());
+        assertEquals(10_000, engine.view().remainingPhaseMillis());
         assertEquals(ParticipantRole.HUMAN_ACTIVE, engine.view().participants().get(A).role());
         apply(engine, engine.proposeOnline(UUID.randomUUID(), A, "Alice", true));
+        assertEquals(RoundPhase.RUNNING, engine.view().phase());
+        assertEquals(0, engine.view().remainingPhaseMillis());
         clock.millis(2_000);
         assertEquals(7_000, engine.view().challengeMillis());
     }
