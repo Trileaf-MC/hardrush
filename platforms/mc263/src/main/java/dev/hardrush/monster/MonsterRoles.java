@@ -607,7 +607,7 @@ public final class MonsterRoles {
     public static void stop(MinecraftServer server) {
         for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) clear(player);
         for (var role : List.copyOf(ROLES.values())) if (role.disconnectedSource != null) clear(role.disconnectedSource);
-        ROLES.clear(); BURST_READY.clear(); MonsterBowDisplay.clearAll();
+        ROLES.clear(); BURST_READY.clear(); MonsterBowDisplay.clearAll(); MonsterSoulcatcher.clear();
     }
     private static void stopActions(ServerPlayer player) {
         var role = ROLES.get(player.getUUID()); if (role != null) { role.burstRemaining = 0; role.chargeTick = -1; }

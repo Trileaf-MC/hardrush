@@ -372,6 +372,8 @@ public final class RoundRuntime {
         });
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
             if (!(entity instanceof ServerPlayer player)) return;
+            // Resolved for every death so that the next body never inherits this one's memory.
+            var killCredit = CombatRuntime.killCredit(player.level(), player, source);
             var session = SESSIONS.get(player.level().getServer());
             var round = session == null ? null : session.snapshot().orElse(null);
             if (round != null && CelebrationRuntime.successful(round)) {
@@ -385,13 +387,13 @@ public final class RoundRuntime {
                 var profiles = PROFILES.get(player.level().getServer());
                 if (profiles != null) profiles.holdDeath(player);
                 session.captureDeath(round.roundId(), player.getUUID(), participant.lifeSequence(), participant.monsterDeploymentSequence(),
-                        CombatRuntime.currentBatch(player.level()).orElse(null));
+                        CombatRuntime.currentBatch(player.level()).orElse(null), killCredit, false);
             } else if (participant != null && participant.role() == ParticipantRole.MONSTER_DEPLOYED
                     && RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());
                 if (profiles != null) profiles.holdDeath(player);
                 session.captureDeath(round.roundId(), player.getUUID(), participant.lifeSequence(), participant.monsterDeploymentSequence(),
-                        CombatRuntime.currentBatch(player.level()).orElse(null),
+                        CombatRuntime.currentBatch(player.level()).orElse(null), killCredit,
                         dev.hardrush.monster.MonsterRoles.recentlyHurtByOtherPlayer(player));
             }
         });
