@@ -1,5 +1,5 @@
 {
-  "use": "Unsigned owner-only cosmetic textures per monster form; authenticated player profile stays unchanged. Values are copied verbatim from the MineSkin public gallery entries named in source; textures are hosted on textures.minecraft.net.",
+  "use": "Unsigned owner-only cosmetic textures per monster form; authenticated player profile stays unchanged. Values are copied verbatim from the MineSkin entries named in source; textures are hosted on textures.minecraft.net. Entries with generator were produced by that script from the vanilla texture and uploaded through MineSkin; the others are picked from its public gallery.",
   "skins": {
     "zombie": {
       "source": "https://api.mineskin.org/v2/skins/72d4a47409bb4e0e80c3894aa499ca30",
@@ -14,10 +14,11 @@
       "value": "ewogICJ0aW1lc3RhbXAiIDogMTY4NzQwMDA5MjE5MSwKICAicHJvZmlsZUlkIiA6ICIxYmY4ZjBiZDRkZjc0Njg1ODQwNjU2NDc2ZGU0NmNmMyIsCiAgInByb2ZpbGVOYW1lIiA6ICJDcnV6YWRhMjIiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYWU3YzM1OGJkYmY0MTBkNzE4NTllODQzODdkMzgyMDVmNmQyNDM4ZjA2ZjdmMWZkNWE0NTllN2VhMTIyMDQxYiIKICAgIH0KICB9Cn0="
     },
     "skeleton": {
-      "source": "https://api.mineskin.org/v2/skins/16bb193a3c73451a85e9b03f7965529b",
-      "texture": "http://textures.minecraft.net/texture/947b8deecba03234c96906aa285110f13f01a858bccf2ba7cfbe92c0e4609f1c",
+      "source": "https://api.mineskin.org/v2/skins/2aeaa32717e546b4a471d2652e45854b",
+      "generator": "scripts/OwnerSkinGenerator.java",
+      "texture": "http://textures.minecraft.net/texture/bad3b8b325a0996b7c5dc8619c9002631c8d6fe7c1e4778f56c2a900884ec1ce",
       "model": "classic",
-      "value": "ewogICJ0aW1lc3RhbXAiIDogMTc5MDUxMDMyMzI4NywKICAicHJvZmlsZUlkIiA6ICI3OTI0MDQ0N2ViNTk0ZDBkOTVmY2E3YmJiMWZiMjVhNSIsCiAgInByb2ZpbGVOYW1lIiA6ICJqdW5pb3JraW9iciIsCiAgInNpZ25hdHVyZVJlcXVpcmVkIiA6IHRydWUsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS85NDdiOGRlZWNiYTAzMjM0Yzk2OTA2YWEyODUxMTBmMTNmMDFhODU4YmNjZjJiYTdjZmJlOTJjMGU0NjA5ZjFjIgogICAgfQogIH0KfQ=="
+      "value": "ewogICJ0aW1lc3RhbXAiIDogMTc5NDEwNDQ4MDk4NywKICAicHJvZmlsZUlkIiA6ICJiMGQ0YjI4YmMxZDc0ODg5YWYwZTg2NjFjZWU5NmFhYiIsCiAgInByb2ZpbGVOYW1lIiA6ICJNaW5lU2tpbl9vcmciLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmFkM2I4YjMyNWEwOTk2YjdjNWRjODYxOWM5MDAyNjMxYzhkNmZlN2MxZTQ3NzhmNTZjMmE5MDA4ODRlYzFjZSIKICAgIH0KICB9Cn0="
     },
     "stray": {
       "source": "https://api.mineskin.org/v2/skins/d886ad58814946d5b37026cb923d0542",
