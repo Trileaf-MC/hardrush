@@ -229,6 +229,10 @@ public final class RoundEngine {
             phase = RoundPhase.WAITING;
             remaining = 0;
             players.replaceAll((id, p) -> p.withReady(false));
+        } else if ((phase == RoundPhase.RUNNING || phase == RoundPhase.RESCUE) && hasHuman(players)) {
+            var live = live(before, players);
+            phase = live.phase();
+            remaining = live.remaining();
         }
         return proposal(eventId, online ? "ONLINE" : "OFFLINE", before, phase, remaining, players, before.result(), false);
     }
@@ -380,13 +384,15 @@ public final class RoundEngine {
         }
         if (before.rules().mode() == GameMode.HARDCORE && !hasHuman(players)) {
             if (players.values().stream().anyMatch(p -> p.role().isMonster() && p.revivalEntitled())) {
-                long remaining = before.phase() == RoundPhase.RESCUE ? before.remainingPhaseNanos()
-                        : millisToNanos(before.rules().combatValues().getOrDefault("round.rescueMillis", 60_000.0).longValue());
+                long remaining = before.phase() == RoundPhase.RESCUE ? before.remainingPhaseNanos() : rescueNanos(before.rules());
                 return proposal(eventId, "DEATH_BATCH", before, RoundPhase.RESCUE, remaining, players, null, false);
             }
             return failureProposal(eventId, "DEATH_BATCH", before, players, "ALL_HUMANS_DEAD");
         }
-        return proposal(eventId, "DEATH_BATCH", before, RoundPhase.RUNNING, 0, players, null, false);
+        if (!hasHuman(players)) return proposal(eventId, "DEATH_BATCH", before, RoundPhase.RUNNING, 0, players, null, false);
+        // The last human still playing died while the others are offline: wait for them as a rescue.
+        var live = live(before, players);
+        return proposal(eventId, "DEATH_BATCH", before, live.phase(), live.remaining(), players, null, false);
     }
 
     public RoundTransition proposeRevival(UUID eventId, UUID roundId, UUID playerId,
@@ -898,8 +904,7 @@ public final class RoundEngine {
             phase = RoundPhase.WAITING; remaining = 0;
         } else if ((phase == RoundPhase.RUNNING || phase == RoundPhase.RESCUE) && !hasHuman(players)) {
             if (players.values().stream().anyMatch(p -> p.role().isMonster() && p.revivalEntitled())) {
-                remaining = phase == RoundPhase.RESCUE ? remaining
-                        : millisToNanos(before.rules().combatValues().getOrDefault("round.rescueMillis", 60_000.0).longValue());
+                remaining = phase == RoundPhase.RESCUE ? remaining : rescueNanos(before.rules());
                 phase = RoundPhase.RESCUE;
             } else {
                 phase = RoundPhase.SETTLING;
@@ -907,6 +912,10 @@ public final class RoundEngine {
                 players = new LinkedHashMap<>(withoutEntitlements(players));
                 result = new RoundResult(RoundResult.Kind.FAILED, null, "NO_ELIGIBLE_PARTICIPANTS");
             }
+        } else if (phase == RoundPhase.RUNNING || phase == RoundPhase.RESCUE) {
+            var live = live(before, players);
+            phase = live.phase();
+            remaining = live.remaining();
         }
         return proposal(eventId, destination == ParticipantRole.DISQUALIFIED ? "DISQUALIFY" : "WITHDRAW",
                 before, phase, remaining, players, result, false, destination == ParticipantRole.DISQUALIFIED);
@@ -957,7 +966,7 @@ public final class RoundEngine {
                 startReady(players, admissionPending);
             }
         } else if (phase == RoundPhase.RESCUE && remaining == 0) {
-            return failureProposal(eventId, "TICK", before, players, "RESCUE_EXPIRED");
+            return failureProposal(eventId, "TICK", before, players, hasHuman(players) ? "HUMANS_OFFLINE" : "RESCUE_EXPIRED");
         } else if (phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING) {
             // Failed rounds display their result in the lobby, including legacy CELEBRATING snapshots.
             phase = remaining == 0 ? RoundPhase.ROTATING
@@ -1074,8 +1083,43 @@ public final class RoundEngine {
     }
 
     private static boolean hasHuman(Map<UUID, Participant> players) {
-        return players.values().stream().anyMatch(p -> p.role().isActiveHuman()
-                || p.role() == ParticipantRole.HUMAN_RESPAWNING);
+        return players.values().stream().anyMatch(RoundEngine::human);
+    }
+
+    /** A connected human, including one on the native respawn screen; a life awaiting profile admission reads as offline. */
+    private static boolean hasConnectedHuman(Map<UUID, Participant> players) {
+        return players.values().stream().anyMatch(p -> p.online() && human(p));
+    }
+
+    private static boolean human(Participant p) {
+        return p.role().isActiveHuman() || p.role() == ParticipantRole.HUMAN_RESPAWNING;
+    }
+
+    private static long rescueNanos(RulesConfig rules) {
+        return millisToNanos(rules.combatValues().getOrDefault("round.rescueMillis", 60_000.0).longValue());
+    }
+
+    private record LivePhase(RoundPhase phase, long remaining) {}
+
+    /**
+     * Phase of a live round that still has humans. When every remaining human has left, the round waits
+     * like a rescue instead of idling forever: a reconnect, a revival or a mid-round join resumes it, and
+     * the deadline otherwise ends it. Only an actual departure starts the wait, so a restored round (all
+     * offline until they return) does not, and a reconnect after the deadline cannot extend it.
+     */
+    private static LivePhase live(RoundSnapshot before, Map<UUID, Participant> players) {
+        boolean rescuing = before.phase() == RoundPhase.RESCUE;
+        long remaining = rescuing ? before.remainingPhaseNanos() : 0;
+        if (hasConnectedHuman(players)) {
+            return rescuing && remaining == 0 ? new LivePhase(RoundPhase.RESCUE, 0) : new LivePhase(RoundPhase.RUNNING, 0);
+        }
+        if (hasHuman(players) && (rescuing || hasConnectedHuman(before.participants()))) {
+            // TODO: [Refactor] A life awaiting profile admission is stored as offline, so if the last connected
+            // human leaves during another life's admission (about a tick) the round briefly enters this wait and
+            // that life's unlock resumes it. Separate "connected" from "admitted" in Participant to remove it.
+            return new LivePhase(RoundPhase.RESCUE, rescuing ? remaining : rescueNanos(before.rules()));
+        }
+        return new LivePhase(before.phase(), remaining);
     }
 
     private static void requireOpenRescue(RoundSnapshot snapshot) {

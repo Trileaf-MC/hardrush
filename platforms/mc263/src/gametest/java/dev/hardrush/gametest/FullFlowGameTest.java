@@ -90,7 +90,12 @@ public final class FullFlowGameTest {
                 }).thenIdle(8)
                 .thenExecute(()->{
                     test.assertTrue(f.monster.player.getInventory().getItem(7).is(Items.ECHO_SHARD),"Tick repair preserves fixed return control");
-                    test.assertTrue(state.actionBar(f.monster.connection.packets,"正在返回营地"),"Actual progress action bar was emitted; channel="+LobbyRuntime.channeling(f.monster.player)+" feedback="+f.monster.connection.packets.stream().filter(ClientboundSystemChatPacket.class::isInstance).map(ClientboundSystemChatPacket.class::cast).map(p->p.content().getString()).toList());
+                    test.assertTrue(state.actionBar(f.monster.connection.packets,"移动或受伤会打断"),"First return of the round explains the interruption rule on the action bar");
+                })
+                // The one-shot rule notice outranks progress for its short lease; the countdown takes over before the channel ends.
+                .thenWaitUntil(()->f.await(state.actionBar(f.monster.connection.packets,"正在返回营地"),"Return progress follows the rule notice"))
+                .thenExecute(()->{
+                    test.assertTrue(LobbyRuntime.channeling(f.monster.player),"Progress action bar appears while the return is still channeling");
                     f.monster.keys(true);
                 })
                 .thenWaitUntil(()->f.await(!LobbyRuntime.channeling(f.monster.player),"Movement keys cancel return"))
@@ -110,11 +115,13 @@ public final class FullFlowGameTest {
                 .thenExecute(f.target::disconnect)
                 .thenWaitUntil(()->f.await(!f.target.participant().online()&&!f.session.mutationPending(),"Only human offline commits"))
                 .thenExecute(()->{
-                    test.assertValueEqual(f.round().phase(),RoundPhase.RUNNING,"Offline human retains eligibility without rescue/wipe");
-                    test.assertValueEqual(f.round().pauseReason(),PauseReason.NO_ONLINE_HUMANS,"Only challenge time pauses");
+                    test.assertValueEqual(f.round().phase(),RoundPhase.RESCUE,"The last human leaving starts a rescue instead of idling forever");
+                    test.assertTrue(f.round().awaitingReconnect(),"The rescue waits for the offline human to reconnect");
+                    test.assertValueEqual(f.target.participant().role(),ParticipantRole.HUMAN_ACTIVE,"Offline human retains eligibility without a wipe");
                 });
         f.target.login(seq);
         seq.thenWaitUntil(()->f.await(f.target.participant().online()&&!dev.hardrush.player.PlayerProfiles.isLocked(f.target.player)&&!f.session.mutationPending(),"Human reconnect restores same life"))
+                .thenExecute(()->test.assertValueEqual(f.round().phase(),RoundPhase.RUNNING,"The reconnect ends the rescue"))
                 .thenExecute(()->{
                     f.monster.move(f.target.player.position().add(1,0,0)); f.target.player.setHealth(1);f.target.player.setInvulnerableTime(0);
                     f.monster.player.connection.handleAttack(new ServerboundAttackPacket(f.target.player.getId()));

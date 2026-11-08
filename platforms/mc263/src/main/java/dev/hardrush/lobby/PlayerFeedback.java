@@ -35,7 +35,7 @@ public final class PlayerFeedback {
         stageBar.setVisible(recovery||rescue||displaying);
         String terminalText=displaying?RoundResultText.stageLabel(round.result(), celebrating?"通关庆祝 · 胜者跳入龙池／阵亡／离线即结束":"结算展示"):"结算展示";
         if(displaying&&round.result().kind()==RoundResult.Kind.FAILED)terminalText="全员挑战失败";
-        stageBar.setName(Component.literal(recovery ? "比赛已暂停 · 等待管理员处理" : (rescue?"救场 · 祭坛复生／集结区加入":terminalText)
+        stageBar.setName(Component.literal(recovery ? "比赛已暂停 · 等待管理员处理" : (rescue?round.awaitingReconnect()?"人类全部离线 · 等待重连或救场":"救场 · 祭坛复生／集结区加入":terminalText)
                 + " · 剩余 " + (round.remainingPhaseMillis()+999)/1000 + " 秒"));
         long total=rescue?round.rules().combatValues().get("round.rescueMillis").longValue():completed
                 ?RoundEngine.successCelebrationMillis(round.rules()):round.rules().failureDisplayMillis();
@@ -67,7 +67,8 @@ public final class PlayerFeedback {
                 hints.offer("revival",LobbyHints.Priority.FACILITY,"持有复生图腾 "+p.revivalCharges()+" 个 · 走上营地北侧复生祭坛站立 4 秒复生，复生前不能追猎或交易",now+300);
             dev.hardrush.world.FarLandings.arrived(player).ifPresent(text->hints.offer("landing",LobbyHints.Priority.TARGET,text,now+6000));
             if(r.phase()==RoundPhase.RESCUE)
-                hints.offer("rescue",LobbyHints.Priority.FACILITY,"救场剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · 站上祭坛复生或站入集结区参赛恢复挑战",now+300);
+                hints.offer("rescue",LobbyHints.Priority.FACILITY,"救场剩余 "+(r.remainingPhaseMillis()+999)/1000+" 秒 · "
+                        +(r.awaitingReconnect()?"人类重连、站上祭坛复生或站入集结区参赛即可继续，否则本轮结束":"站上祭坛复生或站入集结区参赛恢复挑战"),now+300);
             else if(r.phase()==RoundPhase.RUNNING && humans>0 && r.onlineHumans()==0)
                 hints.offer("away",LobbyHints.Priority.FACILITY,"人类暂离，挑战计时暂停；资格保留，暂无可追猎目标",now+300);
             if(dev.hardrush.celebration.CelebrationRuntime.arena(player)) {
