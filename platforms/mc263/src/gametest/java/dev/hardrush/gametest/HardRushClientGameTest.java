@@ -27,7 +27,7 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
     // Client texture ids are SHA-1 of the texture hash as UTF-16LE (SkinManager.TextureCache), from owner-skins.json.
     private static final java.util.Map<String, String> OWNER_SKIN_TEXTURES = java.util.Map.of(
         "zombie", "minecraft:skins/8ee56fd13fe2ee6ad6a0412ac3318a8c46c9bae7",
-        "skeleton", "minecraft:skins/17cde5d965dd3433d5418e47d1cac7481f2cf268",
+        "skeleton", "minecraft:skins/1590d4073c6067fef751aad9c77a6a104c9ac2f3",
         "creeper", "minecraft:skins/443ea076fd42c2d67c5c16aba7c33aa6d40b48b8");
 
     @Override
