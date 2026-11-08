@@ -169,7 +169,10 @@ public final class LobbyRuntimeGameTest {
                     f.monster.player.setHealth(2);
                     f.monster.command("hardrush return");
                     f.ageReturnChannel();
-                    f.session.onOnline(f.target.profile.id(), f.target.player.getScoreboardName(), true);
+                    // A write whose IO finishes before submit attaches its callback completes inline on the server
+                    // thread; under heavy load that can happen, so resubmit until a write is really in flight.
+                    for (int attempt = 0; attempt < 5 && !f.session.mutationPending(); attempt++)
+                        f.session.onOnline(f.target.profile.id(), f.target.player.getScoreboardName(), true);
                     f.test.assertTrue(f.session.mutationPending(), "The mature return channel competes with a real SQLite write");
                 })
                 .thenWaitUntil(() -> f.await(f.monsterReady(false), "Completed return channel durably enters lobby"))
@@ -230,9 +233,16 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertTrue(MonsterRoles.status(f.monster.player).contains("arrowsFired=3"), "Cooldown rejects another burst after the first finishes");
                     f.assertSkillCooldowns();
                 })
-                // The volley left before dusk; arrows still in flight when combat opens would land on the
-                // human and add real damage coins to the defeat payout measured next.
-                .thenWaitUntil(() -> f.await(f.monsterArrowsSettled(), "The pre-dusk volley lands before combat opens"))
+                // The arena is already past dusk, so the volley's hits on the human earn real damage credit: it is
+                // buffered on hit, flushed once the session clock has moved a second past the previous flush, committed
+                // through SQLite, and the experience bar follows on the next monster tick. The fixture clock only follows
+                // wall time once wall time catches up with its 30-second jumps, so this step moves it explicitly too.
+                // Baselines for the defeat payout are read only once all of that has settled.
+                .thenWaitUntil(() -> f.await(f.monsterArrowsSettled(), "The volley's arrows have landed"))
+                .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(1)))
+                .thenWaitUntil(() -> f.await(!f.session.damageCreditPending() && !f.session.mutationPending(),
+                        "The volley's damage credit is committed"))
+                .thenIdle(1)
                 .thenExecute(() -> f.killMonsterPeer(true))
                 .thenWaitUntil(() -> f.await(f.monsterReady(true), "Monster defeat uses native replacement and returns to lobby"))
                 .thenExecute(() -> {
