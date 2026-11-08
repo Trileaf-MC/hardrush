@@ -229,8 +229,8 @@ public final class IdentityRuntimeGameTest {
 
         void assertMonster() {
             player = server.getPlayerList().getPlayer(profile.id());
-            test.assertValueEqual(round().phase(), RoundPhase.RUNNING, "An offline human prevents elimination without contributing an online racer");
-            test.assertValueEqual(round().pauseReason(), PauseReason.NO_ONLINE_HUMANS, "Monster-only connections do not keep the human challenge clock running");
+            test.assertValueEqual(round().phase(), RoundPhase.RESCUE, "An offline human turns the last death into a rescue, not an elimination");
+            test.assertTrue(round().awaitingReconnect(), "The rescue waits for the offline human to reconnect");
             test.assertValueEqual(participant().role(), ParticipantRole.MONSTER_LOBBY, "The committed UUID remains a monster");
             test.assertValueEqual(participant().lifeSequence(), 1, "Death and reconnect do not create another human life");
             test.assertTrue(player.isAlive() && player.level() == LobbyWorld.open(server).holdingLevel() && PlayerProfiles.isLocked(player), "A living native monster remains isolated in the actual lobby");
