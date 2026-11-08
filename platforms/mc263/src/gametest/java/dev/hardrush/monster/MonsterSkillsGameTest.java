@@ -309,6 +309,7 @@ public final class MonsterSkillsGameTest {
                     "The authoritative bow stays vanilla");
             test.assertFalse(MonsterRoles.actualEquipment(f.owner, EquipmentSlot.MAINHAND)
                     .has(net.minecraft.core.component.DataComponents.CUSTOM_NAME), "Observers receive the real bow");
+            assertWorldBowUndressed(test, f.owner);
             sent.clear();
             test.assertTrue(MonsterRoles.burst(f.owner), "The volley starts");
         }).thenIdle(2).thenExecute(() -> {
@@ -319,6 +320,7 @@ public final class MonsterSkillsGameTest {
                     "The cooldown refills the durability bar");
             test.assertValueEqual(shown.get(net.minecraft.core.component.DataComponents.LORE).lines().get(1).getString(), "冷却中",
                     "The bow states the cooldown");
+            assertWorldBowUndressed(test, f.owner);
             sent.clear();
             MonsterRoles.convert(f.owner, MonsterForm.STRAY);
         }).thenIdle(2).thenExecute(() -> {
@@ -345,6 +347,16 @@ public final class MonsterSkillsGameTest {
         }
         test.assertFalse(bow.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME), "Dressing never mutates the source stack");
         test.succeed();
+    }
+
+    /** A bow picked up in the world carries no volley, so the owner sees it exactly as it is. */
+    private static void assertWorldBowUndressed(GameTestHelper test, net.minecraft.server.level.ServerPlayer owner) {
+        var world = new ItemStack(Items.BOW);
+        world.setDamageValue(17);
+        var raw = new net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket(4, world);
+        test.assertTrue(MonsterBowDisplay.rewrite(owner, raw) == raw, "A picked-up world bow keeps its own name and durability");
+        var cursor = new net.minecraft.network.protocol.game.ClientboundSetCursorItemPacket(world);
+        test.assertTrue(MonsterBowDisplay.rewrite(owner, cursor) == cursor, "A carried world bow keeps its own name and durability");
     }
 
     private static ItemStack shownBow(GameTestHelper test, List<Packet<?>> sent, int slot) {

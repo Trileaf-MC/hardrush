@@ -35,29 +35,35 @@ public final class MonsterInventoryFormGameTest {
         try {
             MonsterRoles.select(p, "zombie");
             var egg = p.getInventory().getItem(1).copy();
-            var storage = new SimpleContainer(27);
-            var menu = ChestMenu.threeRows(1, p.getInventory(), storage);
-            p.containerMenu = menu;
-            test.assertTrue(MonsterInventory.mayClick(p, menu, 55, 0, ContainerInput.PICKUP), "Own bound item may be picked up in a chest menu");
-            menu.clicked(55, 0, ContainerInput.PICKUP, p);
-            test.assertTrue(MonsterItems.matches(p, menu.getCarried(), "baby_egg"), "Actual native pickup retains the binding");
-            for (var input : List.of(ContainerInput.PICKUP, ContainerInput.QUICK_CRAFT))
-                test.assertFalse(MonsterInventory.mayClick(p, menu, 0, 1, input), "Bound cursor cannot enter external storage");
-            menu.clicked(0, 0, ContainerInput.PICKUP, p);
-            test.assertTrue(storage.isEmpty() && ItemStack.matches(menu.getCarried(), egg), "Rejected external pickup changes neither stack");
-            menu.clicked(56, 0, ContainerInput.PICKUP, p);
+            var menu = p.inventoryMenu;
+            // Inventory menu: hotbar slot i is menu index 36 + i.
+            test.assertTrue(MonsterInventory.mayClick(p, menu, 37, 0, ContainerInput.PICKUP), "Own bound item may be picked up in the backpack");
+            menu.clicked(37, 0, ContainerInput.PICKUP, p);
+            test.assertTrue(MonsterItems.matches(p, menu.getCarried(), "baby_egg") && ItemStack.matches(menu.getCarried(), egg),
+                    "Actual native pickup retains the binding");
+            test.assertFalse(MonsterInventory.mayClick(p, menu, -999, 0, ContainerInput.PICKUP), "A bound cursor cannot be dropped outside");
+            menu.clicked(38, 0, ContainerInput.PICKUP, p);
             test.assertTrue(MonsterItems.matches(p, p.getInventory().getItem(2), "baby_egg"), "An internal swap moves the control");
             // Return the swapped adult egg to the now-empty original slot.
-            menu.clicked(55, 0, ContainerInput.PICKUP, p);
-            test.assertFalse(MonsterInventory.mayClick(p, menu, 56, 0, ContainerInput.QUICK_MOVE), "Shift click cannot export born inventory");
-            test.assertFalse(MonsterInventory.mayClick(p, menu, 56, 0, ContainerInput.THROW), "Throw cannot export born inventory");
-            test.assertFalse(MonsterInventory.mayClick(p, menu, 0, 2, ContainerInput.SWAP), "Hotbar swap cannot export born inventory");
+            menu.clicked(37, 0, ContainerInput.PICKUP, p);
+            test.assertTrue(menu.getCarried().isEmpty(), "The internal swap conserves both eggs");
+            test.assertFalse(MonsterInventory.mayClick(p, menu, 38, 0, ContainerInput.THROW), "Throw cannot export born inventory");
+            test.assertTrue(MonsterInventory.mayClick(p, menu, 38, 0, ContainerInput.QUICK_MOVE), "Shift click reorders inside the backpack");
+            test.assertFalse(MonsterInventory.mayClick(p, menu, 1, 0, ContainerInput.PICKUP), "Personal crafting stays disabled");
+
+            // A native monster opens no container; even a menu forced open by other code accepts no input.
             p.getInventory().setItem(5, new ItemStack(Items.DIAMOND, 7));
-            menu.clicked(59, 0, ContainerInput.QUICK_MOVE, p);
-            test.assertValueEqual(storage.getItem(0).getCount(), 7, "World resources use native container transfer");
-            test.assertTrue(p.getInventory().getItem(5).isEmpty(), "Exactly seven diamonds leave the inventory");
-            p.containerMenu = p.inventoryMenu;
-            test.assertFalse(MonsterInventory.mayClick(p, p.inventoryMenu, 1, 0, ContainerInput.PICKUP), "Personal crafting stays disabled");
+            var storage = new SimpleContainer(27);
+            storage.setItem(0, new ItemStack(Items.EMERALD, 3));
+            var chest = ChestMenu.threeRows(1, p.getInventory(), storage);
+            p.containerMenu = chest;
+            for (var input : ContainerInput.values())
+                for (int index : new int[] {0, 55, 59, -999})
+                    test.assertFalse(MonsterInventory.mayClick(p, chest, index, 0, input), "External menus reject " + input + " at " + index);
+            chest.clicked(59, 0, ContainerInput.QUICK_MOVE, p);
+            chest.clicked(0, 0, ContainerInput.PICKUP, p);
+            test.assertTrue(p.getInventory().getItem(5).getCount() == 7 && storage.getItem(0).getCount() == 3 && chest.getCarried().isEmpty(),
+                    "Rejected container clicks move nothing in either direction");
         } finally { p.containerMenu = p.inventoryMenu; MonsterRoleGameTest.remove(p); }
         test.succeed();
     }
@@ -279,19 +285,19 @@ public final class MonsterInventoryFormGameTest {
             test.assertFalse(MonsterInventory.mayClick(p,p.inventoryMenu,-999,0,ContainerInput.PICKUP),"Outside-click drop cannot export a born cursor");
             test.assertFalse(MonsterInventory.mayClick(p,p.inventoryMenu,40,0,ContainerInput.CLONE),"Creative clone is forbidden");
             p.inventoryMenu.setCarried(ItemStack.EMPTY);
-            var storage=new SimpleContainer(27);var menu=ChestMenu.threeRows(1,p.getInventory(),storage);p.containerMenu=menu;
+            var menu=p.inventoryMenu;
             menu.setCarried(new ItemStack(Items.EMERALD,8));
             menu.clicked(-999,0,ContainerInput.QUICK_CRAFT,p);
-            menu.clicked(0,1,ContainerInput.QUICK_CRAFT,p);
-            menu.clicked(1,1,ContainerInput.QUICK_CRAFT,p);
+            menu.clicked(9,1,ContainerInput.QUICK_CRAFT,p);
+            menu.clicked(10,1,ContainerInput.QUICK_CRAFT,p);
             menu.clicked(-999,2,ContainerInput.QUICK_CRAFT,p);
-            test.assertValueEqual(storage.getItem(0).getCount(),4,"Native drag puts half the world stack in the first slot");
-            test.assertValueEqual(storage.getItem(1).getCount(),4,"Native drag puts half the world stack in the second slot");
+            test.assertValueEqual(p.getInventory().getItem(9).getCount(),4,"Native drag puts half the world stack in the first slot");
+            test.assertValueEqual(p.getInventory().getItem(10).getCount(),4,"Native drag puts half the world stack in the second slot");
             test.assertTrue(menu.getCarried().isEmpty(),"World drag conserves the cursor quantity");
-            menu.clicked(0,0,ContainerInput.PICKUP,p);
-            menu.clicked(0,0,ContainerInput.PICKUP_ALL,p);
+            menu.clicked(9,0,ContainerInput.PICKUP,p);
+            menu.clicked(9,0,ContainerInput.PICKUP_ALL,p);
             test.assertValueEqual(menu.getCarried().getCount(),8,"Native double-click can gather world material");
-            test.assertTrue(storage.isEmpty(),"Collected world stacks leave no duplicate behind");
+            test.assertTrue(p.getInventory().getItem(9).isEmpty() && p.getInventory().getItem(10).isEmpty(),"Collected world stacks leave no duplicate behind");
             menu.setCarried(ItemStack.EMPTY);
         } finally { p.containerMenu=p.inventoryMenu;MonsterRoleGameTest.remove(p); }
         test.succeed();
