@@ -99,6 +99,22 @@ public final class FullFlowGameTest {
                 .thenWaitUntil(()->f.await(!LobbyRuntime.channeling(f.monster.player),"Movement keys cancel return"))
                 .thenExecute(()->{
                     f.monster.keys(false);
+                    test.assertTrue(f.monster.player.getOffhandItem().isEmpty(),"Native click fixture models an empty off hand");
+                    state.clickBlock(f.monster.player,7,f.monster.player.blockPosition().below());
+                    test.assertTrue(LobbyRuntime.channeling(f.monster.player),"Right-clicking a block starts return; the off-hand packets of that click do not break it");
+                    f.monster.player.connection.handlePunch(ServerboundPunchPacket.INSTANCE);
+                }).thenIdle(2)
+                .thenExecute(()->{
+                    var p=f.monster.player;
+                    var pig=net.minecraft.world.entity.EntityTypes.PIG.create(p.level(),net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+                    pig.snapTo(p.getX()+1.5,p.getY(),p.getZ(),0,0);pig.setNoAi(true);p.level().addFreshEntity(pig);
+                    state.clickEntity(p,7,pig.getId());
+                    test.assertTrue(LobbyRuntime.channeling(p),"Right-clicking a creature starts return; the off-hand packets of that click do not break it");
+                    pig.discard();
+                    p.connection.handlePunch(ServerboundPunchPacket.INSTANCE);
+                }).thenIdle(2)
+                .thenExecute(()->{
+                    f.monster.keys(false);
                     state.use(f.monster.player,7); f.monster.player.connection.handlePunch(ServerboundPunchPacket.INSTANCE);
                     test.assertFalse(LobbyRuntime.channeling(f.monster.player),"Punch cancels return");
                     state.use(f.monster.player,7); state.use(f.monster.player,2);
@@ -343,6 +359,21 @@ public final class FullFlowGameTest {
             test.assertTrue(f.monster.participant().equals(participant) && !f.session.mutationPending(), "Opening and closing never commits a monster exit");
         }
         void use(ServerPlayer p,int slot){p.connection.handleSetCarriedItem(new ServerboundSetCarriedItemPacket(slot));p.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND,1,0,0));}
+        /** One vanilla right-click on a block with nothing in the off hand: main hand on the block, main-hand item, off hand on the block. */
+        void clickBlock(ServerPlayer p,int slot,BlockPos pos){
+            p.connection.handleSetCarriedItem(new ServerboundSetCarriedItemPacket(slot));
+            var hit=new BlockHitResult(Vec3.atCenterOf(pos).add(0,.5,0),Direction.UP,pos,false);
+            p.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,hit,1));
+            p.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND,2,0,0));
+            p.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.OFF_HAND,hit,3));
+        }
+        /** The same click aimed at a creature: one interaction per hand, with the main-hand item between them. */
+        void clickEntity(ServerPlayer p,int slot,int entity){
+            p.connection.handleSetCarriedItem(new ServerboundSetCarriedItemPacket(slot));
+            HuntInputFixtures.click(p,entity,InteractionHand.MAIN_HAND);
+            p.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND,4,0,0));
+            HuntInputFixtures.click(p,entity,InteractionHand.OFF_HAND);
+        }
         /** Stand on the altar's north-west gold cell; the rite itself runs on server ticks. */
         void altar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),l.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.ALTAR)).add(-1,1,-1));}
         void offAltar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),l.landing(LobbyLayout.Landing.ALTAR));}
