@@ -21,6 +21,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.ConversionParams;
 import net.minecraft.world.entity.Entity;
@@ -35,6 +36,7 @@ import net.minecraft.world.entity.monster.zombie.ZombieVillager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import net.minecraft.world.phys.BlockHitResult;
@@ -257,12 +259,18 @@ public final class MonsterCompanionGameTest {
     }
 
     @GameTest(maxTicks = 200)
-    public void distantCompanionFollowsIntoLoadedSafeSpace(GameTestHelper test) {
+    public void distantCompanionFollowsIntoLoadedSafeSpace(GameTestHelper test) { assertFollows(test, false); }
+
+    /** A drowned's native navigation is amphibious, not ground; it must follow all the same. */
+    @GameTest(maxTicks = 200)
+    public void distantDrownedCompanionFollows(GameTestHelper test) { assertFollows(test, true); }
+
+    private static void assertFollows(GameTestHelper test, boolean drowned) {
         var owner = MonsterRoleGameTest.actor(test);
         test.runAfterDelay(80, () -> {
             try {
                 MonsterRoles.select(owner, "zombie");
-                var zombie = summon(test, owner, false, false);
+                var zombie = summon(test, owner, false, drowned);
                 ((MonsterMobAccessor) zombie).hardrush$targetSelector().removeAllGoals(ignored -> true);
                 zombie.setNoGravity(true);
                 zombie.snapTo(owner.getX() + 18, owner.getY(), owner.getZ(), 0, 0);
@@ -276,6 +284,64 @@ public final class MonsterCompanionGameTest {
             } catch (RuntimeException failure) { clean(owner); throw failure; }
         });
     }
+
+    /** A retrack lands the owner far away; every follower comes along before its old chunks can unload. */
+    @GameTest(maxTicks = 200)
+    public void retrackRegroupsFollowersBesideOwner(GameTestHelper test) {
+        var owner = MonsterRoleGameTest.actor(test);
+        test.runAfterDelay(80, () -> {
+            try {
+                MonsterRoles.select(owner, "zombie");
+                var zombie = summon(test, owner, false, false);
+                var drowned = summon(test, owner, true, true);
+                var victim = EntityTypes.CHICKEN.create(owner.level(), EntitySpawnReason.COMMAND);
+                victim.snapTo(owner.getX() - 20, owner.getY(), owner.getZ(), 0, 0);
+                victim.setNoAi(true); victim.setNoGravity(true);
+                owner.level().addFreshEntity(victim);
+                for (var companion : List.of(zombie, drowned)) {
+                    ((MonsterMobAccessor) companion).hardrush$goalSelector().removeAllGoals(ignored -> true);
+                    ((MonsterMobAccessor) companion).hardrush$targetSelector().removeAllGoals(ignored -> true);
+                    companion.setNoGravity(true);
+                    companion.snapTo(owner.getX() - 18, owner.getY(), owner.getZ(), 0, 0);
+                    companion.setTarget(victim);
+                }
+                MonsterCompanions.regroup(owner);
+                for (var companion : List.of(zombie, drowned)) {
+                    test.assertTrue(companion.isAlive() && companion.distanceToSqr(owner) < 64, "Regroup lands each follower beside its owner");
+                    test.assertTrue(companion.getTarget() == null, "A regrouped follower drops the fight it left behind");
+                }
+                victim.discard();
+                test.succeed();
+            } finally { clean(owner); }
+        });
+    }
+
+    /** Loaded but outside simulation: goals no longer run there, so the companion is fetched instead. */
+    @GameTest(maxTicks = 600)
+    public void companionLeftOutsideSimulationCatchesUp(GameTestHelper test) {
+        var owner = MonsterRoleGameTest.actor(test);
+        var level = owner.level();
+        var far = new BlockPos(owner.getBlockX(), 150, -4096);
+        var farChunk = new ChunkPos(far.getX() >> 4, far.getZ() >> 4);
+        level.getChunkSource().addTicketWithRadius(LOADED_ONLY, farChunk, 1);
+        Runnable cleanup = () -> { level.getChunkSource().removeTicketWithRadius(LOADED_ONLY, farChunk, 1); clean(owner); };
+        Zombie[] drowned = new Zombie[1];
+        test.startSequence().thenIdle(80)
+                .thenWaitUntil(() -> test.assertTrue(level.areEntitiesLoaded(farChunk.pack()) && !level.isPositionEntityTicking(far),
+                        "Fixture chunk is loaded without entity simulation"))
+                .thenExecute(() -> {
+                    MonsterRoles.select(owner, "zombie");
+                    drowned[0] = summon(test, owner, false, true);
+                    ((MonsterMobAccessor) drowned[0]).hardrush$targetSelector().removeAllGoals(ignored -> true);
+                    drowned[0].setNoGravity(true);
+                    drowned[0].snapTo(far.getX() + .5, far.getY(), far.getZ() + .5, 0, 0);
+                })
+                .thenWaitUntil(() -> test.assertTrue(drowned[0].isAlive() && drowned[0].distanceToSqr(owner) < 64,
+                        "A follower outside entity simulation is brought back beside its owner"))
+                .thenExecute(cleanup)
+                .thenSucceed();
+    }
+    private static final TicketType LOADED_ONLY = new TicketType(TicketType.NO_TIMEOUT, TicketType.FLAG_LOADING);
 
     private static Zombie summon(GameTestHelper test, ServerPlayer owner, boolean baby, boolean drowned) {
         var floor = owner.blockPosition().east(2).below();

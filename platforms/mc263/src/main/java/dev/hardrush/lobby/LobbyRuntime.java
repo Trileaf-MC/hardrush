@@ -8,6 +8,7 @@ import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.lobby.LobbyContext;
 import dev.hardrush.core.round.*;
+import dev.hardrush.monster.MonsterCompanions;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.player.PlayerProfiles;
@@ -709,6 +710,7 @@ public final class LobbyRuntime {
             tell(r.player, "落点失效，循迹取消"); sound(r.player, false); return;
         }
         HuntRetracks.retracked(r.player, target);
+        MonsterCompanions.regroup(r.player);
         ChannelEffects.departed(r.player, fromLevel, from, true);
         sound(r.player, true);
         if (result.fallback()) tell(r.player, "去 " + Notices.key(target.getScoreboardName()) + " 的路被切断，这是能到的最近处");
