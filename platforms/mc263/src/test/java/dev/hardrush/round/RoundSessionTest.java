@@ -305,13 +305,17 @@ final class RoundSessionTest {
             pumpUntil(callbacks, () -> !session.mutationPending());
             assertEquals(TimeUnit.SECONDS.toNanos(12), session.view().orElseThrow().challengeNanos());
             assertEquals(2, session.snapshot().orElseThrow().participants().get(player).lifeSequence());
+            assertEquals(RoundPhase.RESCUE, session.snapshot().orElseThrow().phase(), "The only human leaving starts a rescue");
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(20));
         }
         clock.addAndGet(TimeUnit.DAYS.toNanos(3));
         try (var session = new RoundSession(database, clock::get, callbacks::add)) {
             pumpUntil(callbacks, () -> session.state() == RoundSession.State.OPEN);
             session.adaptersReady(session.snapshot().orElseThrow().roundId());
             pumpUntil(callbacks, () -> !session.mutationPending());
-            assertEquals(RoundPhase.RUNNING, session.snapshot().orElseThrow().phase());
+            assertEquals(RoundPhase.RESCUE, session.snapshot().orElseThrow().phase());
+            assertTrue(session.snapshot().orElseThrow().awaitingReconnect());
+            assertEquals(40_000, session.view().orElseThrow().remainingPhaseMillis(), "A normal stop freezes the rescue deadline");
             assertEquals(TimeUnit.SECONDS.toNanos(12), session.view().orElseThrow().challengeNanos());
             assertFalse(session.snapshot().orElseThrow().timingUncertain());
         }

@@ -110,11 +110,13 @@ public final class FullFlowGameTest {
                 .thenExecute(f.target::disconnect)
                 .thenWaitUntil(()->f.await(!f.target.participant().online()&&!f.session.mutationPending(),"Only human offline commits"))
                 .thenExecute(()->{
-                    test.assertValueEqual(f.round().phase(),RoundPhase.RUNNING,"Offline human retains eligibility without rescue/wipe");
-                    test.assertValueEqual(f.round().pauseReason(),PauseReason.NO_ONLINE_HUMANS,"Only challenge time pauses");
+                    test.assertValueEqual(f.round().phase(),RoundPhase.RESCUE,"The last human leaving starts a rescue instead of idling forever");
+                    test.assertTrue(f.round().awaitingReconnect(),"The rescue waits for the offline human to reconnect");
+                    test.assertValueEqual(f.target.participant().role(),ParticipantRole.HUMAN_ACTIVE,"Offline human retains eligibility without a wipe");
                 });
         f.target.login(seq);
         seq.thenWaitUntil(()->f.await(f.target.participant().online()&&!dev.hardrush.player.PlayerProfiles.isLocked(f.target.player)&&!f.session.mutationPending(),"Human reconnect restores same life"))
+                .thenExecute(()->test.assertValueEqual(f.round().phase(),RoundPhase.RUNNING,"The reconnect ends the rescue"))
                 .thenExecute(()->{
                     f.monster.move(f.target.player.position().add(1,0,0)); f.target.player.setHealth(1);f.target.player.setInvulnerableTime(0);
                     f.monster.player.connection.handleAttack(new ServerboundAttackPacket(f.target.player.getId()));

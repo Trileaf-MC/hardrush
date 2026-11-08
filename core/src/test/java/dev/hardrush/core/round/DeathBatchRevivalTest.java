@@ -305,16 +305,18 @@ class DeathBatchRevivalTest {
         assertThrows(IllegalStateException.class, () -> batch(engine, humanDeath));
     }
 
-    @Test void offlineLobbySummonOwnerEarnsAndOfflineHumanPreventsAnyRescue() {
+    @Test void offlineLobbySummonOwnerEarnsAndOfflineHumanTurnsTheLastDeathIntoAReconnectRescue() {
         var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, false), monster(false, false));
         apply(engine, batch(engine, death(engine, human, origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON))));
         assertTrue(engine.view().participants().get(monster).revivalEntitled());
-        assertEquals(RoundPhase.RUNNING, engine.view().phase());
-        assertEquals(PauseReason.NO_ONLINE_HUMANS, engine.view().pauseReason());
-        clock.seconds(500);
+        assertEquals(RoundPhase.RESCUE, engine.view().phase());
+        assertTrue(engine.view().awaitingReconnect());
+        assertEquals(60_000, engine.view().remainingPhaseMillis());
+        clock.seconds(60);
         apply(engine, engine.proposeTick(UUID.randomUUID()));
-        assertEquals(RoundPhase.RUNNING, engine.view().phase());
-        assertNull(engine.view().result());
+        assertEquals(RoundPhase.SETTLING, engine.view().phase());
+        assertEquals("HUMANS_OFFLINE", engine.view().result().reason());
+        assertFalse(engine.view().participants().get(monster).revivalEntitled());
     }
 
     @Test void noHumanAndNoEntitlementFailsWhileNormalDeathNeverUsesHardcoreSettlement() {

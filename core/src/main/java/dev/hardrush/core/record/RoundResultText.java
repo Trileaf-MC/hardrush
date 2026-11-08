@@ -25,6 +25,7 @@ public final class RoundResultText {
             case FAILED -> switch (result.reason()) {
                 case "ALL_HUMANS_DEAD" -> "所有人类都已阵亡";
                 case "RESCUE_EXPIRED" -> "救场时间耗尽，没有人复生";
+                case "HUMANS_OFFLINE" -> "人类全部离线，救场时间内没有人回来";
                 case "NO_ELIGIBLE_PARTICIPANTS" -> "没有还能继续挑战的玩家";
                 default -> "本轮挑战未能完成";
             };
