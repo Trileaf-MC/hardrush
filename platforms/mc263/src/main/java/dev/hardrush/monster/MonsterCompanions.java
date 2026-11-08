@@ -11,6 +11,8 @@ import dev.hardrush.combat.MonsterSourceHolder;
 import dev.hardrush.combat.MonsterCombatRuntime;
 import dev.hardrush.protection.ProtectionRuntime;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -18,6 +20,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -43,6 +46,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
+import net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.monster.Vex;
 import net.minecraft.world.entity.monster.zombie.Drowned;
@@ -58,7 +62,9 @@ import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.pathfinder.PathType;
+import net.minecraft.world.level.pathfinder.PathfindingContext;
 import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
+import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -76,6 +82,16 @@ public final class MonsterCompanions {
     private static final String DISMISSING = "hardrush.companion-dismissing";
     /** The role egg a companion hatched from; descendants never inherit it, so only that body folds back into the egg. */
     private static final String HATCHED = "hardrush.companion-egg=";
+    /** Twelve blocks, the distance at which a tamed wolf gives up walking and teleports to its owner. */
+    private static final double CATCH_UP_DISTANCE_SQR = 144;
+    /** A tamed wolf's landing ring: within three blocks of the owner but not right beside them, one block up or down. */
+    private static final List<BlockPos> CATCH_UP_RING = catchUpRing();
+    private static List<BlockPos> catchUpRing() {
+        var ring = new ArrayList<BlockPos>();
+        for (int x = -3; x <= 3; x++) for (int z = -3; z <= 3; z++) for (int y = -1; y <= 1; y++)
+            if (Math.abs(x) >= 2 || Math.abs(z) >= 2) ring.add(new BlockPos(x, y, z));
+        return List.copyOf(ring);
+    }
     private static final Map<MinecraftServer, Map<UUID, Mob>> LOADED = new IdentityHashMap<>();
     private static final ThreadLocal<Deque<Entity>> INFECTION = ThreadLocal.withInitial(ArrayDeque::new);
     private static boolean initialized;
@@ -281,7 +297,7 @@ public final class MonsterCompanions {
 
     /**
      * Does not reset vanilla equipment, attributes, loot or existing target goals. Only goal-driven
-     * companions take orders; a walker also follows. A mount a jockey brought along keeps its own AI.
+     * companions take orders; one that walks or swims also follows. A mount a jockey brought along keeps its own AI.
      */
     public static void configure(Mob mob) {
         if (owner(mob) == null || isDismissing(mob)) return;
@@ -289,9 +305,80 @@ public final class MonsterCompanions {
         var access = (MonsterMobAccessor) mob;
         access.hardrush$goalSelector().removeAllGoals(goal -> goal instanceof CompanionFollowGoal);
         access.hardrush$targetSelector().removeAllGoals(goal -> goal instanceof CompanionCommandGoal);
-        if (!(mob instanceof Vex) && mob.getNavigation() instanceof GroundPathNavigation)
-            access.hardrush$goalSelector().addGoal(4, new CompanionFollowGoal(mob));
+        if (follower(mob)) access.hardrush$goalSelector().addGoal(4, new CompanionFollowGoal(mob));
         access.hardrush$targetSelector().addGoal(0, new CompanionCommandGoal(mob));
+    }
+
+    /**
+     * Companions that travel after their owner on foot. A drowned's native navigation is amphibious rather
+     * than ground, yet it walks and swims after its owner all the same; fliers and vexes keep their own AI.
+     */
+    private static boolean follower(Mob mob) {
+        return !(mob instanceof Vex) && (mob.getNavigation() instanceof GroundPathNavigation
+                || mob.getNavigation() instanceof AmphibiousPathNavigation);
+    }
+
+    /**
+     * The owner just made a long jump of their own (a retrack). Followers land beside them now, while their old
+     * chunks are still loaded; once those unload, nothing would bring them along. A retrack may cross
+     * dimensions, so followers left in another dimension travel too: the sortie's companions go where it goes.
+     */
+    public static void regroup(ServerPlayer owner) {
+        for (Mob mob : companions(owner.level().getServer()))
+            if (activeOwner(mob) == owner && canTravel(mob) && (mob.level() != owner.level() || farBehind(mob, owner))) catchUp(mob, owner);
+    }
+
+    /** Alive, walks or swims after its owner, and not tied to a mount or a lead. */
+    private static boolean canTravel(Mob mob) {
+        return !mob.isRemoved() && mob.isAlive() && !isDismissing(mob) && follower(mob) && !mob.isPassenger() && !mob.isLeashed();
+    }
+
+    /** In the owner's dimension and as far behind as a tamed wolf lets itself fall before it teleports. */
+    private static boolean farBehind(Mob mob, ServerPlayer owner) {
+        return owner.level() == mob.level() && mob.distanceToSqr(owner) >= CATCH_UP_DISTANCE_SQR;
+    }
+
+    /**
+     * Wolf-like teleport to {@link #besideOwner}. Whatever it was fighting is now far behind, so it drops that
+     * target. Into another dimension it travels the vanilla way: {@code Entity.teleport} recreates it there from
+     * its saved data, so its tags, frozen combat source and sealed combat origin carry over, and the copy is
+     * configured again when it loads.
+     */
+    private static boolean catchUp(Mob mob, ServerPlayer owner) {
+        var destination = besideOwner(mob, owner);
+        if (destination == null) return false;
+        mob.getNavigation().stop();
+        mob.setTarget(null);
+        replaceTag(mob, COMMAND, null);
+        if (mob.level() == owner.level()) {
+            mob.snapTo(destination.x, destination.y, destination.z, mob.getYRot(), mob.getXRot());
+            return true;
+        }
+        return mob.teleport(new TeleportTransition(owner.level(), destination, Vec3.ZERO,
+                mob.getYRot(), mob.getXRot(), TeleportTransition.DO_NOTHING)) != null;
+    }
+
+    /**
+     * A loaded, walkable spot in the owner's level, outside protected levels, where the mob fits; an amphibious
+     * follower may also land in water. Every spot of the wolf's ring is tried in random order, since a regroup
+     * gets one chance only. Checks the owner's level, not the mob's, so it also serves a mob in another dimension.
+     */
+    private static Vec3 besideOwner(Mob mob, ServerPlayer owner) {
+        var level = owner.level();
+        if (ProtectionRuntime.protectedLevel(level)) return null;
+        boolean swims = mob.getNavigation() instanceof AmphibiousPathNavigation;
+        var pathing = new PathfindingContext(level, mob);
+        var spots = new ArrayList<BlockPos>(CATCH_UP_RING.size());
+        for (BlockPos offset : CATCH_UP_RING) spots.add(owner.blockPosition().offset(offset));
+        Collections.shuffle(spots, new Random(mob.getRandom().nextLong()));
+        for (BlockPos pos : spots) {
+            if (!loaded(level, pos) || level.getBlockState(pos.below()).getBlock() instanceof LeavesBlock) continue;
+            var type = WalkNodeEvaluator.getPathTypeStatic(pathing, pos.mutable());
+            if (type != PathType.WALKABLE && !(swims && type == PathType.WATER)) continue;
+            var destination = Vec3.atBottomCenterOf(pos);
+            if (safeBox(level, mob, mob.getBoundingBox().move(destination.subtract(mob.position())))) return destination;
+        }
+        return null;
     }
 
     /** A creature the soulcatcher releases as this sortie's companion, with a fresh creation event. */
@@ -317,8 +404,17 @@ public final class MonsterCompanions {
         var loaded = LOADED.get(server);
         return loaded == null ? List.of() : List.copyOf(loaded.values());
     }
+    /**
+     * Dismisses companions whose sortie is over, and brings along followers left outside entity simulation:
+     * their goals no longer run, and if the owner keeps going their chunks unload with them inside.
+     */
     private static void tick(MinecraftServer server) {
-        for (Mob mob : companions(server)) if (!mob.isRemoved() && activeOwner(mob) == null) dismiss(mob);
+        for (Mob mob : companions(server)) {
+            if (mob.isRemoved()) continue;
+            ServerPlayer owner = activeOwner(mob);
+            if (owner == null) dismiss(mob);
+            else if (canTravel(mob) && farBehind(mob, owner) && !((ServerLevel) mob.level()).isPositionEntityTicking(mob.blockPosition())) catchUp(mob, owner);
+        }
     }
     private static void dismiss(Mob mob) {
         mob.entityTags().add(DISMISSING);
@@ -385,78 +481,60 @@ public final class MonsterCompanions {
     }
 
     private static final class CompanionCommandGoal extends TargetGoal {
-        private final Mob zombie;
+        private final Mob companion;
         private LivingEntity ordered;
-        CompanionCommandGoal(Mob zombie) { super(zombie, false); this.zombie = zombie; }
+        CompanionCommandGoal(Mob companion) { super(companion, false); this.companion = companion; }
         @Override public boolean canUse() {
-            UUID targetId = uuidTag(zombie, COMMAND);
-            Entity candidate = targetId == null ? null : ((ServerLevel) zombie.level()).getEntity(targetId);
-            if (!(candidate instanceof LivingEntity target) || !allowedTarget(zombie, target) || MonsterCombatRuntime.reject(zombie, target)) {
-                replaceTag(zombie, COMMAND, null); ordered = null; return false;
+            UUID targetId = uuidTag(companion, COMMAND);
+            Entity candidate = targetId == null ? null : ((ServerLevel) companion.level()).getEntity(targetId);
+            if (!(candidate instanceof LivingEntity target) || !allowedTarget(companion, target) || MonsterCombatRuntime.reject(companion, target)) {
+                replaceTag(companion, COMMAND, null); ordered = null; return false;
             }
             ordered = target;
             return true;
         }
         @Override public boolean canContinueToUse() {
-            return ordered != null && ordered.getUUID().equals(uuidTag(zombie, COMMAND))
-                    && allowedTarget(zombie, ordered) && !MonsterCombatRuntime.reject(zombie, ordered) && super.canContinueToUse();
+            return ordered != null && ordered.getUUID().equals(uuidTag(companion, COMMAND))
+                    && allowedTarget(companion, ordered) && !MonsterCombatRuntime.reject(companion, ordered) && super.canContinueToUse();
         }
-        @Override public void start() { zombie.setTarget(ordered); super.start(); }
+        @Override public void start() { companion.setTarget(ordered); super.start(); }
         @Override public void stop() {
-            if (ordered != null && ordered.getUUID().equals(uuidTag(zombie, COMMAND))) replaceTag(zombie, COMMAND, null);
+            if (ordered != null && ordered.getUUID().equals(uuidTag(companion, COMMAND))) replaceTag(companion, COMMAND, null);
             ordered = null; super.stop();
         }
     }
 
-    /** Wolf-like same-dimension follow, with native pathing and a loaded, protected-area-safe teleport. */
+    /** Wolf-like same-dimension follow: native pathing (through water too), then {@link #catchUp} once twelve blocks behind. */
     private static final class CompanionFollowGoal extends Goal {
-        private final Mob zombie;
+        private final Mob companion;
         private ServerPlayer player;
         private int recalc;
         private float waterCost;
-        CompanionFollowGoal(Mob zombie) { this.zombie = zombie; setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK)); }
+        CompanionFollowGoal(Mob companion) { this.companion = companion; setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK)); }
         @Override public boolean canUse() {
-            player = activeOwner(zombie);
-            return player != null && player.level() == zombie.level() && !zombie.isPassenger() && !zombie.isLeashed()
-                    && zombie.getTarget() == null && zombie.distanceToSqr(player) >= 100;
+            player = activeOwner(companion);
+            return player != null && player.level() == companion.level() && !companion.isPassenger() && !companion.isLeashed()
+                    && companion.getTarget() == null && companion.distanceToSqr(player) >= 100;
         }
         @Override public boolean canContinueToUse() {
-            return player != null && activeOwner(zombie) == player && player.level() == zombie.level()
-                    && !zombie.isPassenger() && !zombie.isLeashed() && zombie.getTarget() == null
-                    && zombie.distanceToSqr(player) > 4 && !zombie.getNavigation().isDone();
+            return player != null && activeOwner(companion) == player && player.level() == companion.level()
+                    && !companion.isPassenger() && !companion.isLeashed() && companion.getTarget() == null
+                    && companion.distanceToSqr(player) > 4 && !companion.getNavigation().isDone();
         }
         @Override public void start() {
-            recalc = 0; waterCost = zombie.getPathfindingMalus(PathType.WATER);
-            zombie.setPathfindingMalus(PathType.WATER, 0);
+            recalc = 0; waterCost = companion.getPathfindingMalus(PathType.WATER);
+            companion.setPathfindingMalus(PathType.WATER, 0);
         }
         @Override public void stop() {
-            zombie.getNavigation().stop(); zombie.setPathfindingMalus(PathType.WATER, waterCost); player = null;
+            companion.getNavigation().stop(); companion.setPathfindingMalus(PathType.WATER, waterCost); player = null;
         }
         @Override public void tick() {
             if (player == null) return;
-            zombie.getLookControl().setLookAt(player, 10, zombie.getMaxHeadXRot());
+            companion.getLookControl().setLookAt(player, 10, companion.getMaxHeadXRot());
             if (--recalc > 0) return;
             recalc = adjustedTickDelay(10);
-            if (zombie.distanceToSqr(player) >= 144 && teleportNearOwner()) return;
-            zombie.getNavigation().moveTo(player, 1);
-        }
-        private boolean teleportNearOwner() {
-            var level = (ServerLevel) zombie.level();
-            for (int attempt = 0; attempt < 10; attempt++) {
-                int x = zombie.getRandom().nextIntBetweenInclusive(-3, 3);
-                int z = zombie.getRandom().nextIntBetweenInclusive(-3, 3);
-                if (Math.abs(x) < 2 && Math.abs(z) < 2) continue;
-                var pos = player.blockPosition().offset(x, zombie.getRandom().nextIntBetweenInclusive(-1, 1), z);
-                if (!loaded(level, pos) || ProtectionRuntime.protectedLevel(level)
-                        || level.getBlockState(pos.below()).getBlock() instanceof LeavesBlock
-                        || WalkNodeEvaluator.getPathTypeStatic(zombie, pos) != PathType.WALKABLE) continue;
-                var destination = Vec3.atBottomCenterOf(pos);
-                var box = zombie.getBoundingBox().move(destination.subtract(zombie.position()));
-                if (!safeBox(level, zombie, box)) continue;
-                zombie.snapTo(destination.x, destination.y, destination.z, zombie.getYRot(), zombie.getXRot());
-                zombie.getNavigation().stop(); return true;
-            }
-            return false;
+            if (companion.distanceToSqr(player) >= CATCH_UP_DISTANCE_SQR && catchUp(companion, player)) return;
+            companion.getNavigation().moveTo(player, 1);
         }
     }
 }
