@@ -70,15 +70,19 @@ public final class MonsterRoles {
             if (p instanceof ServerPlayer owner) MonsterDoorBreaking.clear(owner);
             return InteractionResult.FAIL;
         });
+        // Every right-click callback first drops the rest of a click a control already answered; see MonsterClicks.
         UseBlockCallback.EVENT.register((p, l, hand, hit) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
             MonsterDoorBreaking.useBlock(owner, hit.getBlockPos());
+            var step = MonsterClicks.Step.of(hand, false);
+            if (MonsterClicks.answered(owner, step)) return InteractionResult.FAIL;
             if (MonsterSoulcatcher.holds(owner, hand)) {
-                markBagUse(owner); MonsterSoulcatcher.releaseOn(owner, hand, hit); return InteractionResult.CONSUME;
+                MonsterClicks.answer(owner, step); MonsterSoulcatcher.releaseOn(owner, hand, hit); return InteractionResult.CONSUME;
             }
             if (isEgg(owner, owner.getItemInHand(hand))) {
                 MonsterCompanions.useOn(owner, hand, hit); return InteractionResult.CONSUME;
             }
+            if (channelControl(owner, hand)) MonsterClicks.answer(owner, step);
             if (useControl(owner, hand)) return InteractionResult.CONSUME;
             return MonsterRoundRuntime.canAct(owner) && !owner.isSecondaryUseActive() && MonsterInventory.storageBlock(owner, hit.getBlockPos())
                     ? InteractionResult.PASS : InteractionResult.FAIL;
@@ -86,10 +90,12 @@ public final class MonsterRoles {
         UseEntityCallback.EVENT.register((p, l, hand, target, hit) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
             MonsterDoorBreaking.clear(owner);
+            var step = MonsterClicks.Step.of(hand, false);
+            if (MonsterClicks.answered(owner, step)) return InteractionResult.FAIL;
             if (MonsterSoulcatcher.holds(owner, hand)) {
-                // One click is one positioned interaction packet; the air use the client sends after it must not release.
-                markBagUse(owner); MonsterSoulcatcher.capture(owner, hand, target); return InteractionResult.CONSUME;
+                MonsterClicks.answer(owner, step); MonsterSoulcatcher.capture(owner, hand, target); return InteractionResult.CONSUME;
             }
+            if (channelControl(owner, hand)) MonsterClicks.answer(owner, step);
             if (useControl(owner, hand)) return InteractionResult.CONSUME;
             return MonsterRoundRuntime.canAct(owner) && MonsterInventory.storageEntity(target)
                     ? InteractionResult.PASS : InteractionResult.FAIL;
@@ -97,11 +103,12 @@ public final class MonsterRoles {
         UseItemCallback.EVENT.register((p, l, hand) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
             MonsterDoorBreaking.clear(owner);
+            var step = MonsterClicks.Step.of(hand, true);
+            if (MonsterClicks.answered(owner, step)) return InteractionResult.FAIL;
             if (MonsterSoulcatcher.holds(owner, hand)) {
-                // A click already spent on a creature or block also reaches here as an air use; it must not release.
-                if (!recentBagUse(owner)) MonsterSoulcatcher.releaseInLiquid(owner, hand);
-                return InteractionResult.CONSUME;
+                MonsterClicks.answer(owner, step); MonsterSoulcatcher.releaseInLiquid(owner, hand); return InteractionResult.CONSUME;
             }
+            if (channelControl(owner, hand)) MonsterClicks.answer(owner, step);
             useControl(owner, hand); return InteractionResult.CONSUME;
         });
         ServerLivingEntityEvents.ALLOW_DAMAGE.register(MonsterRoles::allowDamage);
@@ -247,13 +254,6 @@ public final class MonsterRoles {
             }
         }
         return inventory.add(MonsterCompanions.egg(player, baby, role.form == MonsterForm.DROWNED));
-    }
-
-    private static final java.util.WeakHashMap<ServerPlayer, Integer> BAG_USE = new java.util.WeakHashMap<>();
-    private static void markBagUse(ServerPlayer player) { BAG_USE.put(player, player.level().getServer().getTickCount()); }
-    private static boolean recentBagUse(ServerPlayer player) {
-        Integer tick = BAG_USE.get(player);
-        return tick != null && player.level().getServer().getTickCount() - tick <= 1;
     }
 
     private static long channelSeconds(Role role) { return Math.max(1, (role.millis("monster.returnChannelMillis") + 999) / 1000); }
@@ -657,9 +657,17 @@ public final class MonsterRoles {
         return role != null && (role.burstRemaining > 0 || role.chargeTick >= 0 || MonsterRoundRuntime.casting(player)
                 || MonsterNativeWeapons.using(player));
     }
-    public static boolean isReturnControl(ServerPlayer player, InteractionHand hand) {
+    /** The return shard or the retrack compass: using it starts, or repeats, a channel instead of breaking one. */
+    private static boolean channelControl(ServerPlayer player, InteractionHand hand) {
         var item = player.getItemInHand(hand);
-        return isMonster(player) && (MonsterItems.matches(player, item, "return") || MonsterItems.matches(player, item, dev.hardrush.hunt.HuntRetracks.PURPOSE));
+        return MonsterItems.matches(player, item, "return") || MonsterItems.matches(player, item, dev.hardrush.hunt.HuntRetracks.PURPOSE);
+    }
+    /**
+     * A use packet that leaves a running channel alone: the control itself, or the rest of a click a control answered.
+     * @param item the plain item use (UseItem), as opposed to a creature or block under the crosshair
+     */
+    public static boolean keepsChannel(ServerPlayer player, InteractionHand hand, boolean item) {
+        return isMonster(player) && (channelControl(player, hand) || MonsterClicks.answered(player, MonsterClicks.Step.of(hand, item)));
     }
     public static void releaseUsingItem(ServerPlayer player) {
         var form = currentForm(player); if (form == null) return;
