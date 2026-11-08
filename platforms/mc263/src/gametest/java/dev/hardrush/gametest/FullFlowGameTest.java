@@ -90,7 +90,12 @@ public final class FullFlowGameTest {
                 }).thenIdle(8)
                 .thenExecute(()->{
                     test.assertTrue(f.monster.player.getInventory().getItem(7).is(Items.ECHO_SHARD),"Tick repair preserves fixed return control");
-                    test.assertTrue(state.actionBar(f.monster.connection.packets,"正在返回营地"),"Actual progress action bar was emitted; channel="+LobbyRuntime.channeling(f.monster.player)+" feedback="+f.monster.connection.packets.stream().filter(ClientboundSystemChatPacket.class::isInstance).map(ClientboundSystemChatPacket.class::cast).map(p->p.content().getString()).toList());
+                    test.assertTrue(state.actionBar(f.monster.connection.packets,"移动或受伤会打断"),"First return of the round explains the interruption rule on the action bar");
+                })
+                // The one-shot rule notice outranks progress for its short lease; the countdown takes over before the channel ends.
+                .thenWaitUntil(()->f.await(state.actionBar(f.monster.connection.packets,"正在返回营地"),"Return progress follows the rule notice"))
+                .thenExecute(()->{
+                    test.assertTrue(LobbyRuntime.channeling(f.monster.player),"Progress action bar appears while the return is still channeling");
                     f.monster.keys(true);
                 })
                 .thenWaitUntil(()->f.await(!LobbyRuntime.channeling(f.monster.player),"Movement keys cancel return"))
