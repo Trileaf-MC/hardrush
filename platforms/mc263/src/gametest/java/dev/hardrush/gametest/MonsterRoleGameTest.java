@@ -15,7 +15,6 @@ import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -130,7 +129,7 @@ public final class MonsterRoleGameTest {
     }
 
     @GameTest(maxTicks=200)
-    public void inventoryPacketsKeepBoundEggsButAllowWorldPickupAndStorage(GameTestHelper test) {
+    public void inventoryPacketsKeepBoundEggsAndAllowWorldPickupButNoContainers(GameTestHelper test) {
         var player=actor(test);
         var floor=player.blockPosition().below();
         ItemEntity item=null;
@@ -154,11 +153,24 @@ public final class MonsterRoleGameTest {
             test.assertTrue(item.isRemoved(),"World items enter the real inventory");
             player.getInventory().setSelectedSlot(0);
             var chest=player.blockPosition().offset(2,0,0);
-            player.level().setBlockAndUpdate(chest,Blocks.CHEST.defaultBlockState());
             player.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);
-            var interaction=UseBlockCallback.EVENT.invoker().interact(player,player.level(),InteractionHand.MAIN_HAND,
-                new BlockHitResult(Vec3.atCenterOf(chest),Direction.UP,chest,false));
-            test.assertTrue(interaction==net.minecraft.world.InteractionResult.PASS,"Storage containers use the vanilla interaction path");
+            for(var block:List.of(Blocks.CHEST,Blocks.BARREL,Blocks.DISPENSER,Blocks.HOPPER,Blocks.ENDER_CHEST,Blocks.CRAFTING_TABLE)) {
+                player.level().setBlockAndUpdate(chest,block.defaultBlockState());
+                var interaction=player.gameMode.useItemOn(player,player.level(),player.getMainHandItem(),InteractionHand.MAIN_HAND,
+                    new BlockHitResult(Vec3.atCenterOf(chest),Direction.UP,chest,false));
+                test.assertTrue(!interaction.consumesAction() && player.containerMenu==player.inventoryMenu,
+                    "Like a native monster, the role opens no container: "+block);
+            }
+            player.level().setBlockAndUpdate(chest,Blocks.AIR.defaultBlockState());
+            var floorHit=new BlockHitResult(Vec3.atCenterOf(floor).add(0,.5,0),Direction.UP,floor,false);
+            for(var held:List.of(Items.WATER_BUCKET,Items.LAVA_BUCKET,Items.BUCKET,Items.CHEST,Items.DISPENSER)) {
+                player.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(held));
+                player.gameMode.useItemOn(player,player.level(),player.getMainHandItem(),InteractionHand.MAIN_HAND,floorHit);
+                player.gameMode.useItem(player,player.level(),player.getMainHandItem(),InteractionHand.MAIN_HAND);
+                test.assertTrue(player.level().getBlockState(floor.above()).isAir() && player.getMainHandItem().is(held),
+                    "Human tools and blocks stay unused in a monster's hand: "+held);
+            }
+            player.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);
             test.assertTrue(!MonsterRoles.burst(player),"Zombie cannot use skeleton arrows");
             test.assertTrue(player.level().getEntitiesOfClass(AbstractArrow.class,player.getBoundingBox().inflate(10)).isEmpty(),"Zombie has no ordinary bow path");
         } finally { if(item!=null)item.discard(); remove(player); }
@@ -374,36 +386,57 @@ public final class MonsterRoleGameTest {
         });
     }
 
-    @GameTest(maxTicks=200)
-    public void skeletonStoresWorldWeaponsAndUsesSelectedEnchantedBow(GameTestHelper test) {
+    @GameTest(maxTicks=300)
+    public void skeletonStoresWorldWeaponsAndShootsSelectedEnchantedBowWithoutVolley(GameTestHelper test) {
         var player=actor(test);var items=new java.util.ArrayList<ItemEntity>();
         MonsterRoles.select(player,"skeleton");
+        var expectedBow=new ItemStack(Items.BOW);
+        Runnable cleanup=()->{
+            items.forEach(Entity::discard);
+            for(var e:player.level().getEntitiesOfClass(AbstractArrow.class,player.getBoundingBox().inflate(20)))if(e.getOwner()==player)e.discard();
+            remove(player);
+            for(var e:player.level().getEntitiesOfClass(ItemEntity.class,player.getBoundingBox().inflate(5)))e.discard();
+        };
         whenArenaTicking(test,player,()->{
         cleanArena(player);
         try {
             var sword=drop(player,new ItemStack(Items.NETHERITE_SWORD));items.add(sword);sword.playerTouch(player);
             test.assertTrue(sword.isRemoved() && MonsterRoles.actualEquipment(player,EquipmentSlot.MAINHAND).is(Items.BOW),"Picking up a sword stores it and preserves the selected bow");
-            var bow=new ItemStack(Items.BOW);
-            bow.enchant(player.level().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+            var ownBow=player.getMainHandItem().copy();
+            test.assertTrue(MonsterRoles.volleyBow(player,ownBow),"The born bow carries the volley");
+            expectedBow.enchant(player.level().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
                 .getOrThrow(net.minecraft.world.item.enchantment.Enchantments.POWER),3);
-            var expectedBow=bow.copy();
-            var enchanted=drop(player,bow);items.add(enchanted);enchanted.playerTouch(player);
+            var enchanted=drop(player,expectedBow.copy());items.add(enchanted);enchanted.playerTouch(player);
             test.assertTrue(enchanted.isRemoved(),"The world bow enters the real inventory");
-            for(int slot=0;slot<36;slot++) if (ItemStack.matches(player.getInventory().getItem(slot),expectedBow)) player.getInventory().setSelectedSlot(slot);
+            int worldSlot=-1;
+            for(int slot=0;slot<36;slot++) if (ItemStack.matches(player.getInventory().getItem(slot),expectedBow)) worldSlot=slot;
+            player.getInventory().setSelectedSlot(worldSlot);
             MonsterRoles.repairLoadout(player);
-            MonsterRoles.burst(player);
-            var arrows=player.level().getEntitiesOfClass(AbstractArrow.class,player.getBoundingBox().inflate(3));
-            test.assertTrue(arrows.stream().anyMatch(a->a.getOwner()==player && ItemStack.matches(a.getWeaponItem(),expectedBow)),"Native arrow carries real enchanted weapon");
-            MonsterRoles.dropRoleEquipment(player,true);
-            test.assertValueEqual(player.level().getEntitiesOfClass(ItemEntity.class,player.getBoundingBox().inflate(3)).stream()
-                .filter(e->e.getItem().is(Items.BOW)).count(),1L,"Only world bow returns; generated bow never drops");
-        } finally {
-            items.forEach(Entity::discard);
-            for(var e:player.level().getEntitiesOfClass(AbstractArrow.class,player.getBoundingBox().inflate(20)))if(e.getOwner()==player)e.discard();
-            remove(player);
-            for(var e:player.level().getEntitiesOfClass(ItemEntity.class,player.getBoundingBox().inflate(5)))e.discard();
-        }
-        test.succeed();
+            test.assertFalse(MonsterRoles.volleyBow(player,player.getMainHandItem()),"A picked-up world bow carries no volley");
+            test.assertFalse(MonsterRoles.burst(player),"The volley cannot be loosed from a world bow");
+            var shown=((net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket)dev.hardrush.monster.MonsterBowDisplay.rewrite(player,
+                new net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket(worldSlot,player.getMainHandItem()))).contents();
+            test.assertTrue(ItemStack.matches(shown,expectedBow),"The owner sees the world bow exactly as it is, never renamed or barred");
+            player.setShiftKeyDown(true);
+            test.assertTrue(MonsterRoles.useControl(player,InteractionHand.MAIN_HAND),"The world bow draws natively");
+        } catch (RuntimeException | AssertionError error) { cleanup.run(); throw error; }
+        test.runAfterDelay(25,()->{
+            try {
+                MonsterRoles.releaseBow(player);
+                var arrows=player.level().getEntitiesOfClass(AbstractArrow.class,player.getBoundingBox().inflate(3)).stream()
+                    .filter(a->a.getOwner()==player).toList();
+                test.assertValueEqual(arrows.size(),1,"A sneaking release with a world bow is one ordinary arrow");
+                test.assertTrue(ItemStack.matches(arrows.getFirst().getWeaponItem(),expectedBow),"Native arrow carries real enchanted weapon");
+                test.assertTrue(MonsterRoles.status(player).contains("burstRemaining=0"),"No volley follows");
+                player.getInventory().setSelectedSlot(0);
+                test.assertTrue(MonsterRoles.volleyBow(player,player.getMainHandItem()) && MonsterRoles.burst(player),
+                    "The world bow's shot left the volley ready on the skeleton's own bow");
+                MonsterRoles.dropRoleEquipment(player,true);
+                test.assertValueEqual(player.level().getEntitiesOfClass(ItemEntity.class,player.getBoundingBox().inflate(3)).stream()
+                    .filter(e->e.getItem().is(Items.BOW)).count(),1L,"Only world bow returns; generated bow never drops");
+            } finally { cleanup.run(); }
+            test.succeed();
+        });
         });
     }
 

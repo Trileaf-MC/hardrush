@@ -31,9 +31,13 @@ public final class MonsterItems {
     }
     public static String purpose(ItemStack stack) { return tag(stack).getStringOr("purpose", ""); }
     public static boolean owned(ServerPlayer owner, ItemStack stack) {
+        return owned(owner.getUUID(), MonsterRoles.binding(owner), stack);
+    }
+    /** Thread-agnostic form for callers that captured the sortie binding on the server thread. */
+    static boolean owned(java.util.UUID owner, String sortie, ItemStack stack) {
         var binding = tag(stack);
-        return !binding.isEmpty() && binding.getStringOr("owner", "").equals(owner.getUUID().toString())
-                && binding.getStringOr("sortie", "").equals(MonsterRoles.binding(owner));
+        return !binding.isEmpty() && binding.getStringOr("owner", "").equals(owner.toString())
+                && binding.getStringOr("sortie", "").equals(sortie);
     }
     public static boolean matches(ServerPlayer owner, ItemStack stack, String purpose) {
         return owned(owner, stack) && purpose.equals(purpose(stack));

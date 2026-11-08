@@ -256,6 +256,8 @@ public final class RoundSession implements AutoCloseable {
     }
     public Optional<RulesConfig> nextRules() { return Optional.ofNullable(nextRules); }
     public boolean mutationPending() { return pendingWrite != null || pendingRulesWrite != null || pendingRotationWrite != null || pendingAdminWrite != null || pendingRecoveryWrite != null; }
+    /** Monster damage credit is buffered or queued and has not reached the committed round yet. */
+    public boolean damageCreditPending() { return !damageCoins.isEmpty() || !queuedDamage.isEmpty(); }
     public Optional<RoundSnapshot> view() { return engine == null ? Optional.empty() : Optional.of(engine.view()); }
     public long endEntrants() { return endEntrants; }
     public void onRecordsChanged(Runnable listener) { recordsChanged = Objects.requireNonNull(listener); }
