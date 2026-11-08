@@ -8,6 +8,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.protocol.game.ServerboundInteractPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -180,6 +182,28 @@ public final class MonsterSoulcatcherGameTest {
                 owner.level().setBlockAndUpdate(water, Blocks.AIR.defaultBlockState());
                 clean(owner);
             }
+            test.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = 200)
+    public void aNativeRightClickOnACreatureCatchesIt(GameTestHelper test) {
+        var owner = MonsterRoleGameTest.actor(test);
+        test.runAfterDelay(80, () -> {
+            try {
+                MonsterRoles.select(owner, "zombie");
+                holdBag(test, owner);
+                for (boolean sneaking : new boolean[] {false, true}) {
+                    var target = spawn(owner, EntityTypes.ZOMBIE, 2);
+                    // A vanilla click is one positioned interaction, then the air use the client sends after it.
+                    owner.connection.handleInteract(new ServerboundInteractPacket(target.getId(), InteractionHand.MAIN_HAND,
+                            new Vec3(0, 1, 0), sneaking));
+                    owner.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, 0, 0, 0));
+                    test.assertTrue(target.isRemoved(), "A right-click on a creature catches it, sneaking " + sneaking);
+                }
+                test.assertValueEqual(contents(owner).itemCopies().mapToInt(ItemStack::getCount).sum(), 2,
+                        "Each click makes one egg and the trailing air use releases nothing");
+            } finally { clean(owner); }
             test.succeed();
         });
     }

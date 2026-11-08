@@ -162,8 +162,7 @@ public final class MonsterSoulcatcher {
 
     /**
      * Right-click on a creature. Folds it into the bag, or returns a zombie hatched from the role's
-     * own egg to that egg. Only the plain interaction (no hit position) acts, since the native client
-     * sends both for one click.
+     * own egg to that egg.
      */
     public static boolean capture(ServerPlayer player, InteractionHand hand, Entity target) {
         var bag = player.getItemInHand(hand);
