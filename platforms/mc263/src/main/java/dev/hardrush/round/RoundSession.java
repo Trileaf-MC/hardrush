@@ -18,6 +18,7 @@ import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.DragonDeathArbiter;
 import dev.hardrush.core.round.RoundDeath;
 import dev.hardrush.core.combat.CombatEvent;
+import dev.hardrush.core.combat.CombatOrigin;
 import dev.hardrush.core.combat.CombatEventCodec;
 import dev.hardrush.persistence.CommitResult;
 import dev.hardrush.persistence.SnapshotWrite;
@@ -286,14 +287,14 @@ public final class RoundSession implements AutoCloseable {
         firstDragonId = dragonId;
     }
 
-    /** Native AFTER_DEATH runs before hurtServer returns its immutable lethal evidence. */
-    public void captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId) {
-        captureDeath(roundId, playerId, lifeSequence, deploymentSequence, batchId, false);
-    }
-
-    /** recentlyHurtByPlayer is the native getLastHurtByPlayer() memory at death, naming someone other than the victim. */
+    /**
+     * Native AFTER_DEATH runs before hurtServer returns its immutable lethal evidence. killCredit is the
+     * vanilla-style kill credit resolved at death; recentlyHurtByPlayer is the native getLastHurtByPlayer()
+     * memory at death, naming someone other than the victim.
+     */
     public void captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId,
-            boolean recentlyHurtByPlayer) {
+            Optional<CombatOrigin> killCredit, boolean recentlyHurtByPlayer) {
+        Objects.requireNonNull(killCredit);
         if (engine == null || stopping || state != State.OPEN || !roundId.equals(engine.committed().roundId())
                 || engine.committed().result() != null || terminalQueued) return;
         var participant = engine.committed().participants().get(playerId);
@@ -305,7 +306,7 @@ public final class RoundSession implements AutoCloseable {
         capturedDeaths.put(playerId, identity);
         UUID batch = batchId == null ? UUID.randomUUID() : batchId;
         deathBatches.computeIfAbsent(batch, ignored -> new LinkedHashMap<>()).putIfAbsent(playerId,
-                new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.empty(), recentlyHurtByPlayer));
+                new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.empty(), killCredit, recentlyHurtByPlayer));
         if (batchId == null) finishDamageBatch(roundId, batch);
     }
 
@@ -313,8 +314,7 @@ public final class RoundSession implements AutoCloseable {
         if (!event.lethal()) return;
         var deaths = deathBatches.get(event.batchId());
         var death = deaths == null ? null : deaths.get(event.victimId());
-        if (death != null) deaths.put(event.victimId(), new RoundDeath(death.playerId(), death.lifeSequence(),
-                death.deploymentSequence(), Optional.of(event), death.recentlyHurtByPlayer()));
+        if (death != null) deaths.put(event.victimId(), death.withCause(event));
     }
 
     /** Actual milli-health a deployed monster's attack took from a human of this round. */
