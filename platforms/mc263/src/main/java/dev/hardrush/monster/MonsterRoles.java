@@ -87,10 +87,8 @@ public final class MonsterRoles {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
             MonsterDoorBreaking.clear(owner);
             if (MonsterSoulcatcher.holds(owner, hand)) {
-                // The native client sends a positioned and a plain interaction for one click; only the plain one acts.
-                markBagUse(owner);
-                if (hit == null) MonsterSoulcatcher.capture(owner, hand, target);
-                return InteractionResult.CONSUME;
+                // One click is one positioned interaction packet; the air use the client sends after it must not release.
+                markBagUse(owner); MonsterSoulcatcher.capture(owner, hand, target); return InteractionResult.CONSUME;
             }
             if (useControl(owner, hand)) return InteractionResult.CONSUME;
             return MonsterRoundRuntime.canAct(owner) && MonsterInventory.storageEntity(target)
