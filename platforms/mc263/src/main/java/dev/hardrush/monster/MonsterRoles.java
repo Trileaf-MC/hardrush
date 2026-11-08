@@ -84,8 +84,8 @@ public final class MonsterRoles {
             }
             if (channelControl(owner, hand)) MonsterClicks.answer(owner, step);
             if (useControl(owner, hand)) return InteractionResult.CONSUME;
-            return MonsterRoundRuntime.canAct(owner) && !owner.isSecondaryUseActive() && MonsterInventory.storageBlock(owner, hit.getBlockPos())
-                    ? InteractionResult.PASS : InteractionResult.FAIL;
+            // Beyond its own controls, a native monster opens no container and operates no block.
+            return InteractionResult.FAIL;
         });
         UseEntityCallback.EVENT.register((p, l, hand, target, hit) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
@@ -97,8 +97,7 @@ public final class MonsterRoles {
             }
             if (channelControl(owner, hand)) MonsterClicks.answer(owner, step);
             if (useControl(owner, hand)) return InteractionResult.CONSUME;
-            return MonsterRoundRuntime.canAct(owner) && MonsterInventory.storageEntity(target)
-                    ? InteractionResult.PASS : InteractionResult.FAIL;
+            return InteractionResult.FAIL;
         });
         UseItemCallback.EVENT.register((p, l, hand) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
@@ -181,7 +180,7 @@ public final class MonsterRoles {
                     .copyWithCount(1 + kit.carried(dev.hardrush.core.round.ShopOffer.ADULT_EGG)));
             if (MonsterSoulcatcher.enabled(player)) player.getInventory().setItem(3, MonsterSoulcatcher.bag(player));
         } else if (form == MonsterForm.CREEPER) player.getInventory().setItem(0, MonsterCreeper.createIgniter(player));
-        // A skeleton's volley lives on whichever bow it holds; MonsterBowDisplay explains it on the bow itself.
+        // A skeleton's volley lives on its own sortie bow; MonsterBowDisplay explains it on that bow itself.
         player.getInventory().setItem(7, MonsterItems.bind(player,
             named(Items.ECHO_SHARD, "归返营地 · 右键引导 " + channelSeconds(role) + " 秒",
                 "按方向键、跳跃、攻击、使用其他物品或受伤会中断", "被水流推动不会中断；出生物资、买来的增益与身价留到下次出场，转化形态不保留"), "return"));
@@ -569,7 +568,8 @@ public final class MonsterRoles {
                 if (role.form == MonsterForm.CREEPER) MonsterCreeper.tick(player);
             }
             if (role.chargeTick >= 0 && (!player.isUsingItem() || !player.getItemInHand(role.bowHand).is(Items.BOW))) role.chargeTick = -1;
-            if (role.chargeTick >= 0 && !role.volleyCued && player.isShiftKeyDown() && burstCooldownRemaining(player) <= 0
+            if (role.chargeTick >= 0 && !role.volleyCued && player.isShiftKeyDown()
+                    && volleyBow(player, player.getItemInHand(role.bowHand)) && burstCooldownRemaining(player) <= 0
                     && server.getTickCount() - role.chargeTick >= role.value("skeleton.bowChargeTicks")) {
                 role.volleyCued = true; MonsterBowDisplay.fullDrawCue(player);
             }
@@ -577,7 +577,9 @@ public final class MonsterRoles {
                 role.model.playAmbientSound(); role.nextAmbientTick = server.getTickCount() + role.model.getAmbientSoundInterval() + player.getRandom().nextInt(80);
             }
             if (role.burstRemaining > 0 && System.nanoTime() >= role.nextBurstAt) {
-                if (!heldBow(player).isEmpty()) { shoot(player, role); role.burstRemaining--; }
+                // The volley is loosed from the bow in hand; switching it away cancels the unfired arrows.
+                var bow = player.getItemInHand(role.bowHand);
+                if (volleyBow(player, bow)) { shoot(player, role, bow); role.burstRemaining--; }
                 else role.burstRemaining = 0;
                 role.nextBurstAt = System.nanoTime() + role.millis("skeleton.burstIntervalMillis") * 1_000_000L;
             }
@@ -682,11 +684,16 @@ public final class MonsterRoles {
         player.stopUsingItem();
         if (!MonsterRoundRuntime.canAct(player) || !role.form.skeleton() || !holding || started < 0 || role.burstRemaining > 0
                 || player.level().getServer().getTickCount() - started < role.value("skeleton.bowChargeTicks")) return;
-        // Sneak is read at release: crouching mid-draw still looses the volley; a cooling volley falls back to one arrow.
+        // Sneak is read at release: crouching mid-draw still looses the volley; a cooling volley or a
+        // picked-up world bow falls back to one arrow.
         if (player.isShiftKeyDown()) {
-            if (burst(player)) return;
-            long remaining = burstCooldownRemaining(player);
-            if (remaining > 0) volleyHint(player, "三连射冷却中 · 剩余 " + (remaining + 999) / 1000 + " 秒");
+            if (!volleyBow(player, player.getItemInHand(role.bowHand))) {
+                volleyHint(player, "只有" + MonsterBowDisplay.bowName(role.form) + "能三连射");
+            } else {
+                if (burst(player, role.bowHand)) return;
+                long remaining = burstCooldownRemaining(player);
+                if (remaining > 0) volleyHint(player, "三连射冷却中 · 剩余 " + (remaining + 999) / 1000 + " 秒");
+            }
         }
         shoot(player, role, player.getItemInHand(role.bowHand));
     }
@@ -706,38 +713,43 @@ public final class MonsterRoles {
         dev.hardrush.lobby.LobbyInteractions.get(player.level().getServer()).ifPresent(router -> router.hints(player)
                 .offer("volley", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, text, System.nanoTime() / 1_000_000 + 1500));
     }
+    /**
+     * The volley belongs to the sortie's own bow (born or bought). A bow picked up in the world shoots
+     * single arrows, as it would for a native skeleton, and keeps its own name.
+     */
+    public static boolean volleyBow(ServerPlayer player, ItemStack stack) {
+        return stack.is(Items.BOW) && MonsterItems.owned(player, stack);
+    }
+    /** Looses the volley from whichever hand holds the sortie bow, main hand first. */
     public static boolean burst(ServerPlayer player) {
+        if (volleyBow(player, player.getMainHandItem())) return burst(player, InteractionHand.MAIN_HAND);
+        return volleyBow(player, player.getOffhandItem()) && burst(player, InteractionHand.OFF_HAND);
+    }
+    private static boolean burst(ServerPlayer player, InteractionHand hand) {
         var role = ROLES.get(player.getUUID());
         if (role == null || !MonsterRoundRuntime.canAct(player) || !player.isAlive() || !role.form.skeleton()
-                || heldBow(player).isEmpty() || role.burstRemaining > 0) return false;
+                || !volleyBow(player, player.getItemInHand(hand)) || role.burstRemaining > 0) return false;
         dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "施放技能");
         var formal = MonsterRoundRuntime.cast(player, MonsterSkill.SKELETON_BURST, () -> {
-            if (ROLES.get(player.getUUID()) != role || heldBow(player).isEmpty()) return false;
-            startBurst(player, role); return true;
+            if (ROLES.get(player.getUUID()) != role || !volleyBow(player, player.getItemInHand(hand))) return false;
+            startBurst(player, role, hand); return true;
         });
         if (formal.isPresent()) return formal.orElseThrow();
         long now = System.nanoTime();
         if (now < BURST_READY.getOrDefault(player.getUUID(), 0L)) return false;
         BURST_READY.put(player.getUUID(), now + role.millis("skeleton.burstCooldownMillis") * 1_000_000L);
-        startBurst(player, role); return true;
+        startBurst(player, role, hand); return true;
     }
-    private static void startBurst(ServerPlayer player, Role role) {
-        player.stopUsingItem(); role.chargeTick = -1; shoot(player, role);
+    private static void startBurst(ServerPlayer player, Role role, InteractionHand hand) {
+        player.stopUsingItem(); role.chargeTick = -1; role.bowHand = hand;
+        shoot(player, role, player.getItemInHand(hand));
         role.burstRemaining = (int) role.value("skeleton.burstCount") - 1;
         role.nextBurstAt = System.nanoTime() + role.millis("skeleton.burstIntervalMillis") * 1_000_000L;
-    }
-    private static ItemStack heldBow(ServerPlayer player) {
-        if (player.getMainHandItem().is(Items.BOW)) return player.getMainHandItem();
-        // The volley is loosed from the bow in hand; switching it away cancels the unfired arrows.
-        return player.getOffhandItem().is(Items.BOW) ? player.getOffhandItem() : ItemStack.EMPTY;
     }
     public static ItemStack selectedArrow(ServerPlayer player) {
         if (player.getOffhandItem().is(ItemTags.ARROWS)) return player.getOffhandItem();
         for (int i = 0; i < 36; i++) if (player.getInventory().getItem(i).is(ItemTags.ARROWS)) return player.getInventory().getItem(i);
         return new ItemStack(Items.ARROW);
-    }
-    private static void shoot(ServerPlayer player, Role role) {
-        shoot(player, role, heldBow(player));
     }
     private static void shoot(ServerPlayer player, Role role, ItemStack weapon) {
         if (weapon.isEmpty()) return;
