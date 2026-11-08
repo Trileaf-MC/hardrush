@@ -1,60 +1,37 @@
 package dev.hardrush.monster;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.Container;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.ShulkerBoxBlock;
-import dev.hardrush.protection.ProtectionRuntime;
 
-/** Storage is open, but born items may never leave their owner's current body. */
+/**
+ * A monster only ever handles its own backpack: like a native mob it opens no container, so born
+ * items can leave their owner's body only by dying. World items still come and go through pickup.
+ */
 public final class MonsterInventory {
     private MonsterInventory() {}
 
-    public static boolean storageBlock(ServerPlayer player, BlockPos pos) {
-        if (ProtectionRuntime.protectedLevel(player.level())) return false;
-        var state = player.level().getBlockState(pos);
-        return state.is(Blocks.CHEST) || state.is(Blocks.TRAPPED_CHEST) || state.is(Blocks.ENDER_CHEST)
-                || state.is(Blocks.BARREL) || state.is(Blocks.HOPPER) || state.is(Blocks.DISPENSER)
-                || state.is(Blocks.DROPPER) || state.getBlock() instanceof ShulkerBoxBlock;
-    }
-    public static boolean storageEntity(Entity entity) {
-        return entity instanceof Container && !(entity instanceof Mob) && !ProtectionRuntime.protectedEntity(entity);
-    }
-    private static boolean storageMenu(AbstractContainerMenu menu) {
-        return menu instanceof ChestMenu || menu instanceof ShulkerBoxMenu || menu instanceof HopperMenu
-                || menu instanceof DispenserMenu;
-    }
     public static boolean mayClick(ServerPlayer player, AbstractContainerMenu menu, int index, int button, ContainerInput input) {
         if (!MonsterRoles.isMonster(player)) return true;
         if (!MonsterRoundRuntime.canAct(player)) return false;
-        if (menu != player.inventoryMenu && !storageMenu(menu)) return false;
+        // Every slot from here on belongs to the player's own inventory; 0-4 are the personal crafting grid.
+        if (menu != player.inventoryMenu) return false;
         if (input == ContainerInput.CLONE) return false;
         var carried = menu.getCarried();
         var slot = index >= 0 && index < menu.slots.size() ? menu.slots.get(index) : null;
         var clicked = slot == null ? ItemStack.EMPTY : slot.getItem();
-        boolean own = slot != null && slot.container == player.getInventory();
-        if (menu == player.inventoryMenu && index >= 0 && index <= 4) return false;
+        if (index >= 0 && index <= 4) return false;
         if (MonsterRoles.currentForm(player) == MonsterForm.CREEPER) {
-            if (menu == player.inventoryMenu && index >= 5 && index <= 8) return false;
+            if (index >= 5 && index <= 8) return false;
             var equippable = clicked.get(DataComponents.EQUIPPABLE);
-            if (input == ContainerInput.QUICK_MOVE && menu == player.inventoryMenu && equippable != null
+            if (input == ContainerInput.QUICK_MOVE && equippable != null
                     && equippable.slot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR) return false;
         }
         if (input == ContainerInput.THROW && MonsterItems.bound(clicked)) return false;
-        if (input == ContainerInput.QUICK_MOVE && MonsterItems.bound(clicked) && menu != player.inventoryMenu) return false;
         if (input == ContainerInput.PICKUP && index == -999 && MonsterItems.bound(carried)) return false;
-        if (slot != null && !own && MonsterItems.bound(carried)) return false;
-        if (input == ContainerInput.SWAP) {
-            if (button < 0 || button >= player.getInventory().getContainerSize()) return false;
-            if (!own && MonsterItems.bound(player.getInventory().getItem(button))) return false;
-        }
+        if (input == ContainerInput.SWAP && (button < 0 || button >= player.getInventory().getContainerSize())) return false;
         // The soulcatcher moves like any bound item, but nothing goes in or comes out by hand:
         // native bundle clicks insert with a held stack and pull out with a right click.
         boolean bagClicked = MonsterSoulcatcher.isBag(clicked), bagCarried = MonsterSoulcatcher.isBag(carried);

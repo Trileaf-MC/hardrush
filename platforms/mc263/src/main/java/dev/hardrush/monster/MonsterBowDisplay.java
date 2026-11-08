@@ -27,16 +27,24 @@ import net.minecraft.world.item.component.ItemLore;
 /**
  * Owner-only bow presentation of the volley skill. Authoritative stacks stay vanilla, so drops, chests,
  * observers and settlement never see it; only the owner's inventory packets carry the name, glint and bar.
+ * Only the sortie's own bows carry the volley ({@link MonsterRoles#volleyBow}), so only they are dressed:
+ * a picked-up world bow keeps its own name and durability, like a bow a native skeleton picks up.
  */
 public final class MonsterBowDisplay {
     static final String HOW_TO = "潜行时拉满弓松手，触发 3 连射";
     /** Pixel width of the vanilla item bar; the cooldown advances one visible pixel at a time. */
     static final int BAR_WIDTH = 13;
-    private static final Map<UUID, Look> LOOKS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Dressing> DRESSINGS = new ConcurrentHashMap<>();
     private MonsterBowDisplay() {}
 
     /** filled is the lit bar width while cooling down; a ready bow has none and glints instead. */
     record Look(String name, boolean ready, int filled) {}
+    /** The sortie binding is captured on the server thread so packet rewriting never reads role state. */
+    private record Dressing(String sortie, Look look) {
+        boolean dresses(ServerPlayer owner, ItemStack stack) {
+            return stack.is(Items.BOW) && MonsterItems.owned(owner.getUUID(), sortie, stack);
+        }
+    }
 
     /** Null for forms without a bow skill; an added form must choose here before it compiles. */
     public static String bowName(MonsterForm form) {
@@ -69,19 +77,19 @@ public final class MonsterBowDisplay {
 
     /** Server thread. Resends the owner's bows only when the visible name, readiness or bar pixel changes. */
     static void update(ServerPlayer player, MonsterForm form, long remainingMillis, long cooldownMillis) {
-        var next = look(form, remainingMillis, cooldownMillis);
-        var previous = LOOKS.put(player.getUUID(), next);
+        var next = new Dressing(MonsterRoles.binding(player), look(form, remainingMillis, cooldownMillis));
+        var previous = DRESSINGS.put(player.getUUID(), next);
         if (next.equals(previous)) return;
         refresh(player);
-        if (previous != null && !previous.ready() && next.ready()) cue(player, SoundEvents.CROSSBOW_LOADING_END, 1.0F);
+        if (previous != null && !previous.look().ready() && next.look().ready()) cue(player, SoundEvents.CROSSBOW_LOADING_END, 1.0F);
     }
 
     /** Server thread. The owner's client receives the authoritative bows again. */
     static void clear(ServerPlayer player) {
-        if (LOOKS.remove(player.getUUID()) != null) refresh(player);
+        if (DRESSINGS.remove(player.getUUID()) != null) refresh(player);
     }
 
-    static void clearAll() { LOOKS.clear(); }
+    static void clearAll() { DRESSINGS.clear(); }
 
     /** A private "full draw" click: releasing now looses the volley. */
     static void fullDrawCue(ServerPlayer player) { cue(player, SoundEvents.CROSSBOW_QUICK_CHARGE_3, 1.2F); }
@@ -91,6 +99,7 @@ public final class MonsterBowDisplay {
                 player.getX(), player.getY(), player.getZ(), 0.8F, pitch, player.getRandom().nextLong()));
     }
 
+    /** Every bow is resent: a dressed bow may have just stopped being the sortie's own. */
     private static void refresh(ServerPlayer player) {
         var inventory = player.getInventory();
         for (int slot = 0; slot < Inventory.INVENTORY_SIZE; slot++) resend(player, inventory, slot);
@@ -106,8 +115,9 @@ public final class MonsterBowDisplay {
 
     /** Never mutates the shared packet or its stacks. */
     public static Packet<?> rewrite(ServerPlayer owner, Packet<?> packet) {
-        var look = LOOKS.get(owner.getUUID());
-        if (look == null) return packet;
+        var dressing = DRESSINGS.get(owner.getUUID());
+        if (dressing == null) return packet;
+        var look = dressing.look();
         if (packet instanceof ClientboundBundlePacket bundle) {
             List<Packet<? super ClientGamePacketListener>> rewritten = new ArrayList<>();
             boolean changed = false;
@@ -119,11 +129,11 @@ public final class MonsterBowDisplay {
             }
             return changed ? new ClientboundBundlePacket(rewritten) : packet;
         }
-        if (packet instanceof ClientboundSetPlayerInventoryPacket slot && slot.contents().is(Items.BOW))
+        if (packet instanceof ClientboundSetPlayerInventoryPacket slot && dressing.dresses(owner, slot.contents()))
             return new ClientboundSetPlayerInventoryPacket(slot.slot(), dress(slot.contents(), look));
-        if (packet instanceof ClientboundSetCursorItemPacket cursor && cursor.contents().is(Items.BOW))
+        if (packet instanceof ClientboundSetCursorItemPacket cursor && dressing.dresses(owner, cursor.contents()))
             return new ClientboundSetCursorItemPacket(dress(cursor.contents(), look));
-        if (packet instanceof ClientboundContainerSetSlotPacket slot && slot.getItem().is(Items.BOW)) {
+        if (packet instanceof ClientboundContainerSetSlotPacket slot && dressing.dresses(owner, slot.getItem())) {
             var menu = menu(owner, slot.getContainerId());
             if (menu != null && ownSlot(owner, menu, slot.getSlot()))
                 return new ClientboundContainerSetSlotPacket(slot.getContainerId(), slot.getStateId(), slot.getSlot(), dress(slot.getItem(), look));
@@ -135,12 +145,12 @@ public final class MonsterBowDisplay {
             var items = new ArrayList<ItemStack>(content.items().size());
             for (int i = 0; i < content.items().size(); i++) {
                 var stack = content.items().get(i);
-                boolean own = stack.is(Items.BOW) && ownSlot(owner, menu, i);
+                boolean own = dressing.dresses(owner, stack) && ownSlot(owner, menu, i);
                 items.add(own ? dress(stack, look) : stack);
                 changed |= own;
             }
             var carried = content.carriedItem();
-            if (carried.is(Items.BOW)) { carried = dress(carried, look); changed = true; }
+            if (dressing.dresses(owner, carried)) { carried = dress(carried, look); changed = true; }
             if (changed) return new ClientboundContainerSetContentPacket(content.containerId(), content.stateId(), items, carried);
         }
         return packet;
