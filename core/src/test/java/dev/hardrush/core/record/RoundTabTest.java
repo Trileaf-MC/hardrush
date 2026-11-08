@@ -25,7 +25,7 @@ final class RoundTabTest {
                 Map.of(online.id(), online, offline.id(), offline, id, monster), false, null);
         var text = RoundTab.from(round, 2, null);
         assertTrue(text.header().contains("极限"));
-        assertTrue(text.footer().contains("人类在线 1 / 离线 1 · 怪物 1"));
+        assertTrue(text.footer().contains("人类在线 1 / 离线 1 · 怪物在线 1 / 离线 0"));
         assertTrue(text.footer().contains("进入过末地 2 人"));
         assertThrows(IllegalArgumentException.class, () -> RoundTab.from(round, -1, null));
     }
@@ -78,7 +78,7 @@ final class RoundTabTest {
                 Map.of(entitled.id(), entitled, outside.id(), outside), false, null), 1, null);
         assertTrue(text.header().contains("等待救场"));
         assertTrue(text.footer().contains("救场剩余 60 秒"));
-        assertTrue(text.footer().contains("人类在线 0 / 离线 0 · 怪物 2"));
+        assertTrue(text.footer().contains("人类在线 0 / 离线 0 · 怪物在线 1 / 离线 1"));
         assertTrue(text.footer().contains("进入过末地 1 人"));
         assertFalse(text.footer().contains("SecretOwner"));
         assertFalse(text.footer().contains("尾刀"));

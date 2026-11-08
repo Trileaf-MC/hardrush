@@ -14,7 +14,8 @@ public record RoundTab(String header, String footer) {
         Objects.requireNonNull(round);
         if (endEntrants < 0) throw new IllegalArgumentException("Negative End entrant count");
         long offline = round.participants().values().stream().filter(p -> p.role().isActiveHuman() && !p.online()).count();
-        long monsters = round.participants().values().stream().filter(p -> p.role().isMonster()).count();
+        long monsters = round.participants().values().stream().filter(p -> p.role().isMonster() && p.online()).count();
+        long offlineMonsters = round.participants().values().stream().filter(p -> p.role().isMonster() && !p.online()).count();
         String state = phase(round);
         if (round.phase() == RoundPhase.RUNNING && round.pauseReason() != PauseReason.NONE) {
             state = "暂停（" + pause(round.pauseReason()) + "）";
@@ -22,7 +23,8 @@ public record RoundTab(String header, String footer) {
         String header = "HardRush · 第 " + round.sequence() + " 轮 · "
                 + (round.rules().mode() == GameMode.NORMAL ? "普通" : "极限") + "\n" + state
                 + " · 挑战用时 " + duration(round.challengeMillis());
-        String footer = "人类在线 " + round.onlineHumans() + " / 离线 " + offline + " · 怪物 " + monsters
+        String footer = "人类在线 " + round.onlineHumans() + " / 离线 " + offline
+                + " · 怪物在线 " + monsters + " / 离线 " + offlineMonsters
                 + "\n进入过末地 " + endEntrants + " 人";
         long withdrawn = round.participants().values().stream().filter(p -> p.role() == dev.hardrush.core.round.ParticipantRole.WITHDRAWN).count();
         long disqualified = round.participants().values().stream().filter(p -> p.role() == dev.hardrush.core.round.ParticipantRole.DISQUALIFIED).count();
@@ -61,7 +63,7 @@ public record RoundTab(String header, String footer) {
             case WAITING -> "等待加入／就绪";
             case COUNTDOWN -> "开局倒计时";
             case RUNNING -> "进行中";
-            case RESCUE -> "等待救场";
+            case RESCUE -> round.awaitingReconnect() ? "人类全部离线，等待重连或救场" : "等待救场";
             case SETTLING -> RoundResultText.stageLabel(round.result(), "结算已保存");
             case CELEBRATING -> RoundResultText.stageLabel(round.result(), "通关庆祝");
             case ROTATING -> "正在轮换";
