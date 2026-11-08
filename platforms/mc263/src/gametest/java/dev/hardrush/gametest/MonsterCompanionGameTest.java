@@ -14,6 +14,7 @@ import dev.hardrush.combat.MonsterSourceHolder;
 import dev.hardrush.combat.MonsterCombatRuntime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.lang.reflect.Proxy;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -37,6 +38,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import net.minecraft.world.phys.BlockHitResult;
@@ -314,6 +316,79 @@ public final class MonsterCompanionGameTest {
                 test.succeed();
             } finally { clean(owner); }
         });
+    }
+
+    /**
+     * A retrack into another dimension: each follower travels as vanilla's fresh copy of itself, beside its owner
+     * and still this sortie's companion, with its combat lineage and equipment intact.
+     */
+    @GameTest(maxTicks = 400)
+    public void retrackRegroupsFollowersAcrossDimensions(GameTestHelper test) {
+        var owner = MonsterRoleGameTest.actor(test);
+        var nether = owner.level().getServer().getLevel(Level.NETHER);
+        var landing = new BlockPos(owner.getBlockX(), 100, 0);
+        var chunk = new ChunkPos(landing.getX() >> 4, landing.getZ() >> 4);
+        Runnable cleanup = () -> {
+            clean(owner);
+            for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) nether.setChunkForced(chunk.x() + dx, chunk.z() + dz, false);
+        };
+        var frozen = new FrozenMonsterSource(UUID.randomUUID(), owner.getUUID(), 6, 7, true);
+        var travellers = new java.util.LinkedHashMap<UUID, CombatOrigin>();
+        test.startSequence()
+                .thenExecute(() -> { for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) nether.setChunkForced(chunk.x() + dx, chunk.z() + dz, true); })
+                .thenIdle(80)
+                .thenWaitUntil(() -> test.assertTrue(nether.isPositionEntityTicking(landing), "The Nether landing is loaded and simulated"))
+                .thenExecute(() -> guarded(cleanup, () -> {
+                    for (int dx = -6; dx <= 6; dx++) for (int dz = -6; dz <= 6; dz++) {
+                        nether.setBlockAndUpdate(landing.offset(dx, -1, dz), Blocks.SMOOTH_STONE.defaultBlockState());
+                        for (int dy = 0; dy <= 4; dy++) nether.setBlockAndUpdate(landing.offset(dx, dy, dz), Blocks.AIR.defaultBlockState());
+                    }
+                    MonsterRoles.select(owner, "zombie");
+                    for (boolean drowned : List.of(false, true)) {
+                        var companion = summon(test, owner, false, drowned);
+                        ((MonsterSourceHolder) companion).hardrush$stampMonsterSource(frozen);
+                        var origin = new CombatOrigin(frozen.roundId(), UUID.randomUUID(),
+                                new CombatActor(owner.getUUID(), ParticipantRole.MONSTER_DEPLOYED, 6, 7),
+                                AttackKind.SUMMON, Optional.of(companion.getUUID()), List.of());
+                        ((CombatOriginHolder) companion).hardrush$sealCombatOrigin(Optional.of(origin));
+                        travellers.put(companion.getUUID(), origin);
+                    }
+                    var left = travellers.keySet().stream().map(id -> (Zombie) owner.level().getEntity(id)).toList();
+                    var events = left.stream().map(MonsterCompanions::event).toList();
+                    owner.teleportTo(nether, landing.getX() + .5, landing.getY(), landing.getZ() + .5, Set.of(), 0, 0, true);
+                    MonsterCompanions.regroup(owner);
+                    for (int i = 0; i < left.size(); i++) {
+                        var original = left.get(i);
+                        test.assertTrue(original.isRemoved(), "The follower leaves its old dimension");
+                        var copy = nether.getEntity(original.getUUID());
+                        test.assertTrue(copy instanceof Zombie && copy.getClass() == original.getClass() && copy.isAlive()
+                                && copy.distanceToSqr(owner) < 64, "Each follower arrives beside its owner in the new dimension");
+                        var arrived = (Zombie) copy;
+                        test.assertTrue(owner.getUUID().equals(MonsterCompanions.owner(arrived))
+                                && events.get(i).equals(MonsterCompanions.event(arrived)), "The copy keeps its owner and creation event");
+                        test.assertTrue(MonsterCombatRuntime.source(arrived).orElseThrow().equals(frozen)
+                                && CombatRuntime.originOf(arrived).orElseThrow().equals(travellers.get(arrived.getUUID())),
+                                "The copy keeps its frozen combat source and sealed combat origin");
+                        test.assertTrue(((MonsterMobAccessor) arrived).hardrush$goalSelector().getAvailableGoals().stream()
+                                .anyMatch(goal -> goal.getGoal().getClass().getSimpleName().equals("CompanionFollowGoal")),
+                                "Loading the copy configures it to follow again");
+                        if (arrived instanceof Drowned) test.assertTrue(arrived.getMainHandItem().is(Items.TRIDENT), "A drowned keeps its trident");
+                    }
+                }))
+                .thenIdle(5)
+                .thenExecute(() -> guarded(cleanup, () -> {
+                    for (var id : travellers.keySet()) {
+                        var arrived = nether.getEntity(id);
+                        test.assertTrue(arrived != null && arrived.isAlive() && !MonsterCompanions.isDismissing(arrived),
+                                "The copy's sortie binding still matches, so the companion sweep keeps it");
+                    }
+                }))
+                .thenExecute(cleanup)
+                .thenSucceed();
+    }
+    private static void guarded(Runnable cleanup, Runnable body) {
+        try { body.run(); }
+        catch (RuntimeException | Error failure) { cleanup.run(); throw failure; }
     }
 
     /** Loaded but outside simulation: goals no longer run there, so the companion is fetched instead. */

@@ -62,7 +62,9 @@ import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.pathfinder.PathType;
+import net.minecraft.world.level.pathfinder.PathfindingContext;
 import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
+import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -317,45 +319,66 @@ public final class MonsterCompanions {
     }
 
     /**
-     * The owner just made a long jump of their own (a retrack). Followers in that dimension land beside them
-     * now, while their old chunks are still loaded; once those unload, nothing would bring them along.
+     * The owner just made a long jump of their own (a retrack). Followers land beside them now, while their old
+     * chunks are still loaded; once those unload, nothing would bring them along. A retrack may cross
+     * dimensions, so followers left in another dimension travel too: the sortie's companions go where it goes.
      */
     public static void regroup(ServerPlayer owner) {
-        for (Mob mob : companions(owner.level().getServer())) if (activeOwner(mob) == owner && canCatchUp(mob, owner)) catchUp(mob, owner);
+        for (Mob mob : companions(owner.level().getServer()))
+            if (activeOwner(mob) == owner && canTravel(mob) && (mob.level() != owner.level() || farBehind(mob, owner))) catchUp(mob, owner);
     }
 
-    /** Same dimension, far enough that a wolf would teleport, and not tied to a mount or a lead. */
-    private static boolean canCatchUp(Mob mob, ServerPlayer owner) {
-        return !mob.isRemoved() && mob.isAlive() && !isDismissing(mob) && follower(mob) && owner.level() == mob.level()
-                && !mob.isPassenger() && !mob.isLeashed() && mob.distanceToSqr(owner) >= CATCH_UP_DISTANCE_SQR;
+    /** Alive, walks or swims after its owner, and not tied to a mount or a lead. */
+    private static boolean canTravel(Mob mob) {
+        return !mob.isRemoved() && mob.isAlive() && !isDismissing(mob) && follower(mob) && !mob.isPassenger() && !mob.isLeashed();
+    }
+
+    /** In the owner's dimension and as far behind as a tamed wolf lets itself fall before it teleports. */
+    private static boolean farBehind(Mob mob, ServerPlayer owner) {
+        return owner.level() == mob.level() && mob.distanceToSqr(owner) >= CATCH_UP_DISTANCE_SQR;
     }
 
     /**
-     * Wolf-like teleport to a loaded, walkable spot beside the owner, outside protected levels; an amphibious
-     * follower may also land in water. Every spot of the wolf's ring is tried in random order, since a
-     * regroup gets one chance only. Whatever it was fighting is now far behind, so it drops that target.
+     * Wolf-like teleport to {@link #besideOwner}. Whatever it was fighting is now far behind, so it drops that
+     * target. Into another dimension it travels the vanilla way: {@code Entity.teleport} recreates it there from
+     * its saved data, so its tags, frozen combat source and sealed combat origin carry over, and the copy is
+     * configured again when it loads.
      */
     private static boolean catchUp(Mob mob, ServerPlayer owner) {
-        var level = (ServerLevel) mob.level();
-        if (ProtectionRuntime.protectedLevel(level)) return false;
+        var destination = besideOwner(mob, owner);
+        if (destination == null) return false;
+        mob.getNavigation().stop();
+        mob.setTarget(null);
+        replaceTag(mob, COMMAND, null);
+        if (mob.level() == owner.level()) {
+            mob.snapTo(destination.x, destination.y, destination.z, mob.getYRot(), mob.getXRot());
+            return true;
+        }
+        return mob.teleport(new TeleportTransition(owner.level(), destination, Vec3.ZERO,
+                mob.getYRot(), mob.getXRot(), TeleportTransition.DO_NOTHING)) != null;
+    }
+
+    /**
+     * A loaded, walkable spot in the owner's level, outside protected levels, where the mob fits; an amphibious
+     * follower may also land in water. Every spot of the wolf's ring is tried in random order, since a regroup
+     * gets one chance only. Checks the owner's level, not the mob's, so it also serves a mob in another dimension.
+     */
+    private static Vec3 besideOwner(Mob mob, ServerPlayer owner) {
+        var level = owner.level();
+        if (ProtectionRuntime.protectedLevel(level)) return null;
         boolean swims = mob.getNavigation() instanceof AmphibiousPathNavigation;
+        var pathing = new PathfindingContext(level, mob);
         var spots = new ArrayList<BlockPos>(CATCH_UP_RING.size());
         for (BlockPos offset : CATCH_UP_RING) spots.add(owner.blockPosition().offset(offset));
         Collections.shuffle(spots, new Random(mob.getRandom().nextLong()));
         for (BlockPos pos : spots) {
             if (!loaded(level, pos) || level.getBlockState(pos.below()).getBlock() instanceof LeavesBlock) continue;
-            var type = WalkNodeEvaluator.getPathTypeStatic(mob, pos);
+            var type = WalkNodeEvaluator.getPathTypeStatic(pathing, pos.mutable());
             if (type != PathType.WALKABLE && !(swims && type == PathType.WATER)) continue;
             var destination = Vec3.atBottomCenterOf(pos);
-            var box = mob.getBoundingBox().move(destination.subtract(mob.position()));
-            if (!safeBox(level, mob, box)) continue;
-            mob.snapTo(destination.x, destination.y, destination.z, mob.getYRot(), mob.getXRot());
-            mob.getNavigation().stop();
-            mob.setTarget(null);
-            replaceTag(mob, COMMAND, null);
-            return true;
+            if (safeBox(level, mob, mob.getBoundingBox().move(destination.subtract(mob.position())))) return destination;
         }
-        return false;
+        return null;
     }
 
     /** A creature the soulcatcher releases as this sortie's companion, with a fresh creation event. */
@@ -390,7 +413,7 @@ public final class MonsterCompanions {
             if (mob.isRemoved()) continue;
             ServerPlayer owner = activeOwner(mob);
             if (owner == null) dismiss(mob);
-            else if (canCatchUp(mob, owner) && !((ServerLevel) mob.level()).isPositionEntityTicking(mob.blockPosition())) catchUp(mob, owner);
+            else if (canTravel(mob) && farBehind(mob, owner) && !((ServerLevel) mob.level()).isPositionEntityTicking(mob.blockPosition())) catchUp(mob, owner);
         }
     }
     private static void dismiss(Mob mob) {
