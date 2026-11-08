@@ -693,12 +693,20 @@ public final class PlayerProfiles implements AutoCloseable {
         prepare(rebound, entry.target);
     }
 
+    /**
+     * A committed human life may enter (or resume) during a rescue too: when every human went offline the
+     * rescue waits for exactly this reconnect, whose online event then resumes the race.
+     */
+    private static boolean humansMayEnter(RoundSnapshot round) {
+        return round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE;
+    }
+
     /** Unlock the vanilla bed/anchor destination only after the replacement life has durably committed. */
     public boolean confirmRespawn(ServerPlayer player, RoundSnapshot round) {
         requireMainThread();
         var entry = players.get(player.getUUID());
         var participant = round.participants().get(player.getUUID());
-        if (closed || round.rules().mode() != GameMode.NORMAL || round.phase() != RoundPhase.RUNNING
+        if (closed || round.rules().mode() != GameMode.NORMAL || !humansMayEnter(round)
                 || entry == null || entry.player != player || !isReady(player.getUUID(), round)
                 || participant == null || participant.role() != ParticipantRole.HUMAN_ACTIVE
                 || participant.lifeSequence() != entry.expectedRespawnLife) return false;
@@ -1106,7 +1114,7 @@ public final class PlayerProfiles implements AutoCloseable {
         var participant = round.participants().get(player.getUUID());
         if (closed || !isReady(player.getUUID(), round)
                 || (celebration ? round.phase() != RoundPhase.SETTLING && round.phase() != RoundPhase.CELEBRATING
-                        : round.phase() != RoundPhase.RUNNING) || participant == null
+                        : !humansMayEnter(round)) || participant == null
                 || participant.role() != ParticipantRole.HUMAN_ACTIVE
                 || entry.player != player || !generation(round).equals(entry.target)) return false;
         if (celebration && (entry.fresh || entry.awaitingRespawn)) return false;

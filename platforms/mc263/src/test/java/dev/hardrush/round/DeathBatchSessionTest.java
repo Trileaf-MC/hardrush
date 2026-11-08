@@ -29,7 +29,7 @@ class DeathBatchSessionTest {
             var cause = new CombatEvent(round, UUID.randomUUID(), batch, 1, victim, Optional.of(origin),
                     CombatEvent.Attribution.HUMAN, "minecraft:player_attack", Optional.of(hunter), Optional.of(hunter),
                     20, true, clock.get());
-            session.captureDeath(round, victim, 1, 0, batch);
+            session.captureDeath(round, victim, 1, 0, batch, cause.origin(), false);
             session.captureLethalEvidence(cause);
             session.captureLethalEvidence(cause);
             session.finishDamageBatch(round, batch);
@@ -42,7 +42,7 @@ class DeathBatchSessionTest {
             assertFalse(session.mutationPending());
 
             UUID later = UUID.randomUUID();
-            session.captureDeath(round, hunter, 1, 0, later);
+            session.captureDeath(round, hunter, 1, 0, later, Optional.empty(), false);
             session.finishDamageBatch(round, later);
             pump(() -> !session.mutationPending());
             assertEquals(RoundPhase.RESCUE, session.snapshot().orElseThrow().phase());
@@ -66,13 +66,13 @@ class DeathBatchSessionTest {
         Path path = seed();
         try (var session = open(path)) {
             UUID batch = UUID.randomUUID();
-            session.captureDeath(round, victim, 1, 0, batch);
-            session.captureDeath(round, hunter, 1, 1, batch);
+            session.captureDeath(round, victim, 1, 0, batch, lethal(batch).origin(), false);
+            session.captureDeath(round, hunter, 1, 1, batch, Optional.empty(), false);
             assertFalse(session.mutationPending(), "Native batch must close before any partial identity is published");
             session.captureLethalEvidence(lethal(batch));
             session.finishDamageBatch(round, batch);
             assertEquals(ParticipantRole.HUMAN_ACTIVE, session.snapshot().orElseThrow().participants().get(victim).role());
-            session.captureDeath(round, victim, 1, 0, batch);
+            session.captureDeath(round, victim, 1, 0, batch, lethal(batch).origin(), false);
             session.captureLethalEvidence(lethal(batch));
             session.finishDamageBatch(round, batch);
             pump(() -> !session.mutationPending());
@@ -114,7 +114,7 @@ class DeathBatchSessionTest {
         Path path = seed();
         try (var session = open(path)) {
             UUID batch = UUID.randomUUID();
-            session.captureDeath(round, victim, 1, 0, batch);
+            session.captureDeath(round, victim, 1, 0, batch, lethal(batch).origin(), false);
             session.captureLethalEvidence(lethal(batch));
             session.finishDamageBatch(round, batch);
             pump(() -> !session.mutationPending());

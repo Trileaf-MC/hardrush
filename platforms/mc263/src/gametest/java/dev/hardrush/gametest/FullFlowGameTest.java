@@ -90,10 +90,31 @@ public final class FullFlowGameTest {
                 }).thenIdle(8)
                 .thenExecute(()->{
                     test.assertTrue(f.monster.player.getInventory().getItem(7).is(Items.ECHO_SHARD),"Tick repair preserves fixed return control");
-                    test.assertTrue(state.actionBar(f.monster.connection.packets,"正在返回营地"),"Actual progress action bar was emitted; channel="+LobbyRuntime.channeling(f.monster.player)+" feedback="+f.monster.connection.packets.stream().filter(ClientboundSystemChatPacket.class::isInstance).map(ClientboundSystemChatPacket.class::cast).map(p->p.content().getString()).toList());
+                    test.assertTrue(state.actionBar(f.monster.connection.packets,"移动或受伤会打断"),"First return of the round explains the interruption rule on the action bar");
+                })
+                // The one-shot rule notice outranks progress for its short lease; the countdown takes over before the channel ends.
+                .thenWaitUntil(()->f.await(state.actionBar(f.monster.connection.packets,"正在返回营地"),"Return progress follows the rule notice"))
+                .thenExecute(()->{
+                    test.assertTrue(LobbyRuntime.channeling(f.monster.player),"Progress action bar appears while the return is still channeling");
                     f.monster.keys(true);
                 })
                 .thenWaitUntil(()->f.await(!LobbyRuntime.channeling(f.monster.player),"Movement keys cancel return"))
+                .thenExecute(()->{
+                    f.monster.keys(false);
+                    test.assertTrue(f.monster.player.getOffhandItem().isEmpty(),"Native click fixture models an empty off hand");
+                    state.clickBlock(f.monster.player,7,f.monster.player.blockPosition().below());
+                    test.assertTrue(LobbyRuntime.channeling(f.monster.player),"Right-clicking a block starts return; the off-hand packets of that click do not break it");
+                    f.monster.player.connection.handlePunch(ServerboundPunchPacket.INSTANCE);
+                }).thenIdle(2)
+                .thenExecute(()->{
+                    var p=f.monster.player;
+                    var pig=net.minecraft.world.entity.EntityTypes.PIG.create(p.level(),net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+                    pig.snapTo(p.getX()+1.5,p.getY(),p.getZ(),0,0);pig.setNoAi(true);p.level().addFreshEntity(pig);
+                    state.clickEntity(p,7,pig.getId());
+                    test.assertTrue(LobbyRuntime.channeling(p),"Right-clicking a creature starts return; the off-hand packets of that click do not break it");
+                    pig.discard();
+                    p.connection.handlePunch(ServerboundPunchPacket.INSTANCE);
+                }).thenIdle(2)
                 .thenExecute(()->{
                     f.monster.keys(false);
                     state.use(f.monster.player,7); f.monster.player.connection.handlePunch(ServerboundPunchPacket.INSTANCE);
@@ -110,11 +131,13 @@ public final class FullFlowGameTest {
                 .thenExecute(f.target::disconnect)
                 .thenWaitUntil(()->f.await(!f.target.participant().online()&&!f.session.mutationPending(),"Only human offline commits"))
                 .thenExecute(()->{
-                    test.assertValueEqual(f.round().phase(),RoundPhase.RUNNING,"Offline human retains eligibility without rescue/wipe");
-                    test.assertValueEqual(f.round().pauseReason(),PauseReason.NO_ONLINE_HUMANS,"Only challenge time pauses");
+                    test.assertValueEqual(f.round().phase(),RoundPhase.RESCUE,"The last human leaving starts a rescue instead of idling forever");
+                    test.assertTrue(f.round().awaitingReconnect(),"The rescue waits for the offline human to reconnect");
+                    test.assertValueEqual(f.target.participant().role(),ParticipantRole.HUMAN_ACTIVE,"Offline human retains eligibility without a wipe");
                 });
         f.target.login(seq);
         seq.thenWaitUntil(()->f.await(f.target.participant().online()&&!dev.hardrush.player.PlayerProfiles.isLocked(f.target.player)&&!f.session.mutationPending(),"Human reconnect restores same life"))
+                .thenExecute(()->test.assertValueEqual(f.round().phase(),RoundPhase.RUNNING,"The reconnect ends the rescue"))
                 .thenExecute(()->{
                     f.monster.move(f.target.player.position().add(1,0,0)); f.target.player.setHealth(1);f.target.player.setInvulnerableTime(0);
                     f.monster.player.connection.handleAttack(new ServerboundAttackPacket(f.target.player.getId()));
@@ -340,6 +363,21 @@ public final class FullFlowGameTest {
             test.assertTrue(f.monster.participant().equals(participant) && !f.session.mutationPending(), "Opening and closing never commits a monster exit");
         }
         void use(ServerPlayer p,int slot){p.connection.handleSetCarriedItem(new ServerboundSetCarriedItemPacket(slot));p.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND,1,0,0));}
+        /** One vanilla right-click on a block with nothing in the off hand: main hand on the block, main-hand item, off hand on the block. */
+        void clickBlock(ServerPlayer p,int slot,BlockPos pos){
+            p.connection.handleSetCarriedItem(new ServerboundSetCarriedItemPacket(slot));
+            var hit=new BlockHitResult(Vec3.atCenterOf(pos).add(0,.5,0),Direction.UP,pos,false);
+            p.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,hit,1));
+            p.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND,2,0,0));
+            p.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.OFF_HAND,hit,3));
+        }
+        /** The same click aimed at a creature: one interaction per hand, with the main-hand item between them. */
+        void clickEntity(ServerPlayer p,int slot,int entity){
+            p.connection.handleSetCarriedItem(new ServerboundSetCarriedItemPacket(slot));
+            HuntInputFixtures.click(p,entity,InteractionHand.MAIN_HAND);
+            p.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND,4,0,0));
+            HuntInputFixtures.click(p,entity,InteractionHand.OFF_HAND);
+        }
         /** Stand on the altar's north-west gold cell; the rite itself runs on server ticks. */
         void altar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),l.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.ALTAR)).add(-1,1,-1));}
         void offAltar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),l.landing(LobbyLayout.Landing.ALTAR));}

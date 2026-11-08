@@ -17,7 +17,10 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.level.Explosion;
 
-/** Main-thread authoritative capture. No kill credit, last attacker, proximity or online-owner fallback. */
+/**
+ * Main-thread authoritative capture. Attack provenance never falls back to a last attacker, proximity
+ * or online owner; only the revival kill credit remembers the last attributed hit, as vanilla does.
+ */
 public final class CombatRuntime {
     public interface RoundAccess {
         Optional<UUID> roundOf(ServerLevel level);
@@ -38,12 +41,14 @@ public final class CombatRuntime {
     private static final Map<MinecraftServer, Binding> BINDINGS = new IdentityHashMap<>();
     private static final ThreadLocal<Deque<Cause>> CAUSES = ThreadLocal.withInitial(ArrayDeque::new);
     private static final Map<MinecraftServer, Long> SEQUENCES = new IdentityHashMap<>();
+    private static final Map<MinecraftServer, KillCreditMemory> CREDITS = new IdentityHashMap<>();
     private CombatRuntime() {}
 
     public static void configure(MinecraftServer server, RoundAccess access, Consumer<CombatEvent> events) {
         BINDINGS.put(Objects.requireNonNull(server), new Binding(Objects.requireNonNull(access), Objects.requireNonNull(events)));
+        CREDITS.put(server, new KillCreditMemory());
     }
-    public static void unconfigure(MinecraftServer server) { BINDINGS.remove(server); SEQUENCES.remove(server); }
+    public static void unconfigure(MinecraftServer server) { BINDINGS.remove(server); SEQUENCES.remove(server); CREDITS.remove(server); }
 
     public static Optional<CombatOrigin> originOf(Entity entity) {
         if (!(entity instanceof CombatOriginHolder holder)) return Optional.empty();
@@ -55,11 +60,15 @@ public final class CombatRuntime {
         return binding == null ? Optional.empty() : binding.rounds.roundOf(level);
     }
     private static Optional<CombatOrigin> created(ServerLevel level, Entity owner, AttackKind kind, Optional<UUID> direct) {
-        var round = round(level);
-        if (round.isEmpty() || !(owner instanceof ServerPlayer player) || owner.level() != level
+        if (!(owner instanceof ServerPlayer player) || owner.level() != level
                 || owner.isRemoved() || !player.isAlive() || rejectDamage(level)) return Optional.empty();
+        return ownerOrigin(level, player, kind, direct);
+    }
+    /** A fresh origin for the owner's present round identity, wherever the owner currently stands. */
+    public static Optional<CombatOrigin> ownerOrigin(ServerLevel level, ServerPlayer owner, AttackKind kind, Optional<UUID> direct) {
+        var round = round(level);
+        if (round.isEmpty() || dev.hardrush.participation.ParticipationControl.disabled(level.getServer(), owner.getUUID())) return Optional.empty();
         var actor = BINDINGS.get(level.getServer()).rounds.actor(round.get(), owner.getUUID());
-        if (dev.hardrush.participation.ParticipationControl.disabled(level.getServer(), owner.getUUID())) return Optional.empty();
         if (actor.isEmpty() || !actor.get().mayCreateAttack()) return Optional.empty();
         return Optional.of(new CombatOrigin(round.get(), UUID.randomUUID(), actor.get(), kind, direct, List.of()));
     }
@@ -203,19 +212,42 @@ public final class CombatRuntime {
         return participationRevoked(level, origin)
                 || round.isPresent() && origin.filter(value -> !value.isHumanAttack(round.get())).isPresent();
     }
-    /** Monster attacks that pay coins: the same direct kinds that earn revival kill credit. */
-    public static void playerDamaged(ServerLevel level, net.minecraft.server.level.ServerPlayer victim, float actualDamage) {
+    /**
+     * Every hit a player actually took. A survived hit with a kill credit is remembered for the vanilla
+     * kill-credit window; monster attacks of the same direct kinds that earn revival credit pay coins.
+     */
+    public static void playerDamaged(ServerLevel level, ServerPlayer victim, DamageSource source, float actualDamage) {
         if (actualDamage <= 0) return;
         var binding = BINDINGS.get(level.getServer()); var round = round(level);
         if (binding == null || round.isEmpty()) return;
         var cause = current(level);
         var origin = cause == null ? Optional.<CombatOrigin>empty() : cause.origin;
+        var memory = CREDITS.get(level.getServer());
+        if (memory != null && victim.isAlive()) {
+            killCredit(level, source, origin).ifPresent(credit -> memory.hurt(victim.getUUID(), credit, level.getServer().getTickCount()));
+        }
         if (origin.isEmpty() || !origin.get().roundId().equals(round.get())
                 || origin.get().actor().identity() != dev.hardrush.core.round.ParticipantRole.MONSTER_DEPLOYED) return;
         switch (origin.get().kind()) {
             case MELEE, ARROW, CREEPER, SUMMON -> binding.rounds.playerDamaged(level, victim, origin.get(), actualDamage);
             default -> {}
         }
+    }
+    /**
+     * Whom a player's death is credited to, resolved during native AFTER_DEATH like vanilla
+     * getKillCredit: the lethal hit's own credit, otherwise the last credited hit within
+     * {@link KillCreditMemory#WINDOW_TICKS}. Forgets the victim's memory either way.
+     */
+    public static Optional<CombatOrigin> killCredit(ServerLevel level, ServerPlayer victim, DamageSource source) {
+        var memory = CREDITS.get(level.getServer());
+        if (memory == null || round(level).isEmpty()) return Optional.empty();
+        var cause = current(level);
+        var lethal = killCredit(level, source, cause == null ? resolve(level, source) : cause.origin);
+        return memory.died(victim.getUUID(), lethal, level.getServer().getTickCount());
+    }
+    /** The hit's own provenance, except that a soulcatcher creature only credits within its owner's latest releases. */
+    private static Optional<CombatOrigin> killCredit(ServerLevel level, DamageSource source, Optional<CombatOrigin> origin) {
+        return dev.hardrush.monster.MonsterSoulcatcher.killCredit(level, source, origin);
     }
     /** Called once after actual damage; dragon parts use the parent dragon UUID. */
     public static void observed(ServerLevel level, Entity victim, DamageSource source, float actualDamage, boolean lethal) {
