@@ -122,7 +122,7 @@ class DeathBatchRevivalTest {
         oldRound = new CombatOrigin(UUID.randomUUID(), oldRound.originId(), oldRound.actor(), oldRound.kind(),
                 oldRound.directEntityId(), List.of());
         var sources = new java.util.ArrayList<CombatOrigin>();
-        sources.add(null); // Includes falls/lava after an earlier nonlethal hit: no direct lethal provenance.
+        sources.add(null); // A fall or burn with no attributed hit in the kill-credit window.
         sources.add(oldRound);
         sources.add(origin(UUID.randomUUID(), ParticipantRole.HUMAN_ACTIVE, AttackKind.MELEE));
         sources.add(origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.SUMMON));
@@ -133,6 +133,46 @@ class DeathBatchRevivalTest {
             apply(engine, batch(engine, death(engine, other, source)));
             assertEquals(0, engine.view().participants().get(human).revivalCharges());
         }
+    }
+
+    /** The adapter's vanilla kill credit: an environmental death shortly after a player's hit. */
+    private RoundDeath creditedDeath(RoundEngine engine, UUID victim, CombatOrigin lethal, CombatOrigin credit) {
+        var p = engine.view().participants().get(victim);
+        return new RoundDeath(victim, p.lifeSequence(), p.monsterDeploymentSequence(), Optional.of(lethal(victim, lethal)),
+                Optional.ofNullable(credit), false);
+    }
+
+    @Test void fallsAndBurnsAfterAnAttributedHitCreditThatHumanOrMonster() {
+        for (var attacker : List.of(origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.MELEE),
+                origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.ARROW))) {
+            var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true));
+            apply(engine, batch(engine, creditedDeath(engine, other, null, attacker)));
+            assertEquals(1, engine.view().participants().get(human).revivalCharges(), attacker.kind().toString());
+        }
+        for (var kind : List.of(AttackKind.MELEE, AttackKind.SUMMON)) {
+            var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), monster(true, false));
+            apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
+            apply(engine, batch(engine, creditedDeath(engine, other, null, origin(monster, ParticipantRole.MONSTER_DEPLOYED, kind))));
+            assertEquals(1, engine.view().participants().get(monster).revivalCharges(), kind.toString());
+            assertEquals(ParticipantRole.MONSTER_LOBBY, engine.view().participants().get(monster).role(), "The kill recalls the hunter");
+        }
+    }
+
+    @Test void theKillCreditNotTheLethalSourceDecidesTheReward() {
+        // A soulcatcher creature outside its owner's latest releases: the lethal hit carries no credit.
+        var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), monster(true, false));
+        apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
+        apply(engine, batch(engine, creditedDeath(engine, other, origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON), null)));
+        assertEquals(0, engine.view().participants().get(monster).revivalCharges());
+        // An unattributed lethal hit after a human's blow within the window pays that human.
+        var human = fixture(GameMode.HARDCORE, human(this.human, true), human(other, true));
+        apply(human, batch(human, creditedDeath(human, other, null, origin(this.human, ParticipantRole.HUMAN_ACTIVE, AttackKind.MELEE))));
+        assertEquals(1, human.view().participants().get(this.human).revivalCharges());
+        // The victim's own earlier hit (vanilla: the last player was themself) earns nothing.
+        var self = fixture(GameMode.HARDCORE, human(this.human, true), human(other, true));
+        apply(self, batch(self, creditedDeath(self, other, null, origin(other, ParticipantRole.HUMAN_ACTIVE, AttackKind.ARROW))));
+        assertEquals(0, self.view().participants().get(other).revivalCharges());
+        assertEquals(0, self.view().participants().get(this.human).revivalCharges());
     }
 
     @Test void humanArrowsCannotRewardDifferentLifeOrDeploymentOfTheirOwner() {
@@ -305,16 +345,18 @@ class DeathBatchRevivalTest {
         assertThrows(IllegalStateException.class, () -> batch(engine, humanDeath));
     }
 
-    @Test void offlineLobbySummonOwnerEarnsAndOfflineHumanPreventsAnyRescue() {
+    @Test void offlineLobbySummonOwnerEarnsAndOfflineHumanTurnsTheLastDeathIntoAReconnectRescue() {
         var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, false), monster(false, false));
         apply(engine, batch(engine, death(engine, human, origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON))));
         assertTrue(engine.view().participants().get(monster).revivalEntitled());
-        assertEquals(RoundPhase.RUNNING, engine.view().phase());
-        assertEquals(PauseReason.NO_ONLINE_HUMANS, engine.view().pauseReason());
-        clock.seconds(500);
+        assertEquals(RoundPhase.RESCUE, engine.view().phase());
+        assertTrue(engine.view().awaitingReconnect());
+        assertEquals(60_000, engine.view().remainingPhaseMillis());
+        clock.seconds(60);
         apply(engine, engine.proposeTick(UUID.randomUUID()));
-        assertEquals(RoundPhase.RUNNING, engine.view().phase());
-        assertNull(engine.view().result());
+        assertEquals(RoundPhase.SETTLING, engine.view().phase());
+        assertEquals("HUMANS_OFFLINE", engine.view().result().reason());
+        assertFalse(engine.view().participants().get(monster).revivalEntitled());
     }
 
     @Test void noHumanAndNoEntitlementFailsWhileNormalDeathNeverUsesHardcoreSettlement() {

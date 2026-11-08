@@ -11,6 +11,7 @@ final class RoundResultTextTest {
     @Test void engineFailureCodesAreTranslated() {
         assertEquals("所有人类都已阵亡", RoundResultText.reason(new RoundResult(Kind.FAILED, null, "ALL_HUMANS_DEAD")));
         assertEquals("救场时间耗尽，没有人复生", RoundResultText.reason(new RoundResult(Kind.FAILED, null, "RESCUE_EXPIRED")));
+        assertEquals("人类全部离线，救场时间内没有人回来", RoundResultText.reason(new RoundResult(Kind.FAILED, null, "HUMANS_OFFLINE")));
         assertEquals("没有还能继续挑战的玩家", RoundResultText.reason(new RoundResult(Kind.FAILED, null, "NO_ELIGIBLE_PARTICIPANTS")));
         assertEquals("本轮挑战未能完成", RoundResultText.reason(new RoundResult(Kind.FAILED, null, "SOME_FUTURE_CODE")));
     }
