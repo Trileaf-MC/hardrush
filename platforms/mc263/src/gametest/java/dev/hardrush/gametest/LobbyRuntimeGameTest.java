@@ -229,8 +229,11 @@ public final class LobbyRuntimeGameTest {
                     f.monster.command("hardrush skill");
                     f.test.assertTrue(MonsterRoles.status(f.monster.player).contains("arrowsFired=3"), "Cooldown rejects another burst after the first finishes");
                     f.assertSkillCooldowns();
-                    f.killMonsterPeer(true);
                 })
+                // The volley left before dusk; arrows still in flight when combat opens would land on the
+                // human and add real damage coins to the defeat payout measured next.
+                .thenWaitUntil(() -> f.await(f.monsterArrowsSettled(), "The pre-dusk volley lands before combat opens"))
+                .thenExecute(() -> f.killMonsterPeer(true))
                 .thenWaitUntil(() -> f.await(f.monsterReady(true), "Monster defeat uses native replacement and returns to lobby"))
                 .thenExecute(() -> {
                     f.monster.player = f.monster.current();
@@ -356,10 +359,13 @@ public final class LobbyRuntimeGameTest {
                                 // Simulate a damaged natural spawn without changing any surrounding terrain.
                                 f.level.getChunkAt(floor).setBlockState(floor, Blocks.AIR.defaultBlockState(), 2);
                                 f.test.assertFalse(RoundWorldBundle.safeStanding(f.level, worlds.spawn()), "The fixture really removed the natural spawn floor");
+                                var hints = dev.hardrush.lobby.LobbyInteractions.get(f.server).orElseThrow().hints(hunter.player);
+                                // The totem pickup's one-shot notice outranks the altar for a few wall-clock seconds by
+                                // design; how long the transfer steps above took must not decide which line is read.
+                                hints.clear("notice");
                                 hunter.command("hardrush revive");
                                 dev.hardrush.lobby.RevivalAltar.tick(f.server, f.round(), f.session);
-                                var hint = dev.hardrush.lobby.LobbyInteractions.get(f.server).orElseThrow().hints(hunter.player)
-                                        .current(System.nanoTime() / 1_000_000).orElse("");
+                                var hint = hints.current(System.nanoTime() / 1_000_000).orElse("");
                                 f.test.assertTrue(hunter.participant().revivalEntitled()
                                                 && hunter.participant().role() == ParticipantRole.MONSTER_LOBBY
                                                 && !dev.hardrush.lobby.RevivalAltar.channeling(hunter.player) && hint.contains("出生点暂不安全"),
@@ -512,6 +518,13 @@ public final class LobbyRuntimeGameTest {
                     .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
             level.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DuskPact.DUSK_TICKS + 5_000);
             dev.hardrush.pact.DuskPactRuntime.tick(server);
+        }
+        /** Every arrow the monster's body shot has been removed or is stuck (native in-ground arrows are motionless). */
+        boolean monsterArrowsSettled() {
+            var owner = monster.player;
+            return level.getEntitiesOfClass(net.minecraft.world.entity.projectile.arrow.AbstractArrow.class,
+                            owner.getBoundingBox().inflate(128), arrow -> arrow.getOwner() == owner).stream()
+                    .allMatch(arrow -> arrow.isRemoved() || arrow.getDeltaMovement().equals(Vec3.ZERO));
         }
         void killMonsterPeer(boolean alreadyMonster) {
             dead = monster.player;
