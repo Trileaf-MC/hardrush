@@ -65,13 +65,13 @@ class MonsterCoinTimingSessionTest {
         try (var session = open(path)) {
             clock.set(seconds(5));
             var first = UUID.randomUUID();
-            session.captureDeath(round, human, 1, 0, first);
+            session.captureDeath(round, human, 1, 0, first, lethal(first, human, new CombatActor(monster, ParticipantRole.MONSTER_DEPLOYED, 1, 3)).origin(), false);
             session.captureLethalEvidence(lethal(first, human, new CombatActor(monster, ParticipantRole.MONSTER_DEPLOYED, 1, 3)));
             session.finishDamageBatch(round, first);
             assertTrue(session.mutationPending(), "The kill's batch is still being written");
             // Before that write completes, another human kills the still-deployed hunter in a separate batch.
             var second = UUID.randomUUID();
-            session.captureDeath(round, monster, 1, 3, second, true);
+            session.captureDeath(round, monster, 1, 3, second, Optional.empty(), true);
             session.captureLethalEvidence(lethal(second, monster, new CombatActor(other, ParticipantRole.HUMAN_ACTIVE, 1, 0)));
             session.finishDamageBatch(round, second);
             clock.set(seconds(6));
@@ -136,17 +136,17 @@ class MonsterCoinTimingSessionTest {
         Path path = seed();
         try (var session = open(path)) {
             var batch = UUID.randomUUID();
-            session.captureDeath(round, monster, 1, 3, batch, true);
+            session.captureDeath(round, monster, 1, 3, batch, Optional.empty(), true);
             // AFTER_DEATH is followed by the final environmental hit's evidence, with no player origin.
             session.captureLethalEvidence(new CombatEvent(round, UUID.randomUUID(), batch, 1, monster,
                     Optional.empty(), CombatEvent.Attribution.PENDING_VERIFICATION, "minecraft:fall",
                     Optional.empty(), Optional.empty(), 20, true, clock.get()));
-            session.captureDeath(round, monster, 1, 3, batch, false);
+            session.captureDeath(round, monster, 1, 3, batch, Optional.empty(), false);
             session.finishDamageBatch(round, batch);
             settle(session);
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
             assertEquals(5, coins(session), "Later evidence must preserve the native memory captured at death");
-            session.captureDeath(round, monster, 1, 3, UUID.randomUUID(), true);
+            session.captureDeath(round, monster, 1, 3, UUID.randomUUID(), Optional.empty(), true);
             session.finishDamageBatch(round, batch);
             settle(session);
             assertEquals(5, coins(session), "Repeated callbacks cannot award the death twice");
@@ -159,7 +159,7 @@ class MonsterCoinTimingSessionTest {
 
     @Test void recentPlayerDamageRewardsADeathWithoutACombatBatch() throws Exception {
         try (var session = open(seed())) {
-            session.captureDeath(round, monster, 1, 3, null, true);
+            session.captureDeath(round, monster, 1, 3, null, Optional.empty(), true);
             settle(session);
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
             assertEquals(5, coins(session));
@@ -187,7 +187,7 @@ class MonsterCoinTimingSessionTest {
             assertEquals(7, coins(session));
             assertEquals(OptionalInt.of(17_000), session.monsterWorth(monster));
             assertTrue(session.monsterWorth(human).isEmpty(), "Only a deployed monster body has worth");
-            session.captureDeath(round, monster, 1, 3, null, true);
+            session.captureDeath(round, monster, 1, 3, null, Optional.empty(), true);
             settle(session);
             assertTrue(session.monsterWorth(monster).isEmpty(), "A body back in the camp has no worth");
         }
@@ -224,7 +224,7 @@ class MonsterCoinTimingSessionTest {
             session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 4_000);
             // 1 + 2 at x1, 2 + 4 at x1.25: weighted 10.5 points.
             assertEquals(OptionalInt.of(20_500), session.monsterWorth(monster));
-            session.captureDeath(round, monster, 1, 3, null, true);
+            session.captureDeath(round, monster, 1, 3, null, Optional.empty(), true);
             settle(session);
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
             assertEquals(20_500, committedWorth(session), "The formal credit matches the worth read at death");
@@ -250,7 +250,7 @@ class MonsterCoinTimingSessionTest {
             assertEquals(expectedWorth, worth, "The death reward reads the bounty of each flush's own time");
             assertEquals(expectedWorth >= 15_000, dev.hardrush.core.round.MonsterWorth.bookLevel(
                     session.snapshot().orElseThrow().rules(), worth) > 0, "The book follows the same worth");
-            session.captureDeath(round, monster, 1, 3, null, true);
+            session.captureDeath(round, monster, 1, 3, null, Optional.empty(), true);
             settle(session);
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
             assertEquals(expectedWorth, committedWorth(session), "The formal credit matches the worth read at death");
