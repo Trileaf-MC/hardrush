@@ -131,8 +131,8 @@ class HumansOfflineRescueTest {
 
     @Test void tabCountsOnlyConnectedMonstersAsOnline() {
         var e = engine(GameMode.HARDCORE, human(a, true), monster(true, false));
-        assertTrue(RoundTab.from(e.view(), 0, null).footer().contains("人类在线 1 / 离线 0 · 怪物在线 1 / 离线 0"));
+        assertTrue(RoundTab.from(e.view(), 0, null).footer().contains("人类 1 · 怪物 1\n"));
         apply(e, online(e, m, false));
-        assertTrue(RoundTab.from(e.view(), 0, null).footer().contains("人类在线 1 / 离线 0 · 怪物在线 0 / 离线 1"));
+        assertTrue(RoundTab.from(e.view(), 0, null).footer().contains("人类 1 · 怪物 0（离线 1）"));
     }
 }

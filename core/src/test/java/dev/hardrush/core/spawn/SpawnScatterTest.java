@@ -34,10 +34,10 @@ class SpawnScatterTest {
     }
 
     @Test void bearingUsesEightCompassPointsAndRoundsToTenBlocks() {
-        assertEquals("你位于出生点北方约 620 格", SpawnScatter.bearing(0, -618));
-        assertEquals("你位于出生点东方约 300 格", SpawnScatter.bearing(304, 0));
-        assertEquals("你位于出生点东南方约 140 格", SpawnScatter.bearing(100, 100));
-        assertEquals("你位于出生点西北方约 140 格", SpawnScatter.bearing(-100, -100));
+        assertEquals("你在出生点 **北** 方约 **620** 格", SpawnScatter.bearing(0, -618));
+        assertEquals("你在出生点 **东** 方约 **300** 格", SpawnScatter.bearing(304, 0));
+        assertEquals("你在出生点 **东南** 方约 **140** 格", SpawnScatter.bearing(100, 100));
+        assertEquals("你在出生点 **西北** 方约 **140** 格", SpawnScatter.bearing(-100, -100));
         assertEquals("西南", SpawnScatter.direction(-100, 100));
         assertEquals("东北", SpawnScatter.direction(100, -100));
         assertEquals("南", SpawnScatter.direction(0, 500));

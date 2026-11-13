@@ -362,6 +362,7 @@ public final class RoundRuntime {
             dev.hardrush.record.HistoryLibrary.disconnected(handler.player);
             dev.hardrush.lobby.HumanEntry.disconnected(handler.player);
             dev.hardrush.lobby.RevivalAltar.disconnected(handler.player);
+            dev.hardrush.notice.StatusBars.forget(handler.player);
             dev.hardrush.hunt.HuntBossBars.disconnected(handler.player);
             var session = SESSIONS.get(server);
             if (session != null) session.onOnline(handler.player.getUUID(), handler.player.getScoreboardName(), false);
@@ -477,6 +478,7 @@ public final class RoundRuntime {
             dev.hardrush.pact.DuskPactRuntime.close(server);
             dev.hardrush.lobby.HumanEntry.close(server);
             dev.hardrush.lobby.RevivalAltar.close(server);
+            dev.hardrush.notice.StatusBars.close(server);
             dev.hardrush.world.FarLandings.close(server);
             LobbyWorld.shutdown(server);
         });
@@ -710,20 +712,25 @@ public final class RoundRuntime {
         var service = BOOKS.get(server);
         var session = SESSIONS.get(server);
         if (service == null || session == null || !canReceiveBook(player)) {
-            player.sendSystemMessage(Component.literal("档案核验完成后可在大厅或本轮人类比赛中领书。")); return;
+            dev.hardrush.notice.Notices.refuse(player, "现在还不能领书，稍等片刻"); return;
         }
         var round = session.snapshot().orElseThrow();
         service.claim(player.getUUID(), roundId, volume, round.rules().fingerprint(),
                 new OperationTag(round.roundId(), UUID.randomUUID(), round.version())).whenComplete((result, error) -> {
             if (SESSIONS.get(server) != session || server.getPlayerList().getPlayer(player.getUUID()) != player) return;
-            player.sendSystemMessage(Component.literal(error == null ? bookMessage(result.status()) : "历史书暂未领到，请稍后重试。"));
+            if (error != null) LOGGER.warn("Manual history book claim for {} failed", player.getUUID(), error);
+            var status = error == null ? result.status() : HistoryBookService.Status.RETRYABLE_FAILURE;
+            // The answer belongs on the action bar, which a chest screen covers: close the library first.
+            player.closeContainer();
+            if (status == HistoryBookService.Status.DELIVERED || status == HistoryBookService.Status.ALREADY_DELIVERED) pageTurn(player);
+            else manualBookRefusal(status, volume).ifPresent(text -> dev.hardrush.notice.Notices.refuse(player, text));
         });
     }
 
     public static void readOwnedBook(ServerPlayer player) {
-        if (!canReceiveBook(player)) { player.sendSystemMessage(Component.literal("档案核验完成后可在书屋阅读已领取书册。")); return; }
+        if (!canReceiveBook(player)) { dev.hardrush.notice.Notices.refuse(player, "现在还不能读书，稍等片刻"); return; }
         player.closeContainer();
-        if (!BookReader.open(player, -1)) player.sendSystemMessage(Component.literal("背包中暂无历史书，请在书屋选择轮次领取。"));
+        if (!BookReader.open(player, -1)) dev.hardrush.notice.Notices.refuse(player, "背包里没有战绩书 · 可在书屋领取");
     }
     private static int readBook(CommandSourceStack source, int slot) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         var player = source.getPlayerOrException();
@@ -805,33 +812,43 @@ public final class RoundRuntime {
                 if (BOOK_ATTEMPTS.get(server) != attempts || attempts.get(player.getUUID()) != attempt) return;
                 attempt.inFlight = false;
                 attempt.retryAt = System.nanoTime() + 5_000_000_000L;
-                if (error != null) return;
+                // Failures retry silently every five seconds; only their log says why.
+                if (error != null) { LOGGER.debug("Automatic history book for {} will retry", player.getUUID(), error); return; }
                 attempt.done = result.status() == HistoryBookService.Status.DELIVERED
                         || result.status() == HistoryBookService.Status.ALREADY_DELIVERED
                         || result.status() == HistoryBookService.Status.NO_HISTORY;
-                if (server.getPlayerList().getPlayer(player.getUUID()) == player
-                        && (result.status() == HistoryBookService.Status.DELIVERED
-                            || result.status() == HistoryBookService.Status.INVENTORY_FULL && !attempt.fullNotified)) {
-                    player.sendSystemMessage(Component.literal(bookMessage(result.status())));
-                    if (result.status() == HistoryBookService.Status.INVENTORY_FULL) attempt.fullNotified = true;
+                if (server.getPlayerList().getPlayer(player.getUUID()) != player) return;
+                if (result.status() == HistoryBookService.Status.DELIVERED) {
+                    pageTurn(player);
+                    dev.hardrush.notice.Notices.hint(player, "上一轮的 " + dev.hardrush.notice.Notices.key("战绩书") + " 放进了你的背包");
+                } else if (result.status() == HistoryBookService.Status.INVENTORY_FULL && !attempt.fullNotified) {
+                    // Retries go on unseen, so this one stays readable in chat.
+                    dev.hardrush.notice.Notices.personal(player, "背包满了，上一轮的战绩书没能放进去。空出一格后会自动补发");
+                    attempt.fullNotified = true;
                 }
             });
         }
     }
 
-    private static String bookMessage(HistoryBookService.Status status) {
-        return switch (status) {
-            case DELIVERED -> "历史成书已放入背包；手持右键阅读，或到书屋选择“阅读已领取书册”；书屋也可领取分卷。";
-            case ALREADY_DELIVERED -> "本版主册已自动发放。书屋可选择轮次手工补领。";
-            case INVENTORY_FULL -> "背包已满，自动主册保留待领并重试；所选历史卷也已保留待领，请空出格位后在书屋再次领取。";
-            case RATE_LIMITED -> "手工领书间隔为5秒，请稍后重试。";
-            case INVALID_VOLUME -> "该卷不存在，请查看主册列出的卷数。";
-            case NO_HISTORY -> "暂无该轮已结算历史。";
-            case OFFLINE -> "玩家离线，主册仍保留待领。";
-            case BUSY -> "领书请求正在处理，请稍后重试。";
-            case STALE_SCOPE -> "轮次或档案状态已变化，请重新领书。";
-            case RETRYABLE_FAILURE -> "历史书发放或库存保存未完成，自动主册保留待领。";
-        };
+    /** Why a claim at the library desk gave no book; empty when nothing needs saying (the player left). */
+    private static Optional<String> manualBookRefusal(HistoryBookService.Status status, int volume) {
+        return Optional.ofNullable(switch (status) {
+            case DELIVERED, ALREADY_DELIVERED, OFFLINE -> null;
+            case INVENTORY_FULL -> "背包满了，空出一格再来领";
+            case RATE_LIMITED -> "领得太快了 · " + dev.hardrush.notice.Notices.key(HistoryBookService.MANUAL_COOLDOWN_NANOS / 1_000_000_000L) + " 秒后再试";
+            case INVALID_VOLUME -> "这一轮没有第 " + dev.hardrush.notice.Notices.key(volume) + " 卷";
+            case NO_HISTORY -> "这一轮还没有战绩";
+            case BUSY -> "正在取书，稍等片刻";
+            case STALE_SCOPE -> "书屋的记录有更新，重新打开再领";
+            case RETRYABLE_FAILURE -> "没能领到战绩书，稍后再试";
+        });
+    }
+
+    /** A book arriving in the inventory sounds like one; the item itself is the confirmation. */
+    private static void pageTurn(ServerPlayer player) {
+        if (player.connection != null) player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                net.minecraft.core.Holder.direct(net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN), net.minecraft.sounds.SoundSource.PLAYERS,
+                player.getX(), player.getY(), player.getZ(), 1f, 1f, 0));
     }
     private static final class BookAttempt { boolean inFlight; boolean done; boolean fullNotified; long retryAt; }
 

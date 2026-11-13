@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 
 final class RoundTabTest {
     @Test void durationFloorsMillisAndSupportsRoundsLongerThanADay() {
-        assertEquals("00:00:00", RoundTab.duration(999));
-        assertEquals("01:02:03", RoundTab.duration(3_723_999));
+        assertEquals("0:00:00", RoundTab.duration(999));
+        assertEquals("1:02:03", RoundTab.duration(3_723_999));
         assertEquals("100:00:00", RoundTab.duration(360_000_000));
         assertThrows(IllegalArgumentException.class, () -> RoundTab.duration(-1));
     }
@@ -24,20 +24,20 @@ final class RoundTabTest {
         var round = snapshot(RoundPhase.RUNNING, PauseReason.NONE, 0,
                 Map.of(online.id(), online, offline.id(), offline, id, monster), false, null);
         var text = RoundTab.from(round, 2, null);
-        assertTrue(text.header().contains("极限"));
-        assertTrue(text.footer().contains("人类在线 1 / 离线 1 · 怪物在线 1 / 离线 0"));
+        assertTrue(text.header().contains("极限挑战"));
+        assertTrue(text.footer().contains("人类 1（离线 1）· 怪物 1\n"));
         assertTrue(text.footer().contains("进入过末地 2 人"));
         assertThrows(IllegalArgumentException.class, () -> RoundTab.from(round, -1, null));
     }
     @Test void countdownsRoundUpAndPauseAndRecoveryProblemsArePlainStatus() {
         var countdown = RoundTab.from(snapshot(RoundPhase.COUNTDOWN, PauseReason.NOT_RUNNING, 2_001_000_000L,
                 Map.of(), false, null), 0, null);
-        assertTrue(countdown.footer().contains("开局倒计时 3 秒"));
+        assertTrue(countdown.header().contains("开局倒计时 · 剩余 3 秒"));
         var paused = RoundTab.from(snapshot(RoundPhase.RUNNING, PauseReason.NO_ONLINE_HUMANS, 0,
                 Map.of(), true, null), 0, "database-password-must-not-appear");
-        assertTrue(paused.header().contains("暂停（无人类在线）"));
-        assertTrue(paused.footer().contains("计时待核验"));
-        assertTrue(paused.footer().contains("状态保存／适配异常"));
+        assertTrue(paused.header().contains("计时暂停 · 等待人类上线"));
+        assertTrue(paused.footer().contains("用时有待管理员核实"));
+        assertTrue(paused.footer().contains("比赛出了点问题"));
         assertFalse(paused.footer().contains("database-password"));
     }
     @Test void committedTerminalResultIncludesSanitizedWinnerAndFrozenCountdown() {
@@ -46,13 +46,13 @@ final class RoundTabTest {
         var text = RoundTab.from(snapshot(RoundPhase.CELEBRATING, PauseReason.SETTLED, 600_000_000_000L,
                 Map.of(winner.id(), winner), false, result), 5, null);
         assertTrue(text.header().contains("通关庆祝"));
-        assertTrue(text.footer().contains("尾刀：甲乙"));
+        assertTrue(text.footer().contains("胜者 甲乙"));
         assertFalse(text.footer().contains("§"));
-        assertTrue(text.footer().contains("轮换倒计时 600 秒"));
+        assertTrue(text.header().contains("剩余 600 秒"));
         var failed = RoundTab.from(snapshot(RoundPhase.SETTLING, PauseReason.SETTLED, 1,
                 Map.of(), false, new RoundResult(RoundResult.Kind.FAILED, null, "no humans")), 0, null);
-        assertTrue(failed.footer().contains("挑战失败"));
-        assertTrue(failed.footer().contains("轮换倒计时 1 秒"));
+        assertTrue(failed.header().contains("挑战失败"));
+        assertTrue(failed.header().contains("剩余 1 秒"));
     }
     @Test void unsuccessfulDisplayAndLegacyCelebrationShowTheirActualOutcome() {
         for (var phase : java.util.List.of(RoundPhase.SETTLING, RoundPhase.CELEBRATING)) {
@@ -60,12 +60,12 @@ final class RoundTabTest {
                 var result = new RoundResult(kind, null, "terminal");
                 var text = RoundTab.from(snapshot(phase, PauseReason.SETTLED, 29_000_000_000L,
                         Map.of(), false, result), 0, null);
-                String expected = kind == RoundResult.Kind.FAILED ? "挑战失败" : "挑战中止";
+                String expected = kind == RoundResult.Kind.FAILED ? "挑战失败" : "本轮已中止";
                 assertTrue(text.header().contains(expected));
-                assertTrue(text.footer().contains(expected));
-                assertTrue(text.footer().contains("轮换倒计时 29 秒"));
+                assertFalse(text.footer().contains(expected), "The outcome is the header's stage, not repeated");
+                assertTrue(text.header().contains("剩余 29 秒"));
                 assertFalse((text.header() + text.footer()).contains("庆祝"));
-                assertFalse(text.footer().contains("尾刀"));
+                assertFalse(text.footer().contains("胜者"));
             }
         }
     }
@@ -76,12 +76,12 @@ final class RoundTabTest {
                 false, false, 5_000_000_000L, 0, 1, false);
         var text = RoundTab.from(snapshot(RoundPhase.RESCUE, PauseReason.RESCUE, 59_000_000_001L,
                 Map.of(entitled.id(), entitled, outside.id(), outside), false, null), 1, null);
-        assertTrue(text.header().contains("等待救场"));
-        assertTrue(text.footer().contains("救场剩余 60 秒"));
-        assertTrue(text.footer().contains("人类在线 0 / 离线 0 · 怪物在线 1 / 离线 1"));
+        assertTrue(text.header().contains("救场中"));
+        assertTrue(text.header().contains("救场中 · 剩余 60 秒"));
+        assertTrue(text.footer().contains("人类 0 · 怪物 1（离线 1）"));
         assertTrue(text.footer().contains("进入过末地 1 人"));
         assertFalse(text.footer().contains("SecretOwner"));
-        assertFalse(text.footer().contains("尾刀"));
+        assertFalse(text.footer().contains("胜者"));
     }
     private static Participant human(String name, boolean online) {
         return new Participant(UUID.randomUUID(), name, ParticipantRole.HUMAN_ACTIVE, online, false, 0, 0, 1, false);

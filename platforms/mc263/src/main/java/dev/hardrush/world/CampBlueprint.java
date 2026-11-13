@@ -39,8 +39,8 @@ public final class CampBlueprint {
     }
     public static Map<BlockPos, String[]> labels(BlockPos anchor) {
         var labels = new LinkedHashMap<BlockPos, String[]>();
-        labels.put(anchor.offset(-4, 0, -8), new String[]{"人类集结区", "开局前站入即准备", "挑战中站4秒加入", "离开即取消"});
-        labels.put(anchor.offset(4, 0, 1), new String[]{"HardRush 营地", "正在准备", "前方：人类集结区", ""});
+        labels.put(anchor.offset(-4, 0, -8), new String[]{"集结区", "开局前走进即准备", "挑战中站4秒加入", "走出即取消"});
+        labels.put(anchor.offset(4, 0, 1), new String[]{"HardRush 营地", "正在准备", "前方：集结区", ""});
         for (var facility : LobbyLayout.Facility.values()) {
             var p = LobbyLayout.facility(facility);
             String name = switch (facility) {
@@ -53,18 +53,18 @@ public final class CampBlueprint {
             labels.put(sign(anchor, facility), new String[]{name,
                     switch (facility) {
                         case RULES -> "右键阅读"; case HISTORY -> "右键查战绩领书";
-                        case MERCHANT -> "怪物币换出场增强";
+                        case MERCHANT -> "怪物币换出击增强";
                         case VAULT -> "手持试炼钥匙右键"; case OMINOUS_VAULT -> "手持不祥钥匙右键";
                         default -> "极限挑战时开放";
                     },
                     switch (facility) {
                         case MERCHANT -> "先选角色再右键";
-                        case VAULT, OMINOUS_VAULT -> "抽取一次性装备"; default -> "";
+                        case VAULT, OMINOUS_VAULT -> "开出一次性装备"; default -> "";
                     }, ""});
         }
         return labels;
     }
-    static final String[] ALTAR_SIGN = {"复生祭坛", "持复生图腾", "站上金块4秒", "空装回到世界"};
+    static final String[] ALTAR_SIGN = {"复生祭坛", "持复生图腾", "站上金块4秒", "空手回到世界"};
     /** Each facility's sign stands two blocks south of it; the altar's beside its south steps, clear of the path. */
     public static BlockPos sign(BlockPos anchor, LobbyLayout.Facility facility) {
         var p = LobbyLayout.facility(facility);

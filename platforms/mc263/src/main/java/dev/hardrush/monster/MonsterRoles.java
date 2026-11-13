@@ -474,9 +474,18 @@ public final class MonsterRoles {
                 : role.form == MonsterForm.SKELETON && player.isInPowderSnow;
         // Keep 26.3 ConversionTracker boundaries, with shorter player-only phase durations.
         if (!exposed) { role.exposure = -1; role.conversion = -1; return; }
+        if (role.exposure < 0) teachConversion(player, role.form);
         if (role.conversion >= 0) {
             if (--role.conversion < 0) convert(player, role.form == MonsterForm.ZOMBIE ? MonsterForm.DROWNED : MonsterForm.STRAY);
         } else if (++role.exposure >= ENVIRONMENT_EXPOSURE_TICKS) role.conversion = ENVIRONMENT_CONVERSION_TICKS;
+    }
+    /** The first soak of a round tells what the water or snow will do; the conversion itself needs no words. */
+    private static void teachConversion(ServerPlayer player, MonsterForm form) {
+        var server = player.level().getServer();
+        dev.hardrush.round.RoundRuntime.snapshot(server).ifPresent(round -> {
+            if (dev.hardrush.notice.Notices.firstInRound(player, round.roundId(), "convert:" + form))
+                dev.hardrush.notice.Notices.hint(player, form == MonsterForm.ZOMBIE ? "泡在水里会慢慢化身溺尸" : "陷在细雪里会慢慢化身流浪者");
+        });
     }
     /** Purpose of the trident a zombie receives when it rises from the sea as a drowned; never parked. */
     public static final String SEA_TRIDENT = "sea_trident";
@@ -692,7 +701,7 @@ public final class MonsterRoles {
             } else {
                 if (burst(player, role.bowHand)) return;
                 long remaining = burstCooldownRemaining(player);
-                if (remaining > 0) volleyHint(player, "三连射冷却中 · 剩余 " + (remaining + 999) / 1000 + " 秒");
+                if (remaining > 0) volleyHint(player, "三连射冷却中 · " + dev.hardrush.notice.Notices.key((remaining + 999) / 1000) + " 秒");
             }
         }
         shoot(player, role, player.getItemInHand(role.bowHand));

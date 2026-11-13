@@ -45,7 +45,7 @@ public final class SpawnScatter {
     /** The arrival caption, distance rounded to ten blocks. */
     public static String bearing(double dx, double dz) {
         long distance = Math.round(Math.hypot(dx, dz) / 10) * 10;
-        return "你位于出生点" + direction(dx, dz) + "方约 " + distance + " 格";
+        return "你在出生点 **" + direction(dx, dz) + "** 方约 **" + distance + "** 格";
     }
 
     private SpawnScatter() {}

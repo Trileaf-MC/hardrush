@@ -41,9 +41,8 @@ public final class TabListGameTest {
             var running = round(id, first, second, RoundPhase.RUNNING, PauseReason.NONE, 0, null);
             runtime.refresh(server, running, 7, null, true);
             var packet = latest(test, a);
-            test.assertTrue(packet.header().getString().contains("第 42 轮") && packet.header().getString().contains("普通")
-                    && packet.header().getString().contains("01:02:03"), "Native TAB header contains round, mode and second-granularity challenge time");
-            test.assertTrue(packet.footer().getString().contains("进入过末地 7 人") && packet.footer().getString().contains("人类在线 2"),
+            test.assertTrue(packet.header().getString().contains("第 42 轮") && packet.header().getString().contains("普通模式")                    && packet.header().getString().contains("1:02:03"), "Native TAB header contains round, mode and second-granularity challenge time");
+            test.assertTrue(packet.footer().getString().contains("进入过末地 7 人") && packet.footer().getString().contains("人类 2"),
                     "Native TAB footer contains UUID-deduplicated End entrants and online human count");
             test.assertValueEqual(latest(test, b).header().getString(), packet.header().getString(), "Both native connections receive the same race header");
             runtime.refresh(server, running, 7, null, false);
@@ -54,17 +53,17 @@ public final class TabListGameTest {
             var paused = round(id, first, second, RoundPhase.RUNNING, PauseReason.NO_ONLINE_HUMANS, 0, null);
             runtime.refresh(server, paused, 8, null, true);
             packet = latest(test, a);
-            test.assertTrue(packet.header().getString().contains("暂停（无人类在线）") && packet.footer().getString().contains("进入过末地 8 人"),
+            test.assertTrue(packet.header().getString().contains("计时暂停 · 等待人类上线") && packet.footer().getString().contains("进入过末地 8 人"),
                     "A state-event refresh immediately publishes pause status and new End entrant count");
             var countdown = round(id, first, second, RoundPhase.COUNTDOWN, PauseReason.NOT_RUNNING, 2_001_000_000L, null);
             runtime.refresh(server, countdown, 8, null, true);
-            test.assertTrue(latest(test, a).footer().getString().contains("开局倒计时 3 秒"), "Nonzero partial seconds round up in countdown text");
+            test.assertTrue(latest(test, a).header().getString().contains("开局倒计时 · 剩余 3 秒"), "Nonzero partial seconds round up in countdown text");
             var celebration = round(id, first, second, RoundPhase.CELEBRATING, PauseReason.SETTLED, 600_000_000_000L,
                     new RoundResult(RoundResult.Kind.COMPLETED, first.getUUID(), "trusted-first-dragon"));
             runtime.refresh(server, celebration, 8, null, true);
             packet = latest(test, a);
-            test.assertTrue(packet.footer().getString().contains("尾刀：" + first.getScoreboardName())
-                    && packet.footer().getString().contains("轮换倒计时 600 秒"), "Terminal TAB displays the committed winner and celebration countdown");
+            test.assertTrue(packet.footer().getString().contains("胜者 " + first.getScoreboardName())
+                    && packet.header().getString().contains("剩余 600 秒"), "Terminal TAB displays the committed winner and celebration countdown");
             int unchangedSecond = b.packets.size();
             try (var reconnected = new Capture(first)) {
                 runtime.refresh(server, celebration, 8, null, true);

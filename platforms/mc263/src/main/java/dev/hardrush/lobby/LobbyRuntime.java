@@ -1,9 +1,7 @@
 package dev.hardrush.lobby;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.hardrush.core.hunt.PersonalHuntRequest;
 import dev.hardrush.core.lobby.LobbyLayout;
-import dev.hardrush.core.record.RoundResultText;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.lobby.LobbyContext;
@@ -22,14 +20,11 @@ import dev.hardrush.notice.Notices;
 import dev.hardrush.notice.Replies;
 import java.util.*;
 import java.util.function.Supplier;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -105,29 +100,6 @@ public final class LobbyRuntime {
     public static void initialize() {
         if (initialized) return;
         initialized = true;
-        CommandRegistrationCallback.EVENT.register((dispatcher, registries, environment) -> {
-            var root = Commands.literal("hardrush")
-                    .then(Commands.literal("menu").executes(ctx -> {
-                        var player = ctx.getSource().getPlayerOrException();
-                        if (!LobbyMenus.open(player)) tell(player, "现在不能打开菜单");
-                        return 1;
-                    }));
-            for (String action : List.of("deploy", "return", "skill")) {
-                root.then(Commands.literal(action).executes(ctx -> {
-                    command(ctx.getSource().getPlayerOrException(), action, ""); return 1;
-                }));
-            }
-            for (String action : List.of("role", "dimension", "vote")) {
-                root.then(Commands.literal(action).then(Commands.argument("value", StringArgumentType.word())
-                        .suggests((ctx, builder) -> {
-                            if (action.equals("role")) List.of("zombie", "skeleton", "creeper").forEach(builder::suggest);
-
-                            return builder.buildFuture();
-                        }).executes(ctx -> { command(ctx.getSource().getPlayerOrException(), action,
-                                StringArgumentType.getString(ctx, "value")); return 1; })));
-            }
-            dispatcher.register(root);
-        });
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
             if (entity instanceof ServerPlayer player && taken > 0) interruptReturn(player, "受到伤害");
         });
@@ -172,36 +144,16 @@ public final class LobbyRuntime {
             @Override public boolean formalLevel(ServerLevel level) { return !dimension(binding, level).equals("lobby"); }
         });
         LobbyMenus.configure(server, new LobbyMenus.Access() {
-            @Override public boolean available(ServerPlayer player) {
-                if (contextAvailable(player, binding, LobbyContext.COMPETITION)) return true;
-                return !session.competitionLocked() && current(player, binding) && player.isAlive() && !PlayerProfiles.isLocked(player)
-                        && session.snapshot().map(r -> r.participants().get(player.getUUID()))
-                            .filter(p -> p.role() == ParticipantRole.MONSTER_DEPLOYED).isPresent();
-            }
+            // The old competition menu is gone: every action has an in-world entrance (models, altar, items).
+            @Override public boolean available(ServerPlayer player) { return false; }
             @Override public boolean available(ServerPlayer player, LobbyContext context) {
                 return context == LobbyContext.COMPETITION ? available(player) : contextAvailable(player, binding, context);
             }
             @Override public List<LobbyMenus.Button> buttons(ServerPlayer player, LobbyContext context) {
                 if (context == LobbyContext.WITHDRAWAL) return dev.hardrush.participation.ParticipationControl.withdrawalButtons(player);
-                if (context == LobbyContext.COMPETITION) return buttons(player);
                 if (context == LobbyContext.HISTORY) return dev.hardrush.record.HistoryLibrary.buttons(player);
-                var round = session.snapshot().orElseThrow();
-                return List.of(new LobbyMenus.Button(Items.BOOK, "站入集结区参加，离开取消准备", "info", ""),
-                        new LobbyMenus.Button(Items.PAPER, "追猎规则：" + (round.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET ? "右键庭院模型，循着目标足迹伺机出场；再次右键取消" : "旧版投票（升级恢复隔离）"), "info", ""),
-                        new LobbyMenus.Button(Items.CLOCK, "右键快捷栏技能；回响碎片归返营地，追迹罗盘发光时可循迹回到目标附近；引导中移动、攻击、用物或受伤会中断", "info", ""),
-                        new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "极限：人类击杀在赛人类每人 +1 次复生；击杀怪物不奖励", "info", ""),
-                        new LobbyMenus.Button(Items.ROTTEN_FLESH, "怪物击杀在赛人类：每人 +1 次复生，可累计", "info", ""),
-                        new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "死亡后走上营地北侧的复生祭坛，站在金块上 4 秒消耗一次空装复生，冷却中可用", "info", ""),
-                        new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "营地背包的复生图腾数量即剩余次数；丢出可转赠营地怪物，落地5分钟作废", "info", ""),
-                        new LobbyMenus.Button(Items.EMERALD, "怪物币：伤害人类、近期受玩家伤害后阵亡都能赚，领先者有悬赏倍率；找营地女巫购买下次出场的增强", "info", ""),
-                        new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "持有复生次数的怪物不能追猎、选角或交易，须先到祭坛复生；击杀人类后立即被召回祭坛前；复生时怪物币清空", "info", ""),
-                        new LobbyMenus.Button(Items.TRIAL_KEY, "试炼钥匙插入营地宝库抽一件一次性装备；穿戴的装备被玩家击杀时按原版概率掉落", "info", ""),
-                        new LobbyMenus.Button(Items.EXPERIENCE_BOTTLE, "出场时经验条就是你的身价：从 10 级起，伤害人类会上涨，最高 30 级；近期受玩家伤害后阵亡会喷出经验，满 15 级再掉一本同等级附魔台的署名附魔书", "info", ""),
-                        new LobbyMenus.Button(Items.GRASS_BLOCK, "挑战中站入集结区 4 秒空装参赛；普通死亡原版重生，极限死亡转怪物", "info", ""),
-                        new LobbyMenus.Button(Items.DRAGON_EGG, "人类尾刀首龙通关；全员集结末地为胜者庆祝，胜者跳龙池结束，最长"
-                                + (RoundEngine.successCelebrationMillis(round.rules()) + 999) / 1000
-                                + "秒（现实时间）；书屋查战绩领书", "info", ""),
-                        new LobbyMenus.Button(Items.PAPER, "离线人类保留资格并暂停计时；无人类有资格时60秒救场", "info", ""));
+                // The rule lectern opens a book instead (RuleBook); no other context has a menu.
+                return List.of();
             }
             @Override public void act(ServerPlayer player, UUID round, LobbyContext context, String action, String value) {
                 if (context == LobbyContext.WITHDRAWAL) {
@@ -209,13 +161,10 @@ public final class LobbyRuntime {
                     else if (action.equals("withdraw-cancel")) player.closeContainer();
                 }
                 else if (context == LobbyContext.HISTORY) dev.hardrush.record.HistoryLibrary.act(player, action, value);
-                else if (context == LobbyContext.COMPETITION) request(player, round, action, value);
             }
             @Override public UUID round(ServerPlayer player) { return session.snapshot().orElseThrow().roundId(); }
-            @Override public List<LobbyMenus.Button> buttons(ServerPlayer player) { return menuButtons(player, binding); }
-            @Override public void act(ServerPlayer player, UUID round, String action, String value) {
-                request(player, round, action, value);
-            }
+            @Override public List<LobbyMenus.Button> buttons(ServerPlayer player) { return List.of(); }
+            @Override public void act(ServerPlayer player, UUID round, String action, String value) { }
         });
     }
     public static void unconfigure(MinecraftServer server) {
@@ -257,86 +206,6 @@ public final class LobbyRuntime {
         return current(player, b) && dev.hardrush.world.LobbyWorld.isLobby(player.level())
                 && player.isAlive();
     }
-    public static void command(ServerPlayer player, String action, String value) {
-        var b = BINDINGS.get(player.level().getServer());
-        var round = b == null ? null : b.session.snapshot().orElse(null);
-        if (round == null) { tell(player, "营地还在准备中"); return; }
-        request(player, round.roundId(), action, value);
-    }
-    public static void request(ServerPlayer player, UUID expectedRound, String action, String value) {
-        var b = BINDINGS.get(player.level().getServer());
-        var round = b == null ? null : b.session.view().orElse(null);
-        if (!current(player, b) || round == null || !round.roundId().equals(expectedRound)) {
-            tell(player, "情况有变，请重新打开菜单"); return;
-        }
-        if (action.equals("info")) return;
-        if (round.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET
-                && List.of("vote", "dimension", "deploy").contains(action)) {
-            tell(player, "到庭院右键目标模型发起追猎"); return;
-        }
-        if (action.equals("join") || action.equals("ready") || action.equals("unready")) {
-            tell(player, "站进集结区准备；挑战中站满 4 秒中途加入"); return;
-        }
-        if (action.equals("history")) {
-            dev.hardrush.record.HistoryLibrary.open(player); return;
-        }
-        var participant = round.participants().get(player.getUUID());
-        boolean celebrating = dev.hardrush.celebration.CelebrationRuntime.arena(player);
-        if (celebrating && action.equals("return")) { tell(player, CELEBRATION_RETURN); return; }
-        if (participant == null || !participant.role().isMonster()
-                || !celebrating && (!participant.online() || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE
-                    || b.session.competitionLocked())
-                || celebrating && !action.equals("skill")) {
-            tell(player, "现在不能这样做"); return;
-        }
-        if (action.equals("skill")) {
-            interruptReturn(player, "施放技能");
-            if (!MonsterRoundRuntime.canAct(player) || !MonsterRoles.isMonster(player)) {
-                tell(player, "出击后才能使用技能"); return;
-            }
-            boolean accepted = switch (participant.monsterRole()) {
-                case ZOMBIE -> false;
-                case SKELETON -> MonsterRoles.burst(player);
-                case CREEPER -> false;
-            };
-            if (!accepted) refuse(player, participant.monsterRole() == MonsterRole.SKELETON
-                    ? MonsterRoundRuntime.skillRefusal(player, MonsterSkill.SKELETON_BURST) : "当前角色没有可施放的技能");
-            return;
-        }
-        if (action.equals("return")) { beginReturn(player, b, participant); return; }
-        if (!lobbyAvailable(player, b) || participant.role() != ParticipantRole.MONSTER_LOBBY) {
-            tell(player, "在庭院里才能这样做"); return;
-        }
-        var waiting = b.searches.get(player.getUUID());
-        if (waiting != null && action.equals("revive")) cancelSearch(b, waiting, "前往复生，追猎取消");
-        if (b.committing.contains(player.getUUID()) || b.searches.containsKey(player.getUUID())
-                || b.resumptions.containsKey(player.getUUID())) {
-            tell(player, "正在出击，稍等片刻"); return;
-        }
-        try {
-            switch (action) {
-                case "role" -> tell(player, "右键庭院里的角色展位选择角色");
-                case "revive" -> {
-                    var worlds = b.worlds.get();
-                    if (worlds == null || !worlds.ready()
-                            || !RoundWorldBundle.safeStanding(worlds.level(Level.OVERWORLD), worlds.spawn())) {
-                        refuse(player, "现在无法复生，复生图腾还在，请联系管理员");
-                        break;
-                    }
-                    b.committing.add(player.getUUID());
-                    b.session.requestRevival(round.roundId(), player.getUUID(), participant.lifeSequence(),
-                            participant.monsterDeploymentSequence(), reply -> {
-                                b.committing.remove(player.getUUID());
-                                if (current(player, b) && !reply.success()) Replies.refuse(player, reply, "现在无法复生");
-                            });
-                }
-                default -> { }
-            }
-        } catch (IllegalArgumentException | IllegalStateException invalid) {
-            org.slf4j.LoggerFactory.getLogger(LobbyRuntime.class).debug("Lobby action {} rejected", action, invalid);
-            refuse(player, "现在不能这样做");
-        }
-    }
     /** Only called with a server-owned projection selection after BOTH packet guards. */
     private static void beginDeployment(ServerPlayer player, Binding b, LobbyProjections.Selection selected) {
         var round = b.session.view().orElse(null);
@@ -350,28 +219,28 @@ public final class LobbyRuntime {
         var round = b == null ? null : b.session.view().orElse(null);
         if (round == null || !personalOpen(b, round) || !current(player, b) || !dev.hardrush.observe.Observation.observing(player)) return;
         var quarry = round.participants().get(target);
-        if (quarry == null || quarry.role() != ParticipantRole.HUMAN_ACTIVE) { refuse(player, Notices.key(quarry == null ? "此人" : quarry.name()) + " 目前不适合再被追猎了，换个人吧"); return; }
+        if (quarry == null || quarry.role() != ParticipantRole.HUMAN_ACTIVE) { Notices.refuse(player, Notices.key(quarry == null ? "此人" : quarry.name()) + " 目前不适合再被追猎了，换个人吧"); return; }
         hunt(player, b, round, target, quarry.lifeSequence(), true);
     }
     private static void hunt(ServerPlayer player, Binding b, RoundSnapshot round, UUID targetId, int targetLife, boolean observed) {
         var p = round.participants().get(player.getUUID());
         if (p == null || p.role() != ParticipantRole.MONSTER_LOBBY || !p.online()) {
-            refuse(player, "只有庭院里待命的怪物可以追猎"); return;
+            Notices.refuse(player, "只有庭院里待命的怪物可以追猎"); return;
         }
         var waiting = b.searches.get(p.id());
         if (waiting != null && waiting.identity.target().equals(targetId)) {
             // Holding right-click repeats the interaction every few ticks; only a deliberate second click cancels.
             if (b.searchClock.getAsLong() - waiting.started < 1_000_000_000L) return;
-            cancelSearch(b, waiting, "已取消对 " + Notices.key(waiting.targetPlayer.getScoreboardName()) + " 的追猎"); sound(player, false); return;
+            cancelSearch(b, waiting, "对 " + Notices.key(waiting.targetPlayer.getScoreboardName()) + " 的追猎已取消"); sound(player, false); return;
         }
         if (b.committing.contains(p.id()) || b.resumptions.containsKey(p.id())) {
-            tell(player, "正在出击……"); return;
+            Notices.hint(player, "正在出击……"); return;
         }
         if (revivalFirst(player, round, p)) return;
         long now = b.searchClock.getAsLong();
-        if (p.monsterCooldownNanos() > 0) { refuse(player, "出击冷却中 · " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"); return; }
+        if (p.monsterCooldownNanos() > 0) { Notices.refuse(player, "出击冷却中 · " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"); return; }
         Long retry = b.retryAt.get(p.id());
-        if (retry != null && now - retry < 0) { refuse(player, Notices.key(seconds(retry - now)) + " 秒后才能再次追猎"); return; }
+        if (retry != null && now - retry < 0) { Notices.refuse(player, Notices.key(seconds(retry - now)) + " 秒后才能再次追猎"); return; }
         var identity = new PersonalHuntRequest(round.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
                 p.monsterRole(), targetId, targetLife);
         var target = player.level().getServer().getPlayerList().getPlayer(identity.target());
@@ -459,7 +328,7 @@ public final class LobbyRuntime {
                         parked, reply -> {
                             if (reply.success()) {
                                 ChannelEffects.departed(ch.player, level, from, false);
-                                tell(ch.player, returned(round, !parked.isEmpty()));
+                                Notices.hint(ch.player, returned(round, !parked.isEmpty()));
                             } else { Replies.refuse(ch.player, reply, "没能返回营地"); }
                         });
             }
@@ -508,7 +377,7 @@ public final class LobbyRuntime {
                     HuntRetracks.arrived(d.player, d.targetPlayer);
                     sound(d.player, true);
                     String quarry = Notices.key(d.targetPlayer.getScoreboardName());
-                    tell(d.player, risen ? "已化身溺尸，从水下出击"
+                    Notices.hint(d.player, risen ? "已化身溺尸，从水下出击"
                             : d.search.result().fallback()
                             ? "已出击：去 " + quarry + " 的路被切断，这是能到的最近处" : "已出击，" + quarry + " 就在附近"); return;
                 }
@@ -542,7 +411,7 @@ public final class LobbyRuntime {
         b.session.requestMonsterDeployCancelled(d.identity.round(), id, d.identity.hunterLife(), d.sortie + 1, refunded -> {
             if (!refunded.success()) {
                 if (b.session.state() == RoundSession.State.FAILED || b.session.competitionLocked()) {
-                    refuse(d.player, "出击出错，请联系管理员");
+                    Notices.refuse(d.player, "出击出错，请联系管理员");
                     Notices.operators(d.player.level().getServer(), d.player.getScoreboardName() + " 出击退回失败：" + refunded.message());
                 }
                 return; // Transient queued death/connection write: retain the exact refund and retry after it drains.
@@ -551,14 +420,14 @@ public final class LobbyRuntime {
             d.sortie++;
             if (refund.resume && requestTarget(b, d)) {
                 b.resumptions.put(id, d);
-                tell(d.player, "出击位置失效，正在重新寻找");
+                Notices.hint(d.player, "出击位置失效，正在重新寻找");
             } else searchFailed(b, d, Notices.key(d.targetPlayer.getScoreboardName()) + " 情况有变，临时去掉了出击 · 可再次尝试");
         });
     }
     /** A deliberate cancel or target switch: no failure sound and no retry wait. */
     private static void cancelSearch(Binding b, Deployment d, String message) {
         b.searches.remove(d.identity.hunter(), d); b.resumptions.remove(d.identity.hunter(), d);
-        if (message != null && d.player.level().getServer().getPlayerList().getPlayer(d.player.getUUID()) == d.player) tell(d.player, message);
+        if (message != null && d.player.level().getServer().getPlayerList().getPlayer(d.player.getUUID()) == d.player) Notices.hint(d.player, message);
     }
     private static boolean inCamp(ServerPlayer player) {
         var camp = dev.hardrush.world.LobbyWorld.open(player.level().getServer());
@@ -570,7 +439,7 @@ public final class LobbyRuntime {
         b.searches.remove(d.identity.hunter(), d); b.resumptions.remove(d.identity.hunter(), d);
         b.retryAt.put(d.identity.hunter(), b.searchClock.getAsLong() + 3_000_000_000L);
         if (d.player.level().getServer().getPlayerList().getPlayer(d.player.getUUID()) == d.player) {
-            tell(d.player, message); sound(d.player, false);
+            Notices.hint(d.player, message); sound(d.player, false);
         }
     }
     /** Same target life only; dimension changes and compensation share the original start and 60-second wait. */
@@ -592,7 +461,7 @@ public final class LobbyRuntime {
     private static final String NO_DEPLOYMENT = "暂时没找到合适的出击位置 · " + Notices.key(3) + " 秒后可重试";
 
     public static boolean useReturn(ServerPlayer player) {
-        if (dev.hardrush.celebration.CelebrationRuntime.arena(player)) { tell(player, CELEBRATION_RETURN); return false; }
+        if (dev.hardrush.celebration.CelebrationRuntime.arena(player)) { Notices.hint(player, CELEBRATION_RETURN); return false; }
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.view().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
@@ -603,18 +472,18 @@ public final class LobbyRuntime {
     }
     private static void beginReturn(ServerPlayer player, Binding b, Participant p) {
         if (p.role() != ParticipantRole.MONSTER_DEPLOYED || MonsterRoles.isIgniting(player) || MonsterRoles.performingSkill(player)) {
-            refuse(player, "现在不能返回营地"); return;
+            Notices.refuse(player, "现在不能返回营地"); return;
         }
         // Holding the item, or right-clicking again, neither restarts nor repeats a running channel.
         if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) return;
-        if (ChannelEffects.moving(player)) { tell(player, "站稳后才能返回营地"); sound(player, false); return; }
+        if (ChannelEffects.moving(player)) { Notices.hint(player, "站稳后才能返回营地"); sound(player, false); return; }
         var round = b.session.view().orElseThrow();
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), player.position(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), false));
         ChannelEffects.start(player, false, channelNanos(round));
         // The progress hint shows the countdown; the interruption rule is explained once per round.
         if (!round.roundId().equals(b.returnTaught.put(p.id(), round.roundId())))
-            tell(player, "原地不动 " + Notices.key(channelSeconds(round)) + " 秒返回营地，移动或受伤会打断");
+            Notices.hint(player, "原地不动 " + Notices.key(channelSeconds(round)) + " 秒返回营地，移动或受伤会打断");
     }
     private static String returned(RoundSnapshot round, boolean parked) {
         long wait = seconds(RoundEngine.returnCooldownNanos(round.rules()));
@@ -636,27 +505,27 @@ public final class LobbyRuntime {
 
     /** Right-click on the bound tracking compass: a five-second channel, then the quarry's trail again. */
     public static boolean useRetrack(ServerPlayer player, net.minecraft.world.item.ItemStack compass) {
-        if (dev.hardrush.celebration.CelebrationRuntime.arena(player)) { tell(player, CELEBRATION_RETRACK); return false; }
+        if (dev.hardrush.celebration.CelebrationRuntime.arena(player)) { Notices.hint(player, CELEBRATION_RETRACK); return false; }
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.view().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
         if (p == null || !current(player, b) || !player.isAlive() || PlayerProfiles.isLocked(player)
                 || b.session.competitionLocked() || r.phase() != RoundPhase.RUNNING && r.phase() != RoundPhase.RESCUE) return false;
         if (p.role() != ParticipantRole.MONSTER_DEPLOYED || MonsterRoles.isIgniting(player) || MonsterRoles.performingSkill(player)) {
-            refuse(player, "现在不能循迹"); return false;
+            Notices.refuse(player, "现在不能循迹"); return false;
         }
         if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) return true;
         // The native cooldown overlay on the compass already says it is not ready.
         if (player.getCooldowns().isOnCooldown(compass)) return false;
         var target = HuntRetracks.quarry(player).orElse(null);
         if (target == null || !validTarget(b, target, (ServerLevel) target.level()) || dimension(b, (ServerLevel) target.level()).equals("lobby")) {
-            refuse(player, "罗盘失去了指向：" + quarryName(player) + " 已离线、阵亡或不在挑战世界"); return false;
+            Notices.refuse(player, "罗盘失去了指向：" + quarryName(player) + " 已离线、阵亡或不在挑战世界"); return false;
         }
         if (!HuntRetracks.available(player)) {
-            refuse(player, "罗盘未亮：离 " + Notices.key(target.getScoreboardName()) + " " + Notices.key(HuntRetracks.FAR_DISTANCE)
+            Notices.refuse(player, "罗盘未亮：离 " + Notices.key(target.getScoreboardName()) + " " + Notices.key(HuntRetracks.FAR_DISTANCE)
                     + " 格以上持续 " + Notices.key(HuntRetracks.FAR_SECONDS) + " 秒才会亮"); return false;
         }
-        if (ChannelEffects.moving(player)) { tell(player, "站稳后才能循迹"); sound(player, false); return false; }
+        if (ChannelEffects.moving(player)) { Notices.hint(player, "站稳后才能循迹"); sound(player, false); return false; }
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), player.position(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), true));
         ChannelEffects.start(player, true, channelNanos(r));
@@ -666,12 +535,12 @@ public final class LobbyRuntime {
         var target = HuntRetracks.quarry(ch.player).orElse(null);
         var life = HuntRetracks.quarryLife(ch.player);
         if (target == null || life.isEmpty() || !validTarget(b, target, (ServerLevel) target.level())) {
-            tell(ch.player, quarryName(ch.player) + " 已离线或阵亡，循迹取消，罗盘不进入冷却"); sound(ch.player, false); return;
+            Notices.hint(ch.player, quarryName(ch.player) + " 已离线或阵亡，循迹取消，罗盘不进入冷却"); sound(ch.player, false); return;
         }
         var r = new Retrack(ch.player, target, p.lifeSequence(), p.monsterDeploymentSequence(), life.getAsInt(), b.searchClock.getAsLong());
         retrackSearch(b, r);
         b.retracks.put(p.id(), r);
-        hint(ch.player, "return", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "正在寻找 " + target.getScoreboardName() + " 附近的落点");
+        hint(ch.player, "return", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "正在寻找 " + Notices.key(target.getScoreboardName()) + " 附近的落点");
     }
     private static void retrackSearch(Binding b, Retrack r) {
         var level = (ServerLevel) r.targetPlayer.level();
@@ -692,7 +561,7 @@ public final class LobbyRuntime {
                 || targetIdentity.lifeSequence() != r.targetLife || !validTarget(b, target, (ServerLevel) target.level())
                 || dimension(b, (ServerLevel) target.level()).equals("lobby")) {
             b.retracks.remove(r.player.getUUID());
-            tell(r.player, Notices.key(target.getScoreboardName()) + " 已离线或阵亡，循迹取消，罗盘不进入冷却"); sound(r.player, false); return;
+            Notices.hint(r.player, Notices.key(target.getScoreboardName()) + " 已离线或阵亡，循迹取消，罗盘不进入冷却"); sound(r.player, false); return;
         }
         if (r.search == null || target.level() != r.search.level()) retrackSearch(b, r);
         var level = r.search.level();
@@ -701,19 +570,19 @@ public final class LobbyRuntime {
         b.retracks.remove(r.player.getUUID());
         LobbyInteractions.get(r.player.level().getServer()).ifPresent(router -> router.hints(r.player).clear("return"));
         if (result.status() == SafeDeployment.Status.FAILED || !r.search.revalidate(target.position(), humans(b, level))) {
-            tell(r.player, SafeDeployment.atSea(target) ? Notices.key(target.getScoreboardName()) + " 在海上，没有落脚点，罗盘不进入冷却"
+            Notices.hint(r.player, SafeDeployment.atSea(target) ? Notices.key(target.getScoreboardName()) + " 在海上，没有落脚点，罗盘不进入冷却"
                     : "暂没找到能循迹过去的位置"); sound(r.player, false); return;
         }
         var landing = result.position();
         var from = r.player.position(); var fromLevel = (ServerLevel) r.player.level();
         if (!r.player.teleportTo(level, landing.x, landing.y, landing.z, java.util.Set.of(), r.search.yaw(target.position()), 0, true)) {
-            tell(r.player, "落点失效，循迹取消"); sound(r.player, false); return;
+            Notices.hint(r.player, "落点失效，循迹取消"); sound(r.player, false); return;
         }
         HuntRetracks.retracked(r.player, target);
         MonsterCompanions.regroup(r.player);
         ChannelEffects.departed(r.player, fromLevel, from, true);
         sound(r.player, true);
-        if (result.fallback()) tell(r.player, "去 " + Notices.key(target.getScoreboardName()) + " 的路被切断，这是能到的最近处");
+        if (result.fallback()) Notices.hint(r.player, "去 " + Notices.key(target.getScoreboardName()) + " 的路被切断，这是能到的最近处");
     }
     /** @param reason one of the plain words players see: 移动、受到伤害、攻击、互动、使用物品、施放技能、敲门、比赛状态变化 */
     public static void interruptReturn(ServerPlayer player, String reason) {
@@ -726,7 +595,7 @@ public final class LobbyRuntime {
         String what = tracking ? "循迹" : "返回营地";
         ChannelEffects.interrupted(player, tracking);
         LobbyInteractions.get(player.level().getServer()).ifPresent(router -> router.hints(player).clear("return"));
-        tell(player, what + "被打断（" + Notices.key(reason) + "）");
+        Notices.hint(player, what + "被打断（" + Notices.key(reason) + "）");
         sound(player, false);
     }
     public static boolean channeling(ServerPlayer player) {
@@ -784,7 +653,7 @@ public final class LobbyRuntime {
                 if (owner != null) {
                     boolean recalled = old.role() == ParticipantRole.MONSTER_DEPLOYED && p.role() == ParticipantRole.MONSTER_LOBBY
                             && dev.hardrush.core.round.MonsterCoins.enabled(after.rules());
-                    tell(owner, recalled ? "获得复生图腾，可在营地祭坛复生"
+                    Notices.hint(owner, recalled ? "获得复生图腾，可在营地祭坛复生"
                             : "获得 " + Notices.key(p.revivalCharges() - old.revivalCharges()) + " 个复生图腾 · 可在营地祭坛复生");
                     sound(owner, true);
                 }
@@ -811,7 +680,7 @@ public final class LobbyRuntime {
     /** A camp monster holding a revival is pointed to the altar instead of hunting, choosing or shopping. */
     public static boolean revivalFirst(ServerPlayer player, RoundSnapshot round, dev.hardrush.core.round.Participant p) {
         if (!dev.hardrush.core.round.MonsterCoins.enabled(round.rules()) || !p.revivalEntitled()) return false;
-        refuse(player, Replies.REVIVAL_FIRST);
+        Notices.refuse(player, Replies.REVIVAL_FIRST);
         sound(player, false);
         return true;
     }
@@ -819,15 +688,17 @@ public final class LobbyRuntime {
     private static void coinFeedback(ServerPlayer player, String event, dev.hardrush.core.round.Participant before,
                                      dev.hardrush.core.round.Participant after) {
         int gained = after.wallet().coins() - before.wallet().coins();
+        // A hit pays at once, like a hit marker: its reason is obvious. Only the other payouts name theirs, and
+        // a dead human's payout is not called a monster's ("阵亡不等于变成怪物").
         String reason = switch (event) {
-            case "MONSTER_DAMAGE_COINS" -> "伤害";
-            case "HARDCORE_DEATH" -> "化身礼包";
-            case "DEATH_BATCH" -> before.role().isActiveHuman() ? "化身礼包" : "阵亡奖励";
-            case "MONSTER_DEPLOY", "MONSTER_SELECTION" -> "退款";
+            case "MONSTER_DAMAGE_COINS" -> null;
+            case "HARDCORE_DEATH" -> "阵亡补给";
+            case "DEATH_BATCH" -> before.role().isActiveHuman() ? "阵亡补给" : "阵亡奖励";
+            case "MONSTER_DEPLOY", "MONSTER_SELECTION" -> "出击退回";
             default -> "奖励";
         };
-        player.sendSystemMessage(Component.literal("+" + gained + " 怪物币（" + reason + "）· 共 " + after.wallet().coins())
-                .withStyle(net.minecraft.ChatFormatting.GREEN), true);
+        Notices.hint(player, Notices.key("+" + gained) + " " + Notices.COINS + (reason == null ? "" : "（" + reason + "）")
+                + " · 共 " + Notices.key(after.wallet().coins()));
         player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
                 net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.wrapAsHolder(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP),
                 net.minecraft.sounds.SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(), 0.3f, 1.2f,
@@ -861,7 +732,8 @@ public final class LobbyRuntime {
         var attempts = new HashSet<Deployment>(b.searches.values()); attempts.addAll(b.resumptions.values()); attempts.addAll(b.pending.values());
         for (var d : attempts) if (d.identity.hunter().equals(player.getUUID()) || d.identity.target().equals(player.getUUID())) {
             d.cancelled = true;
-            if (!b.pending.containsValue(d)) searchFailed(b, d, "连接已断开，本次追猎已取消。");
+            // A leaving hunter reads nothing; a hunter whose target left hears the usual cancellation.
+            if (!b.pending.containsValue(d)) searchFailed(b, d, Notices.key(d.targetPlayer.getScoreboardName()) + " 已离线或阵亡，追猎取消");
         }
         // Do not rebind a prototype body during the next native JOIN before the durable lobby gate.
         if (MonsterRoles.isMonster(player)) MonsterRoles.clear(player);
@@ -881,7 +753,7 @@ public final class LobbyRuntime {
             if (!player.isAlive() || !dev.hardrush.world.LobbyWorld.isLobby(player.level()) || PlayerProfiles.isLocked(player)
                     || player.connection == null || !player.connection.hasClientLoaded()) return false;
             if (entry.getValue() == Arrival.HUMAN_DIED) Notices.title(player, "你阵亡了", "已回到营地 · 可以在展位化身怪物出击");
-            else tell(player, "你在出击中倒下，回到了庭院");
+            else Notices.hint(player, "你在出击中倒下，回到了庭院");
             return true;
         });
     }
@@ -890,7 +762,7 @@ public final class LobbyRuntime {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);
         if (r == null || !contextAvailable(player, b, LobbyContext.DISPLAY) || !personalOpen(b, r)) {
-            refuse(player, "庭院只在极限挑战或救场期间开放"); return;
+            Notices.refuse(player, "庭院只在极限挑战或救场期间开放"); return;
         }
         if (facility == LobbyLayout.Facility.MERCHANT) { MonsterShop.open(player); return; }
         if (facility == LobbyLayout.Facility.PREVIOUS || facility == LobbyLayout.Facility.NEXT) {
@@ -906,9 +778,9 @@ public final class LobbyRuntime {
         // Picking another role ends a waiting hunt; the new body would not match the pending identity.
         var waiting = p == null ? null : b.searches.get(p.id());
         if (waiting != null && role != null) cancelSearch(b, waiting, "已换角色，对 " + Notices.key(waiting.targetPlayer.getScoreboardName()) + " 的追猎已取消");
-        if (p == null || p.role() != ParticipantRole.MONSTER_LOBBY) { refuse(player, "阵亡后才能在这里选择怪物角色"); return; }
+        if (p == null || p.role() != ParticipantRole.MONSTER_LOBBY) { Notices.refuse(player, "阵亡后才能在这里选择怪物角色"); return; }
         if (b.committing.contains(p.id()) || b.searches.containsKey(p.id()) || b.resumptions.containsKey(p.id())) {
-            refuse(player, "正在出击，稍等片刻"); return;
+            Notices.refuse(player, "正在出击，稍等片刻"); return;
         }
         if (role != null && revivalFirst(player, r, p)) return;
         if (role == null) return;
@@ -935,7 +807,7 @@ public final class LobbyRuntime {
         if (ask != null && ask.role() == role && now - ask.asked() <= 120) { b.abandoning.remove(p.id()); return true; }
         b.abandoning.put(p.id(), new AbandonAsk(role, now, now));
         String parked = dev.hardrush.monster.MonsterParking.describe(p.wallet().parked()).orElse(kindName(p.monsterRole()));
-        tell(player, "再点一次改选 " + Notices.key(kindName(role)) + "：暂存的 " + Notices.key(parked) + " 连同装备和身价作废");
+        Notices.hint(player, "再点一次改选 " + Notices.key(kindName(role)) + "：暂存的 " + Notices.key(parked) + " 连同装备和身价作废");
         sound(player, false);
         return false;
     }
@@ -983,7 +855,7 @@ public final class LobbyRuntime {
             if (identity != null && identity.role() == ParticipantRole.MONSTER_LOBBY) {
                 boolean cooling = identity.monsterCooldownNanos() > 0;
                 if (Boolean.TRUE.equals(b.cooling.put(identity.id(), cooling)) && !cooling) {
-                    tell(observer, "可以再次出击了"); sound(observer, true);
+                    Notices.hint(observer, "可以再次出击了"); sound(observer, true);
                 }
             }
             if (old == null || old.player != observer || old.connection != observer.connection || !old.targets.equals(targets) || view.isEmpty()) {
@@ -996,7 +868,7 @@ public final class LobbyRuntime {
                 var p = r.participants().get(observer.getUUID());
                 if (p != null && p.role().isExcluded()) projections.aimed(observer).ifPresent(selected -> LobbyInteractions.get(server).orElseThrow()
                         .hints(observer).offer("watch-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
-                                "目标：" + r.participants().get(selected.target()).name() + " · 左键观察", System.nanoTime() / 1_000_000 + 300));
+                                Notices.key(r.participants().get(selected.target()).name()) + " · 左键观察", System.nanoTime() / 1_000_000 + 300));
                 if (p != null && p.role() == ParticipantRole.MONSTER_LOBBY) {
                     var hints = LobbyInteractions.get(server).orElseThrow().hints(observer);
                     long now = System.nanoTime() / 1_000_000;
@@ -1024,19 +896,20 @@ public final class LobbyRuntime {
                     else if (!dev.hardrush.core.round.MonsterCoins.enabled(r.rules()) || !p.revivalEntitled()) {
                         if (inCamp(observer)) {
                             String guidance = targets.stream().anyMatch(target -> target.state() == LobbyProjections.State.AVAILABLE)
-                                    ? "当前角色：" + kindName(p.monsterRole()) + (p.monsterCooldownNanos() > 0
-                                    ? " · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒 · 结束后右键目标模型追猎"
-                                    : " · 右键目标模型追猎") : "当前暂无可追猎目标";
+                                    ? Notices.key(kindName(p.monsterRole())) + (p.monsterCooldownNanos() > 0
+                                    ? " · 出击冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"
+                                    : " · 右键目标模型追猎") : "暂无可追猎的人类";
                             hints.offer("hunt-guide", dev.hardrush.core.lobby.LobbyHints.Priority.GUIDANCE, guidance, now + 300);
                         }
+                        // The role is already on the idle line; aiming at a model only adds whom and what each click does.
                         projections.aimed(observer).ifPresent(selected -> hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
-                                "目标：" + r.participants().get(selected.target()).name() + " · 当前角色：" + kindName(p.monsterRole())
-                                        + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + seconds(p.monsterCooldownNanos()) + " 秒" : " · 右键追猎") + " · 左键观察", now + 300));
+                                Notices.key(r.participants().get(selected.target()).name())
+                                        + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒" : " · 右键追猎") + " · 左键观察", now + 300));
                         dev.hardrush.monster.MonsterParking.describe(p.wallet().parked()).ifPresent(parked -> hints.offer("parked",
-                                dev.hardrush.core.lobby.LobbyHints.Priority.FACILITY, "上次出场已暂存：" + parked
+                                dev.hardrush.core.lobby.LobbyHints.Priority.FACILITY, "暂存的出击：" + Notices.key(parked)
                                         + (dev.hardrush.core.round.MonsterWorth.enabled(r.rules()) ? " · 身价 "
-                                        + dev.hardrush.core.round.MonsterWorth.level(dev.hardrush.core.round.MonsterWorth.milliLevels(r.rules(), p.wallet())) + " 级" : "")
-                                        + "；右键目标继续追猎", now + 300));
+                                        + Notices.key(dev.hardrush.core.round.MonsterWorth.level(dev.hardrush.core.round.MonsterWorth.milliLevels(r.rules(), p.wallet()))) + " 级" : ""),
+                                now + 300));
                     }
                 }
             }
@@ -1084,50 +957,70 @@ public final class LobbyRuntime {
                         .filter(identity -> identity.online() && identity.role() == ParticipantRole.HUMAN_ACTIVE).isPresent())
                 .map(ServerPlayer::position).toList();
     }
-    private static List<LobbyMenus.Button> menuButtons(ServerPlayer player, Binding b) {
-        var round = b.session.view().orElseThrow(); var p = round.participants().get(player.getUUID());
-        var buttons = new ArrayList<LobbyMenus.Button>();
-        buttons.add(new LobbyMenus.Button(Items.PAPER, "轮次 " + round.sequence() + " · " + phaseName(round)
-                + (p == null ? " · 未加入" : " · " + identityName(p.role())), "info", ""));
-        buttons.add(new LobbyMenus.Button(Items.EMERALD, "开局请站入集结区；中途加入请使用侧门", "info", ""));
-        buttons.add(new LobbyMenus.Button(Items.BOOK, "查看历史", "history", ""));
-        if (p != null && p.role().isMonster()) {
-            buttons.add(new LobbyMenus.Button(Items.BLAZE_POWDER, "施放当前角色技能", "skill", ""));
-            buttons.add(new LobbyMenus.Button(Items.OAK_DOOR, "引导返回大厅（5 秒）", "return", ""));
-            buttons.add(new LobbyMenus.Button(Items.PLAYER_HEAD, "右键庭院模型直接追猎 · 当前 " + kindName(p.monsterRole())
-                    + " · 出场冷却 " + seconds(p.monsterCooldownNanos()) + " 秒", "info", ""));
-            buttons.add(new LobbyMenus.Button(Items.TOTEM_OF_UNDYING, "剩余复生次数：" + p.revivalCharges() + " · 走上营地北侧复生祭坛站立 4 秒空装复生", "info", ""));
-
-        }
-        return buttons;
-    }
     /** Why the altar cannot begin a rite for this camp body now; null when it can. */
     static String altarRefusal(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);
-        if (r == null || b.session.state() != RoundSession.State.OPEN || r.phase() == RoundPhase.RECOVERY_REQUIRED) return "恢复核验中，祭坛暂停";
-        if (r.rules().mode() == dev.hardrush.core.config.GameMode.NORMAL) return "普通模式死亡后按原版重生，祭坛不开放";
+        if (r == null || b.session.state() != RoundSession.State.OPEN || r.phase() == RoundPhase.RECOVERY_REQUIRED) return "比赛已暂停，祭坛关闭";
+        if (r.rules().mode() == dev.hardrush.core.config.GameMode.NORMAL) return "普通模式不开放祭坛，阵亡后原版重生";
         var p = r.participants().get(player.getUUID());
-        if (p != null && p.role() == ParticipantRole.WITHDRAWN) return "你已退出本轮，下一轮恢复资格";
-        if (p != null && p.role() == ParticipantRole.DISQUALIFIED) return "你已被取消本轮资格，下一轮恢复资格";
-        if (r.phase() != RoundPhase.RUNNING && r.phase() != RoundPhase.RESCUE) return "祭坛沉寂中 · 极限挑战中死去的玩家会在这里复生";
-        if (p == null || !p.role().isMonster()) return "祭坛只回应持有复生图腾的怪物 · 参赛请到集结区";
-        if (p.role() != ParticipantRole.MONSTER_LOBBY || !p.online()) return "身份转换中，请稍候";
-        if (b.session.competitionLocked() || !lobbyAvailable(player, b)) return "本轮正在保存 · 稍候即可复生";
+        if (p != null && p.role() == ParticipantRole.WITHDRAWN) return "你已退出本轮，下一轮再来";
+        if (p != null && p.role() == ParticipantRole.DISQUALIFIED) return "你已被取消本轮资格，下一轮再来";
+        if (r.phase() != RoundPhase.RUNNING && r.phase() != RoundPhase.RESCUE) return "祭坛只在挑战进行中开放";
+        if (p == null || !p.role().isMonster()) return "阵亡后才能在祭坛复生 · 参赛去集结区";
+        if (p.role() != ParticipantRole.MONSTER_LOBBY || !p.online()) return HumanEntry.STEP_PENDING;
+        if (b.session.competitionLocked() || !lobbyAvailable(player, b)) return "服务器正忙，稍后再试";
         if (p.revivalCharges() - CampTransfers.pending(player, CampTransfers.Kind.REVIVAL) <= 0)
-            return "尚无复生图腾 · 击杀在赛人类可获得，也可接住同伴丢来的图腾";
+            return "你没有复生图腾 · 击杀人类或捡起同伴丢的图腾可获得";
         var worlds = b.worlds.get();
-        if (worlds == null || !worlds.ready() || !RoundWorldBundle.safeStanding(worlds.level(Level.OVERWORLD), worlds.spawn()))
-            return "本轮出生点暂不安全，保留资格，请联系管理员";
+        if (worlds == null || !worlds.ready() || !RoundWorldBundle.safeStanding(worlds.level(Level.OVERWORLD), worlds.spawn())) {
+            reportUnsafeSpawn(player, b);
+            return "现在无法复生，复生图腾还在，请联系管理员";
+        }
         UUID id = player.getUUID();
-        if (b.committing.contains(id) || b.resumptions.containsKey(id) || b.pending.containsKey(id)) return "身份提交中，请稍候";
+        if (b.committing.contains(id) || b.resumptions.containsKey(id) || b.pending.containsKey(id)) return "正在出击，稍等片刻";
         return null;
     }
+    /** Operators get the detail behind the generic altar refusal, at most once per player and round. */
+    private static void reportUnsafeSpawn(ServerPlayer player, Binding b) {
+        var round = b.session.snapshot().orElse(null);
+        if (round != null && Notices.firstInRound(player, round.roundId(), "operators:unsafe-spawn"))
+            Notices.operators(player.level().getServer(), player.getScoreboardName() + " 无法在祭坛复生：本轮挑战世界的出生点未就绪或不安全");
+    }
+
     /** A completed altar rite: the same durable revival request; its reply is told to the player. */
     static void beginRevival(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());
-        var round = b == null ? null : b.session.snapshot().orElse(null);
-        if (round != null) request(player, round.roundId(), "revive", "");
+        var round = b == null ? null : b.session.view().orElse(null);
+        if (round == null || !current(player, b)) return;
+        var participant = round.participants().get(player.getUUID());
+        if (participant == null || participant.role() != ParticipantRole.MONSTER_LOBBY || !participant.online()
+                || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE
+                || b.session.competitionLocked() || !lobbyAvailable(player, b)) {
+            Notices.refuse(player, "现在无法复生"); return;
+        }
+        UUID id = player.getUUID();
+        var waiting = b.searches.get(id);
+        if (waiting != null) cancelSearch(b, waiting, "前往复生，追猎取消");
+        if (b.committing.contains(id) || b.searches.containsKey(id) || b.resumptions.containsKey(id)) {
+            Notices.hint(player, "正在出击，稍等片刻"); return;
+        }
+        var worlds = b.worlds.get();
+        if (worlds == null || !worlds.ready() || !RoundWorldBundle.safeStanding(worlds.level(Level.OVERWORLD), worlds.spawn())) {
+            reportUnsafeSpawn(player, b);
+            Notices.refuse(player, "现在无法复生，复生图腾还在，请联系管理员"); return;
+        }
+        try {
+            b.committing.add(id);
+            b.session.requestRevival(round.roundId(), id, participant.lifeSequence(), participant.monsterDeploymentSequence(), reply -> {
+                b.committing.remove(id);
+                if (current(player, b) && !reply.success()) Replies.refuse(player, reply, "现在无法复生");
+            });
+        } catch (IllegalArgumentException | IllegalStateException invalid) {
+            b.committing.remove(id);
+            org.slf4j.LoggerFactory.getLogger(LobbyRuntime.class).debug("Revival request of {} rejected", id, invalid);
+            Notices.refuse(player, "现在无法复生");
+        }
     }
     static boolean reviveCommitting(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());
@@ -1139,29 +1032,7 @@ public final class LobbyRuntime {
     private static String kindName(MonsterRole role) {
         return switch (role) { case ZOMBIE -> "僵尸"; case SKELETON -> "骷髅"; case CREEPER -> "苦力怕"; };
     }
-    private static String phaseName(RoundSnapshot round) {
-        return switch (round.phase()) {
-            case PREPARING -> "准备世界"; case WAITING -> "等待加入"; case COUNTDOWN -> "开局倒计时";
-            case RUNNING -> "进行中"; case RESCUE -> "救场中";
-            case SETTLING -> RoundResultText.stageLabel(round.result(), "结算中");
-            case CELEBRATING -> RoundResultText.stageLabel(round.result(), "庆祝中");
-            case ROTATING -> "换轮中"; case RECOVERY_REQUIRED -> "等待恢复";
-        };
-    }
-    private static String identityName(ParticipantRole role) {
-        return switch (role) {
-            case WITHDRAWN -> "已主动退出"; case DISQUALIFIED -> "本轮资格已取消";
-            case LOBBY -> "大厅玩家"; case HUMAN_ACTIVE -> "人类"; case HUMAN_RESPAWNING -> "等待重生";
-            case MONSTER_LOBBY -> "大厅怪物"; case MONSTER_DEPLOYED -> "外出怪物"; case TRANSITION_PENDING -> "转换中";
-        };
-    }
     private static long seconds(long nanos) { return nanos / 1_000_000_000L + (nanos % 1_000_000_000L == 0 ? 0 : 1); }
-    /** T1 action bar; see {@link Notices}. */
-    private static void tell(ServerPlayer player, String message) { Notices.hint(player, message); }
-    /** T1 with the rejection sound. */
-    private static void refuse(ServerPlayer player, String message) {
-        Notices.refuse(player, message);
-    }
     private static void sound(ServerPlayer player, boolean success) {
         if (player.connection != null && player.connection.isAcceptingMessages()) player.connection.send(
                 new net.minecraft.network.protocol.game.ClientboundSoundPacket(

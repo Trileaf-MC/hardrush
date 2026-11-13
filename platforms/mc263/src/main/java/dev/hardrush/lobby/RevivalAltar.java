@@ -91,8 +91,8 @@ public final class RevivalAltar {
             }
             if (rite == null) rites.put(player.getUUID(), rite = new Rite(player));
             if (rite.spent) {
-                if (LobbyRuntime.reviveCommitting(player)) hint(player, LobbyHints.Priority.PROGRESS, "正在复生…");
-                else { stop(rite); hint(player, LobbyHints.Priority.READY, "走下祭坛后可重新开始复生仪式"); }
+                if (LobbyRuntime.reviveCommitting(player)) hint(player, LobbyHints.Priority.PROGRESS, "正在复生……");
+                else { stop(rite); hint(player, LobbyHints.Priority.READY, "走下祭坛再站上来，重新开始复生"); }
                 continue;
             }
             String refusal = LobbyRuntime.altarRefusal(player);
@@ -115,9 +115,9 @@ public final class RevivalAltar {
     private void advance(Rite rite) {
         var player = rite.player;
         if (rite.dwell == 0) {
-            rite.bar = new ServerBossEvent(UUID.randomUUID(), Component.literal("复生仪式 · 消耗 1 个复生图腾 · 空装降落在远离出生点的荒野 · 无出生保护"),
+            rite.bar = new ServerBossEvent(UUID.randomUUID(), Component.literal("复生仪式 · 空手降落在远方荒野 · 无出生保护"),
                     BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.PROGRESS);
-            rite.bar.addPlayer(player);
+            dev.hardrush.notice.StatusBars.show(player, dev.hardrush.notice.StatusBars.Slot.PERSONAL, rite.bar);
             play(player, SoundEvents.BEACON_POWER_SELECT, .8f, 1f);
         }
         rite.dwell++;
@@ -131,11 +131,11 @@ public final class RevivalAltar {
         if (rite.dwell < DWELL_TICKS) { hint(player, LobbyHints.Priority.PROGRESS, "复生仪式进行中 · 走下祭坛取消"); return; }
         // A revived life lands far from spawn; the rite holds until a prepared landing is claimed.
         if (!dev.hardrush.world.FarLandings.reserve(server, player.getUUID())) {
-            rite.bar.setName(Component.literal("正在寻找远方的落点…"));
-            hint(player, LobbyHints.Priority.PROGRESS, "正在寻找远方的落点 · 走下祭坛取消"); return;
+            rite.bar.setName(Component.literal("正在寻找落点……"));
+            hint(player, LobbyHints.Priority.PROGRESS, "正在寻找落点 · 走下祭坛取消"); return;
         }
         rite.spent = true;
-        rite.bar.setName(Component.literal("正在复生…"));
+        rite.bar.setName(Component.literal("正在复生……"));
         LobbyRuntime.beginRevival(player);
     }
 
@@ -157,7 +157,7 @@ public final class RevivalAltar {
 
     private static void stop(Rite rite) {
         rite.dwell = 0; rite.stage = 0;
-        if (rite.bar != null) { rite.bar.removeAllPlayers(); rite.bar = null; }
+        if (rite.bar != null) { dev.hardrush.notice.StatusBars.hideEverywhere(rite.player.level().getServer(), rite.bar); rite.bar = null; }
     }
 
     private static void play(ServerPlayer player, SoundEvent sound, float volume, float pitch) {
