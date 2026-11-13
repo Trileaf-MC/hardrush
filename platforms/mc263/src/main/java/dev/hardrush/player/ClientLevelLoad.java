@@ -12,7 +12,10 @@ import net.minecraft.server.level.ServerPlayer;
  */
 public interface ClientLevelLoad {
     boolean hardrush$levelLoaded();
+    /** A respawn packet reached the wire: the client is now on a loading screen. */
     void hardrush$levelChanged();
+    /** A position packet reached the wire; the first one after a level change marks the client's arrival. */
+    void hardrush$teleportSent(int id);
 
     static boolean loaded(ServerPlayer player) {
         return player.connection instanceof ClientLevelLoad load && load.hardrush$levelLoaded();
