@@ -15,7 +15,6 @@ import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -34,26 +33,31 @@ import net.minecraft.world.level.gameevent.GameEvent;
 public final class MonsterCreeper {
     private static final Map<UUID, State> STATES = new HashMap<>();
     private static final RulesConfig DEFAULTS = RulesConfig.defaults();
+    static final String IGNITER = "igniter";
+    private static final String IGNITER_USAGE = "按住右键引爆 · 中途松开取消";
 
     private MonsterCreeper() {}
 
     public static ItemStack createIgniter(ServerPlayer player) {
-        var stack = new ItemStack(Items.GUNPOWDER);
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal("引爆器"));
-        stack.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
-                Component.literal("右键长按引爆"),
-                Component.literal("中途松开取消引爆"))));
+        var stack = dev.hardrush.notice.ItemText.lore(dev.hardrush.notice.ItemText.name(new ItemStack(Items.GUNPOWDER), "引爆器"),
+                IGNITER_USAGE);
         // Native clients must enter item-use mode and send RELEASE_USE_ITEM. A consumable
         // without food, effects, animation or slowdown is only the input transport.
         stack.set(DataComponents.CONSUMABLE,
                 new Consumable(3600f, ItemUseAnimation.NONE, Holder.direct(SoundEvents.EMPTY), false, List.of()));
         stack.set(DataComponents.USE_EFFECTS, new UseEffects(false, false, 1f));
-        MonsterItems.bind(player, stack, "igniter");
+        MonsterItems.bind(player, stack, IGNITER);
         return stack;
     }
 
+    /** The igniter's usage, also the first line of its description. */
+    public static java.util.Optional<String> heldHint(ServerPlayer player, ItemStack stack) {
+        return stack.is(Items.GUNPOWDER) && MonsterItems.matches(player, stack, IGNITER)
+                ? java.util.Optional.of(IGNITER_USAGE) : java.util.Optional.empty();
+    }
+
     public static boolean use(ServerPlayer player, InteractionHand hand) {
-        if (!available(player) || !MonsterItems.matches(player, player.getItemInHand(hand), "igniter")) return false;
+        if (!available(player) || !MonsterItems.matches(player, player.getItemInHand(hand), IGNITER)) return false;
         State state = state(player);
         if (state.exploding) return false;
         player.startUsingItem(hand);
@@ -105,8 +109,8 @@ public final class MonsterCreeper {
         }
         if (state.exploding) return;
         boolean held = player.isUsingItem()
-                && MonsterItems.matches(player, player.getUseItem(), "igniter")
-                && MonsterItems.matches(player, player.getItemInHand(player.getUsedItemHand()), "igniter");
+                && MonsterItems.matches(player, player.getUseItem(), IGNITER)
+                && MonsterItems.matches(player, player.getItemInHand(player.getUsedItemHand()), IGNITER);
         int direction = held ? 1 : -1;
         setDirection(player, state, direction);
         if (direction > 0 && state.swell == 0) {
@@ -150,7 +154,7 @@ public final class MonsterCreeper {
     }
 
     public static boolean isUsingIgniter(ServerPlayer player) {
-        return MonsterRoles.isMonster(player) && MonsterItems.matches(player, player.getUseItem(), "igniter");
+        return MonsterRoles.isMonster(player) && MonsterItems.matches(player, player.getUseItem(), IGNITER);
     }
 
     private static boolean available(ServerPlayer player) {

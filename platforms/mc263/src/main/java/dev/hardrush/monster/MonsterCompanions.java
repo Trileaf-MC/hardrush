@@ -54,7 +54,6 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Spawner;
@@ -132,16 +131,27 @@ public final class MonsterCompanions {
         });
     }
 
+    static final String BABY_EGG = "baby_egg", ADULT_EGG = "adult_egg";
+    private static final String EGG_USAGE = "右键方块或水面，放出一只随从";
+
     public static ItemStack egg(ServerPlayer player, boolean baby, boolean drowned) {
         var stack = new ItemStack(drowned ? Items.DROWNED_SPAWN_EGG : Items.ZOMBIE_SPAWN_EGG);
         var entityData = new CompoundTag();
         entityData.putBoolean("IsBaby", baby);
         stack.set(DataComponents.ENTITY_DATA, TypedEntityData.of(drowned ? EntityTypes.DROWNED : EntityTypes.ZOMBIE, entityData));
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal((baby ? "幼年" : "成年") + (drowned ? "溺尸" : "僵尸") + "刷怪蛋"));
-        stack.set(DataComponents.LORE, new ItemLore(List.of(
-                Component.literal("右键方块或水面生成一名随从；成功后消耗"),
-                Component.literal("跟随并协助主人攻击；离开本次出场后死亡"))));
-        return MonsterItems.bind(player, stack, baby ? "baby_egg" : "adult_egg");
+        dev.hardrush.notice.ItemText.name(stack, (baby ? "幼年" : "成年") + (drowned ? "溺尸" : "僵尸") + "刷怪蛋");
+        dev.hardrush.notice.ItemText.lore(stack, EGG_USAGE, "随从跟着你作战 · 本次出击结束时消失");
+        return MonsterItems.bind(player, stack, baby ? BABY_EGG : ADULT_EGG);
+    }
+
+    /** The role's spawn eggs' usage, also the first line of their description. */
+    public static java.util.Optional<String> heldHint(ServerPlayer player, ItemStack stack) {
+        return (stack.is(Items.ZOMBIE_SPAWN_EGG) || stack.is(Items.DROWNED_SPAWN_EGG)) && ownEgg(player, stack)
+                ? java.util.Optional.of(EGG_USAGE) : java.util.Optional.empty();
+    }
+
+    private static boolean ownEgg(ServerPlayer player, ItemStack stack) {
+        return MonsterItems.matches(player, stack, BABY_EGG) || MonsterItems.matches(player, stack, ADULT_EGG);
     }
 
     public static boolean useOn(ServerPlayer player, InteractionHand hand, BlockHitResult hit) {
@@ -204,13 +214,13 @@ public final class MonsterCompanions {
     private static boolean usableEgg(ServerPlayer player, ItemStack stack) {
         return player.isAlive() && MonsterRoundRuntime.canAct(player) && !MonsterRoles.binding(player).isEmpty()
                 && (stack.is(Items.ZOMBIE_SPAWN_EGG) || stack.is(Items.DROWNED_SPAWN_EGG))
-                && (MonsterItems.matches(player, stack, "baby_egg") || MonsterItems.matches(player, stack, "adult_egg"));
+                && ownEgg(player, stack);
     }
 
     private static boolean spawn(ServerPlayer player, ItemStack stack, Landing landing) {
         var level = player.level();
         var pos = landing.pos();
-        boolean baby = MonsterItems.matches(player, stack, "baby_egg");
+        boolean baby = MonsterItems.matches(player, stack, BABY_EGG);
         EntityType<? extends Zombie> type = stack.is(Items.DROWNED_SPAWN_EGG) ? EntityTypes.DROWNED : EntityTypes.ZOMBIE;
         Zombie zombie = type.create(level, EntitySpawnReason.SPAWN_ITEM_USE);
         if (zombie == null) return false;

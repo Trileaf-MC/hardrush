@@ -8,6 +8,9 @@ import dev.hardrush.monster.mixin.MonsterLivingAccessor;
 import dev.hardrush.monster.mixin.MonsterSkeletonAccessor;
 import dev.hardrush.combat.MonsterCombatRuntime;
 import dev.hardrush.protection.ProtectionRuntime;
+import dev.hardrush.hunt.HuntRetracks;
+import dev.hardrush.notice.ItemText;
+import dev.hardrush.notice.Notices;
 import java.util.*;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
@@ -36,7 +39,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.*;
-import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.*;
@@ -181,12 +183,12 @@ public final class MonsterRoles {
             if (MonsterSoulcatcher.enabled(player)) player.getInventory().setItem(3, MonsterSoulcatcher.bag(player));
         } else if (form == MonsterForm.CREEPER) player.getInventory().setItem(0, MonsterCreeper.createIgniter(player));
         // A skeleton's volley lives on its own sortie bow; MonsterBowDisplay explains it on that bow itself.
-        player.getInventory().setItem(7, MonsterItems.bind(player,
-            named(Items.ECHO_SHARD, "归返营地 · 右键引导 " + channelSeconds(role) + " 秒",
-                "按方向键、跳跃、攻击、使用其他物品或受伤会中断", "被水流推动不会中断；出生物资、买来的增益与身价留到下次出场，转化形态不保留"), "return"));
-        player.getInventory().setItem(6, MonsterItems.bind(player, named(Items.RECOVERY_COMPASS, "追迹罗盘 · 右键引导 " + channelSeconds(role) + " 秒",
-            "目标离你 40 格以上持续 10 秒，或去了其他维度时发光可用", "循着目标足迹出现在它附近，可跨维度；冷却 15 秒"),
-            dev.hardrush.hunt.HuntRetracks.PURPOSE));
+        player.getInventory().setItem(7, MonsterItems.bind(player, ItemText.lore(ItemText.name(new ItemStack(Items.ECHO_SHARD), "返回营地"),
+                returnUsage(role), "移动、攻击、使用物品或受伤会打断，被水流推动不算",
+                "本次的物资、增益和身价会暂存，下次以同一角色出击时带上 · 溺尸、流浪者形态不保留"), RETURN_SHARD));
+        player.getInventory().setItem(6, MonsterItems.bind(player, ItemText.lore(ItemText.name(new ItemStack(Items.RECOVERY_COMPASS), "追迹罗盘"),
+                "发光时右键，原地不动 " + Notices.key(channelSeconds(role)) + " 秒循迹到目标附近", RETRACK_LIGHTS,
+                "可跨维度 · 冷却 " + Notices.key(HuntRetracks.COOLDOWN_TICKS / 20) + " 秒"), HuntRetracks.PURPOSE));
         player.getInventory().setSelectedSlot(0);
         applyPurchases(player, kit, form, spares);
         repairLoadout(player);
@@ -203,9 +205,9 @@ public final class MonsterRoles {
         var leftovers = new ArrayList<ItemStack>();
         for (var entry : body.items().entrySet()) {
             var purpose = MonsterItems.purpose(entry.getValue());
-            boolean egg = purpose.equals("baby_egg") || purpose.equals("adult_egg");
+            boolean egg = purpose.equals(MonsterCompanions.BABY_EGG) || purpose.equals(MonsterCompanions.ADULT_EGG);
             // A body always resumes in its base form, so a drowned's eggs come back as zombie eggs.
-            var stack = egg ? MonsterCompanions.egg(player, purpose.equals("baby_egg"), role.form == MonsterForm.DROWNED)
+            var stack = egg ? MonsterCompanions.egg(player, purpose.equals(MonsterCompanions.BABY_EGG), role.form == MonsterForm.DROWNED)
                     .copyWithCount(entry.getValue().getCount()) : MonsterItems.bind(player, entry.getValue(), purpose);
             int slot = entry.getKey();
             if (slot >= 0 && slot < inventory.getContainerSize() && inventory.getItem(slot).isEmpty()) inventory.setItem(slot, stack);
@@ -248,7 +250,7 @@ public final class MonsterRoles {
         var inventory = player.getInventory();
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             var stack = inventory.getItem(i);
-            if (MonsterItems.matches(player, stack, baby ? "baby_egg" : "adult_egg") && stack.getCount() < stack.getMaxStackSize()) {
+            if (MonsterItems.matches(player, stack, baby ? MonsterCompanions.BABY_EGG : MonsterCompanions.ADULT_EGG) && stack.getCount() < stack.getMaxStackSize()) {
                 stack.grow(1); return true;
             }
         }
@@ -262,7 +264,7 @@ public final class MonsterRoles {
         var inventory = player.getInventory();
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             var stack = inventory.getItem(i);
-            if (MonsterItems.matches(player, stack, baby ? "baby_egg" : "adult_egg")) { stack.grow(count); return; }
+            if (MonsterItems.matches(player, stack, baby ? MonsterCompanions.BABY_EGG : MonsterCompanions.ADULT_EGG)) { stack.grow(count); return; }
         }
         inventory.add(MonsterCompanions.egg(player, baby, role.form == MonsterForm.DROWNED).copyWithCount(count));
     }
@@ -480,6 +482,12 @@ public final class MonsterRoles {
     }
     /** Purpose of the trident a zombie receives when it rises from the sea as a drowned; never parked. */
     public static final String SEA_TRIDENT = "sea_trident";
+    /** Purpose of the echo shard that channels the return to camp. */
+    public static final String RETURN_SHARD = "return";
+    private static final String RETRACK_LIGHTS = "离目标 " + Notices.key(HuntRetracks.FAR_DISTANCE) + " 格以上持续 "
+            + Notices.key(HuntRetracks.FAR_SECONDS) + " 秒，或目标去了其他维度时发光";
+    private static final String TRIDENT_USAGE = "投出的是副本，可以一直投 · 每 "
+            + Notices.key(MonsterNativeWeapons.TRIDENT_INTERVAL_TICKS / 20) + " 秒一次";
 
     /**
      * A zombie deployed under water rises as a drowned at once, without the conversion: it never was a land
@@ -491,7 +499,7 @@ public final class MonsterRoles {
         convert(player, MonsterForm.DROWNED, false);
         var inventory = player.getInventory();
         int slot = inventory.getSelectedSlot();
-        var trident = MonsterItems.bind(player, new ItemStack(Items.TRIDENT), SEA_TRIDENT);
+        var trident = MonsterItems.bind(player, ItemText.lore(new ItemStack(Items.TRIDENT), TRIDENT_USAGE), SEA_TRIDENT);
         var held = inventory.getItem(slot);
         // Into the hand when the held stack can move aside; otherwise the backpack (a full kit is never dropped).
         if (held.isEmpty()) inventory.setItem(slot, trident);
@@ -509,14 +517,14 @@ public final class MonsterRoles {
         if (form == MonsterForm.DROWNED) {
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
                 var old = player.getInventory().getItem(i);
-                boolean baby = MonsterItems.matches(player, old, "baby_egg");
-                if (baby || MonsterItems.matches(player, old, "adult_egg")) {
+                boolean baby = MonsterItems.matches(player, old, MonsterCompanions.BABY_EGG);
+                if (baby || MonsterItems.matches(player, old, MonsterCompanions.ADULT_EGG)) {
                     var egg = MonsterCompanions.egg(player, baby, true); egg.setCount(old.getCount()); player.getInventory().setItem(i, egg);
                 }
             }
             var held = player.containerMenu.getCarried();
-            boolean baby = MonsterItems.matches(player, held, "baby_egg");
-            if (baby || MonsterItems.matches(player, held, "adult_egg")) {
+            boolean baby = MonsterItems.matches(player, held, MonsterCompanions.BABY_EGG);
+            if (baby || MonsterItems.matches(player, held, MonsterCompanions.ADULT_EGG)) {
                 var egg = MonsterCompanions.egg(player, baby, true); egg.setCount(held.getCount()); player.containerMenu.setCarried(egg);
             }
         }
@@ -637,8 +645,8 @@ public final class MonsterRoles {
         if (role == null || !player.isAlive()) return false;
         MonsterDoorBreaking.clear(player);
         var item = player.getItemInHand(hand);
-        if (MonsterItems.matches(player, item, "return")) return dev.hardrush.lobby.LobbyRuntime.useReturn(player);
-        if (MonsterItems.matches(player, item, dev.hardrush.hunt.HuntRetracks.PURPOSE)) return dev.hardrush.lobby.LobbyRuntime.useRetrack(player, item);
+        if (MonsterItems.matches(player, item, RETURN_SHARD)) return dev.hardrush.lobby.LobbyRuntime.useReturn(player);
+        if (MonsterItems.matches(player, item, HuntRetracks.PURPOSE)) return dev.hardrush.lobby.LobbyRuntime.useRetrack(player, item);
         if (!MonsterRoundRuntime.canAct(player)) return false;
         dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品");
         if (isEgg(player, item)) return MonsterCompanions.use(player, hand);
@@ -652,7 +660,7 @@ public final class MonsterRoles {
         return MonsterNativeWeapons.startUse(player, hand);
     }
     private static boolean isEgg(ServerPlayer player, ItemStack item) {
-        return MonsterItems.matches(player, item, "baby_egg") || MonsterItems.matches(player, item, "adult_egg");
+        return MonsterItems.matches(player, item, MonsterCompanions.BABY_EGG) || MonsterItems.matches(player, item, MonsterCompanions.ADULT_EGG);
     }
     public static boolean performingSkill(ServerPlayer player) {
         var role = ROLES.get(player.getUUID());
@@ -662,7 +670,7 @@ public final class MonsterRoles {
     /** The return shard or the retrack compass: using it starts, or repeats, a channel instead of breaking one. */
     private static boolean channelControl(ServerPlayer player, InteractionHand hand) {
         var item = player.getItemInHand(hand);
-        return MonsterItems.matches(player, item, "return") || MonsterItems.matches(player, item, dev.hardrush.hunt.HuntRetracks.PURPOSE);
+        return MonsterItems.matches(player, item, RETURN_SHARD) || MonsterItems.matches(player, item, HuntRetracks.PURPOSE);
     }
     /**
      * A use packet that leaves a running channel alone: the control itself, or the rest of a click a control answered.
@@ -874,11 +882,21 @@ public final class MonsterRoles {
         if (changed) MonsterDisguise.refreshEquipment(player);
         player.inventoryMenu.broadcastChanges();
     }
-    public static ItemStack named(Item item, String name, String... description) {
-        var stack = new ItemStack(item); stack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
-        stack.set(DataComponents.LORE, new ItemLore(java.util.Arrays.stream(description).map(line -> (Component) Component.literal(line)).toList()));
-        return stack;
+    /**
+     * The fixed sortie controls' action-bar usage while held; the echo shard's and the trident's are also the first line
+     * of their descriptions. The compass tells the moment it can be used apart from how to use it.
+     */
+    public static Optional<String> heldHint(ServerPlayer player, ItemStack stack) {
+        var role = ROLES.get(player.getUUID());
+        if (role == null) return Optional.empty();
+        if (stack.is(Items.ECHO_SHARD) && MonsterItems.matches(player, stack, RETURN_SHARD)) return Optional.of(returnUsage(role));
+        if (stack.is(Items.RECOVERY_COMPASS) && MonsterItems.matches(player, stack, HuntRetracks.PURPOSE))
+            return Optional.of(Boolean.TRUE.equals(stack.get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE))
+                    ? "右键后原地不动 " + Notices.key(channelSeconds(role)) + " 秒，循迹到目标附近" : RETRACK_LIGHTS);
+        if (stack.is(Items.TRIDENT) && MonsterItems.matches(player, stack, SEA_TRIDENT)) return Optional.of(TRIDENT_USAGE);
+        return Optional.empty();
     }
+    private static String returnUsage(Role role) { return "右键后原地不动 " + Notices.key(channelSeconds(role)) + " 秒，回到庭院"; }
     private static List<ItemStack> copyInventory(ServerPlayer player) {
         var result = new ArrayList<ItemStack>();
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) result.add(player.getInventory().getItem(i).copy());

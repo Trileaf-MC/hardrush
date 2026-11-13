@@ -131,6 +131,13 @@ public final class MonsterSoulcatcher {
         return Math.max(1, Math.min(99, base + MonsterRoundRuntime.sortieKit(player).bought(ShopOffer.SOULCATCHER_CAPACITY)));
     }
 
+    /** How full the held bag is and both of its uses, on the action bar while held. */
+    public static Optional<String> heldHint(ServerPlayer player, ItemStack stack) {
+        if (!stack.has(DataComponents.BUNDLE_CONTENTS) || !MonsterItems.matches(player, stack, PURPOSE)) return Optional.empty();
+        int held = stack.getOrDefault(DataComponents.BUNDLE_CONTENTS, BundleContents.EMPTY).size();
+        return Optional.of("袋中 " + dev.hardrush.notice.Notices.key(held + "/" + capacity(player)) + " · 右键生物收编，右键方块或水面放出");
+    }
+
     /** Whether this round issues a soulcatcher; development fixtures outside a round always carry one. */
     public static boolean enabled(ServerPlayer player) {
         return MonsterRoundRuntime.rules(player).map(MonsterCoins::soulcatcher).orElse(true);
@@ -229,7 +236,7 @@ public final class MonsterSoulcatcher {
                 .withStyle(Style.EMPTY.withItalic(false)));
         boolean companion = rule(mob).map(Catch::companion).orElse(false);
         stack.set(DataComponents.LORE, new ItemLore(List.of(
-                line("生命 " + Math.round(mob.getHealth()) + "/" + Math.round(mob.getMaxHealth()), ChatFormatting.GRAY),
+                line("血量 " + Math.round(mob.getHealth()) + "/" + Math.round(mob.getMaxHealth()), ChatFormatting.GRAY),
                 line(companion ? "放出后成为随从：跟随并协助你攻击" : "放出后是普通生物，按原版行动", ChatFormatting.GRAY))));
         return stack;
     }

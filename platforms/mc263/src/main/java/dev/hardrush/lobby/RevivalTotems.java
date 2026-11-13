@@ -1,6 +1,8 @@
 package dev.hardrush.lobby;
 
 import dev.hardrush.core.round.RoundSnapshot;
+import dev.hardrush.notice.ItemText;
+import dev.hardrush.notice.Notices;
 import dev.hardrush.round.RoundSession;
 import java.util.*;
 import java.util.function.IntFunction;
@@ -49,20 +51,26 @@ public final class RevivalTotems {
                 && stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().contains(KEY);
     }
 
+    private static final String USAGE = "站上营地北侧祭坛的金块 " + Notices.key(RevivalAltar.DWELL_TICKS / 20) + " 秒复生";
+
+    /** What the totem is for, on the action bar while held; also the first line of its description. */
+    public static java.util.Optional<String> heldHint(ServerPlayer player, ItemStack stack) {
+        return is(stack) ? java.util.Optional.of(USAGE) : java.util.Optional.empty();
+    }
+
     /** The stack a camp monster holds; its count is the balance capped at {@link #MAX_STACK}. */
     public static ItemStack held(UUID round, int charges, int count) {
-        return totem(round, null, count, List.of(
-                "数量即你本轮剩余的复生次数（共 " + charges + " 次）",
-                "走上营地北侧复生祭坛，站在金块上 4 秒：消耗 1 次，空装复生为人类",
-                "丢出可转赠给营地里的其他怪物",
-                "落地 5 分钟无人拾取即作废；本轮结束全部清空"));
+        var lore = new java.util.ArrayList<>(List.of(USAGE, "每个图腾复生一次，复生为人类后空手出发",
+                "丢出可送给营地里的其他怪物", "落地 5 分钟无人拾取即作废 · 本轮结束时清空"));
+        // Beyond a full stack the item count no longer shows every charge.
+        if (charges > MAX_STACK) lore.add(1, "共 " + Notices.key(charges) + " 个");
+        return totem(round, null, count, lore);
     }
 
     static ItemStack thrown(UUID round, UUID token, int count, String owner) {
         return totem(round, token, count, List.of(
-                "来自 " + owner + " 的 " + count + " 次复生",
-                "营地里的怪物拾取后获得这些复生次数",
-                "落地 5 分钟无人拾取即作废"));
+                "来自 " + Notices.key(owner) + " 的 " + Notices.key(count) + " 个复生图腾",
+                "营地里的怪物捡起即可获得", "落地 5 分钟无人拾取即作废"));
     }
 
     private static ItemStack totem(UUID round, UUID token, int count, List<String> lore) {
@@ -73,8 +81,7 @@ public final class RevivalTotems {
         stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("复生图腾")
                 .withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GOLD)));
-        stack.set(DataComponents.LORE, new ItemLore(lore.stream().<Component>map(line -> Component.literal(line)
-                .withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GRAY))).toList()));
+        ItemText.lore(stack, lore);
         var data = new CompoundTag();
         data.putString("round", round.toString());
         // A per-throw token keeps native item merging from combining two separately committed stacks.

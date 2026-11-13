@@ -83,7 +83,7 @@ final class ChannelEffects {
     }
 
     private static net.minecraft.world.item.ItemStack item(ServerPlayer player, boolean retrack) {
-        String purpose = retrack ? dev.hardrush.hunt.HuntRetracks.PURPOSE : "return";
+        String purpose = retrack ? dev.hardrush.hunt.HuntRetracks.PURPOSE : dev.hardrush.monster.MonsterRoles.RETURN_SHARD;
         var inventory = player.getInventory();
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             var stack = inventory.getItem(i);

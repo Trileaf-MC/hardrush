@@ -14,7 +14,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.item.component.ItemLore;
 
 /**
  * An excluded player's one way back into the match: a bound native spyglass, projected while the body is in
@@ -22,6 +21,7 @@ import net.minecraft.world.item.component.ItemLore;
  */
 public final class Spyglass {
     private static final String KEY = "hardrush_observation_spyglass";
+    private static final String USAGE = "右键选择一名玩家，附身观察";
 
     private Spyglass() {}
 
@@ -30,17 +30,19 @@ public final class Spyglass {
         var data = new CompoundTag(); data.putBoolean(KEY, true);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(data));
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("望远镜").withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.AQUA)));
-        stack.set(DataComponents.LORE, new ItemLore(List.of(gray("右键选择一名玩家，附身观察"), gray("A/D 切换人选 · 潜行退出"), gray("本轮结束时收回"))));
+        dev.hardrush.notice.ItemText.lore(stack, USAGE, "A/D 切换人选 · 潜行退出", "本轮结束时收回");
         return stack;
+    }
+
+    /** The spyglass's usage, on the action bar while held; also the first line of its description. */
+    public static java.util.Optional<String> heldHint(net.minecraft.server.level.ServerPlayer player, ItemStack stack) {
+        return is(stack) ? java.util.Optional.of(USAGE) : java.util.Optional.empty();
     }
 
     public static boolean is(ItemStack stack) {
         return stack.is(Items.SPYGLASS) && stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().contains(KEY);
     }
 
-    private static Component gray(String line) {
-        return Component.literal(line).withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GRAY));
-    }
 
     /** Exactly one spyglass while excluded; none otherwise. Converges every tick like the camp kit. */
     public static void tick(MinecraftServer server, RoundSnapshot round) {
