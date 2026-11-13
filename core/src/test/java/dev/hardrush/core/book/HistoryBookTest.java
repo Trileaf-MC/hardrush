@@ -54,7 +54,7 @@ class HistoryBookTest {
                 fake.roster.subList(0, 40), List.of(new LeaderboardEntry(1, fake.latest, "winner")),
                 Optional.of(fake.roster.get(40)));
         String text = text(main);
-        assertTrue(text.contains("上一轮结果")); assertTrue(text.contains("当前规则榜前 10"));
+        assertTrue(text.contains("上一轮结果")); assertTrue(text.contains("当前规则下的前 10 名"));
         assertTrue(text.replace("\n", "").contains("胜者：player40"));
         assertTrue(text.contains("战绩书屋"));
         assertFalse(text.contains("/hardrush"));
@@ -62,7 +62,7 @@ class HistoryBookTest {
         var second = HistoryBookComposer.compose(fake.latest, fake.fingerprint, 2, 41,
                 fake.roster.subList(40, 41), List.of());
         assertTrue(text(second).replace("\n", "").contains("41. player40"));
-        assertFalse(text(second).contains("当前规则榜"));
+        assertFalse(text(second).contains("当前规则下"));
         assertEquals(2, HistoryBookComposer.volumeCount(41));
         assertEquals(1, HistoryBookComposer.volumeCount(0));
         assertThrows(IllegalArgumentException.class, () -> HistoryBookComposer.compose(fake.latest, fake.fingerprint,

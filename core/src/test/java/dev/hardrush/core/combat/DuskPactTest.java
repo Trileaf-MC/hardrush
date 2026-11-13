@@ -23,7 +23,7 @@ class DuskPactTest {
     }
     @Test void tabAndBlockedHintCarryTheCountdownBeforeTheBarAppears() {
         assertEquals("黄昏契约 · 日落前暂息纷争 · 10:50", display(0).tab());
-        assertEquals("黄昏契约期间，你不可攻击其他玩家 · 剩余 10:50", display(0).blocked());
+        assertEquals("黄昏契约生效中，不能攻击其他玩家 · 10:50", display(0).blocked());
         assertEquals("黄昏契约 · 日落前暂息纷争 · 00:45", display(12_100).tab());
     }
     @Test void convertsRealSecondsUsingBothClockAndServerRate() {

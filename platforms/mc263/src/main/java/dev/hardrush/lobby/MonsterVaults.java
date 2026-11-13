@@ -73,14 +73,14 @@ public final class MonsterVaults {
         var r = access.committed().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
         if (p == null || !MonsterCoins.enabled(r.rules()) || !access.eligible(player)) {
-            tell(player, "宝库只对庭院里待命的怪物开放"); fail(player, pos); return;
+            dev.hardrush.notice.Notices.hint(player, "宝库只对庭院里待命的怪物开放"); fail(player, pos); return;
         }
         if (LobbyRuntime.revivalFirst(player, r, p)) { fail(player, pos); return; }
         if (p.monsterRole() == MonsterRole.CREEPER || !p.wallet().roleChosen()) {
-            tell(player, "僵尸和骷髅才能开启宝库"); fail(player, pos); return;
+            dev.hardrush.notice.Notices.hint(player, "僵尸和骷髅才能开启宝库"); fail(player, pos); return;
         }
         if (!CampKit.holdsKey(player, key)) {
-            tell(player, "需要手持 " + dev.hardrush.notice.Notices.key(key.title()) + " · 可向女巫购买"); fail(player, pos); return;
+            dev.hardrush.notice.Notices.hint(player, "需要手持 " + dev.hardrush.notice.Notices.key(key.title()) + " · 可向女巫购买"); fail(player, pos); return;
         }
         if (openings.containsKey(p.id()) || access.busy(p.id()) || access.session().mutationPending()) {
             return; // The vault is already animating for this player.
@@ -93,7 +93,7 @@ public final class MonsterVaults {
                 draw.slot(), draw.roles(), MonsterGacha.encode(player.level().registryAccess(), draw.stack()), reply -> {
                     if (!reply.success()) {
                         openings.remove(p.id()); CampKit.hold(player, false);
-                        tell(player, dev.hardrush.notice.Replies.text(reply, "宝库没能打开，钥匙还在")); fail(player, pos); return;
+                        dev.hardrush.notice.Notices.hint(player, dev.hardrush.notice.Replies.text(reply, "宝库没能打开，钥匙还在")); fail(player, pos); return;
                     }
                     opening.committed = true;
                     sound(player, pos, SoundEvents.VAULT_INSERT_ITEM);
@@ -187,7 +187,6 @@ public final class MonsterVaults {
         player.level().playSound(null, pos, sound, SoundSource.BLOCKS, 1, 1);
     }
 
-    private static void tell(ServerPlayer player, String message) { dev.hardrush.notice.Notices.hint(player, message); }
 
     public static void disconnected(ServerPlayer player) {
         var vaults = INSTANCES.get(player.level().getServer());

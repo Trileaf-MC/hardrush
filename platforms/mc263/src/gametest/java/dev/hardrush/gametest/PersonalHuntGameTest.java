@@ -365,7 +365,7 @@ public final class PersonalHuntGameTest {
                         refresh(); int id = model(d, changed.id().equals(a.id()) ? a : c);
                         test.assertTrue(d.connection.packets.stream().filter(ClientboundSetEntityDataPacket.class::isInstance).map(ClientboundSetEntityDataPacket.class::cast)
                                 .filter(data -> data.id()==id).flatMap(data -> data.packedItems().stream())
-                                .anyMatch(data -> data.value().toString().contains("复生核验中")), "Committed revival is RESTORING before profile/online admission, never AWAY");
+                                .anyMatch(data -> data.value().toString().contains("正在复生")), "Committed revival is RESTORING before profile/online admission, never AWAY");
                         restoringShows++;
                     }
                 }

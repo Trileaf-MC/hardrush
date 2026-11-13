@@ -96,8 +96,8 @@ public final class ParticipationControl {
     public static List<LobbyMenus.Button> withdrawalButtons(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());
         var p = b.session.snapshot().orElseThrow().participants().get(player.getUUID());
-        return List.of(new LobbyMenus.Button(Items.PAPER, "退出本轮后不能重新加入、追猎或复生；下轮恢复资格", "info", ""),
-                new LobbyMenus.Button(Items.CHEST, "比赛物资封存，空身回到营地，右键望远镜附身观战；不会发放死亡或击杀奖励", "info", ""),
+        return List.of(new LobbyMenus.Button(Items.PAPER, "退出后本轮不能再加入、追猎或复生，下一轮恢复", "info", ""),
+                new LobbyMenus.Button(Items.CHEST, "身上的物资封存，空手回到营地，可以用望远镜观战 · 不算阵亡，不给任何人击杀奖励", "info", ""),
                 new LobbyMenus.Button(Items.EMERALD, "确认退出本轮并观战", "withdraw-confirm", token(p)),
                 new LobbyMenus.Button(Items.BARRIER, "取消，继续游戏", "withdraw-cancel", ""));
     }

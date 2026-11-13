@@ -149,7 +149,7 @@ public final class DuskPactGameTest {
             test.assertFalse(capture.packets.stream().anyMatch(ClientboundBossEventPacket.class::isInstance), "Daylight shows no bossbar");
             test.assertValueEqual(DuskPactRuntime.tabLine(server).orElse(""), "黄昏契约 · 日落前暂息纷争 · 10:50", "TAB footer carries the countdown");
             DuskPactRuntime.reject(f.victim, f.attacker);
-            String blocked = "黄昏契约期间，你不可攻击其他玩家 · 剩余 10:50";
+            String blocked = "黄昏契约生效中，不能攻击其他玩家 · 10:50";
             // The shared hint router owns the action bar when the lobby runtime is up; otherwise the pact sends it directly.
             test.assertTrue(dev.hardrush.lobby.LobbyInteractions.get(server)
                     .map(router -> router.hints(f.victim).current(System.nanoTime() / 1_000_000).filter(blocked::equals).isPresent())

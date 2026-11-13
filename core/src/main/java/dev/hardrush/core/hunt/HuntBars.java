@@ -58,9 +58,10 @@ public final class HuntBars {
     public static String targetTitle(TargetState state, String targetName) {
         return switch (state) {
             case HUNTING -> "追猎目标 · " + targetName;
-            case OTHER_DIMENSION -> "目标已不在当前维度";
-            case OFFLINE -> "目标离线";
-            case KILLED -> "目标已被击毙";
+            case OTHER_DIMENSION -> targetName + " 去了其他维度";
+            case OFFLINE -> targetName + " 已离线";
+            // Anyone or anything may have killed the target, so the bar only states the death.
+            case KILLED -> targetName + " 已阵亡";
             case GONE -> "";
         };
     }

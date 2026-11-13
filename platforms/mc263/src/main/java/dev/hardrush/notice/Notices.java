@@ -19,11 +19,12 @@ import net.minecraft.sounds.SoundSource;
 /**
  * The single outlet for player-facing messages, one method per channel of docs/plan/玩家消息分级.md:
  * {@link #hint} (T1 action bar), {@link #title} (T2), {@link #personal} (T4 chat) and {@link #broadcast} (T5 chat).
- * T0 is a sound or a visible change and T3 is the stage boss bar; neither goes through here.
+ * T0 is a sound or a visible change and never goes through here; T3 status bars go through {@link StatusBars}.
  *
  * <p>Text is written in a small markup so the core rule layer can produce hints without Minecraft types:
  * {@code **key**} is white, {@code [[name]]} is a bold white player name, {@code ·} is dark gray and everything else
- * is gray. Wrap dynamic values with {@link #key} or {@link #name} so they cannot inject markup.
+ * is gray, and {@code {{…}}} wears the coin item's green, the one colour the rules allow (see {@link #COINS}).
+ * Wrap dynamic values with {@link #key} or {@link #name} so they cannot inject markup.
  */
 public final class Notices {
     /** How long a one-shot action-bar notice outranks ongoing progress hints. */
@@ -32,6 +33,12 @@ public final class Notices {
     private static final Style KEY = Style.EMPTY.withColor(ChatFormatting.WHITE).withItalic(false);
     private static final Style NAME = KEY.withBold(true);
     private static final Style SEPARATOR = Style.EMPTY.withColor(ChatFormatting.DARK_GRAY).withItalic(false);
+    private static final Style COIN = Style.EMPTY.withColor(ChatFormatting.GREEN).withItalic(false);
+    /** The coin currency's name in the colour of its item. */
+    public static final String COINS = "{{怪物币}}";
+    /** Server → player → tip → round in which it was last taught. Memory only, so every round teaches again. */
+    private static final java.util.Map<MinecraftServer, java.util.Map<java.util.UUID, java.util.Map<String, java.util.UUID>>> TAUGHT =
+            new java.util.WeakHashMap<>();
 
     private Notices() {}
 
@@ -40,7 +47,30 @@ public final class Notices {
 
     /** Dynamic text (player and mob names, item titles) never carries markup characters. */
     public static String plain(Object value) {
-        return String.valueOf(value).replace("*", "").replace("[[", "").replace("]]", "").replace("·", "");
+        return String.valueOf(value).replace("*", "").replace("[[", "").replace("]]", "")
+                .replace("{{", "").replace("}}", "").replace("·", "");
+    }
+
+    /**
+     * Operation tips are taught once per player and round (docs/plan/玩家消息分级.md, 判定顺序 2); afterwards signs,
+     * item lore and the rule book carry them. Returns whether this is the first time, and records it.
+     */
+    public static boolean firstInRound(ServerPlayer player, java.util.UUID roundId, String tip) {
+        var server = player.level().getServer();
+        synchronized (TAUGHT) {
+            var tips = TAUGHT.computeIfAbsent(server, ignored -> new java.util.HashMap<>())
+                    .computeIfAbsent(player.getUUID(), ignored -> new java.util.HashMap<>());
+            return !roundId.equals(tips.put(tip, roundId));
+        }
+    }
+
+    /**
+     * T3 status bar text: plain white like a vanilla boss bar name, since the bar itself already stands out.
+     * Highlight markers in shared wording are dropped rather than coloured.
+     */
+    public static Component bar(String markup) {
+        return Component.literal(markup.replace("**", "").replace("[[", "").replace("]]", "")
+                .replace("{{", "").replace("}}", "")).setStyle(KEY);
     }
 
     public static Component format(String markup) {
@@ -55,6 +85,10 @@ public final class Notices {
             } else if (pair.equals("[[") && style == BODY) {
                 flush(out, text, style); style = NAME; i++;
             } else if (pair.equals("]]") && style == NAME) {
+                flush(out, text, style); style = BODY; i++;
+            } else if (pair.equals("{{") && style == BODY) {
+                flush(out, text, style); style = COIN; i++;
+            } else if (pair.equals("}}") && style == COIN) {
                 flush(out, text, style); style = BODY; i++;
             } else if (c == '·' && style == BODY) {
                 flush(out, text, style); out.append(Component.literal("·").setStyle(SEPARATOR));

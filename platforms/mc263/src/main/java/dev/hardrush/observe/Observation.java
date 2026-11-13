@@ -86,7 +86,7 @@ public final class Observation {
 
     public static void close(MinecraftServer server) {
         var b = BINDINGS.remove(server);
-        if (b != null) b.sessions.values().forEach(s -> s.bar.removeAllPlayers());
+        if (b != null) b.sessions.values().forEach(s -> dev.hardrush.notice.StatusBars.hideEverywhere(server, s.bar));
     }
 
     public static void disconnected(ServerPlayer player) {
@@ -125,11 +125,11 @@ public final class Observation {
     public static String refusal(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);
-        if (r == null || !open(b, r) || b.session.competitionLocked()) return "挑战或救场进行中才能观战";
+        if (r == null || !open(b, r) || b.session.competitionLocked()) return "挑战进行中才能观战";
         var group = group(r, player).orElse(null);
-        if (group == null) return "观战仅向营地怪物和已退出本轮的玩家开放";
-        if (!LobbyWorld.isLobby(player.level()) || !PlayerProfiles.verifiedLobbyBody(player)) return "请在营地内开始观战";
-        if (group == Group.MONSTER && LobbyRuntime.submitting(player)) return "正在提交出场，请稍候";
+        if (group == null) return "阵亡、退出或被取消资格后才能观战";
+        if (!LobbyWorld.isLobby(player.level()) || !PlayerProfiles.verifiedLobbyBody(player)) return "回到营地才能观战";
+        if (group == Group.MONSTER && LobbyRuntime.submitting(player)) return "正在出击，稍等片刻";
         return null;
     }
 
@@ -187,13 +187,13 @@ public final class Observation {
         var group = group(r, player).orElseThrow();
         var target = server.getPlayerList().getPlayer(targetId);
         if (!valid(r, group, target)) {
-            hint(player, group == Group.MONSTER ? "只能观察在赛的人类" : "此人暂时无法观察");
+            hint(player, group == Group.MONSTER ? "只能观察挑战中的人类" : "只能观察挑战中的人类或出击中的怪物");
             return false;
         }
         var s = new Session(player, group);
-        if (!PlayerProfiles.beginObservation(player)) { hint(player, "个人档案正在核验，请稍候"); return false; }
+        if (!PlayerProfiles.beginObservation(player)) { hint(player, "正在整理行囊，稍等片刻……"); return false; }
         b.sessions.put(player.getUUID(), s);
-        s.bar.addPlayer(player);
+        dev.hardrush.notice.StatusBars.show(player, dev.hardrush.notice.StatusBars.Slot.OBSERVE, s.bar);
         attach(server, s, target);
         return true;
     }
@@ -224,7 +224,8 @@ public final class Observation {
 
     private static void drop(Binding b, Session s) {
         b.sessions.remove(s.player.getUUID(), s);
-        s.bar.removeAllPlayers();
+        dev.hardrush.notice.StatusBars.hideEverywhere(b.server, s.bar);
+        LobbyInteractions.get(b.server).ifPresent(router -> router.hints(s.player).clear("observe-help"));
     }
 
     public static void tick(MinecraftServer server) {
@@ -247,7 +248,7 @@ public final class Observation {
                 if (s.lostAt < 0) s.lostAt = tick;
                 if (tick - s.lostAt >= LOST_GRACE_TICKS) {
                     var next = step(b, r, s, 1);
-                    if (next == null) { end(server, b, s, "暂时没有可以观察的玩家，已返回营地"); continue; }
+                    if (next == null) { end(server, b, s, "没有可观察的玩家了，回到了营地"); continue; }
                     attach(server, s, next);
                     target = next;
                 }
@@ -266,14 +267,16 @@ public final class Observation {
         var hunting = s.group == Group.MONSTER ? LobbyRuntime.huntTarget(s.player) : Optional.<UUID>empty();
         boolean huntingThis = hunting.filter(s.target::equals).isPresent();
         boolean holding = s.group == Group.MONSTER && s.jumpSince >= 0 && !s.jumpFired && !lost;
+        // The bar says whom and what; the keys live on the action bar below it, at the lowest priority.
         String title;
-        if (lost) title = s.targetName + " 已无法观察 · 即将切换人选 · 潜行退出";
-        else if (holding) title = (huntingThis ? "按住空格取消追猎 " : hunting.isPresent() ? "按住空格改追 " : "按住空格追猎 ") + s.targetName + "…";
-        else if (s.group == Group.EXCLUDED) title = "正在观察 " + s.targetName + " · A/D 切换人选 · 潜行退出";
-        else if (huntingThis) title = "正在观察 " + s.targetName + " · 伺机追猎中 · A/D 切换人选 · 长按空格取消 · 潜行退出";
-        else if (hunting.isPresent()) title = "正在观察 " + s.targetName + " · A/D 切换人选 · 长按空格改追此人 · 潜行退出";
-        else title = "正在观察 " + s.targetName + " · A/D 切换人选 · 长按空格追猎 · 潜行退出";
-        if (!title.equals(s.shownTitle)) { s.bar.setName(Component.literal(title)); s.shownTitle = title; }
+        if (lost) title = s.targetName + " 已无法观察，即将切换";
+        else if (holding) title = (huntingThis ? "按住空格取消追猎 " : hunting.isPresent() ? "按住空格改追 " : "按住空格追猎 ") + s.targetName + "……";
+        else title = (huntingThis ? "正在追猎 " : "正在观察 ") + s.targetName;
+        if (!title.equals(s.shownTitle)) { s.bar.setName(dev.hardrush.notice.Notices.bar(title)); s.shownTitle = title; }
+        String keys = s.group == Group.EXCLUDED ? "A/D 切换 · 潜行退出"
+                : "A/D 切换 · " + (huntingThis ? "长按空格取消追猎" : hunting.isPresent() ? "长按空格改追此人" : "长按空格追猎") + " · 潜行退出";
+        LobbyInteractions.get(s.player.level().getServer()).ifPresent(router -> router.hints(s.player).offer("observe-help",
+                LobbyHints.Priority.GUIDANCE, keys, System.nanoTime() / 1_000_000 + 500));
         float progress = holding ? Math.min(1, (tick - s.jumpSince) / (float) HOLD_TICKS)
                 : lost || target == null ? 0 : Math.max(0, Math.min(1, target.getHealth() / Math.max(1, target.getMaxHealth())));
         s.bar.setProgress(progress);
@@ -306,8 +309,8 @@ public final class Observation {
         var r = b.session.snapshot().orElse(null);
         if (r == null) return;
         var next = step(b, r, s, direction);
-        if (next == null) { hint(s.player, "暂时没有其他可以观察的玩家"); return; }
-        if (next.getUUID().equals(s.target) && s.lostAt < 0) { hint(s.player, "目前只有 " + s.targetName + " 可以观察"); return; }
+        if (next == null) { hint(s.player, "没有其他可观察的玩家"); return; }
+        if (next.getUUID().equals(s.target) && s.lostAt < 0) { hint(s.player, "只有 " + dev.hardrush.notice.Notices.key(s.targetName) + " 可以观察"); return; }
         attach(s.player.level().getServer(), s, next);
     }
 
@@ -350,7 +353,7 @@ public final class Observation {
             var entity = packet.getEntity(level);
             if (entity == null) continue;
             if (r != null && entity instanceof ServerPlayer target && valid(r, s.group, target)) attach(player.level().getServer(), s, target);
-            else hint(player, s.group == Group.MONSTER ? "只能观察在赛的人类" : "只能观察在赛的人类或已出场的怪物");
+            else hint(player, s.group == Group.MONSTER ? "只能观察挑战中的人类" : "只能观察挑战中的人类或出击中的怪物");
             break;
         }
         return true;
@@ -368,8 +371,11 @@ public final class Observation {
             Long last = b.alerted.get(entry.getKey());
             if (target == null || last != null && tick - last < ALERT_COOLDOWN_TICKS) continue;
             b.alerted.put(entry.getKey(), tick);
-            LobbyInteractions.get(server).ifPresent(router -> router.hints(target).offer("watched", LobbyHints.Priority.GUIDANCE,
-                    "有玩家开始观察你", System.nanoTime() / 1_000_000 + 2500));
+            // The spyglass sound is the alert; the words only explain it the first time in a round.
+            var round = b.session.snapshot().orElse(null);
+            if (round != null && dev.hardrush.notice.Notices.firstInRound(target, round.roundId(), "watched"))
+                LobbyInteractions.get(server).ifPresent(router -> router.hints(target).offer("watched", LobbyHints.Priority.GUIDANCE,
+                        "有人正在用望远镜观察你", System.nanoTime() / 1_000_000 + 2500));
             target.connection.send(new ClientboundSoundPacket(net.minecraft.core.Holder.direct(SoundEvents.SPYGLASS_USE), SoundSource.PLAYERS,
                     target.getX(), target.getY(), target.getZ(), .4f, 1f, 0));
         }
