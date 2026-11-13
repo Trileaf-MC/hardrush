@@ -75,8 +75,8 @@ public final class LobbyProjections {
             var name = Component.literal(target.originalProfile.name() + bounty);
             if (target.state == State.AVAILABLE && target.location != null) name.append(" · ").append(target.location);
             if (target.state != State.AVAILABLE) name.append(" · " + switch (target.state) {
-                case AWAY -> "暂离，无法追猎"; case DEAD -> "已死亡";
-                case RESTORING -> "复生核验中"; case AVAILABLE, CLOSED, EMPTY -> "暂不可追猎";
+                case AWAY -> "离线"; case DEAD -> "已阵亡";
+                case RESTORING -> "正在复生"; case AVAILABLE, CLOSED, EMPTY -> "暂不可追猎";
             });
             model.setCustomName(name);
             model.setCustomNameVisible(true);

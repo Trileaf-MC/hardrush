@@ -10,7 +10,7 @@ public final class RoundResultText {
         return switch (result.kind()) {
             case COMPLETED -> completedLabel;
             case FAILED -> "挑战失败";
-            case ABORTED -> "挑战中止";
+            case ABORTED -> "本轮已中止";
         };
     }
 

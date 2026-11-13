@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockDestructionPacket;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
@@ -66,7 +65,7 @@ public final class MonsterDoorBreaking {
         dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "敲门");
         goal.start();
         ACTIVE.put(player.getUUID(), goal);
-        player.sendSystemMessage(Component.literal("按住左键敲门约 12 秒；松开或移开准星即中断"), true);
+        dev.hardrush.notice.Notices.hint(player, "按住左键敲门约 " + dev.hardrush.notice.Notices.key(12) + " 秒 · 松开或移开准星会中断");
         return true;
     }
 

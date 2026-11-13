@@ -1,7 +1,6 @@
 package dev.hardrush.core.book;
 
 import dev.hardrush.core.api.BookPort;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.record.LeaderboardEntry;
 import dev.hardrush.core.record.ParticipantRecord;
 import dev.hardrush.core.record.RoundHistory;
@@ -46,15 +45,12 @@ public final class HistoryBookComposer {
         int expected = (int) Math.min(PARTICIPANTS_PER_VOLUME, participantCount - offset);
         if (participants.size() != expected) throw new IllegalArgumentException("Incomplete book roster slice");
         var paragraphs = new ArrayList<String>();
-        paragraphs.add("HardRush 战绩\n第 " + history.sequence() + " 轮\n卷 " + volume + "/" + volumes
-                + " · 书版 " + history.edition());
+        // One set of books per round, told apart by volume; a correction reissues them as a revision.
+        paragraphs.add("HardRush 战绩\n第 " + history.sequence() + " 轮 · 第 " + volume + "/" + volumes + " 卷"
+                + (history.edition() > 1 ? "\n第 " + (history.edition() - 1) + " 次修订" : ""));
         if (volume == 1) {
-            String result = switch (history.result().kind()) {
-                case COMPLETED -> "通关";
-                case FAILED -> "失败";
-                case ABORTED -> "中止";
-            };
-            String winner = history.result().winner() == null ? "待核验／无胜者" : history.result().winner().toString();
+            boolean completed = history.result().kind() == dev.hardrush.core.round.RoundResult.Kind.COMPLETED;
+            String winner = !completed ? "无" : history.result().winner() == null ? "有待管理员核实" : "未知";
             for (ParticipantRecord participant : participants) {
                 if (participant.playerId().equals(history.result().winner())) winner = SafeBookText.literal(participant.playerName(), 64);
             }
@@ -63,14 +59,13 @@ public final class HistoryBookComposer {
                 if (!record.playerId().equals(history.result().winner())) throw new IllegalArgumentException("Winner identity mismatch");
                 winner = SafeBookText.literal(record.playerName(), 64);
             }
-            paragraphs.add("上一轮结果：" + result + "\n模式：" + (history.rules().mode() == GameMode.NORMAL ? "普通" : "极限")
-                    + "\n挑战耗时：" + duration(history.challengeMillis()) + "\n胜者：" + winner
-                    + "\n计时：" + (history.timingUncertain() ? "待核验" : "已记录")
-                    + "\n归因：" + (history.trustedWinner() ? "已核验" : "待核验")
-                    + "\n说明：" + RoundResultText.reason(history.result()));
-            paragraphs.add("当前规则榜前 10\n规则：" + currentRulesFingerprint.substring(0, 12)
-                    + "\n同毫秒同名次；异常成绩不入榜。");
-            if (leaderboard.isEmpty()) paragraphs.add("暂无合格成绩。");
+            paragraphs.add("上一轮结果：" + dev.hardrush.core.record.LibraryText.outcome(history.result())
+                    + "\n模式：" + dev.hardrush.core.record.LibraryText.mode(history.rules().mode())
+                    + "\n用时：" + duration(history.challengeMillis()) + "\n胜者：" + winner
+                    + (completed ? "\n成绩：" + (history.leaderboardEligible() ? "有效" : "有待管理员核实") : "")
+                    + "\n" + RoundResultText.reason(history.result()));
+            paragraphs.add("当前规则下的前 10 名\n用时相同并列；有待核实的成绩不入榜");
+            if (leaderboard.isEmpty()) paragraphs.add("还没有通关成绩");
             for (LeaderboardEntry entry : leaderboard) {
                 if (!entry.round().rulesFingerprint().equals(currentRulesFingerprint) || !entry.round().leaderboardEligible()) {
                     throw new IllegalArgumentException("Leaderboard crossed rules or unverified result");
@@ -86,11 +81,10 @@ public final class HistoryBookComposer {
             paragraphs.add((offset + index + 1) + ". " + SafeBookText.literal(player.playerName(), 64)
                     + "\n人类时长 " + duration(player.humanMillis())
                     + "\n进度 " + player.advancementCount() + " · 死亡 " + player.deathCount() + " · 复生 " + player.revivalCount()
-                    + "\n末地：" + (player.firstEndNanos() == null ? "未进入" : duration(player.firstEndNanos() / 1_000_000)));
+                    + "\n末地：" + (player.firstEndNanos() == null ? "未到达" : duration(player.firstEndNanos() / 1_000_000)));
         }
-        paragraphs.add("战绩书屋\n回到营地，右键书屋讲台。\n选择轮次可查结果、参赛名单与规则分榜；领取主册或分卷。\n本轮序号：" + history.sequence()
-                + "\n本卷 " + volume + "/" + volumes + "\n背包满时保留所选卷待领；自动主册会重试，历史分卷可空出格位后到书屋重试。\n已发书册为历史快照，成绩修正后请重新领取。");
-        String title = SafeBookText.literal("HardRush 第" + history.sequence() + "轮 卷" + volume, 32);
+        paragraphs.add("战绩书屋\n回到营地右键书屋讲台，可以查看各轮结果、参赛名单和排行榜，并领取任意一卷。\n成绩修正后，重新领取即可得到最新版");
+        String title = SafeBookText.literal("HardRush 第" + history.sequence() + "轮 第" + volume + "卷", 32);
         // The native title limit is UTF-16 length, not code points.
         if (title.length() > 32) title = title.substring(0, 32);
         return new BookPort.Book(history.roundId(), Math.toIntExact(history.edition()), volume, title, "HardRush",

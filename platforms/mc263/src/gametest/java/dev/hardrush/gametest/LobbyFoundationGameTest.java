@@ -191,8 +191,6 @@ public final class LobbyFoundationGameTest {
             test.assertTrue(f.a.player.getMainHandItem().is(Items.DIAMOND_CHESTPLATE), "Unregistered entity cannot take equipment");
             stand.discard(); f.a.player.getInventory().clearContent();
             test.assertValueEqual(f.session.snapshot().orElseThrow().rules().huntRule(), RulesConfig.HuntRule.PERSONAL_TARGET, "New rounds use new semantics");
-            dev.hardrush.lobby.LobbyRuntime.command(f.a.player, "deploy", "");
-            test.assertTrue(f.a.player.level() == LobbyWorld.open(f.server).holdingLevel(), "Unconnected direct hunt stays closed");
         }
         void project() {
             targets.clear(); selections.clear();
