@@ -15,7 +15,8 @@ import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Render after all intent producers, including early-return recovery/celebration ticks.
- * Item names are already shown by the vanilla selected-item HUD; do not repeat them in the action bar.
+ * Item names are already shown by the vanilla selected-item HUD; do not repeat them in the action bar
+ * ({@link HeldItemHints} adds only the usage line above the name).
  */
 public final class PlayerFeedback {
     private static final java.util.Map<MinecraftServer, net.minecraft.server.level.ServerBossEvent> BARS = new java.util.IdentityHashMap<>();
@@ -109,7 +110,9 @@ public final class PlayerFeedback {
                     break;
                 }
             }
-            if (server.getTickCount() % 5 == 0) hints.current(now).ifPresent(text -> player.connection.send(new ClientboundSetActionBarTextPacket(Notices.format(text))));
+            HeldItemHints.update(player, hints, now);
+            // New lines go out at once; ongoing ones are refreshed every 5 ticks, within the client's 3-second display.
+            hints.render(now, server.getTickCount() % 5 == 0).ifPresent(text -> player.connection.send(new ClientboundSetActionBarTextPacket(Notices.format(text))));
         }
     }
 

@@ -58,7 +58,8 @@
       "dev.hardrush.monster.MonsterSoulcatcherGameTest",
       "dev.hardrush.gametest.MonsterCloudGameTest",
       "dev.hardrush.monster.MonsterInventoryFormGameTest",
-      "dev.hardrush.monster.MonsterSeaGameTest"
+      "dev.hardrush.monster.MonsterSeaGameTest",
+      "dev.hardrush.lobby.HeldItemHintsGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"
