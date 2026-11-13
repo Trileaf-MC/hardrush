@@ -7,6 +7,7 @@ import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.lobby.LobbyInteractions;
+import dev.hardrush.player.ClientLevelLoad;
 import dev.hardrush.combat.MonsterCombatRuntime;
 import java.util.*;
 import net.minecraft.core.registries.Registries;
@@ -182,8 +183,9 @@ public final class DuskPactRuntime {
             }
             for (var player : viewers) {
                 if (barShown) binding.bar.addPlayer(player);
-                // Wait for loading to finish; play the entire introduction once per player and round.
-                if (player.connection.hasClientLoaded() && binding.introduced.add(player.getUUID())) {
+                // Wait for the loading screen of the level the player is in (typically the lobby-to-world teleport);
+                // play the entire introduction once per player and round.
+                if (ClientLevelLoad.loaded(player) && binding.introduced.add(player.getUUID())) {
                     // Vanilla renders the ghost and plays its curse sound; this packet applies no mining fatigue.
                     player.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.GUARDIAN_ELDER_EFFECT, 1F));
                     title(player, 10, 80, 20, DuskPact.TITLE, DuskPact.INTRO);
