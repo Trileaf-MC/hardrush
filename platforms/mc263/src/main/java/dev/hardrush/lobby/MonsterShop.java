@@ -72,7 +72,7 @@ public final class MonsterShop {
                         : offer.permanent() ? ChatFormatting.LIGHT_PURPLE : ChatFormatting.YELLOW)));
         var lore = new ArrayList<Component>();
         lore.add(Component.literal(description(offer, owned)).withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GRAY)));
-        if (offer.permanent()) lore.add(Component.literal("本轮内以僵尸出场一直有效；复生为人类后清空")
+        if (offer.permanent()) lore.add(Component.literal("本轮以僵尸出击时一直有效 · 复生后清空")
                 .withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.DARK_GRAY)));
         stack.set(DataComponents.LORE, new ItemLore(lore));
         return stack;
@@ -87,16 +87,16 @@ public final class MonsterShop {
 
     private static String description(ShopOffer offer, int owned) {
         return switch (offer) {
-            case ADULT_EGG -> "下次出场多带 1 枚成年僵尸蛋";
-            case BABY_EGG -> "下次出场多带 1 枚幼年僵尸蛋";
-            case SWIFTNESS -> "出场时获得迅捷 3:00";
-            case FIRE_RESISTANCE -> "出场时获得抗火 3:00";
-            case REGENERATION -> "出场时获得再生 0:45；爆炸后化作药水云";
-            case SLOWNESS_ARROWS -> "下次出场带入，射一箭消耗一支";
-            case POISON_ARROWS -> "下次出场带入，射一箭消耗一支";
-            case CHARGED -> "下次出场成为闪电苦力怕，爆炸威力翻倍";
-            case TRIAL_KEY -> "插入营地的试炼宝库，抽取一件装备";
-            case OMINOUS_KEY -> "插入营地的不祥宝库，奖池更好";
+            case ADULT_EGG -> "下次出击多带 1 枚成年僵尸刷怪蛋";
+            case BABY_EGG -> "下次出击多带 1 枚幼年僵尸刷怪蛋";
+            case SWIFTNESS -> "出击时获得迅捷（3:00）";
+            case FIRE_RESISTANCE -> "出击时获得抗火（3:00）";
+            case REGENERATION -> "出击时获得再生（0:45）· 爆炸后化作药水云";
+            case SLOWNESS_ARROWS -> "下次出击时带上，射一箭消耗一支";
+            case POISON_ARROWS -> "下次出击时带上，射一箭消耗一支";
+            case CHARGED -> "下次出击成为闪电苦力怕，爆炸威力翻倍";
+            case TRIAL_KEY -> "在庭院的试炼宝库开出一件装备";
+            case OMINOUS_KEY -> "在庭院的不祥宝库开出一件装备，奖池更好";
             case SOULCATCHER_TIER -> SOULCATCHER_STEPS[Math.min(owned, SOULCATCHER_STEPS.length - 1)];
             case SOULCATCHER_CAPACITY -> "拘魂袋多装 1 只生物";
         };

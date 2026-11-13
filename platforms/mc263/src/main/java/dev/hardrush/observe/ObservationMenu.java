@@ -117,7 +117,7 @@ public final class ObservationMenu extends ChestMenu {
                 head = new ItemStack(switch (candidate.role()) {
                     case ZOMBIE -> Items.ZOMBIE_HEAD; case SKELETON -> Items.SKELETON_SKULL; case CREEPER -> Items.CREEPER_HEAD;
                 });
-                lore.add("化身：" + switch (candidate.role()) { case ZOMBIE -> "僵尸"; case SKELETON -> "骷髅"; case CREEPER -> "苦力怕"; });
+                lore.add("角色：" + switch (candidate.role()) { case ZOMBIE -> "僵尸"; case SKELETON -> "骷髅"; case CREEPER -> "苦力怕"; });
             }
             lore.add("点击附身观察");
             getContainer().setItem(from + i, named(head, target.getScoreboardName(), lore));
