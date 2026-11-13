@@ -116,8 +116,8 @@ class AdminHistoryStoreTest {
             assertFalse(store.ensureAutomaticBookClaim(player, round, 2, 1).delivered());
             var book = HistoryBookComposer.compose(history, history.rulesFingerprint(), 1, 1,
                     store.participantRecords(round, 40, 0), store.leaderboard(history.rulesFingerprint(), 10));
-            assertEquals(2, book.edition()); assertTrue(String.join("", book.pages()).contains("书版 2"));
-            assertTrue(String.join("", book.pages()).contains("归因：待核验"));
+            assertEquals(2, book.edition()); assertTrue(String.join("", book.pages()).contains("第 1 次修订"));
+            assertTrue(String.join("", book.pages()).contains("成绩：有待管理员核实"));
             var verify = revision(2, 5_000_000, false, HistoryRevision.Action.VERIFY, player);
             assertEquals(CommitResult.APPLIED, store.reviseHistory(verify, audit(verify.operationId(), "HISTORY_VERIFY", "pending", "verified")));
             assertEquals(3, store.roundHistory(round).orElseThrow().edition());

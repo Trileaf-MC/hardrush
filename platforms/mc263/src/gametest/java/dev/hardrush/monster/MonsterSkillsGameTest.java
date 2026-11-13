@@ -206,20 +206,23 @@ public final class MonsterSkillsGameTest {
         var cancelled = new ArrayList<Shot>();
         SHOTS.put(f.owner.getUUID(), shots); SHOTS.put(f.target.getUUID(), cancelled);
         MonsterRoles.select(f.owner, "skeleton"); MonsterRoles.select(f.target, "skeleton");
-        f.owner.setYRot(0); f.owner.setXRot(0);
-        test.assertTrue(MonsterRoles.burst(f.owner), "The first shot is emitted immediately");
-        test.assertValueEqual(shots.size(), 1, "A burst emits exactly one immediate arrow");
-        f.owner.getInventory().setSelectedSlot(0);
-        test.assertFalse(MonsterRoles.useControl(f.owner, InteractionHand.MAIN_HAND), "Ordinary draw cannot overlap the burst");
-        MonsterRoles.releaseBow(f.owner);
-        test.assertValueEqual(shots.size(), 1, "An ordinary release cannot add a burst arrow");
-        f.owner.setYRot(90);
-        test.assertTrue(MonsterRoles.burst(f.target), "A second body's burst begins");
-        var alreadyFired = cancelled.getFirst().arrow();
-        MonsterRoles.clear(f.target);
-        test.assertFalse(alreadyFired.isRemoved(), "Clearing a body preserves the already-fired arrow");
-        test.onEachTick(() -> { if (shots.size() == 2) f.owner.setYRot(180); });
-        test.startSequence().thenWaitUntil(() -> {
+        f.ready().thenExecute(() -> {
+                    f.owner.setYRot(0); f.owner.setXRot(0);
+                    test.assertTrue(MonsterRoles.burst(f.owner), "The first shot is emitted immediately");
+                    test.assertValueEqual(shots.size(), 1, "A burst emits exactly one immediate arrow");
+                    f.owner.getInventory().setSelectedSlot(0);
+                    test.assertFalse(MonsterRoles.useControl(f.owner, InteractionHand.MAIN_HAND), "Ordinary draw cannot overlap the burst");
+                    MonsterRoles.releaseBow(f.owner);
+                    test.assertValueEqual(shots.size(), 1, "An ordinary release cannot add a burst arrow");
+                    f.owner.setYRot(90);
+                    test.assertTrue(MonsterRoles.burst(f.target), "A second body's burst begins");
+                    test.assertValueEqual(cancelled.size(), 1, "A second body's burst emits its immediate arrow");
+                    var alreadyFired = cancelled.getFirst().arrow();
+                    MonsterRoles.clear(f.target);
+                    test.assertFalse(alreadyFired.isRemoved(), "Clearing a body preserves the already-fired arrow");
+                    test.onEachTick(() -> { if (shots.size() == 2) f.owner.setYRot(180); });
+                })
+                .thenWaitUntil(() -> {
                     // GameTest may advance thousands of ticks per real second. Give
                     // the production monotonic 0.6-second scheduler real time to run;
                     // the assertions below still require both exact native intervals.
@@ -254,10 +257,11 @@ public final class MonsterSkillsGameTest {
         var ownerPackets = f.connections.get(f.owner.getUUID()).sent;
         MonsterRoles.select(f.owner, "skeleton"); MonsterRoles.select(f.target, "skeleton");
         test.assertFalse(f.owner.getInventory().contains(stack -> stack.is(Items.BONE)), "The volley needs no separate control item");
-        f.owner.setShiftKeyDown(true);
-        test.assertTrue(MonsterRoles.useControl(f.owner, InteractionHand.MAIN_HAND), "A sneaking skeleton draws its bow natively");
-        test.assertTrue(MonsterRoles.useControl(f.target, InteractionHand.MAIN_HAND), "A standing skeleton draws its bow natively");
-        test.startSequence().thenIdle(25).thenExecute(() -> {
+        f.ready().thenExecute(() -> {
+            f.owner.setShiftKeyDown(true);
+            test.assertTrue(MonsterRoles.useControl(f.owner, InteractionHand.MAIN_HAND), "A sneaking skeleton draws its bow natively");
+            test.assertTrue(MonsterRoles.useControl(f.target, InteractionHand.MAIN_HAND), "A standing skeleton draws its bow natively");
+        }).thenIdle(25).thenExecute(() -> {
             test.assertTrue(ownerPackets.stream().anyMatch(packet -> packet instanceof net.minecraft.network.protocol.game.ClientboundSoundPacket sound
                     && sound.getSound().is(net.minecraft.sounds.SoundEvents.CROSSBOW_QUICK_CHARGE_3.unwrapKey().orElseThrow())),
                     "A ready sneaking full draw gives the owner a private cue");
@@ -502,6 +506,22 @@ public final class MonsterSkillsGameTest {
                         true, false, 0, 0, 1, false, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 1));
             }
             owner = players.get(0); target = players.get(1);
+        }
+        /**
+         * Starts a sequence once every forced arena chunk tracks and ticks entities.
+         *
+         * <p>{@code setBlockAndUpdate} loads each chunk synchronously, so the blocks are usable at once, but
+         * vanilla hands the chunk's entity-section promotion to a later main-thread task
+         * ({@code ChunkHolder.scheduleFullChunkPromotion}). An entity spawned before that task runs sits in a
+         * hidden section: it does not tick and {@code ENTITY_LOAD} fires only when the chunk is promoted. Tests
+         * that spawn projectiles or record them through {@code ENTITY_LOAD} must start from here rather than in
+         * the construction tick.
+         */
+        net.minecraft.gametest.framework.GameTestSequence ready() {
+            return test.startSequence().thenWaitUntil(() -> {
+                for (var chunk : forced) test.assertTrue(level.isPositionEntityTicking(chunk.getMiddleBlockPosition((int) center.y)),
+                        "Arena chunk " + chunk + " tracks and ticks entities");
+            });
         }
         MonsterCombatRuntime.Scope installCombat() {
             var combat = dev.hardrush.gametest.RuntimeFixtures.monsterCombat(level.getServer(), new MonsterCombatRuntime.Access() {

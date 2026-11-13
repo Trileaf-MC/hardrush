@@ -450,7 +450,7 @@ public final class TenRoundGameTest {
                     .thenExecute(() -> {
                         checked.join();
                         test.assertTrue(first.connection.packets.stream().filter(ClientboundTabListPacket.class::isInstance)
-                                .map(ClientboundTabListPacket.class::cast).anyMatch(packet -> packet.footer().getString().contains("尾刀：TenRoundA")),
+                                .map(ClientboundTabListPacket.class::cast).anyMatch(packet -> packet.footer().getString().contains("胜者 TenRoundA")),
                                 "Actual runtime publishes the winner through native TAB packets");
                         // A delayed previous progress callback must never count toward the next round.
                         var stale = new ProgressWrite(round().roundId(), UUID.randomUUID(), first.profile.id(), "TenRoundA",

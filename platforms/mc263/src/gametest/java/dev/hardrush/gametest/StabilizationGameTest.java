@@ -144,7 +144,7 @@ public final class StabilizationGameTest {
             test.assertValueEqual(views().size(),0,"Closed history pages release owner/selected history");
             for(var v:closedViews){
                 @SuppressWarnings("unchecked") var buttons=(List<LobbyMenus.Button>)field(v,"buttons");
-                test.assertValueEqual(buttons.getFirst().label(),"正在查询历史","Late IO cannot update a closed page");
+                test.assertValueEqual(buttons.getFirst().label(),"正在翻阅记录……","Late IO cannot update a closed page");
             }
         }
         void projectionAndMenuCycle(){
@@ -157,7 +157,7 @@ public final class StabilizationGameTest {
                 for(var selected:next.entities())test.assertTrue(ids.add(selected.entityId()),"Page replacement allocates new IDs");
                 peer.player.connection.handleInteract(new ServerboundInteractPacket(old.entityId(),InteractionHand.MAIN_HAND,null,false));
                 test.assertValueEqual(router.lastResult(peer.player).orElseThrow(),LobbyInteractions.Result.UNREGISTERED,"Late entity packet is unregistered");
-                scene.facility(peer.player,LobbyLayout.Facility.RULES);
+                scene.facility(peer.player,LobbyLayout.Facility.HISTORY);
                 var m=peer.player.containerMenu;
                 peer.player.connection.handleContainerClick(new ServerboundContainerClickPacket(m.containerId,m.getStateId(),(short)0,(byte)0,ContainerInput.PICKUP,new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(),HashedStack.EMPTY));
             }
@@ -180,7 +180,7 @@ public final class StabilizationGameTest {
             test.assertTrue(((Map<?,?>)field(router,"hints")).size()<=online,"Hints retain current connections only");
             test.assertTrue(((Map<?,?>)field(router.projections(),"pages")).size()<=online,"Projection owners bounded by current connections");
             var bars=(net.minecraft.server.level.ServerBossEvent)service(PlayerFeedback.class,"BARS");
-            if(bars!=null)test.assertValueEqual(bars.getPlayers().size(),online,"Status bar has no stale player bodies");
+            if(bars!=null)test.assertTrue(bars.getPlayers().stream().allMatch(p->f.server.getPlayerList().getPlayer(p.getUUID())==p),"Status bar has no stale player bodies");
         }
         void afterRotation(int sequence){
             test.assertValueEqual(oldWorlds.state(),RoundWorldBundle.State.CLOSED,"Old world references closed before new round");

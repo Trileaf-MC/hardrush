@@ -250,10 +250,10 @@ public final class FullFlowGameTest {
                 .thenExecute(()->state.click(visitor.player,"参赛名单"))
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"LobbyMonster"),"Participants page from shared query service"))
                 .thenExecute(()->state.click(visitor.player,"返回本轮详情"))
-                .thenWaitUntil(()->f.await(state.has(visitor.player,"选择分卷"),"Book selection ready"))
-                .thenExecute(()->state.click(visitor.player,"选择分卷"))
-                .thenWaitUntil(()->f.await(state.has(visitor.player,"领取主册"),"Volume catalog loaded"))
-                .thenExecute(()->state.click(visitor.player,"领取主册"))
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"领取其他卷"),"Book selection ready"))
+                .thenExecute(()->state.click(visitor.player,"领取其他卷"))
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"轮 · 共"),"Volume catalog loaded"))
+                .thenExecute(()->state.click(visitor.player,"领取第 1 卷"))
                 .thenWaitUntil(()->f.await(visitor.player.getInventory().contains(WrittenBookPort::isHistoryBook),"Actual written history book delivered"))
                 .thenExecute(()->{
                     var item=java.util.stream.IntStream.range(0,36).mapToObj(i->visitor.player.getInventory().getItem(i)).filter(WrittenBookPort::isHistoryBook).findFirst().orElseThrow();
@@ -274,28 +274,38 @@ public final class FullFlowGameTest {
                 .thenExecute(()->state.click(visitor.player,"下一批名单"))
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"上一批名单"),"Native participant page two"))
                 .thenExecute(()->state.click(visitor.player,"返回本轮详情"))
-                .thenWaitUntil(()->f.await(state.has(visitor.player,"选择分卷"),"Return to selected round"))
-                .thenExecute(()->state.click(visitor.player,"选择分卷"))
-                .thenWaitUntil(()->f.await(state.has(visitor.player,"分卷 · 卷 2"),"Second volume is offered"))
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"领取其他卷"),"Return to selected round"))
+                .thenExecute(()->state.click(visitor.player,"领取其他卷"))
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"领取第 2 卷"),"Second volume is offered"))
                 .thenExecute(()->{
                     for(int slot=0;slot<36;slot++)visitor.player.getInventory().setItem(slot,new ItemStack(Items.DIAMOND,64));
-                    state.clearBookRate(visitor.profile.id());state.click(visitor.player,"分卷 · 卷 2");
+                    state.clearBookRate(visitor.profile.id());state.click(visitor.player,"领取第 2 卷");
                 }).thenIdle(25)
-                .thenWaitUntil(()->f.await(visitor.connection.packets.stream().filter(ClientboundSystemChatPacket.class::isInstance).map(ClientboundSystemChatPacket.class::cast).anyMatch(p->p.content().getString().contains("背包已满")),"Full inventory explicitly retains claim opportunity"))
+                // The claim's answer closes the library, since a chest screen would cover the action bar.
+                .thenWaitUntil(()->f.await(state.actionBar(visitor.connection.packets,"背包满了")&&!LobbyMenus.isMenu(visitor.player),"Full inventory explicitly retains claim opportunity"))
                 .thenExecute(()->{
                     state.assertBookClaim(visitor.profile.id(),false);
                     test.assertTrue(java.util.stream.IntStream.range(0,36).allMatch(i->visitor.player.getInventory().getItem(i).is(Items.DIAMOND)&&visitor.player.getInventory().getItem(i).getCount()==64),"Full inventory never overwritten or dropped");
-                    visitor.player.getInventory().setItem(35,ItemStack.EMPTY);state.clearBookRate(visitor.profile.id());state.click(visitor.player,"分卷 · 卷 2");
+                    visitor.player.getInventory().setItem(35,ItemStack.EMPTY);state.clearBookRate(visitor.profile.id());
+                    state.facility(visitor.player,LobbyLayout.Facility.HISTORY);
                 })
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"第 121 轮"),"Library reopened after the refusal"))
+                .thenExecute(()->state.click(visitor.player,"第 121 轮"))
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"领取其他卷"),"Selected round again"))
+                .thenExecute(()->state.click(visitor.player,"领取其他卷"))
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"领取第 2 卷"),"Second volume offered again"))
+                .thenExecute(()->state.click(visitor.player,"领取第 2 卷"))
                 .thenWaitUntil(()->f.await(WrittenBookPort.isHistoryBook(visitor.player.getInventory().getItem(35)),"Selected second volume succeeds on retry"))
                 .thenWaitUntil(()->state.assertBookClaim(visitor.profile.id(),true))
-                .thenExecute(()->state.click(visitor.player,"阅读已领取书册"))
+                .thenExecute(()->state.facility(visitor.player,LobbyLayout.Facility.HISTORY))
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"阅读背包里的战绩书"),"Library offers reading"))
+                .thenExecute(()->state.click(visitor.player,"阅读背包里的战绩书"))
                 .thenWaitUntil(()->f.await(visitor.connection.packets.stream().anyMatch(ClientboundOpenBookPacket.class::isInstance),"Library reads a book from inventory slot 35 via native open-book packet"))
                 .thenExecute(()->{
                     state.facility(visitor.player,LobbyLayout.Facility.HISTORY);
-                }).thenWaitUntil(()->f.await(state.has(visitor.player,"普通模式"),"Mode leaderboards available"))
-                .thenExecute(()->state.click(visitor.player,"普通模式"))
-                .thenWaitUntil(()->f.await(state.has(visitor.player,"暂无已核验"),"Normal board excludes hardcore victory and synthetic aborted rounds"))
+                }).thenWaitUntil(()->f.await(state.has(visitor.player,"普通模式排行榜"),"Mode leaderboards available"))
+                .thenExecute(()->state.click(visitor.player,"普通模式排行榜"))
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"还没有通关成绩"),"Normal board excludes hardcore victory and synthetic aborted rounds"))
                 .thenExecute(()->{
                     System.out.println("FULL_FLOW_LIBRARY_PASS 22 synthetic terminal rounds / 42 entrants; history and roster pages; volume2; full inventory; separate normal board");
                     f.monster.disconnect();f.target.disconnect();visitor.disconnect();state.clearClock();

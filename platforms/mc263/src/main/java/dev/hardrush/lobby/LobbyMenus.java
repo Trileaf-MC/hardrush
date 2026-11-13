@@ -72,7 +72,7 @@ public final class LobbyMenus {
         return player.openMenu(new SimpleMenuProvider((id, inventory, actor) ->
                 actor == player ? new LobbyMenu(id, player, binding, round, context) : null,
                 Component.literal(context == LobbyContext.WITHDRAWAL ? "退出本轮并观战 · 确认"
-                        : context == LobbyContext.RULES ? "HardRush 规则" : context == LobbyContext.HISTORY ? "HardRush 历史" : "HardRush 大厅"))).isPresent();
+                        : context == LobbyContext.HISTORY ? "战绩书屋" : "HardRush"))).isPresent();
     }
 
     /** Also identifies stale menus so the network adapter keeps creative-slot packets sealed. */

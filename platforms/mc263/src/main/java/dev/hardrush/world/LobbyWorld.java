@@ -203,7 +203,7 @@ public final class LobbyWorld {
     }
     public void statusLabel(String stage, String mode) {
         if (!ready) return;
-        label(spawn.offset(4, 0, 1), new String[]{"HardRush 营地", stage, mode, "前方：人类集结区"});
+        label(spawn.offset(4, 0, 1), new String[]{"HardRush 营地", stage, mode, "前方：集结区"});
     }
     /** Refresh only owned facility text, never rebuild terrain in a completed camp. */
     public void huntLabels(boolean enabled) {
@@ -215,9 +215,10 @@ public final class LobbyWorld {
             var point = LobbyLayout.facility(facility);
             var pos = spawn.offset((int)point.x(), 0, (int)point.z() + 2);
             var original = CampBlueprint.labels(spawn).get(pos);
-            label(pos, new String[]{original[0], enabled ? switch (facility) {
-                case PREVIOUS, NEXT -> "右键翻页 · 仅本人"; default -> "右键模型选角";
-            } : "极限挑战时开放", enabled ? "右键活人模型追猎" : "", ""});
+            boolean page = facility == LobbyLayout.Facility.PREVIOUS || facility == LobbyLayout.Facility.NEXT;
+            // A sign line holds about nine CJK characters; each instruction keeps to one line.
+            label(pos, new String[]{original[0], enabled ? (page ? "右键翻页" : "右键展位选角") : "极限挑战时开放",
+                    enabled ? (page ? "只对自己生效" : "右键目标模型追猎") : "", ""});
         }
     }
     private CompletableFuture<Void> writeManifest(String value) {

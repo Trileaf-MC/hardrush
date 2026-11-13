@@ -140,7 +140,7 @@ public final class MonsterRoundRuntime {
                 // An unknown partially-applied effect cannot safely be replayed or refunded.
                 b.casting.remove(p.id());
                 LoggerFactory.getLogger(MonsterRoundRuntime.class).error("Monster skill effect failed for " + p.id() + "/" + skill.id(), failure);
-                tell(player, "技能施放失败，请联系管理员");
+                dev.hardrush.notice.Notices.hint(player, "技能施放失败，请联系管理员");
                 dev.hardrush.notice.Notices.operators(server, player.getScoreboardName() + " 的技能 " + skill.id() + " 执行异常，冷却未退回，详见日志");
                 return;
             }
@@ -149,7 +149,7 @@ public final class MonsterRoundRuntime {
             b.session.requestMonsterSkillCancelled(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
                     skill, consumed, previous, cancelled -> {
                         b.casting.remove(p.id());
-                        if (cancelled.success()) tell(player, "技能没有施放，冷却已退回");
+                        if (cancelled.success()) dev.hardrush.notice.Notices.hint(player, "技能没有施放，冷却已退回");
                         else dev.hardrush.notice.Replies.refuse(player, cancelled, "技能没有施放");
                     });
         });
@@ -162,7 +162,7 @@ public final class MonsterRoundRuntime {
             if (!effect.getAsBoolean()) return false;
         } catch (RuntimeException failure) {
             LoggerFactory.getLogger(MonsterRoundRuntime.class).error("Celebration monster skill failed for " + player.getUUID() + "/" + skill.id(), failure);
-            tell(player, "技能施放失败，请联系管理员"); return false;
+            dev.hardrush.notice.Notices.hint(player, "技能施放失败，请联系管理员"); return false;
         }
         dev.hardrush.celebration.CelebrationRuntime.consumeSkill(player, skill);
         return true;
@@ -174,5 +174,4 @@ public final class MonsterRoundRuntime {
         if (b != null && b.casting.contains(player.getUUID()) || MonsterRoles.performingSkill(player)) return "已经在施放技能";
         return "现在不能施放技能";
     }
-    private static void tell(ServerPlayer player, String text) { dev.hardrush.notice.Notices.hint(player, text); }
 }
