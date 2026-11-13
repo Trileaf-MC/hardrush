@@ -53,7 +53,7 @@ public final class DuskPactRuntime {
     public static void configure(MinecraftServer server, Access access) { BINDINGS.put(server, new Binding(access)); }
     public static void close(MinecraftServer server) {
         var binding = BINDINGS.remove(server);
-        if (binding != null) binding.bar.removeAllPlayers();
+        if (binding != null) dev.hardrush.notice.StatusBars.hideEverywhere(server, binding.bar);
     }
     private static boolean challenge(RoundSnapshot round) {
         return round != null && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE);
@@ -161,7 +161,7 @@ public final class DuskPactRuntime {
         var round = access.snapshot().orElse(null);
         if (round == null) { binding.tab = null; return; }
         if (!round.roundId().equals(binding.roundId)) {
-            binding.bar.removeAllPlayers(); binding.viewers.clear(); binding.blockedAt.clear(); binding.introduced.clear();
+            dev.hardrush.notice.StatusBars.hideEverywhere(server, binding.bar); binding.viewers.clear(); binding.blockedAt.clear(); binding.introduced.clear();
             binding.roundId = round.roundId(); binding.wasProtected = false;
         }
         boolean protectedNow = protectedNow(binding);
@@ -173,7 +173,9 @@ public final class DuskPactRuntime {
             return participant != null && (participant.role().isActiveHuman() || participant.role().isMonster())
                     && !player.isSpectator() && (access.formalLevel(player.level()) || participant.role().isMonster());
         }).toList();
-        for (var old : List.copyOf(binding.bar.getPlayers())) if (!barShown || !viewers.contains(old)) binding.bar.removePlayer(old);
+        // Only the status bar arbiter attaches viewers, so a higher bar (observation, a rite) can cover the pact.
+        for (var player : server.getPlayerList().getPlayers())
+            if (!barShown || !viewers.contains(player)) dev.hardrush.notice.StatusBars.hide(player, dev.hardrush.notice.StatusBars.Slot.PACT);
         binding.viewers.keySet().removeIf(player -> server.getPlayerList().getPlayer(player.getUUID()) != player);
         if (display != null) {
             if (barShown) {
@@ -182,7 +184,7 @@ public final class DuskPactRuntime {
                 binding.bar.setProgress(display.progress());
             }
             for (var player : viewers) {
-                if (barShown) binding.bar.addPlayer(player);
+                if (barShown) dev.hardrush.notice.StatusBars.show(player, dev.hardrush.notice.StatusBars.Slot.PACT, binding.bar);
                 // Wait for the loading screen of the level the player is in (typically the lobby-to-world teleport);
                 // play the entire introduction once per player and round.
                 if (ClientLevelLoad.loaded(player) && binding.introduced.add(player.getUUID())) {
