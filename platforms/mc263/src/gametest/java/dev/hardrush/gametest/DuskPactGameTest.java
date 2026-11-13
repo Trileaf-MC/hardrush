@@ -189,6 +189,25 @@ public final class DuskPactGameTest {
     }
 
     @GameTest(maxTicks=200)
+    public void introWaitsForTheWorldLoadingScreenAfterLobbyTeleport(GameTestHelper test) {
+        // The client finished loading the lobby long ago; the round then teleports it into another level.
+        try (var f = new Fixture(test); var capture = new Capture(f.victim, true)) {
+            var server = f.level.getServer();
+            f.time(0);
+            // Same packet vanilla's cross-level ServerPlayer.teleport sends; the native client shows its loading screen.
+            f.victim.connection.send(new ClientboundRespawnPacket(f.victim.createCommonSpawnInfo(f.level), ClientboundRespawnPacket.KEEP_ALL_DATA));
+            test.assertTrue(f.victim.connection.hasClientLoaded(), "Vanilla still reports the login-time load after a dimension change");
+            DuskPactRuntime.tick(server); DuskPactRuntime.tick(server);
+            test.assertValueEqual(capture.elderGhosts().size(), 0, "Ghost and curse sound wait for the new level's loading screen");
+            test.assertValueEqual(capture.titles(DuskPact.TITLE), 0L, "Entry title waits for the new level's loading screen");
+            capture.loaded(); DuskPactRuntime.tick(server);
+            test.assertValueEqual(capture.elderGhosts().size(), 1, "Ghost plays once the client reports the new level loaded");
+            test.assertValueEqual(capture.titles(DuskPact.TITLE), 1L, "Entry title shows together with the ghost");
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
     public void preparationDoesNotSpendFirstDayAndReloadDoesNotResetIt(GameTestHelper test) {
         try (var f = new Fixture(test)) {
             f.data = new DuskPactData(false, false); f.phase = RoundPhase.WAITING; f.time(30_000);
