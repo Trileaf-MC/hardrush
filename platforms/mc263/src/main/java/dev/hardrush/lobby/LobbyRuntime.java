@@ -92,8 +92,6 @@ public final class LobbyRuntime {
         final Map<UUID, AbandonAsk> abandoning = new HashMap<>();
         /** Deaths waiting for the respawned body to stand in camp before they are told. */
         final Map<UUID, Arrival> arrivals = new HashMap<>();
-        /** Player → round in which the return-to-camp rule was last explained; taught once per round. */
-        final Map<UUID, UUID> returnTaught = new HashMap<>();
         Binding(RoundSession session, PlayerProfiles profiles, Supplier<RoundWorldBundle> worlds) {
             this.session = session; this.profiles = profiles; this.worlds = worlds;
         }
@@ -611,10 +609,8 @@ public final class LobbyRuntime {
         var round = b.session.view().orElseThrow();
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), player.position(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), false));
+        // The progress hint shows the countdown; the echo shard's held hint and description already state the rule.
         ChannelEffects.start(player, false, channelNanos(round));
-        // The progress hint shows the countdown; the interruption rule is explained once per round.
-        if (!round.roundId().equals(b.returnTaught.put(p.id(), round.roundId())))
-            tell(player, "原地不动 " + Notices.key(channelSeconds(round)) + " 秒返回营地，移动或受伤会打断");
     }
     private static String returned(RoundSnapshot round, boolean parked) {
         long wait = seconds(RoundEngine.returnCooldownNanos(round.rules()));
@@ -631,7 +627,6 @@ public final class LobbyRuntime {
     private static long channelNanos(RoundSnapshot round) {
         return round.rules().combatValues().get("monster.returnChannelMillis").longValue() * 1_000_000L;
     }
-    private static long channelSeconds(RoundSnapshot round) { return Math.max(1, (channelNanos(round) + 999_999_999L) / 1_000_000_000L); }
     private static final String CELEBRATION_RETRACK = "庆祝期间不能循迹";
 
     /** Right-click on the bound tracking compass: a five-second channel, then the quarry's trail again. */

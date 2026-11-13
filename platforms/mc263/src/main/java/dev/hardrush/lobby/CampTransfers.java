@@ -109,10 +109,9 @@ public final class CampTransfers {
 
     private static ItemStack thrownStack(UUID round, UUID token, Kind kind, int count, String owner) {
         var stack = kind == Kind.REVIVAL ? RevivalTotems.thrown(round, token, count, owner) : CampKit.coin(count);
-        if (kind == Kind.COIN) stack.set(DataComponents.LORE, new ItemLore(List.of(
-                Component.literal("来自 " + owner + " 的 " + count + " 枚怪物币").withStyle(ChatFormatting.GRAY),
-                Component.literal("营地里的怪物拾取后获得对应余额").withStyle(ChatFormatting.GRAY),
-                Component.literal("落地 5 分钟无人拾取即作废").withStyle(ChatFormatting.GRAY))));
+        if (kind == Kind.COIN) dev.hardrush.notice.ItemText.lore(stack,
+                "来自 " + dev.hardrush.notice.Notices.key(owner) + " 的 " + dev.hardrush.notice.Notices.key(count) + " 枚怪物币",
+                "营地里的怪物捡起即可获得", "落地 5 分钟无人拾取即作废");
         var data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         data.putString(TOKEN, token.toString());
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(data));

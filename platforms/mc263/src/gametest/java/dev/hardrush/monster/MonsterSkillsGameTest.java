@@ -296,14 +296,17 @@ public final class MonsterSkillsGameTest {
         test.startSequence().thenIdle(2).thenExecute(() -> {
             var shown = shownBow(test, sent, slot);
             test.assertValueEqual(shown.getHoverName().getString(), "骷髅之弓", "The owner sees the skeleton's bow name");
+            test.assertFalse(shown.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME), "The bow is named like a native item, not an italic rename");
             test.assertValueEqual(shown.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE), Boolean.TRUE,
                     "A ready volley glints");
             test.assertFalse(shown.isBarVisible(), "A ready volley shows a full, hidden bar");
             var lore = shown.get(net.minecraft.core.component.DataComponents.LORE).lines();
             test.assertValueEqual(lore.get(0).getString(), MonsterBowDisplay.HOW_TO, "The bow explains the sneaking release");
-            test.assertValueEqual(lore.get(1).getString(), "技能已就绪", "The bow states readiness");
+            test.assertValueEqual(lore.get(1).getString(), "三连射已就绪", "The bow states readiness");
+            test.assertValueEqual(MonsterBowDisplay.heldHint(f.owner, f.owner.getInventory().getItem(slot)).orElseThrow(),
+                    MonsterBowDisplay.HOW_TO, "A ready bow in hand tells how to loose the volley");
             var real = f.owner.getInventory().getItem(slot);
-            test.assertTrue(real.is(Items.BOW) && !real.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)
+            test.assertTrue(real.is(Items.BOW) && !real.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) && !real.getHoverName().getString().equals("骷髅之弓")
                     && !real.has(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE)
                     && real.get(net.minecraft.core.component.DataComponents.LORE).lines().isEmpty() && real.getDamageValue() == 0,
                     "The authoritative bow stays vanilla");
@@ -318,8 +321,10 @@ public final class MonsterSkillsGameTest {
                     "A cooling volley suppresses the glint");
             test.assertTrue(shown.isBarVisible() && shown.getBarWidth() >= 1 && shown.getBarWidth() < MonsterBowDisplay.BAR_WIDTH,
                     "The cooldown refills the durability bar");
-            test.assertValueEqual(shown.get(net.minecraft.core.component.DataComponents.LORE).lines().get(1).getString(), "冷却中",
+            test.assertValueEqual(shown.get(net.minecraft.core.component.DataComponents.LORE).lines().get(1).getString(), "三连射冷却中",
                     "The bow states the cooldown");
+            test.assertValueEqual(MonsterBowDisplay.heldHint(f.owner, f.owner.getInventory().getItem(slot)).orElseThrow(),
+                    "三连射冷却中", "A cooling bow in hand says so instead of the usage");
             assertWorldBowUndressed(test, f.owner);
             sent.clear();
             MonsterRoles.convert(f.owner, MonsterForm.STRAY);
@@ -345,7 +350,8 @@ public final class MonsterSkillsGameTest {
             else test.assertTrue(!look.ready() && shown.isBarVisible() && shown.getBarWidth() == look.filled(),
                     "Each cooldown step shows exactly its bar pixel: " + remaining);
         }
-        test.assertFalse(bow.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME), "Dressing never mutates the source stack");
+        test.assertFalse(bow.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME) || bow.getHoverName().getString().equals("骷髅之弓"),
+                "Dressing never mutates the source stack");
         test.succeed();
     }
 

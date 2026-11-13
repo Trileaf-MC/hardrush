@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
@@ -22,7 +21,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.ItemLore;
 
 /**
  * Owner-only bow presentation of the volley skill. Authoritative stacks stay vanilla, so drops, chests,
@@ -31,7 +29,9 @@ import net.minecraft.world.item.component.ItemLore;
  * a picked-up world bow keeps its own name and durability, like a bow a native skeleton picks up.
  */
 public final class MonsterBowDisplay {
-    static final String HOW_TO = "潜行时拉满弓松手，触发 3 连射";
+    /** The bow's usage, also the first line of its description. */
+    static final String HOW_TO = "潜行时拉满弓松手，触发三连射";
+    static final String COOLING = "三连射冷却中";
     /** Pixel width of the vanilla item bar; the cooldown advances one visible pixel at a time. */
     static final int BAR_WIDTH = 13;
     private static final Map<UUID, Dressing> DRESSINGS = new ConcurrentHashMap<>();
@@ -63,9 +63,8 @@ public final class MonsterBowDisplay {
 
     static ItemStack dress(ItemStack bow, Look look) {
         var stack = bow.copy();
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal(look.name()));
-        stack.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(HOW_TO),
-                Component.literal(look.ready() ? "技能已就绪" : "冷却中"))));
+        dev.hardrush.notice.ItemText.lore(dev.hardrush.notice.ItemText.name(stack, look.name()),
+                HOW_TO, look.ready() ? "三连射已就绪" : COOLING);
         stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, look.ready());
         if (stack.isDamageableItem()) {
             int max = stack.getMaxDamage();
@@ -82,6 +81,16 @@ public final class MonsterBowDisplay {
         if (next.equals(previous)) return;
         refresh(player);
         if (previous != null && !previous.look().ready() && next.look().ready()) cue(player, SoundEvents.CROSSBOW_LOADING_END, 1.0F);
+    }
+
+    /**
+     * Server thread. What the owner's dressed bow says on the action bar while held: how to loose the volley, or that it
+     * is still cooling down. The authoritative stack is plain, so readiness comes from the dressing, not the item.
+     */
+    public static java.util.Optional<String> heldHint(ServerPlayer owner, ItemStack stack) {
+        var dressing = DRESSINGS.get(owner.getUUID());
+        if (dressing == null || !dressing.dresses(owner, stack)) return java.util.Optional.empty();
+        return java.util.Optional.of(dressing.look().ready() ? HOW_TO : COOLING);
     }
 
     /** Server thread. The owner's client receives the authoritative bows again. */

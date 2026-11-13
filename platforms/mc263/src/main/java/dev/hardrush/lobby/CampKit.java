@@ -6,6 +6,8 @@ import dev.hardrush.core.round.MonsterWallet;
 import dev.hardrush.core.round.Participant;
 import dev.hardrush.core.round.ShopOffer;
 import dev.hardrush.monster.MonsterGacha;
+import dev.hardrush.notice.ItemText;
+import dev.hardrush.notice.Notices;
 import java.util.*;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
@@ -28,6 +30,8 @@ import net.minecraft.world.item.component.ItemLore;
 public final class CampKit {
     private static final String KEY = "hardrush_camp_kit";
     private static final String COIN = "hardrush_monster_coin";
+    private static final String USAGE = "hardrush_camp_kit_usage";
+    private static final String COIN_USAGE = "在庭院右键女巫，购买出击增强";
     /** Coins beyond three stacks are still counted; the lore names the true total. */
     public static final int MAX_SHOWN_COINS = 3 * 64;
     private static final Map<MinecraftServer, RevivalTotems.Access> INSTANCES = new IdentityHashMap<>();
@@ -76,15 +80,29 @@ public final class CampKit {
         return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getStringOr(KEY, "");
     }
 
-    private static ItemStack tagged(ItemStack stack, String key, List<String> lore) {
+    private static boolean sellable(Set<MonsterRole> roles, MonsterRole role) { return role != null && roles.contains(role); }
+
+    /**
+     * The projection's usage leads the description, ahead of what the witch's goods say; the same line is kept in the
+     * tag so the held-item hint reads exactly what the description says.
+     */
+    private static ItemStack tagged(ItemStack stack, String key, String usage, List<String> details) {
         var data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         data.putString(KEY, key);
+        data.putString(USAGE, usage);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(data));
-        var lines = new ArrayList<Component>();
+        var lines = new ArrayList<Component>(ItemText.lines(java.util.stream.Stream.concat(java.util.stream.Stream.of(usage), details.stream()).toList()));
         stack.getOrDefault(DataComponents.LORE, ItemLore.EMPTY).lines().forEach(lines::add);
-        lore.forEach(line -> lines.add(Component.literal(line).withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GRAY))));
         stack.set(DataComponents.LORE, new ItemLore(lines));
         return stack;
+    }
+
+    /** What a coin, a paid order or a piece of vault gear is for, on the action bar while held. */
+    public static Optional<String> heldHint(ServerPlayer player, ItemStack stack) {
+        if (isCoin(stack)) return Optional.of(COIN_USAGE);
+        if (!is(stack)) return Optional.empty();
+        var usage = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getStringOr(USAGE, "");
+        return usage.isEmpty() ? Optional.empty() : Optional.of(usage);
     }
 
     public static void tick(MinecraftServer server) {
@@ -119,17 +137,19 @@ public final class CampKit {
         int shown = Math.min(available, MAX_SHOWN_COINS);
         if (shown > 0) {
             var coins = coin(shown);
-            coins.set(DataComponents.LORE, new ItemLore(List.of(gray("共 " + available + " 枚怪物币"),
-                    gray("向营地的女巫商人购买下次出场的增强"), gray("丢出可转赠给营地怪物；落地 5 分钟作废；本轮结束清空"))));
+            ItemText.lore(coins, COIN_USAGE, "共 " + Notices.key(available) + " 枚",
+                    "丢出可送给其他怪物 · 落地 5 分钟无人拾取即作废", "本轮结束时清空");
             wants.add(new Want("coin", coins, null));
         }
         for (var entry : wallet.order().entrySet()) {
             var offer = entry.getKey();
             var stack = MonsterShop.goods(offer, rules);
             stack.setCount(Math.min(stack.getMaxStackSize(), stack.getCount() * entry.getValue()));
-            wants.add(new Want("order:" + offer.id(), tagged(stack, "order:" + offer.id(), List.of(offer.key()
-                    ? "手持对准营地宝库右键，抽取一件装备"
-                    : "已购 ×" + entry.getValue() + "：下次出场自动带入，用剩即清除")), null));
+            String key = "order:" + offer.id();
+            wants.add(new Want(key, offer.key() ? tagged(stack, key, "手持右键庭院的宝库，开出一件装备", List.of())
+                    : tagged(stack, key, sellable(offer.roles(), p.monsterRole()) ? "下次出击时自动带上"
+                            : "以 " + Notices.key(roles(offer.roles())) + " 出击时才会带上",
+                            List.of("已购 ×" + Notices.key(entry.getValue()) + " · 出击结束时用剩的作废，返回营地则随身暂存")), null));
         }
         // Each slot shows the newest wearable piece on the body; the rest wait in the backpack.
         var worn = EnumSet.noneOf(EquipmentSlot.class);
@@ -141,9 +161,9 @@ public final class CampKit {
             var slot = MonsterGacha.equipmentSlot(piece.slot());
             boolean wear = piece.wearableBy(p.monsterRole()) && slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR && worn.add(slot);
             String key = "gear:" + piece.serial();
-            wants.add(new Want(key, tagged(stack, key, List.of(piece.wearableBy(p.monsterRole())
-                    ? "宝库装备：下次出场穿戴，只用一次"
-                    : "宝库装备：切换为" + roles(piece.roles()) + "时才会带出")), wear ? slot : null));
+            String verb = slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR ? "穿上" : "带上";
+            wants.add(new Want(key, tagged(stack, key, piece.wearableBy(p.monsterRole()) ? "下次出击时" + verb + "，只用一次"
+                    : "以 " + Notices.key(roles(piece.roles())) + " 出击时才会" + verb, List.of()), wear ? slot : null));
         }
         return wants;
     }
@@ -154,10 +174,6 @@ public final class CampKit {
             case ZOMBIE -> "僵尸"; case SKELETON -> "骷髅"; case CREEPER -> "苦力怕";
         });
         return String.join("或", names);
-    }
-
-    private static Component gray(String line) {
-        return Component.literal(line).withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GRAY));
     }
 
     /** Rebuilds only when the projected keys, counts or worn slots differ; personal sorting survives. */

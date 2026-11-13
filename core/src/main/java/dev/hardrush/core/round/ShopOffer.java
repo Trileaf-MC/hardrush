@@ -16,7 +16,7 @@ public enum ShopOffer {
     REGENERATION("regeneration", "再生药水", Kind.CARRIED, MonsterRole.CREEPER),
     SLOWNESS_ARROWS("slownessArrows", "缓慢药箭", Kind.CARRIED, MonsterRole.SKELETON),
     POISON_ARROWS("poisonArrows", "剧毒药箭", Kind.CARRIED, MonsterRole.SKELETON),
-    CHARGED("charged", "带电出场", Kind.CARRIED, MonsterRole.CREEPER),
+    CHARGED("charged", "带电出击", Kind.CARRIED, MonsterRole.CREEPER),
     TRIAL_KEY("trialKey", "试炼钥匙", Kind.KEY, MonsterRole.ZOMBIE, MonsterRole.SKELETON),
     OMINOUS_KEY("ominousKey", "不祥试炼钥匙", Kind.KEY, MonsterRole.ZOMBIE, MonsterRole.SKELETON),
     // Each purchase raises the soulcatcher one rarity, in order; the limit is the number of steps.
