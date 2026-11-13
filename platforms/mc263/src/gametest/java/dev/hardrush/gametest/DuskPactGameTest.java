@@ -189,6 +189,47 @@ public final class DuskPactGameTest {
     }
 
     @GameTest(maxTicks=200)
+    public void introWaitsForTheWorldLoadingScreenAfterLobbyTeleport(GameTestHelper test) {
+        // The client finished loading the lobby long ago; the round then teleports it into another level.
+        try (var f = new Fixture(test); var capture = new Capture(f.victim, true)) {
+            var server = f.level.getServer();
+            f.time(0);
+            // The packet order of vanilla's cross-level ServerPlayer.teleport: respawn (loading screen), then position.
+            f.victim.connection.send(new ClientboundRespawnPacket(f.victim.createCommonSpawnInfo(f.level), ClientboundRespawnPacket.KEEP_ALL_DATA));
+            f.victim.connection.teleport(net.minecraft.world.entity.PositionMoveRotation.of(f.victim), Set.of());
+            test.assertTrue(f.victim.connection.hasClientLoaded(), "Vanilla still reports the login-time load after a dimension change");
+            DuskPactRuntime.tick(server); DuskPactRuntime.tick(server);
+            test.assertValueEqual(capture.elderGhosts().size(), 0, "Ghost and curse sound wait for the new level's loading screen");
+            test.assertValueEqual(capture.titles(DuskPact.TITLE), 0L, "Entry title waits for the new level's loading screen");
+            // A reconnecting player's camp acknowledgement may still be in flight when the round sends it onward.
+            capture.loaded(); DuskPactRuntime.tick(server);
+            test.assertValueEqual(capture.elderGhosts().size(), 0, "A load acknowledgement sent before the client reached the new level is ignored");
+            capture.arrived(); capture.loaded(); DuskPactRuntime.tick(server);
+            test.assertValueEqual(capture.elderGhosts().size(), 1, "Ghost plays once the client reports the new level loaded");
+            test.assertValueEqual(capture.titles(DuskPact.TITLE), 1L, "Entry title shows together with the ghost");
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
+    public void introWaitsForTheLoadingScreenOfABundledSkinRefresh(GameTestHelper test) {
+        // A monster's owner-skin refresh cancels the single sends and delivers respawn and position in one bundle.
+        try (var f = new Fixture(test); var capture = new Capture(f.victim, true)) {
+            var server = f.level.getServer();
+            f.time(0);
+            int teleport = 4_242;
+            f.victim.connection.send(new ClientboundBundlePacket(List.of(
+                    new ClientboundRespawnPacket(f.victim.createCommonSpawnInfo(f.level), ClientboundRespawnPacket.KEEP_ALL_DATA),
+                    ClientboundPlayerPositionPacket.of(teleport, net.minecraft.world.entity.PositionMoveRotation.of(f.victim), Set.of()))));
+            DuskPactRuntime.tick(server); DuskPactRuntime.tick(server);
+            test.assertValueEqual(capture.elderGhosts().size(), 0, "A bundled respawn also opens the client's loading screen");
+            capture.arrived(teleport); capture.loaded(); DuskPactRuntime.tick(server);
+            test.assertValueEqual(capture.elderGhosts().size(), 1, "Ghost plays once the refreshed client reports loaded");
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
     public void preparationDoesNotSpendFirstDayAndReloadDoesNotResetIt(GameTestHelper test) {
         try (var f = new Fixture(test)) {
             f.data = new DuskPactData(false, false); f.phase = RoundPhase.WAITING; f.time(30_000);
@@ -283,6 +324,15 @@ public final class DuskPactGameTest {
             if (loaded) loaded();
         }
         void loaded() { player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket()); }
+        /** The native client acknowledges the last position packet it received. */
+        void arrived() {
+            arrived(packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
+                    .reduce((first, second) -> second).orElseThrow().id());
+        }
+        void arrived(int teleport) {
+            player.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(teleport,
+                    player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
+        }
         List<ClientboundGameEventPacket> elderGhosts() {
             return packets.stream().filter(ClientboundGameEventPacket.class::isInstance).map(ClientboundGameEventPacket.class::cast)
                     .filter(packet -> packet.getEvent() == ClientboundGameEventPacket.GUARDIAN_ELDER_EFFECT).toList();
