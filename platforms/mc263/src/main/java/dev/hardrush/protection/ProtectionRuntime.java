@@ -22,6 +22,8 @@ public final class ProtectionRuntime {
         boolean protectedLevel(ServerLevel level);
     }
     private static final Map<MinecraftServer, Access> BINDINGS = new IdentityHashMap<>();
+    /** Re-entrant depth of {@link #ownedWrite} per level; only touched on the server thread. */
+    private static final Map<ServerLevel, Integer> OWNED_WRITES = new IdentityHashMap<>();
     private static final Map<ServerPlayer, Long> SPECTATOR_FEEDBACK = new WeakHashMap<>();
     private ProtectionRuntime() {}
 
@@ -34,6 +36,18 @@ public final class ProtectionRuntime {
         var access = BINDINGS.get(level.getServer());
         return access != null && access.protectedLevel(level);
     }
+    /**
+     * Run a write the mod itself owns (e.g. the altar's glass) inside a protected level. Block updates that
+     * the write triggers synchronously are covered; scheduled ticks they queue are not. Block destruction stays refused.
+     */
+    public static void ownedWrite(ServerLevel level, Runnable write) {
+        if (!level.getServer().isSameThread()) throw new IllegalStateException("ownedWrite must run on the server thread");
+        OWNED_WRITES.merge(level, 1, Integer::sum);
+        try { write.run(); }
+        finally { OWNED_WRITES.computeIfPresent(level, (l, depth) -> depth == 1 ? null : depth - 1); }
+    }
+    public static boolean ownedWriting(ServerLevel level) { return OWNED_WRITES.containsKey(level); }
+
     public static boolean protectedEntity(Entity entity) {
         return entity != null && entity.level() instanceof ServerLevel level && protectedLevel(level);
     }

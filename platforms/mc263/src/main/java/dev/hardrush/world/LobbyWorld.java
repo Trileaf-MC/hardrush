@@ -268,7 +268,7 @@ public final class LobbyWorld {
         // Never overwrite an administrator's edit, or a camp built before the altar existed.
         if (!actual.is(Blocks.TINTED_GLASS) && !CampBlueprint.litAltarGlass(spawn, pos, actual)) return;
         var want = lit ? Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW) : Blocks.TINTED_GLASS;
-        if (!actual.is(want)) level.setBlockAndUpdate(pos, want.defaultBlockState());
+        if (!actual.is(want)) dev.hardrush.protection.ProtectionRuntime.ownedWrite(level, () -> level.setBlockAndUpdate(pos, want.defaultBlockState()));
     }
     /** Loaded, built camp coordinates; teleport callers must still recheck standing safety. */
     public Vec3 layoutPosition(dev.hardrush.core.lobby.LobbyLayout.Point point) {

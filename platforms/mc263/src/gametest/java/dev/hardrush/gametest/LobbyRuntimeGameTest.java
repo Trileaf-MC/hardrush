@@ -124,6 +124,7 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(() -> {
                     f.monster.player = f.monster.current();
                     f.assertLobby(true);
+                    f.assertAltarBeam();
                     f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "First monster life has a deployment wait");
                     HuntInputFixtures.role(f.monster.player, "zombie");
                 })
@@ -715,6 +716,21 @@ public final class LobbyRuntimeGameTest {
             var cooldowns = monster.participant().monsterSkillReadyAtMillis();
             test.assertFalse(cooldowns.containsKey(MonsterSkill.ZOMBIE_SUMMON), "Retired skill never creates a new deadline");
             if (burstReadyAt != 0) test.assertValueEqual(cooldowns.get(MonsterSkill.SKELETON_BURST), burstReadyAt, "Burst deadline survives role changes, defeat, lobby and reconnect");
+        }
+        /** Runs under the production protection binding: the camp is sealed, yet the mod's own glass swap must land. */
+        void assertAltarBeam() {
+            var lobby = LobbyWorld.open(server);
+            test.assertTrue(ProtectionRuntime.protectedLevel(lobby.holdingLevel()), "The camp is protected by the production binding");
+            var glass = BlockPos.containing(lobby.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(dev.hardrush.core.lobby.LobbyLayout.Facility.ALTAR))).above(2);
+            test.assertTrue(lobby.holdingLevel().getBlockState(glass).is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW)),
+                    "A running hardcore round lights the altar beam: " + lobby.holdingLevel().getBlockState(glass));
+            test.assertFalse(lobby.holdingLevel().setBlock(glass, Blocks.STONE.defaultBlockState(), 3), "Foreign writes stay refused outside ownedWrite");
+            lobby.altarLit(false);
+            test.assertTrue(lobby.holdingLevel().getBlockState(glass).is(Blocks.TINTED_GLASS), "Darkening the altar restores tinted glass");
+            dev.hardrush.lobby.RevivalAltar.tick(server, round(), session);
+            test.assertTrue(lobby.holdingLevel().getBlockState(glass).is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW)), "The altar tick relights it");
+            test.assertTrue(lobby.holdingLevel().destroyBlock(glass, false) == false && lobby.holdingLevel().getBlockState(glass).is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW)),
+                    "Owned writes never open destroyBlock");
         }
         void assertLobby(boolean replaced) {
             monster.player = monster.current();
