@@ -311,7 +311,10 @@ public final class ServerRestartRegression implements ModInitializer {
                 login(b);
                 waitFor("unsafe original readiness cancelled", () -> idle() && !round().participants().get(b.profile.id()).ready());
                 act("unsafe original waits outside and does not discard absent original", () -> {
-                    require(b.player.position().distanceTo(LobbyWorld.open(server).landing(dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE)) < .1, "unsafe restore uses exact outside landing");
+                    var camp = LobbyWorld.open(server); var anchor = BlockPos.containing(camp.holdingSpawn());
+                    // Camp arrivals scatter like vanilla respawns, so the outside landing is a zone, not a point.
+                    require(dev.hardrush.core.lobby.LobbyLayout.scatterAllowed(dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE,
+                            b.player.getBlockX() - anchor.getX(), b.player.getBlockZ() - anchor.getZ()), "unsafe restore lands in the outside waiting zone");
                     require(round().participants().get(a.profile.id()).ready() && session.recoveringCountdown(), "other original remains recoverable");
                     var lobby = LobbyWorld.open(server); var pos = BlockPos.containing(lobby.landing(dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY));
                     lobby.holdingLevel().getChunkAt(pos).setBlockState(pos, Blocks.AIR.defaultBlockState(), 2);
@@ -411,6 +414,13 @@ public final class ServerRestartRegression implements ModInitializer {
             waitFor("persisted deployed role", () -> idle()&&round().participants().get(a.profile.id()).role()==ParticipantRole.MONSTER_DEPLOYED&&!PlayerProfiles.isLocked(a.player));
             act("native last-human attack", () -> {
                 move(a,b.player.level(),b.player.position().add(1,0,0));b.player.setHealth(1);b.player.setInvulnerableTime(0);
+                // Combat opens at the first dusk; do not bypass the production pact gate.
+                dev.hardrush.pact.DuskPactRuntime.tick(server);
+                var overworld=worlds.level(Level.OVERWORLD);var daylight=overworld.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK).getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+                overworld.clockManager().setTotalTicks(daylight,dev.hardrush.core.combat.DuskPact.DUSK_TICKS+5_000);
+                dev.hardrush.pact.DuskPactRuntime.tick(server);
+                // Random birth gear may be a spear or a bow, whose native inputs have their own suites: attack empty-handed.
+                a.player.getInventory().setItem(8,net.minecraft.world.item.ItemStack.EMPTY);a.player.getInventory().setSelectedSlot(8);
                 require(dev.hardrush.monster.MonsterRoles.attack(a.player,b.player),"native monster attack accepted");
             });
             waitFor("rescue and award persist together", () -> idle()&&round().phase()==RoundPhase.RESCUE&&round().participants().get(a.profile.id()).revivalEntitled());
@@ -493,7 +503,7 @@ public final class ServerRestartRegression implements ModInitializer {
                 require(chest != null && chest.getItem(0).is(Items.AMETHYST_SHARD) && chest.getItem(0).getCount() == ++index, "actual native chest contents survived");
                 require(level.clockManager() != server.overworld().clockManager(), "round clock independent of permanent lobby");
             }
-            require(worlds.level(Level.OVERWORLD).getOverworldClockTime() == expectedWorldClock, "native SavedData clock restored");
+            require(worlds.level(Level.OVERWORLD).getOverworldClockTime() == expectedWorldClock, "native SavedData clock restored: actual=" + worlds.level(Level.OVERWORLD).getOverworldClockTime() + " expected=" + expectedWorldClock + " phase=" + target);
             require(worlds.level(Level.OVERWORLD).getWeatherData().isRaining(), "native weather SavedData restored");
         }
 

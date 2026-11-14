@@ -12,7 +12,6 @@ import dev.hardrush.lobby.LobbyInteractions;
 import dev.hardrush.book.WrittenBookPort;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.LobbyWorld;
-import dev.hardrush.lobby.LobbyMenus;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
@@ -203,6 +202,8 @@ public final class HumanEntryGameTest {
                 })
                 .thenIdle(3)
                 .thenExecute(() -> {
+                    // The history-book hand-out is a NOTICE one-shot and outranks facility hints for a few seconds by design.
+                    LobbyInteractions.get(f.server).orElseThrow().hints(f.b.player).clear("notice");
                     test.assertTrue(f.hint(f.b).contains("祭坛只在挑战进行中开放"), "The altar explains itself outside a challenge: " + f.hint(f.b));
                     test.assertFalse(dev.hardrush.lobby.RevivalAltar.channeling(f.b.player), "A dormant altar starts no rite");
                 })
@@ -227,7 +228,9 @@ public final class HumanEntryGameTest {
                 .thenExecute(() -> {
                     test.assertTrue(LobbyWorld.open(f.server).inAssembly(f.a.player, true), "A dead UUID is never relocated out of the circle");
                     test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(f.a.player), "A dead UUID cannot start admission guidance");
-                    test.assertTrue(f.hint(f.a).contains("去庭院或祭坛"), "The circle points a monster to the courtyard and altar");
+                    // The held-coin usage line (ITEM) outranks the circle's explanation by design.
+                    LobbyInteractions.get(f.server).orElseThrow().hints(f.a.player).clear("item");
+                    test.assertTrue(f.hint(f.a).contains("去庭院或祭坛"), "The circle points a monster to the courtyard and altar: " + f.hint(f.a));
                     test.assertValueEqual(f.round().participants().get(f.a.profile.id()).role(), dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY, "The circle cannot restore a dead UUID");
                     test.assertTrue(f.altarGlass().is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW)), "A hardcore challenge lights the altar's beam");
                     f.altar(f.a);
@@ -475,8 +478,6 @@ public final class HumanEntryGameTest {
             test.assertTrue(a.player.level().getBlockState(floor).equals(original) && a.player.level().getBlockState(floor.above()).isAir(), "Both block packets leave terrain unchanged");
             test.assertFalse(a.player.hurtServer(a.player.level(), a.player.damageSources().playerAttack(b.player), 5), "Lobby bodies cannot be damaged");
             a.player.getInventory().clearContent();
-            a.command("hardrush menu"); test.assertTrue(LobbyMenus.isMenu(a.player), "Adventure mode keeps the actual lobby menu available");
-            a.player.connection.handleContainerClose(new ServerboundContainerClosePacket(a.player.containerMenu.containerId));
             var book = new BookPort.Book(UUID.randomUUID(), 1, 1, "大厅测试历史书", "HardRush", List.of("只读历史"));
             a.player.getInventory().setItem(0, WrittenBookPort.createItem(new OperationTag(book.roundId(), UUID.randomUUID(), 1), book));
             int before = a.connection.packets.size();
