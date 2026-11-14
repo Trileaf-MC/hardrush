@@ -6,7 +6,7 @@
     "ProtectionEntityMixin", "ProtectionLivingMixin", "ProtectionServerPlayerMixin",
     "ProtectionPlayerMixin", "ProtectionNetworkMixin", "ProtectionProjectileMixin",
     "ProtectionPickupMixin", "ProtectionExplosionMixin", "ProtectionWorldMixin",
-    "ProtectionFluidMixin", "ProtectionPistonMixin"
+    "ProtectionFluidMixin", "ProtectionPistonMixin", "ProtectionItemMixin"
   ],
   "injectors": { "defaultRequire": 1 }
 }
