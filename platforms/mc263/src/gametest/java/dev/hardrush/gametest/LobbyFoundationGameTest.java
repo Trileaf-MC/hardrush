@@ -83,16 +83,17 @@ public final class LobbyFoundationGameTest {
                 .thenExecute(() -> {
                     test.assertTrue(scenario.router.projections().view(f.a.player).isEmpty()
                             && scenario.router.projections().view(f.b.player).isEmpty(), "Recovery removes both observer projections");
+                    int rulesBefore = scenario.rulesOpened();
                     scenario.useBlock(f.a.player, scenario.rules, 77, InteractionHand.MAIN_HAND);
-                    test.assertFalse(LobbyMenus.isMenu(f.a.player), "Unavailable session cannot open rules");
+                    test.assertValueEqual(scenario.rulesOpened(), rulesBefore, "Unavailable session cannot open rules");
                     f.session.recheckStorage("fixture", "第1轮恢复门槛验证", f.reply::set);
                 })
                 .thenWaitUntil(() -> f.await(f.reply.get() != null && f.reply.get().success(), "Storage recheck complete"))
                 .thenExecute(() -> {
                     test.assertValueEqual(f.session.snapshot().orElseThrow().phase(), RoundPhase.RECOVERY_REQUIRED, "Recheck never resumes competition");
+                    int rulesBefore = scenario.rulesOpened();
                     scenario.useBlock(f.a.player, scenario.rules, 78, InteractionHand.MAIN_HAND);
-                    test.assertTrue(LobbyMenus.isMenu(f.a.player), "Verified body can read rules after storage recheck in recovery");
-                    f.a.player.closeContainer();
+                    test.assertValueEqual(scenario.rulesOpened(), rulesBefore + 1, "Verified body can read rules after storage recheck in recovery");
                     var camp = LobbyWorld.open(f.server);
                     var history = BlockPos.containing(camp.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(dev.hardrush.core.lobby.LobbyLayout.Facility.HISTORY)));
                     scenario.teleport(f.a.player, Vec3.atBottomCenterOf(history.south(2)));
@@ -138,8 +139,12 @@ public final class LobbyFoundationGameTest {
             router = LobbyInteractions.get(f.server).orElseThrow();
             rules = BlockPos.containing(LobbyWorld.open(f.server).holdingSpawn()).offset(2, 0, 0);
             place(rules, Blocks.LECTERN);
-            router.registerBlock(rules, Blocks.LECTERN, LobbyContext.RULES, p -> { ruleClicks++; LobbyMenus.open(p, LobbyContext.RULES); });
+            router.registerBlock(rules, Blocks.LECTERN, LobbyContext.RULES, p -> { ruleClicks++; dev.hardrush.lobby.RuleBook.open(p, f.session.snapshot().orElseThrow().rules()); });
             f.rules = rules;
+        }
+        /** Rule books the lectern has shown so far: the open-book packets on the recorded connection. */
+        int rulesOpened() {
+            return (int) f.a.connection.packets.stream().filter(net.minecraft.network.protocol.game.ClientboundOpenBookPacket.class::isInstance).count();
         }
         void place(BlockPos pos, net.minecraft.world.level.block.Block block) {
             // Fixture terrain only; production protection is restored BEFORE any input packet.
@@ -160,9 +165,7 @@ public final class LobbyFoundationGameTest {
             useBlock(f.a.player, rules, 1, InteractionHand.MAIN_HAND);
             test.assertValueEqual(ruleClicks, 1, "Registered lectern reaches both guards: result=" + router.lastResult(f.a.player)
                     + ", verified=" + PlayerProfiles.verifiedLobbyBody(f.a.player));
-            test.assertTrue(LobbyMenus.isMenu(f.a.player), "Native block packet opens the read-only rule context");
-            test.assertTrue(f.a.player.containerMenu.getSlot(0).getItem().getHoverName().getString().contains("集结区"), "Rule context has rule content");
-            f.a.player.closeContainer();
+            test.assertValueEqual(rulesOpened(), 1, "Native block packet opens the rule book");
             var packet = new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,
                     new BlockHitResult(Vec3.atCenterOf(rules), Direction.UP, rules, false), 2);
             test.assertValueEqual(LobbyInteractions.block(f.a.player, packet), LobbyInteractions.Result.ACCEPTED, "First layer accepts");

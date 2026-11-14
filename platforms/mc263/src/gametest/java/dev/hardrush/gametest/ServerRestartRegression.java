@@ -311,7 +311,10 @@ public final class ServerRestartRegression implements ModInitializer {
                 login(b);
                 waitFor("unsafe original readiness cancelled", () -> idle() && !round().participants().get(b.profile.id()).ready());
                 act("unsafe original waits outside and does not discard absent original", () -> {
-                    require(b.player.position().distanceTo(LobbyWorld.open(server).landing(dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE)) < .1, "unsafe restore uses exact outside landing");
+                    var camp = LobbyWorld.open(server); var anchor = BlockPos.containing(camp.holdingSpawn());
+                    // Camp arrivals scatter like vanilla respawns, so the outside landing is a zone, not a point.
+                    require(dev.hardrush.core.lobby.LobbyLayout.scatterAllowed(dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE,
+                            b.player.getBlockX() - anchor.getX(), b.player.getBlockZ() - anchor.getZ()), "unsafe restore lands in the outside waiting zone");
                     require(round().participants().get(a.profile.id()).ready() && session.recoveringCountdown(), "other original remains recoverable");
                     var lobby = LobbyWorld.open(server); var pos = BlockPos.containing(lobby.landing(dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY));
                     lobby.holdingLevel().getChunkAt(pos).setBlockState(pos, Blocks.AIR.defaultBlockState(), 2);

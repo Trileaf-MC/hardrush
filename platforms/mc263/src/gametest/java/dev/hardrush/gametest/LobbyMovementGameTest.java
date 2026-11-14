@@ -10,7 +10,6 @@ import dev.hardrush.round.RoundSession;
 import dev.hardrush.book.WrittenBookPort;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.LobbyWorld;
-import dev.hardrush.lobby.LobbyMenus;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
@@ -187,8 +186,6 @@ public final class LobbyMovementGameTest {
             test.assertTrue(a.player.level().getBlockState(floor).equals(original) && a.player.level().getBlockState(floor.above()).isAir(), "Both block packets leave terrain unchanged");
             test.assertFalse(a.player.hurtServer(a.player.level(), a.player.damageSources().playerAttack(b.player), 5), "Lobby bodies cannot be damaged");
             a.player.getInventory().clearContent();
-            a.command("hardrush menu"); test.assertTrue(LobbyMenus.isMenu(a.player), "Adventure mode keeps the actual lobby menu available");
-            a.player.connection.handleContainerClose(new ServerboundContainerClosePacket(a.player.containerMenu.containerId));
             var book = new BookPort.Book(UUID.randomUUID(), 1, 1, "大厅测试历史书", "HardRush", List.of("只读历史"));
             a.player.getInventory().setItem(0, WrittenBookPort.createItem(new OperationTag(book.roundId(), UUID.randomUUID(), 1), book));
             int before = a.connection.packets.size();
