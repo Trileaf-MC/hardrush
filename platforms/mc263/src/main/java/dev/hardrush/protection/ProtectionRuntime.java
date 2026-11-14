@@ -63,6 +63,11 @@ public final class ProtectionRuntime {
                 && (protectedEntity(target) || protectedEntity(source)
                     || source instanceof ProtectionOriginHolder holder && holder.hardrush$protectedOrigin());
     }
+    /** A plain right click on lobby decoration (door, button, lever...) that sealed levels let through to vanilla. */
+    public static boolean interactiveClick(ServerPlayer player, net.minecraft.network.protocol.game.ServerboundUseItemOnPacket packet) {
+        return !player.isShiftKeyDown() && rejectInteraction(player, player.level())
+                && LobbyInteractive.manual(player.level().getBlockState(packet.hitResult().getBlockPos()));
+    }
     public static boolean rejectInteraction(ServerPlayer player, ServerLevel level) {
         return protectedEntity(player) || protectedLevel(level);
     }

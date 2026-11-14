@@ -139,7 +139,9 @@ public abstract class PlayerIsolationNetworkMixin {
     @Inject(method = "handleUseItemOn", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdBlockUse(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && LobbyInteractions.consumed(LobbyInteractions.block(player, packet))) { ci.cancel(); return; }
-        if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)) {
+        // Lobby decoration (doors, buttons...) stays usable while waiting; the protection mixin vets the click itself.
+        if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)
+                && !(!PlayerProfiles.simulationFrozen(player) && dev.hardrush.protection.ProtectionRuntime.interactiveClick(player, packet))) {
             player.connection.ackBlockChangesUpTo(packet.sequence());
             var hit = packet.hitResult();
             player.connection.send(new ClientboundBlockUpdatePacket(player.level(), hit.getBlockPos()));
