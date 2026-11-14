@@ -28,6 +28,10 @@ public final class LobbyLayout {
      * high whose 3x3 gold core is a level-1 beacon base. The eight gold cells around the beacon are the pad.
      */
     public static boolean onAltarPad(int dx, int dz) { return Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && (dx != 0 || dz != 0); }
+    public static final Point CENTRAL_LANDING = new Point(0, 0, 180);
+    public static final Point MONSTER_LANDING = new Point(15, 2, -90);
+    /** Foot of the altar's south steps, facing the beacon; never on the pad itself. */
+    public static final Point ALTAR_LANDING = new Point(21, -11, 180);
     public static Point landing(Landing purpose) {
         return switch (purpose) {
             case CENTRAL -> new Point(0, 0, 180);
