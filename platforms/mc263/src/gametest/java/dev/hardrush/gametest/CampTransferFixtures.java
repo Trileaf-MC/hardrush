@@ -10,11 +10,14 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.network.HashedStack;
 import net.minecraft.network.protocol.game.*;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.phys.Vec3;
 
 /** Real camp identities and native packets, including the client's optimistic inventory correction. */
 final class CampTransferFixtures {
@@ -32,6 +35,13 @@ final class CampTransferFixtures {
         int[] balances = new int[2];
         ItemEntity[] floor = new ItemEntity[1];
         sequence.thenExecute(() -> {
+            // The donor arrives through a recall landing while the receiver respawned somewhere in vanilla's scatter
+            // square, so their distance is luck. A vanilla client sees an item only within its render distance (this
+            // fixture client keeps the default 2 chunks, i.e. 32 blocks), so stand the receiver beside the donor.
+            var lobby = (ServerLevel) donor.current().level();
+            receiver.current().teleport(new TeleportTransition(lobby, donor.current().position(), Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
+            receiver.acknowledge();
+        }).thenExecute(() -> {
             CampKit.tick(f.server);
             balances[0] = donor.participant().wallet().coins();
             balances[1] = receiver.participant().wallet().coins();
