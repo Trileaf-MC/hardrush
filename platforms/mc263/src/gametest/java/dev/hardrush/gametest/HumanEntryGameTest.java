@@ -44,7 +44,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -63,7 +62,7 @@ public final class HumanEntryGameTest {
         sequence.thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.WAITING && f.idle(), "World ready"))
                 .thenExecute(() -> {
                     var lobby = LobbyWorld.open(f.server); var bounds = lobby.plan().bounds();
-                    test.assertTrue(lobby.loadedChunks() > 9 && lobby.layoutVersion() == 1, "Full camp footprint replaces 3x3 readiness");
+                    test.assertValueEqual(lobby.installation().orElseThrow().pack().id(), "default", "A fresh world installs the built-in lobby pack");
                     for (int x = bounds.min().x(); x <= bounds.max().x(); x += 16) for (int z = bounds.min().z(); z <= bounds.max().z(); z += 16)
                         test.assertTrue(lobby.holdingLevel().getChunkSource().getChunkNow(x >> 4, z >> 4) != null, "Every lobby chunk is loaded");
                     test.assertTrue(lobby.holdingLevel().getChunkSource().getChunkNow(bounds.max().x() >> 4, bounds.max().z() >> 4) != null, "The far corner is loaded");
@@ -242,16 +241,6 @@ public final class HumanEntryGameTest {
                     test.assertTrue(f.hint(f.a).contains("你没有复生图腾"), "The altar tells a totemless monster how to earn one: " + f.hint(f.a));
                     test.assertValueEqual(f.round().participants().get(f.a.profile.id()).role(), dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY, "Standing on the altar without a totem changes nothing");
                     f.a.disconnect(); f.b.disconnect();
-                    f.reopenLegacyCamp("PREPARED", false);
-                })
-                .thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready(), "Interrupted v1 camp upgrades"))
-                .thenExecute(() -> { f.assertUpgradedCamp(); f.reopenLegacyCamp("COMPLETE", true); })
-                .thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready(), "Completed v1 camp upgrades"))
-                .thenExecute(() -> {
-                    f.assertUpgradedCamp();
-                    var lobby = LobbyWorld.open(f.server);
-                    test.assertTrue(lobby.holdingLevel().getBlockState(Fixture.adminEdit(BlockPos.containing(lobby.holdingSpawn()))).is(Blocks.GOLD_BLOCK),
-                            "Completed camp upgrade preserves unrelated administrator terrain");
                 }).thenSucceed();
     }
 
@@ -434,28 +423,6 @@ public final class HumanEntryGameTest {
             test.assertFalse(session.mutationPending(), "Waiting humans cannot bypass existing role restrictions");
             place(a, Landing.CENTRAL);
         }
-        void reopenLegacyCamp(String marker, boolean editFloor) {
-            var lobby = LobbyWorld.open(server);
-            // The legacy camp is built relative to the lobby spawn; this scenario goes away with it in M2.
-            var level = lobby.holdingLevel(); var anchor = BlockPos.containing(lobby.holdingSpawn());
-            // No players remain. Reopen the actual persistent level through production migration,
-            // with a fixture-owned old manifest and old lecterns (no production test bypass).
-            LobbyWorld.shutdown(server);
-            for (var pos : dev.hardrush.world.CampBlueprint.monsterFacilities(anchor))
-                test.assertTrue(level.setBlockAndUpdate(pos, Blocks.LECTERN.defaultBlockState()), "Fixture restores an old v1 role lectern");
-            // A v1 camp predates the monster shop: no vaults and no shop signs.
-            for (var pos : dev.hardrush.world.CampBlueprint.shopAdditions(anchor).keySet())
-                level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
-            if (editFloor) level.setBlockAndUpdate(adminEdit(anchor), Blocks.GOLD_BLOCK.defaultBlockState());
-            level.save(null, true, false);
-            var manifest = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("hardrush/lobby-layout.txt");
-            try {
-                java.nio.file.Files.writeString(manifest, "hardrush:lobby\nversion=" + dev.hardrush.world.CampBlueprint.VERSION
-                        + "\nanchor=" + anchor.asLong() + "\n" + marker + "\n");
-            } catch (java.io.IOException error) { throw new IllegalStateException(error); }
-            LobbyWorld.open(server);
-        }
-        void assertUpgradedCamp() { assertFacilitiesBuilt("Legacy upgrade replaces monster lecterns and adds the shop vaults"); }
         /** Every block trigger holds its expected block; every model stands in air. */
         void assertFacilitiesBuilt(String message) {
             var lobby = LobbyWorld.open(server); var level = lobby.holdingLevel();
@@ -472,14 +439,9 @@ public final class HumanEntryGameTest {
                 test.assertTrue(state.getValue(net.minecraft.world.level.block.VaultBlock.OMINOUS) == (function == LobbyFunction.OMINOUS_VAULT), message + ": ominous " + function.id());
             }
         }
-        /**
-         * An administrator's floor edit outside every owned block of the legacy camp.
-         * TODO: [Refactor] M2 replaces the legacy camp upgrade (and this whole scenario) with pack installation.
-         */
-        static BlockPos adminEdit(BlockPos anchor) { return anchor.offset(-8, -1, 10); }
         void assertProtectionAndUi() {
             var floor = BlockPos.containing(a.player.position()).below(2);
-            // The jump can leave feet above the ground; target the original flat floor directly.
+            // The jump can leave feet above the ground; target the camp floor under the spawn's layer directly.
             floor = new BlockPos(floor.getX(), LobbyWorld.open(server).holdingLevel().getRespawnData().pos().getY() - 1, floor.getZ());
             var original = a.player.level().getBlockState(floor);
             a.player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, floor, Direction.UP, 1));

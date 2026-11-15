@@ -1,7 +1,6 @@
 package dev.hardrush.lobby.pack;
 
 import dev.hardrush.core.lobby.plan.*;
-import dev.hardrush.world.RoundWorldBundle;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -9,14 +8,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.block.SignBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.AABB;
 
 /**
  * World → {@link LobbyPlan}: reads marker armor stands and entity triggers inside an area, resolves them by the
- * position rules of design 4.2 and 5, applies the acceptance rules that need the world (design 9), finds the content's
+ * position rules of design 4.2 and 5, applies the acceptance rules that need the world ({@link PlanWorldChecks}), finds the content's
  * tight bounds and finally runs {@link LobbyPlanValidator}. The caller must have loaded every chunk of {@code area}
  * including its entity sections ({@link ChunkWarmup}); the scan runs in one call.
  */
@@ -144,12 +142,12 @@ public final class MarkerScan {
             var f = spec.function();
             switch (spec.binding()) {
                 case POINT -> {
-                    if (!standing(at)) problems.add(Problem.error(ProblemKind.STANDING, f, at.cell(), standingMessage(f, at)));
+                    PlanWorldChecks.standing(level, f, at, Severity.ERROR).ifPresent(problems::add);
                     points.computeIfAbsent(f, k -> new ArrayList<>()).add(at);
                 }
                 case MODEL -> {
                     // Models are packet entities and show even when blocked, so a bad spot only looks wrong.
-                    if (!standing(at)) problems.add(Problem.warning(ProblemKind.STANDING, f, at.cell(), standingMessage(f, at)));
+                    PlanWorldChecks.standing(level, f, at, Severity.WARNING).ifPresent(problems::add);
                     models.add(new Model(f, at));
                 }
                 case CLICK, BLOCK, TEXT -> boundBlock(spec, at);
@@ -171,18 +169,18 @@ public final class MarkerScan {
             switch (spec.binding()) {
                 case CLICK -> triggers.add(new Trigger(f, cell, id, anchor));
                 case BLOCK -> {
-                    var requirement = f.block().orElseThrow();
-                    if (!requirement.matches(id, properties(state))) {
-                        problems.add(Problem.error(ProblemKind.BLOCK, f, cell, "【" + f.displayName() + "】要绑定在 " + describe(requirement)
-                                + " 上，这里是 " + id));
+                    var wrong = PlanWorldChecks.requirement(f, cell, state);
+                    if (wrong.isPresent()) {
+                        problems.add(wrong.get());
                         return;
                     }
                     if (f == LobbyFunction.ALTAR_LIGHT) altarLights.add(cell);
                     else triggers.add(new Trigger(f, cell, id, anchor));
                 }
                 case TEXT -> {
-                    if (!(state.getBlock() instanceof SignBlock)) {
-                        problems.add(Problem.error(ProblemKind.BLOCK, f, cell, "【" + f.displayName() + "】要绑定在告示牌上，这里是 " + id));
+                    var wrong = PlanWorldChecks.sign(f, cell, state);
+                    if (wrong.isPresent()) {
+                        problems.add(wrong.get());
                         return;
                     }
                     texts.add(new TextSlot(f, cell, anchor));
@@ -220,10 +218,6 @@ public final class MarkerScan {
             return blockId(level.getBlockState(new BlockPos(x, y, z)));
         }
 
-        boolean standing(Point at) {
-            return RoundWorldBundle.safeStanding(level, BlockPos.containing(at.x(), at.y(), at.z()));
-        }
-
         void markerError(LobbyFunction f, Cell where, List<String> errors) {
             problems.add(Problem.error(ProblemKind.MARKER, f, where, "标记有误（" + where.x() + " " + where.y() + " " + where.z() + "）："
                     + String.join("；", errors)));
@@ -240,15 +234,5 @@ public final class MarkerScan {
 
         static Point point(Entity e) { return new Point(e.getX(), e.getY(), e.getZ(), e.getYRot()); }
         static BlockPos pos(Cell c) { return new BlockPos(c.x(), c.y(), c.z()); }
-        static String standingMessage(LobbyFunction f, Point at) {
-            var c = at.cell();
-            return "【" + f.displayName() + "】（" + c.x() + " " + c.y() + " " + c.z() + "）站不住人：脚下要有实心方块，身体所在的两格要空着";
-        }
-        static String describe(BlockRequirement r) {
-            if (r.properties().isEmpty()) return r.id();
-            var joiner = new StringJoiner(",", r.id() + "[", "]");
-            new TreeMap<>(r.properties()).forEach((k, v) -> joiner.add(k + "=" + v));
-            return joiner.toString();
-        }
     }
 }

@@ -17,4 +17,12 @@ public final class HardRushProperties {
     public static final long DEFAULT_FULL_CHECKPOINT_INTERVAL_SECONDS = 300L;
     public static long fullCheckpointIntervalSeconds() { return Long.getLong(STORAGE_FULL_CHECKPOINT_INTERVAL_SECONDS, DEFAULT_FULL_CHECKPOINT_INTERVAL_SECONDS); }
     public static String minimumFreeBytes() { return System.getProperty(STORAGE_MINIMUM_FREE_BYTES); }
+
+    /** Horizontal size limit of a lobby pack, in blocks per axis. */
+    public static final String LOBBY_MAX_SIZE = "hardrush.lobby.maxSize";
+    public static final int DEFAULT_LOBBY_MAX_SIZE = 256, MIN_LOBBY_MAX_SIZE = 64, MAX_LOBBY_MAX_SIZE = 512;
+    /** Clamped to 64–512, so a typo cannot lift the limit that keeps hostile packs small. */
+    public static int lobbyMaxSize() {
+        return Math.clamp(Integer.getInteger(LOBBY_MAX_SIZE, DEFAULT_LOBBY_MAX_SIZE), MIN_LOBBY_MAX_SIZE, MAX_LOBBY_MAX_SIZE);
+    }
 }

@@ -25,6 +25,8 @@ public final class HumanEntry {
     private final Map<UUID, Intent> intents = new HashMap<>();
     private final Set<UUID> joining = new HashSet<>();
     private UUID registeredRound;
+    /** The lobby plan generation the triggers and status signs were set up for. */
+    private int registeredGeneration;
     private String lastLabel;
     private final net.minecraft.server.level.ServerBossEvent countdownBar = new net.minecraft.server.level.ServerBossEvent(
             UUID.randomUUID(), Component.literal("集结区"), net.minecraft.world.BossEvent.BossBarColor.GREEN, net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS);
@@ -96,10 +98,13 @@ public final class HumanEntry {
         var round = session.snapshot().orElse(null); if (round == null) return;
         var lobby = LobbyWorld.open(server);
         if (!Objects.equals(registeredRound, round.roundId())) { intents.values().forEach(HumanEntry::stopJoin); intents.clear(); joining.clear(); registeredRound = null; }
+        // A newly installed lobby has new trigger blocks and blank status signs; join intents stay with the round.
+        if (registeredGeneration != lobby.planGeneration()) { registeredRound = null; lastLabel = null; }
         if (lobby.ready() && registeredRound == null) {
             var router = LobbyInteractions.get(server).orElseThrow();
             registerTriggers(router, lobby, false);
             registeredRound = round.roundId();
+            registeredGeneration = lobby.planGeneration();
         }
         String label = round.sequence() + " / " + round.phase() + " / " + session.recoveringCountdown();
         if (lobby.ready() && !label.equals(lastLabel)) {

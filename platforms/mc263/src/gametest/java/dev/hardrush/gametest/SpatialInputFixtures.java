@@ -14,7 +14,7 @@ final class SpatialInputFixtures {
         var lobby = LobbyWorld.open(player.level().getServer());
         if (!lobby.ready()) throw new AssertionError("Recovered shared camp is not ready");
         var marker = LobbyPlanFixtures.sentinel(player.level().getServer());
-        if (!lobby.ready() || lobby.builtBlocks() != 0
+        if (!lobby.ready() || lobby.placedTiles() != 0
                 || !lobby.holdingLevel().getBlockState(marker).is(net.minecraft.world.level.block.Blocks.LAPIS_BLOCK))
             throw new AssertionError("Recovered shared camp was rebuilt or lost its native terrain sentinel");
         var origin = player.position();

@@ -101,6 +101,7 @@ public final class PlayerProfiles implements AutoCloseable {
     }
 
     public static void uninstall(MinecraftServer server) { SERVICES.remove(server); }
+    public static Optional<PlayerProfiles> of(MinecraftServer server) { return Optional.ofNullable(SERVICES.get(server)); }
 
     /** HEAD of placeNewPlayer: before the login packet and before player/world tick or gameplay packets. */
     public static void beforeLogin(ServerPlayer player) {

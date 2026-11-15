@@ -499,8 +499,9 @@ public final class ServerRestartRegression implements ModInitializer {
         }
         void checkWorlds() {
             var lobby = LobbyWorld.open(server);
-            require(lobby.ready() && lobby.holdingLevel().dimension().equals(LobbyWorld.KEY), "same permanent lobby dimension reopened");
-            require(lobby.builtBlocks() == 0 && lobby.loadedChunks() > 9, "versioned camp reopens without rewriting terrain and covers full footprint");
+            require(lobby.ready() && lobby.installation().orElseThrow().seq() == 1
+                    && lobby.key().equals(dev.hardrush.world.LobbyDimension.key(1)), "same installed lobby dimension reopened");
+            require(lobby.placedTiles() == 0, "installed lobby reopens without placing its pack again");
             var lobbyMarker = LobbyPlanFixtures.sentinel(server);
             require(lobby.holdingLevel().getBlockState(lobbyMarker).is(Blocks.LAPIS_BLOCK), "actual lobby terrain survives a new JVM");
             int index = 0;
