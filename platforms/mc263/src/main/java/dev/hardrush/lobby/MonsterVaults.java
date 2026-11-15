@@ -40,6 +40,8 @@ public final class MonsterVaults {
     /** Per player, the vaults currently showing that player's active state. */
     private final Map<UUID, Map<BlockPos, Boolean>> shown = new HashMap<>();
     private final Map<UUID, Opening> openings = new HashMap<>();
+    /** The lobby plan {@link #shown} describes; another lobby's vaults start inactive for everyone. */
+    private int planGeneration;
 
     private static final class Opening {
         final ServerPlayer player; final ShopOffer key; final BlockPos pos; final ItemStack item; final int started;
@@ -103,6 +105,7 @@ public final class MonsterVaults {
 
     private void update(MinecraftServer server) {
         int now = server.getTickCount();
+        if (planGeneration != LobbyWorld.planGeneration(server)) { shown.clear(); planGeneration = LobbyWorld.planGeneration(server); }
         for (var opening : List.copyOf(openings.values())) animate(server, opening, now);
         var r = access.committed().orElse(null);
         var plan = LobbyWorld.open(server).plan();
