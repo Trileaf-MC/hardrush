@@ -10,6 +10,7 @@ import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.record.HistoryLibrary;
 import dev.hardrush.world.*;
 import dev.hardrush.celebration.CelebrationRuntime;
+import dev.hardrush.lobby.ButtonMenu;
 import dev.hardrush.lobby.LobbyMenus;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -56,7 +57,7 @@ public final class StabilizationGameTest {
         seq.thenExecute(()->{
                     for(var peer:peers)peer.player.connection.handleContainerClose(new ServerboundContainerClosePacket(peer.player.containerMenu.containerId));
                     // Wait real monotonic throttle time; do not weaken reconnect throttling in production.
-                    state.throttleDeadline=System.nanoTime()+LobbyMenus.BUTTON_COOLDOWN_NANOS;
+                    state.throttleDeadline=System.nanoTime()+ButtonMenu.BUTTON_COOLDOWN_NANOS;
                 }).thenWaitUntil(()->f.await(System.nanoTime()>=state.throttleDeadline,"Real throttle expiry")).thenIdle(3).thenExecute(()->state.assertUiReleased(20));
         for(int index=0;index<3;index++){
             int round=index;
@@ -102,7 +103,7 @@ public final class StabilizationGameTest {
                     state.libraryCloseWhileLoading();
                     for(var peer:peers)peer.disconnect();
                 }).thenWaitUntil(()->f.await(state.drain.isDone(),"Disconnected-page IO drained"))
-                .thenExecute(()->state.throttleDeadline=System.nanoTime()+LobbyMenus.BUTTON_COOLDOWN_NANOS)
+                .thenExecute(()->state.throttleDeadline=System.nanoTime()+ButtonMenu.BUTTON_COOLDOWN_NANOS)
                 .thenWaitUntil(()->f.await(System.nanoTime()>=state.throttleDeadline,"Disconnected throttle expiry"))
                 .thenIdle(6).thenExecute(()->{
                     state.assertUiReleased(0);
@@ -143,7 +144,7 @@ public final class StabilizationGameTest {
         void assertClosedLibrary(){
             test.assertValueEqual(views().size(),0,"Closed history pages release owner/selected history");
             for(var v:closedViews){
-                @SuppressWarnings("unchecked") var buttons=(List<LobbyMenus.Button>)field(v,"buttons");
+                @SuppressWarnings("unchecked") var buttons=(List<ButtonMenu.Button>)field(v,"buttons");
                 test.assertValueEqual(buttons.getFirst().label(),"正在翻阅记录……","Late IO cannot update a closed page");
             }
         }

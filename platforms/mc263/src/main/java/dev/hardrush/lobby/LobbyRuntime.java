@@ -148,7 +148,7 @@ public final class LobbyRuntime {
             @Override public boolean available(ServerPlayer player, LobbyContext context) {
                 return context == LobbyContext.COMPETITION ? available(player) : contextAvailable(player, binding, context);
             }
-            @Override public List<LobbyMenus.Button> buttons(ServerPlayer player, LobbyContext context) {
+            @Override public List<ButtonMenu.Button> buttons(ServerPlayer player, LobbyContext context) {
                 if (context == LobbyContext.WITHDRAWAL) return dev.hardrush.participation.ParticipationControl.withdrawalButtons(player);
                 if (context == LobbyContext.HISTORY) return dev.hardrush.record.HistoryLibrary.buttons(player);
                 // The rule lectern opens a book instead (RuleBook); no other context has a menu.
@@ -162,7 +162,7 @@ public final class LobbyRuntime {
                 else if (context == LobbyContext.HISTORY) dev.hardrush.record.HistoryLibrary.act(player, action, value);
             }
             @Override public UUID round(ServerPlayer player) { return session.snapshot().orElseThrow().roundId(); }
-            @Override public List<LobbyMenus.Button> buttons(ServerPlayer player) { return List.of(); }
+            @Override public List<ButtonMenu.Button> buttons(ServerPlayer player) { return List.of(); }
             @Override public void act(ServerPlayer player, UUID round, String action, String value) { }
         });
     }
