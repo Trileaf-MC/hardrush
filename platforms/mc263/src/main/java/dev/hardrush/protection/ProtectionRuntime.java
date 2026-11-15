@@ -52,6 +52,9 @@ public final class ProtectionRuntime {
         return entity != null && entity.level() instanceof ServerLevel level && protectedLevel(level);
     }
     public static boolean rejectDamage(Entity victim, DamageSource source) {
+        // Nobody dies in a workshop (/kill and the void included): a builder wears a borrowed lobby body (design 11.2).
+        if (victim instanceof ServerPlayer && victim.level() instanceof ServerLevel level
+                && dev.hardrush.world.LobbyDimension.isWorkshop(level)) return true;
         Entity direct = source.getDirectEntity();
         if (protectedEntity(victim) || protectedEntity(direct)) return true;
         if (direct instanceof ProtectionOriginHolder holder && holder.hardrush$protectedOrigin()) return true;
@@ -74,9 +77,10 @@ public final class ProtectionRuntime {
     public static void projectileCreated(Projectile projectile, Entity owner) {
         if (projectile instanceof ProtectionOriginHolder holder && protectedEntity(owner)) holder.hardrush$protectedOrigin(true);
     }
-    /** All movements, including passengers and teleport targets, use the administrative spectator boundary. */
+    /** All movements, including passengers and teleport targets, use the administrative spectator and builder boundaries. */
     public static boolean rejectMove(Entity entity, ServerLevel destination) {
-        if (entity instanceof ServerPlayer player && PlayerProfiles.rejectAdministrativeSpectatorMove(player, destination)) return true;
+        if (entity instanceof ServerPlayer player && (PlayerProfiles.rejectAdministrativeSpectatorMove(player, destination)
+                || PlayerProfiles.rejectBuilderMove(player, destination))) return true;
         for (var passenger : entity.getPassengers()) if (rejectMove(passenger, destination)) return true;
         return false;
     }
@@ -87,6 +91,7 @@ public final class ProtectionRuntime {
     public static void correct(ServerPlayer player) {
         // Spectators may hover or occupy solid blocks; rejection must not require a survival landing.
         if (PlayerProfiles.isAdministrativeSpectator(player)) spectatorRejected(player);
+        if (PlayerProfiles.building(player)) dev.hardrush.notice.Notices.refuse(player, "建造时只能留在本草稿 · 用 /hardrush lobby 离开工坊");
         player.stopRiding();
         player.resetFallDistance(); player.resetCurrentImpulseContext();
         player.setDeltaMovement(Vec3.ZERO);
