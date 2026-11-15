@@ -177,7 +177,7 @@ public final class StabilizationGameTest {
         void assertUiReleased(int online){
             var router=LobbyInteractions.get(f.server).orElseThrow();
             test.assertValueEqual(views().size(),0,"No retained library pages");
-            test.assertValueEqual(((Map<?,?>)field(service(LobbyMenus.class,"BINDINGS"),"clickTimes")).size(),0,"Expired menu throttle UUIDs released");
+            test.assertValueEqual(((Map<?,?>)field(field(service(LobbyMenus.class,"BINDINGS"),"throttle"),"clickTimes")).size(),0,"Expired menu throttle UUIDs released");
             test.assertTrue(((Map<?,?>)field(router,"hints")).size()<=online,"Hints retain current connections only");
             test.assertTrue(((Map<?,?>)field(router.projections(),"pages")).size()<=online,"Projection owners bounded by current connections");
             var bars=(net.minecraft.server.level.ServerBossEvent)service(PlayerFeedback.class,"BARS");
