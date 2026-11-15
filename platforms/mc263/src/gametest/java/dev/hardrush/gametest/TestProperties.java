@@ -27,4 +27,5 @@ public final class TestProperties {
     public static final String STABILIZATION = "hardrush.test.stabilization";
     public static final String STORAGE_RESERVE = "hardrush.test.storageReserve";
     public static final String TEN_ROUNDS = "hardrush.test.tenRounds";
+    public static final String WORKSHOP = "hardrush.test.workshop";
 }

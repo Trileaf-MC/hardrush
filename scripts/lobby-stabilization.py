@@ -25,6 +25,7 @@ CHECKS = {
     'personal-storage': GAME + ['-PhardrushPersonalHunt=true', '-PhardrushPersonalHuntFault=storage', '--console=plain'],
     'foundation': GAME + ['-PhardrushLobbyFoundation=true', '--console=plain'],
     'human': GAME + ['-PhardrushHumanEntry=true', '--console=plain'],
+    'workshop': GAME + ['-PhardrushWorkshop=true', '--console=plain'],
     'movement': GAME + ['-PhardrushLobbyMovement=true', '--console=plain'],
     'lobby-runtime': GAME + ['-PhardrushLobbyRuntime=true', '--console=plain'],
     'celebration': GAME + ['-PhardrushCelebration=true', '--console=plain'],
