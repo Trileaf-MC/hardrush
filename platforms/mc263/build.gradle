@@ -482,7 +482,8 @@ tasks.named('runGameTest') {
 
 // A single production runtime suite owns each JVM; every launch receives a new directory.
 def isolatedSuites = ['hardrushParticipationExit', 'hardrushAdminSpectator', 'hardrushTenRounds', 'hardrushCelebration', 'hardrushStorageReserve', 'hardrushRecovery',
-    'hardrushIdentityRuntime', 'hardrushLobbyRuntime', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt', 'hardrushFullFlow', 'hardrushStabilization']
+    'hardrushIdentityRuntime', 'hardrushLobbyRuntime', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt', 'hardrushFullFlow', 'hardrushStabilization',
+    'hardrushLobbyAdmin']
 if (isolatedSuites.count { providers.gradleProperty(it).orNull == 'true' } > 1)
     throw new GradleException('Production runtime suites must use separate isolated JVMs')
 def participationExitRunDir = rootProject.file(".local/participation-exit/${UUID.randomUUID()}")
@@ -584,6 +585,25 @@ tasks.named('runGameTest') {
         stabilizationRunDir.mkdirs()
         copy { from acceptedEula; into stabilizationRunDir }
         logger.lifecycle("Isolated stabilization storage: ${stabilizationRunDir}")
+    }
+}
+
+// Installing and rolling back lobby packs replaces the production lobby dimension: its own JVM.
+def lobbyAdminRunDir = rootProject.file(".local/lobby-admin/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushLobbyAdmin').orNull == 'true') {
+        if (providers.gradleProperty('hardrushCompetition').orNull != 'true') throw new GradleException('Lobby admin requires competition mode')
+        vmArg '-Dhardrush.test.lobbyAdmin=true'
+        vmArg '-Dhardrush.round.initialMode=normal'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:lobby_admin_game_test*'
+        runDir lobbyAdminRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushLobbyAdmin').orNull == 'true') doFirst {
+        lobbyAdminRunDir.mkdirs()
+        copy { from acceptedEula; into lobbyAdminRunDir }
+        logger.lifecycle("Isolated lobby admin storage: ${lobbyAdminRunDir}")
     }
 }
 
