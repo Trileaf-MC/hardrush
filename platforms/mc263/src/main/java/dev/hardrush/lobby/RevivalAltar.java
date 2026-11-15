@@ -2,7 +2,7 @@ package dev.hardrush.lobby;
 
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.lobby.LobbyHints;
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.player.PlayerProfiles;
@@ -68,7 +68,11 @@ public final class RevivalAltar {
         var s = SERVICES.get(server); if (s == null) return;
         s.arrivals.put(player, server.getTickCount() + ARRIVAL_TICKS);
         var lobby = LobbyWorld.open(server); if (!lobby.ready()) return;
-        var at = lobby.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.ALTAR)).add(0, 1.5, 0);
+        // The altar the player stood on; the first one if the body has already left it.
+        var online = server.getPlayerList().getPlayer(player);
+        var altar = (online == null ? Optional.<dev.hardrush.core.lobby.plan.Zone>empty() : lobby.altarUnder(online))
+                .orElse(lobby.plan().zones(LobbyFunction.ALTAR_PAD).getFirst());
+        var at = LobbyWorld.position(altar.center()).add(0, .5, 0);
         var level = lobby.holdingLevel();
         level.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, at.x, at.y, at.z, 60, .8, .8, .8, .5);
         level.playSound(null, at.x, at.y, at.z, SoundEvents.TOTEM_USE, SoundSource.BLOCKS, 1f, 1f);

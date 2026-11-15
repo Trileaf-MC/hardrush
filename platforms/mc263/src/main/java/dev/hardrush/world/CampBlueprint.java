@@ -7,8 +7,14 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** Exact owned footprint. Coordinates are relative to the lobby's immutable anchor. */
+/**
+ * Exact owned footprint. Coordinates are relative to the lobby's immutable anchor. Construction only: runtime
+ * positions come from the lobby's plan ({@link dev.hardrush.core.lobby.LegacyCampPlan}).
+ * TODO: [Refactor] M2 installs the lobby from a pack and deletes this class.
+ */
 public final class CampBlueprint {
+    /** The terrain manifest's layout version. */
+    public static final int VERSION = LobbyLayout.VERSION;
     public static Map<BlockPos, BlockState> blocks(BlockPos anchor) {
         Map<BlockPos, BlockState> blocks = new LinkedHashMap<>();
         for (int x = LobbyLayout.MIN_X; x <= LobbyLayout.MAX_X; x++) {
@@ -50,23 +56,28 @@ public final class CampBlueprint {
                 case MERCHANT -> "女巫商人"; case VAULT -> "试炼宝库"; case OMINOUS_VAULT -> "不祥宝库";
             };
             if (facility == LobbyLayout.Facility.ALTAR) { labels.put(sign(anchor, facility), ALTAR_SIGN); continue; }
+            // Fixed text: a sign line holds about nine CJK characters. Availability shows on the role models' name tags.
             labels.put(sign(anchor, facility), new String[]{name,
                     switch (facility) {
                         case RULES -> "右键阅读"; case HISTORY -> "右键查战绩领书";
+                        case ZOMBIE, SKELETON, CREEPER -> "右键模型选角";
+                        case PREVIOUS, NEXT -> "右键翻页";
                         case MERCHANT -> "怪物币换出击增强";
                         case VAULT -> "手持试炼钥匙右键"; case OMINOUS_VAULT -> "手持不祥钥匙右键";
-                        default -> "极限挑战时开放";
+                        case ALTAR -> throw new IllegalStateException("The altar has its own sign");
                     },
                     switch (facility) {
+                        case ZOMBIE, SKELETON, CREEPER -> "挑战时右键目标追猎";
+                        case PREVIOUS, NEXT -> "只对自己生效";
                         case MERCHANT -> "先选角色再右键";
                         case VAULT, OMINOUS_VAULT -> "开出一次性装备"; default -> "";
                     }, ""});
         }
         return labels;
     }
-    static final String[] ALTAR_SIGN = {"复生祭坛", "持复生图腾", "站上金块4秒", "空手回到世界"};
+    private static final String[] ALTAR_SIGN = {"复生祭坛", "持复生图腾", "站上金块4秒", "空手回到世界"};
     /** Each facility's sign stands two blocks south of it; the altar's beside its south steps, clear of the path. */
-    public static BlockPos sign(BlockPos anchor, LobbyLayout.Facility facility) {
+    private static BlockPos sign(BlockPos anchor, LobbyLayout.Facility facility) {
         var p = LobbyLayout.facility(facility);
         return facility == LobbyLayout.Facility.ALTAR ? anchor.offset((int)p.x() - 2, 0, (int)p.z() + 3)
                 : anchor.offset((int)p.x(), 0, (int)p.z() + 2);
@@ -133,14 +144,25 @@ public final class CampBlueprint {
         return additions;
     }
 
+    /**
+     * Whether an interrupted build's block still counts as ours: exactly as planned, or planned grass that has
+     * since decayed to dirt under a post or lectern (vanilla random ticks do that within minutes).
+     */
+    public static boolean planned(BlockState planned, BlockState actual) {
+        return actual.equals(planned) || planned.is(Blocks.GRASS_BLOCK) && actual.is(Blocks.DIRT);
+    }
     /** The altar's glass is owned in both states; only its dormant (tinted) one is in the blueprint. */
     public static boolean litAltarGlass(BlockPos anchor, BlockPos pos, BlockState state) {
         return pos.equals(altarGlass(anchor)) && state.is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW));
     }
+    /** Where the role models stand; v1 camps had lecterns there. */
+    public static java.util.List<BlockPos> monsterFacilities(BlockPos anchor) {
+        return LobbyLayout.MONSTER_FACILITIES.stream().map(LobbyLayout::facility)
+                .map(p -> anchor.offset((int)p.x(), 0, (int)p.z())).toList();
+    }
     /** The three owned v1 lecterns may be removed when opening an existing camp. */
     public static boolean legacyMonsterLectern(BlockPos anchor, BlockPos pos, BlockState state) {
-        return state.is(Blocks.LECTERN) && LobbyLayout.MONSTER_FACILITIES.stream()
-                .map(LobbyLayout::facility).anyMatch(p -> pos.equals(anchor.offset((int)p.x(), 0, (int)p.z())));
+        return state.is(Blocks.LECTERN) && monsterFacilities(anchor).contains(pos);
     }
     private CampBlueprint() {}
 }

@@ -1,7 +1,7 @@
 package dev.hardrush.observe;
 
 import dev.hardrush.core.lobby.LobbyHints;
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.Landing;
 import dev.hardrush.core.round.MonsterRole;
 import dev.hardrush.core.round.Participant;
 import dev.hardrush.core.round.ParticipantRole;
@@ -214,7 +214,7 @@ public final class Observation {
     private static void end(MinecraftServer server, Binding b, Session s, String message) {
         drop(b, s);
         try {
-            b.profiles.endObservation(s.player, s.home, s.homeYaw, s.group == Group.MONSTER ? LobbyLayout.Landing.MONSTER : LobbyLayout.Landing.CENTRAL);
+            b.profiles.endObservation(s.player, s.home, s.homeYaw, s.group == Group.MONSTER ? Landing.MONSTER : Landing.CENTRAL);
         } catch (RuntimeException failure) {
             LOGGER.error("Observer {} could not return to the camp", s.player.getUUID(), failure);
             b.profiles.returnToLobby(s.player);

@@ -2,7 +2,6 @@ package dev.hardrush.gametest;
 
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.MonotonicClock;
-import dev.hardrush.core.lobby.LobbyLayout;
 import dev.hardrush.core.round.*;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.observe.Observation;

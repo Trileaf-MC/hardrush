@@ -642,11 +642,10 @@ public final class LobbyRuntimeGameTest {
             dev.hardrush.lobby.CampKit.tick(server);
             test.assertValueEqual(coins(), 6, "The camp projects the coin balance as native emeralds");
             var lobby = LobbyWorld.open(server);
-            HuntInputFixtures.move(monster.player, lobby.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(
-                    dev.hardrush.core.lobby.LobbyLayout.Facility.MERCHANT)).add(0, 0, 2));
+            HuntInputFixtures.move(monster.player, LobbyPlanFixtures.model(server, dev.hardrush.core.lobby.plan.LobbyFunction.MERCHANT).add(0, 0, 2));
             dev.hardrush.lobby.LobbyInteractions.tick(server);
             var ids = dev.hardrush.lobby.LobbyInteractions.get(server).orElseThrow().roleModels().view(monster.player);
-            HuntInputFixtures.click(monster.player, ids.get(dev.hardrush.core.lobby.LobbyLayout.Facility.MERCHANT), net.minecraft.world.InteractionHand.MAIN_HAND);
+            HuntInputFixtures.click(monster.player, ids.get(dev.hardrush.core.lobby.plan.LobbyFunction.MERCHANT).getFirst(), net.minecraft.world.InteractionHand.MAIN_HAND);
             test.assertTrue(dev.hardrush.lobby.MonsterShop.isShop(monster.player), "Right-clicking the witch model opens the native trading screen");
             var menu = monster.player.containerMenu;
             // The isolated camp body may still select an offer; vanilla moves the projected coins into the payment slot.
@@ -715,7 +714,7 @@ public final class LobbyRuntimeGameTest {
         void assertAltarBeam() {
             var lobby = LobbyWorld.open(server);
             test.assertTrue(ProtectionRuntime.protectedLevel(lobby.holdingLevel()), "The camp is protected by the production binding");
-            var glass = BlockPos.containing(lobby.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(dev.hardrush.core.lobby.LobbyLayout.Facility.ALTAR))).above(2);
+            var glass = LobbyPlanFixtures.altarGlass(server);
             test.assertTrue(lobby.holdingLevel().getBlockState(glass).is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW)),
                     "A running hardcore round lights the altar beam: " + lobby.holdingLevel().getBlockState(glass));
             test.assertFalse(lobby.holdingLevel().setBlock(glass, Blocks.STONE.defaultBlockState(), 3), "Foreign writes stay refused outside ownedWrite");

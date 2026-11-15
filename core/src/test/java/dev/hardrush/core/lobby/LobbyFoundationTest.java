@@ -2,6 +2,7 @@ package dev.hardrush.core.lobby;
 
 import static org.junit.jupiter.api.Assertions.*;
 import dev.hardrush.core.config.RulesConfig;
+import dev.hardrush.core.lobby.plan.*;
 import dev.hardrush.core.round.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -9,25 +10,27 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class LobbyFoundationTest {
-    @Test void layoutHasSafePurposeSeparationAndStableSpacedSlots() {
-        for (var purpose : LobbyLayout.Landing.values()) {
-            var point = LobbyLayout.landing(purpose);
-            assertEquals(purpose == LobbyLayout.Landing.RESTORE_READY, LobbyLayout.ASSEMBLY.contains(point.x(), point.z()));
-        }
-        assertEquals(20, LobbyLayout.displaySlots().stream().distinct().count());
-        for (var a : LobbyLayout.displaySlots()) for (var b : LobbyLayout.displaySlots()) {
+    @Test void campPlanHasSafePurposeSeparationAndStableSpacedSlots() {
+        var plan = LegacyCampPlan.build(8, 4, 8);
+        for (var purpose : Landing.values())
+            for (var point : LandingRules.candidates(plan, purpose))
+                assertEquals(purpose == Landing.RESTORE_READY, plan.inZone(LobbyFunction.ASSEMBLY, point.x(), point.y(), point.z(), false), purpose.name());
+        var slots = plan.points(LobbyFunction.DISPLAY_SLOT);
+        assertEquals(20, slots.stream().distinct().count());
+        for (var a : slots) for (var b : slots) {
             if (!a.equals(b)) assertTrue(Math.hypot(a.x()-b.x(), a.z()-b.z()) >= 3);
-            assertTrue(a.x() >= LobbyLayout.MIN_X && a.x() <= LobbyLayout.MAX_X && a.z() >= LobbyLayout.MIN_Z && a.z() <= LobbyLayout.MAX_Z);
+            assertTrue(plan.bounds().contains(a.x(), a.y(), a.z()));
         }
-        assertTrue(16 - LobbyLayout.ASSEMBLY.radius() >= 6);
-        var altar = LobbyLayout.facility(LobbyLayout.Facility.ALTAR);
-        var foot = LobbyLayout.landing(LobbyLayout.Landing.ALTAR);
-        assertFalse(LobbyLayout.onAltarPad(0, 0), "The beacon is not a standing cell");
-        assertFalse(LobbyLayout.onAltarPad((int)(foot.x() - altar.x()), (int)(foot.z() - altar.z())), "Arrival never starts a rite");
+        var pad = plan.zones(LobbyFunction.ALTAR_PAD).getFirst();
+        var center = pad.center();
+        assertFalse(pad.contains(center.x(), center.y(), center.z(), false), "The beacon is not a standing cell");
+        for (var foot : LandingRules.candidates(plan, Landing.ALTAR))
+            assertFalse(plan.inZone(LobbyFunction.ALTAR_PAD, foot.x(), foot.y() + 1, foot.z(), true), "Arrival never starts a rite");
         for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
-            assertEquals(Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && (dx != 0 || dz != 0), LobbyLayout.onAltarPad(dx, dz));
-            assertFalse(LobbyLayout.ASSEMBLY.contains(altar.x() + dx, altar.z() + dz));
-            assertFalse(LobbyLayout.MONSTER_CAMP.contains(altar.x() + dx, altar.z() + dz));
+            double x = center.x() + dx, z = center.z() + dz;
+            assertEquals(Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && (dx != 0 || dz != 0), pad.contains(x, center.y(), z, false));
+            assertFalse(plan.inZone(LobbyFunction.ASSEMBLY, x, center.y() - 1, z, true));
+            assertFalse(plan.inZone(LobbyFunction.COURTYARD, x, center.y() - 1, z, true));
         }
     }
     @Test void progressAndRecoveryBeatFacilityHintsAndExpireDeterministically() {
