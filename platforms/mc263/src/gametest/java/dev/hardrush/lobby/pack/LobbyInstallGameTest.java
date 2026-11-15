@@ -44,12 +44,13 @@ public final class LobbyInstallGameTest {
         var outcome = new AtomicReference<LobbyInstall.Outcome>();
         test.startSequence()
                 .thenWaitUntil(() -> {
-                    if (outcome.get() == null) install.tick().ifPresent(outcome::set);
+                    if (outcome.get() == null) install.tick(true).ifPresent(outcome::set);
                     test.assertTrue(outcome.get() != null, "Installing: " + install.placedTiles() + " tiles placed");
                 })
                 .thenExecute(() -> {
                     if (!(outcome.get() instanceof LobbyInstall.Outcome.Installed done))
                         throw new AssertionError("The default pack installs: " + outcome.get());
+                    test.assertTrue(done.fallbacks().functions().isEmpty(), "The default pack needs no stand-in");
                     try {
                         check(test, storage, key, done);
                     } catch (IOException | PackException e) {
@@ -114,11 +115,12 @@ public final class LobbyInstallGameTest {
         try (var in = LobbyInstall.Source.builtIn().open()) {
             var contents = PackFile.read(in, PackLimits.forServer(MAX_SIZE));
             var plan = contents.plan();
-            // Without its history lectern binding: M2 has no stand-in facilities, so this must fail acceptance.
-            var withoutHistory = new LobbyPlan(plan.bounds(), plan.triggers().stream().filter(t -> t.function() != LobbyFunction.HISTORY).toList(),
-                    plan.models(), plan.points(), plan.zones(), plan.altarLights(), plan.texts());
+            // Without its courtyard landing: a function with no stand-in, so this must fail acceptance.
+            var points = new EnumMap<>(plan.points());
+            points.remove(LobbyFunction.LANDING_MONSTER);
+            var withoutLanding = new LobbyPlan(plan.bounds(), plan.triggers(), plan.models(), points, plan.zones(), plan.altarLights(), plan.texts());
             broken = directory.resolve("packs/broken.hrlobby");
-            PackFile.write(broken, contents.manifest(), withoutHistory, contents.tiles());
+            PackFile.write(broken, contents.manifest(), withoutLanding, contents.tiles());
         } catch (IOException | PackException e) {
             throw new IllegalStateException(e);
         }
@@ -126,19 +128,97 @@ public final class LobbyInstallGameTest {
         var outcome = new AtomicReference<LobbyInstall.Outcome>();
         test.startSequence()
                 .thenWaitUntil(() -> {
-                    if (outcome.get() == null) install.tick().ifPresent(outcome::set);
+                    if (outcome.get() == null) install.tick(true).ifPresent(outcome::set);
                     test.assertTrue(outcome.get() != null, "Installing: " + install.placedTiles() + " tiles placed");
                 })
                 .thenExecute(() -> {
-                    if (!(outcome.get() instanceof LobbyInstall.Outcome.Failed failed)) throw new AssertionError("A pack without history fails: " + outcome.get());
-                    test.assertTrue(failed.reason().contains("缺少【战绩】"), "The reason names the missing function: " + failed.reason());
-                    test.assertTrue(install.tick().isEmpty(), "The outcome is reported once");
+                    if (!(outcome.get() instanceof LobbyInstall.Outcome.Failed failed)) throw new AssertionError("A pack without a courtyard landing fails: " + outcome.get());
+                    test.assertTrue(failed.reason().contains("缺少【庭院落点】"), "The reason names the missing function: " + failed.reason());
+                    test.assertTrue(install.tick(true).isEmpty(), "The outcome is reported once");
                 })
                 // Fantasy deletes the dimension on a later tick.
                 .thenWaitUntil(() -> test.assertTrue(server.getLevel(key) == null, "The new dimension is deleted"))
                 .thenExecute(() -> {
                     test.assertFalse(Files.exists(storage.current()) || Files.exists(storage.installed(1)), "Nothing was recorded");
                     deleteRecursively(directory);
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * A pack lacking four functions with different stand-ins installs: a lectern, a written sign, a model point and a
+     * vault beside the central landing. Nothing is recorded while the switch is not allowed.
+     */
+    @GameTest(maxTicks = 60000)
+    public void missingFunctionsGetStandInsAndNothingIsRecordedBeforeTheSwitch(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var directory = scratch(server, "lobby-install-fallback");
+        var storage = new LobbyStorage(directory);
+        var key = testKey();
+        var missing = List.of(LobbyFunction.HISTORY, LobbyFunction.PAGE_NEXT, LobbyFunction.ROLE_ZOMBIE, LobbyFunction.OMINOUS_VAULT);
+        Path partial;
+        try (var in = LobbyInstall.Source.builtIn().open()) {
+            var contents = PackFile.read(in, PackLimits.forServer(MAX_SIZE));
+            var plan = contents.plan();
+            var reduced = new LobbyPlan(plan.bounds(), plan.triggers().stream().filter(t -> !missing.contains(t.function())).toList(),
+                    plan.models().stream().filter(m -> !missing.contains(m.function())).toList(), plan.points(), plan.zones(),
+                    plan.altarLights(), plan.texts());
+            partial = directory.resolve("packs/partial.hrlobby");
+            PackFile.write(partial, contents.manifest(), reduced, contents.tiles());
+        } catch (IOException | PackException e) {
+            throw new IllegalStateException(e);
+        }
+        var install = new LobbyInstall(server, storage, LobbyInstall.Source.file(partial), 1, key, MAX_SIZE, OptionalInt.empty());
+        var outcome = new AtomicReference<LobbyInstall.Outcome>();
+        var allowed = new boolean[1];
+        test.startSequence()
+                .thenWaitUntil(() -> {
+                    if (outcome.get() == null) install.tick(false).ifPresent(outcome::set);
+                    test.assertTrue(outcome.get() != null || install.stage() == LobbyInstall.Stage.READY, "Building: " + install.stage());
+                })
+                .thenExecute(() -> {
+                    test.assertTrue(outcome.get() == null, "Built, waiting: " + outcome.get());
+                    for (int i = 0; i < 5; i++) test.assertTrue(install.tick(false).isEmpty(), "Still waiting for the switch");
+                    test.assertTrue(install.waitingNanos() > 0, "Counts how long it has waited");
+                    test.assertFalse(Files.exists(storage.current()) || Files.exists(storage.installed(1)), "Nothing is recorded while waiting");
+                    allowed[0] = true;
+                })
+                .thenWaitUntil(() -> {
+                    if (outcome.get() == null) install.tick(allowed[0]).ifPresent(outcome::set);
+                    test.assertTrue(outcome.get() != null, "Committing");
+                })
+                .thenExecute(() -> {
+                    if (!(outcome.get() instanceof LobbyInstall.Outcome.Installed done)) throw new AssertionError("The partial pack installs: " + outcome.get());
+                    try {
+                        var level = done.handle().asLevel();
+                        var plan = done.installation().plan();
+                        test.assertValueEqual(EnumSet.copyOf(done.fallbacks().functions()), EnumSet.copyOf(missing), "Every missing function got a stand-in");
+                        var central = LandingRules.candidates(plan, Landing.CENTRAL).getFirst();
+                        for (var f : missing) test.assertValueEqual(plan.count(f), 1, "The effective plan has 【" + f.displayName() + "】");
+                        var expected = Map.of(LobbyFunction.HISTORY, Blocks.LECTERN, LobbyFunction.PAGE_NEXT, Blocks.OAK_SIGN, LobbyFunction.OMINOUS_VAULT, Blocks.VAULT);
+                        expected.forEach((f, block) -> {
+                            var cell = plan.triggers(f).getFirst().block();
+                            var pos = new BlockPos(cell.x(), cell.y(), cell.z());
+                            test.assertTrue(level.getBlockState(pos).is(block), f.id() + " stand-in is " + block + " at " + pos);
+                            double dx = cell.x() + .5 - central.x(), dz = cell.z() + .5 - central.z();
+                            test.assertTrue(dx * dx + dz * dz <= 81, f.id() + " stands beside the central landing");
+                        });
+                        var vault = plan.triggers(LobbyFunction.OMINOUS_VAULT).getFirst().block();
+                        test.assertTrue(level.getBlockState(new BlockPos(vault.x(), vault.y(), vault.z()))
+                                .getValue(net.minecraft.world.level.block.VaultBlock.OMINOUS), "The ominous vault stand-in is ominous");
+                        var sign = plan.triggers(LobbyFunction.PAGE_NEXT).getFirst().block();
+                        if (!(level.getBlockEntity(new BlockPos(sign.x(), sign.y(), sign.z())) instanceof SignBlockEntity entity))
+                            throw new AssertionError("The paging sign has its block entity");
+                        test.assertValueEqual(entity.getText(SignTextSlot.FRONT).getMessages(false).get(1).getString(), "下一页", "The sign names its page");
+                        test.assertValueEqual(plan.models(LobbyFunction.ROLE_ZOMBIE).size(), 1, "The zombie role gets a model point");
+                        test.assertValueEqual(storage.readCurrent().orElseThrow().plan(), plan, "current.json records the effective plan");
+                    } catch (IOException | PackException e) {
+                        throw new IllegalStateException(e);
+                    } finally {
+                        done.chunks().close();
+                        done.handle().delete();
+                        deleteRecursively(directory);
+                    }
                 })
                 .thenSucceed();
     }
