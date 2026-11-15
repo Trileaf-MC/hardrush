@@ -6,6 +6,7 @@ import dev.hardrush.core.lobby.plan.MarkerTags;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.lobby.ButtonMenu;
 import dev.hardrush.lobby.workshop.Draft;
+import dev.hardrush.lobby.workshop.Toolkit;
 import dev.hardrush.lobby.workshop.Workshop;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.round.RoundRuntime;
@@ -44,7 +45,7 @@ import net.minecraft.world.phys.Vec3;
  * logins and command packets, no graphical client.
  */
 public final class WorkshopGameTest {
-    @GameTest(maxTicks = 80000)
+    @GameTest(maxTicks = 400000)
     public void buildersBorrowTheirLobbyBodyAndGiveItBackUnchanged(GameTestHelper test) {
         if (!Boolean.getBoolean(TestProperties.WORKSHOP)) { test.succeed(); return; }
         var f = new HumanEntryGameTest.Fixture(test);
@@ -174,8 +175,9 @@ public final class WorkshopGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "The returned body prepares normally"))
                 .thenExecute(() -> { f.place(f.a, Landing.CENTRAL); })
-                .thenWaitUntil(() -> f.await(!f.ready(f.a) && f.idle(), "And steps out again"))
-                .thenExecute(() -> f.a.disconnect());
+                .thenWaitUntil(() -> f.await(!f.ready(f.a) && f.idle(), "And steps out again"));
+        WorkshopToolSteps.run(test, f, sequence);
+        sequence.thenExecute(() -> f.a.disconnect());
         f.a.login(sequence);
         sequence.thenExecute(() -> {
                     // A restored profile (same generation, sealed suspension reloaded on login).
@@ -237,7 +239,7 @@ public final class WorkshopGameTest {
     }
 
     /** What leaving a workshop must give back. */
-    private record Body(List<ItemStack> inventory, List<ItemStack> enderChest, int level, float progress, float health, int food,
+    record Body(List<ItemStack> inventory, List<ItemStack> enderChest, int level, float progress, float health, int food,
                         List<String> advancements, String dimension, int effects) {
         static Body of(ServerPlayer p) {
             var inventory = new ArrayList<ItemStack>();
@@ -271,11 +273,11 @@ public final class WorkshopGameTest {
         }
     }
 
-    private static Workshop workshop(HumanEntryGameTest.Fixture f) { return Workshop.get(f.server).orElseThrow(); }
-    private static boolean ready(HumanEntryGameTest.Fixture f, String id) {
+    static Workshop workshop(HumanEntryGameTest.Fixture f) { return Workshop.get(f.server).orElseThrow(); }
+    static boolean ready(HumanEntryGameTest.Fixture f, String id) {
         return workshop(f).draft(id).filter(d -> d.state() == Draft.State.READY).isPresent();
     }
-    private static void enter(GameTestHelper test, HumanEntryGameTest.Fixture f, String id) {
+    static void enter(GameTestHelper test, HumanEntryGameTest.Fixture f, String id) {
         var refusal = workshop(f).enter(f.a.player, id);
         test.assertTrue(refusal.isEmpty(), "Enter: " + refusal.orElse(""));
         f.a.acknowledge();
@@ -283,20 +285,24 @@ public final class WorkshopGameTest {
         test.assertTrue(PlayerProfiles.isLocked(f.a.player), "…but is never a round body");
         test.assertValueEqual(f.a.player.gameMode.getGameModeForPlayer(), GameType.CREATIVE, "Builders fly in creative");
         test.assertTrue(f.a.player.getAbilities().flying, "…already flying");
-        test.assertTrue(f.a.player.getInventory().isEmpty(), "…empty-handed");
+        var inventory = f.a.player.getInventory();
+        int items = 0;
+        for (int i = 0; i < inventory.getContainerSize(); i++) if (!inventory.getItem(i).isEmpty()) items++;
+        test.assertTrue(items == 2 && Toolkit.kind(inventory.getItem(Toolkit.TOOLBOX_SLOT)).orElse("").equals("toolbox")
+                && Toolkit.kind(inventory.getItem(Toolkit.WAND_SLOT)).orElse("").equals("wand"), "…holding only the toolbox and the wand");
     }
-    private static void op(HumanEntryGameTest.Fixture f, HumanEntryGameTest.Fixture.Peer peer, PermissionLevel level) {
+    static void op(HumanEntryGameTest.Fixture f, HumanEntryGameTest.Fixture.Peer peer, PermissionLevel level) {
         f.server.getPlayerList().op(new NameAndId(peer.profile), Optional.of(LevelBasedPermissionSet.forLevel(level)), Optional.empty());
     }
-    private static void packet(ServerPlayer player, String command) {
+    static void packet(ServerPlayer player, String command) {
         player.connection.handleChatCommand(new ServerboundChatCommandPacket(command));
     }
     private static int markers(ServerLevel level) {
         return level.getEntities(EntityTypes.ARMOR_STAND, stand -> stand.entityTags().stream().anyMatch(t -> t.startsWith(MarkerTags.PREFIX))).size();
     }
-    private static List<String> labels(ServerPlayer player) {
+    static List<String> labels(ServerPlayer player) {
         var out = new ArrayList<String>();
-        for (int i = 0; i < 54; i++) out.add(player.containerMenu.getSlot(i).getItem().getHoverName().getString());
+        for (int i = 0; i < Math.min(54, player.containerMenu.slots.size()); i++) out.add(player.containerMenu.getSlot(i).getItem().getHoverName().getString());
         return out;
     }
 }
