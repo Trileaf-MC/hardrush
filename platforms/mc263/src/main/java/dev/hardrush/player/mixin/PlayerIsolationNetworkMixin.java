@@ -44,13 +44,13 @@ public abstract class PlayerIsolationNetworkMixin {
             "handleJigsawGenerate", "handleSetGameRule", "handleChangeDifficulty", "handleChangeGameMode", "handleLockDifficulty"},
             at = @At("HEAD"), cancellable = true)
     private void hardrush$holdGameplay(CallbackInfo ci) {
-        if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)) ci.cancel();
+        if (player.level().getServer().isSameThread() && PlayerProfiles.sealed(player)) ci.cancel();
     }
 
     // A camp monster's isolated body may still pick an offer in the witch's guarded menu.
     @Inject(method = "handleSelectTrade", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdTrade(CallbackInfo ci) {
-        if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)
+        if (player.level().getServer().isSameThread() && PlayerProfiles.sealed(player)
                 && !dev.hardrush.lobby.MonsterShop.isShop(player)) ci.cancel();
     }
 
@@ -69,14 +69,14 @@ public abstract class PlayerIsolationNetworkMixin {
 
     private boolean hardrush$unauthorizedObservation() {
         // Destination admission remains owned by the player teleport/protection hooks.
-        return PlayerProfiles.isLocked(player) && (!PlayerProfiles.isAdministrativeSpectator(player) || PlayerProfiles.simulationFrozen(player));
+        return PlayerProfiles.sealed(player) && (!PlayerProfiles.isAdministrativeSpectator(player) || PlayerProfiles.simulationFrozen(player));
     }
 
     // Left-clicking a courtyard model watches its player; every other locked attack stays sealed.
     @Inject(method = "handleAttack", at = @At("HEAD"), cancellable = true)
     private void hardrush$facilityAttack(net.minecraft.network.protocol.game.ServerboundAttackPacket packet, CallbackInfo ci) {
         if (!player.level().getServer().isSameThread()) return;
-        if (LobbyInteractions.consumed(LobbyInteractions.attack(player, packet)) || PlayerProfiles.isLocked(player)) ci.cancel();
+        if (LobbyInteractions.consumed(LobbyInteractions.attack(player, packet)) || PlayerProfiles.sealed(player)) ci.cancel();
     }
 
     @Inject(method = "handleTeleportToEntityPacket", at = @At("HEAD"), cancellable = true)
@@ -90,7 +90,7 @@ public abstract class PlayerIsolationNetworkMixin {
     private void hardrush$facilityEntity(ServerboundInteractPacket packet, CallbackInfo ci) {
         if (!player.level().getServer().isSameThread()) return;
         if (LobbyInteractions.consumed(LobbyInteractions.entity(player, packet))
-                || PlayerProfiles.isLocked(player) || CombatRuntime.competitionFrozen(player.level())) ci.cancel();
+                || PlayerProfiles.sealed(player) || CombatRuntime.competitionFrozen(player.level())) ci.cancel();
     }
 
     @Inject(method = "handleMovePlayer", at = @At("HEAD"), cancellable = true)
@@ -111,7 +111,7 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = "handlePlayerCommand", at = @At("HEAD"), cancellable = true)
     private void hardrush$lobbySprint(ServerboundPlayerCommandPacket packet, CallbackInfo ci) {
-        if (!player.level().getServer().isSameThread() || !PlayerProfiles.isLocked(player)) return;
+        if (!player.level().getServer().isSameThread() || !PlayerProfiles.sealed(player)) return;
         boolean sprint = packet.getAction() == ServerboundPlayerCommandPacket.Action.START_SPRINTING
                 || packet.getAction() == ServerboundPlayerCommandPacket.Action.STOP_SPRINTING;
         if (!sprint || !PlayerProfiles.canMoveInLobby(player)) ci.cancel();
@@ -119,7 +119,7 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = "handlePlayerAction", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdBlockAction(ServerboundPlayerActionPacket packet, CallbackInfo ci) {
-        if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)) {
+        if (player.level().getServer().isSameThread() && PlayerProfiles.sealed(player)) {
             switch (packet.getAction()) {
                 case START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> {
                     player.connection.ackBlockChangesUpTo(packet.getSequence());
@@ -140,7 +140,7 @@ public abstract class PlayerIsolationNetworkMixin {
     private void hardrush$holdBlockUse(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread() && LobbyInteractions.consumed(LobbyInteractions.block(player, packet))) { ci.cancel(); return; }
         // Lobby decoration (doors, buttons...) stays usable while waiting; the protection mixin vets the click itself.
-        if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)
+        if (player.level().getServer().isSameThread() && PlayerProfiles.sealed(player)
                 && !(!PlayerProfiles.simulationFrozen(player) && dev.hardrush.protection.ProtectionRuntime.interactiveClick(player, packet))) {
             player.connection.ackBlockChangesUpTo(packet.sequence());
             var hit = packet.hitResult();
@@ -155,7 +155,7 @@ public abstract class PlayerIsolationNetworkMixin {
         if (player.level().getServer().isSameThread() && CampTransfers.throwsFromInventory(player, packet)) return;
         if (player.level().getServer().isSameThread() && !dev.hardrush.lobby.LobbyMenus.isMenu(player)
                 && !dev.hardrush.lobby.MonsterShop.isShop(player) && !ObservationMenu.isMenu(player)
-                && (PlayerProfiles.isLocked(player) || CombatRuntime.competitionFrozen(player.level()))) {
+                && (PlayerProfiles.sealed(player) || CombatRuntime.competitionFrozen(player.level()))) {
             player.containerMenu.sendAllDataToRemote();
             ci.cancel();
         }
@@ -163,7 +163,7 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = "handleContainerClose", at = @At("HEAD"), cancellable = true)
     private void hardrush$lobbyMenuClose(CallbackInfo ci) {
-        if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)
+        if (player.level().getServer().isSameThread() && PlayerProfiles.sealed(player)
                 && !dev.hardrush.lobby.LobbyMenus.isMenu(player) && !dev.hardrush.lobby.MonsterShop.isShop(player)
                 && !ObservationMenu.isMenu(player)) ci.cancel();
     }
@@ -229,7 +229,7 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = "handleSetCarriedItem", at = @At("HEAD"), cancellable = true)
     private void hardrush$bookSlotSelection(CallbackInfo ci) {
-        if (player.level().getServer().isSameThread() && PlayerProfiles.isLocked(player)
+        if (player.level().getServer().isSameThread() && PlayerProfiles.sealed(player)
                 && !RoundRuntime.lobbyBookReady(player)) {
             player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket(player.getInventory().getSelectedSlot()));
             player.inventoryMenu.sendAllDataToRemote();
@@ -241,7 +241,7 @@ public abstract class PlayerIsolationNetworkMixin {
     private void hardrush$readHistoryBook(ServerboundUseItemPacket packet, CallbackInfo ci) {
         if (!player.level().getServer().isSameThread()) return;
         if (Spyglass.use(player, packet.hand())) { ci.cancel(); return; }
-        boolean locked = PlayerProfiles.isLocked(player);
+        boolean locked = PlayerProfiles.sealed(player);
         if (!locked && !CombatRuntime.competitionFrozen(player.level())) return;
         // Only a generated written book can be used while other item/gameplay input stays sealed.
         if (!WrittenBookPort.isHistoryBook(player.getItemInHand(packet.hand()))
@@ -255,19 +255,19 @@ public abstract class PlayerIsolationNetworkMixin {
         if (packet.getAction() == ServerboundClientCommandPacket.Action.PERFORM_RESPAWN && CelebrationRuntime.ownsRespawn(player)) {
             ci.cancel(); return;
         }
-        if (!PlayerProfiles.isLocked(player)) return;
+        if (!PlayerProfiles.sealed(player)) return;
         if (packet.getAction() != ServerboundClientCommandPacket.Action.PERFORM_RESPAWN
                 || !PlayerProfiles.isRespawnAllowed(player)) ci.cancel();
     }
 
     @Inject(method = "performUnsignedChatCommand", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdCommand(String command, CallbackInfo ci) {
-        if (PlayerProfiles.isLocked(player) && !hardrush$allowedCommand(command)) ci.cancel();
+        if (PlayerProfiles.sealed(player) && !hardrush$allowedCommand(command)) ci.cancel();
     }
 
     @Inject(method = "performSignedChatCommand", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdSignedCommand(ServerboundChatCommandSignedPacket packet, LastSeenMessages messages, CallbackInfo ci) {
-        if (PlayerProfiles.isLocked(player) && !hardrush$allowedCommand(packet.command())) ci.cancel();
+        if (PlayerProfiles.sealed(player) && !hardrush$allowedCommand(packet.command())) ci.cancel();
     }
 
     private boolean hardrush$allowedCommand(String command) {

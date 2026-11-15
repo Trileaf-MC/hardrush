@@ -23,19 +23,40 @@ import xyz.nucleoid.fantasy.RuntimeLevelHandle;
 import xyz.nucleoid.fantasy.util.VoidChunkGenerator;
 
 /**
- * The persistent void dimensions an installed lobby lives in, {@code hardrush:lobby_<seq>} (design 10.1). Each install
- * gets a new one; nothing in it is generated, everything comes from the pack.
+ * The persistent void dimensions lobbies live in (design 10.1): an installed lobby in {@code hardrush:lobby_<seq>}, each
+ * install a new one, and a workshop draft in {@code hardrush:workshop_<draftId>}. Both use the same void configuration;
+ * nothing in them is generated. Only {@code LobbyWorld.isLobby} makes one of them a protected level.
  */
 public final class LobbyDimension {
     public static final String NAMESPACE = "hardrush";
     public static final String PREFIX = "lobby_";
+    public static final String WORKSHOP_PREFIX = "workshop_";
     private static final Pattern PATH = Pattern.compile(PREFIX + "([1-9][0-9]{0,8})");
+    /** Draft ids are {@code [a-z0-9_-]{1,32}}. */
+    public static final Pattern DRAFT_ID = Pattern.compile("[a-z0-9_-]{1,32}");
+    private static final Pattern WORKSHOP_PATH = Pattern.compile(WORKSHOP_PREFIX + "(" + DRAFT_ID.pattern() + ")");
 
     private LobbyDimension() {}
 
     public static ResourceKey<Level> key(int seq) {
         if (seq < 1) throw new IllegalArgumentException("Lobby sequence starts at 1: " + seq);
         return ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(NAMESPACE, PREFIX + seq));
+    }
+
+    public static ResourceKey<Level> workshopKey(String draftId) {
+        if (!DRAFT_ID.matcher(draftId).matches()) throw new IllegalArgumentException("Invalid draft id: " + draftId);
+        return ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(NAMESPACE, WORKSHOP_PREFIX + draftId));
+    }
+    /** The draft id of a {@code workshop_<draftId>} directory or key path, if it is one. */
+    public static Optional<String> workshopDraft(String path) {
+        var m = WORKSHOP_PATH.matcher(path);
+        return m.matches() ? Optional.of(m.group(1)) : Optional.empty();
+    }
+
+    /** A workshop draft's dimension, loaded or not. */
+    public static boolean isWorkshop(net.minecraft.server.level.ServerLevel level) {
+        var id = level.dimension().identifier();
+        return id.getNamespace().equals(NAMESPACE) && workshopDraft(id.getPath()).isPresent();
     }
 
     /** The install sequence of a {@code hardrush:lobby_<seq>} key or directory name, if it is one. */
@@ -57,7 +78,7 @@ public final class LobbyDimension {
     public static Path namespaceFolder(Path worldRoot) { return folder(worldRoot, key(1)).getParent(); }
 
     /**
-     * Opens (creating if needed) the void lobby dimension. Plains biome, flat sky ({@code setFlat}: low ground would
+     * Opens (creating if needed) a void lobby or workshop dimension. Plains biome, flat sky ({@code setFlat}: low ground would
      * otherwise darken the sky), peaceful, no mob spawning, frozen time and weather, no random ticks (grass under the
      * camp's posts would decay to dirt) and no nether portals.
      */
@@ -70,7 +91,7 @@ public final class LobbyDimension {
                 .setGameRule(GameRules.ALLOW_ENTERING_NETHER_USING_PORTALS, false)
                 .setLevelConstructor(LobbyLevel::new);
         var existing = server.getLevel(key);
-        if (existing != null && !(existing instanceof LobbyLevel)) throw new IllegalStateException("大厅维度已被其他世界占用：" + key.identifier());
+        if (existing != null && !(existing instanceof LobbyLevel)) throw new IllegalStateException("大厅／工坊维度已被其他世界占用：" + key.identifier());
         return Fantasy.get(server).getOrOpenPersistentLevel(key.identifier(), config);
     }
 

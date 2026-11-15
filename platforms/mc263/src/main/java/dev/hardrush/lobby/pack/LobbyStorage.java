@@ -81,8 +81,8 @@ public final class LobbyStorage {
     /**
      * Startup cleanup (design 10.2): deletes every {@code dimensions/hardrush/lobby_<n>} except {@code keep} and the
      * {@code loaded} ones, the old flat camp's {@code dimensions/hardrush/lobby} and its {@code hardrush/lobby-layout.txt}.
-     * Returns the highest lobby sequence seen anywhere, so a new install never reuses a number.
-     * TODO: [Refactor] M3 also deletes {@code workshop_<draft>} directories that belong to no existing draft.
+     * Returns the highest lobby sequence seen anywhere, so a new install never reuses a number. Workshop directories are
+     * the workshop's ({@code WorkshopStorage.cleanup}).
      */
     public int cleanup(Path worldRoot, OptionalInt keep, Set<String> loaded) throws IOException {
         worldRoot = worldRoot.toAbsolutePath().normalize();
@@ -110,7 +110,7 @@ public final class LobbyStorage {
     }
 
     /** Deletes a dimension directory left by an earlier run; refuses links rather than following them. */
-    static void deleteTree(Path directory) throws IOException {
+    public static void deleteTree(Path directory) throws IOException {
         RoundWorldPaths.checkAncestors(directory, true);
         if (!Files.exists(directory, LinkOption.NOFOLLOW_LINKS)) return;
         Files.walkFileTree(directory, new SimpleFileVisitor<>() {
@@ -124,7 +124,7 @@ public final class LobbyStorage {
         });
     }
 
-    static void writeAtomically(Path target, InputStream content) throws IOException {
+    public static void writeAtomically(Path target, InputStream content) throws IOException {
         RoundWorldPaths.checkAncestors(target, false);
         var directory = target.getParent();
         Files.createDirectories(directory);
