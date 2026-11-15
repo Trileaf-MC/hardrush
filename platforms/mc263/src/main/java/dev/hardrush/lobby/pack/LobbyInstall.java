@@ -13,7 +13,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtUtils;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.Level;
@@ -69,7 +68,6 @@ public final class LobbyInstall {
         record Failed(String reason) implements Outcome {}
     }
 
-    private record Prepared(PackManifest manifest, LobbyPlan plan, Map<TileKey, CompoundTag> tiles, SanitizeReport report) {}
     private enum Stage { READING, LOADING, PLACING, SETTLING, COMMITTING, DONE }
 
     private final MinecraftServer server;
@@ -81,9 +79,9 @@ public final class LobbyInstall {
     private final OptionalInt previousSeq;
     private final long started = System.nanoTime();
     private Stage stage = Stage.READING;
-    private CompletableFuture<Prepared> reading;
+    private CompletableFuture<PreparedPack> reading;
     private CompletableFuture<LobbyInstallation> committing;
-    private Prepared prepared;
+    private PreparedPack prepared;
     private RuntimeLevelHandle handle;
     private ChunkWarmup chunks;
     private Iterator<Map.Entry<TileKey, CompoundTag>> placing;
@@ -105,28 +103,13 @@ public final class LobbyInstall {
         reading = CompletableFuture.supplyAsync(() -> {
             try {
                 LobbyStorage.deleteTree(folder);
-                return prepare(source, limits);
+                return PreparedPack.read(source, limits, SanitizeMode.INSTALL);
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             } catch (PackException e) {
                 throw new CompletionException(e);
             }
         });
-    }
-
-    /** Read, upgrade and sanitize; IO thread. */
-    private static Prepared prepare(Source source, PackLimits limits) throws IOException, PackException {
-        PackContents contents;
-        try (var in = source.open()) { contents = PackFile.read(in, limits); }
-        var tiles = new LinkedHashMap<TileKey, CompoundTag>();
-        var report = SanitizeReport.EMPTY;
-        for (var entry : contents.tiles().entrySet()) {
-            var tile = PackTiles.upgrade(entry.getValue(), NbtUtils.getDataVersion(entry.getValue(), contents.manifest().dataVersion()));
-            report = report.plus(TileSanitizer.sanitize(tile, SanitizeMode.INSTALL));
-            tiles.put(entry.getKey(), tile);
-        }
-        TileSanitizer.checkTotals(tiles.values());
-        return new Prepared(contents.manifest(), contents.plan(), tiles, report);
     }
 
     public int seq() { return seq; }
