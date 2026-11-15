@@ -7,6 +7,7 @@ import dev.hardrush.core.record.RoundHistory;
 import dev.hardrush.core.record.LibraryText;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.round.RoundSession;
+import dev.hardrush.lobby.ButtonMenu;
 import dev.hardrush.lobby.LobbyMenus;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -28,7 +29,7 @@ public final class HistoryLibrary {
         final net.minecraft.server.network.ServerGamePacketListenerImpl connection;
         final UUID scope;
         net.minecraft.world.inventory.AbstractContainerMenu menu;
-        List<LobbyMenus.Button> buttons = List.of(info(LOADING));
+        List<ButtonMenu.Button> buttons = List.of(info(LOADING));
         RoundHistory selected;
         int request;
         View(ServerPlayer p, UUID round) { owner=p; connection=p.connection; scope=round; }
@@ -47,11 +48,11 @@ public final class HistoryLibrary {
         view.menu=p.containerMenu;
         s.recent(view,1); return true;
     }
-    public static List<LobbyMenus.Button> buttons(ServerPlayer p) {
+    public static List<ButtonMenu.Button> buttons(ServerPlayer p) {
         var s=SERVICES.get(p.level().getServer()); var v=s==null?null:s.views.get(p.getUUID());
         if(v==null||v.owner!=p||v.connection!=p.connection)return List.of(info(EXPIRED));
         var buttons=new ArrayList<>(v.buttons);
-        buttons.add(new LobbyMenus.Button(Items.WRITTEN_BOOK,"阅读背包里的战绩书","library:read",""));
+        buttons.add(new ButtonMenu.Button(Items.WRITTEN_BOOK,"阅读背包里的战绩书","library:read",""));
         return List.copyOf(buttons);
     }
     public static void act(ServerPlayer p,String action,String value) {
@@ -75,7 +76,7 @@ public final class HistoryLibrary {
                 && v.owner.containerMenu==v.menu && LobbyMenus.isMenu(v.owner)
                 && session.snapshot().filter(r->r.roundId().equals(v.scope)).isPresent();
     }
-    private <T> void load(View v,CompletableFuture<T> future,java.util.function.Function<T,List<LobbyMenus.Button>> show) {
+    private <T> void load(View v,CompletableFuture<T> future,java.util.function.Function<T,List<ButtonMenu.Button>> show) {
         int token=++v.request; v.buttons=List.of(info(LOADING));
         future.whenComplete((rows,error)-> {
             if(!current(v)||v.request!=token)return;
@@ -84,10 +85,10 @@ public final class HistoryLibrary {
             } catch(RuntimeException invalid) { v.buttons=failure(); }
         });
     }
-    private static List<LobbyMenus.Button> failure() { return List.of(info("书屋暂时查不到记录，稍后再试"),button("重试","recent","1")); }
+    private static List<ButtonMenu.Button> failure() { return List.of(info("书屋暂时查不到记录，稍后再试"),button("重试","recent","1")); }
     private void recent(View v,int page) {
         load(v,query.recent(page),rows->{
-            var out=new ArrayList<LobbyMenus.Button>(); out.add(info("历届轮次 · 第 "+page+" 页"));
+            var out=new ArrayList<ButtonMenu.Button>(); out.add(info("历届轮次 · 第 "+page+" 页"));
             out.add(button("普通模式排行榜","leaders","normal")); out.add(button("极限挑战排行榜","leaders","hardcore"));
             if(rows.isEmpty())out.add(info("还没有往届记录"));
             rows.stream().limit(HistoryQueries.PAGE_SIZE).forEach(r->out.add(button(LibraryText.round(r),"detail",r.roundId().toString())));
@@ -98,7 +99,7 @@ public final class HistoryLibrary {
     }
     private void detail(View v,UUID id) {
         load(v,query.resolve(id.toString()),found->{
-            var out=new ArrayList<LobbyMenus.Button>();
+            var out=new ArrayList<ButtonMenu.Button>();
             if(found.isEmpty())out.add(info("这一轮还没有结束"));
             else {
                 v.selected=found.orElseThrow(); LibraryText.details(v.selected).forEach(t->out.add(info(t)));
@@ -111,7 +112,7 @@ public final class HistoryLibrary {
     private void roster(View v,int page) {
         if(v.selected==null)return;
         load(v,query.participants(v.selected.roundId(),page),rows->{
-            var out=new ArrayList<LobbyMenus.Button>(); out.add(info("第 "+v.selected.sequence()+" 轮参赛名单 · 第 "+page+" 页"));
+            var out=new ArrayList<ButtonMenu.Button>(); out.add(info("第 "+v.selected.sequence()+" 轮参赛名单 · 第 "+page+" 页"));
             rows.stream().limit(HistoryQueries.PAGE_SIZE).forEach(p->out.add(info(LibraryText.participant(p))));
             if(rows.isEmpty())out.add(info("本页没有参赛记录"));
             if(page>1)out.add(button("上一批名单","roster",Integer.toString(page-1)));
@@ -122,7 +123,7 @@ public final class HistoryLibrary {
     private void volumes(View v,int page) {
         if(v.selected==null||page<1||page>500)return;
         load(v,session.participantCount(v.selected.roundId()),count->{
-            int total=HistoryBookComposer.volumeCount(count); var out=new ArrayList<LobbyMenus.Button>();
+            int total=HistoryBookComposer.volumeCount(count); var out=new ArrayList<ButtonMenu.Button>();
             out.add(info("第 "+v.selected.sequence()+" 轮 · 共 "+total+" 卷"));
             int first=(page-1)*20+1; for(int n=first;n<=Math.min(total,first+19);n++)out.add(button("领取第 "+n+" 卷"+(n==1?"（结果与榜单）":""),"book",Integer.toString(n)));
             if(page>1)out.add(button("上一批","volumes",Integer.toString(page-1)));
@@ -134,12 +135,12 @@ public final class HistoryLibrary {
         var rules=session.snapshot().orElseThrow().rules();
         String fingerprint=input.equals("normal")?rules.withMode(GameMode.NORMAL).fingerprint():input.equals("hardcore")?rules.withMode(GameMode.HARDCORE).fingerprint():input;
         load(v,query.leaders(fingerprint),rows->{
-            var out=new ArrayList<LobbyMenus.Button>(); out.add(info(input.equals("normal")?"普通模式排行榜":input.equals("hardcore")?"极限挑战排行榜":"同规则排行榜"+(v.selected==null?"":" · 第 "+v.selected.sequence()+" 轮")));
+            var out=new ArrayList<ButtonMenu.Button>(); out.add(info(input.equals("normal")?"普通模式排行榜":input.equals("hardcore")?"极限挑战排行榜":"同规则排行榜"+(v.selected==null?"":" · 第 "+v.selected.sequence()+" 轮")));
             rows.forEach(r->out.add(button(LibraryText.leader(r),"detail",r.round().roundId().toString())));
             if(rows.isEmpty())out.add(info("还没有通关成绩"));
             out.add(button("返回轮次列表","recent","1")); return out;
         });
     }
-    private static LobbyMenus.Button info(String label) { return new LobbyMenus.Button(Items.PAPER,label,"info",""); }
-    private static LobbyMenus.Button button(String label,String action,String value) { return new LobbyMenus.Button(Items.BOOK,label,"library:"+action,value); }
+    private static ButtonMenu.Button info(String label) { return new ButtonMenu.Button(Items.PAPER,label,"info",""); }
+    private static ButtonMenu.Button button(String label,String action,String value) { return new ButtonMenu.Button(Items.BOOK,label,"library:"+action,value); }
 }
