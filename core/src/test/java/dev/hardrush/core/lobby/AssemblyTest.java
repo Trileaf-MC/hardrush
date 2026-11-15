@@ -54,7 +54,7 @@ class AssemblyTest {
         assertThrows(IllegalStateException.class, () -> restored.proposeRestoredReady(UUID.randomUUID(), UUID.randomUUID(), b, "B", true));
     }
     @Test void allFacilitiesAndLandingsFitTheClaimedCampAndSpawnCannotAutoPrepare() {
-        var plan = LegacyCampPlan.build(8, 4, 8);
+        var plan = CampPlanFixture.build(8, 4, 8);
         assertTrue(LobbyPlanValidator.validate(plan, 256).isEmpty(), "Every binding lies within the claimed camp");
         var central = LandingRules.candidates(plan, Landing.CENTRAL).getFirst();
         assertFalse(plan.inZone(LobbyFunction.ASSEMBLY, central.x(), central.y(), central.z(), true));

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class LobbyFoundationTest {
     @Test void campPlanHasSafePurposeSeparationAndStableSpacedSlots() {
-        var plan = LegacyCampPlan.build(8, 4, 8);
+        var plan = CampPlanFixture.build(8, 4, 8);
         for (var purpose : Landing.values())
             for (var point : LandingRules.candidates(plan, purpose))
                 assertEquals(purpose == Landing.RESTORE_READY, plan.inZone(LobbyFunction.ASSEMBLY, point.x(), point.y(), point.z(), false), purpose.name());
