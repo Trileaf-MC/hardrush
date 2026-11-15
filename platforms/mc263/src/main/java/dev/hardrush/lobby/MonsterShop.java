@@ -1,6 +1,6 @@
 package dev.hardrush.lobby;
 
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.round.MonsterCoins;
 import dev.hardrush.core.round.MonsterRole;
 import dev.hardrush.core.round.Participant;
@@ -228,8 +228,14 @@ public final class MonsterShop {
             var r = access == null ? null : access.committed().orElse(null);
             var p = r == null ? null : r.participants().get(server.getUUID());
             if (p == null || !access.eligible(server) || p.monsterRole() != trader.role || !p.wallet().roleChosen()) return false;
-            var point = LobbyLayout.facility(LobbyLayout.Facility.MERCHANT);
-            return server.position().distanceToSqr(LobbyWorld.open(server.level().getServer()).layoutPosition(point)) <= REACH * REACH;
+            // Near any merchant: a model, or a clicked block or entity bound as one.
+            var lobby = LobbyWorld.open(server.level().getServer());
+            if (!lobby.ready() || !LobbyWorld.isLobby(server.level())) return false;
+            var plan = lobby.plan();
+            var merchants = new java.util.ArrayList<dev.hardrush.core.lobby.plan.Point>();
+            plan.models(LobbyFunction.MERCHANT).forEach(m -> merchants.add(m.point()));
+            plan.triggers(LobbyFunction.MERCHANT).forEach(t -> merchants.add(t.anchor()));
+            return merchants.stream().anyMatch(m -> server.position().distanceToSqr(LobbyWorld.position(m)) <= REACH * REACH);
         }
 
         /** Projected coins never return through the native payment hand-back. */

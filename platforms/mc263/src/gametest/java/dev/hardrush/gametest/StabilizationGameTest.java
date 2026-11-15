@@ -2,7 +2,7 @@ package dev.hardrush.gametest;
 
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.config.GameMode;
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.round.*;
 import dev.hardrush.round.*;
 import dev.hardrush.lobby.*;
@@ -134,7 +134,7 @@ public final class StabilizationGameTest {
         void libraryCloseWhileLoading(){
             closedViews.clear();
             for(var peer:peers)if(peer.current()!=null){
-                scene.facility(peer.player,LobbyLayout.Facility.HISTORY);
+                scene.facility(peer.player,LobbyFunction.HISTORY);
                 closedViews.add(views().get(peer.profile.id()));
                 peer.player.connection.handleContainerClose(new ServerboundContainerClosePacket(peer.player.containerMenu.containerId));
             }
@@ -157,7 +157,7 @@ public final class StabilizationGameTest {
                 for(var selected:next.entities())test.assertTrue(ids.add(selected.entityId()),"Page replacement allocates new IDs");
                 peer.player.connection.handleInteract(new ServerboundInteractPacket(old.entityId(),InteractionHand.MAIN_HAND,null,false));
                 test.assertValueEqual(router.lastResult(peer.player).orElseThrow(),LobbyInteractions.Result.UNREGISTERED,"Late entity packet is unregistered");
-                scene.facility(peer.player,LobbyLayout.Facility.HISTORY);
+                scene.facility(peer.player,LobbyFunction.HISTORY);
                 var m=peer.player.containerMenu;
                 peer.player.connection.handleContainerClick(new ServerboundContainerClickPacket(m.containerId,m.getStateId(),(short)0,(byte)0,ContainerInput.PICKUP,new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(),HashedStack.EMPTY));
             }

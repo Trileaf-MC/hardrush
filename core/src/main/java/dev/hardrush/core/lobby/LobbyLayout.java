@@ -2,12 +2,15 @@ package dev.hardrush.core.lobby;
 
 import java.util.List;
 
-/** Layout contract, relative to the persistent lobby spawn. No terrain construction or admission. */
+/**
+ * The built-in camp's geometry, relative to the persistent lobby spawn. Only {@link LegacyCampPlan} (which
+ * translates it into the runtime {@code LobbyPlan}) and the platform's camp construction read it.
+ * TODO: [Refactor] M2 replaces the camp with an installed lobby pack and deletes this class.
+ */
 public final class LobbyLayout {
     public static final int VERSION = 1;
     public static final int MIN_X = -32, MAX_X = 31, MIN_Z = -24, MAX_Z = 23;
     public static final int DISPLAY_CAPACITY = 20;
-    public enum Landing { CENTRAL, MONSTER, WAIT_OUTSIDE, RESTORE_READY, ALTAR }
     public enum Facility { RULES, HISTORY, ZOMBIE, SKELETON, CREEPER, PREVIOUS, NEXT, ALTAR, MERCHANT, VAULT, OMINOUS_VAULT }
     public static final List<Facility> MONSTER_FACILITIES = List.of(Facility.ZOMBIE, Facility.SKELETON, Facility.CREEPER);
     /** The witch is a packet model like the role models; the two vaults are owned blocks added to existing camps. */
@@ -32,43 +35,6 @@ public final class LobbyLayout {
     public static final Point MONSTER_LANDING = new Point(15, 2, -90);
     /** Foot of the altar's south steps, facing the beacon; never on the pad itself. */
     public static final Point ALTAR_LANDING = new Point(21, -11, 180);
-    public static Point landing(Landing purpose) {
-        return switch (purpose) {
-            case CENTRAL -> new Point(0, 0, 180);
-            case MONSTER -> new Point(15, 2, -90);
-            case WAIT_OUTSIDE -> new Point(-3, -6, 180);
-            case RESTORE_READY -> new Point(0, -16, 0);
-            // Foot of the altar's south steps, facing the beacon; never on the pad itself.
-            case ALTAR -> new Point(21, -11, 180);
-        };
-    }
-    /** The altar's arrival scatter stays at the foot of its steps, whatever the camp's respawn radius. */
-    public static final int ALTAR_SCATTER_RADIUS = 2;
-    /**
-     * Whether a purpose's vanilla-style scatter may land on layout cell {@code (x, z)}. Every purpose keeps
-     * clear of facilities, target models and the altar plinth; only the restore landing may enter the
-     * assembly circle (and then wholly inside it), so an arrival never prepares or cancels by accident.
-     */
-    public static boolean scatterAllowed(Landing purpose, int x, int z) {
-        if (x <= MIN_X || x >= MAX_X || z <= MIN_Z || z >= MAX_Z) return false;
-        for (var facility : Facility.values()) {
-            var p = facility(facility);
-            int reach = facility == Facility.ALTAR ? 3 : 1;
-            if (Math.abs(x - p.x()) <= reach && Math.abs(z - p.z()) <= reach) return false;
-        }
-        for (var p : displaySlots()) if (Math.abs(x - p.x()) <= 1 && Math.abs(z - p.z()) <= 1) return false;
-        double fromAssembly = Math.hypot(x - ASSEMBLY.x(), z - ASSEMBLY.z());
-        boolean monsterCamp = x > MONSTER_CAMP.minX() && x < MONSTER_CAMP.maxX() && z > MONSTER_CAMP.minZ() && z < MONSTER_CAMP.maxZ();
-        return switch (purpose) {
-            case CENTRAL, WAIT_OUTSIDE -> fromAssembly > ASSEMBLY.radius() + 1.5 && !MONSTER_CAMP.contains(x, z);
-            case RESTORE_READY -> fromAssembly <= ASSEMBLY.radius() - 1;
-            case MONSTER -> monsterCamp;
-            case ALTAR -> {
-                var foot = landing(Landing.ALTAR);
-                yield Math.abs(x - foot.x()) <= ALTAR_SCATTER_RADIUS && Math.abs(z - foot.z()) <= ALTAR_SCATTER_RADIUS;
-            }
-        };
-    }
     public static Point facility(Facility facility) {
         return switch (facility) {
             case RULES -> new Point(-16, -2, 90);

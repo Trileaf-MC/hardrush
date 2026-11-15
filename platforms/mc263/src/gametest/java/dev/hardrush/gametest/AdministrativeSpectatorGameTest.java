@@ -94,7 +94,7 @@ public final class AdministrativeSpectatorGameTest {
                     packet(f.a.player, "gamemode adventure");
                 })
                 .thenWaitUntil(() -> f.await(PlayerProfiles.canMoveInLobby(f.a.player) && PlayerProfiles.canMoveInLobby(f.b.player), "Adventure ends observation and restores normal lobby bodies"))
-                .thenExecute(() -> f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY))
+                .thenExecute(() -> f.place(f.a, dev.hardrush.core.lobby.plan.Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "Operator prepares through the ordinary assembly"))
                 .thenExecute(() -> {
                     test.assertValueEqual(command(f.server.createCommandSourceStack(), "gamemode spectator CampHumanA"), 0, "A prepared player must leave assembly before spectating");
