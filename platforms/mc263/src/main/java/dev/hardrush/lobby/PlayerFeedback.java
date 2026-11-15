@@ -1,6 +1,9 @@
 package dev.hardrush.lobby;
 
 import dev.hardrush.core.lobby.*;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
+import dev.hardrush.core.lobby.plan.LobbyPlan;
+import dev.hardrush.core.lobby.plan.Point;
 import dev.hardrush.core.record.RoundResultText;
 import dev.hardrush.core.round.*;
 import dev.hardrush.notice.Notices;
@@ -101,14 +104,12 @@ public final class PlayerFeedback {
                         : Notices.key(dev.hardrush.celebration.CelebrationRuntime.winnerName(server)) + " 正在庆祝 · 阵亡转为旁观，不计战绩", now + 300);
             }
             if (lobby.ready() && LobbyWorld.isLobby(player.level()) && PlayerProfiles.verifiedLobbyBody(player)) {
-                for (var facility : LobbyLayout.Facility.values()) {
-                    if (player.position().distanceToSqr(lobby.layoutPosition(LobbyLayout.facility(facility))) > 16) continue;
-                    boolean altarReady = facility == LobbyLayout.Facility.ALTAR && holdsTotem;
-                    String tip = facility + (altarReady ? ":totem" : "");
+                nearestFacility(player, lobby.plan()).ifPresent(function -> {
+                    boolean altarReady = function == LobbyFunction.ALTAR_PAD && holdsTotem;
+                    String tip = function.id() + (altarReady ? ":totem" : "");
                     if (Notices.firstInRound(player, r.roundId(), "facility:" + tip))
-                        hints.offer("facility", LobbyHints.Priority.FACILITY, facilityTip(facility, altarReady), now + FACILITY_TIP_MILLIS);
-                    break;
-                }
+                        hints.offer("facility", LobbyHints.Priority.FACILITY, facilityTip(function, altarReady), now + FACILITY_TIP_MILLIS);
+                });
             }
             HeldItemHints.update(player, hints, now);
             // New lines go out at once; ongoing ones are refreshed every 5 ticks, within the client's 3-second display.
@@ -116,18 +117,35 @@ public final class PlayerFeedback {
         }
     }
 
-    /** What a facility does, taught once per round; signs (CampBlueprint) carry the short form afterwards. */
-    static String facilityTip(LobbyLayout.Facility facility, boolean altarReady) {
-        return switch (facility) {
+    /** How near a facility a player must come to be taught it. */
+    private static final double FACILITY_TIP_RANGE_SQR = 16;
+    /** The nearest facility with a tip within range: trigger anchors, model points and altar centres. */
+    private static java.util.Optional<LobbyFunction> nearestFacility(ServerPlayer player, LobbyPlan plan) {
+        var places = new java.util.ArrayList<java.util.Map.Entry<LobbyFunction, Point>>();
+        plan.triggers().forEach(t -> places.add(java.util.Map.entry(t.function(), t.anchor())));
+        plan.models().forEach(m -> places.add(java.util.Map.entry(m.function(), m.point())));
+        plan.zones(LobbyFunction.ALTAR_PAD).forEach(z -> places.add(java.util.Map.entry(LobbyFunction.ALTAR_PAD, z.center())));
+        LobbyFunction nearest = null; double best = FACILITY_TIP_RANGE_SQR;
+        for (var place : places) {
+            double distance = player.position().distanceToSqr(LobbyWorld.position(place.getValue()));
+            if (distance <= best && facilityTip(place.getKey(), false) != null) { nearest = place.getKey(); best = distance; }
+        }
+        return java.util.Optional.ofNullable(nearest);
+    }
+
+    /** What a facility does, taught once per round; signs carry the short form afterwards. Null: no tip. */
+    static String facilityTip(LobbyFunction function, boolean altarReady) {
+        return switch (function) {
             case RULES -> "右键阅读规则";
             case HISTORY -> "右键查看历届战绩、领取战绩书";
-            case ALTAR -> altarReady ? "站上金块 " + Notices.key((RevivalAltar.DWELL_TICKS / 20)) + " 秒复生 · 消耗 " + Notices.key(1) + " 个复生图腾"
+            case ALTAR_PAD -> altarReady ? "站上金块 " + Notices.key((RevivalAltar.DWELL_TICKS / 20)) + " 秒复生 · 消耗 " + Notices.key(1) + " 个复生图腾"
                     : "阵亡后有复生图腾，就能站上金块 " + Notices.key((RevivalAltar.DWELL_TICKS / 20)) + " 秒复生";
-            case ZOMBIE, SKELETON, CREEPER -> "右键展位选择角色，再右键目标模型追猎";
-            case PREVIOUS, NEXT -> "右键翻页 · 只对你自己生效";
+            case ROLE_ZOMBIE, ROLE_SKELETON, ROLE_CREEPER -> "右键展位选择角色，再右键目标模型追猎";
+            case PAGE_PREV, PAGE_NEXT -> "右键翻页 · 只对你自己生效";
             case MERCHANT -> "选好角色后右键女巫，用怪物币买出击增强";
             case VAULT -> "手持 " + Notices.key("试炼钥匙") + " 右键，开出一件一次性装备";
             case OMINOUS_VAULT -> "手持 " + Notices.key("不祥试炼钥匙") + " 右键，开出一件一次性装备";
+            default -> null;
         };
     }
 
@@ -137,9 +155,15 @@ public final class PlayerFeedback {
      */
     private static void altarBeam(ServerPlayer player, LobbyWorld lobby) {
         var level = (net.minecraft.server.level.ServerLevel) player.level();
-        var pad = lobby.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.ALTAR));
-        for (int y = 1; y <= BEAM_HEIGHT; y++) {
-            level.sendParticles(player, ParticleTypes.END_ROD, true, true, pad.x, pad.y + y, pad.z, 1, .06, .4, .06, 0);
+        // Zone centres stand on the pad, one block above the altar's base.
+        Point pad = null;
+        for (var zone : lobby.plan().zones(LobbyFunction.ALTAR_PAD)) {
+            var center = zone.center();
+            if (pad == null || player.position().distanceToSqr(LobbyWorld.position(center)) < player.position().distanceToSqr(LobbyWorld.position(pad))) pad = center;
+        }
+        if (pad == null) return;
+        for (int y = 0; y < BEAM_HEIGHT; y++) {
+            level.sendParticles(player, ParticleTypes.END_ROD, true, true, pad.x(), pad.y() + y, pad.z(), 1, .06, .4, .06, 0);
         }
     }
 }

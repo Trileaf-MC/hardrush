@@ -198,7 +198,7 @@ public final class PlayerProfiles implements AutoCloseable {
     }
 
     /** Detach the camera and stand the body where it left the camp, or on {@code fallback} when that spot is gone. */
-    public void endObservation(ServerPlayer player, Vec3 position, float yaw, dev.hardrush.core.lobby.LobbyLayout.Landing fallback) {
+    public void endObservation(ServerPlayer player, Vec3 position, float yaw, dev.hardrush.core.lobby.plan.Landing fallback) {
         requireMainThread();
         var entry = players.get(player.getUUID());
         if (entry == null || entry.player != player || !entry.observing) return;
@@ -440,8 +440,8 @@ public final class PlayerProfiles implements AutoCloseable {
     /** An excluded body stands among the camp's arrivals; its spyglass is projected there. */
     private void placeExcluded(ServerPlayer player) {
         var camp = dev.hardrush.world.LobbyWorld.open(server);
-        if (camp.ready() && lobby.get() == camp.holdingLevel() && camp.safeLanding(dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL))
-            placeInLobby(player, dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL);
+        if (camp.ready() && lobby.get() == camp.holdingLevel() && camp.safeLanding(dev.hardrush.core.lobby.plan.Landing.CENTRAL))
+            placeInLobby(player, dev.hardrush.core.lobby.plan.Landing.CENTRAL);
         else moveToLobby(player);
     }
 
@@ -553,7 +553,7 @@ public final class PlayerProfiles implements AutoCloseable {
         ((ProfileTagged) replacement).hardrush$respawnPermitted(false);
         ((ProfileTagged) replacement).hardrush$suspensionId(UUID.randomUUID().toString());
         var camp = dev.hardrush.world.LobbyWorld.open(server);
-        if (camp.ready() && lobby.get() == camp.holdingLevel()) placeInLobby(replacement, dev.hardrush.core.lobby.LobbyLayout.Landing.MONSTER);
+        if (camp.ready() && lobby.get() == camp.holdingLevel()) placeInLobby(replacement, dev.hardrush.core.lobby.plan.Landing.MONSTER);
         else moveToLobby(replacement);
         var rebound = new Entry(replacement, Optional.of(old.target), false, capture(replacement, false));
         rebound.target = old.target;
@@ -1344,12 +1344,12 @@ public final class PlayerProfiles implements AutoCloseable {
     }
 
     /** Purpose-specific native relocation; ordinary lobby reconciliation never calls this every tick. */
-    public void placeInLobby(ServerPlayer player, dev.hardrush.core.lobby.LobbyLayout.Landing purpose) {
+    public void placeInLobby(ServerPlayer player, dev.hardrush.core.lobby.plan.Landing purpose) {
         requireMainThread();
         var camp = dev.hardrush.world.LobbyWorld.open(server);
         if (!camp.ready() || !camp.safeLanding(purpose)) throw new IllegalStateException("大厅落点未就绪：" + purpose);
-        var pos = camp.scatteredLanding(purpose);
-        if (!player.teleportTo(camp.holdingLevel(), pos.x, pos.y, pos.z, Set.of(), dev.hardrush.core.lobby.LobbyLayout.landing(purpose).yaw(), 0, true))
+        var spot = camp.scatteredLanding(purpose); var pos = spot.position();
+        if (!player.teleportTo(camp.holdingLevel(), pos.x, pos.y, pos.z, Set.of(), spot.yaw(), 0, true))
             throw new IllegalStateException("大厅落点传送失败");
         player.setDeltaMovement(Vec3.ZERO); player.resetFallDistance(); applyLobbyMode(player);
     }
