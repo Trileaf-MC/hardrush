@@ -80,14 +80,7 @@ public final class PackFile {
             throw new PackException("大厅包损坏，无法解压：" + e.getMessage(), e);
         }
         if (manifestBytes == null) throw new PackException("大厅包缺少 " + MANIFEST);
-        String text;
-        try {
-            text = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
-                    .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(manifestBytes)).toString();
-        } catch (CharacterCodingException e) {
-            throw new PackException(MANIFEST + " 不是 UTF-8 文本", e);
-        }
-        var json = LobbyPlanJson.parse(text);
+        var json = json(manifestBytes);
         var manifest = LobbyPlanJson.manifestFromJson(json);
         var problems = manifest.problems(limits.maxHorizontalSize(), limits.serverDataVersion());
         if (!problems.isEmpty()) throw new PackException(String.join("；", problems));
@@ -97,6 +90,51 @@ public final class PackFile {
                 throw new PackException("瓦片 " + key.entryName() + " 不在大厅范围内");
         }
         return new PackContents(manifest, plan, tiles);
+    }
+
+    /**
+     * A pack's {@code pack.json} alone, for listing a library. {@code problems} are the manifest's reasons to refuse
+     * the pack ({@link PackManifest#problems}); the plan is read only when there are none.
+     */
+    public record Header(PackManifest manifest, List<String> problems, Optional<LobbyPlan> plan) {
+        public Header { problems = List.copyOf(problems); }
+    }
+
+    /**
+     * Reads only {@code pack.json} when it is the first entry, as {@link #write} puts it; otherwise reads the whole
+     * pack under {@code limits}, since skipping the entries before it would inflate them unbounded.
+     */
+    public static Header readHeader(Path file, PackLimits limits) throws PackException {
+        byte[] manifestBytes = null;
+        try {
+            RoundWorldPaths.checkAncestors(file, false);
+            try (var in = new ZipInputStream(new BufferedInputStream(Files.newInputStream(file)), StandardCharsets.UTF_8)) {
+                var first = in.getNextEntry();
+                if (first != null && !first.isDirectory() && first.getName().equals(MANIFEST))
+                    manifestBytes = readLimited(in, MAX_MANIFEST_BYTES, new long[1], MANIFEST + " 超过 1 MB");
+            }
+        } catch (IOException | RuntimeException e) {
+            throw new PackException("无法读取大厅包 " + file.getFileName() + "：" + e.getMessage(), e);
+        }
+        if (manifestBytes == null) {
+            var contents = read(file, limits);
+            return new Header(contents.manifest(), List.of(), Optional.of(contents.plan()));
+        }
+        var json = json(manifestBytes);
+        var manifest = LobbyPlanJson.manifestFromJson(json);
+        var problems = manifest.problems(limits.maxHorizontalSize(), limits.serverDataVersion());
+        return new Header(manifest, problems, problems.isEmpty() ? Optional.of(LobbyPlanJson.planFromPack(json, manifest.bounds())) : Optional.empty());
+    }
+
+    private static com.google.gson.JsonObject json(byte[] manifestBytes) throws PackException {
+        String text;
+        try {
+            text = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(manifestBytes)).toString();
+        } catch (CharacterCodingException e) {
+            throw new PackException(MANIFEST + " 不是 UTF-8 文本", e);
+        }
+        return LobbyPlanJson.parse(text);
     }
 
     /**

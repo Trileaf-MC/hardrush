@@ -30,7 +30,9 @@ public final class StatusBars {
         /** Riding another player's camera. */
         OBSERVE,
         /** The dusk pact countdown. */
-        PACT
+        PACT,
+        /** Operators only: a lobby pack being installed, or waiting to be switched to. */
+        LOBBY_INSTALL
     }
 
     private static final Map<MinecraftServer, StatusBars> SERVICES = new IdentityHashMap<>();

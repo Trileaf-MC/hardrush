@@ -85,7 +85,7 @@ public final class HumanEntry {
      */
     private static void registerTriggers(LobbyInteractions router, LobbyWorld lobby, boolean readOnly) {
         for (var trigger : lobby.plan().triggers()) {
-            if (trigger.block() == null) continue; // Entity triggers arrive with tagged lobby entities (M4).
+            if (trigger.block() == null) continue; // Entity triggers are found by tag when clicked (LobbyInteractions.entity).
             var context = LobbyRuntime.context(trigger.function());
             if (context.readOnly() != readOnly) continue;
             var pos = LobbyWorld.pos(trigger.block());
