@@ -28,6 +28,7 @@ CHECKS = {
     'workshop': GAME + ['-PhardrushWorkshop=true', '--console=plain'],
     'movement': GAME + ['-PhardrushLobbyMovement=true', '--console=plain'],
     'lobby-runtime': GAME + ['-PhardrushLobbyRuntime=true', '--console=plain'],
+    'lobby-admin': GAME + ['-PhardrushLobbyAdmin=true', '--console=plain'],
     'celebration': GAME + ['-PhardrushCelebration=true', '--console=plain'],
     'ten-rounds': GAME + ['-PhardrushTenRounds=true', '--console=plain'],
     'recovery': GAME + ['-PhardrushRecovery=true', '--console=plain'],

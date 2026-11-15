@@ -1,6 +1,7 @@
 package dev.hardrush.world;
 
 import dev.hardrush.HardRushProperties;
+import dev.hardrush.core.lobby.LobbyCredits;
 import dev.hardrush.core.lobby.plan.*;
 import dev.hardrush.lobby.pack.ChunkWarmup;
 import dev.hardrush.lobby.pack.LobbyInstall;
@@ -13,7 +14,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -21,9 +21,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.entity.SignBlockEntity;
-import net.minecraft.world.level.block.entity.SignText;
-import net.minecraft.world.level.block.entity.SignTextSlot;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.Vec3;
 import xyz.nucleoid.fantasy.RuntimeLevelHandle;
@@ -31,8 +28,9 @@ import xyz.nucleoid.fantasy.RuntimeLevelHandle;
 /**
  * The installed lobby: which dimension and plan are live, whether they are ready, and every query by plan. Lobbies
  * come only from packs ({@link LobbyInstall}); on startup the recorded install is reopened as it is, or, on a fresh
- * world, the built-in pack is installed. Switching to a new install bumps {@link #planGeneration}, so everything
- * registered against the old plan is dropped and rebuilt.
+ * world, the built-in pack is installed. Later installs are run by {@code LobbyAdmin}, which hands the result to
+ * {@link #switchTo}. Switching bumps {@link #planGeneration}, so everything registered against the old plan is
+ * dropped and rebuilt.
  */
 public final class LobbyWorld {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("hardrush-lobby");
@@ -51,7 +49,10 @@ public final class LobbyWorld {
     private LobbyInstallation reopening;
     private RuntimeLevelHandle reopenHandle;
     private ChunkWarmup reopenChunks;
+    /** The built-in pack, installed on a fresh world; later installs are {@code LobbyAdmin}'s. */
     private LobbyInstall install;
+    /** The highest install sequence seen; new installs take the next one, so numbers are never reused. */
+    private int highestSeq;
 
     private LobbyInstallation installation;
     private RuntimeLevelHandle handle;
@@ -64,6 +65,7 @@ public final class LobbyWorld {
     private int generation, placedTiles;
     /** Per purpose, the candidate the next placement starts from, so several landings take turns. */
     private final Map<Landing, Integer> rotation = new EnumMap<>(Landing.class);
+    private final LobbyTexts texts = new LobbyTexts();
     private boolean ready;
     private String failure;
 
@@ -110,7 +112,10 @@ public final class LobbyWorld {
         if (failure != null) return;
         try {
             advance();
-            if (ready) rescueFallen();
+            if (ready) {
+                rescueFallen();
+                texts.apply(level, plan, server.getTickCount());
+            }
         } catch (RuntimeException error) {
             LOGGER.error("大厅准备失败", error);
             failure = "大厅准备失败：" + message(error);
@@ -122,9 +127,10 @@ public final class LobbyWorld {
             if (!startup.isDone()) { checkStartupTimeout(); return; }
             var result = startup.join();
             startup = null;
+            highestSeq = result.highestSeq();
             if (result.current().isPresent()) reopen(result.current().get());
             else {
-                int seq = result.highestSeq() + 1;
+                int seq = nextSeq();
                 install = new LobbyInstall(server, storage, LobbyInstall.Source.builtIn(), seq, LobbyDimension.key(seq), maxSize, OptionalInt.empty());
             }
         }
@@ -136,25 +142,37 @@ public final class LobbyWorld {
                 if (LandingRules.candidates(reopening.plan(), purpose).stream()
                         .noneMatch(p -> RoundWorldBundle.safeStanding(reopenHandle.asLevel(), BlockPos.containing(position(p)))))
                     throw new IllegalStateException("已安装的大厅落点不安全，保留维度等待修复：" + purpose);
-            activate(reopening, reopenHandle, reopenChunks);
+            activate(reopening, reopenHandle, reopenChunks, player -> Landing.CENTRAL);
             reopening = null; reopenHandle = null; reopenChunks = null;
         }
         if (install != null) {
             var running = install;
-            var outcome = running.tick();
+            // Nothing is live yet, so nobody waits for a switch.
+            var outcome = running.tick(true);
             if (outcome.isEmpty()) return;
             install = null;
             placedTiles += running.placedTiles();
             switch (outcome.get()) {
-                case LobbyInstall.Outcome.Installed done -> activate(done.installation(), done.handle(), done.chunks());
-                case LobbyInstall.Outcome.Failed failed -> {
-                    // TODO: [Refactor] M4 reports a failed install of a new pack to the operator who started it and keeps the
-                    // live lobby; only the very first install leaves the server without a lobby.
-                    if (!ready) throw new IllegalStateException(failed.reason());
-                    LOGGER.warn("大厅包安装失败，保留当前大厅：{}", failed.reason());
-                }
+                case LobbyInstall.Outcome.Installed done -> activate(done.installation(), done.handle(), done.chunks(), player -> Landing.CENTRAL);
+                // Without any lobby the competition cannot run; failure() stops it.
+                case LobbyInstall.Outcome.Failed failed -> throw new IllegalStateException(failed.reason());
             }
         }
+    }
+
+    /** The sequence for the next install. */
+    public int nextSeq() { return ++highestSeq; }
+    /** {@code hardrush/lobby} of this world. */
+    public LobbyStorage storage() { return storage; }
+    public int maxSize() { return maxSize; }
+
+    /**
+     * Switches the live lobby to a finished install (design 10.2 step 7). {@code landing} says where each living,
+     * non-spectating body in the old lobby goes; spectators are carried to the central landing as they are.
+     */
+    public void switchTo(LobbyInstall.Outcome.Installed done, java.util.function.Function<ServerPlayer, Landing> landing) {
+        if (!ready) throw new IllegalStateException("大厅尚未就绪，不能切换");
+        activate(done.installation(), done.handle(), done.chunks(), landing);
     }
 
     private void checkStartupTimeout() {
@@ -176,7 +194,8 @@ public final class LobbyWorld {
      * Switches every query to {@code next} in one tick (design 10.2 step 7): new plan generation, players in the old
      * lobby moved to the new central landing, old dimension deleted.
      */
-    private void activate(LobbyInstallation next, RuntimeLevelHandle nextHandle, ChunkWarmup nextChunks) {
+    private void activate(LobbyInstallation next, RuntimeLevelHandle nextHandle, ChunkWarmup nextChunks,
+                          java.util.function.Function<ServerPlayer, Landing> landing) {
         var oldLevel = level;
         var oldHandle = handle;
         var oldChunks = chunks;
@@ -190,23 +209,35 @@ public final class LobbyWorld {
         spawn = BlockPos.containing(position(central.getFirst()));
         LobbyDimension.spawn(level, spawn);
         rotation.clear();
+        highestSeq = Math.max(highestSeq, next.seq());
         generation++;
         ready = true;
-        LOGGER.info("大厅已就绪：{} v{}（{}，第 {} 代布局）", next.pack().name(), next.pack().version(), next.dimension(), generation);
+        var pack = next.pack();
+        texts.forget();
+        texts.set(LobbyFunction.CREDITS, new LobbyTexts.Content(LobbyCredits.signLines(pack.name(), pack.version(), pack.authors()),
+                LobbyCredits.display(pack.name(), pack.version(), pack.authors())));
+        LOGGER.info("大厅已就绪：{} v{}（{}，第 {} 代布局）", pack.name(), pack.version(), next.dimension(), generation);
         if (oldLevel == null || oldLevel == level) return;
-        for (var player : List.copyOf(oldLevel.players())) relocate(player);
+        for (var player : List.copyOf(oldLevel.players())) {
+            if (!player.isAlive()) continue; // Lobby damage is cancelled; a dead body respawns into the new lobby anyway.
+            relocate(player, player.isSpectator() ? Landing.CENTRAL : landing.apply(player));
+        }
         oldChunks.close();
         oldHandle.delete();
     }
 
-    /** To the central landing, through the profile service when it owns the body, so lobby mode is reapplied. */
-    private void relocate(ServerPlayer player) {
+    /**
+     * To {@code purpose}'s landing (the central one when it has no safe one), through the profile service when it owns
+     * the body, so lobby mode is reapplied. Spectators (administrative ones, observers) keep their mode.
+     */
+    private void relocate(ServerPlayer player, Landing purpose) {
+        if (!safeLanding(purpose)) purpose = Landing.CENTRAL;
         var profiles = PlayerProfiles.of(server).orElse(null);
-        if (profiles != null && profiles.manages(player) && !player.isSpectator() && safeLanding(Landing.CENTRAL)) {
-            profiles.placeInLobby(player, Landing.CENTRAL);
+        if (profiles != null && profiles.manages(player) && !player.isSpectator() && safeLanding(purpose)) {
+            profiles.placeInLobby(player, purpose);
             return;
         }
-        var spot = scatteredLanding(Landing.CENTRAL);
+        var spot = scatteredLanding(purpose);
         var p = spot.position();
         player.teleportTo(level, p.x, p.y, p.z, Set.of(), spot.yaw(), 0, true);
         player.setDeltaMovement(Vec3.ZERO);
@@ -222,7 +253,7 @@ public final class LobbyWorld {
         for (var player : List.copyOf(level.players())) {
             if (player.getY() >= floor || player.isSpectator() || !player.isAlive()) continue;
             LOGGER.info("{} 掉出了大厅，送回中央落点", player.getScoreboardName());
-            relocate(player);
+            relocate(player, Landing.CENTRAL);
         }
     }
 
@@ -232,18 +263,12 @@ public final class LobbyWorld {
         return cause.getMessage() == null ? cause.toString() : cause.getMessage();
     }
 
-    private void label(BlockPos pos, String[] lines) {
-        if (!(level.getBlockEntity(pos) instanceof SignBlockEntity sign)) return;
-        var messages = Arrays.stream(lines).map(Component::literal).map(c -> (Component) c).toList();
-        var text = new SignText(messages, messages, DyeColor.BLACK, false);
-        sign.setText(text, SignTextSlot.FRONT);
-        sign.setText(text, SignTextSlot.BACK); sign.setWaxed(true); sign.setChanged();
-    }
-    /** Writes every status text slot; the stage and mode lines change with the round. */
+    /** What every status text slot reads; the stage and mode lines change with the round. */
     public void statusLabel(String stage, String mode) {
         if (!ready) return;
-        for (var slot : plan.texts(LobbyFunction.STATUS))
-            if (slot.sign() != null) label(pos(slot.sign()), new String[]{"HardRush 营地", stage, mode, "前方：集结区"});
+        var lines = List.of("HardRush 营地", stage, mode, "前方：集结区");
+        texts.set(LobbyFunction.STATUS, new LobbyTexts.Content(lines, String.join("\n", lines)));
+        texts.apply(level, plan, server.getTickCount());
     }
     public LobbyPlan plan() {
         if (!ready) throw new IllegalStateException("大厅尚未就绪");
@@ -256,7 +281,7 @@ public final class LobbyWorld {
     }
     /** What {@code current.json} records about the live lobby. */
     public Optional<LobbyInstallation> installation() { return ready ? Optional.of(installation) : Optional.empty(); }
-    /** Pack tiles placed by installs since this server started; zero when the recorded lobby was reopened. */
+    /** Pack tiles the startup install placed; zero when the recorded lobby was reopened. Switches do not count. */
     public int placedTiles() { return placedTiles; }
     /** Plan coordinates are already absolute. */
     public static Vec3 position(Point point) { return new Vec3(point.x(), point.y(), point.z()); }

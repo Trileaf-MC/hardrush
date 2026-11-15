@@ -237,6 +237,7 @@ public final class RoundRuntime {
             try {
                 var lobby = LobbyWorld.open(server);
                 lobby.tick();
+                dev.hardrush.lobby.pack.LobbyAdmin.tick(server);
                 dev.hardrush.lobby.LobbyInteractions.tick(server);
                 dev.hardrush.lobby.HumanEntry.readOnlyTick(server);
                 // Builders go back before any profile, recovery or checkpoint step can read their bodies.
@@ -487,6 +488,7 @@ public final class RoundRuntime {
             dev.hardrush.lobby.RevivalAltar.close(server);
             dev.hardrush.notice.StatusBars.close(server);
             dev.hardrush.world.FarLandings.close(server);
+            dev.hardrush.lobby.pack.LobbyAdmin.shutdown(server);
             LobbyWorld.shutdown(server);
         });
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
