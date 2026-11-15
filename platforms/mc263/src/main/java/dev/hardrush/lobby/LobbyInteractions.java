@@ -112,8 +112,34 @@ public final class LobbyInteractions {
         if (service == null || !player.level().getServer().isSameThread()) return Result.UNREGISTERED;
         return service.dispatch(player, packet, () -> {
             var result = service.roleModels.click(player, packet);
-            return consumed(result) ? result : service.projections.click(player, packet);
+            if (consumed(result)) return result;
+            result = service.projections.click(player, packet);
+            return consumed(result) ? result : service.taggedEntity(player, packet);
         });
+    }
+    /**
+     * A real lobby entity tagged {@code hardrush.fn.<id>} with a clickable function (design 4.3): an interaction box, a
+     * statue's armor stand, an item frame. Right clicks only; left clicks arrive as attacks and protection drops them.
+     */
+    private Result taggedEntity(ServerPlayer player, ServerboundInteractPacket packet) {
+        if (!LobbyWorld.isLobby(player.level())) return Result.UNREGISTERED;
+        var entity = player.level().getEntity(packet.entityId());
+        if (entity == null || entity instanceof ServerPlayer) return Result.UNREGISTERED;
+        if (!(dev.hardrush.core.lobby.plan.MarkerTags.parseTrigger(entity.entityTags()).orElse(null)
+                instanceof dev.hardrush.core.lobby.plan.MarkerTags.Ok ok)
+                || ok.spec().binding() != dev.hardrush.core.lobby.plan.Binding.CLICK) return Result.UNREGISTERED;
+        var function = ok.spec().function();
+        var box = entity.getBoundingBox();
+        var eye = player.getEyePosition();
+        // The point of the box nearest the eye, so a large interaction box is reachable from its edge.
+        var nearest = new Vec3(Math.clamp(eye.x, box.minX, box.maxX), Math.clamp(eye.y, box.minY, box.maxY), Math.clamp(eye.z, box.minZ, box.maxZ));
+        var result = validate(player, round(), LobbyRuntime.context(function), nearest);
+        var hit = packet.location();
+        double reach = box.getSize() + 1;
+        if (result == Result.ACCEPTED && (packet.hand() != InteractionHand.MAIN_HAND
+                || hit != null && (!Double.isFinite(hit.lengthSqr()) || hit.lengthSqr() > reach * reach))) result = Result.INPUT;
+        if (result == Result.ACCEPTED) LobbyRuntime.activate(player, function, null);
+        return result;
     }
     /** Left-clicking a packet-only courtyard model; the model never exists in the world. */
     public static Result attack(ServerPlayer player, net.minecraft.network.protocol.game.ServerboundAttackPacket packet) {
