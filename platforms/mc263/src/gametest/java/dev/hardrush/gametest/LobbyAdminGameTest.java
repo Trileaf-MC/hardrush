@@ -257,7 +257,8 @@ public final class LobbyAdminGameTest {
             var central = LobbyWorld.position(LandingRules.candidates(lobby.plan(), Landing.CENTRAL).getFirst());
             for (var peer : List.of(a, b)) {
                 test.assertTrue(peer.player.level() == lobby.holdingLevel(), peer.profile.name() + " was moved into the new lobby");
-                test.assertTrue(peer.player.position().distanceTo(central) < 12, peer.profile.name() + " stands by the central landing: " + peer.player.position());
+                // Vanilla's scatter picks any column of the respawn_radius (10) square: a corner is ~14.2 blocks away.
+                test.assertTrue(peer.player.position().distanceTo(central) < 15,peer.profile.name() + " stands by the central landing: " + peer.player.position());
                 test.assertTrue(PlayerProfiles.canMoveInLobby(peer.player), peer.profile.name() + " can still move");
             }
         }
