@@ -31,6 +31,8 @@ public final class StatusBars {
         OBSERVE,
         /** The dusk pact countdown. */
         PACT,
+        /** Builders only: what their draft still lacks before it can be published. */
+        WORKSHOP,
         /** Operators only: a lobby pack being installed, or waiting to be switched to. */
         LOBBY_INSTALL
     }

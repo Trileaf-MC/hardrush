@@ -25,7 +25,7 @@ public final class TileSanitizer {
             "minecraft:structure_block", "minecraft:jigsaw", "minecraft:test_block", "minecraft:test_instance_block",
             "minecraft:spawner", "minecraft:trial_spawner", "minecraft:end_portal", "minecraft:end_gateway",
             "minecraft:sculk_shrieker", "minecraft:moving_piston", "minecraft:nether_portal", "minecraft:barrier");
-    static final Set<String> ALLOWED_ENTITIES = Set.of(
+    public static final Set<String> ALLOWED_ENTITIES = Set.of(
             "minecraft:armor_stand", "minecraft:item_frame", "minecraft:glow_item_frame", "minecraft:painting",
             "minecraft:block_display", "minecraft:item_display", "minecraft:text_display", "minecraft:interaction");
     /** Block entity keys holding items or loot. */

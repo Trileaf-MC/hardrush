@@ -56,7 +56,9 @@ public final class WorkshopStorage {
         try (var children = Files.list(root)) {
             for (var child : children.toList()) {
                 var id = child.getFileName().toString();
-                if (!LobbyDimension.DRAFT_ID.matcher(id).matches() || !Files.isDirectory(child, LinkOption.NOFOLLOW_LINKS)) continue;
+                // The import folder sits beside the drafts (design 19) and is never one.
+                if (id.equals(ImportFolder.DIRECTORY) || !LobbyDimension.DRAFT_ID.matcher(id).matches()
+                        || !Files.isDirectory(child, LinkOption.NOFOLLOW_LINKS)) continue;
                 directories.add(id);
                 try {
                     var draft = read(child.resolve(FILE));
@@ -128,6 +130,12 @@ public final class WorkshopStorage {
         json.add("border_center", center);
         json.addProperty("border_diameter", draft.borderDiameter());
         if (draft.bottomY() == null) json.add("bottom_y", JsonNull.INSTANCE); else json.addProperty("bottom_y", draft.bottomY());
+        if (draft.entry() == null) json.add("entry", JsonNull.INSTANCE);
+        else {
+            var entry = new JsonArray();
+            entry.add(draft.entry().x()); entry.add(draft.entry().y()); entry.add(draft.entry().z()); entry.add(draft.entry().yaw());
+            json.add("entry", entry);
+        }
         json.addProperty("state", draft.state().name());
         return json;
     }
@@ -142,9 +150,17 @@ public final class WorkshopStorage {
             var center = json.getAsJsonArray("border_center");
             if (center.size() != 2) throw new IllegalArgumentException("border_center 需要两个数");
             JsonElement bottom = json.get("bottom_y");
+            JsonElement entryJson = json.get("entry");
+            dev.hardrush.core.lobby.plan.Point entry = null;
+            if (entryJson != null && !entryJson.isJsonNull()) {
+                var a = entryJson.getAsJsonArray();
+                if (a.size() != 4) throw new IllegalArgumentException("entry 需要四个数");
+                entry = new dev.hardrush.core.lobby.plan.Point(a.get(0).getAsDouble(), a.get(1).getAsDouble(), a.get(2).getAsDouble(), a.get(3).getAsFloat());
+                if (!Double.isFinite(entry.x() + entry.y() + entry.z())) throw new IllegalArgumentException("entry 不是有限数");
+            }
             return new Draft(json.get("id").getAsString(), json.get("name").getAsString(), json.get("source").getAsString(),
                     participants, json.get("published_version").getAsInt(), center.get(0).getAsInt(), center.get(1).getAsInt(),
-                    json.get("border_diameter").getAsInt(), bottom == null || bottom.isJsonNull() ? null : bottom.getAsInt(),
+                    json.get("border_diameter").getAsInt(), bottom == null || bottom.isJsonNull() ? null : bottom.getAsInt(), entry,
                     Draft.State.valueOf(json.get("state").getAsString()));
         } catch (RuntimeException malformed) {
             throw new PackException("draft.json 格式错误：" + malformed.getMessage());

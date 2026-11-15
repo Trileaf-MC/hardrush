@@ -32,13 +32,28 @@ public final class MarkerScan {
 
     /** {@code bottomY}: blocks below it do not count toward the bounds (imported saves, design 19.1). */
     public static ScanResult scan(ServerLevel level, Box area, OptionalInt bottomY, int maxHorizontalSize) {
-        return new Run(level, area, bottomY).scan(maxHorizontalSize);
+        return new Run(level, area, bottomY, false).scan(maxHorizontalSize);
+    }
+
+    /**
+     * The workshop's light check (design 9, last paragraph): only the markers and triggers whose chunks are loaded right
+     * now, no block scan, and nothing is loaded on its behalf (a flood stops at unloaded chunks). Without the blocks
+     * the content bounds are unknown, so bounds problems are left to the publish scan. The plan is never null.
+     */
+    public static ScanResult preview(ServerLevel level, Box area, int maxHorizontalSize) {
+        return new Run(level, area, OptionalInt.empty(), true).scan(maxHorizontalSize);
+    }
+
+    /** A flood marker's floor as the light check sees it: loaded chunks inside {@code area} only. */
+    public static FloodFill.Result previewFlood(ServerLevel level, Box area, Cell marker, Set<String> materials) {
+        var run = new Run(level, area, OptionalInt.empty(), true);
+        return FloodFill.fill(run::lookup, marker.offset(0, -1, 0), materials, FloodFill.LIMIT);
     }
 
     /** The registry id, such as {@code minecraft:stone}. */
-    static String blockId(BlockState state) { return BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(); }
+    public static String blockId(BlockState state) { return BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(); }
 
-    static Map<String, String> properties(BlockState state) {
+    public static Map<String, String> properties(BlockState state) {
         var out = new LinkedHashMap<String, String>();
         for (var property : state.getProperties()) out.put(property.getName(), valueName(state, property));
         return out;
@@ -54,6 +69,7 @@ public final class MarkerScan {
         final ServerLevel level;
         final Box area;
         final OptionalInt bottomY;
+        final boolean preview;
         final List<Problem> problems = new ArrayList<>();
         final List<Trigger> triggers = new ArrayList<>();
         final List<Model> models = new ArrayList<>();
@@ -63,11 +79,19 @@ public final class MarkerScan {
         final List<TextSlot> texts = new ArrayList<>();
         Box bounds;
 
-        Run(ServerLevel level, Box area, OptionalInt bottomY) { this.level = level; this.area = area; this.bottomY = bottomY; }
+        Run(ServerLevel level, Box area, OptionalInt bottomY, boolean preview) {
+            this.level = level; this.area = area; this.bottomY = bottomY; this.preview = preview;
+        }
 
         ScanResult scan(int maxHorizontalSize) {
-            blocks();
+            if (!preview) blocks();
             for (var entity : entities()) entity(entity);
+            if (preview) {
+                var plan = new LobbyPlan(bounds == null ? new Box(area.min(), area.min()) : bounds, triggers, models, points, zones, altarLights, texts);
+                problems.addAll(LobbyPlanValidator.validate(plan, Integer.MAX_VALUE));
+                problems.removeIf(p -> p.kind() == ProblemKind.BOUNDS);
+                return new ScanResult(plan, problems, null);
+            }
             if (bounds == null) {
                 problems.add(Problem.error(ProblemKind.BOUNDS, null, null, "范围内什么都没有：没有方块，也没有标记"));
                 return new ScanResult(null, problems, null);
@@ -215,6 +239,7 @@ public final class MarkerScan {
         /** Air outside the area, so a flood never leaves what the caller loaded. */
         String lookup(int x, int y, int z) {
             if (!area.contains(new Cell(x, y, z))) return BlockLookup.AIR;
+            if (preview && level.getChunkSource().getChunkNow(x >> 4, z >> 4) == null) return BlockLookup.AIR;
             return blockId(level.getBlockState(new BlockPos(x, y, z)));
         }
 

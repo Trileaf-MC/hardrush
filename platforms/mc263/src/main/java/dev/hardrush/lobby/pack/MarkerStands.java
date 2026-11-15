@@ -49,6 +49,16 @@ public final class MarkerStands {
         return stack;
     }
 
+    /** A marker armor stand, whatever its other tags say. */
+    public static boolean is(net.minecraft.world.entity.Entity entity) {
+        return entity instanceof ArmorStand && entity.entityTags().contains(MarkerTags.MARKER);
+    }
+
+    /** The block a block, text or click marker binds (design 4.2): its own cell, or the one below when that is air. */
+    public static net.minecraft.core.BlockPos target(ServerLevel level, net.minecraft.core.BlockPos marker) {
+        return level.getBlockState(marker).isAir() ? marker.below() : marker;
+    }
+
     public static String name(MarkerSpec spec) { return "【" + spec.function().displayName() + "】"; }
 
     /** The marker's entity data without {@code id}; {@link TypedEntityData} carries the type separately. */
@@ -74,7 +84,7 @@ public final class MarkerStands {
     }
 
     /** The head item that tells builders the function at a glance. */
-    static Item icon(LobbyFunction function) {
+    public static Item icon(LobbyFunction function) {
         return switch (function) {
             case ASSEMBLY -> Items.WOOL.lime();
             case COURTYARD -> Items.ROTTEN_FLESH;

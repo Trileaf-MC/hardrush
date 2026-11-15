@@ -5,6 +5,7 @@ import dev.hardrush.lobby.ButtonMenu;
 import dev.hardrush.lobby.pack.LobbyInstall;
 import dev.hardrush.lobby.pack.LobbyStorage;
 import dev.hardrush.notice.Notices;
+import dev.hardrush.notice.StatusBars;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.LobbyDimension;
 import dev.hardrush.world.LobbyWorld;
@@ -50,13 +51,19 @@ public final class Workshop {
     static final int IDLE_UNLOAD_TICKS = 100;
     /** How far below the dimension's bottom a builder falls before being put back at the entry. */
     public static final int VOID_MARGIN = 16;
-    /** Where builders arrive until drafts have a scanned central landing (M3b). */
+    /** Where builders arrive in a draft without a central landing marker or an import's guess. */
     public static final Vec3 DEFAULT_ENTRY = new Vec3(0.5, 65, 0.5);
+    /** The smallest build range the toolbox shrinks to. */
+    public static final int MIN_DIAMETER = 16;
 
-    /** How a new draft starts (design 11.1). M3b adds pack-library files, saves and structure files. */
+    /** How a new draft starts (design 11.1, 19). */
     public sealed interface Seed {
         record CurrentLobby() implements Seed {}
         record Blank() implements Seed {}
+        /** A {@code .hrlobby} in the pack library, by file name. */
+        record Pack(String fileName) implements Seed {}
+        /** An entry of {@code hardrush/workshop/import}, by name: a save or a building file (4-level operators). */
+        record Import(String name) implements Seed {}
     }
 
     private static final class Open {
@@ -84,12 +91,22 @@ public final class Workshop {
     /** Ids never handed out again this session: deleted drafts (Fantasy may still be removing their dimension) and unreadable ones. */
     private final Set<String> retired = new HashSet<>();
     final ButtonMenu.Throttle throttle = new ButtonMenu.Throttle();
+    private final ImportFolder importFolder;
+    private final WorkshopChecks checks = new WorkshopChecks();
+    private final MarkerView view = new MarkerView();
+    private final Map<String, PublishJob> publishes = new HashMap<>();
+    /** Building files being pasted into a draft, and who asked. */
+    private final Map<String, DraftImport> pastes = new HashMap<>();
+    private final Map<String, UUID> pasters = new HashMap<>();
+    /** Builders without their toolbox, and for how many ticks. */
+    private final Map<UUID, Integer> missingToolbox = new HashMap<>();
 
     private Workshop(MinecraftServer server, PlayerProfiles profiles) {
         this.server = server;
         this.profiles = profiles;
         var root = server.getWorldPath(LevelResource.ROOT);
         storage = new WorkshopStorage(root);
+        importFolder = new ImportFolder(root);
         var loaded = new HashSet<String>();
         for (var level : server.getAllLevels())
             if (level.dimension().identifier().getNamespace().equals(LobbyDimension.NAMESPACE)) loaded.add(level.dimension().identifier().getPath());
@@ -134,6 +151,10 @@ public final class Workshop {
                             }
                             return workshop.openMenu(player) ? 1 : 0;
                         }))));
+        // Breaking a bound block takes the markers bound to it along (design 4.4 item 5).
+        net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents.AFTER.register((level, player, pos, state, blockEntity) -> {
+            if (level instanceof ServerLevel serverLevel && LobbyDimension.isWorkshop(serverLevel)) Toolkit.blockBroken(serverLevel, pos);
+        });
     }
 
     // ---- Queries -------------------------------------------------------------------------------------------------
@@ -161,8 +182,40 @@ public final class Workshop {
     public Optional<Draft> buildingIn(ServerPlayer player) {
         return profiles.buildingLevel(player).flatMap(key -> draftId(key)).map(drafts::get);
     }
-    /** Where builders arrive in a draft. */
-    public Vec3 entryPoint(Draft draft) { return DEFAULT_ENTRY; }
+    /** Where builders arrive in a draft: its first central landing marker, else what the import suggested. */
+    public Vec3 entryPoint(Draft draft) {
+        var at = draft.entry();
+        return at == null ? DEFAULT_ENTRY : new Vec3(at.x(), at.y(), at.z());
+    }
+    MinecraftServer server() { return server; }
+    WorkshopChecks checks() { return checks; }
+    /** What {@code hardrush/workshop/import} holds right now. */
+    List<ImportFolder.Entry> importEntries() { return importFolder.list(); }
+    /** The library's {@code .hrlobby} files, by name. */
+    List<String> libraryPacks() {
+        var packs = LobbyStorage.forWorld(server.getWorldPath(LevelResource.ROOT)).packs();
+        if (!java.nio.file.Files.isDirectory(packs, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return List.of();
+        try (var list = java.nio.file.Files.list(packs)) {
+            return list.filter(p -> java.nio.file.Files.isRegularFile(p, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                    .map(p -> p.getFileName().toString()).filter(n -> n.endsWith(dev.hardrush.core.lobby.plan.PackManifest.EXTENSION)).sorted().toList();
+        } catch (IOException e) {
+            return List.of();
+        }
+    }
+    Optional<PublishJob> publishJob(String id) { return Optional.ofNullable(publishes.get(id)); }
+    Optional<String> pasteProgress(String id) { return Optional.ofNullable(pastes.get(id)).map(DraftImport::progress); }
+
+    /** Test seam: runs the light check of {@code id} now. */
+    public Optional<List<dev.hardrush.core.lobby.plan.Problem>> checkNow(String id) {
+        var draft = drafts.get(id);
+        var level = draft == null ? null : level(id).orElse(null);
+        return level == null ? Optional.empty() : Optional.of(checks.check(this, draft, level).problems());
+    }
+    /** Test seam: the stage of the draft's publish job and the pack it wrote, if any. */
+    public Optional<String> publishState(String id) {
+        return Optional.ofNullable(publishes.get(id)).map(job -> job.stage().name() + (job.written() == null ? "" : " " + job.written())
+                + (job.errors().isEmpty() ? "" : " " + job.errors()));
+    }
     /** The draft's dimension while it is loaded. */
     public Optional<ServerLevel> level(String id) {
         var o = open.get(id);
@@ -204,6 +257,7 @@ public final class Workshop {
         if (!gamemaster(actor)) return Optional.of("需要 2 级管理员权限");
         if (!loaded()) return Optional.of(failure != null ? "工坊读取出错，请查看日志" : "工坊正在读取，稍等片刻");
         if (drafts.size() >= MAX_DRAFTS) return Optional.of("草稿已满 " + MAX_DRAFTS + " 个，先删除一个");
+        var id = nextId();
         String name, source;
         DraftImport.Loader loader;
         switch (seed) {
@@ -221,13 +275,31 @@ public final class Workshop {
                 source = "空白";
                 loader = DraftImport.blank();
             }
+            case Seed.Pack pack -> {
+                // Names come back from menu buttons: only an exact library entry is accepted.
+                if (!libraryPacks().contains(pack.fileName())) return Optional.of("包库里没有 " + pack.fileName());
+                var file = LobbyStorage.forWorld(server.getWorldPath(LevelResource.ROOT)).packs().resolve(pack.fileName());
+                name = displayName(pack.fileName().substring(0, pack.fileName().length() - dev.hardrush.core.lobby.plan.PackManifest.EXTENSION.length()));
+                source = "包库 " + pack.fileName();
+                loader = DraftImport.pack(LobbyInstall.Source.file(file), HardRushProperties.lobbyMaxSize());
+            }
+            case Seed.Import imported -> {
+                // Reading arbitrary files the owner put on disk is 4-level (design 19).
+                if (!owner(actor)) return Optional.of("从存档或建筑文件新建需要 4 级管理员权限");
+                var entry = importFolder.find(imported.name()).orElse(null);
+                if (entry == null) return Optional.of("import 目录里没有 " + imported.name());
+                name = displayName(entry.name());
+                boolean save = entry.kind() == ImportFolder.Kind.SAVE;
+                source = (save ? "存档 " : "建筑文件 ") + entry.name();
+                loader = save ? DraftImport.save(entry.path(), storage.dimension(id))
+                        : DraftImport.structure(entry.path(), HardRushProperties.lobbyMaxSize(), DraftImport::centredOnOrigin);
+            }
         }
-        var id = nextId();
         var draft = Draft.create(id, name, source, HardRushProperties.lobbyMaxSize());
         drafts.put(id, draft);
         importers.put(id, actor.getUUID());
         persist(draft);
-        imports.put(id, new DraftImport(storage.dimension(id), loader, () -> openLevel(draft)));
+        imports.put(id, new DraftImport(storage.dimension(id), loader, () -> openLevel(drafts.get(id))));
         LOGGER.info("{} 新建草稿 {}（{}）", actor.getScoreboardName(), id, source);
         return Optional.empty();
     }
@@ -246,6 +318,7 @@ public final class Workshop {
         var level = openLevel(draft);
         if (level == null) return Optional.of("草稿正在保存，稍后再试");
         if (!profiles.startBuilding(player, level, entryPoint(draft))) return Optional.of("现在不能进入工坊");
+        Toolkit.give(player);
         var updated = draft.withParticipant(player.getUUID(), player.getScoreboardName());
         if (updated != draft) { drafts.put(id, updated); persist(updated); }
         LOGGER.info("{} 进入草稿 {}", player.getScoreboardName(), id);
@@ -254,6 +327,7 @@ public final class Workshop {
 
     /** Sends a builder back to the lobby; {@code reason} is told to them when not null. */
     public void leave(ServerPlayer player, String reason) {
+        missingToolbox.remove(player.getUUID());
         if (!profiles.stopBuilding(player)) return;
         if (reason != null) Notices.personal(player, reason);
     }
@@ -267,6 +341,146 @@ public final class Workshop {
         discard(id);
         LOGGER.info("{} 删除草稿 {}", actor.getScoreboardName(), id);
         return Optional.empty();
+    }
+
+    // ---- Toolbox actions (design 11.1, 19.1) ---------------------------------------------------------------------
+
+    /** Moves the build range's centre to the builder. */
+    public Optional<String> setCenter(ServerPlayer player) {
+        return changeDraft(player, d -> d.withBorder(player.getBlockX(), player.getBlockZ(), d.borderDiameter()));
+    }
+
+    /** Grows or shrinks the build range by {@code delta} blocks of diameter. */
+    public Optional<String> resize(ServerPlayer player, int delta) {
+        int max = HardRushProperties.lobbyMaxSize();
+        return changeDraft(player, d -> {
+            int size = Math.max(MIN_DIAMETER, Math.min(max, d.borderDiameter() + delta));
+            return size == d.borderDiameter() ? null : d.withBorder(d.borderCenterX(), d.borderCenterZ(), size);
+        });
+    }
+
+    /** Leaves the blocks below {@code y} out of publishing; null publishes every height again. */
+    public Optional<String> setBottom(ServerPlayer player, Integer y) { return changeDraft(player, d -> d.withBottomY(y)); }
+
+    private Optional<String> changeDraft(ServerPlayer player, java.util.function.UnaryOperator<Draft> change) {
+        var draft = buildingIn(player).orElse(null);
+        if (draft == null || !PlayerProfiles.building(player)) return Optional.of("只能在工坊里调整");
+        var updated = change.apply(draft);
+        if (updated == null) return Optional.of(draft.borderDiameter() <= MIN_DIAMETER ? "范围已经最小" : "范围已经最大");
+        drafts.put(draft.id(), updated);
+        persist(updated);
+        level(draft.id()).ifPresent(level -> {
+            level.getWorldBorder().setCenter(updated.borderCenterX(), updated.borderCenterZ());
+            level.getWorldBorder().setSize(updated.borderDiameter());
+        });
+        return Optional.empty();
+    }
+
+    /**
+     * Removes every loaded non-player entity inside the build range that installing would drop anyway (design 19.1):
+     * saves bring their animals and mobs. Decorations on the entity whitelist stay. Returns how many went.
+     */
+    public int clearMobs(ServerPlayer player) {
+        if (!PlayerProfiles.building(player)) return 0;
+        var level = (ServerLevel) player.level();
+        int removed = 0;
+        for (var entity : toList(level.getAllEntities())) {
+            if (entity instanceof net.minecraft.world.entity.player.Player || entity.isRemoved()) continue;
+            var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
+            if (dev.hardrush.lobby.pack.TileSanitizer.ALLOWED_ENTITIES.contains(type)) continue;
+            if (!level.getWorldBorder().isWithinBounds(entity.blockPosition())) continue;
+            entity.discard();
+            removed++;
+        }
+        return removed;
+    }
+    private static List<net.minecraft.world.entity.Entity> toList(Iterable<net.minecraft.world.entity.Entity> entities) {
+        var out = new ArrayList<net.minecraft.world.entity.Entity>();
+        entities.forEach(out::add);
+        return out;
+    }
+
+    /**
+     * Pastes a building file from the import folder into the builder's draft (design 19.2): centred horizontally on
+     * them, bottom face at their feet, air never overwriting anything. 2-level; no undo, the menu asks first.
+     */
+    public Optional<String> paste(ServerPlayer player, String name) {
+        var draft = buildingIn(player).orElse(null);
+        if (draft == null || !PlayerProfiles.building(player)) return Optional.of("只能在工坊里贴入");
+        if (!gamemaster(player)) return Optional.of("需要 2 级管理员权限");
+        if (pastes.containsKey(draft.id())) return Optional.of("这个草稿正在贴入另一个建筑");
+        var entry = importFolder.find(name).filter(e -> e.kind() == ImportFolder.Kind.STRUCTURE).orElse(null);
+        if (entry == null) return Optional.of("import 目录里没有建筑文件 " + name);
+        var level = (ServerLevel) player.level();
+        int x = player.getBlockX(), y = player.getBlockY(), z = player.getBlockZ();
+        var loader = DraftImport.structure(entry.path(), HardRushProperties.lobbyMaxSize(),
+                s -> new dev.hardrush.core.lobby.plan.Cell(x - s.sizeX() / 2, y, z - s.sizeZ() / 2));
+        pastes.put(draft.id(), new DraftImport(null, loader, () -> level(draft.id()).orElse(null)));
+        pasters.put(draft.id(), player.getUUID());
+        LOGGER.info("{} 往草稿 {} 贴入 {}（{} {} {}）", player.getScoreboardName(), draft.id(), name, x, y, z);
+        return Optional.empty();
+    }
+
+    // ---- Publishing (design 11.5) --------------------------------------------------------------------------------
+
+    /** Starts publishing a draft (4-level operators); returns why it cannot. */
+    public Optional<String> publish(ServerPlayer actor, String id) {
+        if (!owner(actor)) return Optional.of("需要 4 级管理员权限");
+        var draft = drafts.get(id);
+        if (draft == null) return Optional.of("草稿不存在了");
+        if (draft.state() != Draft.State.READY) return Optional.of("草稿还在导入，稍等片刻");
+        var running = publishes.get(id);
+        if (running != null && running.stage() != PublishJob.Stage.DONE && running.stage() != PublishJob.Stage.FAILED)
+            return Optional.of("这个草稿正在发布");
+        if (pastes.containsKey(id)) return Optional.of("草稿正在贴入建筑，完成后再发布");
+        var level = openLevel(draft);
+        if (level == null) return Optional.of("草稿正在保存，稍后再试");
+        if (running != null) StatusBars.hideEverywhere(server, running.bar);
+        publishes.put(id, new PublishJob(draft, actor.getUUID(), level, HardRushProperties.lobbyMaxSize()));
+        LOGGER.info("{} 开始发布草稿 {}", actor.getScoreboardName(), id);
+        return Optional.empty();
+    }
+
+    /** The publisher strikes a participant from the authors, or puts them back. */
+    public void toggleAuthor(ServerPlayer actor, String id, UUID participant) {
+        var job = publishes.get(id);
+        if (job == null || job.stage() != PublishJob.Stage.CONFIRM || !owner(actor)) return;
+        if (!job.excluded.remove(participant)) job.excluded.add(participant);
+    }
+
+    /** Writes the pack once the publisher confirmed the authors. */
+    public Optional<String> confirmPublish(ServerPlayer actor, String id) {
+        if (!owner(actor)) return Optional.of("需要 4 级管理员权限");
+        var job = publishes.get(id);
+        var draft = drafts.get(id);
+        if (job == null || draft == null || job.stage() != PublishJob.Stage.CONFIRM) return Optional.of("没有等待确认的发布");
+        job.confirm(draft, LobbyStorage.forWorld(server.getWorldPath(LevelResource.ROOT)).packs(), io);
+        return Optional.empty();
+    }
+
+    /** Drops a finished, failed or unconfirmed publish job. */
+    public void dismissPublish(String id) {
+        var job = publishes.get(id);
+        if (job == null || job.stage() == PublishJob.Stage.WRITING) return;
+        publishes.remove(id);
+        job.cancel();
+        StatusBars.hideEverywhere(server, job.bar);
+    }
+
+    /** The light check found the draft's first central landing: builders arrive there from now on. */
+    void updateEntry(String id, dev.hardrush.core.lobby.plan.Point entry) {
+        var draft = drafts.get(id);
+        if (draft == null) return;
+        var updated = draft.withEntry(entry);
+        drafts.put(id, updated);
+        persist(updated);
+    }
+
+    /** Short names for drafts made from files: the file name without its extension, at most 32 characters. */
+    private static String displayName(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        var base = dot > 0 ? fileName.substring(0, dot) : fileName;
+        return base.length() > 32 ? base.substring(0, 32) : base;
     }
 
     // ---- Lifecycle -----------------------------------------------------------------------------------------------
@@ -291,8 +505,80 @@ public final class Workshop {
             loading = null;
         }
         tickImports();
+        tickPastes();
+        tickPublishes();
         tickBuilders();
+        checks.tick(this, server.getTickCount());
+        view.tick(this, server.getTickCount());
         tickDimensions();
+    }
+
+    private void tickPastes() {
+        for (var id : List.copyOf(pastes.keySet())) {
+            var job = pastes.get(id);
+            var paster = pasters.get(id);
+            var player = paster == null ? null : server.getPlayerList().getPlayer(paster);
+            boolean done;
+            try { done = job.tick(); }
+            catch (RuntimeException error) {
+                LOGGER.warn("草稿 {} 贴入建筑失败", id, error);
+                job.cancel();
+                pastes.remove(id); pasters.remove(id);
+                if (player != null) Notices.personal(player, "贴入建筑失败：" + error.getMessage());
+                continue;
+            }
+            if (!done) continue;
+            pastes.remove(id); pasters.remove(id);
+            if (player != null) {
+                var notes = job.content().notes();
+                Notices.personal(player, "建筑已贴入" + (notes.isEmpty() ? "" : " · " + String.join("；", notes)));
+            }
+        }
+    }
+
+    private void tickPublishes() {
+        for (var entry : List.copyOf(publishes.entrySet())) {
+            var id = entry.getKey();
+            var job = entry.getValue();
+            var before = job.stage();
+            try { job.tick(); }
+            catch (RuntimeException error) {
+                LOGGER.error("草稿 {} 发布出错", id, error);
+                job.cancel();
+            }
+            var stage = job.stage();
+            var publisher = server.getPlayerList().getPlayer(job.publisher);
+            boolean running = stage != PublishJob.Stage.DONE && stage != PublishJob.Stage.FAILED;
+            job.bar.setName(net.minecraft.network.chat.Component.literal("发布「" + draft(id).map(Draft::name).orElse(id) + "」· " + job.progress()));
+            job.bar.setProgress(job.fraction());
+            if (publisher != null) {
+                if (running) StatusBars.show(publisher, StatusBars.Slot.PERSONAL, job.bar);
+                else StatusBars.hide(publisher, StatusBars.Slot.PERSONAL);
+            }
+            if (stage == before) continue;
+            var name = Notices.key(draft(id).map(Draft::name).orElse(id));
+            switch (stage) {
+                case CONFIRM -> {
+                    if (publisher != null) Notices.personal(publisher, "草稿 " + name + " 已打包好 · 在 /hardrush lobby 的草稿页确认作者后写入"
+                            + (job.warnings().isEmpty() ? "" : "\n提醒：\n· " + String.join("\n· ", PublishJob.shown(job.warnings()))));
+                }
+                case DONE -> {
+                    var file = job.written().getFileName().toString();
+                    var version = file.substring(file.lastIndexOf("-v") + 2, file.length() - dev.hardrush.core.lobby.plan.PackManifest.EXTENSION.length());
+                    draft(id).ifPresent(d -> {
+                        var updated = d.published(Integer.parseInt(version));
+                        drafts.put(id, updated);
+                        persist(updated);
+                    });
+                    LOGGER.info("草稿 {} 已发布为 {}", id, file);
+                    if (publisher != null) Notices.personal(publisher, "草稿 " + name + " 已发布为 " + Notices.key(file) + " · 草稿页可以「现在安装」");
+                }
+                case FAILED -> {
+                    if (publisher != null) Notices.personal(publisher, "草稿 " + name + " 没能发布：\n· " + String.join("\n· ", PublishJob.shown(job.errors())));
+                }
+                default -> { }
+            }
+        }
     }
 
     private void tickImports() {
@@ -311,12 +597,20 @@ public final class Workshop {
             }
             if (!done) continue;
             imports.remove(id);
+            var content = job.content();
             var ready = drafts.get(id).ready();
+            if (content.center() != null) {
+                ready = ready.withBorder(content.center().x(), content.center().z(), ready.borderDiameter());
+                var border = level(id).map(ServerLevel::getWorldBorder).orElse(null);
+                if (border != null) border.setCenter(content.center().x(), content.center().z());
+            }
+            if (content.entry() != null) ready = ready.withEntry(content.entry());
             drafts.put(id, ready);
             persist(ready);
             var importer = importers.remove(id);
             var player = importer == null ? null : server.getPlayerList().getPlayer(importer);
-            if (player != null) Notices.personal(player, "草稿 " + Notices.key(ready.name()) + " 已建好 · 输入 /hardrush lobby 进入");
+            if (player != null) Notices.personal(player, "草稿 " + Notices.key(ready.name()) + " 已建好 · 输入 /hardrush lobby 进入"
+                    + (content.notes().isEmpty() ? "" : "\n· " + String.join("\n· ", content.notes())));
         }
     }
 
@@ -327,6 +621,17 @@ public final class Workshop {
         importers.remove(id);
         var job = imports.remove(id);
         if (job != null) job.cancel();
+        var paste = pastes.remove(id);
+        pasters.remove(id);
+        if (paste != null) paste.cancel();
+        var publish = publishes.remove(id);
+        if (publish != null) {
+            publish.cancel();
+            StatusBars.hideEverywhere(server, publish.bar);
+            var publisher = server.getPlayerList().getPlayer(publish.publisher);
+            if (publisher != null && publish.stage() != PublishJob.Stage.DONE) Notices.personal(publisher, "草稿已被删除，发布已取消");
+        }
+        checks.forget(server, id);
         var o = open.remove(id);
         boolean registered = server.getLevel(LobbyDimension.workshopKey(id)) != null;
         if (registered && o != null) o.handle.delete();
@@ -347,6 +652,7 @@ public final class Workshop {
                 leave(player, reason.get() + " · 已回到营地");
                 continue;
             }
+            if (PlayerProfiles.building(player)) Toolkit.keep(player, missingToolbox);
             // Nobody dies in a workshop; a fall into the void ends back at the entry.
             if (player.level().dimension().equals(key) && player.getY() < player.level().getMinY() - VOID_MARGIN) {
                 var draft = buildingIn(player).orElse(null);
@@ -358,6 +664,15 @@ public final class Workshop {
         }
     }
 
+    /** A job still reads or writes the draft's world, so it stays open without builders. */
+    private boolean busy(String id) {
+        var publish = publishes.get(id);
+        return imports.containsKey(id) || pastes.containsKey(id) || publish != null && switch (publish.stage()) {
+            case LOADING, SCANNING, CAPTURING -> true;
+            default -> false;
+        };
+    }
+
     private void tickDimensions() {
         for (var it = open.entrySet().iterator(); it.hasNext(); ) {
             var entry = it.next();
@@ -367,7 +682,7 @@ public final class Workshop {
                 if (server.getLevel(level.dimension()) == null) it.remove();
                 continue;
             }
-            if (imports.containsKey(entry.getKey()) || !level.players().isEmpty()) { o.idle = 0; continue; }
+            if (busy(entry.getKey()) || !level.players().isEmpty()) { o.idle = 0; continue; }
             // Saved as soon as the last builder leaves; unloaded once it stays empty.
             if (o.idle++ == 0) level.save(null, true, false);
             if (o.idle >= IDLE_UNLOAD_TICKS) {
@@ -386,6 +701,8 @@ public final class Workshop {
             catch (RuntimeException error) { LOGGER.error("停服时送回建设者 {} 失败", player.getScoreboardName(), error); }
         }
         for (var job : workshop.imports.values()) job.cancel();
+        for (var job : workshop.pastes.values()) job.cancel();
+        for (var job : workshop.publishes.values()) { job.cancel(); StatusBars.hideEverywhere(server, job.bar); }
         workshop.io.shutdown();
         try {
             if (!workshop.io.awaitTermination(10, TimeUnit.SECONDS)) LOGGER.warn("工坊文件写入未在停服前完成");
