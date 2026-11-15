@@ -5,9 +5,11 @@ import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.lobby.LobbyCredits;
 import dev.hardrush.core.lobby.plan.*;
 import dev.hardrush.core.round.RoundPhase;
+import dev.hardrush.lobby.ButtonMenu;
 import dev.hardrush.lobby.LobbyInteractions;
 import dev.hardrush.lobby.LobbyMenus;
 import dev.hardrush.lobby.pack.*;
+import dev.hardrush.lobby.workshop.Workshop;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.round.RoundSession;
@@ -23,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.network.Connection;
@@ -36,7 +39,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.config.PrepareSpawnTask;
+import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.server.players.NameAndId;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Display;
@@ -82,6 +89,29 @@ public final class LobbyAdminGameTest {
                     var library = LobbyAdmin.library(f.server);
                     f.await(!library.loading() && library.packs().stream().anyMatch(p -> p.file().equals(f.pack)), "Library lists the pack");
                 })
+                .thenWaitUntil(() -> f.await(Workshop.get(f.server).filter(Workshop::loaded).isPresent(), "Workshop listing read"))
+                .thenExecute(() -> {
+                    // A 2-level operator sees the entry greyed out and cannot use it.
+                    f.op(f.a, PermissionLevel.GAMEMASTERS);
+                    test.assertTrue(Workshop.get(f.server).orElseThrow().openMenu(f.a.player), "The workshop chest opens for level 2");
+                    int slot = f.slot("大厅包库与安装");
+                    test.assertTrue(slot >= 0 && !f.item(slot).is(Items.BOOKSHELF), "The library entry is greyed out for level 2");
+                    f.click("大厅包库与安装");
+                    test.assertTrue(f.slot("当前大厅：", true) < 0, "A greyed entry opens nothing");
+                    f.a.player.closeContainer();
+                    f.op(f.a, PermissionLevel.OWNERS);
+                    test.assertTrue(Workshop.get(f.server).orElseThrow().openMenu(f.a.player), "The workshop chest opens for level 4");
+                    test.assertTrue(f.item(f.slot("大厅包库与安装")).is(Items.BOOKSHELF), "Level 4 gets a working entry");
+                    f.click("大厅包库与安装");
+                })
+                .thenIdle(6)
+                .thenExecute(() -> {
+                    test.assertTrue(f.slot("当前大厅：默认营地", true) >= 0, "The top page names the live lobby");
+                    test.assertFalse(f.item(f.slot("回到上一个大厅")).is(Items.RECOVERY_COMPASS), "Roll back is greyed with no previous lobby");
+                    test.assertTrue(f.lore(f.slot("回到上一个大厅")).contains("没有上一个大厅可以回去"), "...and says why");
+                    test.assertTrue(f.slot("安装进行中：", true) < 0, "No progress button while idle");
+                    f.a.player.closeContainer();
+                })
                 .thenExecute(() -> {
                     var summary = LobbyAdmin.library(f.server).packs().stream().filter(p -> p.file().equals(f.pack)).findFirst().orElseThrow();
                     test.assertTrue(summary.installable(), "The test pack can be installed: " + summary.problems());
@@ -94,8 +124,29 @@ public final class LobbyAdminGameTest {
                 .thenExecute(() -> {
                     f.before = LobbyWorld.open(f.server).installation().orElseThrow();
                     f.oldKey = LobbyWorld.open(f.server).key();
-                    var started = LobbyAdmin.install(f.server, f.pack, null);
-                    test.assertTrue(started.accepted(), started.message());
+                    test.assertTrue(Workshop.get(f.server).orElseThrow().openMenu(f.a.player), "Open the workshop chest");
+                    f.click("大厅包库与安装");
+                })
+                .thenIdle(6)
+                .thenExecute(() -> f.click("大厅包库"))
+                .thenIdle(6)
+                .thenWaitUntil(() -> { f.refresh(); f.await(f.slot("测试营地 v2") >= 0, "Library page lists the test pack"); })
+                .thenExecute(() -> {
+                    test.assertTrue(f.lore(f.slot("测试营地 v2")).contains("会放临时设施：战绩"), "The library lore names the stand-in: " + f.lore(f.slot("测试营地 v2")));
+                    f.click("测试营地 v2");
+                })
+                .thenIdle(6)
+                .thenExecute(() -> {
+                    test.assertTrue(f.item(f.slot("安装")).is(Items.ENDER_PEARL), "The detail page offers installing");
+                    f.click("安装");
+                })
+                .thenIdle(6)
+                .thenExecute(() -> {
+                    test.assertTrue(LobbyAdmin.progress(f.server).isEmpty(), "Installing asks for confirmation first");
+                    f.click("确认安装");
+                    test.assertTrue(LobbyAdmin.progress(f.server).isPresent(), "Confirming starts the install");
+                    test.assertTrue(f.slot("安装进行中：", true) >= 0, "The top page shows the install progress");
+                    test.assertFalse(f.item(f.slot("回到上一个大厅")).is(Items.RECOVERY_COMPASS), "Roll back is greyed while installing");
                     test.assertFalse(LobbyAdmin.install(f.server, f.pack, null).accepted(), "Only one install at a time");
                 })
                 .thenWaitUntil(() -> f.await(LobbyAdmin.progress(f.server).map(LobbyAdmin.Progress::waitingForSwitch).orElse(false), "Built, waiting for the round"))
@@ -182,6 +233,35 @@ public final class LobbyAdminGameTest {
             java.util.concurrent.locks.LockSupport.parkNanos(2_000_000);
             test.assertTrue(condition, stage + ": " + RoundRuntime.status(server));
         }
+        void op(Peer peer, PermissionLevel level) {
+            server.getPlayerList().op(new NameAndId(peer.profile), Optional.of(LevelBasedPermissionSet.forLevel(level)), Optional.empty());
+        }
+        net.minecraft.world.item.ItemStack item(int slot) { return a.player.containerMenu.getSlot(slot).getItem(); }
+        /** The chest slot labelled {@code label} (or starting with it); -1 when there is none. */
+        int slot(String label) { return slot(label, false); }
+        int slot(String label, boolean prefix) {
+            if (!ButtonMenu.isMenu(a.player)) return -1;
+            for (int i = 0; i < 54; i++) {
+                var name = item(i).getHoverName().getString();
+                if (prefix ? name.startsWith(label) : name.equals(label)) return i;
+            }
+            return -1;
+        }
+        String lore(int slot) {
+            var lore = item(slot).get(DataComponents.LORE);
+            return lore == null ? "" : String.join(" | ", lore.lines().stream().map(Component::getString).toList());
+        }
+        void click(String label) {
+            int slot = slot(label);
+            test.assertTrue(slot >= 0, "Button " + label + " is on the page: " + (ButtonMenu.isMenu(a.player)
+                    ? java.util.stream.IntStream.range(0, 54).mapToObj(i -> item(i).getHoverName().getString()).filter(n -> !n.isEmpty()).toList()
+                    : "no menu open, container " + a.player.containerMenu));
+            // Ticks run faster than real time here, and a menu drops repeated clicks within its cooldown.
+            long until = System.nanoTime() + ButtonMenu.BUTTON_COOLDOWN_NANOS + 50_000_000L;
+            while (System.nanoTime() < until) java.util.concurrent.locks.LockSupport.parkNanos(5_000_000L);
+            a.player.containerMenu.clicked(slot, 0, ContainerInput.PICKUP, a.player);
+        }
+        void refresh() { if (ButtonMenu.isMenu(a.player)) a.player.containerMenu.clicked(49, 0, ContainerInput.PICKUP, a.player); }
         dev.hardrush.core.round.RoundSnapshot round() { return session.snapshot().orElseThrow(); }
         boolean idle() { return !session.mutationPending(); }
         void place(Peer peer, Landing landing) { profiles.placeInLobby(peer.player, landing); peer.acknowledge(); }
