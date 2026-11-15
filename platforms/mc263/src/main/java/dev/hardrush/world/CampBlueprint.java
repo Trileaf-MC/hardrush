@@ -144,6 +144,13 @@ public final class CampBlueprint {
         return additions;
     }
 
+    /**
+     * Whether an interrupted build's block still counts as ours: exactly as planned, or planned grass that has
+     * since decayed to dirt under a post or lectern (vanilla random ticks do that within minutes).
+     */
+    public static boolean planned(BlockState planned, BlockState actual) {
+        return actual.equals(planned) || planned.is(Blocks.GRASS_BLOCK) && actual.is(Blocks.DIRT);
+    }
     /** The altar's glass is owned in both states; only its dormant (tinted) one is in the blueprint. */
     public static boolean litAltarGlass(BlockPos anchor, BlockPos pos, BlockState state) {
         return pos.equals(altarGlass(anchor)) && state.is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW));
