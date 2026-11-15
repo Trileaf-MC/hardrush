@@ -27,6 +27,20 @@ final class LobbyPlanJsonTest {
         assertEquals(plan(), LobbyPlanJson.planFromPack(json, manifest.bounds()));
     }
 
+    @Test void installationRoundTripsThroughCurrentJson() throws PackException {
+        var installation = new LobbyInstallation(3, "hardrush:lobby_3",
+                new LobbyInstallation.Pack("default", "默认营地", 2, java.util.List.of("HardRush", "粉丝"), "ab".repeat(32)),
+                plan(), LobbyInstallation.State.COMPLETE);
+        var text = LobbyPlanJson.write(LobbyPlanJson.installationToJson(installation));
+        assertEquals(installation, LobbyPlanJson.installationFromJson(LobbyPlanJson.parse(text)));
+        assertTrue(text.contains("\"state\": \"COMPLETE\""), text);
+        var unknown = LobbyPlanJson.parse(text.replace("\"COMPLETE\"", "\"PREPARED\""));
+        assertTrue(assertThrows(PackException.class, () -> LobbyPlanJson.installationFromJson(unknown)).getMessage().contains("PREPARED"));
+        var noPlan = LobbyPlanJson.parse(text);
+        noPlan.remove("plan");
+        assertThrows(PackException.class, () -> LobbyPlanJson.installationFromJson(noPlan));
+    }
+
     @Test void entityTriggersHaveNoBlockFields() {
         var trigger = LobbyPlanJson.planToJson(plan()).getAsJsonArray("triggers").get(1).getAsJsonObject();
         assertEquals("history", trigger.get("function").getAsString());
