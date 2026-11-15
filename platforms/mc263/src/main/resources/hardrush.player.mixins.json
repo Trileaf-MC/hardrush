@@ -18,7 +18,8 @@
     "PlayerProfileInputAccessor",
     "PlayerRespawnConnectionAccessor",
     "PlayerLevelLoadMixin",
-    "PlayerLevelChangeMixin"
+    "PlayerLevelChangeMixin",
+    "WorkshopToolMixin"
   ],
   "injectors": {
     "defaultRequire": 1
