@@ -145,7 +145,7 @@ public final class LobbyWorld {
                     for (var entry : blueprint.entrySet()) {
                         var actual = level.getBlockState(entry.getKey());
                         boolean natural = entry.getKey().getY() == spawn.getY() - 1 ? actual.is(Blocks.GRASS_BLOCK) : actual.isAir();
-                        if (!natural && !(saved.equals(identity + "PREPARED\n") && (actual.equals(entry.getValue())
+                        if (!natural && !(saved.equals(identity + "PREPARED\n") && (CampBlueprint.planned(entry.getValue(), actual)
                                 || CampBlueprint.legacyMonsterLectern(spawn, entry.getKey(), actual)
                                 || CampBlueprint.litAltarGlass(spawn, entry.getKey(), actual))))
                             throw new IllegalStateException("未拥有或施工期间被修改的营地方块：" + entry.getKey());
