@@ -771,7 +771,7 @@ public final class LobbyRuntime {
     }
     /**
      * The single dispatch from a lobby function to its behaviour, whatever bound it: a block, a role model or
-     * (later) a tagged entity. The router has already validated the click; {@code clicked} is the block for
+     * a tagged entity. The router has already validated the click; {@code clicked} is the block for
      * block triggers and null otherwise.
      */
     public static void activate(ServerPlayer player, LobbyFunction function, net.minecraft.core.BlockPos clicked) {
