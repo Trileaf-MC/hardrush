@@ -60,7 +60,8 @@
       "dev.hardrush.monster.MonsterInventoryFormGameTest",
       "dev.hardrush.monster.MonsterSeaGameTest",
       "dev.hardrush.lobby.HeldItemHintsGameTest",
-      "dev.hardrush.lobby.pack.PackRoundTripGameTest"
+      "dev.hardrush.lobby.pack.PackRoundTripGameTest",
+      "dev.hardrush.lobby.pack.LobbyInstallGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"

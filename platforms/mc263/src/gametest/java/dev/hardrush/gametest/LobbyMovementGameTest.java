@@ -89,6 +89,19 @@ public final class LobbyMovementGameTest {
                     var position = f.a.player.position();
                     f.profiles.returnToLobby(f.a.player); f.profiles.returnToLobby(f.a.player);
                     test.assertTrue(f.a.player.position().distanceToSqr(position) < .000001, "Repeated return checks do not reset a normal lobby position");
+                    // Walking off a void lobby's edge: below the lowest block, past the margin.
+                    var lobby = LobbyWorld.open(f.server);
+                    f.a.player.teleportTo(lobby.holdingLevel(), f.a.player.getX(), lobby.plan().bounds().min().y() - LobbyWorld.FALL_MARGIN - 4,
+                            f.a.player.getZ(), java.util.Set.of(), 0, 0, true);
+                })
+                .thenWaitUntil(() -> f.await(LobbyWorld.isLobby(f.a.player.level())
+                        && f.a.player.getY() >= LobbyWorld.open(f.server).plan().bounds().min().y(), "A player who falls out of the lobby is put back"))
+                .thenExecute(() -> {
+                    var landing = LobbyPlanFixtures.outsideAssembly(f.server);
+                    test.assertTrue(dev.hardrush.world.RoundWorldBundle.safeStanding(f.a.player.level(), f.a.player.blockPosition())
+                            && Math.abs(f.a.player.getY() - landing.y) < .001 && f.a.player.position().distanceTo(landing) < 12,
+                            "The fallen player stands at the central landing again: " + f.a.player.position());
+                    test.assertTrue(PlayerProfiles.canMoveInLobby(f.a.player), "Rescue keeps the lobby body");
                     f.a.command("hardrush join");
                 })
                 .thenWaitUntil(() -> f.await(!f.session.mutationPending(), "Join committed"))
