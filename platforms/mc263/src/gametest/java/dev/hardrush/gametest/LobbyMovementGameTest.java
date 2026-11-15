@@ -65,7 +65,9 @@ public final class LobbyMovementGameTest {
                     f.assertLobby();
                     test.assertTrue(f.a.player.level() != f.server.overworld(), "The original overworld is preserved separately");
                     test.assertTrue(f.a.player.level().getChunkSource().getGenerator() instanceof FlatLevelSource, "Actual native flat generator");
-                    test.assertTrue(f.a.player.level().getBlockState(BlockPos.containing(f.a.player.position()).below()).is(Blocks.STONE_BRICKS), "Built camp central floor");
+                    // Arrivals scatter like vanilla respawns, onto the path or the lawn; the exact landing is on the path.
+                    test.assertTrue(f.a.player.level().getBlockState(BlockPos.containing(LobbyPlanFixtures.outsideAssembly(f.server)).below()).is(Blocks.STONE_BRICKS), "Built camp central floor");
+                    test.assertTrue(dev.hardrush.world.RoundWorldBundle.safeStanding(f.a.player.level(), f.a.player.blockPosition()), "Arrival stands on the camp floor");
                     f.b.observedFrom = f.b.connection.packets.size();
                     f.a.move(.6, 0, 45, 15, true);
                     test.assertValueEqual(f.a.player.getYRot(), 45f, "The native move packet updates yaw");
