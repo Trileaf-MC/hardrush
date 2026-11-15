@@ -480,8 +480,27 @@ tasks.named('runGameTest') {
     }
 }
 
+// Workshop drafts and builder bodies on the production lifecycle and protection binding.
+def workshopRunDir = rootProject.file(".local/lobby-workshop/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushWorkshop').orNull == 'true') {
+        if (providers.gradleProperty('hardrushCompetition').orNull != 'true') throw new GradleException('Workshop requires competition mode')
+        vmArg '-Dhardrush.test.workshop=true'
+        vmArg '-Dhardrush.round.initialMode=normal'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:workshop_game_test*'
+        runDir workshopRunDir.absolutePath
+    }
+}
+tasks.named('runGameTest') {
+    if (providers.gradleProperty('hardrushWorkshop').orNull == 'true') doFirst {
+        workshopRunDir.mkdirs()
+        copy { from acceptedEula; into workshopRunDir }
+        logger.lifecycle("Isolated workshop storage: ${workshopRunDir}")
+    }
+}
+
 // A single production runtime suite owns each JVM; every launch receives a new directory.
-def isolatedSuites = ['hardrushParticipationExit', 'hardrushAdminSpectator', 'hardrushTenRounds', 'hardrushCelebration', 'hardrushStorageReserve', 'hardrushRecovery',
+def isolatedSuites = ['hardrushWorkshop', 'hardrushParticipationExit','hardrushAdminSpectator', 'hardrushTenRounds', 'hardrushCelebration', 'hardrushStorageReserve', 'hardrushRecovery',
     'hardrushIdentityRuntime', 'hardrushLobbyRuntime', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt', 'hardrushFullFlow', 'hardrushStabilization']
 if (isolatedSuites.count { providers.gradleProperty(it).orNull == 'true' } > 1)
     throw new GradleException('Production runtime suites must use separate isolated JVMs')

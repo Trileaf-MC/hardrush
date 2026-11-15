@@ -44,6 +44,7 @@
       "dev.hardrush.gametest.MonsterCombatWhitelistGameTest",
       "dev.hardrush.monster.MonsterSkillsGameTest",
       "dev.hardrush.gametest.HumanEntryGameTest",
+      "dev.hardrush.gametest.WorkshopGameTest",
       "dev.hardrush.gametest.PersonalHuntGameTest",
       "dev.hardrush.gametest.FullFlowGameTest",
       "dev.hardrush.gametest.StabilizationGameTest",
