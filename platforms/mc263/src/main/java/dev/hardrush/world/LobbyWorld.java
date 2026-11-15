@@ -1,213 +1,243 @@
 package dev.hardrush.world;
 
-import java.util.IdentityHashMap;
-import dev.hardrush.core.lobby.LegacyCampPlan;
+import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.lobby.plan.*;
-import java.util.EnumMap;
-import java.util.List;
-import java.nio.file.*;
+import dev.hardrush.lobby.pack.ChunkWarmup;
+import dev.hardrush.lobby.pack.LobbyInstall;
+import dev.hardrush.lobby.pack.LobbyInstallation;
+import dev.hardrush.lobby.pack.LobbyStorage;
+import dev.hardrush.player.PlayerProfiles;
 import java.io.IOException;
-import java.util.ArrayDeque;
-import net.minecraft.world.level.storage.LevelResource;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.io.UncheckedIOException;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletionException;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderSet;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ChunkResult;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.TicketType;
-import net.minecraft.world.Difficulty;
-import net.minecraft.world.level.ChunkPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
-import net.minecraft.world.level.gamerules.GameRules;
-import net.minecraft.world.level.levelgen.FlatLevelSource;
-import net.minecraft.world.level.levelgen.flat.FlatLayerInfo;
-import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
-import net.minecraft.world.level.storage.LevelData;
+import net.minecraft.world.level.block.entity.SignBlockEntity;
+import net.minecraft.world.level.block.entity.SignText;
+import net.minecraft.world.level.block.entity.SignTextSlot;
+import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.Vec3;
-import xyz.nucleoid.fantasy.Fantasy;
-import xyz.nucleoid.fantasy.RuntimeLevel;
-import xyz.nucleoid.fantasy.RuntimeLevelConfig;
+import xyz.nucleoid.fantasy.RuntimeLevelHandle;
 
-/** One permanent shared lobby, independent of both the original overworld and round rotation. */
+/**
+ * The installed lobby: which dimension and plan are live, whether they are ready, and every query by plan. Lobbies
+ * come only from packs ({@link LobbyInstall}); on startup the recorded install is reopened as it is, or, on a fresh
+ * world, the built-in pack is installed. Switching to a new install bumps {@link #planGeneration}, so everything
+ * registered against the old plan is dropped and rebuilt.
+ */
 public final class LobbyWorld {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("hardrush-lobby");
-    public static final ResourceKey<Level> KEY = ResourceKey.create(Registries.DIMENSION, Identifier.parse("hardrush:lobby"));
     private static final Map<MinecraftServer, LobbyWorld> SERVICES = new IdentityHashMap<>();
-    private static final TicketType SPAWN = new TicketType(TicketType.NO_TIMEOUT,
-            TicketType.FLAG_LOADING | TicketType.FLAG_SIMULATION | TicketType.FLAG_KEEP_DIMENSION_ACTIVE);
+    /** How far below the lobby's lowest block a player falls before being put back (design 10.5). */
+    public static final int FALL_MARGIN = 8;
+
+    private record Startup(Optional<LobbyInstallation> current, int highestSeq) {}
+
     private final MinecraftServer server;
-    private final Map<ChunkPos, CompletableFuture<?>> loading = new LinkedHashMap<>();
+    private final LobbyStorage storage;
+    private final int maxSize = HardRushProperties.lobbyMaxSize();
+    private final long started = System.nanoTime();
+    private CompletableFuture<Startup> startup;
+    /** Reopening the recorded install on startup: its handle and chunks until they are loaded. */
+    private LobbyInstallation reopening;
+    private RuntimeLevelHandle reopenHandle;
+    private ChunkWarmup reopenChunks;
+    private LobbyInstall install;
+
+    private LobbyInstallation installation;
+    private RuntimeLevelHandle handle;
     private ServerLevel level;
+    /** Tickets that keep every chunk of the live lobby loaded. */
+    private ChunkWarmup chunks;
     private BlockPos spawn;
     /** The runtime layout; every lobby position query reads it. */
     private LobbyPlan plan;
+    private int generation, placedTiles;
     /** Per purpose, the candidate the next placement starts from, so several landings take turns. */
     private final Map<Landing, Integer> rotation = new EnumMap<>(Landing.class);
     private boolean ready;
-    private final ArrayDeque<ChunkPos> queued = new ArrayDeque<>();
-    private final ArrayDeque<Map.Entry<BlockPos, net.minecraft.world.level.block.state.BlockState>> construction = new ArrayDeque<>();
-    private Map<BlockPos, net.minecraft.world.level.block.state.BlockState> blueprint;
-    private CompletableFuture<String> manifestRead;
-    private CompletableFuture<Void> manifestWrite;
-    private Path manifest;
-    private boolean inspected, completed;
-    private int built;
-    public static final int LOAD_BUDGET = 4, BUILD_BUDGET = 128;
-    public int loadedChunks() { return loading.size(); }
-    public int builtBlocks() { return built; }
-    public int layoutVersion() { return ready ? CampBlueprint.VERSION : 0; }
     private String failure;
-    private long started;
 
     private LobbyWorld(MinecraftServer server) {
         this.server = server;
-        try {
-            var existing = server.getLevel(KEY);
-            if (existing != null && !(existing instanceof LobbyLevel)) throw new IllegalStateException("大厅维度已被其他世界占用");
-            var settings = new FlatLevelGeneratorSettings(Optional.of(HolderSet.direct()),
-                    server.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS), java.util.List.of());
-            settings.getLayersInfo().add(new FlatLayerInfo(1, Blocks.BEDROCK));
-            settings.getLayersInfo().add(new FlatLayerInfo(2, Blocks.DIRT));
-            settings.getLayersInfo().add(new FlatLayerInfo(1, Blocks.GRASS_BLOCK));
-            settings.updateLayers();
-            var generator = new FlatLevelSource(settings);
-            var config = new RuntimeLevelConfig().setSeed(0).setGenerator(generator).setFlat(true)
-                    .setDimensionType(BuiltinDimensionTypes.OVERWORLD).setDifficulty(Difficulty.PEACEFUL)
-                    .setMirrorOverworldGameRules(false).setShouldTickTime(false)
-                    .setGameRule(GameRules.SPAWN_MOBS, false).setGameRule(GameRules.ADVANCE_WEATHER, false)
-                    .setGameRule(GameRules.ALLOW_ENTERING_NETHER_USING_PORTALS, false)
-                    .setLevelConstructor(LobbyLevel::new);
-            level = Fantasy.get(server).getOrOpenPersistentLevel(KEY.identifier(), config).asLevel();
-            spawn = new BlockPos(8, generator.getSpawnHeight(level), 8);
-            ((LobbyLevel) level).spawn = spawn;
-            plan = LegacyCampPlan.build(spawn.getX(), spawn.getY(), spawn.getZ());
-            started = System.nanoTime();
-            // Cover the complete actual footprint, including its positive/negative chunk edges.
-            var bounds = plan.bounds();
-            for (int x = bounds.min().x() >> 4; x <= bounds.max().x() >> 4; x++)
-                for (int z = bounds.min().z() >> 4; z <= bounds.max().z() >> 4; z++) queued.add(new ChunkPos(x, z));
-            blueprint = CampBlueprint.blocks(spawn);
-            manifest = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/lobby-layout.txt");
-            manifestRead = CompletableFuture.supplyAsync(() -> {
-                try {
-                    RoundWorldPaths.checkAncestors(manifest, false);
-                    return Files.exists(manifest) ? Files.readString(manifest) : "";
-                } catch (IOException error) { throw new java.util.concurrent.CompletionException(error); }
-            });
-        } catch (RuntimeException error) { failure = "超平坦大厅准备失败：" + error.getMessage(); }
+        var root = server.getWorldPath(LevelResource.ROOT);
+        storage = LobbyStorage.forWorld(root);
+        // Directories of loaded dimensions are never deleted, whatever their name.
+        var loaded = new HashSet<String>();
+        for (var l : server.getAllLevels())
+            if (l.dimension().identifier().getNamespace().equals(LobbyDimension.NAMESPACE)) loaded.add(l.dimension().identifier().getPath());
+        startup = CompletableFuture.supplyAsync(() -> {
+            try {
+                var current = storage.readCurrent();
+                // Never clean up around a record we could not read: it may name the lobby we would delete.
+                int highest = storage.cleanup(root, current.map(c -> OptionalInt.of(c.seq())).orElse(OptionalInt.empty()), loaded);
+                return new Startup(current, highest);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            } catch (dev.hardrush.lobby.pack.PackException e) {
+                throw new CompletionException(e);
+            }
+        });
     }
 
     public static LobbyWorld open(MinecraftServer server) {
         return SERVICES.computeIfAbsent(server, LobbyWorld::new);
     }
 
+    /** Only the live lobby dimension; a pack being installed is not the lobby yet. */
     public static boolean isLobby(ServerLevel level) {
         var service = SERVICES.get(level.getServer());
         return service != null && service.ready && service.level == level;
     }
 
+    /** Bumped on every switch to another installed lobby; 0 before the first. Never opens the service. */
+    public static int planGeneration(MinecraftServer server) {
+        var service = SERVICES.get(server);
+        return service == null ? 0 : service.generation;
+    }
+    public int planGeneration() { return generation; }
+
     public void tick() {
-        if (ready || failure != null) return;
+        if (failure != null) return;
         try {
-            if (System.nanoTime() - started > TimeUnit.MINUTES.toNanos(2)) throw new IllegalStateException("营地加载／施工超时");
-            long active = loading.values().stream().filter(f -> !f.isDone()).count();
-            while (active < LOAD_BUDGET && !queued.isEmpty()) {
-                var chunk = queued.remove();
-                loading.put(chunk, level.getChunkSource().addTicketAndLoadWithRadius(SPAWN, chunk, 0)); active++;
+            advance();
+            if (ready) rescueFallen();
+        } catch (RuntimeException error) {
+            LOGGER.error("大厅准备失败", error);
+            failure = "大厅准备失败：" + message(error);
+        }
+    }
+
+    private void advance() {
+        if (startup != null) {
+            if (!startup.isDone()) { checkStartupTimeout(); return; }
+            var result = startup.join();
+            startup = null;
+            if (result.current().isPresent()) reopen(result.current().get());
+            else {
+                int seq = result.highestSeq() + 1;
+                install = new LobbyInstall(server, storage, LobbyInstall.Source.builtIn(), seq, LobbyDimension.key(seq), maxSize, OptionalInt.empty());
             }
-            if (!queued.isEmpty()) return;
-            for (var entry : loading.entrySet()) {
-                if (!entry.getValue().isDone()) return;
-                if (entry.getValue().join() instanceof ChunkResult<?> result && !result.isSuccess()) throw new IllegalStateException(result.getError());
-                if (level.getChunkSource().getChunkNow(entry.getKey().x(), entry.getKey().z()) == null) return;
-            }
-            if (!manifestRead.isDone()) return;
-            String identity = "hardrush:lobby\nversion=" + CampBlueprint.VERSION + "\nanchor=" + spawn.asLong() + "\n";
-            if (!inspected) {
-                String saved = manifestRead.join();
-                if (!saved.isEmpty() && !saved.equals(identity + "PREPARED\n") && !saved.equals(identity + "COMPLETE\n"))
-                    throw new IllegalStateException("未知营地布局清单，保留地形等待显式升级");
-                completed = saved.equals(identity + "COMPLETE\n");
-                if (!completed) {
-                    // Fresh ownership may claim only untouched flat terrain. A prepared build may
-                    // resume its exact planned blocks, but never overwrite an administrator's edit.
-                    for (var entry : blueprint.entrySet()) {
-                        var actual = level.getBlockState(entry.getKey());
-                        boolean natural = entry.getKey().getY() == spawn.getY() - 1 ? actual.is(Blocks.GRASS_BLOCK) : actual.isAir();
-                        if (!natural && !(saved.equals(identity + "PREPARED\n") && (CampBlueprint.planned(entry.getValue(), actual)
-                                || CampBlueprint.legacyMonsterLectern(spawn, entry.getKey(), actual)
-                                || CampBlueprint.litAltarGlass(spawn, entry.getKey(), actual))))
-                            throw new IllegalStateException("未拥有或施工期间被修改的营地方块：" + entry.getKey());
-                    }
-                    // Check the entire walking volume before claiming it, not just the blocks we place.
-                    var bounds = plan.bounds();
-                    for (int x = bounds.min().x(); x <= bounds.max().x(); x++) for (int z = bounds.min().z(); z <= bounds.max().z(); z++)
-                        for (int y = spawn.getY(); y < spawn.getY() + 4; y++) {
-                            var pos = new BlockPos(x, y, z); var actual = level.getBlockState(pos);
-                            if (!actual.isAir() && !(saved.equals(identity + "PREPARED\n") && (actual.equals(blueprint.get(pos))
-                                    || CampBlueprint.legacyMonsterLectern(spawn, pos, actual)
-                                    || CampBlueprint.litAltarGlass(spawn, pos, actual))))
-                                throw new IllegalStateException("营地行走空间存在未拥有方块：" + pos);
-                        }
-                    construction.addAll(blueprint.entrySet());
-                    manifestWrite = writeManifest(identity + "PREPARED\n");
-                }
-                inspected = true;
-            }
-            if (manifestWrite != null) { if (!manifestWrite.isDone()) return; manifestWrite.join(); manifestWrite = null; }
-            if (!completed) {
-                for (int i = 0; i < BUILD_BUDGET && !construction.isEmpty(); i++) {
-                    var entry = construction.remove();
-                    if (!level.getBlockState(entry.getKey()).equals(entry.getValue())) {
-                        level.setBlockAndUpdate(entry.getKey(), entry.getValue()); built++;
-                    }
-                }
-                if (!construction.isEmpty()) return;
-                CampBlueprint.labels(spawn).forEach(this::label);
-                level.save(null, true, false);
-                completed = true; manifestWrite = writeManifest(identity + "COMPLETE\n"); return;
-            }
+        }
+        if (reopening != null) {
+            checkStartupTimeout();
+            if (!reopenChunks.tick()) return;
+            // A lobby whose landings cannot be stood on (say, region files lost) is not opened; its dimension is kept.
             for (var purpose : new Landing[]{Landing.CENTRAL, Landing.MONSTER})
-                if (!safeLanding(purpose)) throw new IllegalStateException("营地落点不安全，保留地形等待修复：" + purpose);
-            // Keep the v1 terrain manifest: only these three owned facilities change representation.
-            // Completed camps and interrupted old builds upgrade without rebuilding other terrain.
-            boolean replaced = false;
-            for (var pos : CampBlueprint.monsterFacilities(spawn)) {
-                if (CampBlueprint.legacyMonsterLectern(spawn, pos, level.getBlockState(pos))) {
-                    level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState()); replaced = true;
+                if (LandingRules.candidates(reopening.plan(), purpose).stream()
+                        .noneMatch(p -> RoundWorldBundle.safeStanding(reopenHandle.asLevel(), BlockPos.containing(position(p)))))
+                    throw new IllegalStateException("已安装的大厅落点不安全，保留维度等待修复：" + purpose);
+            activate(reopening, reopenHandle, reopenChunks);
+            reopening = null; reopenHandle = null; reopenChunks = null;
+        }
+        if (install != null) {
+            var running = install;
+            var outcome = running.tick();
+            if (outcome.isEmpty()) return;
+            install = null;
+            placedTiles += running.placedTiles();
+            switch (outcome.get()) {
+                case LobbyInstall.Outcome.Installed done -> activate(done.installation(), done.handle(), done.chunks());
+                case LobbyInstall.Outcome.Failed failed -> {
+                    // TODO: [Refactor] M4 reports a failed install of a new pack to the operator who started it and keeps the
+                    // live lobby; only the very first install leaves the server without a lobby.
+                    if (!ready) throw new IllegalStateException(failed.reason());
+                    LOGGER.warn("大厅包安装失败，保留当前大厅：{}", failed.reason());
                 }
             }
-            // The monster shop arrived after v1: claim only air, never an administrator's edit.
-            var labels = CampBlueprint.labels(spawn);
-            for (var entry : CampBlueprint.shopAdditions(spawn).entrySet()) {
-                var actual = level.getBlockState(entry.getKey());
-                if (actual.is(entry.getValue().getBlock())) continue;
-                if (!actual.isAir()) { LOGGER.warn("营地商店设施位置已被占用，保留原方块：{}", entry.getKey()); continue; }
-                level.setBlockAndUpdate(entry.getKey(), entry.getValue()); replaced = true;
-                if (labels.containsKey(entry.getKey())) label(entry.getKey(), labels.get(entry.getKey()));
-            }
-            if (replaced) level.save(null, true, false);
-            ready = true;
-        } catch (RuntimeException error) { failure = "超平坦大厅准备失败：" + error.getMessage(); }
+        }
+    }
+
+    private void checkStartupTimeout() {
+        if (System.nanoTime() - started > LobbyInstall.TIMEOUT_NANOS)
+            throw new IllegalStateException("大厅加载超时" + (reopenChunks == null ? "" : "（" + reopenChunks.pending() + "）"));
+    }
+
+    /** Opens the recorded dimension as it is: nothing is placed again. */
+    private void reopen(LobbyInstallation recorded) {
+        var key = LobbyDimension.parse(recorded.dimension())
+                .filter(k -> k.equals(LobbyDimension.key(recorded.seq())))
+                .orElseThrow(() -> new IllegalStateException("current.json 记录的大厅维度不合法：" + recorded.dimension()));
+        reopening = recorded;
+        reopenHandle = LobbyDimension.open(server, key);
+        reopenChunks = new ChunkWarmup(reopenHandle.asLevel(), recorded.plan().bounds());
+    }
+
+    /**
+     * Switches every query to {@code next} in one tick (design 10.2 step 7): new plan generation, players in the old
+     * lobby moved to the new central landing, old dimension deleted.
+     */
+    private void activate(LobbyInstallation next, RuntimeLevelHandle nextHandle, ChunkWarmup nextChunks) {
+        var oldLevel = level;
+        var oldHandle = handle;
+        var oldChunks = chunks;
+        installation = next;
+        handle = nextHandle;
+        level = nextHandle.asLevel();
+        chunks = nextChunks;
+        plan = next.plan();
+        var central = LandingRules.candidates(plan, Landing.CENTRAL);
+        if (central.isEmpty()) throw new IllegalStateException("大厅缺少中央落点");
+        spawn = BlockPos.containing(position(central.getFirst()));
+        LobbyDimension.spawn(level, spawn);
+        rotation.clear();
+        generation++;
+        ready = true;
+        LOGGER.info("大厅已就绪：{} v{}（{}，第 {} 代布局）", next.pack().name(), next.pack().version(), next.dimension(), generation);
+        if (oldLevel == null || oldLevel == level) return;
+        for (var player : List.copyOf(oldLevel.players())) relocate(player);
+        oldChunks.close();
+        oldHandle.delete();
+    }
+
+    /** To the central landing, through the profile service when it owns the body, so lobby mode is reapplied. */
+    private void relocate(ServerPlayer player) {
+        var profiles = PlayerProfiles.of(server).orElse(null);
+        if (profiles != null && profiles.manages(player) && !player.isSpectator() && safeLanding(Landing.CENTRAL)) {
+            profiles.placeInLobby(player, Landing.CENTRAL);
+            return;
+        }
+        var spot = scatteredLanding(Landing.CENTRAL);
+        var p = spot.position();
+        player.teleportTo(level, p.x, p.y, p.z, Set.of(), spot.yaw(), 0, true);
+        player.setDeltaMovement(Vec3.ZERO);
+        player.resetFallDistance();
+    }
+
+    /**
+     * A void lobby has no ground below its build, and lobby damage is cancelled, so a player who walks off falls for
+     * ever (design 10.5). Spectators fly where they like: administrative spectators and observers are left alone.
+     */
+    private void rescueFallen() {
+        int floor = plan.bounds().min().y() - FALL_MARGIN;
+        for (var player : List.copyOf(level.players())) {
+            if (player.getY() >= floor || player.isSpectator() || !player.isAlive()) continue;
+            LOGGER.info("{} 掉出了大厅，送回中央落点", player.getScoreboardName());
+            relocate(player);
+        }
+    }
+
+    private static String message(Throwable error) {
+        var cause = error;
+        while ((cause instanceof CompletionException || cause instanceof UncheckedIOException) && cause.getCause() != null) cause = cause.getCause();
+        return cause.getMessage() == null ? cause.toString() : cause.getMessage();
     }
 
     private void label(BlockPos pos, String[] lines) {
-        if (!(level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.SignBlockEntity sign)) return;
-        var messages = java.util.Arrays.stream(lines).map(net.minecraft.network.chat.Component::literal).map(c -> (net.minecraft.network.chat.Component)c).toList();
-        var text = new net.minecraft.world.level.block.entity.SignText(messages, messages, net.minecraft.world.item.DyeColor.BLACK, false);
-        sign.setText(text, net.minecraft.world.level.block.entity.SignTextSlot.FRONT);
-        sign.setText(text, net.minecraft.world.level.block.entity.SignTextSlot.BACK); sign.setWaxed(true); sign.setChanged();
+        if (!(level.getBlockEntity(pos) instanceof SignBlockEntity sign)) return;
+        var messages = Arrays.stream(lines).map(Component::literal).map(c -> (Component) c).toList();
+        var text = new SignText(messages, messages, DyeColor.BLACK, false);
+        sign.setText(text, SignTextSlot.FRONT);
+        sign.setText(text, SignTextSlot.BACK); sign.setWaxed(true); sign.setChanged();
     }
     /** Writes every status text slot; the stage and mode lines change with the round. */
     public void statusLabel(String stage, String mode) {
@@ -215,24 +245,19 @@ public final class LobbyWorld {
         for (var slot : plan.texts(LobbyFunction.STATUS))
             if (slot.sign() != null) label(pos(slot.sign()), new String[]{"HardRush 营地", stage, mode, "前方：集结区"});
     }
-    private CompletableFuture<Void> writeManifest(String value) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                RoundWorldPaths.checkAncestors(manifest, false); Files.createDirectories(manifest.getParent());
-                var temp = Files.createTempFile(manifest.getParent(), "lobby-layout-", ".tmp");
-                try (var channel = java.nio.channels.FileChannel.open(temp, StandardOpenOption.WRITE)) {
-                    var bytes = java.nio.ByteBuffer.wrap(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                    while (bytes.hasRemaining()) channel.write(bytes);
-                    channel.force(true);
-                }
-                Files.move(temp, manifest, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException error) { throw new java.util.concurrent.CompletionException(error); }
-        });
-    }
     public LobbyPlan plan() {
         if (!ready) throw new IllegalStateException("大厅尚未就绪");
         return plan;
     }
+    /** The live lobby dimension. */
+    public ResourceKey<Level> key() {
+        if (!ready) throw new IllegalStateException("大厅尚未就绪");
+        return level.dimension();
+    }
+    /** What {@code current.json} records about the live lobby. */
+    public Optional<LobbyInstallation> installation() { return ready ? Optional.of(installation) : Optional.empty(); }
+    /** Pack tiles placed by installs since this server started; zero when the recorded lobby was reopened. */
+    public int placedTiles() { return placedTiles; }
     /** Plan coordinates are already absolute. */
     public static Vec3 position(Point point) { return new Vec3(point.x(), point.y(), point.z()); }
     public static BlockPos pos(Cell cell) { return new BlockPos(cell.x(), cell.y(), cell.z()); }
@@ -274,14 +299,14 @@ public final class LobbyWorld {
         });
         return new LandingSpot(feet == null ? position(chosen) : Vec3.atBottomCenterOf(feet), chosen.yaw());
     }
-    public boolean inAssembly(net.minecraft.server.level.ServerPlayer player, boolean staying) {
+    public boolean inAssembly(ServerPlayer player, boolean staying) {
         if (!ready || player.level() != level || !player.isAlive()) return false;
         return plan.inZone(LobbyFunction.ASSEMBLY, player.getX(), player.getY(), player.getZ(), staying);
     }
     /** Standing on an altar pad (jumping included). */
-    public boolean onAltar(net.minecraft.server.level.ServerPlayer player) { return altarUnder(player).isPresent(); }
+    public boolean onAltar(ServerPlayer player) { return altarUnder(player).isPresent(); }
     /** The altar pad the player stands on, for effects at its centre. */
-    public Optional<Zone> altarUnder(net.minecraft.server.level.ServerPlayer player) {
+    public Optional<Zone> altarUnder(ServerPlayer player) {
         if (!ready || player.level() != level || !player.isAlive()) return Optional.empty();
         return plan.zoneAt(LobbyFunction.ALTAR_PAD, player.getX(), player.getY(), player.getZ(), false);
     }
@@ -291,12 +316,13 @@ public final class LobbyWorld {
      */
     public void altarLit(boolean lit) {
         if (!ready) return;
-        var want = lit ? Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW) : Blocks.TINTED_GLASS;
+        var yellow = Blocks.STAINED_GLASS.pick(DyeColor.YELLOW);
+        var want = lit ? yellow : Blocks.TINTED_GLASS;
         for (var cell : plan.altarLights()) {
             var pos = pos(cell);
             var actual = level.getBlockState(pos);
-            // Never overwrite an administrator's edit: only our two glass states are ours to swap.
-            if (!actual.is(Blocks.TINTED_GLASS) && !actual.is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW))) continue;
+            // Only our two glass states are ours to swap.
+            if (!actual.is(Blocks.TINTED_GLASS) && !actual.is(yellow)) continue;
             if (!actual.is(want)) dev.hardrush.protection.ProtectionRuntime.ownedWrite(level, () -> level.setBlockAndUpdate(pos, want.defaultBlockState()));
         }
     }
@@ -305,7 +331,9 @@ public final class LobbyWorld {
     public Optional<String> failure() { return Optional.ofNullable(failure); }
     public static String status(MinecraftServer server) {
         var service = SERVICES.get(server);
-        return service == null ? "未启用" : service.ready ? "已完成" : service.failure().orElse("进行中");
+        if (service == null) return "未启用";
+        if (service.ready) return "已完成（" + service.installation.pack().name() + " v" + service.installation.pack().version() + "）";
+        return service.failure().orElse("进行中");
     }
     /** Before readiness, only frozen profile quarantine may use the original overworld. */
     public ServerLevel holdingLevel() { return ready ? level : server.overworld(); }
@@ -313,18 +341,10 @@ public final class LobbyWorld {
 
     public static void shutdown(MinecraftServer server) {
         var service = SERVICES.remove(server);
-        if (service == null || service.level == null) return;
-        for (var chunk : service.loading.keySet()) service.level.getChunkSource().removeTicketWithRadius(SPAWN, chunk, 0);
-        // Leave the persistent level registered for vanilla's save/close and region-IO drain.
-    }
-
-    private static final class LobbyLevel extends RuntimeLevel {
-        private BlockPos spawn;
-        LobbyLevel(MinecraftServer server, ResourceKey<Level> key, RuntimeLevelConfig config, Style style) {
-            super(server, key, config, style);
-        }
-        @Override public LevelData.RespawnData getRespawnData() {
-            return spawn == null ? super.getRespawnData() : LevelData.RespawnData.of(KEY, spawn, 0, 0);
-        }
+        if (service == null) return;
+        // Tickets only: an unfinished install's dimension is left for the next startup's cleanup, and the live one
+        // stays registered for vanilla's save, close and region-IO drain.
+        if (service.chunks != null) service.chunks.close();
+        if (service.reopenChunks != null) service.reopenChunks.close();
     }
 }

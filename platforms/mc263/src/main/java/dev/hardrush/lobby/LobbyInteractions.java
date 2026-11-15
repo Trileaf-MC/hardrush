@@ -35,10 +35,12 @@ public final class LobbyInteractions {
     private final LobbyProjections projections;
     private final LobbyRoleModels roleModels;
     private UUID round;
+    /** The lobby plan generation registrations were made against; a new lobby invalidates them like a new round. */
+    private int planGeneration;
     private boolean closed;
 
     private LobbyInteractions(MinecraftServer server, Access access) {
-        this.server = server; this.access = access; round = access.round();
+        this.server = server; this.access = access; round = access.round(); planGeneration = LobbyWorld.planGeneration(server);
         projections = new LobbyProjections(this);
         roleModels = new LobbyRoleModels(this);
     }
@@ -128,10 +130,13 @@ public final class LobbyInteractions {
         dispatches.put(player.getUUID(), new Dispatch(packet, player.connection, result)); return result;
     }
     public static boolean consumed(Result result) { return result != Result.UNREGISTERED; }
+    /** A new round or a newly installed lobby drops every registration, dispatch, projection and model. */
     private void synchronizeRound() {
         UUID current = round();
-        if (!Objects.equals(round, current)) {
-            blocks.clear(); dispatches.clear(); projections.clear(); roleModels.clear(); hints.clear(); round = current;
+        int generation = LobbyWorld.planGeneration(server);
+        if (!Objects.equals(round, current) || generation != planGeneration) {
+            blocks.clear(); dispatches.clear(); projections.clear(); roleModels.clear(); hints.clear();
+            round = current; planGeneration = generation;
         }
     }
     public Optional<Result> lastResult(ServerPlayer player) {

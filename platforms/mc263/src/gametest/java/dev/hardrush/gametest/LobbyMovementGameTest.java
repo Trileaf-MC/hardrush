@@ -40,7 +40,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -64,7 +63,7 @@ public final class LobbyMovementGameTest {
                 .thenExecute(() -> {
                     f.assertLobby();
                     test.assertTrue(f.a.player.level() != f.server.overworld(), "The original overworld is preserved separately");
-                    test.assertTrue(f.a.player.level().getChunkSource().getGenerator() instanceof FlatLevelSource, "Actual native flat generator");
+                    test.assertTrue(f.a.player.level().getChunkSource().getGenerator() instanceof xyz.nucleoid.fantasy.util.VoidChunkGenerator, "The installed lobby is a void world");
                     // Arrivals scatter like vanilla respawns, onto the path or the lawn; the exact landing is on the path.
                     test.assertTrue(f.a.player.level().getBlockState(BlockPos.containing(LobbyPlanFixtures.outsideAssembly(f.server)).below()).is(Blocks.STONE_BRICKS), "Built camp central floor");
                     test.assertTrue(dev.hardrush.world.RoundWorldBundle.safeStanding(f.a.player.level(), f.a.player.blockPosition()), "Arrival stands on the camp floor");
@@ -177,7 +176,7 @@ public final class LobbyMovementGameTest {
         }
         void assertProtectionAndUi() {
             var floor = BlockPos.containing(a.player.position()).below(2);
-            // The jump can leave feet above the ground; target the original flat floor directly.
+            // The jump can leave feet above the ground; target the camp floor under the spawn's layer directly.
             floor = new BlockPos(floor.getX(), LobbyWorld.open(server).holdingLevel().getRespawnData().pos().getY() - 1, floor.getZ());
             var original = a.player.level().getBlockState(floor);
             a.player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, floor, Direction.UP, 1));

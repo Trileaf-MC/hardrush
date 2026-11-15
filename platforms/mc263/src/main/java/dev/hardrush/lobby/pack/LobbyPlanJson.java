@@ -10,7 +10,7 @@ import dev.hardrush.core.lobby.plan.*;
 import java.util.*;
 
 /**
- * {@code pack.json} and its {@code plan} field. Output is stable (fixed key order, sorted floor cells) and indented
+ * {@code pack.json} and its {@code plan} field, and the installed lobby's {@code current.json}. Output is stable (fixed key order, sorted floor cells) and indented
  * two spaces with number arrays kept on one line, so a pack committed to the repository diffs well. Reading caps
  * every array so a hostile file cannot make us allocate much more than its own size.
  */
@@ -64,6 +64,52 @@ public final class LobbyPlanJson {
     public static LobbyPlan planFromPack(JsonObject json, Box bounds) throws PackException {
         if (!json.has("plan") || !json.get("plan").isJsonObject()) throw new PackException("pack.json 缺少 plan");
         return planFromJson(json.getAsJsonObject("plan"), bounds);
+    }
+
+    // ---- current.json ----
+
+    public static JsonObject installationToJson(LobbyInstallation installation) {
+        var json = new JsonObject();
+        json.addProperty("seq", installation.seq());
+        json.addProperty("dimension", installation.dimension());
+        var pack = new JsonObject();
+        pack.addProperty("id", installation.pack().id());
+        pack.addProperty("name", installation.pack().name());
+        pack.addProperty("version", installation.pack().version());
+        var authors = new JsonArray();
+        installation.pack().authors().forEach(authors::add);
+        pack.add("authors", authors);
+        pack.addProperty("sha256", installation.pack().sha256());
+        json.add("pack", pack);
+        json.add("bounds", box(installation.plan().bounds()));
+        json.add("plan", planToJson(installation.plan()));
+        json.addProperty("state", installation.state().name());
+        return json;
+    }
+
+    public static LobbyInstallation installationFromJson(JsonObject json) throws PackException {
+        LobbyInstallation.Pack pack;
+        Box bounds;
+        int seq;
+        String dimension;
+        LobbyInstallation.State state;
+        try {
+            seq = integer(json.get("seq"), "seq");
+            dimension = string(json.get("dimension"), "dimension");
+            var p = object(json.get("pack"), "pack");
+            var authors = new ArrayList<String>();
+            for (var a : list(p, "authors")) authors.add(string(a, "authors"));
+            pack = new LobbyInstallation.Pack(string(p.get("id"), "pack.id"), string(p.get("name"), "pack.name"),
+                    integer(p.get("version"), "pack.version"), authors, string(p.get("sha256"), "pack.sha256"));
+            bounds = box(json.get("bounds"), "bounds");
+            var stateName = string(json.get("state"), "state");
+            state = Arrays.stream(LobbyInstallation.State.values()).filter(s -> s.name().equals(stateName)).findFirst()
+                    .orElseThrow(() -> new Malformed("未知安装状态 " + stateName));
+            if (!json.has("plan") || !json.get("plan").isJsonObject()) throw new Malformed("缺少 plan");
+        } catch (Malformed | RuntimeException e) {
+            throw broken(e);
+        }
+        return new LobbyInstallation(seq, dimension, pack, planFromJson(json.getAsJsonObject("plan"), bounds), state);
     }
 
     // ---- plan ----
