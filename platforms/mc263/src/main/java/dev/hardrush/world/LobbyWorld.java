@@ -1,7 +1,10 @@
 package dev.hardrush.world;
 
 import java.util.IdentityHashMap;
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.LegacyCampPlan;
+import dev.hardrush.core.lobby.plan.*;
+import java.util.EnumMap;
+import java.util.List;
 import java.nio.file.*;
 import java.io.IOException;
 import java.util.ArrayDeque;
@@ -47,6 +50,10 @@ public final class LobbyWorld {
     private final Map<ChunkPos, CompletableFuture<?>> loading = new LinkedHashMap<>();
     private ServerLevel level;
     private BlockPos spawn;
+    /** The runtime layout; every lobby position query reads it. */
+    private LobbyPlan plan;
+    /** Per purpose, the candidate the next placement starts from, so several landings take turns. */
+    private final Map<Landing, Integer> rotation = new EnumMap<>(Landing.class);
     private boolean ready;
     private final ArrayDeque<ChunkPos> queued = new ArrayDeque<>();
     private final ArrayDeque<Map.Entry<BlockPos, net.minecraft.world.level.block.state.BlockState>> construction = new ArrayDeque<>();
@@ -59,7 +66,7 @@ public final class LobbyWorld {
     public static final int LOAD_BUDGET = 4, BUILD_BUDGET = 128;
     public int loadedChunks() { return loading.size(); }
     public int builtBlocks() { return built; }
-    public int layoutVersion() { return ready ? LobbyLayout.VERSION : 0; }
+    public int layoutVersion() { return ready ? CampBlueprint.VERSION : 0; }
     private String failure;
     private long started;
 
@@ -84,10 +91,12 @@ public final class LobbyWorld {
             level = Fantasy.get(server).getOrOpenPersistentLevel(KEY.identifier(), config).asLevel();
             spawn = new BlockPos(8, generator.getSpawnHeight(level), 8);
             ((LobbyLevel) level).spawn = spawn;
+            plan = LegacyCampPlan.build(spawn.getX(), spawn.getY(), spawn.getZ());
             started = System.nanoTime();
             // Cover the complete actual footprint, including its positive/negative chunk edges.
-            for (int x = (spawn.getX() + LobbyLayout.MIN_X) >> 4; x <= (spawn.getX() + LobbyLayout.MAX_X) >> 4; x++)
-                for (int z = (spawn.getZ() + LobbyLayout.MIN_Z) >> 4; z <= (spawn.getZ() + LobbyLayout.MAX_Z) >> 4; z++) queued.add(new ChunkPos(x, z));
+            var bounds = plan.bounds();
+            for (int x = bounds.min().x() >> 4; x <= bounds.max().x() >> 4; x++)
+                for (int z = bounds.min().z() >> 4; z <= bounds.max().z() >> 4; z++) queued.add(new ChunkPos(x, z));
             blueprint = CampBlueprint.blocks(spawn);
             manifest = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/lobby-layout.txt");
             manifestRead = CompletableFuture.supplyAsync(() -> {
@@ -124,7 +133,7 @@ public final class LobbyWorld {
                 if (level.getChunkSource().getChunkNow(entry.getKey().x(), entry.getKey().z()) == null) return;
             }
             if (!manifestRead.isDone()) return;
-            String identity = "hardrush:lobby\nversion=" + LobbyLayout.VERSION + "\nanchor=" + spawn.asLong() + "\n";
+            String identity = "hardrush:lobby\nversion=" + CampBlueprint.VERSION + "\nanchor=" + spawn.asLong() + "\n";
             if (!inspected) {
                 String saved = manifestRead.join();
                 if (!saved.isEmpty() && !saved.equals(identity + "PREPARED\n") && !saved.equals(identity + "COMPLETE\n"))
@@ -136,15 +145,16 @@ public final class LobbyWorld {
                     for (var entry : blueprint.entrySet()) {
                         var actual = level.getBlockState(entry.getKey());
                         boolean natural = entry.getKey().getY() == spawn.getY() - 1 ? actual.is(Blocks.GRASS_BLOCK) : actual.isAir();
-                        if (!natural && !(saved.equals(identity + "PREPARED\n") && (actual.equals(entry.getValue())
+                        if (!natural && !(saved.equals(identity + "PREPARED\n") && (CampBlueprint.planned(entry.getValue(), actual)
                                 || CampBlueprint.legacyMonsterLectern(spawn, entry.getKey(), actual)
                                 || CampBlueprint.litAltarGlass(spawn, entry.getKey(), actual))))
                             throw new IllegalStateException("未拥有或施工期间被修改的营地方块：" + entry.getKey());
                     }
                     // Check the entire walking volume before claiming it, not just the blocks we place.
-                    for (int x = LobbyLayout.MIN_X; x <= LobbyLayout.MAX_X; x++) for (int z = LobbyLayout.MIN_Z; z <= LobbyLayout.MAX_Z; z++)
-                        for (int y = 0; y < 4; y++) {
-                            var pos = spawn.offset(x, y, z); var actual = level.getBlockState(pos);
+                    var bounds = plan.bounds();
+                    for (int x = bounds.min().x(); x <= bounds.max().x(); x++) for (int z = bounds.min().z(); z <= bounds.max().z(); z++)
+                        for (int y = spawn.getY(); y < spawn.getY() + 4; y++) {
+                            var pos = new BlockPos(x, y, z); var actual = level.getBlockState(pos);
                             if (!actual.isAir() && !(saved.equals(identity + "PREPARED\n") && (actual.equals(blueprint.get(pos))
                                     || CampBlueprint.legacyMonsterLectern(spawn, pos, actual)
                                     || CampBlueprint.litAltarGlass(spawn, pos, actual))))
@@ -168,14 +178,12 @@ public final class LobbyWorld {
                 level.save(null, true, false);
                 completed = true; manifestWrite = writeManifest(identity + "COMPLETE\n"); return;
             }
-            for (var purpose : new LobbyLayout.Landing[]{LobbyLayout.Landing.CENTRAL, LobbyLayout.Landing.MONSTER, LobbyLayout.Landing.WAIT_OUTSIDE})
+            for (var purpose : new Landing[]{Landing.CENTRAL, Landing.MONSTER})
                 if (!safeLanding(purpose)) throw new IllegalStateException("营地落点不安全，保留地形等待修复：" + purpose);
             // Keep the v1 terrain manifest: only these three owned facilities change representation.
             // Completed camps and interrupted old builds upgrade without rebuilding other terrain.
             boolean replaced = false;
-            for (var facility : LobbyLayout.MONSTER_FACILITIES) {
-                var point = LobbyLayout.facility(facility);
-                var pos = spawn.offset((int)point.x(), 0, (int)point.z());
+            for (var pos : CampBlueprint.monsterFacilities(spawn)) {
                 if (CampBlueprint.legacyMonsterLectern(spawn, pos, level.getBlockState(pos))) {
                     level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState()); replaced = true;
                 }
@@ -201,25 +209,11 @@ public final class LobbyWorld {
         sign.setText(text, net.minecraft.world.level.block.entity.SignTextSlot.FRONT);
         sign.setText(text, net.minecraft.world.level.block.entity.SignTextSlot.BACK); sign.setWaxed(true); sign.setChanged();
     }
+    /** Writes every status text slot; the stage and mode lines change with the round. */
     public void statusLabel(String stage, String mode) {
         if (!ready) return;
-        label(spawn.offset(4, 0, 1), new String[]{"HardRush 营地", stage, mode, "前方：集结区"});
-    }
-    /** Refresh only owned facility text, never rebuild terrain in a completed camp. */
-    public void huntLabels(boolean enabled) {
-        if (!ready) return;
-        label(CampBlueprint.sign(spawn, LobbyLayout.Facility.HISTORY), new String[]{"战绩书屋", "右键查战绩领书", "", ""});
-        label(CampBlueprint.sign(spawn, LobbyLayout.Facility.ALTAR), CampBlueprint.ALTAR_SIGN);
-        for (var facility : new LobbyLayout.Facility[]{LobbyLayout.Facility.ZOMBIE, LobbyLayout.Facility.SKELETON,
-                LobbyLayout.Facility.CREEPER, LobbyLayout.Facility.PREVIOUS, LobbyLayout.Facility.NEXT}) {
-            var point = LobbyLayout.facility(facility);
-            var pos = spawn.offset((int)point.x(), 0, (int)point.z() + 2);
-            var original = CampBlueprint.labels(spawn).get(pos);
-            boolean page = facility == LobbyLayout.Facility.PREVIOUS || facility == LobbyLayout.Facility.NEXT;
-            // A sign line holds about nine CJK characters; each instruction keeps to one line.
-            label(pos, new String[]{original[0], enabled ? (page ? "右键翻页" : "右键展位选角") : "极限挑战时开放",
-                    enabled ? (page ? "只对自己生效" : "右键目标模型追猎") : "", ""});
-        }
+        for (var slot : plan.texts(LobbyFunction.STATUS))
+            if (slot.sign() != null) label(pos(slot.sign()), new String[]{"HardRush 营地", stage, mode, "前方：集结区"});
     }
     private CompletableFuture<Void> writeManifest(String value) {
         return CompletableFuture.runAsync(() -> {
@@ -235,62 +229,76 @@ public final class LobbyWorld {
             } catch (IOException error) { throw new java.util.concurrent.CompletionException(error); }
         });
     }
-    public boolean safeLanding(LobbyLayout.Landing purpose) {
-        if (level == null || spawn == null) return false;
-        var point = LobbyLayout.landing(purpose);
-        return RoundWorldBundle.safeStanding(level, BlockPos.containing(Vec3.atBottomCenterOf(spawn).add(point.x(), 0, point.z())));
+    public LobbyPlan plan() {
+        if (!ready) throw new IllegalStateException("大厅尚未就绪");
+        return plan;
+    }
+    /** Plan coordinates are already absolute. */
+    public static Vec3 position(Point point) { return new Vec3(point.x(), point.y(), point.z()); }
+    public static BlockPos pos(Cell cell) { return new BlockPos(cell.x(), cell.y(), cell.z()); }
+    /** Whether at least one of the purpose's landings can be stood on. */
+    public boolean safeLanding(Landing purpose) {
+        if (level == null || plan == null) return false;
+        return LandingRules.candidates(plan, purpose).stream().anyMatch(this::safe);
+    }
+    private boolean safe(Point point) { return RoundWorldBundle.safeStanding(level, BlockPos.containing(position(point))); }
+    /** The safe landing the next placement for {@code purpose} uses; candidates take turns, skipping unsafe ones. */
+    public Optional<Point> landing(Landing purpose) {
+        var candidates = LandingRules.candidates(plan(), purpose);
+        int start = rotation.getOrDefault(purpose, 0);
+        for (int i = 0; i < candidates.size(); i++) {
+            var point = candidates.get((start + i) % candidates.size());
+            if (safe(point)) return Optional.of(point);
+        }
+        return Optional.empty();
+    }
+    /** Where a placement lands, and the facing that goes with it. */
+    public record LandingSpot(Vec3 position, float yaw) {}
+    /**
+     * Vanilla's respawn scatter around a purpose landing, so arrivals do not stack: the lobby's own
+     * {@code respawn_radius} on the landing's layer, limited to the purpose's zone and to open floor. Keeps
+     * the exact landing otherwise. Advances the purpose's rotation, so the next arrival tries another landing.
+     */
+    public LandingSpot scatteredLanding(Landing purpose) {
+        var candidates = LandingRules.candidates(plan(), purpose);
+        if (candidates.isEmpty()) throw new IllegalStateException("大厅缺少落点：" + purpose);
+        // Without a safe landing, keep the first one: callers check safeLanding before teleporting.
+        var chosen = landing(purpose).orElse(candidates.getFirst());
+        rotation.put(purpose, (candidates.indexOf(chosen) + 1) % candidates.size());
+        var exact = BlockPos.containing(position(chosen));
+        var feet = NativeScatter.first(exact, NativeScatter.radius(level, exact), column -> {
+            var standing = new BlockPos(column.getX(), exact.getY(), column.getZ());
+            return LandingRules.scatterAllowed(plan, purpose, chosen, standing.getX(), standing.getY(), standing.getZ())
+                    && RoundWorldBundle.safeStanding(level, standing)
+                    && level.getBlockState(standing).isAir() && level.getBlockState(standing.above()).isAir() ? standing : null;
+        });
+        return new LandingSpot(feet == null ? position(chosen) : Vec3.atBottomCenterOf(feet), chosen.yaw());
     }
     public boolean inAssembly(net.minecraft.server.level.ServerPlayer player, boolean staying) {
         if (!ready || player.level() != level || !player.isAlive()) return false;
-        var relative = player.position().subtract(Vec3.atBottomCenterOf(spawn));
-        return relative.y >= -.1 && relative.y <= 4
-                && RoundWorldBundle.safeStanding(level, new BlockPos(net.minecraft.util.Mth.floor(player.getX()), spawn.getY(), net.minecraft.util.Mth.floor(player.getZ())))
-                && Math.hypot(relative.x - LobbyLayout.ASSEMBLY.x(), relative.z - LobbyLayout.ASSEMBLY.z())
-                <= LobbyLayout.ASSEMBLY.radius() + (staying ? .35 : -.15);
+        return plan.inZone(LobbyFunction.ASSEMBLY, player.getX(), player.getY(), player.getZ(), staying);
     }
-    /** Standing on one of the altar's eight gold cells (jumping included); the beacon cell is solid anyway. */
-    public boolean onAltar(net.minecraft.server.level.ServerPlayer player) {
-        if (!ready || player.level() != level || !player.isAlive()) return false;
-        var altar = LobbyLayout.facility(LobbyLayout.Facility.ALTAR);
-        double dy = player.getY() - (spawn.getY() + 1);
-        return dy >= -.1 && dy <= 1.5 && LobbyLayout.onAltarPad(
-                net.minecraft.util.Mth.floor(player.getX()) - spawn.getX() - (int)altar.x(),
-                net.minecraft.util.Mth.floor(player.getZ()) - spawn.getZ() - (int)altar.z());
+    /** Standing on an altar pad (jumping included). */
+    public boolean onAltar(net.minecraft.server.level.ServerPlayer player) { return altarUnder(player).isPresent(); }
+    /** The altar pad the player stands on, for effects at its centre. */
+    public Optional<Zone> altarUnder(net.minecraft.server.level.ServerPlayer player) {
+        if (!ready || player.level() != level || !player.isAlive()) return Optional.empty();
+        return plan.zoneAt(LobbyFunction.ALTAR_PAD, player.getX(), player.getY(), player.getZ(), false);
     }
     /**
-     * Light or darken the altar's beam by swapping the owned glass above its beacon. Vanilla does the
+     * Light or darken every altar beam by swapping the owned glass above its beacon. Vanilla does the
      * rest: tinted glass stops a beam, and the beacon plays its own activate/deactivate sound.
      */
     public void altarLit(boolean lit) {
         if (!ready) return;
-        var pos = CampBlueprint.altarGlass(spawn);
-        var actual = level.getBlockState(pos);
-        // Never overwrite an administrator's edit, or a camp built before the altar existed.
-        if (!actual.is(Blocks.TINTED_GLASS) && !CampBlueprint.litAltarGlass(spawn, pos, actual)) return;
         var want = lit ? Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW) : Blocks.TINTED_GLASS;
-        if (!actual.is(want)) dev.hardrush.protection.ProtectionRuntime.ownedWrite(level, () -> level.setBlockAndUpdate(pos, want.defaultBlockState()));
-    }
-    /** Loaded, built camp coordinates; teleport callers must still recheck standing safety. */
-    public Vec3 layoutPosition(dev.hardrush.core.lobby.LobbyLayout.Point point) {
-        if (!ready) throw new IllegalStateException("大厅尚未就绪");
-        return Vec3.atBottomCenterOf(spawn).add(point.x(), 0, point.z());
-    }
-    public Vec3 landing(dev.hardrush.core.lobby.LobbyLayout.Landing purpose) {
-        return layoutPosition(dev.hardrush.core.lobby.LobbyLayout.landing(purpose));
-    }
-    /**
-     * Vanilla's respawn scatter around a purpose landing, so arrivals do not stack: the camp's own
-     * {@code respawn_radius}, limited to the purpose's zone and to open floor. Keeps the exact landing otherwise.
-     */
-    public Vec3 scatteredLanding(LobbyLayout.Landing purpose) {
-        var exact = landing(purpose);
-        var feet = NativeScatter.first(BlockPos.containing(exact), NativeScatter.radius(level, BlockPos.containing(exact)), column -> {
-            int x = column.getX() - spawn.getX(), z = column.getZ() - spawn.getZ();
-            var standing = new BlockPos(column.getX(), spawn.getY(), column.getZ());
-            return LobbyLayout.scatterAllowed(purpose, x, z) && RoundWorldBundle.safeStanding(level, standing)
-                    && level.getBlockState(standing).isAir() && level.getBlockState(standing.above()).isAir() ? standing : null;
-        });
-        return feet == null ? exact : Vec3.atBottomCenterOf(feet);
+        for (var cell : plan.altarLights()) {
+            var pos = pos(cell);
+            var actual = level.getBlockState(pos);
+            // Never overwrite an administrator's edit: only our two glass states are ours to swap.
+            if (!actual.is(Blocks.TINTED_GLASS) && !actual.is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW))) continue;
+            if (!actual.is(want)) dev.hardrush.protection.ProtectionRuntime.ownedWrite(level, () -> level.setBlockAndUpdate(pos, want.defaultBlockState()));
+        }
     }
 
     public boolean ready() { return ready; }

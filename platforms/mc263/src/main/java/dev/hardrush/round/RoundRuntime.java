@@ -97,7 +97,7 @@ public final class RoundRuntime {
             if (!recovery.message().isEmpty()) LOGGER.warn("{}", recovery.message());
             var lobby = LobbyWorld.open(server);
             var profiles = new PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profiles"),
-                    lobby::holdingLevel, () -> lobby.ready() ? lobby.scatteredLanding(dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL) : lobby.holdingSpawn());
+                    lobby::holdingLevel, () -> lobby.ready() ? lobby.scatteredLanding(dev.hardrush.core.lobby.plan.Landing.CENTRAL).position() : lobby.holdingSpawn());
             PlayerProfiles.install(server, profiles);
             PROFILES.put(server, profiles);
             ADMITTED.put(server, new java.util.HashMap<>());
@@ -881,7 +881,7 @@ public final class RoundRuntime {
             else if (worlds != null && RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), player.level())) {
                 player.stopRiding(); player.ejectPassengers(); player.closeContainer();
                 var lobby = LobbyWorld.open(server);
-                var spawn = lobby.ready() ? lobby.scatteredLanding(dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL) : lobby.holdingSpawn();
+                var spawn = lobby.ready() ? lobby.scatteredLanding(dev.hardrush.core.lobby.plan.Landing.CENTRAL).position() : lobby.holdingSpawn();
                 player.teleportTo(lobby.holdingLevel(), spawn.x, spawn.y, spawn.z,
                         java.util.Set.of(), 0, 0, true);
                 player.setGameMode(net.minecraft.world.level.GameType.ADVENTURE);

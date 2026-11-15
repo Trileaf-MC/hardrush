@@ -2,6 +2,7 @@ package dev.hardrush.core.lobby;
 
 import static org.junit.jupiter.api.Assertions.*;
 import dev.hardrush.core.config.RulesConfig;
+import dev.hardrush.core.lobby.plan.*;
 import dev.hardrush.core.round.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -53,8 +54,11 @@ class AssemblyTest {
         assertThrows(IllegalStateException.class, () -> restored.proposeRestoredReady(UUID.randomUUID(), UUID.randomUUID(), b, "B", true));
     }
     @Test void allFacilitiesAndLandingsFitTheClaimedCampAndSpawnCannotAutoPrepare() {
-        for (var f : LobbyLayout.Facility.values()) { var p = LobbyLayout.facility(f); assertTrue(p.x() >= LobbyLayout.MIN_X && p.x() <= LobbyLayout.MAX_X); assertTrue(p.z() >= LobbyLayout.MIN_Z && p.z()+2 <= LobbyLayout.MAX_Z); }
-        assertFalse(LobbyLayout.ASSEMBLY.contains(LobbyLayout.landing(LobbyLayout.Landing.CENTRAL).x(), LobbyLayout.landing(LobbyLayout.Landing.CENTRAL).z()));
-        assertTrue(LobbyLayout.ASSEMBLY.contains(LobbyLayout.landing(LobbyLayout.Landing.RESTORE_READY).x(), LobbyLayout.landing(LobbyLayout.Landing.RESTORE_READY).z()));
+        var plan = LegacyCampPlan.build(8, 4, 8);
+        assertTrue(LobbyPlanValidator.validate(plan, 256).isEmpty(), "Every binding lies within the claimed camp");
+        var central = LandingRules.candidates(plan, Landing.CENTRAL).getFirst();
+        assertFalse(plan.inZone(LobbyFunction.ASSEMBLY, central.x(), central.y(), central.z(), true));
+        var restore = LandingRules.candidates(plan, Landing.RESTORE_READY).getFirst();
+        assertTrue(plan.inZone(LobbyFunction.ASSEMBLY, restore.x(), restore.y(), restore.z(), false));
     }
 }

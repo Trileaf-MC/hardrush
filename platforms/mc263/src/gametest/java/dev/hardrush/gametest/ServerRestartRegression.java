@@ -285,7 +285,7 @@ public final class ServerRestartRegression implements ModInitializer {
 
         void assemble(Actor actor) {
             act("stand in real assembly circle " + actor.profile.name(), () -> {
-                profiles.placeInLobby(actor.player, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY); acknowledge(actor);
+                profiles.placeInLobby(actor.player, dev.hardrush.core.lobby.plan.Landing.RESTORE_READY); acknowledge(actor);
             });
             waitFor("spatial preparation committed " + actor.profile.name(), () -> idle() && round().participants().containsKey(actor.profile.id())
                     && round().participants().get(actor.profile.id()).ready());
@@ -305,19 +305,29 @@ public final class ServerRestartRegression implements ModInitializer {
             if (operation.equals("recover-again")) {
                 act("make original circle restoration unsafe", () -> {
                     require(round().participants().get(b.profile.id()).ready(), "second absent original readiness survives the second clean stop");
-                    var lobby = LobbyWorld.open(server); var pos = BlockPos.containing(lobby.landing(dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY));
-                    lobby.holdingLevel().getChunkAt(pos).setBlockState(pos, Blocks.OBSIDIAN.defaultBlockState(), 2);
+                    // Every restore landing must be blocked for the circle restoration to count as unsafe.
+                    var lobby = LobbyWorld.open(server);
+                    for (var point : dev.hardrush.core.lobby.plan.LandingRules.candidates(lobby.plan(), dev.hardrush.core.lobby.plan.Landing.RESTORE_READY)) {
+                        var pos = BlockPos.containing(LobbyWorld.position(point));
+                        lobby.holdingLevel().getChunkAt(pos).setBlockState(pos, Blocks.OBSIDIAN.defaultBlockState(), 2);
+                    }
+                    require(!lobby.safeLanding(dev.hardrush.core.lobby.plan.Landing.RESTORE_READY), "every restore landing is blocked");
                 });
                 login(b);
                 waitFor("unsafe original readiness cancelled", () -> idle() && !round().participants().get(b.profile.id()).ready());
                 act("unsafe original waits outside and does not discard absent original", () -> {
-                    var camp = LobbyWorld.open(server); var anchor = BlockPos.containing(camp.holdingSpawn());
-                    // Camp arrivals scatter like vanilla respawns, so the outside landing is a zone, not a point.
-                    require(dev.hardrush.core.lobby.LobbyLayout.scatterAllowed(dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE,
-                            b.player.getBlockX() - anchor.getX(), b.player.getBlockZ() - anchor.getZ()), "unsafe restore lands in the outside waiting zone");
+                    var plan = LobbyWorld.open(server).plan(); var feet = b.player.blockPosition();
+                    var central = dev.hardrush.core.lobby.plan.Landing.CENTRAL;
+                    // Camp arrivals scatter like vanilla respawns, so the central landing is a zone, not a point.
+                    require(dev.hardrush.core.lobby.plan.LandingRules.scatterAllowed(plan, central,
+                            dev.hardrush.core.lobby.plan.LandingRules.candidates(plan, central).getFirst(), feet.getX(), feet.getY(), feet.getZ()),
+                            "unsafe restore lands in the central zone");
                     require(round().participants().get(a.profile.id()).ready() && session.recoveringCountdown(), "other original remains recoverable");
-                    var lobby = LobbyWorld.open(server); var pos = BlockPos.containing(lobby.landing(dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY));
-                    lobby.holdingLevel().getChunkAt(pos).setBlockState(pos, Blocks.AIR.defaultBlockState(), 2);
+                    var lobby = LobbyWorld.open(server);
+                    for (var point : dev.hardrush.core.lobby.plan.LandingRules.candidates(lobby.plan(), dev.hardrush.core.lobby.plan.Landing.RESTORE_READY)) {
+                        var pos = BlockPos.containing(LobbyWorld.position(point));
+                        lobby.holdingLevel().getChunkAt(pos).setBlockState(pos, Blocks.AIR.defaultBlockState(), 2);
+                    }
                     details.addProperty("unsafeRestoreOutside", true);
                 });
             }
@@ -435,8 +445,8 @@ public final class ServerRestartRegression implements ModInitializer {
                 require(round().phase()==RoundPhase.RESCUE&&session.view().orElseThrow().remainingPhaseMillis()==50000,"downtime preserves fifty seconds of rescue");
                 require(round().participants().get(a.profile.id()).revivalEntitled()&&!round().participants().get(b.profile.id()).revivalEntitled(),"exactly original owner keeps qualification");
                 // Stand on the rebuilt altar's gold pad; the rite submits once after the portal delay.
-                var lobby=LobbyWorld.open(server);var point=dev.hardrush.core.lobby.LobbyLayout.facility(dev.hardrush.core.lobby.LobbyLayout.Facility.ALTAR);
-                move(a,lobby.holdingLevel(),lobby.layoutPosition(point).add(-1,1,-1));
+                var lobby=LobbyWorld.open(server);
+                move(a,lobby.holdingLevel(),LobbyPlanFixtures.onAltar(server));
                 require(lobby.onAltar(a.player),"recovered body stands on the altar pad");
             });
             waitFor("one recovered revival restores challenge", () -> idle()&&round().phase()==RoundPhase.RUNNING
@@ -468,7 +478,7 @@ public final class ServerRestartRegression implements ModInitializer {
         void writeWorlds() {
             var lobby = LobbyWorld.open(server);
             require(lobby.ready(), "permanent flat lobby ready before normal stop");
-            var lobbyMarker = BlockPos.containing(lobby.holdingSpawn()).offset(6, 3, 6);
+            var lobbyMarker = LobbyPlanFixtures.sentinel(server);
             // Fixture-only marker bypasses the full lobby's player/world protection.
             lobby.holdingLevel().getChunkAt(lobbyMarker).setBlockState(lobbyMarker, Blocks.LAPIS_BLOCK.defaultBlockState(), 2);
             details.addProperty("lobbyDimension", lobby.holdingLevel().dimension().identifier().toString());
@@ -491,7 +501,7 @@ public final class ServerRestartRegression implements ModInitializer {
             var lobby = LobbyWorld.open(server);
             require(lobby.ready() && lobby.holdingLevel().dimension().equals(LobbyWorld.KEY), "same permanent lobby dimension reopened");
             require(lobby.builtBlocks() == 0 && lobby.loadedChunks() > 9, "versioned camp reopens without rewriting terrain and covers full footprint");
-            var lobbyMarker = BlockPos.containing(lobby.holdingSpawn()).offset(6, 3, 6);
+            var lobbyMarker = LobbyPlanFixtures.sentinel(server);
             require(lobby.holdingLevel().getBlockState(lobbyMarker).is(Blocks.LAPIS_BLOCK), "actual lobby terrain survives a new JVM");
             int index = 0;
             for (var semantic : List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {

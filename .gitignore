@@ -15,3 +15,5 @@
 **/__pycache__/
 
 /test-server/
+# Log4j output of unit tests run from a module directory (rotated on every start)
+**/logs/
