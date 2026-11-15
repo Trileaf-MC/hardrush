@@ -12,29 +12,29 @@ import net.minecraft.nbt.*;
  * to export real ones). Each sample is a tag tree plus the blocks it must convert to, in coordinates relative to
  * the building's minimum corner; tests write the tree to disk, or damage it first.
  */
-final class SampleFiles {
-    static final int DATA_VERSION = 3900;
+public final class SampleFiles {
+    public static final int DATA_VERSION = 3900;
 
     /** What a sample must convert to: canonical state key per non-air cell, and block entities. */
-    record Expected(int sx, int sy, int sz, Map<Cell, String> states, Map<Cell, CompoundTag> blockEntities) {}
+    public record Expected(int sx, int sy, int sz, Map<Cell, String> states, Map<Cell, CompoundTag> blockEntities) {}
 
-    record Sample(CompoundTag tag, Expected expected) {}
+    public record Sample(CompoundTag tag, Expected expected) {}
 
-    static final String STONE = "minecraft:stone";
-    static final String STAIRS = "minecraft:oak_stairs[facing=north,half=bottom]";
-    static final String SIGN = "minecraft:oak_sign[rotation=8,waterlogged=false]";
-    static final String GOLD = "minecraft:gold_block";
+    public static final String STONE = "minecraft:stone";
+    public static final String STAIRS = "minecraft:oak_stairs[facing=north,half=bottom]";
+    public static final String SIGN = "minecraft:oak_sign[rotation=8,waterlogged=false]";
+    public static final String GOLD = "minecraft:gold_block";
 
     private SampleFiles() {}
 
-    static Path write(Path dir, String name, CompoundTag tag) throws IOException {
+    public static Path write(Path dir, String name, CompoundTag tag) throws IOException {
         var file = dir.resolve(name);
         NbtIo.writeCompressed(tag, file);
         return file;
     }
 
     /** The sign's block entity as a template stores it (with id, without position). */
-    static CompoundTag signEntity(String text) {
+    public static CompoundTag signEntity(String text) {
         var front = new CompoundTag();
         front.putBoolean("has_glowing_text", false);
         front.putString("color", "black");
@@ -72,7 +72,7 @@ final class SampleFiles {
     // ---- .nbt ----
 
     /** 3×3×3: a bottom slab, a sign with text, a chest holding an item, air, a structure void and one entity. */
-    static Sample nbt() {
+    public static Sample nbt() {
         var palette = new ListTag();
         for (var state : List.of("minecraft:oak_slab[type=bottom,waterlogged=false]", SIGN,
                 "minecraft:chest[facing=north,type=single,waterlogged=false]", "minecraft:air", "minecraft:structure_void"))
@@ -149,7 +149,7 @@ final class SampleFiles {
         return palette;
     }
 
-    static byte[] varints(int[] values) {
+    public static byte[] varints(int[] values) {
         var out = new java.io.ByteArrayOutputStream();
         for (int value : values) {
             while ((value & -128) != 0) {
@@ -170,7 +170,7 @@ final class SampleFiles {
         return new Expected(W, H, L, states, Map.of(new Cell(1, 1, 1), signEntity("sponge")));
     }
 
-    static Sample schemV2() {
+    public static Sample schemV2() {
         var sign = signEntity("sponge");
         sign.remove("id");
         sign.putString("Id", "minecraft:sign");
@@ -191,7 +191,7 @@ final class SampleFiles {
         return new Sample(root, spongeExpected());
     }
 
-    static Sample schemV3() {
+    public static Sample schemV3() {
         var data = signEntity("sponge");
         data.remove("id");
         var entity = new CompoundTag();
@@ -222,11 +222,11 @@ final class SampleFiles {
     private static final List<String> B_PALETTE = List.of("minecraft:air", STONE, STAIRS);
 
     /** Region A (4×3×2 at 10,5,-3): 24 entries of 3 bits, so entry 21 spans two longs. */
-    static int aValue(int i) { return (i * 3 + 1) % 5; }
+    public static int aValue(int i) { return (i * 3 + 1) % 5; }
     /** Region B (Size -2,1,-3 at 15,6,1, which really spans 14..15, 6, -1..1): 6 entries of 2 bits. */
-    static int bValue(int i) { return (i + 1) % 3; }
+    public static int bValue(int i) { return (i + 1) % 3; }
 
-    static long[] pack(int[] values, int bits) {
+    public static long[] pack(int[] values, int bits) {
         var out = new long[(values.length * bits + 63) / 64];
         for (int i = 0; i < values.length; i++) {
             for (int b = 0; b < bits; b++) {
@@ -252,7 +252,7 @@ final class SampleFiles {
         return tag;
     }
 
-    static Sample litematic() {
+    public static Sample litematic() {
         var states = new LinkedHashMap<Cell, String>();
         var blockEntities = new LinkedHashMap<Cell, CompoundTag>();
         var aValues = new int[24];
