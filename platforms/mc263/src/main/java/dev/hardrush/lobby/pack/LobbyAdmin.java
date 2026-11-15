@@ -44,7 +44,7 @@ public final class LobbyAdmin {
 
     /** What the menu and the status bar show about the running install. */
     public record Progress(String pack, LobbyInstall.Stage stage, int placedTiles, int totalTiles, boolean waitingForSwitch,
-                           long waitingSeconds, Optional<UUID> requester) {}
+                           long waitingSeconds, boolean cancellable, Optional<UUID> requester) {}
 
     /**
      * One {@code packs/*.hrlobby} as the library lists it. {@code problems} keep it from installing; {@code fallbacks}
@@ -108,20 +108,37 @@ public final class LobbyAdmin {
         var lobby = LobbyWorld.open(server);
         var refusal = refusal(server, lobby);
         if (refusal != null) return Result.refused(refusal);
-        int current = lobby.installation().orElseThrow().seq();
-        SortedMap<Integer, Path> copies;
-        try {
-            copies = lobby.storage().installedCopies().headMap(current);
-        } catch (IOException e) {
-            return Result.refused("读取已安装的大厅副本失败：" + e.getMessage());
-        }
-        if (copies.isEmpty()) return Result.refused("没有上一个大厅可以回去");
-        var copy = copies.get(copies.lastKey());
+        var found = previous(lobby);
+        if (found.copy() == null) return Result.refused(found.problem());
+        var copy = found.copy();
         var source = new LobbyInstall.Source() {
             public String name() { return "上一个大厅"; }
             public InputStream open() throws IOException { return LobbyInstall.Source.file(copy).open(); }
         };
         return start(server, lobby, source, "上一个大厅", requester);
+    }
+
+    /** Why a roll-back is not possible right now; empty when it is. For the menu's greyed button. */
+    public static Optional<String> rollbackRefusal(MinecraftServer server) {
+        requireThread(server);
+        var lobby = LobbyWorld.open(server);
+        var refusal = refusal(server, lobby);
+        if (refusal != null) return Optional.of(refusal);
+        var found = previous(lobby);
+        return found.copy() == null ? Optional.of(found.problem()) : Optional.empty();
+    }
+
+    /** The previous lobby's installed copy, or why there is none. */
+    private record Previous(Path copy, String problem) {}
+
+    private static Previous previous(LobbyWorld lobby) {
+        int current = lobby.installation().orElseThrow().seq();
+        try {
+            var copies = lobby.storage().installedCopies().headMap(current);
+            return copies.isEmpty() ? new Previous(null, "没有上一个大厅可以回去") : new Previous(copies.get(copies.lastKey()), null);
+        } catch (IOException e) {
+            return new Previous(null, "读取已安装的大厅副本失败：" + e.getMessage());
+        }
     }
 
     /** Abandons the running install and deletes its dimension; not once it is being recorded. */
@@ -143,7 +160,7 @@ public final class LobbyAdmin {
         var install = job.install;
         return Optional.of(new Progress(name(job), install.stage(), install.placedTiles(), install.totalTiles(),
                 install.stage() == LobbyInstall.Stage.READY, TimeUnit.NANOSECONDS.toSeconds(install.waitingNanos()),
-                Optional.ofNullable(job.requester)));
+                install.cancellable(), Optional.ofNullable(job.requester)));
     }
 
     /**

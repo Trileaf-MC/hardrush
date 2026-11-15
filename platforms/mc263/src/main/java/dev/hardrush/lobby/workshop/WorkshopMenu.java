@@ -11,8 +11,8 @@ import net.minecraft.world.item.Items;
 
 /**
  * The {@code /hardrush lobby} chest (design 12): the draft list, a draft's page (enter, delete) and the new-draft page.
- * Buttons a player may not use are greyed out with the reason in their lore. M4 adds the pack library, install and
- * roll-back on the main page; M3b the remaining new-draft sources.
+ * Buttons a player may not use are greyed out with the reason in their lore. The pack library, install and roll-back
+ * live in {@link LobbyAdminMenu}; M3b adds the remaining new-draft sources.
  */
 final class WorkshopMenu {
     private enum Page { LIST, DRAFT, CONFIRM_DELETE, NEW }
@@ -49,6 +49,8 @@ final class WorkshopMenu {
                 out.add(workshop.drafts().size() >= Workshop.MAX_DRAFTS
                         ? Button.disabled("新建草稿", "草稿已满 " + Workshop.MAX_DRAFTS + " 个，先删除一个")
                         : new Button(Items.WRITABLE_BOOK, "新建草稿", "new", ""));
+                out.add(Workshop.owner(player) ? new Button(Items.BOOKSHELF, "大厅包库与安装", "admin", "")
+                        : Button.disabled("大厅包库与安装", "需要 4 级管理员权限"));
                 if (workshop.buildingIn(player).isPresent()) out.add(new Button(Items.OAK_DOOR, "离开工坊，回到营地", "leave", ""));
             }
             case DRAFT -> {
@@ -96,6 +98,7 @@ final class WorkshopMenu {
         switch (button.action()) {
             case "draft" -> { view.selected = button.value(); view.page = Page.DRAFT; }
             case "new" -> view.page = Page.NEW;
+            case "admin" -> { if (Workshop.owner(player)) LobbyAdminMenu.open(workshop, player); }
             case "back" -> view.page = view.page == Page.CONFIRM_DELETE ? Page.DRAFT : Page.LIST;
             case "leave" -> { player.closeContainer(); workshop.leave(player, null); }
             case "enter" -> {
