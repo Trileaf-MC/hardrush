@@ -37,6 +37,7 @@ public final class HardRushDevelopment implements ModInitializer {
             }
         });
         ServerLifecycleEvents.SERVER_STOPPING.register(DevelopmentWorlds::close);
+        DefaultLobbyExport.register();
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(Commands.literal("hardrushdev")

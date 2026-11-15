@@ -587,4 +587,26 @@ tasks.named('runGameTest') {
     }
 }
 
+// TODO: [Refactor] One-off (M2): exports the code-built camp as the built-in default.hrlobby. Deleted together with
+// CampBlueprint once the pack is committed; later default-lobby edits go through the workshop.
+def exportDefaultLobbyRunDir = rootProject.file('.local/export-default-lobby')
+loom {
+    runs {
+        exportDefaultLobby {
+            server()
+            source sourceSets.gametest
+            runDir exportDefaultLobbyRunDir.absolutePath
+            ideConfigGenerated false
+            programArg 'nogui'
+            vmArg "-Dhardrush.dev.exportDefaultLobby=${project.file('src/main/resources/hardrush/lobby/default.hrlobby').absolutePath}"
+        }
+    }
+}
+tasks.named('runExportDefaultLobby') {
+    doFirst {
+        exportDefaultLobbyRunDir.mkdirs()
+        copy { from acceptedEula; into exportDefaultLobbyRunDir }
+    }
+}
+
 apply from: rootProject.file('gradle/test-server.gradle')
