@@ -1,7 +1,7 @@
 package dev.hardrush.core.spawn;
 
 import static org.junit.jupiter.api.Assertions.*;
-import dev.hardrush.core.lobby.LegacyCampPlan;
+import dev.hardrush.core.lobby.CampPlanFixture;
 import dev.hardrush.core.lobby.plan.*;
 import java.util.HashSet;
 import java.util.SplittableRandom;
@@ -46,7 +46,7 @@ class SpawnScatterTest {
     }
 
     @Test void campScatterKeepsArrivalsInTheirPurposeZone() {
-        var plan = LegacyCampPlan.build(8, 4, 8);
+        var plan = CampPlanFixture.build(8, 4, 8);
         var bounds = plan.bounds();
         for (var purpose : Landing.values()) {
             var point = LandingRules.candidates(plan, purpose).getFirst();
