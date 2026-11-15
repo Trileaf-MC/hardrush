@@ -87,6 +87,8 @@ public final class PackCapture {
                     region.min().z() + blockPos.getIntOr(2, 0));
             if (!region.contains(world)) { it.remove(); continue; }
             entity.put("blockPos", shift(blockPos, dx, dy, dz));
+            // Placing drops UUIDs anyway; leaving them out keeps the same build publishing the same bytes.
+            entity.getCompound("nbt").ifPresent(nbt -> nbt.remove("UUID"));
             var pos = entity.getListOrEmpty("pos");
             var shifted = new ListTag();
             shifted.add(DoubleTag.valueOf(pos.getDoubleOr(0, 0) + dx));
