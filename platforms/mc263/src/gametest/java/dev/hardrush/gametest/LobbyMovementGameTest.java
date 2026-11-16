@@ -98,8 +98,9 @@ public final class LobbyMovementGameTest {
                         && f.a.player.getY() >= LobbyWorld.open(f.server).plan().bounds().min().y(), "A player who falls out of the lobby is put back"))
                 .thenExecute(() -> {
                     var landing = LobbyPlanFixtures.outsideAssembly(f.server);
+                    // Vanilla's respawn scatter is a square of radius 10: its corners lie about 14.1 blocks out.
                     test.assertTrue(dev.hardrush.world.RoundWorldBundle.safeStanding(f.a.player.level(), f.a.player.blockPosition())
-                            && Math.abs(f.a.player.getY() - landing.y) < .001 && f.a.player.position().distanceTo(landing) < 12,
+                            && Math.abs(f.a.player.getY() - landing.y) < .001 && f.a.player.position().distanceTo(landing) < 15,
                             "The fallen player stands at the central landing again: " + f.a.player.position());
                     test.assertTrue(PlayerProfiles.canMoveInLobby(f.a.player), "Rescue keeps the lobby body");
                     f.a.command("hardrush join");
