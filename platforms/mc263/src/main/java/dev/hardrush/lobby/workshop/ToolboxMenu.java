@@ -88,8 +88,8 @@ final class ToolboxMenu {
                 out.add(new Button(Items.REDSTONE, "缩小范围（直径 −16）", "resize", "-16", List.of("范围外的东西不会被发布")));
                 out.add(new Button(Items.EMERALD, "放大范围（直径 +16）", "resize", "16",
                         List.of("最大 " + dev.hardrush.HardRushProperties.lobbyMaxSize())));
-                out.add(new Button(Items.DEEPSLATE, "底部高度设为脚下（Y " + player.getBlockY() + "）", "bottom", "set",
-                        List.of(draft.bottomY() == null ? "现在：未设置，所有高度都会发布" : "现在：Y " + draft.bottomY() + " 以下不发布",
+                out.add(new Button(Items.DEEPSLATE, "底部高度设为脚下这层（Y " + Workshop.bottomUnderfoot(player) + "）", "bottom", "set",
+                        List.of(draft.bottomY() == null ? "现在：未设置，所有高度都会发布" : "现在：低于 Y " + draft.bottomY() + " 的方块不发布",
                                 "导入的存档常带着整片地下，用它排除")));
                 if (draft.bottomY() != null) out.add(new Button(Items.BEDROCK, "取消底部高度", "bottom", "clear"));
                 out.add(new Button(Items.IRON_SWORD, "清除生物", "clear-mobs", "", List.of("移除范围内已加载的生物、掉落物等", "盔甲架、展示框、展示实体和点击范围保留")));
@@ -158,8 +158,11 @@ final class ToolboxMenu {
             case "preview" -> togglePreview(player);
             case "center" -> report(player, workshop.setCenter(player), "范围中心已设到 " + player.getBlockX() + " " + player.getBlockZ());
             case "resize" -> report(player, workshop.resize(player, Integer.parseInt(button.value())), "范围已调整");
-            case "bottom" -> report(player, workshop.setBottom(player, button.value().equals("set") ? player.getBlockY() : null),
-                    button.value().equals("set") ? "Y " + player.getBlockY() + " 以下不会发布" : "已取消底部高度");
+            case "bottom" -> {
+                int y = Workshop.bottomUnderfoot(player);
+                boolean set = button.value().equals("set");
+                report(player, workshop.setBottom(player, set ? y : null), set ? "低于 Y " + y + " 的方块不会发布" : "已取消底部高度");
+            }
             case "clear-mobs" -> Notices.hint(player, "已清除 " + workshop.clearMobs(player) + " 个实体");
             case "paste-list" -> view.page = Page.PASTE;
             case "paste-pick" -> { view.file = button.value(); view.page = Page.PASTE_CONFIRM; }

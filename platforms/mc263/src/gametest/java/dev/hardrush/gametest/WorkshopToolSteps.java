@@ -276,9 +276,12 @@ final class WorkshopToolSteps {
                     check(test, level.getBlockState(new BlockPos(0, 40, 0)).is(Blocks.STONE), "…deep ground included");
                     check(test, level.getBlockState(new BlockPos(100, 64, 100)).is(Blocks.STONE), "…and the far building");
                     enter(test, f, "draft3");
-                    teleport(f, CENTER + .5, BOTTOM, CENTER + .5);
+                    // Standing on a floor at BOTTOM keeps that floor and leaves the layer below it out.
+                    level.setBlockAndUpdate(new BlockPos(CENTER, BOTTOM, CENTER), Blocks.STONE.defaultBlockState());
+                    level.setBlockAndUpdate(new BlockPos(CENTER, BOTTOM - 1, CENTER), Blocks.STONE.defaultBlockState());
+                    teleport(f, CENTER + .5, BOTTOM + 1, CENTER + .5);
                     check(test, workshop(f).setCenter(f.a.player).isEmpty() && workshop(f).resize(f.a.player, -160).isEmpty()
-                            && workshop(f).setBottom(f.a.player, f.a.player.getBlockY()).isEmpty(), "Range and bottom height set");
+                            && workshop(f).setBottom(f.a.player, Workshop.bottomUnderfoot(f.a.player)).isEmpty(), "Range and bottom height set");
                     test.assertValueEqual(workshop(f).draft("draft3").orElseThrow().bottomY(), BOTTOM, "Bottom height recorded");
                     check(test, workshop(f).publish(f.a.player, "draft3").isEmpty(), "Publishing the save starts");
                 })
@@ -291,7 +294,7 @@ final class WorkshopToolSteps {
                 .thenExecute(() -> {
                     var contents = read(packsOf(f, "draft3").getFirst());
                     int maxX = CENTER - DIAMETER / 2 + DIAMETER - 1;
-                    boolean lectern = false;
+                    boolean lectern = false, floor = false;
                     for (var entry : contents.tiles().entrySet()) {
                         var key = entry.getKey();
                         for (var b : entry.getValue().getListOrEmpty("blocks")) {
@@ -300,11 +303,13 @@ final class WorkshopToolSteps {
                             int x = key.originX() + pos.getIntOr(0, 0), y = key.originY() + pos.getIntOr(1, 0), z = key.originZ() + pos.getIntOr(2, 0);
                             check(test, y >= BOTTOM, "Nothing below the bottom height: " + x + " " + y + " " + z);
                             check(test, x <= maxX && z <= maxX, "Nothing outside the range: " + x + " " + y + " " + z);
+                            if (x == CENTER && y == BOTTOM && z == CENTER) floor = true;
                             if (x == NEW_LECTERN.getX() && y == NEW_LECTERN.getY() && z == NEW_LECTERN.getZ())
                                 lectern = block.getCompoundOrEmpty("nbt").getStringOr("id", "").equals("minecraft:lectern");
                         }
                     }
                     check(test, lectern, "The camp inside the range is in the pack");
+                    check(test, floor, "The floor the bottom height was set on is in the pack");
                     workshop(f).dismissPublish("draft3");
                     workshop(f).leave(f.a.player, null);
                     // Design 19.2: a building file becomes a draft centred on the origin at Y 64.
