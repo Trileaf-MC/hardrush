@@ -725,7 +725,7 @@ public final class RoundRuntime {
         }
         var round = session.snapshot().orElseThrow();
         // The answer belongs on the action bar, which a chest screen covers: it closes the menu the claim came from,
-        // but never one the player has opened since (the library again, the rule book, a chest).
+        // but never one the player has opened since (the library again, a chest); a refusal then waits for that one.
         var origin = player.containerMenu;
         service.claim(player.getUUID(), roundId, volume, round.rules().fingerprint(),
                 new OperationTag(round.roundId(), UUID.randomUUID(), round.version())).whenComplete((result, error) -> {
@@ -734,7 +734,7 @@ public final class RoundRuntime {
             var status = error == null ? result.status() : HistoryBookService.Status.RETRYABLE_FAILURE;
             if (origin != player.inventoryMenu && player.containerMenu == origin) player.closeContainer();
             if (status == HistoryBookService.Status.DELIVERED || status == HistoryBookService.Status.ALREADY_DELIVERED) pageTurn(player);
-            else manualBookRefusal(status, volume).ifPresent(text -> dev.hardrush.notice.Notices.refuse(player, text));
+            else manualBookRefusal(status, volume).ifPresent(text -> dev.hardrush.notice.Notices.refuseWhenUncovered(player, text));
         });
     }
 
