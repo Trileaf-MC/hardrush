@@ -66,7 +66,14 @@ class ZoneTest {
         assertTrue(a.overlaps(Zone.box(new Cell(3, 65, 0), 2, 0, 0)));
         assertTrue(Zone.box(new Cell(3, 65, 0), 2, 0, 0).overlaps(a));
         assertFalse(a.overlaps(Zone.box(new Cell(3, 65, 0), 1, 0, 0)));
-        assertFalse(a.overlaps(Zone.box(new Cell(0, 66, 0), 1, 0, 1)));
+        // A floor at y=64 holds feet up to 66.5, so a box from y=66 shares heights with it; one from y=67 does not.
+        assertTrue(a.overlaps(Zone.box(new Cell(0, 66, 0), 1, 0, 1)));
+        assertTrue(Zone.box(new Cell(0, 66, 0), 1, 0, 1).overlaps(a));
+        assertFalse(a.overlaps(Zone.box(new Cell(0, 67, 0), 1, 0, 1)));
+        assertFalse(Zone.box(new Cell(0, 67, 0), 1, 0, 1).overlaps(a));
+        // A box ending below the floor block never meets the feet above it.
+        assertFalse(a.overlaps(Zone.box(new Cell(0, 60, 0), 1, 3, 1)));
+        assertTrue(a.overlaps(Zone.box(new Cell(0, 60, 0), 1, 4, 1)));
         assertTrue(Zone.box(new Cell(0, 0, 0), 1, 1, 1).overlaps(Zone.box(new Cell(2, 1, 0), 1, 1, 1)));
         assertFalse(Zone.box(new Cell(0, 0, 0), 1, 1, 1).overlaps(Zone.box(new Cell(3, 1, 0), 1, 1, 1)));
     }

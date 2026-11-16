@@ -73,7 +73,8 @@ public sealed interface Zone permits Zone.Floor, Zone.Volume {
                     for (var e : columns.entrySet()) {
                         var theirs = f.columns.get(e.getKey());
                         if (theirs == null) continue;
-                        for (int a : e.getValue()) for (int b : theirs) if (Math.abs(a - b) <= 2) yield true;
+                        // Reaches [a, a + FLOOR_REACH] and [b, b + FLOOR_REACH] meet iff |a - b| <= FLOOR_REACH: 2 for whole blocks.
+                        for (int a : e.getValue()) for (int b : theirs) if (Math.abs(a - b) <= FLOOR_REACH) yield true;
                     }
                     yield false;
                 }
@@ -96,8 +97,12 @@ public sealed interface Zone permits Zone.Floor, Zone.Volume {
         @Override public boolean overlaps(Zone other) {
             return switch (other) {
                 case Volume v -> box.intersects(v.box);
+                // Same reach as containsPoint on both sides: the floor's feet range [cy, cy + FLOOR_REACH] against the
+                // box's [min.y, max.y + 1) in the column, so no standing height counts for both zones.
                 case Floor f -> {
-                    for (var c : f.floor()) if (box.contains(c.x() + .5, c.y() + 1, c.z() + .5)) yield true;
+                    for (var c : f.floor())
+                        if (c.x() >= box.min().x() && c.x() <= box.max().x() && c.z() >= box.min().z() && c.z() <= box.max().z()
+                                && box.min().y() <= c.y() + FLOOR_REACH && c.y() < box.max().y() + 1) yield true;
                     yield false;
                 }
             };
