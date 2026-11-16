@@ -10,6 +10,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.DoubleTag;
+import net.minecraft.nbt.IntTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -235,6 +240,104 @@ public final class LobbyInstallGameTest {
                     }
                 })
                 .thenSucceed();
+    }
+
+    /**
+     * The only 【规则】 bound to a villager (written straight into a pack, past publishing): installing removes the
+     * villager, so the binding must count as missing and get its lectern stand-in, not stay in the plan pointing at
+     * nothing.
+     */
+    @GameTest(maxTicks = 60000)
+    public void anEntityTriggerTheSanitizerRemovesGetsAStandIn(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var directory = scratch(server, "lobby-install-villager");
+        var storage = new LobbyStorage(directory);
+        var key = testKey();
+        Path pack;
+        Point anchor;
+        try (var in = LobbyInstall.Source.builtIn().open()) {
+            var contents = PackFile.read(in, PackLimits.forServer(MAX_SIZE));
+            var plan = contents.plan();
+            anchor = plan.triggers(LobbyFunction.RULES).getFirst().anchor();
+            var tileKey = TileKey.of((int) Math.floor(anchor.x()), (int) Math.floor(anchor.y()), (int) Math.floor(anchor.z()));
+            var tiles = new HashMap<>(contents.tiles());
+            var tile = tiles.get(tileKey).copy();
+            var nbt = new CompoundTag();
+            nbt.putString("id", "minecraft:villager");
+            var tags = new ListTag();
+            tags.add(StringTag.valueOf(MarkerTags.FUNCTION + LobbyFunction.RULES.id()));
+            nbt.put("Tags", tags);
+            var entity = new CompoundTag();
+            var pos = new ListTag();
+            pos.add(DoubleTag.valueOf(anchor.x() - tileKey.originX()));
+            pos.add(DoubleTag.valueOf(anchor.y() - tileKey.originY()));
+            pos.add(DoubleTag.valueOf(anchor.z() - tileKey.originZ()));
+            entity.put("pos", pos);
+            var blockPos = new ListTag();
+            blockPos.add(IntTag.valueOf(anchor.cell().x() - tileKey.originX()));
+            blockPos.add(IntTag.valueOf(anchor.cell().y() - tileKey.originY()));
+            blockPos.add(IntTag.valueOf(anchor.cell().z() - tileKey.originZ()));
+            entity.put("blockPos", blockPos);
+            entity.put("nbt", nbt);
+            var entities = tile.getListOrEmpty("entities").copy();
+            entities.add(entity);
+            tile.put("entities", entities);
+            tiles.put(tileKey, tile);
+            var triggers = new ArrayList<>(plan.triggers().stream().filter(t -> t.function() != LobbyFunction.RULES).toList());
+            triggers.add(new Trigger(LobbyFunction.RULES, null, null, anchor));
+            var villagerRules = new LobbyPlan(plan.bounds(), triggers, plan.models(), plan.points(), plan.zones(), plan.altarLights(), plan.texts());
+            pack = directory.resolve("packs/villager.hrlobby");
+            PackFile.write(pack, contents.manifest(), villagerRules, tiles);
+        } catch (IOException | PackException e) {
+            throw new IllegalStateException(e);
+        }
+        var install = new LobbyInstall(server, storage, LobbyInstall.Source.file(pack), 1, key, MAX_SIZE, OptionalInt.empty());
+        var outcome = new AtomicReference<LobbyInstall.Outcome>();
+        test.startSequence()
+                .thenWaitUntil(() -> {
+                    if (outcome.get() == null) install.tick(true).ifPresent(outcome::set);
+                    test.assertTrue(outcome.get() != null, "Installing: " + install.placedTiles() + " tiles placed");
+                })
+                .thenExecute(() -> {
+                    if (!(outcome.get() instanceof LobbyInstall.Outcome.Installed done)) throw new AssertionError("The pack installs: " + outcome.get());
+                    try {
+                        var level = done.handle().asLevel();
+                        var plan = done.installation().plan();
+                        test.assertTrue(done.sanitized().removedIds().contains("minecraft:villager"), "The villager is removed: " + done.sanitized());
+                        test.assertTrue(done.fallbacks().functions().contains(LobbyFunction.RULES), "The rules get a stand-in: " + done.fallbacks().functions());
+                        var rules = plan.triggers(LobbyFunction.RULES);
+                        test.assertValueEqual(rules.size(), 1, "Only the stand-in is recorded: " + rules);
+                        var cell = rules.getFirst().block();
+                        test.assertTrue(cell != null && level.getBlockState(new BlockPos(cell.x(), cell.y(), cell.z())).is(Blocks.LECTERN),
+                                "The stand-in is a lectern: " + rules.getFirst());
+                        test.assertTrue(done.warnings().stream().anyMatch(p -> p.kind() == ProblemKind.MARKER && p.function() == LobbyFunction.RULES),
+                                "The lost binding is reported: " + done.warnings());
+                    } finally {
+                        done.chunks().close();
+                        done.handle().delete();
+                        deleteRecursively(directory);
+                    }
+                })
+                .thenSucceed();
+    }
+
+    /** Publishing refuses the same binding up front: a villager is not on the entity whitelist. */
+    @GameTest
+    public void publishingRefusesTriggersOnEntitiesInstallingRemoves(GameTestHelper test) {
+        var level = test.getLevel();
+        var at = test.absolutePos(new BlockPos(1, 1, 1));
+        level.setBlockAndUpdate(at.below(), Blocks.STONE.defaultBlockState());
+        var villager = test.spawn(net.minecraft.world.entity.EntityTypes.VILLAGER, new BlockPos(1, 1, 1));
+        villager.setNoAi(true);
+        villager.addTag(MarkerTags.FUNCTION + LobbyFunction.RULES.id());
+        var area = new Box(new Cell(at.getX() - 1, at.getY() - 1, at.getZ() - 1), new Cell(at.getX() + 1, at.getY() + 2, at.getZ() + 1));
+        var scan = MarkerScan.scan(level, area, OptionalInt.empty(), MAX_SIZE);
+        test.assertTrue(scan.problems().stream().anyMatch(p -> p.kind() == ProblemKind.MARKER && p.severity() == Severity.ERROR
+                && p.function() == LobbyFunction.RULES && p.message().contains("minecraft:villager") && p.message().contains("安装时会被移除")),
+                "The villager binding is an error: " + scan.problems());
+        test.assertTrue(scan.plan() == null || scan.plan().triggers(LobbyFunction.RULES).isEmpty(), "…and not a trigger");
+        villager.discard();
+        test.succeed();
     }
 
     @GameTest

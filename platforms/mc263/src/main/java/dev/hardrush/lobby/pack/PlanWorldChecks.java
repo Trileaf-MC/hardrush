@@ -4,6 +4,10 @@ import dev.hardrush.core.lobby.plan.*;
 import dev.hardrush.world.RoundWorldBundle;
 import java.util.*;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.SignBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -40,6 +44,48 @@ public final class PlanWorldChecks {
         });
         for (var model : plan.models()) standing(level, model.function(), model.point(), Severity.WARNING).ifPresent(problems::add);
         return List.copyOf(problems);
+    }
+
+    /** {@link #withPresentEntities}: the plan without bindings whose entity is missing, and a warning for each. */
+    public record Present(LobbyPlan plan, List<Problem> dropped) {
+        public Present { dropped = List.copyOf(dropped); }
+    }
+
+    /**
+     * Entity triggers and text displays are recorded in the plan but found by tag at runtime. After installing, keeps
+     * only those whose entity is really there: at its recorded position, carrying the function's tag, of a type the
+     * sanitizer keeps. The rest (bound to an entity installing removed, or a pack that does not match its tiles) are
+     * dropped, so counting afterwards sees a missing function and gives it a stand-in.
+     */
+    public static Present withPresentEntities(ServerLevel level, LobbyPlan plan) {
+        var dropped = new ArrayList<Problem>();
+        var triggers = new ArrayList<Trigger>();
+        for (var t : plan.triggers()) {
+            if (t.block() == null && !tagged(level, t.function(), t.anchor(), Binding.CLICK)) dropped.add(gone(t.function(), t.anchor()));
+            else triggers.add(t);
+        }
+        var texts = new ArrayList<TextSlot>();
+        for (var t : plan.texts()) {
+            if (t.sign() == null && !tagged(level, t.function(), t.anchor(), Binding.TEXT)) dropped.add(gone(t.function(), t.anchor()));
+            else texts.add(t);
+        }
+        if (dropped.isEmpty()) return new Present(plan, List.of());
+        return new Present(new LobbyPlan(plan.bounds(), triggers, plan.models(), plan.points(), plan.zones(), plan.altarLights(), texts), dropped);
+    }
+    private static boolean tagged(ServerLevel level, LobbyFunction f, Point at, Binding binding) {
+        var box = new AABB(at.x(), at.y(), at.z(), at.x(), at.y(), at.z()).inflate(ANCHOR_TOLERANCE);
+        return !level.getEntities((Entity) null, box, e -> e.position().distanceToSqr(at.x(), at.y(), at.z()) <= ANCHOR_TOLERANCE * ANCHOR_TOLERANCE
+                && TileSanitizer.ALLOWED_ENTITIES.contains(BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString())
+                && (binding != Binding.TEXT || e instanceof Display.TextDisplay)
+                && MarkerTags.parseTrigger(e.entityTags()).orElse(null) instanceof MarkerTags.Ok ok
+                && ok.spec().function() == f && ok.spec().binding() == binding).isEmpty();
+    }
+    /** Placing keeps an entity's exact position; this only absorbs float rounding. */
+    private static final double ANCHOR_TOLERANCE = 0.01;
+    private static Problem gone(LobbyFunction f, Point at) {
+        var c = at.cell();
+        return Problem.warning(ProblemKind.MARKER, f, c, "【" + f.displayName() + "】绑定的实体（" + c.x() + " " + c.y() + " " + c.z()
+                + "）安装后不在了，已不计入；不在实体白名单里的实体安装时会被移除");
     }
 
     /** A function with a block requirement (vaults, the altar light) bound to the wrong block or block state. */
