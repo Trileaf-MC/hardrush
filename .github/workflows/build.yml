@@ -1,14 +1,39 @@
 name: Build mod
 
+# Branches reach main through pull requests, so a branch push is already covered by its
+# pull_request run; building both would run every job twice.
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
 jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      # GameTests are not run here: they start a real server, which needs an accepted EULA.
+      - name: Gradle unit tests
+        run: ./gradlew test --no-daemon --console=plain
+      - name: Script unit tests
+        working-directory: scripts
+        run: python3 -m unittest discover -p 'test_*.py'
+
   assemble:
     name: Assemble (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
