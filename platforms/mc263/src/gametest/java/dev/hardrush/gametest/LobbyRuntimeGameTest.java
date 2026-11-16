@@ -294,10 +294,7 @@ public final class LobbyRuntimeGameTest {
                         hunter.move(prey.player.position().add(1, 0, 0));
                         prey.player.setHealth(1);
                         prey.player.setInvulnerableTime(0);
-                        // Random birth gear may be a spear, whose native STAB input has its own suite.
-                        hunter.player.getInventory().setItem(8, ItemStack.EMPTY);
-                        hunter.player.getInventory().setSelectedSlot(8);
-                        MonsterRoles.repairLoadout(hunter.player);
+                        MonsterRoleGameTest.emptyHanded(hunter.player);
                         boolean landed = MonsterRoles.attack(hunter.player, prey.player);
                         f.test.assertTrue(landed, "Native zombie melee accepts the legal human: cycle=" + iteration
                                 + ", role=" + hunter.participant().role() + ", phase=" + f.round().phase()

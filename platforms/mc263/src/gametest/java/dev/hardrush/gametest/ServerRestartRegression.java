@@ -429,8 +429,7 @@ public final class ServerRestartRegression implements ModInitializer {
                 var overworld=worlds.level(Level.OVERWORLD);var daylight=overworld.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK).getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
                 overworld.clockManager().setTotalTicks(daylight,dev.hardrush.core.combat.DuskPact.DUSK_TICKS+5_000);
                 dev.hardrush.pact.DuskPactRuntime.tick(server);
-                // Random birth gear may be a spear or a bow, whose native inputs have their own suites: attack empty-handed.
-                a.player.getInventory().setItem(8,net.minecraft.world.item.ItemStack.EMPTY);a.player.getInventory().setSelectedSlot(8);
+                MonsterRoleGameTest.emptyHanded(a.player);
                 require(dev.hardrush.monster.MonsterRoles.attack(a.player,b.player),"native monster attack accepted");
             });
             waitFor("rescue and award persist together", () -> idle()&&round().phase()==RoundPhase.RESCUE&&round().participants().get(a.profile.id()).revivalEntitled());
