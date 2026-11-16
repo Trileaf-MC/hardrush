@@ -155,7 +155,12 @@ public final class MarkerScan {
                 case MarkerTags.Failed failed -> markerError(null, at.cell(), failed.errors());
                 case MarkerTags.Ok ok -> {
                     var function = ok.spec().function();
-                    if (ok.spec().binding() == Binding.CLICK) triggers.add(new Trigger(function, null, null, at));
+                    // Installing drops every entity off the whitelist, and the binding with it; say so now.
+                    var type = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
+                    if (!TileSanitizer.ALLOWED_ENTITIES.contains(type))
+                        markerError(function, at.cell(), List.of("【" + function.displayName() + "】绑在了 " + type
+                                + " 上，安装时会被移除；请改绑到盔甲架、展示实体或点击范围上"));
+                    else if (ok.spec().binding() == Binding.CLICK) triggers.add(new Trigger(function, null, null, at));
                     else if (entity instanceof Display.TextDisplay) texts.add(new TextSlot(function, null, at));
                     else markerError(function, at.cell(), List.of("【" + function.displayName() + "】是文字功能，只能绑定在告示牌或 text_display 实体上"));
                 }

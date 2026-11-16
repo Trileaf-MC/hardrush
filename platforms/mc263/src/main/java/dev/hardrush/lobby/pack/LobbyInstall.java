@@ -212,17 +212,22 @@ public final class LobbyInstall {
      * recorded and switched to.
      */
     private void verify() {
-        var problems = check(prepared.plan());
+        // Entity bindings the sanitizer took away count as missing, so required ones get stand-ins too.
+        var present = PlanWorldChecks.withPresentEntities(handle.asLevel(), prepared.plan());
+        var plan = present.plan();
+        var problems = check(plan);
         var missing = LobbyPlanValidator.missingWithFallback(problems);
         refuse(problems.stream().filter(p -> !(p.kind() == ProblemKind.MISSING && missing.contains(p.function()))).toList());
-        fallbacks = FallbackFacilities.place(handle.asLevel(), prepared.plan(), missing);
-        effective = prepared.plan().withAdditions(fallbacks.triggers(), fallbacks.models());
+        fallbacks = FallbackFacilities.place(handle.asLevel(), plan, missing);
+        effective = plan.withAdditions(fallbacks.triggers(), fallbacks.models());
         if (!missing.isEmpty()) {
             problems = check(effective);
             refuse(problems);
             LOGGER.info("大厅包 {} 缺少 {}，已放置临时设施", source.name(), missing.stream().map(LobbyFunction::id).toList());
         }
-        warnings = problems.stream().filter(p -> p.severity() == Severity.WARNING).toList();
+        var found = new ArrayList<>(present.dropped());
+        problems.stream().filter(p -> p.severity() == Severity.WARNING).forEach(found::add);
+        warnings = List.copyOf(found);
         if (!warnings.isEmpty()) LOGGER.warn("大厅包 {} 验收警告：{}", source.name(), warnings.stream().map(Problem::message).toList());
     }
     private List<Problem> check(LobbyPlan plan) {
