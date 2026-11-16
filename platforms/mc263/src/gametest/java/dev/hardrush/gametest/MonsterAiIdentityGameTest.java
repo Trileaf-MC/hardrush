@@ -1,5 +1,6 @@
 package dev.hardrush.gametest;
 
+import dev.hardrush.gametest.mixin.AvoidEntityGoalAccessor;
 import dev.hardrush.monster.MonsterAiIdentity;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.monster.mixin.MonsterMobAccessor;
@@ -15,6 +16,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.AvoidEntityGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -79,9 +81,11 @@ public final class MonsterAiIdentityGameTest {
         test.runAfterDelay(80, () -> {
             try (f) {
                 var ocelot = f.mob(EntityTypes.OCELOT, new Vec3(0,0,3));
-                test.assertTrue(avoidsHuman(ocelot), "A wild ocelot has a native escape path from a human");
+                var avoided = avoided(ocelot);
+                test.assertTrue(avoided == f.player, "A wild ocelot's native avoidance picks the real human, got " + avoided);
                 MonsterRoles.select(f.player, "creeper");
-                test.assertFalse(avoidsHuman(ocelot), "A wild ocelot does not flee a creeper as if it were a human");
+                avoided = avoided(ocelot);
+                test.assertTrue(avoided == null, "A wild ocelot does not flee a creeper as if it were a human, got " + avoided);
                 MonsterRoles.clear(f.player);
                 dev.hardrush.disguise.MonsterDisguise.apply(f.player, "zombie");
                 var zombie = f.mob(EntityTypes.ZOMBIE, new Vec3(0,0,-3));
@@ -115,6 +119,7 @@ public final class MonsterAiIdentityGameTest {
         test.runAfterDelay(80, () -> {
             try (f) {
                 MonsterRoles.select(f.player, "zombie");
+                MonsterRoleGameTest.emptyHanded(f.player);
                 var zombie = f.mob(EntityTypes.ZOMBIE, new Vec3(0, 0, 1));
                 zombie.tickCount = 10;
                 test.assertTrue(MonsterRoles.attack(f.player, zombie), "Player zombie can attack a natural zombie");
@@ -276,12 +281,20 @@ public final class MonsterAiIdentityGameTest {
         return null;
     }
 
-    private static boolean avoidsHuman(Mob mob) {
+    /**
+     * The entity a native avoidance goal decides to flee. Vanilla chooses it before rolling a random escape
+     * position, and only that choice depends on AI identity; whether the roll finds walkable ground on a
+     * small test floor is luck, so it is not part of the assertion.
+     */
+    private static LivingEntity avoided(Mob mob) {
         for (var wrapped : ((MonsterMobAccessor)mob).hardrush$goalSelector().getAvailableGoals()) {
-            if (!(wrapped.getGoal() instanceof net.minecraft.world.entity.ai.goal.AvoidEntityGoal<?> goal)) continue;
-            for (int i=0; i<100; i++) if (goal.canUse()) { goal.stop(); return true; }
+            if (!(wrapped.getGoal() instanceof AvoidEntityGoal<?> goal)) continue;
+            boolean started = goal.canUse();
+            var target = ((AvoidEntityGoalAccessor)goal).hardrush$toAvoid();
+            if (started) goal.stop();
+            if (target != null) return target;
         }
-        return false;
+        return null;
     }
 
     private static final class Fixture implements AutoCloseable {

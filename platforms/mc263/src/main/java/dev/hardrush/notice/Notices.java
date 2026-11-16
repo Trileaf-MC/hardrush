@@ -116,7 +116,25 @@ public final class Notices {
     /** T1 with the shared rejection sound: the request was understood but cannot be done now. */
     public static void refuse(ServerPlayer player, String markup) {
         hint(player, markup);
-        if (online(player)) player.connection.send(new ClientboundSoundPacket(SoundEvents.NOTE_BLOCK_BASS,
+        if (online(player)) rejectionSound(player);
+    }
+
+    /**
+     * T1 refusal for an answer that lands after the player has moved on to another screen, which covers the action
+     * bar: the rejection sound plays now, and the line waits until the player is back in the world to show its usual
+     * seconds. Without a screen open it behaves like {@link #refuse}.
+     */
+    public static void refuseWhenUncovered(ServerPlayer player, String markup) {
+        if (!online(player)) return;
+        var router = LobbyInteractions.get(player.level().getServer()).orElse(null);
+        if (router == null) { refuse(player, markup); return; }
+        router.hints(player).offerWhenUncovered("notice", LobbyHints.Priority.NOTICE, markup, HINT_MILLIS,
+                () -> player.containerMenu != player.inventoryMenu);
+        rejectionSound(player);
+    }
+
+    private static void rejectionSound(ServerPlayer player) {
+        player.connection.send(new ClientboundSoundPacket(SoundEvents.NOTE_BLOCK_BASS,
                 SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(), .5f, .8f, 0));
     }
 

@@ -16,6 +16,31 @@ class LobbyHintsTest {
         assertEquals(Optional.of("讲台 2"), hints.render(4, true));
     }
 
+    @Test void aCoveredLineWaitsWithoutAgeingThenShowsForItsFullLease() {
+        var hints = new LobbyHints();
+        var covered = new java.util.concurrent.atomic.AtomicBoolean(true);
+        hints.offer("facility", LobbyHints.Priority.FACILITY, "讲台", 100_000);
+        hints.render(0, true);
+        hints.offerWhenUncovered("notice", LobbyHints.Priority.NOTICE, "背包满了", 3_000, covered::get);
+        assertEquals(Optional.empty(), hints.render(1, true).filter("背包满了"::equals), "Nothing goes out while the bar is covered");
+        assertEquals(Optional.empty(), hints.render(10_000, true).filter("背包满了"::equals), "Waiting does not spend the lease");
+        covered.set(false);
+        assertEquals(Optional.of("背包满了"), hints.render(10_001, false), "Uncovered, the line goes out at once");
+        assertEquals(Optional.of("背包满了"), hints.render(13_000, true), "It is kept lit for the whole lease from then");
+        assertEquals(Optional.of("讲台"), hints.render(13_001, false));
+    }
+
+    @Test void aNewerLineFromTheSameSourceReplacesACoveredOne() {
+        var hints = new LobbyHints();
+        hints.offerWhenUncovered("notice", LobbyHints.Priority.NOTICE, "背包满了", 3_000, () -> false);
+        hints.offer("notice", LobbyHints.Priority.NOTICE, "领得太快了", 3_000);
+        assertEquals(Optional.of("领得太快了"), hints.render(0, false));
+        assertEquals(Optional.empty(), hints.render(1, true).filter("背包满了"::equals), "The stale answer never resurfaces");
+        hints.offerWhenUncovered("notice", LobbyHints.Priority.NOTICE, "背包满了", 3_000, () -> true);
+        hints.clear("notice");
+        assertEquals(Optional.empty(), hints.render(2, true).filter("背包满了"::equals), "Clearing the source drops a waiting line");
+    }
+
     @Test void itemFlashOutranksAmbientGuidanceButNotProgressAndIsSentOnce() {
         var hints = new LobbyHints();
         hints.offer("facility", LobbyHints.Priority.FACILITY, "讲台", 10_000);

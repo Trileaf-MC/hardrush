@@ -601,6 +601,16 @@ public final class MonsterRoleGameTest {
         }).thenExecute(action);
     }
 
+    /**
+     * Random birth gear may put a spear in a zombie's hand (a bow for skeletons), whose native inputs have their
+     * own suites and refuse plain melee; a melee test holds an empty hotbar slot instead.
+     */
+    public static void emptyHanded(ServerPlayer player) {
+        player.getInventory().setItem(8,ItemStack.EMPTY);
+        player.getInventory().setSelectedSlot(8);
+        MonsterRoles.repairLoadout(player);
+    }
+
     public static ServerPlayer actor(GameTestHelper test) {
         int center=1000+ARENA.getAndIncrement()*24;
         var server=test.getLevel().getServer();

@@ -238,8 +238,7 @@ public final class PersonalHuntGameTest {
                     f.dusk();
                     f.c.player.teleportTo(f.b.player.level(), f.b.player.getX()+1, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
                     f.b.player.setHealth(20); f.b.player.setInvulnerableTime(0);
-                    f.c.player.getInventory().setItem(8, net.minecraft.world.item.ItemStack.EMPTY);
-                    f.c.player.getInventory().setSelectedSlot(8); MonsterRoles.repairLoadout(f.c.player);
+                    MonsterRoleGameTest.emptyHanded(f.c.player);
                     test.assertTrue(MonsterRoles.attack(f.c.player, f.b.player) && f.b.player.getHealth() < 20, "Non-lethal hit on a human C did not select");
                 })
                 .thenWaitUntil(() -> f.await(f.huntBars(f.b).equals(List.of("来自 HuntC 的追猎")), "damage shows any monster player's bar"))
@@ -254,9 +253,7 @@ public final class PersonalHuntGameTest {
                     dev.hardrush.pact.DuskPactRuntime.tick(f.server);
                     f.c.player.teleportTo(f.b.player.level(), f.b.player.getX()+1, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
                     f.b.player.setHealth(1); f.b.player.setInvulnerableTime(0);
-                    // Birth gear can be a spear; this regression exercises ordinary native melee.
-                    f.c.player.getInventory().setItem(8, net.minecraft.world.item.ItemStack.EMPTY);
-                    f.c.player.getInventory().setSelectedSlot(8); MonsterRoles.repairLoadout(f.c.player);
+                    MonsterRoleGameTest.emptyHanded(f.c.player);
                     test.assertFalse(dev.hardrush.pact.DuskPactRuntime.reject(f.c.player, f.b.player), "The first dusk releases player combat before entitlement checks");
                     test.assertTrue(MonsterRoles.attack(f.c.player, f.b.player) && f.b.player.isDeadOrDying(), "Attack another legal human");
                 })
@@ -290,8 +287,7 @@ public final class PersonalHuntGameTest {
                 .thenExecute(() -> {
                     f.a.player.teleportTo(f.c.player.level(),f.c.player.getX()+1,f.c.player.getY(),f.c.player.getZ(),Set.of(),0,0,true);
                     f.c.player.setHealth(1); f.c.player.setInvulnerableTime(0);
-                    f.a.player.getInventory().setItem(8, net.minecraft.world.item.ItemStack.EMPTY);
-                    f.a.player.getInventory().setSelectedSlot(8); MonsterRoles.repairLoadout(f.a.player);
+                    MonsterRoleGameTest.emptyHanded(f.a.player);
                     test.assertTrue(MonsterRoles.attack(f.a.player,f.c.player) && f.c.player.isDeadOrDying(), "A earns real entitlement by native lethal attack");
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.a.participant().revivalEntitled() && f.lobby(f.c), "A entitlement persisted"))
