@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -41,10 +42,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.ItemStackWithSlot;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ai.attributes.AttributeMap;
 import net.minecraft.world.entity.player.Abilities;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
@@ -412,6 +415,115 @@ public final class PlayerProfiles implements AutoCloseable {
         return entry.admitted || entry.diskSafe;
     }
 
+    /**
+     * True while this body's possessions are owned by its sealed suspension rather than the vanilla player file:
+     * every managed body outside a round. Whatever it is later restored to (a reconnect, a re-entry, a monster lobby)
+     * comes from that suspension, so the vanilla file of a lobby body never proves what it will keep.
+     */
+    public boolean keepsSuspended(ServerPlayer player) {
+        var entry = players.get(player.getUUID());
+        return entry != null && entry.player == player && !entry.admitted;
+    }
+
+    /**
+     * Seals an item the camp has just put into {@code slot} of a verified lobby body (a history book) into that body's
+     * suspension, so a reconnect or the next entry gives it back instead of the older sealed inventory. Completes true
+     * once the suspension on disk holds it (also when it already did); false when the body cannot be sealed right now
+     * or its sealed inventory has no free slot, leaving the caller free to retry without duplicating the item.
+     */
+    public CompletionStage<Boolean> sealLobbyDelivery(ServerPlayer player, int slot, ItemStack delivered) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        if (closed || recoveryPaused || delivered.isEmpty() || entry == null || entry.player != player || entry.admitted
+                || entry.building || entry.celebrationGuest || !entry.ready || !entry.diskSafe || !entry.problem.isEmpty()
+                || entry.resume == null || entry.target == null) return CompletableFuture.completedFuture(false);
+        var base = entry.resume;
+        var sealed = withInventoryItem(base, slot, delivered).orElse(null);
+        if (sealed == null) return CompletableFuture.completedFuture(false);
+        // entry.resume only ever holds what the suspension on disk holds, so an item already in it is durable.
+        if (sealed == base) return CompletableFuture.completedFuture(true);
+        var target = entry.target;
+        // Replace the in-memory suspension first: an entry admitted before the write lands must already carry the item.
+        entry.resume = sealed;
+        var result = new CompletableFuture<Boolean>();
+        // Retryable: a failed book write must not mark the whole profile service as unsafe for checkpoints and shutdown.
+        CompletableFuture.runAsync(() -> {
+            try { journal.join().suspend(player.getUUID(), target, encode(sealed)); }
+            catch (IOException error) { throw new CompletionException(error); }
+        }, io).whenComplete((ignored, error) -> callbacks.execute(() -> {
+                    if (error != null) {
+                        LOGGER.warn("Sealing a lobby delivery for {} failed", player.getUUID(), error);
+                        if (entry.resume == sealed) entry.resume = base;
+                    }
+                    result.complete(error == null && current(entry, target));
+                }));
+        return result;
+    }
+
+    /**
+     * {@code snapshot} with {@code item} added to its main inventory: itself when already there, empty when no slot is
+     * free. Restoring the snapshot puts each crafting-table stack it holds into a free slot, so those slots stay free.
+     */
+    private Optional<CompoundTag> withInventoryItem(CompoundTag snapshot, int preferredSlot, ItemStack item) {
+        var input = TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), snapshot);
+        var items = new java.util.ArrayList<ItemStackWithSlot>();
+        input.listOrEmpty("Inventory", ItemStackWithSlot.CODEC).forEach(items::add);
+        if (items.stream().anyMatch(sealed -> ItemStack.matches(sealed.stack(), item))) return Optional.of(snapshot);
+        var used = new java.util.HashSet<Integer>();
+        items.forEach(sealed -> used.add(sealed.slot()));
+        long reserved = input.listOrEmpty("hardrush_external_crafting", ItemStack.OPTIONAL_CODEC).stream().filter(stack -> !stack.isEmpty()).count();
+        if (Inventory.INVENTORY_SIZE - used.size() <= reserved) return Optional.empty();
+        // A fresh camp body is its sealed snapshot, so the same slot keeps a reloaded body identical to the live one.
+        int slot = preferredSlot >= 0 && preferredSlot < Inventory.INVENTORY_SIZE && !used.contains(preferredSlot) ? preferredSlot
+                : java.util.stream.IntStream.range(0, Inventory.INVENTORY_SIZE).filter(free -> !used.contains(free)).findFirst().orElse(-1);
+        if (slot < 0) return Optional.empty();
+        items.add(new ItemStackWithSlot(slot, item.copy()));
+        var output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, server.registryAccess());
+        var list = output.list("Inventory", ItemStackWithSlot.CODEC);
+        items.forEach(list::add);
+        var updated = snapshot.copy();
+        updated.put("Inventory", output.buildResult().get("Inventory"));
+        return Optional.of(updated);
+    }
+
+    /**
+     * The history books {@code body} (may be null) holds or {@code sealed} (may be null) keeps in its main inventory,
+     * each once. They belong to the person rather than to a body: a camp body rebuilt for a new role gets them back.
+     */
+    private java.util.List<ItemStack> historyBooks(ServerPlayer body, CompoundTag sealed) {
+        var books = new java.util.ArrayList<ItemStack>();
+        java.util.function.Consumer<ItemStack> keep = stack -> {
+            if (dev.hardrush.book.WrittenBookPort.isHistoryBook(stack) && books.stream().noneMatch(book -> ItemStack.matches(book, stack)))
+                books.add(stack.copy());
+        };
+        if (body != null) for (int slot = 0; slot < body.getInventory().getContainerSize(); slot++) keep.accept(body.getInventory().getItem(slot));
+        if (sealed != null) TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), sealed)
+                .listOrEmpty("Inventory", ItemStackWithSlot.CODEC).forEach(item -> keep.accept(item.stack()));
+        return books;
+    }
+
+    /**
+     * The history books a camp body rebuilt from {@code old} keeps. A human life took the camp's books into the round,
+     * so only its body counts (a death drops them, as vanilla does); a sortie leaves them sealed in camp.
+     */
+    private java.util.List<ItemStack> campHistoryBooks(Entry old, ServerPlayer previous) {
+        return historyBooks(previous, old.admitted && !old.sortie ? null : old.resume);
+    }
+
+    /** Puts each of {@code books} that {@code body} does not hold yet into a free slot of its main inventory. */
+    private static void giveBackHistoryBooks(ServerPlayer body, java.util.List<ItemStack> books) {
+        var inventory = body.getInventory();
+        for (var book : books) {
+            boolean held = false;
+            for (int slot = 0; slot < inventory.getContainerSize() && !held; slot++) held = ItemStack.matches(inventory.getItem(slot), book);
+            if (held) continue;
+            int free = inventory.getFreeSlot();
+            // The library still hands out a copy; a full camp body is not worth failing a role change over.
+            if (free < 0) { LOGGER.warn("No free slot to give back a history book to {}", body.getUUID()); continue; }
+            inventory.setItem(free, book.copy());
+        }
+    }
+
     public static boolean isRespawnAllowed(ServerPlayer player) {
         return HardRushProperties.competitionEnabled() && ((ProfileTagged) player).hardrush$respawnPermitted()
                 && isLocked(player);
@@ -574,8 +686,10 @@ public final class PlayerProfiles implements AutoCloseable {
             throw new IllegalStateException("退出身体缺少已提交的本轮身份");
         var sealed = old.admitted ? capture(previous, false)
                 : old.resume != null ? old.resume.copy() : old.original.copy();
+        var books = campHistoryBooks(old, previous);
         replacement.stopUsingItem();
         clearMonsterLobbyState(replacement);
+        giveBackHistoryBooks(replacement, books);
         resetHumanAttributes(replacement);
         replacement.setAbsorptionAmount(0);
         ((PlayerProfileResetAccessor) replacement).hardrush$setFoodData(new FoodData());
@@ -637,6 +751,7 @@ public final class PlayerProfiles implements AutoCloseable {
         ((ProfileTagged) player).hardrush$isolated(false);
         ((ProfileTagged) player).hardrush$respawnPermitted(false);
         entry.admitted = true;
+        entry.sortie = true;
         entry.deathHeld = false;
         player.resetSentInfo();
         player.onUpdateAbilities();
@@ -665,7 +780,9 @@ public final class PlayerProfiles implements AutoCloseable {
         if (round.rules().mode() != GameMode.HARDCORE || participant == null
                 || participant.role() != ParticipantRole.MONSTER_LOBBY || old == null
                 || !generation(round).equals(old.target)) throw new IllegalStateException("怪物大厅缺少已提交死亡身份");
+        var books = campHistoryBooks(old, previous);
         clearMonsterLobbyState(replacement);
+        giveBackHistoryBooks(replacement, books);
         replacement.setHealth(replacement.getMaxHealth());
         ((ProfileTagged) replacement).hardrush$generation(old.target);
         ((ProfileTagged) replacement).hardrush$lifeSequence(participant.lifeSequence());
@@ -728,7 +845,9 @@ public final class PlayerProfiles implements AutoCloseable {
         if (!dev.hardrush.world.RoundWorldBundle.owns(spawnLevel)
                 || !dev.hardrush.world.RoundWorldBundle.safeStanding(spawnLevel, net.minecraft.core.BlockPos.containing(spawn))) return false;
         try {
+            var books = historyBooks(player, entry.resume);
             clearMonsterLobbyState(player);
+            giveBackHistoryBooks(player, books);
             resetHumanAttributes(player);
             player.setAbsorptionAmount(0);
             ((PlayerProfileResetAccessor) player).hardrush$setFoodData(new FoodData());
@@ -1383,6 +1502,8 @@ public final class PlayerProfiles implements AutoCloseable {
                     // Load the already sealed reset output. Re-running resetForNewRound would
                     // revoke advancements/recipes again and replace its suspension identity.
                     if (entry.fresh) reloadSuspendedBody(entry, entry.resume);
+                    // A crash can leave the vanilla file older than a sealed camp delivery; the camp body still shows it.
+                    else giveBackHistoryBooks(entry.player, historyBooks(null, entry.resume));
                     ((ProfileTagged) entry.player).hardrush$generation(target);
                     ((ProfileTagged) entry.player).hardrush$suspensionId(entry.resume.getStringOr(SUSPENSION_ID, ""));
                     ((ProfileTagged) entry.player).hardrush$isolated(true);
@@ -1689,6 +1810,8 @@ public final class PlayerProfiles implements AutoCloseable {
         boolean ready;
         boolean fresh;
         boolean admitted;
+        /** Admitted as a deployed monster: the sortie body never carries the camp's history books. */
+        boolean sortie;
         boolean adminSpectating;
         boolean exclusionInitialized;
         ParticipantRole exclusionRole;
