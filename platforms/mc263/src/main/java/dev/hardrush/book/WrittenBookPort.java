@@ -9,7 +9,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiPredicate;
-import java.util.function.Function;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -30,11 +29,15 @@ public final class WrittenBookPort implements BookPort {
     private static final String OPERATION = "hardrush_book_operation";
     private final MinecraftServer server;
     private final BiPredicate<OperationTag, UUID> eligibility;
-    private final Function<ServerPlayer, CompletionStage<Boolean>> inventorySaver;
+    private final InventorySaver inventorySaver;
 
-    /** The saver must persist this inventory before returning true; a vanilla void save is insufficient. */
-    public WrittenBookPort(MinecraftServer server, BiPredicate<OperationTag, UUID> eligibility,
-            Function<ServerPlayer, CompletionStage<Boolean>> inventorySaver) {
+    /** Persists that a player now holds a delivered book; only a durable save may answer true. */
+    @FunctionalInterface public interface InventorySaver {
+        /** {@code delivered} is the book now in {@code slot} of the player's inventory; a vanilla void save is insufficient. */
+        CompletionStage<Boolean> save(ServerPlayer player, int slot, ItemStack delivered);
+    }
+
+    public WrittenBookPort(MinecraftServer server, BiPredicate<OperationTag, UUID> eligibility, InventorySaver inventorySaver) {
         this.server = Objects.requireNonNull(server); this.eligibility = Objects.requireNonNull(eligibility);
         this.inventorySaver = Objects.requireNonNull(inventorySaver);
     }
@@ -52,16 +55,16 @@ public final class WrittenBookPort implements BookPort {
                     future.complete(OperationResult.failed(tag, OperationResult.Outcome.REJECTED, "书册发放作用域已变化")); return;
                 }
                 // Check a retained item before free slots: SQLite ACK retry must not insert another copy.
-                if (!hasDelivery(player, tag.operationId(), book)) {
-                    int free = player.getInventory().getFreeSlot();
-                    if (free < 0) {
+                int slot = deliverySlot(player, tag.operationId(), book);
+                if (slot < 0) {
+                    slot = player.getInventory().getFreeSlot();
+                    if (slot < 0) {
                         future.complete(OperationResult.verified(tag, Delivery.INVENTORY_FULL)); return;
                     }
-                    ItemStack stack = createItem(tag, book);
-                    player.getInventory().setItem(free, stack);
+                    player.getInventory().setItem(slot, createItem(tag, book));
                     player.inventoryMenu.sendAllDataToRemote();
                 }
-                inventorySaver.apply(player).whenComplete((saved, failure) -> {
+                inventorySaver.save(player, slot, player.getInventory().getItem(slot).copy()).whenComplete((saved, failure) -> {
                     if (failure == null && Boolean.TRUE.equals(saved)) {
                         future.complete(OperationResult.verified(tag, Delivery.DELIVERED));
                     } else {
@@ -108,7 +111,8 @@ public final class WrittenBookPort implements BookPort {
         return custom != null && custom.copyTag().getBooleanOr(MARKER, false);
     }
 
-    private static boolean hasDelivery(ServerPlayer player, UUID operationId, Book book) {
+    /** The slot already holding this very delivery, or -1. */
+    private static int deliverySlot(ServerPlayer player, UUID operationId, Book book) {
         var inventory = player.getInventory();
         for (int index = 0; index < inventory.getContainerSize(); index++) {
             ItemStack item = inventory.getItem(index);
@@ -116,9 +120,9 @@ public final class WrittenBookPort implements BookPort {
             var data = item.get(DataComponents.CUSTOM_DATA).copyTag();
             if (data.getStringOr(OPERATION, "").equals(operationId.toString())
                     && data.getStringOr(SOURCE, "").equals(book.roundId().toString())
-                    && data.getIntOr(EDITION, 0) == book.edition() && data.getIntOr(VOLUME, 0) == book.volume()) return true;
+                    && data.getIntOr(EDITION, 0) == book.edition() && data.getIntOr(VOLUME, 0) == book.volume()) return index;
         }
-        return false;
+        return -1;
     }
 
     private static void requireSafeLiteral(String value) {

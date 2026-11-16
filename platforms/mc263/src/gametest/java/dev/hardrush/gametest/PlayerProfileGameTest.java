@@ -551,6 +551,72 @@ public final class PlayerProfileGameTest {
                 }).thenSucceed();
     }
 
+    /** Issue 27: a book handed to a camp body is sealed with it, so neither a reconnect nor the next entry takes it back. */
+    @GameTest(maxTicks = 1000)
+    public void campBookSurvivesReconnectAndReentry(GameTestHelper test) {
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
+        var server = test.getLevel().getServer();
+        var player = test.makeMockServerPlayerInLevel();
+        var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
+        fixtureStanding(test, position);
+        var profiles = new PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT)
+                .resolve("hardrush/profile-tests/" + UUID.randomUUID()), test::getLevel, () -> position);
+        var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        var port = new dev.hardrush.book.WrittenBookPort(server, (scope, id) -> true,
+                new dev.hardrush.book.BookInventorySaver(server, () -> java.util.Optional.of(profiles)));
+        var automatic = new dev.hardrush.core.api.OperationTag(round.roundId(), UUID.randomUUID(), 1);
+        var manual = new dev.hardrush.core.api.OperationTag(round.roundId(), UUID.randomUUID(), 1);
+        var book = new dev.hardrush.core.api.BookPort.Book(UUID.randomUUID(), 1, 1, "HardRush 第1轮", "HardRush", java.util.List.of("战绩"));
+        var delivery = new java.util.ArrayList<java.util.concurrent.CompletableFuture<dev.hardrush.core.api.OperationResult<dev.hardrush.core.api.BookPort.Delivery>>>();
+        Runnable deliveredOnce = () -> test.assertTrue(delivery.getLast().isDone()
+                && delivery.getLast().join().value().orElse(null) == dev.hardrush.core.api.BookPort.Delivery.DELIVERED,
+                "Delivery acknowledged: " + (delivery.getLast().isDone() ? delivery.getLast().join() : "pending"));
+        var failure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
+        profiles.onLogin(player);
+        profiles.tick(round);
+        test.startSequence()
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), round), "Fresh camp body verified")))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertTrue(player.getInventory().isEmpty(), "A fresh life starts empty-handed");
+                    delivery.add(port.deliver(automatic, player.getUUID(), book).toCompletableFuture());
+                }))
+                .thenWaitUntil(await(failure, deliveredOnce))
+                .thenExecute(guarded(failure, () -> delivery.add(port.deliver(automatic, player.getUUID(), book).toCompletableFuture())))
+                .thenWaitUntil(await(failure, deliveredOnce))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertValueEqual(historyBooks(player), 1, "Retrying the same delivery adds no second book");
+                    profiles.onDisconnect(player);
+                    profiles.onLogin(player);
+                    profiles.tick(round);
+                }))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), round), "Reconnected camp body verified: " + profiles.failure(player.getUUID()))))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertValueEqual(historyBooks(player), 1, "The camp book survives a reconnect of a fresh body");
+                    test.assertTrue(profiles.admit(player, round, test.getLevel(), position, level -> level == test.getLevel()), "Fresh life enters");
+                    test.assertValueEqual(historyBooks(player), 1, "The fresh life enters with its camp book");
+                    profiles.returnToLobby(player);
+                    profiles.tick(round);
+                }))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), round), "Resumed camp body verified")))
+                .thenExecute(guarded(failure, () -> delivery.add(port.deliver(manual, player.getUUID(), book).toCompletableFuture())))
+                .thenWaitUntil(await(failure, deliveredOnce))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertValueEqual(historyBooks(player), 2, "A resumed camp body receives the library copy");
+                    test.assertTrue(profiles.admit(player, round, test.getLevel(), position, level -> level == test.getLevel()), "Same-round life re-enters");
+                    test.assertValueEqual(historyBooks(player), 2, "Re-entry restores the suspension with the camp book in it");
+                    try { profiles.close(); } catch (Exception error) { throw new IllegalStateException(error); }
+                    server.getPlayerList().remove(player);
+                })).thenSucceed();
+    }
+
+    private static int historyBooks(ServerPlayer player) {
+        int count = 0;
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            if (dev.hardrush.book.WrittenBookPort.isHistoryBook(player.getInventory().getItem(slot))) count++;
+        }
+        return count;
+    }
+
     @GameTest(maxTicks = 1000)
     public void normalRespawnWaitsForCommittedLifeAndKeepsVanillaDestination(GameTestHelper test) {
         if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
