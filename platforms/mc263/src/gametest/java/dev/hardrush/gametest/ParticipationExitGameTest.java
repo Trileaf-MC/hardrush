@@ -2,7 +2,7 @@ package dev.hardrush.gametest;
 
 import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.RoundPhase;
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.Landing;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.combat.CombatRuntime;
@@ -62,7 +62,7 @@ public final class ParticipationExitGameTest {
                     packet(f.b.player, "hardrush admin disqualify CampHumanA 越权");
                     var before = f.round().participants().get(f.a.profile.id());
                     test.assertTrue(before == null || !before.role().isExcluded(), "Non-admin cannot disqualify others");
-                    f.place(f.a, LobbyLayout.Landing.RESTORE_READY);
+                    f.place(f.a, Landing.RESTORE_READY);
                 })
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "First ready"))
                 .thenExecute(() -> {
@@ -73,9 +73,9 @@ public final class ParticipationExitGameTest {
                     test.assertTrue(f.ready(f.a) && f.idle(), "Closing confirmation keeps spatial readiness");
                     sneak(f.a.player, false);
                 })
-                .thenExecute(() -> f.place(f.b, LobbyLayout.Landing.RESTORE_READY))
+                .thenExecute(() -> f.place(f.b, Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.b) && f.idle(), "Second ready"))
-                .thenExecute(() -> f.place(c, LobbyLayout.Landing.RESTORE_READY))
+                .thenExecute(() -> f.place(c, Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(c) && f.idle(), "Third ready"))
                 .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
                 .thenWaitUntil(() -> f.await(f.round().onlineHumans() == 3 && !PlayerProfiles.isLocked(f.a.player)
@@ -168,7 +168,7 @@ public final class ParticipationExitGameTest {
                 .thenWaitUntil(() -> f.await(role(f, f.b.profile.id()) == ParticipantRole.DISQUALIFIED && f.idle(), "Offline sanction committed"));
         f.b.login(sequence);
         sequence.thenWaitUntil(() -> f.await(f.b.player.gameMode() == GameType.ADVENTURE && PlayerProfiles.canMoveInLobby(f.b.player) && f.idle(), "Sanctioned reconnect stays in lobby"))
-                .thenExecute(() -> { test.assertTrue(f.round().timingUncertain(), "Sanction marks round for review"); f.place(f.b, LobbyLayout.Landing.RESTORE_READY); })
+                .thenExecute(() -> { test.assertTrue(f.round().timingUncertain(), "Sanction marks round for review"); f.place(f.b, Landing.RESTORE_READY); })
                 .thenIdle(3)
                 .thenExecute(() -> {
                     test.assertTrue(role(f, f.b.profile.id()) == ParticipantRole.DISQUALIFIED && !f.ready(f.b), "Assembly cannot restore eligibility");
@@ -199,7 +199,7 @@ public final class ParticipationExitGameTest {
                 .thenWaitUntil(() -> f.await(f.round().sequence() == 2 && f.round().phase() == RoundPhase.WAITING
                         && PlayerProfiles.canMoveInLobby(f.a.player) && PlayerProfiles.canMoveInLobby(f.b.player)
                         && PlayerProfiles.canMoveInLobby(c.player) && spyglasses(f.a.player) == 0, "Next round restores eligibility and takes back the spyglass"))
-                .thenExecute(() -> f.place(f.a, LobbyLayout.Landing.RESTORE_READY))
+                .thenExecute(() -> f.place(f.a, Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "Formerly excluded player can prepare next round"))
                 .thenExecute(() -> { f.a.disconnect(); f.b.disconnect(); c.disconnect(); }).thenSucceed();
     }

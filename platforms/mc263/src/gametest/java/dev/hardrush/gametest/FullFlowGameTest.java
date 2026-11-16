@@ -1,6 +1,8 @@
 package dev.hardrush.gametest;
 
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.Landing;
+import dev.hardrush.core.lobby.plan.LandingRules;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.round.*;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.round.*;
@@ -170,9 +172,10 @@ public final class FullFlowGameTest {
         seq.thenExecute(()->{
                     test.assertTrue(f.monster.participant().monsterCooldownNanos()>0,"Return starts sortie cooldown");
                     f.monster.player=f.monster.current();
-                    if(dev.hardrush.core.round.MonsterCoins.enabled(f.round().rules()))
-                        test.assertTrue(LobbyLayout.scatterAllowed(LobbyLayout.Landing.ALTAR,f.monster.player.getBlockX()-net.minecraft.core.BlockPos.containing(LobbyWorld.open(f.server).holdingSpawn()).getX(),
-                                f.monster.player.getBlockZ()-net.minecraft.core.BlockPos.containing(LobbyWorld.open(f.server).holdingSpawn()).getZ()),"A revival-earning kill summons the hunter to the altar steps");
+                    if(dev.hardrush.core.round.MonsterCoins.enabled(f.round().rules())){
+                        var plan=LobbyPlanFixtures.plan(f.server);var feet=f.monster.player.blockPosition();
+                        test.assertTrue(LandingRules.scatterAllowed(plan,Landing.ALTAR,LandingRules.candidates(plan,Landing.ALTAR).getFirst(),feet.getX(),feet.getY(),feet.getZ()),"A revival-earning kill summons the hunter to the altar steps");
+                    }
                     test.assertFalse(dev.hardrush.lobby.RevivalAltar.channeling(f.monster.player),"Arriving at the steps starts no rite");
                     state.altar(f.monster.player);
                 })
@@ -242,7 +245,7 @@ public final class FullFlowGameTest {
                     test.assertFalse(LobbyWorld.open(f.server).inAssembly(visitor.player,false),"Next round lands outside assembly");
                     test.assertTrue(f.round().participants().values().stream().noneMatch(Participant::ready),"Next round requires a fresh spatial intention");
                     test.assertFalse(visitor.player.getInventory().contains(s->s.is(Items.ECHO_SHARD)||s.is(Items.ELYTRA)||s.is(Items.FIREWORK_ROCKET)),"No controls or ceremony gear cross rounds");
-                    state.facility(visitor.player,LobbyLayout.Facility.HISTORY);
+                    state.facility(visitor.player,LobbyFunction.HISTORY);
                 })
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"第 1 轮"),"Library loads terminal round"))
                 .thenExecute(()->state.click(visitor.player,"第 1 轮"))
@@ -261,11 +264,11 @@ public final class FullFlowGameTest {
                     System.out.println("FULL_FLOW_PASS round="+state.oldRound+" next="+f.round().roundId()+"; real packet decisions, fixture terrain/clock/health only");
                 }).thenExecute(state::seedHistory)
                 .thenWaitUntil(()->f.await(state.io.isDone(),"Synthetic history pagination dataset committed"))
-                .thenExecute(()->{state.io.join();state.facility(visitor.player,LobbyLayout.Facility.HISTORY);})
-                .thenWaitUntil(()->f.await(state.has(visitor.player,"下一批轮次"),"More than twenty terminal rounds exposes history next page"))
+                .thenExecute(()->{state.io.join();state.facility(visitor.player,LobbyFunction.HISTORY);})
+                .thenWaitUntil(()->f.await(state.hasReopening(visitor.player,LobbyFunction.HISTORY,"下一批轮次"),"More than twenty terminal rounds exposes history next page"))
                 .thenExecute(()->state.click(visitor.player,"下一批轮次"))
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"上一批轮次"),"History second page is independently reachable"))
-                .thenExecute(()->state.facility(visitor.player,LobbyLayout.Facility.HISTORY))
+                .thenExecute(()->state.facility(visitor.player,LobbyFunction.HISTORY))
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"第 121 轮"),"Synthetic newest terminal record available"))
                 .thenExecute(()->state.click(visitor.player,"第 121 轮"))
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"参赛名单"),"Synthetic detail"))
@@ -287,7 +290,7 @@ public final class FullFlowGameTest {
                     state.assertBookClaim(visitor.profile.id(),false);
                     test.assertTrue(java.util.stream.IntStream.range(0,36).allMatch(i->visitor.player.getInventory().getItem(i).is(Items.DIAMOND)&&visitor.player.getInventory().getItem(i).getCount()==64),"Full inventory never overwritten or dropped");
                     visitor.player.getInventory().setItem(35,ItemStack.EMPTY);state.clearBookRate(visitor.profile.id());
-                    state.facility(visitor.player,LobbyLayout.Facility.HISTORY);
+                    state.facility(visitor.player,LobbyFunction.HISTORY);
                 })
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"第 121 轮"),"Library reopened after the refusal"))
                 .thenExecute(()->state.click(visitor.player,"第 121 轮"))
@@ -297,13 +300,16 @@ public final class FullFlowGameTest {
                 .thenExecute(()->state.click(visitor.player,"领取第 2 卷"))
                 .thenWaitUntil(()->f.await(WrittenBookPort.isHistoryBook(visitor.player.getInventory().getItem(35)),"Selected second volume succeeds on retry"))
                 .thenWaitUntil(()->state.assertBookClaim(visitor.profile.id(),true))
-                .thenExecute(()->state.facility(visitor.player,LobbyLayout.Facility.HISTORY))
-                .thenWaitUntil(()->f.await(state.has(visitor.player,"阅读背包里的战绩书"),"Library offers reading"))
+                // The claim's completion callback closes whatever menu is open (see HistoryLibrary/RoundRuntime.manualBook),
+                // so let it land before the library is opened again.
+                .thenIdle(5)
+                .thenExecute(()->state.facility(visitor.player,LobbyFunction.HISTORY))
+                .thenWaitUntil(()->f.await(state.hasReopening(visitor.player,LobbyFunction.HISTORY,"阅读背包里的战绩书"),"Library offers reading"))
                 .thenExecute(()->state.click(visitor.player,"阅读背包里的战绩书"))
                 .thenWaitUntil(()->f.await(visitor.connection.packets.stream().anyMatch(ClientboundOpenBookPacket.class::isInstance),"Library reads a book from inventory slot 35 via native open-book packet"))
                 .thenExecute(()->{
-                    state.facility(visitor.player,LobbyLayout.Facility.HISTORY);
-                }).thenWaitUntil(()->f.await(state.has(visitor.player,"普通模式排行榜"),"Mode leaderboards available"))
+                    state.facility(visitor.player,LobbyFunction.HISTORY);
+                }).thenWaitUntil(()->f.await(state.hasReopening(visitor.player,LobbyFunction.HISTORY,"普通模式排行榜"),"Mode leaderboards available"))
                 .thenExecute(()->state.click(visitor.player,"普通模式排行榜"))
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"还没有通关成绩"),"Normal board excludes hardcore victory and synthetic aborted rounds"))
                 .thenExecute(()->{
@@ -358,7 +364,7 @@ public final class FullFlowGameTest {
                 }catch(Exception error){throw new IllegalStateException(error);}
             });
         }
-        void assembly(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),l.landing(LobbyLayout.Landing.RESTORE_READY));}
+        void assembly(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),LobbyPlanFixtures.inAssembly(f.server));}
         static void move(ServerPlayer p,ServerLevel level,Vec3 point){p.teleportTo(level,point.x,point.y,point.z,Set.of(),0,0,true);}
         void withdrawalShortcut() {
             var p = f.monster.player;
@@ -388,11 +394,16 @@ public final class FullFlowGameTest {
             HuntInputFixtures.click(p,entity,InteractionHand.OFF_HAND);
         }
         /** Stand on the altar's north-west gold cell; the rite itself runs on server ticks. */
-        void altar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),l.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.ALTAR)).add(-1,1,-1));}
-        void offAltar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),l.landing(LobbyLayout.Landing.ALTAR));}
-        void facility(ServerPlayer p,LobbyLayout.Facility facility){var l=LobbyWorld.open(f.server);var pos=BlockPos.containing(l.layoutPosition(LobbyLayout.facility(facility)));move(p,l.holdingLevel(),Vec3.atBottomCenterOf(pos.south(2)));p.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,new BlockHitResult(Vec3.atCenterOf(pos),Direction.UP,pos,false),2));test.assertTrue(LobbyMenus.isMenu(p),"Physical facility opened "+facility);}
+        void altar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),LobbyPlanFixtures.onAltar(f.server));}
+        void offAltar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),LobbyPlanFixtures.offAltar(f.server));}
+        void facility(ServerPlayer p,LobbyFunction facility){var l=LobbyWorld.open(f.server);var pos=LobbyPlanFixtures.block(f.server,facility);move(p,l.holdingLevel(),LobbyPlanFixtures.before(pos));p.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,new BlockHitResult(Vec3.atCenterOf(pos),Direction.UP,pos,false),2));test.assertTrue(LobbyMenus.isMenu(p),"Physical facility opened "+facility);}
+        /** The camp closes a menu whenever the body is briefly not verified (a checkpoint save, say); a patient player just reopens it. */
+        boolean hasReopening(ServerPlayer p,LobbyFunction facility,String label){
+            if(!LobbyMenus.isMenu(p)){try{facility(p,facility);}catch(RuntimeException closedAgain){return false;}}
+            return has(p,label);
+        }
         boolean has(ServerPlayer p,String label){for(int n=0;n<45&&n<p.containerMenu.slots.size();n++)if(p.containerMenu.getSlot(n).getItem().getHoverName().getString().contains(label))return true;return false;}
-        void click(ServerPlayer p,String label){java.util.concurrent.locks.LockSupport.parkNanos(LobbyMenus.BUTTON_COOLDOWN_NANOS+1_000_000);test.assertTrue(clickIfPresent(p,label),"Expected native menu action: "+label);}
+        void click(ServerPlayer p,String label){java.util.concurrent.locks.LockSupport.parkNanos(ButtonMenu.BUTTON_COOLDOWN_NANOS+1_000_000);test.assertTrue(clickIfPresent(p,label),"Expected native menu action: "+label);}
         boolean clickIfPresent(ServerPlayer p,String label){for(short n=0;n<45&&n<p.containerMenu.slots.size();n++)if(p.containerMenu.getSlot(n).getItem().getHoverName().getString().contains(label)){var m=p.containerMenu;p.connection.handleContainerClick(new ServerboundContainerClickPacket(m.containerId,m.getStateId(),n,(byte)0,ContainerInput.PICKUP,new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(),HashedStack.EMPTY));return true;}return false;}
         boolean actionBar(List<net.minecraft.network.protocol.Packet<?>> packets,String text){return packets.stream().filter(ClientboundSetActionBarTextPacket.class::isInstance).map(ClientboundSetActionBarTextPacket.class::cast).anyMatch(p->p.text().getString().contains(text));}
         void prepareDragon(ServerPlayer human,ServerPlayer monster){var worlds=f.service("WORLDS",RoundWorldBundle.class);var end=worlds.level(Level.END);move(human,end,new Vec3(.5,128,.5));move(monster,end,new Vec3(3.5,128,.5));fight=new EnderDragonFight(false,false,false,Optional.empty(),0,Optional.empty(),Optional.of(new BlockPos(0,64,0)),List.of(),List.of());fight.init(end,end.getSeed(),BlockPos.ZERO);fight.skipArenaLoadedCheck();end.setDragonFight(fight);end.getChunkSource().addTicketWithRadius(TicketType.PORTAL,new ChunkPos(0,0),3);}

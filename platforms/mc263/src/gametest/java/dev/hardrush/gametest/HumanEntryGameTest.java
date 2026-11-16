@@ -4,7 +4,9 @@ import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.BookPort;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.api.OperationTag;
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.Landing;
+import dev.hardrush.core.lobby.plan.LandingRules;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.round.RoundSession;
@@ -12,7 +14,6 @@ import dev.hardrush.lobby.LobbyInteractions;
 import dev.hardrush.book.WrittenBookPort;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.LobbyWorld;
-import dev.hardrush.lobby.LobbyMenus;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
@@ -43,7 +44,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -61,39 +61,36 @@ public final class HumanEntryGameTest {
         f.a.login(sequence); f.b.login(sequence);
         sequence.thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.WAITING && f.idle(), "World ready"))
                 .thenExecute(() -> {
-                    var lobby = LobbyWorld.open(f.server); var anchor = BlockPos.containing(lobby.holdingSpawn());
-                    test.assertTrue(lobby.loadedChunks() > 9 && lobby.layoutVersion() == 1, "Full camp footprint replaces 3x3 readiness");
-                    for (var pos : dev.hardrush.world.CampBlueprint.blocks(anchor).keySet())
-                        test.assertTrue(lobby.holdingLevel().getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) != null, "Every owned block is loaded");
-                    for (var facility : dev.hardrush.core.lobby.LobbyLayout.Facility.values()) {
-                        var pos = BlockPos.containing(lobby.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(facility)));
-                        test.assertTrue(lobby.holdingLevel().getBlockState(pos).equals(dev.hardrush.world.CampBlueprint.facilityBlock(facility)),
-                                "Facility physically built: " + facility);
-                    }
-                    for (var landing : dev.hardrush.core.lobby.LobbyLayout.Landing.values()) test.assertTrue(lobby.safeLanding(landing), "Safe landing: " + landing);
+                    var lobby = LobbyWorld.open(f.server); var bounds = lobby.plan().bounds();
+                    test.assertValueEqual(lobby.installation().orElseThrow().pack().id(), "default", "A fresh world installs the built-in lobby pack");
+                    for (int x = bounds.min().x(); x <= bounds.max().x(); x += 16) for (int z = bounds.min().z(); z <= bounds.max().z(); z += 16)
+                        test.assertTrue(lobby.holdingLevel().getChunkSource().getChunkNow(x >> 4, z >> 4) != null, "Every lobby chunk is loaded");
+                    test.assertTrue(lobby.holdingLevel().getChunkSource().getChunkNow(bounds.max().x() >> 4, bounds.max().z() >> 4) != null, "The far corner is loaded");
+                    f.assertFacilitiesBuilt("Facility physically built");
+                    for (var landing : Landing.values()) test.assertTrue(lobby.safeLanding(landing), "Safe landing: " + landing);
                     f.assertRoleModels();
-                    f.assertLobby(); f.profileReady(f.b, false); f.hold = true; f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY);
+                    f.assertLobby(); f.profileReady(f.b, false); f.hold = true; f.place(f.a, Landing.RESTORE_READY);
                 })
                 .thenWaitUntil(() -> f.await(f.session.mutationPending(), "Assembly pending SQLite callback"))
-                .thenExecute(() -> f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE))
+                .thenExecute(() -> f.place(f.a, Landing.CENTRAL))
                 .thenIdle(3)
-                .thenExecute(() -> { f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY); f.hold = false; })
+                .thenExecute(() -> { f.place(f.a, Landing.RESTORE_READY); f.hold = false; })
                 .thenWaitUntil(() -> f.await(f.cancelSeen && f.ready(f.a) && f.idle(), "Fresh re-entry after cancelled old intention"))
                 .thenExecute(() -> { test.assertValueEqual(f.round().remainingPhaseMillis(), 30000L, "Full new countdown");
                     test.assertFalse(PlayerProfiles.canMoveInLobby(f.b.player), "One pending profile stays individually frozen");
                     test.assertTrue(f.ready(f.a), "Another eligible UUID can prepare independently"); f.profileReady(f.b, true); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(7)); })
                 .thenWaitUntil(() -> f.await(f.idle(), "Seven second checkpoint"))
-                .thenExecute(() -> f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY))
+                .thenExecute(() -> f.place(f.b, Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.b) && f.idle(), "Later player joins remaining countdown"))
                 .thenExecute(() -> {
                     test.assertValueEqual(f.round().remainingPhaseMillis(), 23000L, "Later join does not reset");
                     f.a.move(.1, .42, 90, 15, false); f.a.player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(new Input(false,false,false,false,true,false,false)));
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(22)); f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE);
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(22)); f.place(f.b, Landing.CENTRAL);
                 })
                 .thenWaitUntil(() -> f.await(!f.ready(f.b) && f.idle(), "Second leaves in final second"))
-                .thenExecute(() -> { test.assertTrue(f.ready(f.a), "Jump and turn keep preparation"); f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(2)); })
+                .thenExecute(() -> { test.assertTrue(f.ready(f.a), "Jump and turn keep preparation"); f.place(f.a, Landing.CENTRAL); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(2)); })
                 .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.WAITING && f.idle(), "Last-second exit cancels even at zero"))
-                .thenExecute(() -> f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY))
+                .thenExecute(() -> f.place(f.a, Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "Single human prepares"))
                 .thenExecute(() -> {
                     f.oldRoleModels = LobbyInteractions.get(f.server).orElseThrow().roleModels().view(f.a.player);
@@ -106,11 +103,12 @@ public final class HumanEntryGameTest {
                     var router = LobbyInteractions.get(f.server).orElseThrow();
                     var ids = router.roleModels().view(f.a.player);
                     test.assertValueEqual(ids.size(), 4, "Reconnect restores the three native monster models and the witch");
-                    test.assertTrue(ids.values().stream().noneMatch(f.oldRoleModels.values()::contains), "Reconnect never reuses stale role IDs");
-                    HuntInputFixtures.click(f.a.player, f.oldRoleModels.get(LobbyLayout.Facility.ZOMBIE), InteractionHand.MAIN_HAND);
+                    test.assertTrue(ids.values().stream().flatMap(List::stream).noneMatch(id -> f.oldRoleModels.values().stream().anyMatch(old -> old.contains(id))),
+                            "Reconnect never reuses stale role IDs");
+                    HuntInputFixtures.click(f.a.player, f.oldRoleModels.get(LobbyFunction.ROLE_ZOMBIE).getFirst(), InteractionHand.MAIN_HAND);
                     test.assertValueEqual(router.lastResult(f.a.player).orElseThrow(), LobbyInteractions.Result.UNREGISTERED, "Old connection role ID is rejected");
                     test.assertFalse(LobbyWorld.open(f.server).inAssembly(f.a.player, true), "Reconnect stays outside");
-                    f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY);
+                    f.place(f.a, Landing.RESTORE_READY);
                 })
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "Single human prepares again"))
                 .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
@@ -153,26 +151,26 @@ public final class HumanEntryGameTest {
                     test.assertTrue(f.a.player.level() == f.savedLevel && f.a.player.position().distanceTo(f.savedPosition) < .1, "Living reconnect restores saved native location");
                     test.assertValueEqual(f.a.player.getInventory().getItem(4).getCount(), 7, "Living reconnect preserves inventory");
                     test.assertValueEqual(f.round().participants().get(f.a.profile.id()).lifeSequence(), 5, "Reconnect never creates another life");
-                    f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY);
+                    f.place(f.b, Landing.RESTORE_READY);
                 })
                 .thenIdle(40)
                 .thenExecute(() -> {
                     test.assertTrue(dev.hardrush.lobby.HumanEntry.guiding(f.b.player), "Standing in the circle mid-round starts portal guidance");
                     test.assertValueEqual(f.hint(f.b), "继续站着 · 走出集结区取消", "Guidance explains how to cancel");
                     test.assertTrue(LobbyWorld.open(f.server).inAssembly(f.b.player, true), "Mid-round circle never relocates an eligible visitor");
-                    f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE);
+                    f.place(f.b, Landing.CENTRAL);
                 })
                 .thenIdle(2)
                 .thenExecute(() -> {
                     test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(f.b.player), "Leaving the circle cancels guidance");
                     test.assertValueEqual(f.round().participants().get(f.b.profile.id()).lifeSequence(), 0, "Leaving before the portal delay abandons admission");
-                    f.hold = true; f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY); f.guideStarted = f.server.getTickCount();
+                    f.hold = true; f.place(f.b, Landing.RESTORE_READY); f.guideStarted = f.server.getTickCount();
                 })
                 .thenWaitUntil(() -> f.await(f.session.mutationPending(), "Portal delay submits one admission"))
                 .thenExecute(() -> {
                     test.assertTrue(f.server.getTickCount() - f.guideStarted >= 80, "Admission waits the vanilla portal delay");
                     test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(f.b.player), "Submitted admission ends guidance");
-                    f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.WAIT_OUTSIDE); f.hold = false;
+                    f.place(f.b, Landing.CENTRAL); f.hold = false;
                 })
                 .thenWaitUntil(() -> f.await(!PlayerProfiles.isLocked(f.b.player) && f.idle(), "Submitted admission survives leaving the circle"))
                 .thenExecute(() -> {
@@ -194,7 +192,7 @@ public final class HumanEntryGameTest {
                 .thenWaitUntil(() -> f.await(f.round().sequence() == 2 && f.round().phase() == RoundPhase.PREPARING
                         && PlayerProfiles.canMoveInLobby(f.a.player) && PlayerProfiles.canMoveInLobby(f.b.player), "Hardcore round preparing with both back in camp"))
                 .thenExecute(() -> {
-                    f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY);
+                    f.place(f.a, Landing.RESTORE_READY);
                     var hint = f.hint(f.a);
                     test.assertTrue(hint.contains("挑战世界还在准备中"), "A closed circle explains itself instead of relocating: " + hint);
                     test.assertTrue(LobbyWorld.open(f.server).inAssembly(f.a.player, true), "Preparation never relocates the waiting player");
@@ -203,11 +201,13 @@ public final class HumanEntryGameTest {
                 })
                 .thenIdle(3)
                 .thenExecute(() -> {
+                    // The history-book hand-out is a NOTICE one-shot and outranks facility hints for a few seconds by design.
+                    LobbyInteractions.get(f.server).orElseThrow().hints(f.b.player).clear("notice");
                     test.assertTrue(f.hint(f.b).contains("祭坛只在挑战进行中开放"), "The altar explains itself outside a challenge: " + f.hint(f.b));
                     test.assertFalse(dev.hardrush.lobby.RevivalAltar.channeling(f.b.player), "A dormant altar starts no rite");
                 })
                 .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.COUNTDOWN && f.ready(f.a) && f.idle(), "Standing in the circle when it opens prepares automatically"))
-                .thenExecute(() -> f.place(f.b, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY))
+                .thenExecute(() -> f.place(f.b, Landing.RESTORE_READY))
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.ready(f.b) && f.idle(), "Two hardcore humans prepared"))
                 .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
                 .thenWaitUntil(() -> f.await(!PlayerProfiles.isLocked(f.a.player) && !PlayerProfiles.isLocked(f.b.player) && f.idle(), "Hardcore natural admissions"))
@@ -218,16 +218,18 @@ public final class HumanEntryGameTest {
                             && PlayerProfiles.canMoveInLobby(f.a.player), "Hardcore death enters monster camp");
                 })
                 .thenExecute(() -> {
-                    var anchor = BlockPos.containing(LobbyWorld.open(f.server).holdingSpawn());
-                    test.assertTrue(dev.hardrush.core.lobby.LobbyLayout.scatterAllowed(dev.hardrush.core.lobby.LobbyLayout.Landing.MONSTER,
-                            f.a.player.getBlockX() - anchor.getX(), f.a.player.getBlockZ() - anchor.getZ()), "A monster scatters inside the monster camp");
-                    f.place(f.a, dev.hardrush.core.lobby.LobbyLayout.Landing.RESTORE_READY);
+                    var plan = LobbyPlanFixtures.plan(f.server); var feet = f.a.player.blockPosition();
+                    test.assertTrue(LandingRules.scatterAllowed(plan, Landing.MONSTER, LandingRules.candidates(plan, Landing.MONSTER).getFirst(),
+                            feet.getX(), feet.getY(), feet.getZ()), "A monster scatters inside the monster camp");
+                    f.place(f.a, Landing.RESTORE_READY);
                 })
                 .thenIdle(100)
                 .thenExecute(() -> {
                     test.assertTrue(LobbyWorld.open(f.server).inAssembly(f.a.player, true), "A dead UUID is never relocated out of the circle");
                     test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(f.a.player), "A dead UUID cannot start admission guidance");
-                    test.assertTrue(f.hint(f.a).contains("去庭院或祭坛"), "The circle points a monster to the courtyard and altar");
+                    // The held-coin usage line (ITEM) outranks the circle's explanation by design.
+                    LobbyInteractions.get(f.server).orElseThrow().hints(f.a.player).clear("item");
+                    test.assertTrue(f.hint(f.a).contains("去庭院或祭坛"), "The circle points a monster to the courtyard and altar: " + f.hint(f.a));
                     test.assertValueEqual(f.round().participants().get(f.a.profile.id()).role(), dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY, "The circle cannot restore a dead UUID");
                     test.assertTrue(f.altarGlass().is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW)), "A hardcore challenge lights the altar's beam");
                     f.altar(f.a);
@@ -239,16 +241,6 @@ public final class HumanEntryGameTest {
                     test.assertTrue(f.hint(f.a).contains("你没有复生图腾"), "The altar tells a totemless monster how to earn one: " + f.hint(f.a));
                     test.assertValueEqual(f.round().participants().get(f.a.profile.id()).role(), dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY, "Standing on the altar without a totem changes nothing");
                     f.a.disconnect(); f.b.disconnect();
-                    f.reopenLegacyCamp("PREPARED", false);
-                })
-                .thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready(), "Interrupted v1 camp upgrades"))
-                .thenExecute(() -> { f.assertUpgradedCamp(); f.reopenLegacyCamp("COMPLETE", true); })
-                .thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready(), "Completed v1 camp upgrades"))
-                .thenExecute(() -> {
-                    f.assertUpgradedCamp();
-                    var lobby = LobbyWorld.open(f.server);
-                    test.assertTrue(lobby.holdingLevel().getBlockState(BlockPos.containing(lobby.holdingSpawn()).offset(-8, -1, 10)).is(Blocks.GOLD_BLOCK),
-                            "Completed camp upgrade preserves unrelated administrator terrain");
                 }).thenSucceed();
     }
 
@@ -264,7 +256,7 @@ public final class HumanEntryGameTest {
         net.minecraft.server.level.ServerLevel savedLevel;
         String lastStage;
         int stageStarted;
-        Map<LobbyLayout.Facility, Integer> oldRoleModels;
+        Map<LobbyFunction, List<Integer>> oldRoleModels;
         Fixture(GameTestHelper test) { this.test = test; server = test.getLevel().getServer(); }
         @SuppressWarnings("unchecked") <T> T service(String name) {
             try { var field = RoundRuntime.class.getDeclaredField(name); field.setAccessible(true); return (T) ((Map<?, ?>) field.get(null)).get(server); }
@@ -294,16 +286,16 @@ public final class HumanEntryGameTest {
         dev.hardrush.core.round.RoundSnapshot round() { return session.snapshot().orElseThrow(); }
         boolean idle() { return !session.mutationPending(); }
         boolean ready(Peer peer) { var p = round().participants().get(peer.profile.id()); return p != null && p.ready(); }
-        void place(Peer peer, dev.hardrush.core.lobby.LobbyLayout.Landing landing) { profiles.placeInLobby(peer.player, landing); peer.acknowledge(); }
+        void place(Peer peer, Landing landing) { profiles.placeInLobby(peer.player, landing); peer.acknowledge(); }
         /** Onto the altar's north-west gold cell. */
         void altar(Peer peer) {
             var lobby = LobbyWorld.open(server);
-            var pos = lobby.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(dev.hardrush.core.lobby.LobbyLayout.Facility.ALTAR)).add(-1, 1, -1);
+            var pos = LobbyPlanFixtures.onAltar(server);
             peer.player.teleportTo(lobby.holdingLevel(), pos.x, pos.y, pos.z, java.util.Set.of(), 0, 0, true); peer.acknowledge();
         }
         net.minecraft.world.level.block.state.BlockState altarGlass() {
             var lobby = LobbyWorld.open(server);
-            return lobby.holdingLevel().getBlockState(dev.hardrush.world.CampBlueprint.altarGlass(BlockPos.containing(lobby.holdingSpawn())));
+            return lobby.holdingLevel().getBlockState(LobbyPlanFixtures.altarGlass(server));
         }
         final java.util.concurrent.LinkedBlockingQueue<Runnable> held = new java.util.concurrent.LinkedBlockingQueue<>();
         boolean hold, cancelSeen;
@@ -385,37 +377,37 @@ public final class HumanEntryGameTest {
             var router = LobbyInteractions.get(server).orElseThrow();
             var ids = router.roleModels().view(a.player);
             test.assertValueEqual(ids.size(), 4, "Waiting humans see all three monster choices and the witch merchant");
-            test.assertTrue(ids.values().stream().noneMatch(router.roleModels().view(b.player).values()::contains), "Each connection owns independent role IDs");
-            var lobby = LobbyWorld.open(server);
-            for (var facility : LobbyLayout.MONSTER_FACILITIES) {
-                int id = ids.get(facility);
+            var others = router.roleModels().view(b.player).values().stream().flatMap(List::stream).toList();
+            test.assertTrue(ids.values().stream().flatMap(List::stream).noneMatch(others::contains), "Each connection owns independent role IDs");
+            for (var facility : List.of(LobbyFunction.ROLE_ZOMBIE, LobbyFunction.ROLE_SKELETON, LobbyFunction.ROLE_CREEPER)) {
+                int id = ids.get(facility).getFirst();
                 var spawn = a.connection.packets.stream().filter(ClientboundAddEntityPacket.class::isInstance)
                         .map(ClientboundAddEntityPacket.class::cast).filter(p -> p.getId() == id).findFirst().orElseThrow();
                 var type = switch (facility) {
-                    case ZOMBIE -> net.minecraft.world.entity.EntityTypes.ZOMBIE;
-                    case SKELETON -> net.minecraft.world.entity.EntityTypes.SKELETON;
-                    case CREEPER -> net.minecraft.world.entity.EntityTypes.CREEPER;
+                    case ROLE_ZOMBIE -> net.minecraft.world.entity.EntityTypes.ZOMBIE;
+                    case ROLE_SKELETON -> net.minecraft.world.entity.EntityTypes.SKELETON;
+                    case ROLE_CREEPER -> net.minecraft.world.entity.EntityTypes.CREEPER;
                     default -> throw new AssertionError("Not a monster facility");
                 };
                 test.assertTrue(spawn.getType() == type, "Uses the native full monster model: " + facility);
-                var pos = lobby.layoutPosition(LobbyLayout.facility(facility));
+                var pos = LobbyPlanFixtures.model(server, facility);
                 test.assertTrue(pos.distanceToSqr(new Vec3(spawn.getX(), spawn.getY(), spawn.getZ())) < .000001, "Model occupies the former lectern position");
                 test.assertTrue(a.player.level().getEntity(id) == null, "Display is never a live hostile mob");
                 test.assertTrue(a.connection.packets.stream().anyMatch(p -> p instanceof ClientboundSetEntityDataPacket data && data.id() == id), "Native model metadata is sent");
             }
-            int witch = ids.get(LobbyLayout.Facility.MERCHANT);
+            int witch = ids.get(LobbyFunction.MERCHANT).getFirst();
             test.assertTrue(a.connection.packets.stream().filter(ClientboundAddEntityPacket.class::isInstance)
                     .map(ClientboundAddEntityPacket.class::cast).anyMatch(p -> p.getId() == witch
                             && p.getType() == net.minecraft.world.entity.EntityTypes.WITCH), "The merchant is a native witch model");
             test.assertTrue(a.player.level().getEntity(witch) == null, "The witch is never a live mob");
             test.assertTrue(a.connection.packets.stream().anyMatch(p -> p instanceof ClientboundSetEquipmentPacket equipment
-                    && equipment.getEntity() == ids.get(LobbyLayout.Facility.SKELETON)
+                    && equipment.getEntity() == ids.get(LobbyFunction.ROLE_SKELETON).getFirst()
                     && equipment.getSlots().stream().anyMatch(slot -> slot.getFirst() == net.minecraft.world.entity.EquipmentSlot.MAINHAND
                     && slot.getSecond().is(Items.BOW))), "Skeleton carries its native bow");
-            int id = ids.get(LobbyLayout.Facility.ZOMBIE);
+            int id = ids.get(LobbyFunction.ROLE_ZOMBIE).getFirst();
             HuntInputFixtures.click(a.player, id, InteractionHand.MAIN_HAND);
             test.assertValueEqual(router.lastResult(a.player).orElseThrow(), LobbyInteractions.Result.DISTANCE, "Remote role click is rejected");
-            var pos = lobby.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.ZOMBIE));
+            var pos = LobbyPlanFixtures.model(server, LobbyFunction.ROLE_ZOMBIE);
             HuntInputFixtures.move(a.player, pos.add(0, 0, 2)); a.acknowledge();
             HuntInputFixtures.click(a.player, id, InteractionHand.OFF_HAND);
             test.assertValueEqual(router.lastResult(a.player).orElseThrow(), LobbyInteractions.Result.INPUT, "Offhand role duplicate is rejected");
@@ -429,42 +421,27 @@ public final class HumanEntryGameTest {
             LobbyInteractions.entity(a.player, packet);
             test.assertValueEqual(a.connection.packets.size(), after, "Two network guards dispatch each click once");
             test.assertFalse(session.mutationPending(), "Waiting humans cannot bypass existing role restrictions");
-            place(a, LobbyLayout.Landing.CENTRAL);
+            place(a, Landing.CENTRAL);
         }
-        void reopenLegacyCamp(String marker, boolean editFloor) {
-            var lobby = LobbyWorld.open(server);
-            var level = lobby.holdingLevel(); var anchor = BlockPos.containing(lobby.holdingSpawn());
-            // No players remain. Reopen the actual persistent level through production migration,
-            // with a fixture-owned old manifest and old lecterns (no production test bypass).
-            LobbyWorld.shutdown(server);
-            for (var facility : LobbyLayout.MONSTER_FACILITIES) {
-                var point = LobbyLayout.facility(facility);
-                var pos = anchor.offset((int) point.x(), 0, (int) point.z());
-                test.assertTrue(level.setBlockAndUpdate(pos, Blocks.LECTERN.defaultBlockState()), "Fixture restores an old v1 role lectern");
+        /** Every block trigger holds its expected block; every model stands in air. */
+        void assertFacilitiesBuilt(String message) {
+            var lobby = LobbyWorld.open(server); var level = lobby.holdingLevel();
+            for (var trigger : lobby.plan().triggers()) {
+                if (trigger.block() == null) continue;
+                var actual = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(LobbyWorld.pos(trigger.block())).getBlock());
+                test.assertValueEqual(actual.toString(), trigger.blockId(), message + ": " + trigger.function().id());
             }
-            // A v1 camp predates the monster shop: no vaults and no shop signs.
-            for (var pos : dev.hardrush.world.CampBlueprint.shopAdditions(anchor).keySet())
-                level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
-            if (editFloor) level.setBlockAndUpdate(anchor.offset(-8, -1, 10), Blocks.GOLD_BLOCK.defaultBlockState());
-            level.save(null, true, false);
-            var manifest = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("hardrush/lobby-layout.txt");
-            try {
-                java.nio.file.Files.writeString(manifest, "hardrush:lobby\nversion=" + LobbyLayout.VERSION
-                        + "\nanchor=" + anchor.asLong() + "\n" + marker + "\n");
-            } catch (java.io.IOException error) { throw new IllegalStateException(error); }
-            LobbyWorld.open(server);
-        }
-        void assertUpgradedCamp() {
-            var lobby = LobbyWorld.open(server);
-            for (var facility : LobbyLayout.Facility.values()) {
-                var pos = BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(facility)));
-                test.assertTrue(lobby.holdingLevel().getBlockState(pos).equals(dev.hardrush.world.CampBlueprint.facilityBlock(facility)),
-                        "Legacy upgrade replaces monster lecterns and adds the shop vaults: " + facility);
+            for (var model : lobby.plan().models())
+                test.assertTrue(level.getBlockState(BlockPos.containing(LobbyWorld.position(model.point()))).isAir(), message + ": " + model.function().id());
+            for (var key : List.of(dev.hardrush.core.round.ShopOffer.TRIAL_KEY, dev.hardrush.core.round.ShopOffer.OMINOUS_KEY)) {
+                var function = key == dev.hardrush.core.round.ShopOffer.OMINOUS_KEY ? LobbyFunction.OMINOUS_VAULT : LobbyFunction.VAULT;
+                var state = level.getBlockState(LobbyPlanFixtures.block(server, function));
+                test.assertTrue(state.getValue(net.minecraft.world.level.block.VaultBlock.OMINOUS) == (function == LobbyFunction.OMINOUS_VAULT), message + ": ominous " + function.id());
             }
         }
         void assertProtectionAndUi() {
             var floor = BlockPos.containing(a.player.position()).below(2);
-            // The jump can leave feet above the ground; target the original flat floor directly.
+            // The jump can leave feet above the ground; target the camp floor under the spawn's layer directly.
             floor = new BlockPos(floor.getX(), LobbyWorld.open(server).holdingLevel().getRespawnData().pos().getY() - 1, floor.getZ());
             var original = a.player.level().getBlockState(floor);
             a.player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, floor, Direction.UP, 1));
@@ -475,8 +452,6 @@ public final class HumanEntryGameTest {
             test.assertTrue(a.player.level().getBlockState(floor).equals(original) && a.player.level().getBlockState(floor.above()).isAir(), "Both block packets leave terrain unchanged");
             test.assertFalse(a.player.hurtServer(a.player.level(), a.player.damageSources().playerAttack(b.player), 5), "Lobby bodies cannot be damaged");
             a.player.getInventory().clearContent();
-            a.command("hardrush menu"); test.assertTrue(LobbyMenus.isMenu(a.player), "Adventure mode keeps the actual lobby menu available");
-            a.player.connection.handleContainerClose(new ServerboundContainerClosePacket(a.player.containerMenu.containerId));
             var book = new BookPort.Book(UUID.randomUUID(), 1, 1, "大厅测试历史书", "HardRush", List.of("只读历史"));
             a.player.getInventory().setItem(0, WrittenBookPort.createItem(new OperationTag(book.roundId(), UUID.randomUUID(), 1), book));
             int before = a.connection.packets.size();

@@ -90,6 +90,7 @@ public final class RoundRuntime {
         if (initialized) return;
         initialized = true;
         dev.hardrush.participation.ParticipationControl.registerCommands();
+        dev.hardrush.lobby.workshop.Workshop.registerCommands();
         dev.hardrush.world.RoundWorldRouting.registerFormalOverworld(RoundRuntime::formalOverworld);
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             if (!HardRushProperties.competitionEnabled()) return;
@@ -97,9 +98,10 @@ public final class RoundRuntime {
             if (!recovery.message().isEmpty()) LOGGER.warn("{}", recovery.message());
             var lobby = LobbyWorld.open(server);
             var profiles = new PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profiles"),
-                    lobby::holdingLevel, () -> lobby.ready() ? lobby.scatteredLanding(dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL) : lobby.holdingSpawn());
+                    lobby::holdingLevel, () -> lobby.ready() ? lobby.scatteredLanding(dev.hardrush.core.lobby.plan.Landing.CENTRAL).position() : lobby.holdingSpawn());
             PlayerProfiles.install(server, profiles);
             PROFILES.put(server, profiles);
+            dev.hardrush.lobby.workshop.Workshop.configure(server, profiles);
             ADMITTED.put(server, new java.util.HashMap<>());
             LATE_ENTRANTS.put(server, new java.util.HashMap<>());
             ServerDifficulty.applyFirstRunDefault(server);
@@ -235,8 +237,13 @@ public final class RoundRuntime {
             try {
                 var lobby = LobbyWorld.open(server);
                 lobby.tick();
+                dev.hardrush.lobby.pack.LobbyAdmin.tick(server);
                 dev.hardrush.lobby.LobbyInteractions.tick(server);
                 dev.hardrush.lobby.HumanEntry.readOnlyTick(server);
+                // Builders go back before any profile, recovery or checkpoint step can read their bodies.
+                // A workshop fault must not stop the round; the profile service still ends invalid builders itself.
+                try { dev.hardrush.lobby.workshop.Workshop.tick(server); }
+                catch (RuntimeException error) { LOGGER.error("Workshop update failed", error); }
                 if (dev.hardrush.storage.RecoveryRuntime.tick(server)) return;
                 if (lobby.failure().isPresent() && session.state() != RoundSession.State.FAILED
                         && session.state() != RoundSession.State.RECHECKING) {
@@ -423,6 +430,7 @@ public final class RoundRuntime {
             try { dev.hardrush.storage.RecoveryRuntime.stop(server); }
             catch (Exception error) { session.adapterFailure("在线恢复停服屏障失败", error); }
             session.prepareStop();
+            dev.hardrush.lobby.workshop.Workshop.stop(server);
             CelebrationRuntime.prepareStop(server);
             LobbyRuntime.prepareStop(server);
             var profiles = PROFILES.get(server);
@@ -480,6 +488,7 @@ public final class RoundRuntime {
             dev.hardrush.lobby.RevivalAltar.close(server);
             dev.hardrush.notice.StatusBars.close(server);
             dev.hardrush.world.FarLandings.close(server);
+            dev.hardrush.lobby.pack.LobbyAdmin.shutdown(server);
             LobbyWorld.shutdown(server);
         });
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
@@ -778,12 +787,32 @@ public final class RoundRuntime {
         var round = session.snapshot().orElse(null);
         if (round == null || (round.phase() != RoundPhase.WAITING && round.phase() != RoundPhase.COUNTDOWN
                 && round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE)) return false;
-        var participant = round.participants().get(player.getUUID());
-        if (participant != null && !participant.role().isExcluded()
-                && (participant.role() != ParticipantRole.LOBBY || participant.ready()
-                    || participant.lifeSequence() != 0 || participant.joinedAtChallengeNanos() >= 0)) return false;
+        if (rosterBound(round, player.getUUID())) return false;
         return LobbyWorld.isLobby(destination)
                 || RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), destination);
+    }
+
+    /** On this round's roster beyond waiting in camp: prepared, entered once or joined mid-way (and not excluded). */
+    private static boolean rosterBound(RoundSnapshot round, UUID playerId) {
+        var participant = round.participants().get(playerId);
+        return participant != null && !participant.role().isExcluded()
+                && (participant.role() != ParticipantRole.LOBBY || participant.ready()
+                    || participant.lifeSequence() != 0 || participant.joinedAtChallengeNanos() >= 0);
+    }
+
+    /**
+     * Why a camp body may not build in a workshop right now, or stay there (design 11.2, 11.3); empty when it may.
+     * Workshops are open only before a challenge, and never to a prepared participant.
+     */
+    public static Optional<String> buildingRefusal(ServerPlayer player) {
+        var session = SESSIONS.get(player.level().getServer());
+        var round = session == null ? null : session.snapshot().orElse(null);
+        if (round == null || session.state() != RoundSession.State.OPEN) return Optional.of("比赛暂停中，工坊不开放");
+        if (round.phase() != RoundPhase.PREPARING && round.phase() != RoundPhase.WAITING && round.phase() != RoundPhase.COUNTDOWN)
+            return Optional.of("挑战进行中，工坊暂停开放");
+        if (session.admissionReserved(player.getUUID()) || rosterBound(round, player.getUUID()))
+            return Optional.of("你已准备参赛，先走出集结区");
+        return Optional.empty();
     }
 
     private static boolean canReceiveBook(ServerPlayer player) {
@@ -881,7 +910,7 @@ public final class RoundRuntime {
             else if (worlds != null && RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), player.level())) {
                 player.stopRiding(); player.ejectPassengers(); player.closeContainer();
                 var lobby = LobbyWorld.open(server);
-                var spawn = lobby.ready() ? lobby.scatteredLanding(dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL) : lobby.holdingSpawn();
+                var spawn = lobby.ready() ? lobby.scatteredLanding(dev.hardrush.core.lobby.plan.Landing.CENTRAL).position() : lobby.holdingSpawn();
                 player.teleportTo(lobby.holdingLevel(), spawn.x, spawn.y, spawn.z,
                         java.util.Set.of(), 0, 0, true);
                 player.setGameMode(net.minecraft.world.level.GameType.ADVENTURE);

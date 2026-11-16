@@ -2,7 +2,6 @@ package dev.hardrush.gametest;
 
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.MonotonicClock;
-import dev.hardrush.core.lobby.LobbyLayout;
 import dev.hardrush.core.round.*;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.observe.Observation;
@@ -470,7 +469,7 @@ public final class PersonalHuntGameTest {
         void assertAway() {
             int id=model(c,a);
             test.assertTrue(c.connection.packets.stream().filter(ClientboundSetEntityDataPacket.class::isInstance).map(ClientboundSetEntityDataPacket.class::cast)
-                    .filter(data -> data.id()==id).flatMap(data -> data.packedItems().stream()).anyMatch(data -> data.value().toString().contains("暂离")),"Disconnected human retains an away display");
+                    .filter(data -> data.id()==id).flatMap(data -> data.packedItems().stream()).anyMatch(data -> data.value().toString().contains("离线")),"Disconnected human retains an away display");
         }
         void commitRace(GameTestSequence s,boolean terrain) {
             var baseline=new int[2]; var found=new Vec3[1];

@@ -1,5 +1,6 @@
 package dev.hardrush.protection.mixin;
 
+import dev.hardrush.protection.LobbyInteractive;
 import dev.hardrush.protection.ProtectionRuntime;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -16,7 +17,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class ProtectionWorldMixin {
     @Inject(method="setBlock", at=@At("HEAD"), cancellable=true)
     private void set(BlockPos pos, BlockState state, int flags, int recursion, CallbackInfoReturnable<Boolean> ci) {
-        if ((Object)this instanceof ServerLevel level && ProtectionRuntime.protectedLevel(level)) ci.setReturnValue(false);
+        if ((Object)this instanceof ServerLevel level && ProtectionRuntime.protectedLevel(level)
+                && !ProtectionRuntime.ownedWriting(level) && !sameInteractive(level, pos, state)) ci.setReturnValue(false);
+    }
+    /** Door, button, lamp and similar state changes of the same block are the lobby's interactive decoration. */
+    private static boolean sameInteractive(ServerLevel level, BlockPos pos, BlockState next) {
+        BlockState old = level.getBlockState(pos);
+        return old.is(next.getBlock()) && LobbyInteractive.propagates(old);
     }
     @Inject(method="destroyBlock", at=@At("HEAD"), cancellable=true)
     private void destroy(BlockPos pos, boolean drop, Entity entity, int recursion, CallbackInfoReturnable<Boolean> ci) {

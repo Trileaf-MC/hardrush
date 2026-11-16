@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class PlayerIsolationEntityMixin {
     @Inject(method = {"loadAndSpawnParentVehicle", "loadAndSpawnEnderPearls"}, at = @At("HEAD"), cancellable = true)
     private void hardrush$holdLateLoginEntities(ValueInput input, CallbackInfo ci) {
-        if (PlayerProfiles.isLocked((ServerPlayer) (Object) this)) ci.cancel();
+        if (PlayerProfiles.sealed((ServerPlayer) (Object) this)) ci.cancel();
     }
     @Inject(method = "doTick", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdSimulation(CallbackInfo ci) {
@@ -31,6 +31,6 @@ public abstract class PlayerIsolationEntityMixin {
     }
     @Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdDamage(ServerLevel level, DamageSource source, float amount, CallbackInfoReturnable<Boolean> ci) {
-        if (PlayerProfiles.isLocked((ServerPlayer) (Object) this)) ci.setReturnValue(false);
+        if (PlayerProfiles.sealed((ServerPlayer) (Object) this)) ci.setReturnValue(false);
     }
 }

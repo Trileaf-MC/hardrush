@@ -13,6 +13,7 @@ public final class TestProperties {
     public static final String FULL_FLOW_FAULT = "hardrush.test.fullFlowFault";
     public static final String HUMAN_ENTRY = "hardrush.test.humanEntry";
     public static final String IDENTITY_RUNTIME = "hardrush.test.identityRuntime";
+    public static final String LOBBY_ADMIN = "hardrush.test.lobbyAdmin";
     public static final String LOBBY_FOUNDATION = "hardrush.test.lobbyFoundation";
     public static final String LOBBY_MOVEMENT = "hardrush.test.lobbyMovement";
     public static final String LOBBY_RUNTIME = "hardrush.test.lobbyRuntime";
@@ -27,4 +28,5 @@ public final class TestProperties {
     public static final String STABILIZATION = "hardrush.test.stabilization";
     public static final String STORAGE_RESERVE = "hardrush.test.storageReserve";
     public static final String TEN_ROUNDS = "hardrush.test.tenRounds";
+    public static final String WORKSHOP = "hardrush.test.workshop";
 }

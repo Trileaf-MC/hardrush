@@ -44,6 +44,7 @@
       "dev.hardrush.gametest.MonsterCombatWhitelistGameTest",
       "dev.hardrush.monster.MonsterSkillsGameTest",
       "dev.hardrush.gametest.HumanEntryGameTest",
+      "dev.hardrush.gametest.WorkshopGameTest",
       "dev.hardrush.gametest.PersonalHuntGameTest",
       "dev.hardrush.gametest.FullFlowGameTest",
       "dev.hardrush.gametest.StabilizationGameTest",
@@ -59,7 +60,10 @@
       "dev.hardrush.gametest.MonsterCloudGameTest",
       "dev.hardrush.monster.MonsterInventoryFormGameTest",
       "dev.hardrush.monster.MonsterSeaGameTest",
-      "dev.hardrush.lobby.HeldItemHintsGameTest"
+      "dev.hardrush.lobby.HeldItemHintsGameTest",
+      "dev.hardrush.lobby.pack.PackRoundTripGameTest",
+      "dev.hardrush.lobby.pack.LobbyInstallGameTest",
+      "dev.hardrush.gametest.LobbyAdminGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"

@@ -7,6 +7,7 @@ import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.player.PlayerProfiles;
+import dev.hardrush.lobby.ButtonMenu;
 import dev.hardrush.lobby.LobbyMenus;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -93,13 +94,13 @@ public final class ParticipationControl {
                     || round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE);
     }
 
-    public static List<LobbyMenus.Button> withdrawalButtons(ServerPlayer player) {
+    public static List<ButtonMenu.Button> withdrawalButtons(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());
         var p = b.session.snapshot().orElseThrow().participants().get(player.getUUID());
-        return List.of(new LobbyMenus.Button(Items.PAPER, "退出后本轮不能再加入、追猎或复生，下一轮恢复", "info", ""),
-                new LobbyMenus.Button(Items.CHEST, "身上的物资封存，空手回到营地，可以用望远镜观战 · 不算阵亡，不给任何人击杀奖励", "info", ""),
-                new LobbyMenus.Button(Items.EMERALD, "确认退出本轮并观战", "withdraw-confirm", token(p)),
-                new LobbyMenus.Button(Items.BARRIER, "取消，继续游戏", "withdraw-cancel", ""));
+        return List.of(new ButtonMenu.Button(Items.PAPER, "退出后本轮不能再加入、追猎或复生，下一轮恢复", "info", ""),
+                new ButtonMenu.Button(Items.CHEST, "身上的物资封存，空手回到营地，可以用望远镜观战 · 不算阵亡，不给任何人击杀奖励", "info", ""),
+                new ButtonMenu.Button(Items.EMERALD, "确认退出本轮并观战", "withdraw-confirm", token(p)),
+                new ButtonMenu.Button(Items.BARRIER, "取消，继续游戏", "withdraw-cancel", ""));
     }
 
     public static void confirmWithdrawal(ServerPlayer player, UUID expectedRound, String token) {

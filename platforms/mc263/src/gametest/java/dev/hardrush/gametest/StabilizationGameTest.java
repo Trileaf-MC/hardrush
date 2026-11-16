@@ -2,7 +2,7 @@ package dev.hardrush.gametest;
 
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.config.GameMode;
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.round.*;
 import dev.hardrush.round.*;
 import dev.hardrush.lobby.*;
@@ -10,6 +10,7 @@ import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.record.HistoryLibrary;
 import dev.hardrush.world.*;
 import dev.hardrush.celebration.CelebrationRuntime;
+import dev.hardrush.lobby.ButtonMenu;
 import dev.hardrush.lobby.LobbyMenus;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -56,7 +57,7 @@ public final class StabilizationGameTest {
         seq.thenExecute(()->{
                     for(var peer:peers)peer.player.connection.handleContainerClose(new ServerboundContainerClosePacket(peer.player.containerMenu.containerId));
                     // Wait real monotonic throttle time; do not weaken reconnect throttling in production.
-                    state.throttleDeadline=System.nanoTime()+LobbyMenus.BUTTON_COOLDOWN_NANOS;
+                    state.throttleDeadline=System.nanoTime()+ButtonMenu.BUTTON_COOLDOWN_NANOS;
                 }).thenWaitUntil(()->f.await(System.nanoTime()>=state.throttleDeadline,"Real throttle expiry")).thenIdle(3).thenExecute(()->state.assertUiReleased(20));
         for(int index=0;index<3;index++){
             int round=index;
@@ -102,7 +103,7 @@ public final class StabilizationGameTest {
                     state.libraryCloseWhileLoading();
                     for(var peer:peers)peer.disconnect();
                 }).thenWaitUntil(()->f.await(state.drain.isDone(),"Disconnected-page IO drained"))
-                .thenExecute(()->state.throttleDeadline=System.nanoTime()+LobbyMenus.BUTTON_COOLDOWN_NANOS)
+                .thenExecute(()->state.throttleDeadline=System.nanoTime()+ButtonMenu.BUTTON_COOLDOWN_NANOS)
                 .thenWaitUntil(()->f.await(System.nanoTime()>=state.throttleDeadline,"Disconnected throttle expiry"))
                 .thenIdle(6).thenExecute(()->{
                     state.assertUiReleased(0);
@@ -134,7 +135,7 @@ public final class StabilizationGameTest {
         void libraryCloseWhileLoading(){
             closedViews.clear();
             for(var peer:peers)if(peer.current()!=null){
-                scene.facility(peer.player,LobbyLayout.Facility.HISTORY);
+                scene.facility(peer.player,LobbyFunction.HISTORY);
                 closedViews.add(views().get(peer.profile.id()));
                 peer.player.connection.handleContainerClose(new ServerboundContainerClosePacket(peer.player.containerMenu.containerId));
             }
@@ -143,7 +144,7 @@ public final class StabilizationGameTest {
         void assertClosedLibrary(){
             test.assertValueEqual(views().size(),0,"Closed history pages release owner/selected history");
             for(var v:closedViews){
-                @SuppressWarnings("unchecked") var buttons=(List<LobbyMenus.Button>)field(v,"buttons");
+                @SuppressWarnings("unchecked") var buttons=(List<ButtonMenu.Button>)field(v,"buttons");
                 test.assertValueEqual(buttons.getFirst().label(),"正在翻阅记录……","Late IO cannot update a closed page");
             }
         }
@@ -157,7 +158,7 @@ public final class StabilizationGameTest {
                 for(var selected:next.entities())test.assertTrue(ids.add(selected.entityId()),"Page replacement allocates new IDs");
                 peer.player.connection.handleInteract(new ServerboundInteractPacket(old.entityId(),InteractionHand.MAIN_HAND,null,false));
                 test.assertValueEqual(router.lastResult(peer.player).orElseThrow(),LobbyInteractions.Result.UNREGISTERED,"Late entity packet is unregistered");
-                scene.facility(peer.player,LobbyLayout.Facility.HISTORY);
+                scene.facility(peer.player,LobbyFunction.HISTORY);
                 var m=peer.player.containerMenu;
                 peer.player.connection.handleContainerClick(new ServerboundContainerClickPacket(m.containerId,m.getStateId(),(short)0,(byte)0,ContainerInput.PICKUP,new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(),HashedStack.EMPTY));
             }
@@ -176,7 +177,7 @@ public final class StabilizationGameTest {
         void assertUiReleased(int online){
             var router=LobbyInteractions.get(f.server).orElseThrow();
             test.assertValueEqual(views().size(),0,"No retained library pages");
-            test.assertValueEqual(((Map<?,?>)field(service(LobbyMenus.class,"BINDINGS"),"clickTimes")).size(),0,"Expired menu throttle UUIDs released");
+            test.assertValueEqual(((Map<?,?>)field(field(service(LobbyMenus.class,"BINDINGS"),"throttle"),"clickTimes")).size(),0,"Expired menu throttle UUIDs released");
             test.assertTrue(((Map<?,?>)field(router,"hints")).size()<=online,"Hints retain current connections only");
             test.assertTrue(((Map<?,?>)field(router.projections(),"pages")).size()<=online,"Projection owners bounded by current connections");
             var bars=(net.minecraft.server.level.ServerBossEvent)service(PlayerFeedback.class,"BARS");

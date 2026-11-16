@@ -1,5 +1,6 @@
 package dev.hardrush.gametest;
 
+import dev.hardrush.lobby.ButtonMenu;
 import dev.hardrush.lobby.LobbyMenus;
 import java.util.ArrayList;
 import java.util.List;
@@ -131,19 +132,19 @@ public final class LobbyMenuGameTest {
         test.succeed();
     }
 
-    private static LobbyMenus.Button button(String label, String target) {
-        return new LobbyMenus.Button(Items.EMERALD, label, "read", target);
+    private static ButtonMenu.Button button(String label, String target) {
+        return new ButtonMenu.Button(Items.EMERALD, label, "read", target);
     }
 
     private static final class FixtureAccess implements LobbyMenus.Access {
         UUID round = UUID.randomUUID();
         boolean available = true;
-        final List<LobbyMenus.Button> buttons = new ArrayList<>(List.of(button("阅读章节", "target")));
+        final List<ButtonMenu.Button> buttons = new ArrayList<>(List.of(button("阅读章节", "target")));
         final List<String> actions = new ArrayList<>();
 
         @Override public boolean available(ServerPlayer player) { return available; }
         @Override public UUID round(ServerPlayer player) { return round; }
-        @Override public List<LobbyMenus.Button> buttons(ServerPlayer player) { return List.copyOf(buttons); }
+        @Override public List<ButtonMenu.Button> buttons(ServerPlayer player) { return List.copyOf(buttons); }
         @Override public void act(ServerPlayer player, UUID expectedRound, String action, String value) {
             if (!round.equals(expectedRound) || !available) throw new AssertionError("Unvalidated application action");
             actions.add(action + ":" + value);

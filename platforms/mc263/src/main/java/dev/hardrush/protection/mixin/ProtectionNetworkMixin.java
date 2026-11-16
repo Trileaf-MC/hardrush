@@ -67,6 +67,9 @@ public abstract class ProtectionNetworkMixin {
         if (!mainThread()) return;
         if (LobbyInteractions.consumed(LobbyInteractions.block(player, packet))) { ci.cancel(); return; }
         if (ProtectionRuntime.rejectInteraction(player, player.level())) {
+            // Sneaking skips block interaction in vanilla and would fall through to the held item, so it stays refused.
+            // A click the block does not consume (an iron door) may still reach the held item; ItemStack.useOn is sealed separately.
+            if (ProtectionRuntime.interactiveClick(player, packet)) return;
             player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.hitResult().getBlockPos())); ci.cancel();
         }
     }

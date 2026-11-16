@@ -2,7 +2,7 @@ package dev.hardrush.lobby;
 
 import com.mojang.datafixers.util.Pair;
 import dev.hardrush.core.lobby.LobbyContext;
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.world.LobbyWorld;
 import java.util.*;
 import net.minecraft.network.chat.Component;
@@ -23,9 +23,18 @@ import net.minecraft.world.phys.Vec3;
 
 /** Native monster models, sent only as packets: no AI, damage, peaceful despawn or saved entities. */
 public final class LobbyRoleModels {
-    private record Model(LobbyLayout.Facility facility, Mob entity) {}
-    private record Display(ServerPlayer owner, ServerGamePacketListenerImpl connection, UUID round,
-                           Map<Integer, Model> models) {}
+    private record Model(LobbyFunction function, Mob entity) {}
+    private static final class Display {
+        final ServerPlayer owner; final ServerGamePacketListenerImpl connection; final UUID round;
+        final Map<Integer, Model> models;
+        /** Whether the name tags currently say the courtyard is open. */
+        boolean open;
+        Display(ServerPlayer owner, ServerGamePacketListenerImpl connection, UUID round, Map<Integer, Model> models, boolean open) {
+            this.owner = owner; this.connection = connection; this.round = round; this.models = models; this.open = open;
+        }
+    }
+    private static final List<LobbyFunction> FUNCTIONS = List.of(LobbyFunction.ROLE_ZOMBIE, LobbyFunction.ROLE_SKELETON,
+            LobbyFunction.ROLE_CREEPER, LobbyFunction.MERCHANT);
     private final LobbyInteractions router;
     private final Map<UUID, Display> displays = new HashMap<>();
     private static int lastNativeId = -1;
@@ -33,13 +42,15 @@ public final class LobbyRoleModels {
     LobbyRoleModels(LobbyInteractions router) { this.router = router; }
 
     /** IDs belong to this exact connection and round, like the human hunt projections. */
-    public Map<LobbyLayout.Facility, Integer> view(ServerPlayer observer) {
+    public Map<LobbyFunction, List<Integer>> view(ServerPlayer observer) {
         router.requireThread();
         var display = displays.get(observer.getUUID());
         if (display == null || display.owner != observer || display.connection != observer.connection) return Map.of();
-        var ids = new EnumMap<LobbyLayout.Facility, Integer>(LobbyLayout.Facility.class);
-        display.models.forEach((id, model) -> ids.put(model.facility, id));
-        return Map.copyOf(ids);
+        var ids = new EnumMap<LobbyFunction, List<Integer>>(LobbyFunction.class);
+        display.models.forEach((id, model) -> ids.computeIfAbsent(model.function, ignored -> new ArrayList<>()).add(id));
+        var copy = new EnumMap<LobbyFunction, List<Integer>>(LobbyFunction.class);
+        ids.forEach((function, list) -> copy.put(function, List.copyOf(list)));
+        return Collections.unmodifiableMap(copy);
     }
 
     void tick(MinecraftServer server) {
@@ -49,36 +60,41 @@ public final class LobbyRoleModels {
                 remove(display.owner);
         }
         var round = router.round();
+        boolean open = LobbyRuntime.courtyardOpen(server);
+        for (var display : displays.values()) {
+            if (display.open == open) continue;
+            display.open = open;
+            for (var model : display.models.values()) {
+                name(model, open);
+                display.connection.send(new ClientboundSetEntityDataPacket(model.entity.getId(),
+                        Objects.requireNonNull(model.entity.getEntityData().getNonDefaultValues())));
+            }
+        }
         for (var observer : server.getPlayerList().getPlayers()) {
             if (!available(observer, round) || displays.containsKey(observer.getUUID())) continue;
-            var lobby = LobbyWorld.open(server);
+            var plan = LobbyWorld.open(server).plan();
             var models = new LinkedHashMap<Integer, Model>();
-            var facilities = new ArrayList<>(LobbyLayout.MONSTER_FACILITIES);
-            facilities.add(LobbyLayout.Facility.MERCHANT);
-            for (var facility : facilities) {
+            for (var function : FUNCTIONS) for (var placed : plan.models(function)) {
                 // Templates bypass spawn admission: the peaceful lobby never spawns a live mob.
-                Mob entity = switch (facility) {
-                    case ZOMBIE -> new Zombie(EntityTypes.ZOMBIE, observer.level());
-                    case SKELETON -> new Skeleton(EntityTypes.SKELETON, observer.level());
-                    case CREEPER -> new Creeper(EntityTypes.CREEPER, observer.level());
+                Mob entity = switch (function) {
+                    case ROLE_ZOMBIE -> new Zombie(EntityTypes.ZOMBIE, observer.level());
+                    case ROLE_SKELETON -> new Skeleton(EntityTypes.SKELETON, observer.level());
+                    case ROLE_CREEPER -> new Creeper(EntityTypes.CREEPER, observer.level());
                     case MERCHANT -> new net.minecraft.world.entity.monster.Witch(EntityTypes.WITCH, observer.level());
-                    default -> throw new IllegalStateException("Not a monster facility");
+                    default -> throw new IllegalStateException("Not a model function");
                 };
                 if (entity.getId() <= lastNativeId) throw new IllegalStateException("Native entity IDs exhausted; restart required");
                 lastNativeId = entity.getId();
-                var point = LobbyLayout.facility(facility);
-                entity.setPos(lobby.layoutPosition(point)); entity.setYRot(point.yaw()); entity.setYHeadRot(point.yaw());
+                var point = placed.point();
+                entity.setPos(LobbyWorld.position(point)); entity.setYRot(point.yaw()); entity.setYHeadRot(point.yaw());
                 entity.setNoAi(true); entity.setNoGravity(true); entity.setSilent(true);
-                String name = switch (facility) {
-                    case ZOMBIE -> "僵尸 · 右键选择角色"; case SKELETON -> "骷髅 · 右键选择角色"; case CREEPER -> "苦力怕 · 右键选择角色";
-                    case MERCHANT -> "女巫商人 · 右键交易";
-                    default -> throw new IllegalStateException("Not a monster facility");
-                };
-                entity.setCustomName(Component.literal(name)); entity.setCustomNameVisible(true);
-                if (facility == LobbyLayout.Facility.SKELETON) entity.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
-                models.put(entity.getId(), new Model(facility, entity));
+                entity.setCustomNameVisible(true);
+                if (function == LobbyFunction.ROLE_SKELETON) entity.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+                var model = new Model(function, entity);
+                name(model, open);
+                models.put(entity.getId(), model);
             }
-            displays.put(observer.getUUID(), new Display(observer, observer.connection, round, Map.copyOf(models)));
+            displays.put(observer.getUUID(), new Display(observer, observer.connection, round, Map.copyOf(models), open));
             for (var model : models.values()) {
                 var entity = model.entity;
                 observer.connection.send(new ClientboundAddEntityPacket(entity.getId(), entity.getUUID(),
@@ -90,6 +106,17 @@ public final class LobbyRoleModels {
                         List.of(Pair.of(EquipmentSlot.MAINHAND, entity.getMainHandItem().copy()))));
             }
         }
+    }
+
+    /** Outside a personal hunt the name tag says when the model works, instead of a sign beside it. */
+    private static void name(Model model, boolean open) {
+        String who = switch (model.function) {
+            case ROLE_ZOMBIE -> "僵尸"; case ROLE_SKELETON -> "骷髅"; case ROLE_CREEPER -> "苦力怕";
+            case MERCHANT -> "女巫商人";
+            default -> throw new IllegalStateException("Not a model function");
+        };
+        String what = !open ? "极限挑战时开放" : model.function == LobbyFunction.MERCHANT ? "右键交易" : "右键选择角色";
+        model.entity.setCustomName(Component.literal(who + " · " + what));
     }
 
     private boolean available(ServerPlayer observer, UUID round) {
@@ -108,7 +135,7 @@ public final class LobbyRoleModels {
         if (result == LobbyInteractions.Result.ACCEPTED && (packet.hand() != InteractionHand.MAIN_HAND
                 || hit != null && (!Double.isFinite(hit.lengthSqr()) || hit.lengthSqr() > 9)))
             result = LobbyInteractions.Result.INPUT;
-        if (result == LobbyInteractions.Result.ACCEPTED) LobbyRuntime.facility(observer, model.facility);
+        if (result == LobbyInteractions.Result.ACCEPTED) LobbyRuntime.activate(observer, model.function, null);
         return result;
     }
 
