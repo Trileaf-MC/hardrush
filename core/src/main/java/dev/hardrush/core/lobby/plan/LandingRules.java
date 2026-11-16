@@ -10,8 +10,8 @@ public final class LandingRules {
     static final int LAYER_REACH = 2;
 
     /**
-     * The exact landings for {@code purpose}. Restore landings stand on the assembly floor cells nearest
-     * their zone's centre (floor zones only; a volume has no known floor), nearest first.
+     * The exact landings for {@code purpose}. Restore landings stand in the assembly zones nearest each zone's centre,
+     * nearest first: on a floor zone's cells, or on any layer of a volume (feet from its bottom up).
      */
     public static List<Point> candidates(LobbyPlan plan, Landing purpose) {
         return switch (purpose) {
@@ -23,22 +23,56 @@ public final class LandingRules {
         };
     }
 
+    private record Ranked(Point point, double distance) {
+        static final Comparator<Ranked> ORDER = Comparator.comparingDouble(Ranked::distance).thenComparingDouble((Ranked r) -> r.point().y())
+                .thenComparingDouble(r -> r.point().z()).thenComparingDouble(r -> r.point().x());
+        static Ranked of(Point stand, Point center) {
+            double dx = stand.x() - center.x(), dy = stand.y() - center.y(), dz = stand.z() - center.z();
+            return new Ranked(stand, Math.sqrt(dx * dx + dy * dy + dz * dz));
+        }
+    }
+
     private static List<Point> restoreCandidates(LobbyPlan plan) {
-        record Ranked(Point point, double distance) {}
         var ranked = new ArrayList<Ranked>();
         for (var zone : plan.zones(LobbyFunction.ASSEMBLY)) {
-            if (!(zone instanceof Zone.Floor floor) || floor.isEmpty()) continue;
-            var center = floor.center();
-            for (var c : floor.floor()) {
-                var stand = new Point(c.x() + .5, c.y() + 1, c.z() + .5, 0);
-                double dx = stand.x() - center.x(), dy = stand.y() - center.y(), dz = stand.z() - center.z();
-                ranked.add(new Ranked(stand, Math.sqrt(dx * dx + dy * dy + dz * dz)));
+            switch (zone) {
+                case Zone.Floor floor when !floor.isEmpty() -> {
+                    var center = floor.center();
+                    for (var c : floor.floor()) ranked.add(Ranked.of(new Point(c.x() + .5, c.y() + 1, c.z() + .5, 0), center));
+                }
+                case Zone.Volume volume -> ranked.addAll(nearest(volume));
+                default -> {}
             }
         }
         // Ties break by position so the order never depends on set iteration.
-        ranked.sort(Comparator.comparingDouble(Ranked::distance).thenComparingDouble(r -> r.point().y())
-                .thenComparingDouble(r -> r.point().z()).thenComparingDouble(r -> r.point().x()));
+        ranked.sort(Ranked.ORDER);
         return ranked.stream().limit(RESTORE_CANDIDATES).map(Ranked::point).toList();
+    }
+
+    /**
+     * The {@link #RESTORE_CANDIDATES} standing points of {@code volume} nearest its centre, without enumerating a box
+     * that may hold a million columns: grows a cube around the centre until it holds enough points no farther than
+     * its half-width, since every point that near lies inside the cube.
+     */
+    private static List<Ranked> nearest(Zone.Volume volume) {
+        var box = volume.box();
+        var center = volume.center();
+        int cx = (int) Math.floor(center.x()), cz = (int) Math.floor(center.z());
+        long widest = Math.max(box.sizeY(), Math.max(box.sizeX(), box.sizeZ()));
+        for (int r = 1; ; r++) {
+            var found = new ArrayList<Ranked>();
+            boolean whole = r >= widest;
+            for (int y = box.min().y(); y <= Math.min(box.max().y(), box.min().y() + r); y++)
+                for (int z = Math.max(box.min().z(), cz - r - 1); z <= Math.min(box.max().z(), cz + r); z++)
+                    for (int x = Math.max(box.min().x(), cx - r - 1); x <= Math.min(box.max().x(), cx + r); x++) {
+                        var ranked = Ranked.of(new Point(x + .5, y, z + .5, 0), center);
+                        if (whole || ranked.distance() <= r) found.add(ranked);
+                    }
+            if (found.size() >= RESTORE_CANDIDATES || whole) {
+                found.sort(Ranked.ORDER);
+                return found.subList(0, Math.min(RESTORE_CANDIDATES, found.size()));
+            }
+        }
     }
 
     /**
