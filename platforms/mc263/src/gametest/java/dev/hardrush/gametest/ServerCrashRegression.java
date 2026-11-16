@@ -109,6 +109,7 @@ public final class ServerCrashRegression implements ModInitializer {
             act("native monster lethal attack", () -> {
                 move(a, b.player.level(), b.player.position().add(1, 0, 0));
                 b.player.setHealth(1); b.player.setInvulnerableTime(0);
+                MonsterRoleGameTest.emptyHanded(a.player);
                 require(MonsterRoles.attack(a.player, b.player) && b.player.isDeadOrDying(), "real monster attack produces lethal evidence");
             });
             if (scenario.equals("AWARD")) return;
