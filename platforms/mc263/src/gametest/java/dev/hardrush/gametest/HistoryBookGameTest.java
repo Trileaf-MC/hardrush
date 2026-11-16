@@ -65,7 +65,7 @@ public final class HistoryBookGameTest {
         var server = test.getLevel().getServer();
         try {
             var saved = new boolean[]{false};
-            var port = new WrittenBookPort(server, (scope, id) -> true, p -> CompletableFuture.completedFuture(saved[0]));
+            var port = new WrittenBookPort(server, (scope, id) -> true, (p, slot, stack) -> CompletableFuture.completedFuture(saved[0]));
             var scope = new OperationTag(UUID.randomUUID(), UUID.randomUUID(), 1);
             var book = book();
             for (int slot = 0; slot < 36; slot++) player.getInventory().setItem(slot, new ItemStack(Items.EMERALD, 64));
@@ -86,7 +86,7 @@ public final class HistoryBookGameTest {
                     "Fresh manual operation requires another free slot");
             test.assertValueEqual(value(port.deliver(scope, UUID.randomUUID(), book)), BookPort.Delivery.OFFLINE,
                     "Offline target receives nothing");
-            var stale = new WrittenBookPort(server, (tag, id) -> false, p -> { throw new AssertionError("Stale must not save"); });
+            var stale = new WrittenBookPort(server, (tag, id) -> false, (p, slot, stack) -> { throw new AssertionError("Stale must not save"); });
             test.assertValueEqual(stale.deliver(scope, player.getUUID(), book).toCompletableFuture().join().outcome(),
                     OperationResult.Outcome.REJECTED, "Changed scope checked at physical delivery");
             test.assertValueEqual(countBooks(player), 1, "Rejected old callback does not mutate inventory");
@@ -116,7 +116,7 @@ public final class HistoryBookGameTest {
             var second = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
             player.saveWithoutId(second);
             test.assertTrue(!BookInventorySaver.matchesSavedInventory(file, second.buildResult()), "Old inventory cannot acknowledge changed item state");
-            test.assertTrue(new BookInventorySaver(server).apply(player).toCompletableFuture().join(),
+            test.assertTrue(new BookInventorySaver(server).save(player, 0, player.getInventory().getItem(0)).toCompletableFuture().join(),
                     "Actual native PlayerList save and bounded on-disk inventory readback");
         } finally {
             server.getPlayerList().remove(player);
