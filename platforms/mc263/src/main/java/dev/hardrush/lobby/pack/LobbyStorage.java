@@ -14,12 +14,14 @@ import java.util.regex.Pattern;
 
 /**
  * The installed lobby's files under the world root (design 10.1): {@code hardrush/lobby/packs/} (the pack library),
- * {@code installed/<seq>.hrlobby} (copies of the current and previous install) and {@code current.json}. Every write
+ * {@code installed/<seq>.hrlobby} (copies of the current and previous install), {@code installed/.staging-<seq>.hrlobby}
+ * (an install's own copy of its pack while it runs) and {@code current.json}. Every write
  * goes to a temporary file in the same directory and is moved into place atomically. IO only: call off the server
  * thread.
  */
 public final class LobbyStorage {
     private static final Pattern INSTALLED = Pattern.compile("([1-9][0-9]{0,8})\\.hrlobby");
+    private static final Pattern STAGING = Pattern.compile("\\.staging-[1-9][0-9]{0,8}\\.hrlobby");
 
     private final Path root;
 
@@ -30,6 +32,25 @@ public final class LobbyStorage {
     public Path packs() { return root.resolve("packs"); }
     public Path installed(int seq) { return root.resolve("installed").resolve(seq + dev.hardrush.core.lobby.plan.PackManifest.EXTENSION); }
     public Path current() { return root.resolve("current.json"); }
+    /** Install {@code seq}'s copy of its pack: read, sanitized and committed from this one file. */
+    public Path staging(int seq) { return root.resolve("installed").resolve(".staging-" + seq + dev.hardrush.core.lobby.plan.PackManifest.EXTENSION); }
+
+    /**
+     * Copies {@code source} to {@link #staging}, so everything the install does after (reading, checking, the copy it
+     * records) sees the same bytes even if the library file is replaced meanwhile.
+     */
+    public Path stage(LobbyInstall.Source source, int seq) throws IOException {
+        var staged = staging(seq);
+        try (var in = source.open()) { writeAtomically(staged, in); }
+        return staged;
+    }
+
+    /** Drops an abandoned install's staging copy. */
+    public void discardStaging(int seq) throws IOException {
+        var staged = staging(seq);
+        RoundWorldPaths.checkAncestors(staged, false);
+        Files.deleteIfExists(staged);
+    }
 
     public Optional<LobbyInstallation> readCurrent() throws IOException, PackException {
         var file = current();
@@ -39,13 +60,16 @@ public final class LobbyStorage {
     }
 
     /**
-     * Copies the pack to {@code installed/<seq>.hrlobby}, then records the install in {@code current.json}; only after
-     * that do older copies go, keeping {@code previousSeq}'s for rolling back. Returns the installation with the copy's
-     * SHA-256 filled in.
+     * Moves the install's {@link #staging} copy to {@code installed/<seq>.hrlobby}, then records the install in
+     * {@code current.json}; only after that do older copies go, keeping {@code previousSeq}'s for rolling back. Returns
+     * the installation with the copy's SHA-256 filled in.
      */
-    public LobbyInstallation commit(LobbyInstall.Source source, LobbyInstallation installation, OptionalInt previousSeq) throws IOException {
+    public LobbyInstallation commit(LobbyInstallation installation, OptionalInt previousSeq) throws IOException {
+        var staged = staging(installation.seq());
         var copy = installed(installation.seq());
-        try (var in = source.open()) { writeAtomically(copy, in); }
+        RoundWorldPaths.checkAncestors(staged, false);
+        RoundWorldPaths.checkAncestors(copy, false);
+        Files.move(staged, copy, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         var p = installation.pack();
         var signed = new LobbyInstallation(installation.seq(), installation.dimension(),
                 new LobbyInstallation.Pack(p.id(), p.name(), p.version(), p.authors(), PackFile.sha256(copy)), installation.plan(), installation.state());
@@ -63,7 +87,7 @@ public final class LobbyStorage {
         return signed;
     }
 
-    /** {@code installed/} copies by sequence. */
+    /** {@code installed/} copies by sequence; staging copies are not among them. */
     public SortedMap<Integer, Path> installedCopies() throws IOException {
         var directory = root.resolve("installed");
         var copies = new TreeMap<Integer, Path>();
@@ -79,8 +103,8 @@ public final class LobbyStorage {
     }
 
     /**
-     * Startup cleanup (design 10.2): deletes every {@code dimensions/hardrush/lobby_<n>} except {@code keep} and the
-     * {@code loaded} ones, the old flat camp's {@code dimensions/hardrush/lobby} and its {@code hardrush/lobby-layout.txt}.
+     * Startup cleanup (design 10.2): deletes leftover staging copies, every {@code dimensions/hardrush/lobby_<n>} except
+     * {@code keep} and the {@code loaded} ones, the old flat camp's {@code dimensions/hardrush/lobby} and its {@code hardrush/lobby-layout.txt}.
      * Returns the highest lobby sequence seen anywhere, so a new install never reuses a number. Workshop directories are
      * the workshop's ({@code WorkshopStorage.cleanup}).
      */
@@ -88,6 +112,15 @@ public final class LobbyStorage {
         worldRoot = worldRoot.toAbsolutePath().normalize();
         int highest = keep.orElse(0);
         for (var seq : installedCopies().keySet()) highest = Math.max(highest, seq);
+        // No install runs yet: any staging copy was left by one that a stop or crash cut short.
+        var installed = root.resolve("installed");
+        RoundWorldPaths.checkAncestors(installed, true);
+        if (Files.isDirectory(installed, LinkOption.NOFOLLOW_LINKS)) {
+            try (var files = Files.list(installed)) {
+                for (var file : files.toList())
+                    if (STAGING.matcher(file.getFileName().toString()).matches() && Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) Files.delete(file);
+            }
+        }
         var dimensions = LobbyDimension.namespaceFolder(worldRoot);
         RoundWorldPaths.checkAncestors(dimensions, true);
         if (Files.isDirectory(dimensions, LinkOption.NOFOLLOW_LINKS)) {

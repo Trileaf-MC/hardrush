@@ -140,6 +140,7 @@ public final class LobbyInstallGameTest {
                 .thenWaitUntil(() -> test.assertTrue(server.getLevel(key) == null, "The new dimension is deleted"))
                 .thenExecute(() -> {
                     test.assertFalse(Files.exists(storage.current()) || Files.exists(storage.installed(1)), "Nothing was recorded");
+                    test.assertFalse(Files.exists(storage.staging(1)), "The staging copy is deleted");
                     deleteRecursively(directory);
                 })
                 .thenSucceed();
@@ -171,6 +172,7 @@ public final class LobbyInstallGameTest {
         var install = new LobbyInstall(server, storage, LobbyInstall.Source.file(partial), 1, key, MAX_SIZE, OptionalInt.empty());
         var outcome = new AtomicReference<LobbyInstall.Outcome>();
         var allowed = new boolean[1];
+        var original = new String[1];
         test.startSequence()
                 .thenWaitUntil(() -> {
                     if (outcome.get() == null) install.tick(false).ifPresent(outcome::set);
@@ -181,6 +183,15 @@ public final class LobbyInstallGameTest {
                     for (int i = 0; i < 5; i++) test.assertTrue(install.tick(false).isEmpty(), "Still waiting for the switch");
                     test.assertTrue(install.waitingNanos() > 0, "Counts how long it has waited");
                     test.assertFalse(Files.exists(storage.current()) || Files.exists(storage.installed(1)), "Nothing is recorded while waiting");
+                    // The library file is replaced while the built lobby waits: the recorded copy must still be the
+                    // pack that was read and placed, not the new file.
+                    try {
+                        original[0] = PackFile.sha256(partial);
+                        try (var in = LobbyInstall.Source.builtIn().open()) { LobbyStorage.writeAtomically(partial, in); }
+                        test.assertFalse(PackFile.sha256(partial).equals(original[0]), "The library file now holds another pack");
+                    } catch (IOException e) {
+                        throw new IllegalStateException(e);
+                    }
                     allowed[0] = true;
                 })
                 .thenWaitUntil(() -> {
@@ -212,6 +223,9 @@ public final class LobbyInstallGameTest {
                         test.assertValueEqual(entity.getText(SignTextSlot.FRONT).getMessages(false).get(1).getString(), "下一页", "The sign names its page");
                         test.assertValueEqual(plan.models(LobbyFunction.ROLE_ZOMBIE).size(), 1, "The zombie role gets a model point");
                         test.assertValueEqual(storage.readCurrent().orElseThrow().plan(), plan, "current.json records the effective plan");
+                        test.assertValueEqual(PackFile.sha256(storage.installed(1)), original[0], "installed/1.hrlobby is the pack the install started from");
+                        test.assertValueEqual(done.installation().pack().sha256(), original[0], "current.json names that pack's SHA-256");
+                        test.assertFalse(Files.exists(storage.staging(1)), "The staging copy became the installed copy");
                     } catch (IOException | PackException e) {
                         throw new IllegalStateException(e);
                     } finally {
@@ -237,6 +251,7 @@ public final class LobbyInstallGameTest {
             var storage = new LobbyStorage(root.resolve("hardrush/lobby"));
             Files.createDirectories(storage.installed(7).getParent());
             Files.writeString(storage.installed(7), "copy");
+            Files.writeString(storage.staging(9), "cut short");
 
             int highest = storage.cleanup(root, OptionalInt.of(3), Set.of("lobby_4"));
             test.assertValueEqual(highest, 7, "The highest sequence counts installed copies too, so numbers are never reused");
@@ -246,6 +261,8 @@ public final class LobbyInstallGameTest {
             test.assertTrue(Files.isDirectory(dimensions.resolve("workshop_draft/region")) && Files.isDirectory(dimensions.resolve("round_x/overworld")),
                     "Other dimensions are not the lobby's to delete");
             test.assertFalse(Files.exists(root.resolve("hardrush/lobby-layout.txt")), "The old camp manifest is deleted");
+            test.assertFalse(Files.exists(storage.staging(9)), "A staging copy an interrupted install left is deleted");
+            test.assertTrue(Files.exists(storage.installed(7)), "Installed copies stay");
 
             test.assertValueEqual(storage.cleanup(root, OptionalInt.empty(), Set.of()), 7, "Without a current lobby every lobby goes");
             test.assertFalse(Files.exists(dimensions.resolve("lobby_3")) || Files.exists(dimensions.resolve("lobby_4")), "Every lobby directory is gone");
