@@ -31,8 +31,9 @@ jobs:
       - name: Gradle unit tests
         run: ./gradlew test --no-daemon --console=plain
       - name: Script unit tests
-        working-directory: scripts
-        run: python3 -m unittest discover -p 'test_*.py'
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+          python3 -m unittest discover -s .agents/skills/pr-review-loop/scripts -p 'test_*.py'
 
   assemble:
     name: Assemble (${{ matrix.os }})

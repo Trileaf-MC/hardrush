@@ -3,7 +3,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 
-spec = importlib.util.spec_from_file_location("pr_review", Path(__file__).with_name("pr-review.py"))
+spec = importlib.util.spec_from_file_location("pr_review", Path(__file__).with_name("pr_review.py"))
 pr_review = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pr_review)
 
@@ -55,11 +55,11 @@ class MergeGate(unittest.TestCase):
 
 class PublishedComment(unittest.TestCase):
     def test_local_paths_never_reach_the_pr(self):
-        root, home = Path('/Users/someone/projects/hardrush'), Path('/Users/someone')
-        text = ('- [P1] 标题 — /Users/someone/projects/hardrush/core/src/A.java:10-12\n'
-                '  依 [AGENTS.md:94](/Users/someone/projects/hardrush/AGENTS.md#L94) 核实，'
+        root, home = Path('/Users/someone/projects/app'), Path('/Users/someone')
+        text = ('- [P1] 标题 — /Users/someone/projects/app/core/src/A.java:10-12\n'
+                '  依 [AGENTS.md:94](/Users/someone/projects/app/AGENTS.md#L94) 核实，'
                 '见 /Users/someone/.codex/memories/x.md')
-        published = pr_review.publishable(text, root, home, 'owner/repo', NEW)
+        published = pr_review.publishable(text, root, home, f'https://github.com/owner/repo/blob/{NEW}')
         self.assertNotIn('/Users/someone', published)
         self.assertIn('— core/src/A.java:10-12', published)
         self.assertIn(f'[AGENTS.md:94](https://github.com/owner/repo/blob/{NEW}/AGENTS.md#L94)', published)
