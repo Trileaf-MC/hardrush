@@ -359,8 +359,14 @@ public final class Workshop {
         });
     }
 
-    /** Leaves the blocks below {@code y} out of publishing; null publishes every height again. */
+    /** Leaves the blocks below {@code y} out of publishing ({@code y} itself is kept); null publishes every height again. */
     public Optional<String> setBottom(ServerPlayer player, Integer y) { return changeDraft(player, d -> d.withBottomY(y)); }
+
+    /**
+     * The lowest layer "bottom height at my feet" keeps: the block the builder stands on (a slab or carpet counts as
+     * that block), not the feet block above it, so the floor itself is published.
+     */
+    public static int bottomUnderfoot(ServerPlayer player) { return player.getOnPos().getY(); }
 
     private Optional<String> changeDraft(ServerPlayer player, java.util.function.UnaryOperator<Draft> change) {
         var draft = buildingIn(player).orElse(null);
