@@ -30,6 +30,26 @@ class ReviewRounds(unittest.TestCase):
         self.assertIsNone(pr_review.review_blocker(rounds, extra_round=True))
 
 
+class ReviewEvidence(unittest.TestCase):
+    COMPLETED = '{"type": "turn.completed"}'
+
+    @staticmethod
+    def command(exit_code):
+        return f'{{"type": "item.completed", "item": {{"type": "command_execution", "exit_code": {exit_code}}}}}'
+
+    def test_a_finished_turn_that_ran_commands_is_a_review(self):
+        log = ['warning: 非 JSON 的行会被忽略', '{截断的行', self.command(1), self.command(0), self.COMPLETED]
+        self.assertIsNone(pr_review.evidence_blocker(log))
+
+    def test_a_reply_without_reading_the_repository_is_not_a_review(self):
+        message = '{"type": "item.completed", "item": {"type": "agent_message", "text": "无法读取仓库"}}'
+        self.assertIn('没有读到仓库', pr_review.evidence_blocker([message, self.COMPLETED]))
+        self.assertIn('没有读到仓库', pr_review.evidence_blocker([self.command(1), self.COMPLETED]))
+
+    def test_an_unfinished_turn_is_not_a_review(self):
+        self.assertIn('没有正常结束', pr_review.evidence_blocker([self.command(0)]))
+
+
 class MergeGate(unittest.TestCase):
     def test_reviewed_head_may_merge(self):
         self.assertIsNone(pr_review.merge_blocker(pull_request(), [(1, OLD), (2, NEW)], NEW, False))

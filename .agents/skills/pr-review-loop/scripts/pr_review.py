@@ -66,6 +66,24 @@ def merge_blocker(pr, rounds, local_head, accept_unreviewed_fixes):
     return None
 
 
+def evidence_blocker(log_lines):
+    """Exit code 0 and a non-empty message do not prove the reviewer saw the code; its event stream does."""
+    events = []
+    for line in log_lines:
+        if line.startswith('{'):
+            try:
+                events.append(json.loads(line))
+            except ValueError:
+                pass
+    if not any(event.get('type') == 'turn.completed' for event in events):
+        return 'Codex 没有正常结束这一轮'
+    commands = [event['item'] for event in events
+                if event.get('type') == 'item.completed' and event.get('item', {}).get('type') == 'command_execution']
+    if not any(command.get('exit_code') == 0 for command in commands):
+        return 'Codex 没有成功执行过任何命令，说明它没有读到仓库内容'
+    return None
+
+
 def failed_checks(checks):
     return sorted(check['name'] for check in checks if check['bucket'] not in ('pass', 'skipping'))
 
@@ -114,7 +132,7 @@ def review(args):
     # The reviewer may run the project's own tools, which often cache inside the checkout or fetch
     # documentation, but it must not be able to touch anything outside this checkout, whatever the
     # user's global Codex sandbox is. No prompt is passed: the author must not steer its own reviewer.
-    command = ['codex', 'exec', 'review', '--base', base, '-o', str(verdict),
+    command = ['codex', 'exec', 'review', '--base', base, '--json', '-o', str(verdict),
                '-c', f'model_reasoning_effort="{args.effort}"',
                '-c', 'sandbox_mode="workspace-write"',
                '-c', 'sandbox_workspace_write.network_access=true']
@@ -129,6 +147,12 @@ def review(args):
     if code or not body:
         tail = '\n'.join(log.read_text(errors='replace').splitlines()[-15:])
         sys.exit(f'Codex 评审没有完成（退出码 {code}）。这不算通过，不要合并：\n{tail}')
+    if blocker := evidence_blocker(log.read_text(errors='replace').splitlines()):
+        sys.exit(f'{blocker}。这一轮不算评审，不要合并。')
+    # Codex read the live checkout for minutes. If it moved meanwhile, nobody knows which version was
+    # reviewed, so the round must not be recorded against `head`.
+    if (git('rev-parse', 'HEAD'), git('status', '--porcelain')) != (head, ''):
+        sys.exit('评审期间 HEAD 或工作区变了，无法确定 Codex 看到的是哪个版本。这一轮不登记：恢复到已 push 的提交后重新评审。')
 
     repository = run('gh', 'repo', 'view', '--json', 'url', '--jq', '.url').stdout.strip()
     body = publishable(body, root, Path.home(), f'{repository}/blob/{head}')
