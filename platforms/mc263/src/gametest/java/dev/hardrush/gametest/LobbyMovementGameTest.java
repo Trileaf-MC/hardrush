@@ -10,7 +10,6 @@ import dev.hardrush.round.RoundSession;
 import dev.hardrush.book.WrittenBookPort;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.LobbyWorld;
-import dev.hardrush.lobby.LobbyMenus;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
@@ -41,7 +40,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -65,8 +63,10 @@ public final class LobbyMovementGameTest {
                 .thenExecute(() -> {
                     f.assertLobby();
                     test.assertTrue(f.a.player.level() != f.server.overworld(), "The original overworld is preserved separately");
-                    test.assertTrue(f.a.player.level().getChunkSource().getGenerator() instanceof FlatLevelSource, "Actual native flat generator");
-                    test.assertTrue(f.a.player.level().getBlockState(BlockPos.containing(f.a.player.position()).below()).is(Blocks.STONE_BRICKS), "Built camp central floor");
+                    test.assertTrue(f.a.player.level().getChunkSource().getGenerator() instanceof xyz.nucleoid.fantasy.util.VoidChunkGenerator, "The installed lobby is a void world");
+                    // Arrivals scatter like vanilla respawns, onto the path or the lawn; the exact landing is on the path.
+                    test.assertTrue(f.a.player.level().getBlockState(BlockPos.containing(LobbyPlanFixtures.outsideAssembly(f.server)).below()).is(Blocks.STONE_BRICKS), "Built camp central floor");
+                    test.assertTrue(dev.hardrush.world.RoundWorldBundle.safeStanding(f.a.player.level(), f.a.player.blockPosition()), "Arrival stands on the camp floor");
                     f.b.observedFrom = f.b.connection.packets.size();
                     f.a.move(.6, 0, 45, 15, true);
                     test.assertValueEqual(f.a.player.getYRot(), 45f, "The native move packet updates yaw");
@@ -89,6 +89,20 @@ public final class LobbyMovementGameTest {
                     var position = f.a.player.position();
                     f.profiles.returnToLobby(f.a.player); f.profiles.returnToLobby(f.a.player);
                     test.assertTrue(f.a.player.position().distanceToSqr(position) < .000001, "Repeated return checks do not reset a normal lobby position");
+                    // Walking off a void lobby's edge: below the lowest block, past the margin.
+                    var lobby = LobbyWorld.open(f.server);
+                    f.a.player.teleportTo(lobby.holdingLevel(), f.a.player.getX(), lobby.plan().bounds().min().y() - LobbyWorld.FALL_MARGIN - 4,
+                            f.a.player.getZ(), java.util.Set.of(), 0, 0, true);
+                })
+                .thenWaitUntil(() -> f.await(LobbyWorld.isLobby(f.a.player.level())
+                        && f.a.player.getY() >= LobbyWorld.open(f.server).plan().bounds().min().y(), "A player who falls out of the lobby is put back"))
+                .thenExecute(() -> {
+                    var landing = LobbyPlanFixtures.outsideAssembly(f.server);
+                    // Vanilla's respawn scatter is a square of radius 10: its corners lie about 14.1 blocks out.
+                    test.assertTrue(dev.hardrush.world.RoundWorldBundle.safeStanding(f.a.player.level(), f.a.player.blockPosition())
+                            && Math.abs(f.a.player.getY() - landing.y) < .001 && f.a.player.position().distanceTo(landing) < 15,
+                            "The fallen player stands at the central landing again: " + f.a.player.position());
+                    test.assertTrue(PlayerProfiles.canMoveInLobby(f.a.player), "Rescue keeps the lobby body");
                     f.a.command("hardrush join");
                 })
                 .thenWaitUntil(() -> f.await(!f.session.mutationPending(), "Join committed"))
@@ -176,7 +190,7 @@ public final class LobbyMovementGameTest {
         }
         void assertProtectionAndUi() {
             var floor = BlockPos.containing(a.player.position()).below(2);
-            // The jump can leave feet above the ground; target the original flat floor directly.
+            // The jump can leave feet above the ground; target the camp floor under the spawn's layer directly.
             floor = new BlockPos(floor.getX(), LobbyWorld.open(server).holdingLevel().getRespawnData().pos().getY() - 1, floor.getZ());
             var original = a.player.level().getBlockState(floor);
             a.player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, floor, Direction.UP, 1));
@@ -187,8 +201,6 @@ public final class LobbyMovementGameTest {
             test.assertTrue(a.player.level().getBlockState(floor).equals(original) && a.player.level().getBlockState(floor.above()).isAir(), "Both block packets leave terrain unchanged");
             test.assertFalse(a.player.hurtServer(a.player.level(), a.player.damageSources().playerAttack(b.player), 5), "Lobby bodies cannot be damaged");
             a.player.getInventory().clearContent();
-            a.command("hardrush menu"); test.assertTrue(LobbyMenus.isMenu(a.player), "Adventure mode keeps the actual lobby menu available");
-            a.player.connection.handleContainerClose(new ServerboundContainerClosePacket(a.player.containerMenu.containerId));
             var book = new BookPort.Book(UUID.randomUUID(), 1, 1, "大厅测试历史书", "HardRush", List.of("只读历史"));
             a.player.getInventory().setItem(0, WrittenBookPort.createItem(new OperationTag(book.roundId(), UUID.randomUUID(), 1), book));
             int before = a.connection.packets.size();

@@ -83,23 +83,28 @@ class CrashSignalSafetyTest(unittest.TestCase):
         journal.parent.mkdir(parents=True)
         payload = b'profile-transition'
         journal.write_bytes(struct.pack('>i', len(payload)) + hashlib.sha256(payload).digest() + payload)
-        layout = root / 'hardrush/lobby-layout.txt'
-        layout.write_text('hardrush:lobby\nversion=1\nanchor=2199023292356\nCOMPLETE\n')
+        lobby = root / 'dimensions/hardrush/lobby_1/region'
+        lobby.mkdir(parents=True)
+        (lobby / 'r.0.0.mca').write_bytes(b'mutable-live-lobby')
+        layout = root / 'hardrush/lobby/current.json'
+        layout.parent.mkdir(parents=True)
+        layout.write_text('{"seq": 1, "dimension": "hardrush:lobby_1", "state": "COMPLETE"}\n')
         retained = RUNNER.retained(self.directory.resolve())
-        # Preserve the original two frozen world/profile assertions; shared-camp ownership is extra.
-        frozen = {name: digest for name, digest in retained.items() if name != 'hardrush/lobby-layout.txt'}
+        # Preserve the original two frozen world/profile assertions; the lobby install record is extra and the live
+        # lobby's own region files are mutable, so they are not evidence.
+        frozen = {name: digest for name, digest in retained.items() if name != 'hardrush/lobby/current.json'}
         self.assertEqual(2, len(frozen))
         self.assertEqual({'dimensions/hardrush/fixture/overworld/region/r.0.0.mca',
                           'hardrush/profiles/player/transition.bin'}, set(frozen))
-        self.assertEqual(hashlib.sha256(layout.read_bytes()).hexdigest(), retained['hardrush/lobby-layout.txt'])
+        self.assertEqual(hashlib.sha256(layout.read_bytes()).hexdigest(), retained['hardrush/lobby/current.json'])
         complete = layout.read_text()
-        for invalid in (None, complete.replace('COMPLETE', 'PREPARED')):
+        for invalid in (None, complete.replace('COMPLETE', 'PREPARED'), 'not json'):
             with self.subTest(layout=invalid):
                 if invalid is None:
                     layout.unlink()
                 else:
                     layout.write_text(invalid)
-                with self.assertRaisesRegex(RuntimeError, 'complete ownership manifest'):
+                with self.assertRaisesRegex(RuntimeError, 'complete install record'):
                     RUNNER.retained(self.directory.resolve())
         layout.write_text(complete)
         journal.write_bytes(journal.read_bytes()[:-1] + b'X')

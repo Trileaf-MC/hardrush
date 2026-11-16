@@ -37,11 +37,12 @@ def retained(directory):
         for path in sorted(candidate.rglob('*')):
             if path.is_symlink():
                 raise RuntimeError(f'Unexpected linked fixture file: {path}')
-            # The persistent shared camp remains loaded/ticking in quarantine. Its native region
+            # The installed shared lobby remains loaded/ticking in quarantine. Its native region
             # timestamps, POI and status signs are mutable; it is NOT an old round-owned world.
-            # Both native recovery fixtures separately require builtBlocks()==0 and the saved
+            # Both native recovery fixtures separately require placedTiles()==0 and the saved
             # lapis terrain sentinel. All round worlds and profile bytes remain exact below.
-            if path.is_relative_to(world / 'dimensions/hardrush/lobby'):
+            lobby = path.relative_to(world / 'dimensions/hardrush').parts[:1] if path.is_relative_to(world / 'dimensions/hardrush') else ()
+            if lobby and re.fullmatch(r'lobby_[1-9][0-9]*', lobby[0]):
                 continue
             if path.is_file():
                 if path.suffix == '.bin':
@@ -51,10 +52,15 @@ def retained(directory):
                     if struct.unpack('>i', data[:4])[0] != len(data) - 36 or hashlib.sha256(data[36:]).digest() != data[4:36]:
                         raise RuntimeError(f'Corrupt profile journal envelope: {path}')
                 result[str(path.relative_to(world))] = RESTART.sha256(path)
-    layout = world / 'hardrush/lobby-layout.txt'
-    if layout.is_symlink() or not layout.is_file() or not layout.read_text().endswith('COMPLETE\n'):
-        raise RuntimeError('Shared camp must retain its complete ownership manifest')
-    result['hardrush/lobby-layout.txt'] = RESTART.sha256(layout)
+    # Written once per install: an unchanged digest proves recovery reopened the lobby instead of reinstalling it.
+    current = world / 'hardrush/lobby/current.json'
+    try:
+        complete = not current.is_symlink() and current.is_file() and json.loads(current.read_text())['state'] == 'COMPLETE'
+    except (ValueError, KeyError, TypeError):
+        complete = False
+    if not complete:
+        raise RuntimeError('Shared lobby must retain its complete install record')
+    result['hardrush/lobby/current.json'] = RESTART.sha256(current)
     if not any(name.endswith('.mca') for name in result) or not any(name.endswith('.bin') for name in result):
         raise RuntimeError('Missing real native region files or durable player journal')
     return result

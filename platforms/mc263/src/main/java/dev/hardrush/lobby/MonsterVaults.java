@@ -1,6 +1,6 @@
 package dev.hardrush.lobby;
 
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.round.MonsterCoins;
 import dev.hardrush.core.round.MonsterRole;
 import dev.hardrush.core.round.ShopOffer;
@@ -26,7 +26,7 @@ import net.minecraft.world.level.block.entity.vault.VaultState;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The camp's two native vaults. Their own server ticking is disabled in the lobby; each camp
+ * The lobby's native vaults, any number of each kind. Their own server ticking is disabled in the lobby; each camp
  * monster instead receives its own display cycle and opening animation as packets, while the
  * drawn equipment is committed to the wallet before anything is shown.
  */
@@ -37,14 +37,17 @@ public final class MonsterVaults {
 
     private final RevivalTotems.Access access;
     private final RandomSource random = RandomSource.create();
-    private final Map<UUID, Map<ShopOffer, Boolean>> shown = new HashMap<>();
+    /** Per player, the vaults currently showing that player's active state. */
+    private final Map<UUID, Map<BlockPos, Boolean>> shown = new HashMap<>();
     private final Map<UUID, Opening> openings = new HashMap<>();
+    /** The lobby plan {@link #shown} describes; another lobby's vaults start inactive for everyone. */
+    private int planGeneration;
 
     private static final class Opening {
-        final ServerPlayer player; final ShopOffer key; final ItemStack item; final int started;
+        final ServerPlayer player; final ShopOffer key; final BlockPos pos; final ItemStack item; final int started;
         int entityId = -1; boolean committed;
-        Opening(ServerPlayer player, ShopOffer key, ItemStack item, int started) {
-            this.player = player; this.key = key; this.item = item; this.started = started;
+        Opening(ServerPlayer player, ShopOffer key, BlockPos pos, ItemStack item, int started) {
+            this.player = player; this.key = key; this.pos = pos; this.item = item; this.started = started;
         }
     }
 
@@ -53,23 +56,17 @@ public final class MonsterVaults {
     static void configure(MinecraftServer server, RevivalTotems.Access access) { INSTANCES.put(server, new MonsterVaults(access)); }
     static void unconfigure(MinecraftServer server) { INSTANCES.remove(server); }
 
-    public static LobbyLayout.Facility facility(ShopOffer key) {
-        return key == ShopOffer.OMINOUS_KEY ? LobbyLayout.Facility.OMINOUS_VAULT : LobbyLayout.Facility.VAULT;
-    }
+    private static final Map<ShopOffer, LobbyFunction> FUNCTIONS = Map.of(
+            ShopOffer.TRIAL_KEY, LobbyFunction.VAULT, ShopOffer.OMINOUS_KEY, LobbyFunction.OMINOUS_VAULT);
 
-    private static BlockPos position(MinecraftServer server, ShopOffer key) {
-        return BlockPos.containing(LobbyWorld.open(server).layoutPosition(LobbyLayout.facility(facility(key))));
-    }
-
-    /** A main-hand right click on a vault, already validated by the lobby router. */
-    public static void use(ServerPlayer player, ShopOffer key) {
+    /** A main-hand right click on the vault at {@code pos}, already validated by the lobby router. */
+    public static void use(ServerPlayer player, ShopOffer key, BlockPos pos) {
         var vaults = INSTANCES.get(player.level().getServer());
-        if (vaults != null) vaults.open(player, key);
+        if (vaults != null) vaults.open(player, key, pos.immutable());
     }
 
-    private void open(ServerPlayer player, ShopOffer key) {
+    private void open(ServerPlayer player, ShopOffer key, BlockPos pos) {
         var server = player.level().getServer();
-        var pos = position(server, key);
         var r = access.committed().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
         if (p == null || !MonsterCoins.enabled(r.rules()) || !access.eligible(player)) {
@@ -86,7 +83,7 @@ public final class MonsterVaults {
             return; // The vault is already animating for this player.
         }
         var draw = MonsterGacha.draw(player.level(), random, p.monsterRole(), key);
-        var opening = new Opening(player, key, draw.stack().copy(), server.getTickCount());
+        var opening = new Opening(player, key, pos, draw.stack().copy(), server.getTickCount());
         openings.put(p.id(), opening);
         CampKit.hold(player, true);
         access.session().requestVaultOpen(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), key,
@@ -108,18 +105,21 @@ public final class MonsterVaults {
 
     private void update(MinecraftServer server) {
         int now = server.getTickCount();
+        if (planGeneration != LobbyWorld.planGeneration(server)) { shown.clear(); planGeneration = LobbyWorld.planGeneration(server); }
         for (var opening : List.copyOf(openings.values())) animate(server, opening, now);
         var r = access.committed().orElse(null);
+        var plan = LobbyWorld.open(server).plan();
         for (var player : server.getPlayerList().getPlayers()) {
             if (openings.containsKey(player.getUUID())) continue;
             var p = r == null ? null : r.participants().get(player.getUUID());
             boolean eligible = p != null && MonsterCoins.enabled(r.rules()) && LobbyWorld.isLobby(player.level())
                     && access.eligible(player) && p.wallet().roleChosen() && p.monsterRole() != MonsterRole.CREEPER;
-            var states = shown.computeIfAbsent(player.getUUID(), ignored -> new EnumMap<>(ShopOffer.class));
-            for (var key : List.of(ShopOffer.TRIAL_KEY, ShopOffer.OMINOUS_KEY)) {
-                var pos = position(server, key);
+            var states = shown.computeIfAbsent(player.getUUID(), ignored -> new HashMap<>());
+            for (var key : List.of(ShopOffer.TRIAL_KEY, ShopOffer.OMINOUS_KEY)) for (var trigger : plan.triggers(FUNCTIONS.get(key))) {
+                if (trigger.block() == null) continue;
+                var pos = LobbyWorld.pos(trigger.block());
                 boolean active = eligible && player.position().distanceToSqr(Vec3.atCenterOf(pos)) <= RANGE * RANGE;
-                boolean was = Boolean.TRUE.equals(states.get(key));
+                boolean was = Boolean.TRUE.equals(states.get(pos));
                 if (active && (!was || (now + key.ordinal() * 7) % CYCLE_TICKS == 0)) {
                     // The cycle previews this monster's own pool, the same way native vaults preview their loot.
                     var preview = MonsterGacha.preview(random, p.monsterRole(), key);
@@ -128,7 +128,7 @@ public final class MonsterVaults {
                 } else if (!active && was) {
                     state(player, pos, key, VaultState.INACTIVE, ItemStack.EMPTY);
                 }
-                states.put(key, active);
+                states.put(pos, active);
             }
         }
         shown.keySet().removeIf(id -> server.getPlayerList().getPlayer(id) == null);
@@ -136,7 +136,7 @@ public final class MonsterVaults {
 
     private void animate(MinecraftServer server, Opening opening, int now) {
         var player = opening.player;
-        var pos = position(server, opening.key);
+        var pos = opening.pos;
         if (server.getPlayerList().getPlayer(player.getUUID()) != player || !LobbyWorld.isLobby(player.level())) {
             openings.remove(player.getUUID()); CampKit.hold(player, false); return;
         }

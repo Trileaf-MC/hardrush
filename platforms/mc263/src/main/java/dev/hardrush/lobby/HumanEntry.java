@@ -1,6 +1,7 @@
 package dev.hardrush.lobby;
 
 import dev.hardrush.core.lobby.*;
+import dev.hardrush.core.lobby.plan.Landing;
 import dev.hardrush.core.record.RoundResultText;
 import dev.hardrush.core.round.*;
 import dev.hardrush.round.RoundSession;
@@ -8,12 +9,9 @@ import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.*;
 import java.util.*;
 import java.util.function.Supplier;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.Vec3;
 
 /** Native spatial input and confirmation. No UI close event owns an accepted conversion. */
 public final class HumanEntry {
@@ -27,6 +25,8 @@ public final class HumanEntry {
     private final Map<UUID, Intent> intents = new HashMap<>();
     private final Set<UUID> joining = new HashSet<>();
     private UUID registeredRound;
+    /** The lobby plan generation the triggers and status signs were set up for. */
+    private int registeredGeneration;
     private String lastLabel;
     private final net.minecraft.server.level.ServerBossEvent countdownBar = new net.minecraft.server.level.ServerBossEvent(
             UUID.randomUUID(), Component.literal("集结区"), net.minecraft.world.BossEvent.BossBarColor.GREEN, net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS);
@@ -77,41 +77,37 @@ public final class HumanEntry {
         var s=SERVICES.get(server); var lobby=LobbyWorld.open(server);
         if(s==null||!lobby.ready()||s.session.snapshot().isEmpty())return;
         var router=LobbyInteractions.get(server).orElse(null); if(router==null)return;
-        router.registerBlock(BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.RULES))), Blocks.LECTERN, LobbyContext.RULES, p->s.session.snapshot().ifPresent(r->RuleBook.open(p,r.rules())));
-        router.registerBlock(BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(LobbyLayout.Facility.HISTORY))), Blocks.LECTERN, LobbyContext.HISTORY, dev.hardrush.record.HistoryLibrary::open);
+        registerTriggers(router, lobby, true);
+    }
+    /**
+     * Every block trigger in the plan goes to the one function dispatch. Read-only ones (rules, history) are
+     * registered on every tick, also during recovery; the rest once per round.
+     */
+    private static void registerTriggers(LobbyInteractions router, LobbyWorld lobby, boolean readOnly) {
+        for (var trigger : lobby.plan().triggers()) {
+            if (trigger.block() == null) continue; // Entity triggers are found by tag when clicked (LobbyInteractions.entity).
+            var context = LobbyRuntime.context(trigger.function());
+            if (context.readOnly() != readOnly) continue;
+            var pos = LobbyWorld.pos(trigger.block());
+            var expected = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(net.minecraft.resources.Identifier.parse(trigger.blockId()));
+            router.registerBlock(pos, expected, context, player -> LobbyRuntime.activate(player, trigger.function(), pos));
+        }
     }
     public static void tick(MinecraftServer server) { var s = SERVICES.get(server); if (s != null) s.tick(); }
     private void tick() {
         var round = session.snapshot().orElse(null); if (round == null) return;
         var lobby = LobbyWorld.open(server);
         if (!Objects.equals(registeredRound, round.roundId())) { intents.values().forEach(HumanEntry::stopJoin); intents.clear(); joining.clear(); registeredRound = null; }
+        // A newly installed lobby has new trigger blocks and blank status signs; join intents stay with the round.
+        if (registeredGeneration != lobby.planGeneration()) { registeredRound = null; lastLabel = null; }
         if (lobby.ready() && registeredRound == null) {
             var router = LobbyInteractions.get(server).orElseThrow();
-            for (var facility : LobbyLayout.Facility.values()) {
-                // The altar is stood on, not clicked; see RevivalAltar.
-                if (LobbyLayout.MONSTER_FACILITIES.contains(facility) || facility == LobbyLayout.Facility.MERCHANT
-                        || facility == LobbyLayout.Facility.ALTAR) continue;
-                var pos = BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(facility)));
-                if (facility == LobbyLayout.Facility.VAULT || facility == LobbyLayout.Facility.OMINOUS_VAULT) {
-                    var key = facility == LobbyLayout.Facility.VAULT ? dev.hardrush.core.round.ShopOffer.TRIAL_KEY
-                            : dev.hardrush.core.round.ShopOffer.OMINOUS_KEY;
-                    router.registerBlock(pos, Blocks.VAULT, LobbyContext.DISPLAY, player -> MonsterVaults.use(player, key));
-                    continue;
-                }
-                router.registerBlock(pos, Blocks.LECTERN, LobbyContext.RULES, player -> {
-                    if (facility == LobbyLayout.Facility.RULES) session.snapshot().ifPresent(r -> RuleBook.open(player, r.rules()));
-                    else if (facility == LobbyLayout.Facility.PREVIOUS || facility == LobbyLayout.Facility.NEXT)
-                        dev.hardrush.lobby.LobbyRuntime.facility(player, facility);
-                    else if (facility == LobbyLayout.Facility.HISTORY) dev.hardrush.record.HistoryLibrary.open(player);
-                });
-            }
+            registerTriggers(router, lobby, false);
             registeredRound = round.roundId();
+            registeredGeneration = lobby.planGeneration();
         }
         String label = round.sequence() + " / " + round.phase() + " / " + session.recoveringCountdown();
         if (lobby.ready() && !label.equals(lastLabel)) {
-            lobby.huntLabels(round.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE
-                    && round.rules().huntRule() == dev.hardrush.core.config.RulesConfig.HuntRule.PERSONAL_TARGET
-                    && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE));
             lobby.statusLabel(session.recoveringCountdown() ? "等待重启前的玩家" : switch(round.phase()) {
                 case WAITING, COUNTDOWN -> "走进集结区准备"; case RUNNING, RESCUE -> "挑战中 · 可中途加入";
                 case PREPARING -> "世界准备中";
@@ -146,12 +142,12 @@ public final class HumanEntry {
                 if (worldReady() && !intent.pending) {
                     if (!intent.restoring) {
                         intent.restoring = true;
-                        boolean safe = lobby.safeLanding(LobbyLayout.Landing.RESTORE_READY);
-                        profiles.placeInLobby(player, safe ? LobbyLayout.Landing.RESTORE_READY : LobbyLayout.Landing.WAIT_OUTSIDE);
+                        boolean safe = lobby.safeLanding(Landing.RESTORE_READY);
+                        profiles.placeInLobby(player, safe ? Landing.RESTORE_READY : Landing.CENTRAL);
                         intent.inside = safe; intent.cancelled = !safe;
                     }
                     intent.pending = true;
-                    boolean safe = !intent.cancelled && lobby.inAssembly(player, true) && lobby.safeLanding(LobbyLayout.Landing.RESTORE_READY);
+                    boolean safe = !intent.cancelled && lobby.inAssembly(player, true) && lobby.safeLanding(Landing.RESTORE_READY);
                     session.restoreReady(round.roundId(), player.getUUID(), player.getScoreboardName(), safe, reply -> {
                         intent.pending = false;
                     });
@@ -217,7 +213,8 @@ public final class HumanEntry {
     /** An operation tip near the circle, taught once per player and round; the circle's sign repeats it afterwards. */
     private void guide(ServerPlayer player, RoundSnapshot round, String tip, String message) {
         var router = LobbyInteractions.get(server).orElse(null); if (router == null) return;
-        if (player.position().distanceToSqr(LobbyWorld.open(server).landing(LobbyLayout.Landing.RESTORE_READY)) > GUIDE_RANGE_SQR) return;
+        var circle = LobbyWorld.open(server).landing(Landing.RESTORE_READY).map(LobbyWorld::position).orElse(null);
+        if (circle == null || player.position().distanceToSqr(circle) > GUIDE_RANGE_SQR) return;
         if (dev.hardrush.notice.Notices.firstInRound(player, round.roundId(), tip))
             router.hints(player).offer("assembly", LobbyHints.Priority.FACILITY, message, System.nanoTime() / 1_000_000 + GUIDE_MILLIS);
     }

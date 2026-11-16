@@ -101,6 +101,7 @@ public final class PlayerProfiles implements AutoCloseable {
     }
 
     public static void uninstall(MinecraftServer server) { SERVICES.remove(server); }
+    public static Optional<PlayerProfiles> of(MinecraftServer server) { return Optional.ofNullable(SERVICES.get(server)); }
 
     /** HEAD of placeNewPlayer: before the login packet and before player/world tick or gameplay packets. */
     public static void beforeLogin(ServerPlayer player) {
@@ -159,7 +160,124 @@ public final class PlayerProfiles implements AutoCloseable {
     public static boolean simulationFrozen(ServerPlayer player) {
         if (dev.hardrush.participation.ParticipationControl.pending(player)) return true;
         if (dev.hardrush.storage.FullCheckpointRuntime.saving(player.level().getServer())) return true;
-        return isLocked(player) && !canMoveInLobby(player) && !isAdministrativeSpectator(player) && !observing(player);
+        return isLocked(player) && !canMoveInLobby(player) && !isAdministrativeSpectator(player) && !observing(player)
+                && !building(player);
+    }
+
+    /**
+     * A verified lobby body building in its own workshop draft (design 11.2). It is still locked (never a round body,
+     * no advancements), but the isolation gates let it act: see {@link #sealed}.
+     */
+    public static boolean building(ServerPlayer player) {
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        return administrativeBody(service, entry, player) && entry.building
+                && player.level().dimension().equals(entry.buildingLevel);
+    }
+
+    /** What the isolation gates block: every locked body except a builder's. */
+    public static boolean sealed(ServerPlayer player) { return isLocked(player) && !building(player); }
+
+    /** The draft dimension a builder is assigned to, whether or not it stands there right now. */
+    public Optional<ResourceKey<net.minecraft.world.level.Level>> buildingLevel(ServerPlayer player) {
+        var entry = players.get(player.getUUID());
+        return entry != null && entry.player == player && entry.building ? Optional.of(entry.buildingLevel) : Optional.empty();
+    }
+
+    /** A builder inside its draft cannot go anywhere else; leaving clears the flag before the lifecycle moves it. */
+    public static boolean rejectBuilderMove(ServerPlayer player, ServerLevel destination) {
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        return entry != null && entry.player == player && entry.building
+                && player.level().dimension().equals(entry.buildingLevel) && !destination.dimension().equals(entry.buildingLevel);
+    }
+
+    /**
+     * Turns a verified lobby body into a builder in {@code draft} (design 11.2): the lobby body is kept aside exactly as
+     * it is, the player arrives empty-handed in creative flight. False when the body may not build now.
+     */
+    public boolean startBuilding(ServerPlayer player, ServerLevel draft, Vec3 at) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        if (closed || recoveryPaused || !administrativeBody(this, entry, player) || !verifiedLobbyBody(player)
+                || entry.observing || entry.adminSpectating || entry.building || entry.resume == null
+                || !Commands.hasPermission(Commands.LEVEL_GAMEMASTERS).test(player.createCommandSourceStack())) return false;
+        closeSuspendedContainer(player);
+        player.stopUsingItem();
+        player.stopRiding();
+        player.ejectPassengers();
+        // A fresh life enters the round with this very body, items picked up in camp included, so this (not the
+        // older suspension) is what leaving must give back.
+        var body = capture(player, false);
+        entry.building = true;
+        entry.buildingLevel = draft.dimension();
+        entry.buildingBody = body;
+        if (!player.teleportTo(draft, at.x, at.y, at.z, Set.of(), player.getYRot(), 0, true)) {
+            entry.building = false;
+            entry.buildingLevel = null;
+            entry.buildingBody = null;
+            return false;
+        }
+        clearPossessions(player);
+        player.setDeltaMovement(Vec3.ZERO);
+        player.resetFallDistance();
+        player.setGameMode(GameType.CREATIVE);
+        player.getAbilities().flying = true;
+        player.onUpdateAbilities();
+        player.inventoryMenu.sendAllDataToRemote();
+        return true;
+    }
+
+    /** Ends a builder's session: the lobby body it entered with comes back, in the lobby. False when not building. */
+    public boolean stopBuilding(ServerPlayer player) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        if (entry == null || entry.player != player || !entry.building) return false;
+        endBuilding(entry);
+        return true;
+    }
+
+    private void endBuilding(Entry entry) {
+        var player = entry.player;
+        var body = entry.buildingBody;
+        entry.building = false;
+        entry.buildingLevel = null;
+        entry.buildingBody = null;
+        // Tell the client first: once the body is loaded the server already believes it is in adventure mode.
+        player.setGameMode(GameType.ADVENTURE);
+        closeSuspendedContainer(player);
+        player.stopUsingItem();
+        player.stopRiding();
+        player.ejectPassengers();
+        // Nothing made in creative may outlive the session, whatever load() does with fields absent from the body.
+        clearPossessions(player);
+        player.getEnderChestInventory().clearContent();
+        resetHumanAttributes(player);
+        player.clearFire();
+        player.clearFreeze();
+        for (var pearl : Set.copyOf(player.getEnderPearls())) pearl.discard();
+        reloadSuspendedBody(entry, body);
+        ((ProfileTagged) player).hardrush$generation(entry.target);
+        ((ProfileTagged) player).hardrush$isolated(true);
+        ((ProfileTagged) player).hardrush$respawnPermitted(false);
+    }
+
+    private static void clearPossessions(ServerPlayer player) {
+        player.getInventory().clearContent();
+        for (var slot : EquipmentSlot.values()) player.setItemSlot(slot, ItemStack.EMPTY);
+        player.removeAllEffects();
+    }
+
+    /** Loads a sealed lobby body into the entity and stands it in the lobby. */
+    private void reloadSuspendedBody(Entry entry, CompoundTag snapshot) {
+        var player = entry.player;
+        player.load(TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), snapshot.copy()));
+        ((ProfileTagged) player).hardrush$clearLoadedProfile();
+        restoreAdvancements(player, snapshot);
+        moveToLobby(player);
+        player.resetSentInfo();
+        player.onUpdateAbilities();
+        player.inventoryMenu.sendAllDataToRemote();
     }
 
     private static boolean administrativeBody(PlayerProfiles service, Entry entry, ServerPlayer player) {
@@ -198,7 +316,7 @@ public final class PlayerProfiles implements AutoCloseable {
     }
 
     /** Detach the camera and stand the body where it left the camp, or on {@code fallback} when that spot is gone. */
-    public void endObservation(ServerPlayer player, Vec3 position, float yaw, dev.hardrush.core.lobby.LobbyLayout.Landing fallback) {
+    public void endObservation(ServerPlayer player, Vec3 position, float yaw, dev.hardrush.core.lobby.plan.Landing fallback) {
         requireMainThread();
         var entry = players.get(player.getUUID());
         if (entry == null || entry.player != player || !entry.observing) return;
@@ -235,7 +353,9 @@ public final class PlayerProfiles implements AutoCloseable {
         if (!HardRushProperties.competitionEnabled()) return Optional.empty();
         var service = SERVICES.get(player.level().getServer());
         var entry = service == null ? null : service.players.get(player.getUUID());
-        if (entry == null || entry.player != player || mode != GameType.SPECTATOR && !entry.adminSpectating) return Optional.empty();
+        // A builder's /gamemode is vanilla's; leaving restores the lobby mode.
+        if (entry == null || entry.player != player || entry.building
+                || mode != GameType.SPECTATOR && !entry.adminSpectating) return Optional.empty();
         if (!Commands.hasPermission(Commands.LEVEL_GAMEMASTERS).test(source)
                 || dev.hardrush.storage.FullCheckpointRuntime.saving(player.level().getServer())) {
             source.sendFailure(Component.literal("当前权限或保存状态不允许切换管理旁观。"));
@@ -287,8 +407,8 @@ public final class PlayerProfiles implements AutoCloseable {
         if (service != null && service.recoveryPaused) return false;
         var entry = service == null ? null : service.players.get(player.getUUID());
         if (entry == null || entry.player != player) return !((ProfileTagged) player).hardrush$isolated();
-        // A celebration visitor body is temporary; its vanilla file keeps the sealed lobby state.
-        if (entry.celebrationGuest) return false;
+        // A celebration visitor or a builder body is temporary; its vanilla file keeps the sealed lobby state.
+        if (entry.celebrationGuest || entry.building) return false;
         return entry.admitted || entry.diskSafe;
     }
 
@@ -440,8 +560,8 @@ public final class PlayerProfiles implements AutoCloseable {
     /** An excluded body stands among the camp's arrivals; its spyglass is projected there. */
     private void placeExcluded(ServerPlayer player) {
         var camp = dev.hardrush.world.LobbyWorld.open(server);
-        if (camp.ready() && lobby.get() == camp.holdingLevel() && camp.safeLanding(dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL))
-            placeInLobby(player, dev.hardrush.core.lobby.LobbyLayout.Landing.CENTRAL);
+        if (camp.ready() && lobby.get() == camp.holdingLevel() && camp.safeLanding(dev.hardrush.core.lobby.plan.Landing.CENTRAL))
+            placeInLobby(player, dev.hardrush.core.lobby.plan.Landing.CENTRAL);
         else moveToLobby(player);
     }
 
@@ -553,7 +673,7 @@ public final class PlayerProfiles implements AutoCloseable {
         ((ProfileTagged) replacement).hardrush$respawnPermitted(false);
         ((ProfileTagged) replacement).hardrush$suspensionId(UUID.randomUUID().toString());
         var camp = dev.hardrush.world.LobbyWorld.open(server);
-        if (camp.ready() && lobby.get() == camp.holdingLevel()) placeInLobby(replacement, dev.hardrush.core.lobby.LobbyLayout.Landing.MONSTER);
+        if (camp.ready() && lobby.get() == camp.holdingLevel()) placeInLobby(replacement, dev.hardrush.core.lobby.plan.Landing.MONSTER);
         else moveToLobby(replacement);
         var rebound = new Entry(replacement, Optional.of(old.target), false, capture(replacement, false));
         rebound.target = old.target;
@@ -783,6 +903,12 @@ public final class PlayerProfiles implements AutoCloseable {
         var target = generation(round);
         for (var entry : java.util.List.copyOf(players.values())) {
             if (!entry.connected) continue;
+            // Before anything reads the body: a generation change would otherwise capture the creative body as an archive.
+            if (entry.building) {
+                if (target.equals(entry.target) && building(entry.player)
+                        && dev.hardrush.lobby.workshop.Workshop.leaveReason(entry.player).isEmpty()) continue;
+                endBuilding(entry);
+            }
             if (entry.target != null && !entry.target.equals(target)) {
                 onLogin(entry.player);
                 entry = players.get(entry.player.getUUID());
@@ -828,7 +954,9 @@ public final class PlayerProfiles implements AutoCloseable {
 
     /** Every connected body's profile operation must finish before a coherent save can begin. */
     public boolean readyForFullCheckpoint(RoundSnapshot round) {
-        return ioFailure == null && !closed && server.getPlayerList().getPlayers().stream()
+        // A builder's creative body must never be written into a checkpoint.
+        return ioFailure == null && !closed && players.values().stream().noneMatch(entry -> entry.building)
+                && server.getPlayerList().getPlayers().stream()
                 .allMatch(player -> isReady(player.getUUID(), round) && !players.get(player.getUUID()).awaitingRespawn
                         && !players.get(player.getUUID()).deathHeld);
     }
@@ -1079,7 +1207,7 @@ public final class PlayerProfiles implements AutoCloseable {
         if (entry == null) return "unmanaged";
         return "source=" + entry.source + ",target=" + entry.target + ",initiallyIsolated=" + entry.wasIsolated
                 + ",fresh=" + entry.fresh + ",ready=" + entry.ready + ",admitted=" + entry.admitted
-                + ",celebrationGuest=" + entry.celebrationGuest
+                + ",celebrationGuest=" + entry.celebrationGuest + ",building=" + entry.building
                 + ",originalInventory=" + entry.original.getListOrEmpty("Inventory")
                 + ",resumeInventory=" + (entry.resume == null ? "missing" : entry.resume.getListOrEmpty("Inventory"));
     }
@@ -1175,6 +1303,7 @@ public final class PlayerProfiles implements AutoCloseable {
         dev.hardrush.monster.MonsterRoles.suspend(player);
         if (recoveryPaused) { moveToLobby(player); return; }
         var entry = players.get(player.getUUID());
+        if (entry != null && entry.player == player && entry.building) endBuilding(entry);
         if (entry != null && entry.player == player) {
             entry.adminSpectating = false;
             entry.observing = false;
@@ -1251,17 +1380,9 @@ public final class PlayerProfiles implements AutoCloseable {
                 try {
                     entry.resume = plan.snapshot();
                     entry.fresh = entry.resume.getBooleanOr(FRESH, false);
-                    if (entry.fresh) {
-                        // Load the already sealed reset output. Re-running resetForNewRound would
-                        // revoke advancements/recipes again and replace its suspension identity.
-                        entry.player.load(TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), entry.resume.copy()));
-                        ((ProfileTagged) entry.player).hardrush$clearLoadedProfile();
-                        restoreAdvancements(entry.player, entry.resume);
-                        moveToLobby(entry.player);
-                        entry.player.resetSentInfo();
-                        entry.player.onUpdateAbilities();
-                        entry.player.inventoryMenu.sendAllDataToRemote();
-                    }
+                    // Load the already sealed reset output. Re-running resetForNewRound would
+                    // revoke advancements/recipes again and replace its suspension identity.
+                    if (entry.fresh) reloadSuspendedBody(entry, entry.resume);
                     ((ProfileTagged) entry.player).hardrush$generation(target);
                     ((ProfileTagged) entry.player).hardrush$suspensionId(entry.resume.getStringOr(SUSPENSION_ID, ""));
                     ((ProfileTagged) entry.player).hardrush$isolated(true);
@@ -1344,12 +1465,12 @@ public final class PlayerProfiles implements AutoCloseable {
     }
 
     /** Purpose-specific native relocation; ordinary lobby reconciliation never calls this every tick. */
-    public void placeInLobby(ServerPlayer player, dev.hardrush.core.lobby.LobbyLayout.Landing purpose) {
+    public void placeInLobby(ServerPlayer player, dev.hardrush.core.lobby.plan.Landing purpose) {
         requireMainThread();
         var camp = dev.hardrush.world.LobbyWorld.open(server);
         if (!camp.ready() || !camp.safeLanding(purpose)) throw new IllegalStateException("大厅落点未就绪：" + purpose);
-        var pos = camp.scatteredLanding(purpose);
-        if (!player.teleportTo(camp.holdingLevel(), pos.x, pos.y, pos.z, Set.of(), dev.hardrush.core.lobby.LobbyLayout.landing(purpose).yaw(), 0, true))
+        var spot = camp.scatteredLanding(purpose); var pos = spot.position();
+        if (!player.teleportTo(camp.holdingLevel(), pos.x, pos.y, pos.z, Set.of(), spot.yaw(), 0, true))
             throw new IllegalStateException("大厅落点传送失败");
         player.setDeltaMovement(Vec3.ZERO); player.resetFallDistance(); applyLobbyMode(player);
     }
@@ -1578,6 +1699,10 @@ public final class PlayerProfiles implements AutoCloseable {
         boolean deathHeld;
         boolean monsterLobbyInitialized;
         boolean celebrationGuest;
+        /** A builder in {@code buildingLevel}; {@code buildingBody} is the lobby body it entered with. */
+        boolean building;
+        ResourceKey<net.minecraft.world.level.Level> buildingLevel;
+        CompoundTag buildingBody;
         String problem = "";
         Entry(ServerPlayer player, Optional<ProfileJournal.Generation> source, boolean wasIsolated, CompoundTag original) {
             this.player = player; this.source = source; this.wasIsolated = wasIsolated; this.original = original;

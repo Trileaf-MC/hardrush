@@ -124,6 +124,7 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(() -> {
                     f.monster.player = f.monster.current();
                     f.assertLobby(true);
+                    f.assertAltarBeam();
                     f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "First monster life has a deployment wait");
                     HuntInputFixtures.role(f.monster.player, "zombie");
                 })
@@ -142,17 +143,15 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(() -> {
                     f.assertDeployment(1);
                     f.test.assertValueEqual(f.monster.player.getInventory().getItem(2).getCount(), 2, "The bought adult egg joins the role egg");
-                    f.assertMenuDoesNotUnlockRoleDrops();
+                    f.assertFixedControlsStayOnDropPacket();
                     f.equipWorldSword();
                     f.test.assertFalse(MonsterRoles.summon(f.monster.player), "Historical summon action remains retired");
                     f.spawnEgg(1, 2);
                     f.spawnEgg(2, -2);
                     f.test.assertValueEqual(f.summons(), 2, "The formal outing owns one adult and one baby from its eggs");
                     f.test.assertFalse(f.monster.participant().monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON), "Egg use does not create retired cooldown state");
-                    f.monster.command("hardrush skill");
-                    f.test.assertValueEqual(f.summons(), 2, "Retired skill command cannot add companions");
-                    f.monster.command("hardrush return");
-                    f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "Native return command begins a channel");
+                    f.monster.useReturn();
+                    f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "Using the echo shard begins a return channel");
                     f.monster.move(f.monster.player.position().add(.2, 0, 0));
                 })
                 .thenIdle(2)
@@ -162,12 +161,12 @@ public final class LobbyRuntimeGameTest {
                 })
                 .thenWaitUntil(() -> f.await(!LobbyRuntime.channeling(f.monster.player), "Native movement keys cancel return"))
                 .thenExecute(() -> {
-                    f.monster.command("hardrush return");
+                    f.monster.useReturn();
                     f.test.assertFalse(LobbyRuntime.channeling(f.monster.player), "A return cannot start while movement keys are held");
                     f.monster.keys(false);
                     f.voluntaryReturnBody = f.monster.player;
                     f.monster.player.setHealth(2);
-                    f.monster.command("hardrush return");
+                    f.monster.useReturn();
                     f.ageReturnChannel();
                     // A write whose IO finishes before submit attaches its callback completes inline on the server
                     // thread; under heavy load that can happen, so resubmit until a write is really in flight.
@@ -198,7 +197,7 @@ public final class LobbyRuntimeGameTest {
                             "Parked bound items are rebound to the resumed deployment");
                     f.test.assertValueEqual(f.worldSwords(), 1, "The world sword stayed where the monster returned and is not parked");
                     f.test.assertTrue(f.monster.player.getHealth() < f.monster.player.getMaxHealth(), "The resumed body keeps the camp body's health");
-                    f.monster.command("hardrush return");
+                    f.monster.useReturn();
                     f.ageReturnChannel();
                 })
                 .thenWaitUntil(() -> f.await(f.monsterReady(false) && f.monster.participant().wallet().hasParkedBody(), "The resumed sortie pauses again"))
@@ -221,15 +220,15 @@ public final class LobbyRuntimeGameTest {
                 .thenWaitUntil(() -> f.await(f.deployed(3), "Second formal safe deployment"))
                 .thenExecute(() -> {
                     f.assertDeployment(3);
-                    f.monster.command("hardrush skill");
-                    f.monster.command("hardrush skill");
+                    f.monster.burst();
+                    f.monster.burst();
                     f.test.assertTrue(MonsterRoles.status(f.monster.player).contains("arrowsFired=0"), "Pending burst requests do not fire before durable admission");
                 })
                 .thenWaitUntil(() -> f.awaitSkillEffect(MonsterRoles.status(f.monster.player).contains("arrowsFired=3") && !f.session.mutationPending(), "One admitted burst fires exactly three native arrows"))
                 .thenExecute(() -> {
                     f.burstReadyAt = f.monster.participant().monsterSkillReadyAtMillis().get(MonsterSkill.SKELETON_BURST);
                     f.test.assertTrue(f.burstReadyAt > System.currentTimeMillis(), "Burst has a persisted epoch deadline");
-                    f.monster.command("hardrush skill");
+                    f.monster.burst();
                     f.test.assertTrue(MonsterRoles.status(f.monster.player).contains("arrowsFired=3"), "Cooldown rejects another burst after the first finishes");
                     f.assertSkillCooldowns();
                 })
@@ -378,11 +377,10 @@ public final class LobbyRuntimeGameTest {
                                 var hint = hints.current(System.nanoTime() / 1_000_000).orElse("");
                                 f.test.assertTrue(hunter.participant().revivalEntitled()
                                                 && hunter.participant().role() == ParticipantRole.MONSTER_LOBBY
-                                                && !dev.hardrush.lobby.RevivalAltar.channeling(hunter.player) && hint.contains("出生点暂不安全"),
+                                                && !dev.hardrush.lobby.RevivalAltar.channeling(hunter.player) && hint.contains("现在无法复生"),
                                         "An unsafe spawn keeps the altar from starting a rite and keeps the entitlement: " + hint);
                             } finally { f.level.getChunkAt(floor).setBlockState(floor, original, 2); }
                         }
-                        hunter.openAndClick(Items.TOTEM_OF_UNDYING);
                         hunter.command("hardrush revive");
                     })
                     .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RUNNING && hunter.participant().role() == ParticipantRole.HUMAN_ACTIVE
@@ -624,12 +622,10 @@ public final class LobbyRuntimeGameTest {
                     kind == MonsterRole.ZOMBIE ? Items.ZOMBIE_SPAWN_EGG : Items.GUNPOWDER), "Only the selected role's fixed skill control is equipped");
             test.assertValueEqual(diamonds(), 3, "Outings do not duplicate or pick up the old human inventory");
         }
-        void assertMenuDoesNotUnlockRoleDrops() {
+        void assertFixedControlsStayOnDropPacket() {
             int skillSlot = monster.participant().monsterRole() == MonsterRole.CREEPER ? 0 : 1;
             monster.player.getInventory().setSelectedSlot(skillSlot);
             Item control = monster.player.getInventory().getItem(skillSlot).getItem();
-            monster.command("hardrush menu");
-            test.assertTrue(dev.hardrush.lobby.LobbyMenus.isMenu(monster.player), "Outside monster can open the return menu");
             var bounds = monster.player.getBoundingBox().inflate(5);
             int before = level.getEntitiesOfClass(ItemEntity.class, bounds).stream().map(ItemEntity::getItem)
                     .filter(stack -> stack.is(control)).mapToInt(ItemStack::getCount).sum();
@@ -637,9 +633,8 @@ public final class LobbyRuntimeGameTest {
                     ServerboundPlayerActionPacket.Action.DROP_ITEM, monster.player.blockPosition().below(), Direction.UP, 0));
             int after = level.getEntitiesOfClass(ItemEntity.class, bounds).stream().map(ItemEntity::getItem)
                     .filter(stack -> stack.is(control)).mapToInt(ItemStack::getCount).sum();
-            test.assertValueEqual(after, before, "Lobby GUI click exemption never unlocks raw fixed-role drop packets");
-            test.assertTrue(monster.player.getInventory().getItem(skillSlot).is(control), "The fixed skill control remains equipped while the menu is open");
-            monster.player.closeContainer();
+            test.assertValueEqual(after, before, "Raw drop packets never release the fixed-role controls");
+            test.assertTrue(monster.player.getInventory().getItem(skillSlot).is(control), "The fixed skill control remains equipped");
         }
         void buyAdultEggFromWitch() {
             var wallet = monster.participant().wallet();
@@ -647,11 +642,10 @@ public final class LobbyRuntimeGameTest {
             dev.hardrush.lobby.CampKit.tick(server);
             test.assertValueEqual(coins(), 6, "The camp projects the coin balance as native emeralds");
             var lobby = LobbyWorld.open(server);
-            HuntInputFixtures.move(monster.player, lobby.layoutPosition(dev.hardrush.core.lobby.LobbyLayout.facility(
-                    dev.hardrush.core.lobby.LobbyLayout.Facility.MERCHANT)).add(0, 0, 2));
+            HuntInputFixtures.move(monster.player, LobbyPlanFixtures.model(server, dev.hardrush.core.lobby.plan.LobbyFunction.MERCHANT).add(0, 0, 2));
             dev.hardrush.lobby.LobbyInteractions.tick(server);
             var ids = dev.hardrush.lobby.LobbyInteractions.get(server).orElseThrow().roleModels().view(monster.player);
-            HuntInputFixtures.click(monster.player, ids.get(dev.hardrush.core.lobby.LobbyLayout.Facility.MERCHANT), net.minecraft.world.InteractionHand.MAIN_HAND);
+            HuntInputFixtures.click(monster.player, ids.get(dev.hardrush.core.lobby.plan.LobbyFunction.MERCHANT).getFirst(), net.minecraft.world.InteractionHand.MAIN_HAND);
             test.assertTrue(dev.hardrush.lobby.MonsterShop.isShop(monster.player), "Right-clicking the witch model opens the native trading screen");
             var menu = monster.player.containerMenu;
             // The isolated camp body may still select an offer; vanilla moves the projected coins into the payment slot.
@@ -715,6 +709,21 @@ public final class LobbyRuntimeGameTest {
             var cooldowns = monster.participant().monsterSkillReadyAtMillis();
             test.assertFalse(cooldowns.containsKey(MonsterSkill.ZOMBIE_SUMMON), "Retired skill never creates a new deadline");
             if (burstReadyAt != 0) test.assertValueEqual(cooldowns.get(MonsterSkill.SKELETON_BURST), burstReadyAt, "Burst deadline survives role changes, defeat, lobby and reconnect");
+        }
+        /** Runs under the production protection binding: the camp is sealed, yet the mod's own glass swap must land. */
+        void assertAltarBeam() {
+            var lobby = LobbyWorld.open(server);
+            test.assertTrue(ProtectionRuntime.protectedLevel(lobby.holdingLevel()), "The camp is protected by the production binding");
+            var glass = LobbyPlanFixtures.altarGlass(server);
+            test.assertTrue(lobby.holdingLevel().getBlockState(glass).is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW)),
+                    "A running hardcore round lights the altar beam: " + lobby.holdingLevel().getBlockState(glass));
+            test.assertFalse(lobby.holdingLevel().setBlock(glass, Blocks.STONE.defaultBlockState(), 3), "Foreign writes stay refused outside ownedWrite");
+            lobby.altarLit(false);
+            test.assertTrue(lobby.holdingLevel().getBlockState(glass).is(Blocks.TINTED_GLASS), "Darkening the altar restores tinted glass");
+            dev.hardrush.lobby.RevivalAltar.tick(server, round(), session);
+            test.assertTrue(lobby.holdingLevel().getBlockState(glass).is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW)), "The altar tick relights it");
+            test.assertTrue(lobby.holdingLevel().destroyBlock(glass, false) == false && lobby.holdingLevel().getBlockState(glass).is(Blocks.STAINED_GLASS.pick(net.minecraft.world.item.DyeColor.YELLOW)),
+                    "Owned writes never open destroyBlock");
         }
         void assertLobby(boolean replaced) {
             monster.player = monster.current();
@@ -832,18 +841,9 @@ public final class LobbyRuntimeGameTest {
                 try { server.getCommands().getDispatcher().execute(command, player.createCommandSourceStack()); }
                 catch (Exception error) { throw new IllegalStateException(command, error); }
             }
-            void openAndClick(Item icon) {
-                command("hardrush menu");
-                test.assertTrue(dev.hardrush.lobby.LobbyMenus.isMenu(player), "The actual isolated native connection opens the lobby GUI");
-                var menu = player.containerMenu;
-                for (short slot = 0; slot < 45; slot++) if (menu.getSlot(slot).getItem().is(icon)) {
-                    player.connection.handleContainerClick(new ServerboundContainerClickPacket(menu.containerId, menu.getStateId(),
-                            slot, (byte) 0, ContainerInput.PICKUP, new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(), HashedStack.EMPTY));
-                    test.assertTrue(onlyCampProjections(player) && menu.getCarried().isEmpty(), "The real container packet triggers an action without moving a GUI icon");
-                    return;
-                }
-                throw new IllegalStateException("Expected lobby icon is absent: " + icon);
-            }
+            /** The skeleton volley: a fully drawn, sneaking release funnels into this production call. */
+            void burst() { MonsterRoles.burst(player); }
+            void useReturn() { dev.hardrush.lobby.LobbyRuntime.useReturn(player); }
             /** The native movement keys a vanilla client reports; channels read only these. */
             void keys(boolean forward) {
                 player.connection.handlePlayerInput(new net.minecraft.network.protocol.game.ServerboundPlayerInputPacket(

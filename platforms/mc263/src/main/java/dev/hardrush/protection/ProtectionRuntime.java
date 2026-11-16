@@ -22,6 +22,8 @@ public final class ProtectionRuntime {
         boolean protectedLevel(ServerLevel level);
     }
     private static final Map<MinecraftServer, Access> BINDINGS = new IdentityHashMap<>();
+    /** Re-entrant depth of {@link #ownedWrite} per level; only touched on the server thread. */
+    private static final Map<ServerLevel, Integer> OWNED_WRITES = new IdentityHashMap<>();
     private static final Map<ServerPlayer, Long> SPECTATOR_FEEDBACK = new WeakHashMap<>();
     private ProtectionRuntime() {}
 
@@ -34,10 +36,25 @@ public final class ProtectionRuntime {
         var access = BINDINGS.get(level.getServer());
         return access != null && access.protectedLevel(level);
     }
+    /**
+     * Run a write the mod itself owns (e.g. the altar's glass) inside a protected level. Block updates that
+     * the write triggers synchronously are covered; scheduled ticks they queue are not. Block destruction stays refused.
+     */
+    public static void ownedWrite(ServerLevel level, Runnable write) {
+        if (!level.getServer().isSameThread()) throw new IllegalStateException("ownedWrite must run on the server thread");
+        OWNED_WRITES.merge(level, 1, Integer::sum);
+        try { write.run(); }
+        finally { OWNED_WRITES.computeIfPresent(level, (l, depth) -> depth == 1 ? null : depth - 1); }
+    }
+    public static boolean ownedWriting(ServerLevel level) { return OWNED_WRITES.containsKey(level); }
+
     public static boolean protectedEntity(Entity entity) {
         return entity != null && entity.level() instanceof ServerLevel level && protectedLevel(level);
     }
     public static boolean rejectDamage(Entity victim, DamageSource source) {
+        // Nobody dies in a workshop (/kill and the void included): a builder wears a borrowed lobby body (design 11.2).
+        if (victim instanceof ServerPlayer && victim.level() instanceof ServerLevel level
+                && dev.hardrush.world.LobbyDimension.isWorkshop(level)) return true;
         Entity direct = source.getDirectEntity();
         if (protectedEntity(victim) || protectedEntity(direct)) return true;
         if (direct instanceof ProtectionOriginHolder holder && holder.hardrush$protectedOrigin()) return true;
@@ -49,15 +66,21 @@ public final class ProtectionRuntime {
                 && (protectedEntity(target) || protectedEntity(source)
                     || source instanceof ProtectionOriginHolder holder && holder.hardrush$protectedOrigin());
     }
+    /** A plain right click on lobby decoration (door, button, lever...) that sealed levels let through to vanilla. */
+    public static boolean interactiveClick(ServerPlayer player, net.minecraft.network.protocol.game.ServerboundUseItemOnPacket packet) {
+        return !player.isShiftKeyDown() && rejectInteraction(player, player.level())
+                && LobbyInteractive.manual(player.level().getBlockState(packet.hitResult().getBlockPos()));
+    }
     public static boolean rejectInteraction(ServerPlayer player, ServerLevel level) {
         return protectedEntity(player) || protectedLevel(level);
     }
     public static void projectileCreated(Projectile projectile, Entity owner) {
         if (projectile instanceof ProtectionOriginHolder holder && protectedEntity(owner)) holder.hardrush$protectedOrigin(true);
     }
-    /** All movements, including passengers and teleport targets, use the administrative spectator boundary. */
+    /** All movements, including passengers and teleport targets, use the administrative spectator and builder boundaries. */
     public static boolean rejectMove(Entity entity, ServerLevel destination) {
-        if (entity instanceof ServerPlayer player && PlayerProfiles.rejectAdministrativeSpectatorMove(player, destination)) return true;
+        if (entity instanceof ServerPlayer player && (PlayerProfiles.rejectAdministrativeSpectatorMove(player, destination)
+                || PlayerProfiles.rejectBuilderMove(player, destination))) return true;
         for (var passenger : entity.getPassengers()) if (rejectMove(passenger, destination)) return true;
         return false;
     }
@@ -68,6 +91,7 @@ public final class ProtectionRuntime {
     public static void correct(ServerPlayer player) {
         // Spectators may hover or occupy solid blocks; rejection must not require a survival landing.
         if (PlayerProfiles.isAdministrativeSpectator(player)) spectatorRejected(player);
+        if (PlayerProfiles.building(player)) dev.hardrush.notice.Notices.refuse(player, "建造时只能留在本草稿 · 用 /hardrush lobby 离开工坊");
         player.stopRiding();
         player.resetFallDistance(); player.resetCurrentImpulseContext();
         player.setDeltaMovement(Vec3.ZERO);

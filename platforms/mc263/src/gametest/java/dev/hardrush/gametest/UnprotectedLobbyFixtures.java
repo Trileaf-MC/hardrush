@@ -10,7 +10,8 @@ public final class UnprotectedLobbyFixtures implements ModInitializer {
         ServerTickEvents.START_SERVER_TICK.register(server -> {
             if (Boolean.getBoolean(TestProperties.PARTICIPATION_EXIT)) return;
             if (Boolean.getBoolean(TestProperties.ADMIN_SPECTATOR)) return;
-            if (Boolean.getBoolean(TestProperties.PERSONAL_HUNT) || Boolean.getBoolean(TestProperties.LOBBY_FOUNDATION) || Boolean.getBoolean(TestProperties.IDENTITY_RUNTIME) || Boolean.getBoolean(TestProperties.LOBBY_RUNTIME)) return;
+            if (Boolean.getBoolean(TestProperties.PERSONAL_HUNT) || Boolean.getBoolean(TestProperties.LOBBY_FOUNDATION) || Boolean.getBoolean(TestProperties.IDENTITY_RUNTIME) || Boolean.getBoolean(TestProperties.LOBBY_RUNTIME)
+                    || Boolean.getBoolean(TestProperties.WORKSHOP)) return;
             // The dedicated lobby runtime test retains the production binding. Native protection
             // fixtures install their own protected levels; unmanaged fixtures do not participate in the protected lobby lifecycle.
             ProtectionRuntime.configure(server, level -> false);

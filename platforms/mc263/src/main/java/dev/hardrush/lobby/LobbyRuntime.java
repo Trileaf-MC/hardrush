@@ -1,7 +1,8 @@
 package dev.hardrush.lobby;
 
 import dev.hardrush.core.hunt.PersonalHuntRequest;
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.Landing;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.lobby.LobbyContext;
@@ -147,7 +148,7 @@ public final class LobbyRuntime {
             @Override public boolean available(ServerPlayer player, LobbyContext context) {
                 return context == LobbyContext.COMPETITION ? available(player) : contextAvailable(player, binding, context);
             }
-            @Override public List<LobbyMenus.Button> buttons(ServerPlayer player, LobbyContext context) {
+            @Override public List<ButtonMenu.Button> buttons(ServerPlayer player, LobbyContext context) {
                 if (context == LobbyContext.WITHDRAWAL) return dev.hardrush.participation.ParticipationControl.withdrawalButtons(player);
                 if (context == LobbyContext.HISTORY) return dev.hardrush.record.HistoryLibrary.buttons(player);
                 // The rule lectern opens a book instead (RuleBook); no other context has a menu.
@@ -161,7 +162,7 @@ public final class LobbyRuntime {
                 else if (context == LobbyContext.HISTORY) dev.hardrush.record.HistoryLibrary.act(player, action, value);
             }
             @Override public UUID round(ServerPlayer player) { return session.snapshot().orElseThrow().roundId(); }
-            @Override public List<LobbyMenus.Button> buttons(ServerPlayer player) { return List.of(); }
+            @Override public List<ButtonMenu.Button> buttons(ServerPlayer player) { return List.of(); }
             @Override public void act(ServerPlayer player, UUID round, String action, String value) { }
         });
     }
@@ -247,6 +248,12 @@ public final class LobbyRuntime {
         if (waiting != null) cancelSearch(b, waiting, null);
         restartSearch(b, d);
         // The progress hint below names the target and how to cancel; no separate announcement is needed.
+    }
+    /** Whether the courtyard's role models, merchant and paging work right now; their name tags say so. */
+    public static boolean courtyardOpen(MinecraftServer server) {
+        var b = BINDINGS.get(server);
+        var r = b == null ? null : b.session.snapshot().orElse(null);
+        return r != null && personalOpen(b, r);
     }
     private static boolean personalOpen(Binding b, RoundSnapshot r) {
         return r.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE
@@ -430,8 +437,7 @@ public final class LobbyRuntime {
     private static boolean inCamp(ServerPlayer player) {
         var camp = dev.hardrush.world.LobbyWorld.open(player.level().getServer());
         if (!camp.ready() || player.level() != camp.holdingLevel()) return false;
-        var origin = camp.layoutPosition(new LobbyLayout.Point(0, 0, 0));
-        return LobbyLayout.MONSTER_CAMP.contains(player.getX() - origin.x, player.getZ() - origin.z);
+        return camp.plan().inZone(LobbyFunction.COURTYARD, player.getX(), player.getY(), player.getZ(), false);
     }
     private static void searchFailed(Binding b, Deployment d, String message) {
         b.searches.remove(d.identity.hunter(), d); b.resumptions.remove(d.identity.hunter(), d);
@@ -668,8 +674,8 @@ public final class LobbyRuntime {
             var summoned = server.getPlayerList().getPlayer(p.id());
             if (dev.hardrush.core.round.MonsterCoins.enabled(after.rules()) && p.revivalCharges() > old.revivalCharges()
                     && summoned != null && dev.hardrush.world.LobbyWorld.isLobby(summoned.level())
-                    && dev.hardrush.world.LobbyWorld.open(server).safeLanding(LobbyLayout.Landing.ALTAR))
-                b.profiles.placeInLobby(summoned, LobbyLayout.Landing.ALTAR);
+                    && dev.hardrush.world.LobbyWorld.open(server).safeLanding(Landing.ALTAR))
+                b.profiles.placeInLobby(summoned, Landing.ALTAR);
         }
     }
     /** A camp monster holding a revival is pointed to the altar instead of hunting, choosing or shopping. */
@@ -752,22 +758,51 @@ public final class LobbyRuntime {
             return true;
         });
     }
-    /** Role models and paging blocks use the same guarded facility action. */
-    public static void facility(ServerPlayer player, LobbyLayout.Facility facility) {
+    /** Which router context gates a clicked lobby function. */
+    public static LobbyContext context(LobbyFunction function) {
+        return switch (function) {
+            case RULES -> LobbyContext.RULES;
+            case HISTORY -> LobbyContext.HISTORY;
+            case VAULT, OMINOUS_VAULT -> LobbyContext.DISPLAY;
+            // The courtyard facilities explain their own refusal when used, so their click always gets through.
+            case PAGE_PREV, PAGE_NEXT, ROLE_ZOMBIE, ROLE_SKELETON, ROLE_CREEPER, MERCHANT -> LobbyContext.RULES;
+            default -> throw new IllegalArgumentException("Not a clickable lobby function: " + function.id());
+        };
+    }
+    /**
+     * The single dispatch from a lobby function to its behaviour, whatever bound it: a block, a role model or
+     * a tagged entity. The router has already validated the click; {@code clicked} is the block for
+     * block triggers and null otherwise.
+     */
+    public static void activate(ServerPlayer player, LobbyFunction function, net.minecraft.core.BlockPos clicked) {
+        switch (function) {
+            case RULES -> {
+                var b = BINDINGS.get(player.level().getServer());
+                if (b != null) b.session.snapshot().ifPresent(r -> RuleBook.open(player, r.rules()));
+            }
+            case HISTORY -> dev.hardrush.record.HistoryLibrary.open(player);
+            case VAULT, OMINOUS_VAULT -> MonsterVaults.use(player, function == LobbyFunction.OMINOUS_VAULT
+                    ? ShopOffer.OMINOUS_KEY : ShopOffer.TRIAL_KEY, java.util.Objects.requireNonNull(clicked, "vault position"));
+            case PAGE_PREV, PAGE_NEXT, ROLE_ZOMBIE, ROLE_SKELETON, ROLE_CREEPER, MERCHANT -> courtyard(player, function);
+            default -> throw new IllegalArgumentException("Not a clickable lobby function: " + function.id());
+        }
+    }
+    /** Role models, the merchant and paging share the courtyard's opening hours. */
+    private static void courtyard(ServerPlayer player, LobbyFunction function) {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);
         if (r == null || !contextAvailable(player, b, LobbyContext.DISPLAY) || !personalOpen(b, r)) {
             Notices.refuse(player, "庭院只在极限挑战或救场期间开放"); return;
         }
-        if (facility == LobbyLayout.Facility.MERCHANT) { MonsterShop.open(player); return; }
-        if (facility == LobbyLayout.Facility.PREVIOUS || facility == LobbyLayout.Facility.NEXT) {
+        if (function == LobbyFunction.MERCHANT) { MonsterShop.open(player); return; }
+        if (function == LobbyFunction.PAGE_PREV || function == LobbyFunction.PAGE_NEXT) {
             var projections = LobbyInteractions.get(player.level().getServer()).orElseThrow().projections();
-            projections.turn(player, facility == LobbyLayout.Facility.NEXT ? 1 : -1);
+            projections.turn(player, function == LobbyFunction.PAGE_NEXT ? 1 : -1);
             return;
         }
         var p = r.participants().get(player.getUUID());
-        MonsterRole role = switch (facility) {
-            case ZOMBIE -> MonsterRole.ZOMBIE; case SKELETON -> MonsterRole.SKELETON; case CREEPER -> MonsterRole.CREEPER;
+        MonsterRole role = switch (function) {
+            case ROLE_ZOMBIE -> MonsterRole.ZOMBIE; case ROLE_SKELETON -> MonsterRole.SKELETON; case ROLE_CREEPER -> MonsterRole.CREEPER;
             default -> null;
         };
         // Picking another role ends a waiting hunt; the new body would not match the pending identity.

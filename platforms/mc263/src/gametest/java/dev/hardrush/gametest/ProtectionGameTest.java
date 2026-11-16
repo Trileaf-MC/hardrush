@@ -5,6 +5,20 @@ import dev.hardrush.protection.ProtectionOriginHolder;
 import java.util.*;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.InsideBlockEffectApplier;
+import net.minecraft.world.level.block.ButtonBlock;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.NoteBlock;
+import net.minecraft.world.level.block.PressurePlateBlock;
+import net.minecraft.world.level.block.RedstoneLampBlock;
+import net.minecraft.world.level.block.state.properties.AttachFace;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -130,6 +144,111 @@ public final class ProtectionGameTest {
         test.succeed();
     }
 
+    /** Lobby decoration (doors, buttons, levers, lamps, plates, note blocks) stays usable in a sealed level; everything else stays refused. */
+    @GameTest(maxTicks=200)
+    public void interactiveDecorationWorksInSealedLevel(GameTestHelper test) {
+        var fixture = new Fixture(test);
+        var base = BlockPos.containing(fixture.center);
+        BlockPos oakDoor = base.offset(-6, 0, 0), ironDoor = base.offset(-8, 0, 0);
+        BlockPos button = base.offset(-4, 0, 0), wire = base.offset(-3, 0, 0), lamp = base.offset(-2, 0, 0);
+        BlockPos lever = base.offset(0, 0, 0), leverLamp = base.offset(1, 0, 0);
+        BlockPos noteBlock = base.offset(3, 0, 0), plate = test.absolutePos(new BlockPos(1, 2, 1)), piston = base.offset(7, 0, 0);
+        BlockPos redstoneBlock = base.offset(8, 0, 0);
+        try (var setup = fixture.empty()) {
+            for (var door : List.of(oakDoor, ironDoor)) {
+                var block = door == oakDoor ? Blocks.OAK_DOOR : Blocks.IRON_DOOR;
+                fixture.level.setBlock(door, block.defaultBlockState().setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER), 3);
+                fixture.level.setBlock(door.above(), block.defaultBlockState().setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER), 3);
+            }
+            fixture.level.setBlock(lamp, Blocks.REDSTONE_LAMP.defaultBlockState(), 3);
+            fixture.level.setBlock(wire, Blocks.REDSTONE_WIRE.defaultBlockState(), 3);
+            fixture.level.setBlock(button, Blocks.STONE_BUTTON.defaultBlockState().setValue(BlockStateProperties.ATTACH_FACE, AttachFace.FLOOR), 3);
+            fixture.level.setBlock(leverLamp, Blocks.REDSTONE_LAMP.defaultBlockState(), 3);
+            fixture.level.setBlock(lever, Blocks.LEVER.defaultBlockState().setValue(BlockStateProperties.ATTACH_FACE, AttachFace.FLOOR), 3);
+            fixture.level.setBlock(noteBlock, Blocks.NOTE_BLOCK.defaultBlockState(), 3);
+            // Chunks around the arena do not expose entities to block queries, so the plate sits inside the test structure.
+            fixture.level.setBlock(plate.below(), Blocks.STONE.defaultBlockState(), 3);
+            fixture.level.setBlock(plate, Blocks.OAK_PRESSURE_PLATE.defaultBlockState(), 3);
+            fixture.level.setBlock(piston, Blocks.PISTON.defaultBlockState().setValue(BlockStateProperties.FACING, Direction.UP), 3);
+        }
+        var player = fixture.player(0);
+        // Entities only become visible to block queries a few ticks after spawning, so the plate is checked in a second step.
+        var plateItem = fixture.player(5);
+        plateItem.setPos(plate.getX() + 0.5, plate.getY(), plate.getZ() + 0.5);
+        try (var ignored = fixture.install()) {
+            // Right click opens and closes a door; sneaking keeps the block untouched.
+            test.assertTrue(!fixture.level.getBlockState(oakDoor).getValue(DoorBlock.OPEN), "Door starts closed");
+            use(player, oakDoor, Direction.SOUTH, false);
+            test.assertTrue(fixture.level.getBlockState(oakDoor).getValue(DoorBlock.OPEN), "Right click opens the door");
+            use(player, oakDoor, Direction.SOUTH, false);
+            test.assertTrue(!fixture.level.getBlockState(oakDoor).getValue(DoorBlock.OPEN), "Right click closes the door again");
+            use(player, oakDoor, Direction.SOUTH, true);
+            test.assertTrue(!fixture.level.getBlockState(oakDoor).getValue(DoorBlock.OPEN), "Sneaking right click leaves the door alone");
+
+            // Held items never act on the world: neither through a sneaking click nor through a block that ignores the hand.
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.STONE, 4));
+            use(player, oakDoor, Direction.EAST, true);
+            test.assertTrue(fixture.level.getBlockState(oakDoor.east()).isAir(), "Sneaking with a block does not place it beside the door");
+            use(player, base.below().offset(-1, 0, 0), Direction.UP, false);
+            test.assertTrue(fixture.level.getBlockState(base.offset(-1, 0, 0)).isAir(), "A block cannot be placed on the floor");
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.PIG_SPAWN_EGG));
+            use(player, ironDoor, Direction.EAST, false);
+            test.assertTrue(fixture.level.getBlockState(ironDoor).is(Blocks.IRON_DOOR) && !fixture.level.getBlockState(ironDoor).getValue(DoorBlock.OPEN), "Vanilla ignores a hand click on an iron door");
+            test.assertTrue(fixture.level.getEntitiesOfClass(net.minecraft.world.entity.animal.pig.Pig.class, new net.minecraft.world.phys.AABB(ironDoor).inflate(3)).isEmpty(),
+                    "A spawn egg passing through an iron door click does not act on the sealed level");
+            player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+
+            // Button to lamp through redstone dust; the button pops back by its own scheduled tick.
+            use(player, button, Direction.UP, false);
+            test.assertTrue(fixture.level.getBlockState(button).getValue(ButtonBlock.POWERED), "Button is pressed");
+            test.assertTrue(fixture.level.getBlockState(lamp).getValue(RedstoneLampBlock.LIT), "Dust carries the press to the lamp");
+            fixture.level.getBlockState(button).tick(fixture.level, button, fixture.level.getRandom());
+            fixture.level.getBlockState(lamp).tick(fixture.level, lamp, fixture.level.getRandom());
+            test.assertTrue(!fixture.level.getBlockState(button).getValue(ButtonBlock.POWERED), "Button pops back");
+            test.assertTrue(!fixture.level.getBlockState(lamp).getValue(RedstoneLampBlock.LIT), "Lamp goes out after the button releases");
+
+            use(player, lever, Direction.UP, false);
+            test.assertTrue(fixture.level.getBlockState(leverLamp).getValue(RedstoneLampBlock.LIT), "Lever lights the lamp next to it");
+
+            int note = fixture.level.getBlockState(noteBlock).getValue(NoteBlock.NOTE);
+            use(player, noteBlock, Direction.UP, false);
+            test.assertValueEqual(fixture.level.getBlockState(noteBlock).getValue(NoteBlock.NOTE), note + 1, "Right click tunes the note block");
+
+
+            // Everything that replaces, removes or moves blocks stays sealed.
+            ProtectionRuntime.ownedWrite(fixture.level, () -> fixture.level.setBlock(redstoneBlock, Blocks.REDSTONE_BLOCK.defaultBlockState(), 3));
+            test.assertTrue(!fixture.level.getBlockState(piston).getValue(BlockStateProperties.EXTENDED), "A powered piston does not extend");
+            test.assertTrue(fixture.level.getBlockState(piston.above()).isAir(), "No piston head appears");
+            test.assertTrue(!fixture.level.setBlock(oakDoor, Blocks.STONE.defaultBlockState(), 3), "A door cannot be turned into another block");
+            test.assertTrue(fixture.level.getBlockState(oakDoor).is(Blocks.OAK_DOOR), "The door is still a door");
+            test.assertTrue(!fixture.level.setBlock(lamp, Blocks.AIR.defaultBlockState(), 3), "A lamp cannot be removed by a write");
+            test.assertTrue(!fixture.level.destroyBlock(oakDoor, true), "destroyBlock stays refused for interactive blocks");
+            player.setGameMode(GameType.CREATIVE);
+            player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, oakDoor, Direction.SOUTH, 20));
+            test.assertTrue(fixture.level.getBlockState(oakDoor).is(Blocks.OAK_DOOR), "A player cannot break the door");
+        } catch (RuntimeException | Error failure) { fixture.close(); throw failure; }
+        test.runAfterDelay(20, () -> {
+            try (var ignored = fixture.install()) {
+                // The standing player may already have pressed it while the level was unprotected: reset, then press under protection.
+                ProtectionRuntime.ownedWrite(fixture.level, () -> fixture.level.setBlock(plate, Blocks.OAK_PRESSURE_PLATE.defaultBlockState(), 3));
+                fixture.level.getBlockState(plate).entityInside(fixture.level, plate, plateItem, InsideBlockEffectApplier.NOOP, true);
+                test.assertTrue(fixture.level.getBlockState(plate).getValue(PressurePlateBlock.POWERED), "An entity on a plate presses it");
+            } finally { fixture.close(); }
+            test.succeed();
+        });
+    }
+
+    private static void use(ServerPlayer player, BlockPos pos, Direction face, boolean sneaking) {
+        player.setShiftKeyDown(sneaking);
+        player.setPos(pos.getX() + 0.5, pos.getY(), pos.getZ() + 1.5);
+        // A mock connection never confirms its join teleport, and vanilla ignores block clicks until it does.
+        try {
+            var awaiting = net.minecraft.server.network.ServerGamePacketListenerImpl.class.getDeclaredField("awaitingPositionFromClient");
+            awaiting.setAccessible(true); awaiting.set(player.connection, null);
+        } catch (ReflectiveOperationException e) { throw new IllegalStateException(e); }
+        player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,
+                new BlockHitResult(Vec3.atCenterOf(pos), face, pos, false), 0));
+    }
     private static void click(ServerPlayer player, int slot, int button, net.minecraft.world.inventory.ContainerInput input) {
         var menu = player.containerMenu;
         player.connection.handleContainerClick(new net.minecraft.network.protocol.game.ServerboundContainerClickPacket(

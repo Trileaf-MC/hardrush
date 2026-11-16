@@ -2,7 +2,7 @@ package dev.hardrush.lobby;
 
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.lobby.LobbyContext;
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.world.LobbyWorld;
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -48,25 +48,27 @@ public final class LobbyProjections {
     public View show(ServerPlayer observer, UUID round, List<Target> targets, int page,
                      BiConsumer<ServerPlayer, Selection> action, BiConsumer<ServerPlayer, Selection> watch) {
         router.requireThread(); Objects.requireNonNull(action); Objects.requireNonNull(watch); targets = List.copyOf(targets);
-        var origin = LobbyWorld.open(observer.level().getServer()).holdingSpawn();
         if (router.validate(observer, round, LobbyContext.DISPLAY, observer.getEyePosition()) != LobbyInteractions.Result.ACCEPTED)
             throw new IllegalStateException("Display not available to this connection");
         if (targets.stream().map(t -> t.originalProfile.id()).distinct().count() != targets.size()) throw new IllegalArgumentException("Duplicate target UUID");
-        int count = Math.max(1, (targets.size() + LobbyLayout.DISPLAY_CAPACITY - 1) / LobbyLayout.DISPLAY_CAPACITY);
+        // Slots are ordered by (y, z, x); a page holds one target per slot.
+        var slots = LobbyWorld.open(observer.level().getServer()).plan().points(LobbyFunction.DISPLAY_SLOT);
+        int capacity = slots.size();
+        int count = Math.max(1, (targets.size() + capacity - 1) / capacity);
         if (page < 0 || page >= count) throw new IllegalArgumentException("Invalid page");
         var previous = pages.get(observer.getUUID());
         if (previous != null) remove(previous.owner); // invalidate even a replaced connection BEFORE any packet
         long next = generation = Math.incrementExact(generation);
         var models = new LinkedHashMap<Integer, Model>();
-        for (int index = page * LobbyLayout.DISPLAY_CAPACITY; index < Math.min(targets.size(), (page + 1) * LobbyLayout.DISPLAY_CAPACITY); index++) {
+        for (int index = page * capacity; index < Math.min(targets.size(), (page + 1) * capacity); index++) {
             var target = targets.get(index);
             if (target.state == State.EMPTY) continue; // Preserve the stable hole without keeping a dead model forever.
             var model = new Mannequin(EntityTypes.MANNEQUIN, observer.level());
             int id = model.getId();
             if (id <= lastNativeId) throw new IllegalStateException("Native entity IDs exhausted; restart required");
             lastNativeId = id;
-            var slot = LobbyLayout.displaySlots().get(index % LobbyLayout.DISPLAY_CAPACITY);
-            model.setPos(origin.add(slot.x(), 0, slot.z())); model.setYRot(slot.yaw()); model.setYHeadRot(slot.yaw());
+            var slot = slots.get(index % capacity);
+            model.setPos(LobbyWorld.position(slot)); model.setYRot(slot.yaw()); model.setYHeadRot(slot.yaw());
             model.setNoGravity(true); model.setSilent(true);
             // Authenticated profile is never taken from OwnerSkin's rewritten player-info packets.
             model.setComponent(DataComponents.PROFILE, ResolvableProfile.createResolved(target.originalProfile));

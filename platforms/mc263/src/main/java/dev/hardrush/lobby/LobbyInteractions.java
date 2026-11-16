@@ -35,10 +35,12 @@ public final class LobbyInteractions {
     private final LobbyProjections projections;
     private final LobbyRoleModels roleModels;
     private UUID round;
+    /** The lobby plan generation registrations were made against; a new lobby invalidates them like a new round. */
+    private int planGeneration;
     private boolean closed;
 
     private LobbyInteractions(MinecraftServer server, Access access) {
-        this.server = server; this.access = access; round = access.round();
+        this.server = server; this.access = access; round = access.round(); planGeneration = LobbyWorld.planGeneration(server);
         projections = new LobbyProjections(this);
         roleModels = new LobbyRoleModels(this);
     }
@@ -68,9 +70,8 @@ public final class LobbyInteractions {
     }
     public void registerBlock(BlockPos pos, Block expected, LobbyContext context, Consumer<ServerPlayer> action) {
         requireThread(); synchronizeRound();
-        // Block facilities are dedicated lecterns, pagination signs and the camp's two vaults.
-        if (expected != Blocks.LECTERN && expected != Blocks.OAK_SIGN && expected != Blocks.OAK_WALL_SIGN && expected != Blocks.VAULT)
-            throw new IllegalArgumentException("Not a dedicated lobby facility block");
+        // Any block can be a facility; the plan names the block expected there, and a different one is STALE.
+        if (expected == Blocks.AIR) throw new IllegalArgumentException("A facility needs a block");
         blocks.put(pos.immutable(), new BlockEntry(Objects.requireNonNull(round()), expected,
                 Objects.requireNonNull(context), Objects.requireNonNull(action)));
     }
@@ -111,8 +112,34 @@ public final class LobbyInteractions {
         if (service == null || !player.level().getServer().isSameThread()) return Result.UNREGISTERED;
         return service.dispatch(player, packet, () -> {
             var result = service.roleModels.click(player, packet);
-            return consumed(result) ? result : service.projections.click(player, packet);
+            if (consumed(result)) return result;
+            result = service.projections.click(player, packet);
+            return consumed(result) ? result : service.taggedEntity(player, packet);
         });
+    }
+    /**
+     * A real lobby entity tagged {@code hardrush.fn.<id>} with a clickable function (design 4.3): an interaction box, a
+     * statue's armor stand, an item frame. Right clicks only; left clicks arrive as attacks and protection drops them.
+     */
+    private Result taggedEntity(ServerPlayer player, ServerboundInteractPacket packet) {
+        if (!LobbyWorld.isLobby(player.level())) return Result.UNREGISTERED;
+        var entity = player.level().getEntity(packet.entityId());
+        if (entity == null || entity instanceof ServerPlayer) return Result.UNREGISTERED;
+        if (!(dev.hardrush.core.lobby.plan.MarkerTags.parseTrigger(entity.entityTags()).orElse(null)
+                instanceof dev.hardrush.core.lobby.plan.MarkerTags.Ok ok)
+                || ok.spec().binding() != dev.hardrush.core.lobby.plan.Binding.CLICK) return Result.UNREGISTERED;
+        var function = ok.spec().function();
+        var box = entity.getBoundingBox();
+        var eye = player.getEyePosition();
+        // The point of the box nearest the eye, so a large interaction box is reachable from its edge.
+        var nearest = new Vec3(Math.clamp(eye.x, box.minX, box.maxX), Math.clamp(eye.y, box.minY, box.maxY), Math.clamp(eye.z, box.minZ, box.maxZ));
+        var result = validate(player, round(), LobbyRuntime.context(function), nearest);
+        var hit = packet.location();
+        double reach = box.getSize() + 1;
+        if (result == Result.ACCEPTED && (packet.hand() != InteractionHand.MAIN_HAND
+                || hit != null && (!Double.isFinite(hit.lengthSqr()) || hit.lengthSqr() > reach * reach))) result = Result.INPUT;
+        if (result == Result.ACCEPTED) LobbyRuntime.activate(player, function, null);
+        return result;
     }
     /** Left-clicking a packet-only courtyard model; the model never exists in the world. */
     public static Result attack(ServerPlayer player, net.minecraft.network.protocol.game.ServerboundAttackPacket packet) {
@@ -129,10 +156,13 @@ public final class LobbyInteractions {
         dispatches.put(player.getUUID(), new Dispatch(packet, player.connection, result)); return result;
     }
     public static boolean consumed(Result result) { return result != Result.UNREGISTERED; }
+    /** A new round or a newly installed lobby drops every registration, dispatch, projection and model. */
     private void synchronizeRound() {
         UUID current = round();
-        if (!Objects.equals(round, current)) {
-            blocks.clear(); dispatches.clear(); projections.clear(); roleModels.clear(); hints.clear(); round = current;
+        int generation = LobbyWorld.planGeneration(server);
+        if (!Objects.equals(round, current) || generation != planGeneration) {
+            blocks.clear(); dispatches.clear(); projections.clear(); roleModels.clear(); hints.clear();
+            round = current; planGeneration = generation;
         }
     }
     public Optional<Result> lastResult(ServerPlayer player) {

@@ -1,6 +1,6 @@
 package dev.hardrush.gametest;
 
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.lobby.LobbyInteractions;
 import dev.hardrush.lobby.LobbyProjections;
 import dev.hardrush.world.LobbyWorld;
@@ -19,17 +19,24 @@ import net.minecraft.world.phys.Vec3;
 
 /** Test-only migration: actual block/entity input through the production guards, never identity writes. */
 final class HuntInputFixtures {
+    /** A role model ({@code zombie}, {@code skeleton}, {@code creeper}) or a paging block ({@code previous}, {@code next}). */
     static void role(ServerPlayer player, String role) {
-        var facility = LobbyLayout.Facility.valueOf(role.toUpperCase(java.util.Locale.ROOT));
-        var lobby = LobbyWorld.open(player.level().getServer());
-        var pos = BlockPos.containing(lobby.layoutPosition(LobbyLayout.facility(facility)));
-        move(player, Vec3.atBottomCenterOf(pos.south(2)));
-        if (LobbyLayout.MONSTER_FACILITIES.contains(facility)) {
-            LobbyInteractions.tick(player.level().getServer());
-            var ids = LobbyInteractions.get(player.level().getServer()).orElseThrow().roleModels().view(player);
-            click(player, ids.get(facility), InteractionHand.MAIN_HAND);
+        var server = player.level().getServer();
+        var function = switch (role) {
+            case "zombie" -> LobbyFunction.ROLE_ZOMBIE; case "skeleton" -> LobbyFunction.ROLE_SKELETON;
+            case "creeper" -> LobbyFunction.ROLE_CREEPER;
+            case "previous" -> LobbyFunction.PAGE_PREV; case "next" -> LobbyFunction.PAGE_NEXT;
+            default -> throw new IllegalArgumentException(role);
+        };
+        if (!LobbyPlanFixtures.plan(server).models(function).isEmpty()) {
+            move(player, LobbyPlanFixtures.model(server, function).add(0, 0, 2));
+            LobbyInteractions.tick(server);
+            var ids = LobbyInteractions.get(server).orElseThrow().roleModels().view(player);
+            click(player, ids.get(function).getFirst(), InteractionHand.MAIN_HAND);
             return;
         }
+        var pos = LobbyPlanFixtures.block(server, function);
+        move(player, LobbyPlanFixtures.before(pos));
         player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,
                 new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false), 100));
     }

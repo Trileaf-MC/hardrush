@@ -1,7 +1,8 @@
 package dev.hardrush.core.spawn;
 
 import static org.junit.jupiter.api.Assertions.*;
-import dev.hardrush.core.lobby.LobbyLayout;
+import dev.hardrush.core.lobby.CampPlanFixture;
+import dev.hardrush.core.lobby.plan.*;
 import java.util.HashSet;
 import java.util.SplittableRandom;
 import org.junit.jupiter.api.Test;
@@ -45,19 +46,24 @@ class SpawnScatterTest {
     }
 
     @Test void campScatterKeepsArrivalsInTheirPurposeZone() {
-        for (var purpose : LobbyLayout.Landing.values()) {
-            var point = LobbyLayout.landing(purpose);
-            int cells = 0;
-            for (int x = LobbyLayout.MIN_X; x <= LobbyLayout.MAX_X; x++) for (int z = LobbyLayout.MIN_Z; z <= LobbyLayout.MAX_Z; z++) {
-                if (Math.abs(x - point.x()) > 10 || Math.abs(z - point.z()) > 10 || !LobbyLayout.scatterAllowed(purpose, x, z)) continue;
+        var plan = CampPlanFixture.build(8, 4, 8);
+        var bounds = plan.bounds();
+        for (var purpose : Landing.values()) {
+            var point = LandingRules.candidates(plan, purpose).getFirst();
+            int y = point.cell().y(), cells = 0;
+            for (int x = bounds.min().x(); x <= bounds.max().x(); x++) for (int z = bounds.min().z(); z <= bounds.max().z(); z++) {
+                if (Math.abs(x + .5 - point.x()) > 10 || Math.abs(z + .5 - point.z()) > 10
+                        || !LandingRules.scatterAllowed(plan, purpose, point, x, y, z)) continue;
                 cells++;
-                boolean inCircle = Math.hypot(x - LobbyLayout.ASSEMBLY.x(), z - LobbyLayout.ASSEMBLY.z()) <= LobbyLayout.ASSEMBLY.radius() + .35;
-                assertEquals(purpose == LobbyLayout.Landing.RESTORE_READY, inCircle, purpose + " at " + x + "," + z);
-                var altar = LobbyLayout.facility(LobbyLayout.Facility.ALTAR);
-                assertFalse(Math.abs(x - altar.x()) <= 2 && Math.abs(z - altar.z()) <= 2, "Never on the altar plinth");
-                if (purpose == LobbyLayout.Landing.MONSTER) assertTrue(LobbyLayout.MONSTER_CAMP.contains(x, z));
-                if (purpose == LobbyLayout.Landing.CENTRAL) assertFalse(LobbyLayout.MONSTER_CAMP.contains(x, z));
-                for (var slot : LobbyLayout.displaySlots()) assertFalse(slot.x() == x && slot.z() == z, "Never inside a target model");
+                // Staying in the circle is the widest test: an arrival must not even graze it.
+                boolean inCircle = plan.inZone(LobbyFunction.ASSEMBLY, x + .5, y, z + .5, true);
+                assertEquals(purpose == Landing.RESTORE_READY, inCircle, purpose + " at " + x + "," + z);
+                var altar = plan.zones(LobbyFunction.ALTAR_PAD).getFirst().center();
+                assertFalse(Math.abs(x + .5 - altar.x()) <= 2 && Math.abs(z + .5 - altar.z()) <= 2, "Never on the altar plinth");
+                boolean courtyard = plan.inZone(LobbyFunction.COURTYARD, x + .5, y, z + .5, false);
+                if (purpose == Landing.MONSTER) assertTrue(courtyard);
+                if (purpose == Landing.CENTRAL) assertFalse(courtyard);
+                for (var slot : plan.points(LobbyFunction.DISPLAY_SLOT)) assertFalse(slot.cell().equals(new Cell(x, y, z)), "Never inside a target model");
             }
             assertTrue(cells >= 9, purpose + " has room to scatter: " + cells);
         }
