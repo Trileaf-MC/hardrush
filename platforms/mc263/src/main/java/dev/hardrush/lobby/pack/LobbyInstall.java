@@ -36,7 +36,7 @@ public final class LobbyInstall {
     public static final long SWITCH_WAIT_NANOS = TimeUnit.MINUTES.toNanos(10);
     public static final String DEFAULT_PACK = "/hardrush/lobby/default.hrlobby";
 
-    /** Where the pack bytes come from; opened twice, to read and to copy into {@code installed/}. */
+    /** Where the pack bytes come from; opened once, to copy them to the install's staging file. */
     public interface Source {
         String name();
         InputStream open() throws IOException;
@@ -110,7 +110,10 @@ public final class LobbyInstall {
         reading = CompletableFuture.supplyAsync(() -> {
             try {
                 LobbyStorage.deleteTree(folder);
-                return PreparedPack.read(source, limits, SanitizeMode.INSTALL);
+                // Everything from here on reads the staged copy, so the lobby that goes live and the copy recorded for
+                // it are the same pack even if the library file is replaced while this install runs.
+                var staged = storage.stage(source, seq);
+                return PreparedPack.read(Source.file(staged), limits, SanitizeMode.INSTALL);
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             } catch (PackException e) {
@@ -182,7 +185,7 @@ public final class LobbyInstall {
                     var installation = new LobbyInstallation(seq, key.identifier().toString(),
                             LobbyInstallation.Pack.of(prepared.manifest(), ""), effective, LobbyInstallation.State.COMPLETE);
                     committing = CompletableFuture.supplyAsync(() -> {
-                        try { return storage.commit(source, installation, previousSeq); }
+                        try { return storage.commit(installation, previousSeq); }
                         catch (IOException e) { throw new UncheckedIOException(e); }
                     });
                     stage = Stage.COMMITTING;
@@ -235,17 +238,23 @@ public final class LobbyInstall {
     /** Whether {@link #cancel} can still keep the new lobby from being recorded: not once the commit is writing. */
     public boolean cancellable() { return stage != Stage.COMMITTING && stage != Stage.DONE; }
 
-    /** Abandons the install: drops its tickets and deletes the new dimension. Only while {@link #cancellable}. */
+    /** Abandons the install: drops its tickets, deletes the new dimension and the staging copy. Only while {@link #cancellable}. */
     public void cancel() {
         if (stage == Stage.DONE) return;
         stage = Stage.DONE;
         if (chunks != null) chunks.close();
         if (handle != null) handle.delete();
+        // The reading task may still be writing the staging copy; delete it once that task is over.
+        reading.whenComplete((ignored, error) -> {
+            try { storage.discardStaging(seq); }
+            catch (IOException e) { LOGGER.warn("删除大厅包暂存副本失败", e); }
+        });
     }
 
     /**
      * Server stop: drops the tickets only. The dimension stays registered for vanilla's save and close; if the commit
-     * got as far as {@code current.json} the next startup reopens it, otherwise its cleanup deletes the directory.
+     * got as far as {@code current.json} the next startup reopens it, otherwise its cleanup deletes the directory and
+     * the staging copy.
      */
     public void release() {
         if (stage == Stage.DONE) return;
