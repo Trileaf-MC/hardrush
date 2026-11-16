@@ -16,9 +16,10 @@ public record Box(Cell min, Cell max) {
     public boolean contains(double x, double y, double z) {
         return x >= min.x() && x < max.x() + 1 && y >= min.y() && y < max.y() + 1 && z >= min.z() && z < max.z() + 1;
     }
-    public int sizeX() { return max.x() - min.x() + 1; }
-    public int sizeY() { return max.y() - min.y() + 1; }
-    public int sizeZ() { return max.z() - min.z() + 1; }
+    /** Sizes are {@code long}: a box from a stranger's pack may span the whole {@code int} range. */
+    public long sizeX() { return (long) max.x() - min.x() + 1; }
+    public long sizeY() { return (long) max.y() - min.y() + 1; }
+    public long sizeZ() { return (long) max.z() - min.z() + 1; }
     public Box union(Box other) { return new Box(of(min, other.min).min(), of(max, other.max).max()); }
     public Box union(Cell c) { return union(new Box(c, c)); }
     public boolean intersects(Box other) {

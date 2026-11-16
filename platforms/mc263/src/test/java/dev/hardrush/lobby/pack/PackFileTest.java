@@ -117,6 +117,22 @@ final class PackFileTest {
         assertTrue(reject(zip(List.of(Map.entry("pack.json", new byte[] {(byte) 0xff, '{', '}'})))).contains("UTF-8"));
     }
 
+    @Test void boundsSpanningTheIntRangeAreRejected() throws Exception {
+        // max - min + 1 wraps to 0 in int arithmetic, which used to pass the horizontal limit.
+        var huge = new Box(new Cell(Integer.MIN_VALUE, 0, 0), new Cell(Integer.MAX_VALUE, 0, 0));
+        var message = reject(zip(List.of(Map.entry("pack.json", json(manifest(1, DATA_VERSION, huge), plan(huge))))));
+        assertTrue(message.contains("世界范围"), message);
+        var beyond = new Box(new Cell(30_000_000, 64, 0), new Cell(30_000_010, 64, 10));
+        message = reject(zip(List.of(Map.entry("pack.json", json(manifest(1, DATA_VERSION, beyond), plan(beyond))))));
+        assertTrue(message.contains("世界范围"), message);
+    }
+
+    @Test void absurdTileKeysAreRejectedAsOutsideBounds() throws Exception {
+        // 44739242 × 48 + 47 overflows int, so that tile's box() would throw instead of reporting the pack.
+        var message = reject(entries(Map.entry("tiles/44739242_1_0.nbt", gzip(tile()))));
+        assertTrue(message.contains("不在大厅范围内"), message);
+    }
+
     @Test void tilesOutsideBoundsAreRejected() throws Exception {
         // BOUNDS spans x -24..39, so tile x = 1 (48..95) misses it.
         var message = reject(entries(Map.entry("tiles/1_1_0.nbt", gzip(tile()))));

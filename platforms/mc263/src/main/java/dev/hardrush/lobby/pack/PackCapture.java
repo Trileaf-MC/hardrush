@@ -45,7 +45,7 @@ public final class PackCapture {
         if (region == null) return Optional.empty();
         var start = new BlockPos(region.min().x(), region.min().y(), region.min().z());
         var template = new StructureTemplate();
-        template.fillFromWorld(level, start, new Vec3i(region.sizeX(), region.sizeY(), region.sizeZ()), true, IGNORED);
+        template.fillFromWorld(level, start, new Vec3i((int) region.sizeX(), (int) region.sizeY(), (int) region.sizeZ()), true, IGNORED);
         var tile = template.save(new CompoundTag());
         return normalize(tile, key, region) ? Optional.of(tile) : Optional.empty();
     }
@@ -97,9 +97,10 @@ public final class PackCapture {
             entity.put("pos", shifted);
         }
         var size = new ListTag();
-        size.add(IntTag.valueOf(dx + region.sizeX()));
-        size.add(IntTag.valueOf(dy + region.sizeY()));
-        size.add(IntTag.valueOf(dz + region.sizeZ()));
+        // A region lies inside one tile, so each size is at most TileKey.SIZE.
+        size.add(IntTag.valueOf(dx + (int) region.sizeX()));
+        size.add(IntTag.valueOf(dy + (int) region.sizeY()));
+        size.add(IntTag.valueOf(dz + (int) region.sizeZ()));
         tile.put("size", size);
         return !blocks.isEmpty() || !entities.isEmpty();
     }
