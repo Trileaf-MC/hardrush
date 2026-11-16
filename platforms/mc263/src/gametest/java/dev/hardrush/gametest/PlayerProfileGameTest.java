@@ -609,6 +609,212 @@ public final class PlayerProfileGameTest {
                 })).thenSucceed();
     }
 
+    /** A monster or excluded camp body is rebuilt on every reconnect; its sealed camp book comes back each time. */
+    @GameTest(maxTicks = 1000)
+    public void campBookSurvivesMonsterAndExclusionRebuilds(GameTestHelper test) {
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
+        var fixture = new BookFixture(test, GameMode.HARDCORE);
+        var player = fixture.player;
+        var profiles = fixture.profiles;
+        var monster = life(fixture.round, ParticipantRole.MONSTER_LOBBY, 1, true);
+        var withdrawn = life(fixture.round, ParticipantRole.WITHDRAWN, 1, true);
+        var failure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
+        test.startSequence()
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified")))
+                .thenExecute(guarded(failure, () -> test.assertTrue(profiles.enterMonsterLobby(player, monster), "Camp body becomes a lobby monster")))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), monster), "Monster lobby sealed")))
+                .thenExecute(guarded(failure, () -> fixture.deliver(fixture.automatic)))
+                .thenWaitUntil(await(failure, fixture::delivered))
+                .thenExecute(guarded(failure, () -> fixture.reconnect(monster)))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), monster), "Reconnected monster verified")))
+                .thenExecute(guarded(failure, () -> test.assertTrue(profiles.enterMonsterLobby(player, monster), "Reconnect rebuilds the monster lobby")))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), monster), "Rebuilt monster lobby sealed")))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertValueEqual(historyBooks(player), 1, "The monster keeps its camp book through the rebuild");
+                    profiles.reconcileParticipationExit(player, withdrawn);
+                }))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), withdrawn), "Withdrawn body sealed")))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertValueEqual(historyBooks(player), 1, "Withdrawing keeps the camp book");
+                    fixture.reconnect(withdrawn);
+                }))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), withdrawn), "Reconnected withdrawn body verified")))
+                .thenExecute(guarded(failure, () -> profiles.reconcileParticipationExit(player, withdrawn)))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), withdrawn), "Rebuilt withdrawn body sealed")))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertValueEqual(historyBooks(player), 1, "A withdrawn reconnect keeps exactly one camp book");
+                    fixture.close();
+                })).thenSucceed();
+    }
+
+    /** A failed book write stays a retryable delivery; it must not block later checkpoints or a normal stop. */
+    @GameTest(maxTicks = 1000)
+    public void failedCampBookWriteStaysRetryable(GameTestHelper test) {
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
+        var fixture = new BookFixture(test, GameMode.NORMAL);
+        var player = fixture.player;
+        var suspension = fixture.root.resolve(player.getUUID().toString()).resolve("suspended-" + fixture.round.roundId() + ".bin");
+        var saved = new byte[1][];
+        var failure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
+        test.startSequence()
+                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified")))
+                .thenExecute(guarded(failure, () -> {
+                    try {
+                        // A non-empty directory where the suspension lives makes its atomic replacement fail.
+                        saved[0] = java.nio.file.Files.readAllBytes(suspension);
+                        java.nio.file.Files.delete(suspension);
+                        java.nio.file.Files.createDirectories(suspension.resolve("blocker"));
+                    } catch (java.io.IOException error) { throw new IllegalStateException(error); }
+                    fixture.deliver(fixture.automatic);
+                }))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.last().isDone(), "Failed delivery answered")))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertValueEqual(fixture.last().join().outcome(), dev.hardrush.core.api.OperationResult.Outcome.RETRYABLE_FAILURE,
+                            "An unsealed book stays pending");
+                    try {
+                        java.nio.file.Files.delete(suspension.resolve("blocker"));
+                        java.nio.file.Files.delete(suspension);
+                        java.nio.file.Files.write(suspension, saved[0]);
+                    } catch (java.io.IOException error) { throw new IllegalStateException(error); }
+                    fixture.deliver(fixture.automatic);
+                }))
+                .thenWaitUntil(await(failure, fixture::delivered))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertValueEqual(historyBooks(player), 1, "The retry seals the same book once");
+                    try { fixture.profiles.flushForFullCheckpoint(); }
+                    catch (Exception error) { throw new IllegalStateException("A retried book write blocked the full checkpoint", error); }
+                    fixture.close();
+                })).thenSucceed();
+    }
+
+    /** Entry puts each crafting-table stack into a free slot, so a book may not take the last one. */
+    @GameTest(maxTicks = 1000)
+    public void campBookLeavesRoomForCraftingTableInput(GameTestHelper test) {
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
+        var fixture = new BookFixture(test, GameMode.NORMAL);
+        var player = fixture.player;
+        var profiles = fixture.profiles;
+        var failure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
+        test.startSequence()
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified")))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertTrue(fixture.admit(), "Fresh life enters");
+                    for (int slot = 0; slot < 35; slot++) player.getInventory().setItem(slot, new ItemStack(Items.COBBLESTONE, 64));
+                    var table = test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1));
+                    player.openMenu(new net.minecraft.world.SimpleMenuProvider((id, inventory, owner) -> new net.minecraft.world.inventory.CraftingMenu(
+                            id, inventory, net.minecraft.world.inventory.ContainerLevelAccess.create(test.getLevel(), table)), net.minecraft.network.chat.Component.literal("table")));
+                    ((net.minecraft.world.inventory.CraftingMenu) player.containerMenu).getInputGridSlots().getFirst().set(new ItemStack(Items.OAK_LOG, 3));
+                    profiles.returnToLobby(player);
+                    profiles.tick(fixture.round);
+                }))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), fixture.round), "Resumed camp body verified")))
+                .thenExecute(guarded(failure, () -> fixture.deliver(fixture.automatic)))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.last().isDone(), "Delivery answered")))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertValueEqual(fixture.last().join().outcome(), dev.hardrush.core.api.OperationResult.Outcome.RETRYABLE_FAILURE,
+                            "The last free slot stays reserved for the crafting-table input");
+                    test.assertTrue(fixture.admit(), "The same life still enters: " + profiles.failure(player.getUUID()));
+                    int logs = 0;
+                    for (int slot = 0; slot < 36; slot++) if (player.getInventory().getItem(slot).is(Items.OAK_LOG)) logs += player.getInventory().getItem(slot).getCount();
+                    test.assertValueEqual(logs, 3, "Crafting-table input comes back");
+                    test.assertValueEqual(historyBooks(player), 0, "The pending book is not smuggled in");
+                    fixture.close();
+                })).thenSucceed();
+    }
+
+    /** After a crash the vanilla file can predate a sealed camp book; a resumed camp body still shows it, once. */
+    @GameTest(maxTicks = 1000)
+    public void resumedCampBodyShowsSealedBookAfterStaleVanillaFile(GameTestHelper test) {
+        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
+        var fixture = new BookFixture(test, GameMode.NORMAL);
+        var player = fixture.player;
+        var failure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
+        test.startSequence()
+                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified")))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertTrue(fixture.admit(), "Fresh life enters");
+                    fixture.profiles.returnToLobby(player);
+                    fixture.profiles.tick(fixture.round);
+                }))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Resumed camp body verified")))
+                .thenExecute(guarded(failure, () -> fixture.deliver(fixture.automatic)))
+                .thenWaitUntil(await(failure, fixture::delivered))
+                .thenExecute(guarded(failure, () -> {
+                    // Models the vanilla .dat from before the delivery, loaded after a crash.
+                    for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+                        if (dev.hardrush.book.WrittenBookPort.isHistoryBook(player.getInventory().getItem(slot))) player.getInventory().setItem(slot, ItemStack.EMPTY);
+                    }
+                    fixture.restart();
+                }))
+                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Restarted camp body verified")))
+                .thenExecute(guarded(failure, () -> {
+                    test.assertValueEqual(historyBooks(player), 1, "The camp body shows the sealed book");
+                    test.assertTrue(fixture.admit(), "The same life re-enters");
+                    test.assertValueEqual(historyBooks(player), 1, "Re-entry gives exactly one book");
+                    fixture.close();
+                })).thenSucceed();
+    }
+
+    /** One player, a local profile service and the real book port and saver bound to it. */
+    private static final class BookFixture {
+        final GameTestHelper test;
+        final ServerPlayer player;
+        final java.nio.file.Path root;
+        final Vec3 position;
+        final RoundSnapshot round;
+        final dev.hardrush.core.api.OperationTag automatic;
+        final dev.hardrush.core.api.BookPort.Book book = new dev.hardrush.core.api.BookPort.Book(UUID.randomUUID(), 1, 1,
+                "HardRush 第1轮", "HardRush", java.util.List.of("战绩"));
+        final java.util.List<java.util.concurrent.CompletableFuture<dev.hardrush.core.api.OperationResult<dev.hardrush.core.api.BookPort.Delivery>>> deliveries = new java.util.ArrayList<>();
+        PlayerProfiles profiles;
+        dev.hardrush.book.WrittenBookPort port;
+
+        BookFixture(GameTestHelper test, GameMode mode) {
+            this.test = test;
+            var server = test.getLevel().getServer();
+            player = test.makeMockServerPlayerInLevel();
+            position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
+            fixtureStanding(test, position);
+            root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
+            round = round(UUID.randomUUID(), 1, player, mode);
+            automatic = new dev.hardrush.core.api.OperationTag(round.roundId(), UUID.randomUUID(), 1);
+            open();
+            profiles.onLogin(player);
+            profiles.tick(round);
+        }
+
+        private void open() {
+            var server = test.getLevel().getServer();
+            var service = new PlayerProfiles(server, root, test::getLevel, () -> position);
+            profiles = service;
+            port = new dev.hardrush.book.WrittenBookPort(server, (scope, id) -> true,
+                    new dev.hardrush.book.BookInventorySaver(server, () -> java.util.Optional.of(service)));
+        }
+
+        void deliver(dev.hardrush.core.api.OperationTag tag) { deliveries.add(port.deliver(tag, player.getUUID(), book).toCompletableFuture()); }
+        java.util.concurrent.CompletableFuture<dev.hardrush.core.api.OperationResult<dev.hardrush.core.api.BookPort.Delivery>> last() { return deliveries.getLast(); }
+        void delivered() {
+            test.assertTrue(last().isDone() && last().join().value().orElse(null) == dev.hardrush.core.api.BookPort.Delivery.DELIVERED,
+                    "Delivery acknowledged: " + (last().isDone() ? last().join() : "pending"));
+        }
+        boolean admit() { return profiles.admit(player, round, test.getLevel(), position, level -> level == test.getLevel()); }
+        void reconnect(RoundSnapshot snapshot) {
+            profiles.onDisconnect(player);
+            profiles.onLogin(player);
+            profiles.tick(snapshot);
+        }
+        void restart() {
+            try { profiles.close(); } catch (Exception error) { throw new IllegalStateException(error); }
+            open();
+            profiles.onLogin(player);
+            profiles.tick(round);
+        }
+        void close() {
+            try { profiles.close(); } catch (Exception error) { throw new IllegalStateException("Normal stop refused", error); }
+            test.getLevel().getServer().getPlayerList().remove(player);
+        }
+    }
+
     private static int historyBooks(ServerPlayer player) {
         int count = 0;
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
