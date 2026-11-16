@@ -724,15 +724,17 @@ public final class RoundRuntime {
             dev.hardrush.notice.Notices.refuse(player, "现在还不能领书，稍等片刻"); return;
         }
         var round = session.snapshot().orElseThrow();
+        // The answer belongs on the action bar, which a chest screen covers: it closes the menu the claim came from,
+        // but never one the player has opened since (the library again, a chest); a refusal then waits for that one.
+        var origin = player.containerMenu;
         service.claim(player.getUUID(), roundId, volume, round.rules().fingerprint(),
                 new OperationTag(round.roundId(), UUID.randomUUID(), round.version())).whenComplete((result, error) -> {
             if (SESSIONS.get(server) != session || server.getPlayerList().getPlayer(player.getUUID()) != player) return;
             if (error != null) LOGGER.warn("Manual history book claim for {} failed", player.getUUID(), error);
             var status = error == null ? result.status() : HistoryBookService.Status.RETRYABLE_FAILURE;
-            // The answer belongs on the action bar, which a chest screen covers: close the library first.
-            player.closeContainer();
+            if (origin != player.inventoryMenu && player.containerMenu == origin) player.closeContainer();
             if (status == HistoryBookService.Status.DELIVERED || status == HistoryBookService.Status.ALREADY_DELIVERED) pageTurn(player);
-            else manualBookRefusal(status, volume).ifPresent(text -> dev.hardrush.notice.Notices.refuse(player, text));
+            else manualBookRefusal(status, volume).ifPresent(text -> dev.hardrush.notice.Notices.refuseWhenUncovered(player, text));
         });
     }
 
