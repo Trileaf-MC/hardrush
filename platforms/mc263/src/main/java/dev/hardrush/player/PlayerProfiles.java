@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -41,10 +42,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.ItemStackWithSlot;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ai.attributes.AttributeMap;
 import net.minecraft.world.entity.player.Abilities;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
@@ -410,6 +413,69 @@ public final class PlayerProfiles implements AutoCloseable {
         // A celebration visitor or a builder body is temporary; its vanilla file keeps the sealed lobby state.
         if (entry.celebrationGuest || entry.building) return false;
         return entry.admitted || entry.diskSafe;
+    }
+
+    /**
+     * True while this body's possessions are owned by its sealed suspension rather than the vanilla player file:
+     * every managed body outside a round. Whatever it is later restored to (a reconnect, a re-entry, a monster lobby)
+     * comes from that suspension, so the vanilla file of a lobby body never proves what it will keep.
+     */
+    public boolean keepsSuspended(ServerPlayer player) {
+        var entry = players.get(player.getUUID());
+        return entry != null && entry.player == player && !entry.admitted;
+    }
+
+    /**
+     * Seals an item the camp has just put into {@code slot} of a verified lobby body (a history book) into that body's
+     * suspension, so a reconnect or the next entry gives it back instead of the older sealed inventory. Completes true
+     * once the suspension on disk holds it (also when it already did); false when the body cannot be sealed right now
+     * or its sealed inventory has no free slot, leaving the caller free to retry without duplicating the item.
+     */
+    public CompletionStage<Boolean> sealLobbyDelivery(ServerPlayer player, int slot, ItemStack delivered) {
+        requireMainThread();
+        var entry = players.get(player.getUUID());
+        if (closed || recoveryPaused || delivered.isEmpty() || entry == null || entry.player != player || entry.admitted
+                || entry.building || entry.celebrationGuest || !entry.ready || !entry.diskSafe || !entry.problem.isEmpty()
+                || entry.resume == null || entry.target == null) return CompletableFuture.completedFuture(false);
+        var base = entry.resume;
+        var sealed = withInventoryItem(base, slot, delivered).orElse(null);
+        if (sealed == null) return CompletableFuture.completedFuture(false);
+        // entry.resume only ever holds what the suspension on disk holds, so an item already in it is durable.
+        if (sealed == base) return CompletableFuture.completedFuture(true);
+        var target = entry.target;
+        // Replace the in-memory suspension first: an entry admitted before the write lands must already carry the item.
+        entry.resume = sealed;
+        var result = new CompletableFuture<Boolean>();
+        supply(() -> { journal.join().suspend(player.getUUID(), target, encode(sealed)); return null; })
+                .whenComplete((ignored, error) -> callbacks.execute(() -> {
+                    if (error != null) {
+                        LOGGER.warn("Sealing a lobby delivery for {} failed", player.getUUID(), error);
+                        if (entry.resume == sealed) entry.resume = base;
+                    }
+                    result.complete(error == null && current(entry, target));
+                }));
+        return result;
+    }
+
+    /** {@code snapshot} with {@code item} added to its main inventory: itself when already there, empty when no slot is free. */
+    private Optional<CompoundTag> withInventoryItem(CompoundTag snapshot, int preferredSlot, ItemStack item) {
+        var items = new java.util.ArrayList<ItemStackWithSlot>();
+        TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), snapshot)
+                .listOrEmpty("Inventory", ItemStackWithSlot.CODEC).forEach(items::add);
+        if (items.stream().anyMatch(sealed -> ItemStack.matches(sealed.stack(), item))) return Optional.of(snapshot);
+        var used = new java.util.HashSet<Integer>();
+        items.forEach(sealed -> used.add(sealed.slot()));
+        // A fresh camp body is its sealed snapshot, so the same slot keeps a reloaded body identical to the live one.
+        int slot = preferredSlot >= 0 && preferredSlot < Inventory.INVENTORY_SIZE && !used.contains(preferredSlot) ? preferredSlot
+                : java.util.stream.IntStream.range(0, Inventory.INVENTORY_SIZE).filter(free -> !used.contains(free)).findFirst().orElse(-1);
+        if (slot < 0) return Optional.empty();
+        items.add(new ItemStackWithSlot(slot, item.copy()));
+        var output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, server.registryAccess());
+        var list = output.list("Inventory", ItemStackWithSlot.CODEC);
+        items.forEach(list::add);
+        var updated = snapshot.copy();
+        updated.put("Inventory", output.buildResult().get("Inventory"));
+        return Optional.of(updated);
     }
 
     public static boolean isRespawnAllowed(ServerPlayer player) {
