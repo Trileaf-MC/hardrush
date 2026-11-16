@@ -65,7 +65,9 @@ final class DraftImport {
         return () -> {
             var pack = PreparedPack.read(source, limits, SanitizeMode.DRAFT);
             var central = pack.plan().points(LobbyFunction.LANDING_CENTRAL);
-            return tiles(new ArrayList<>(pack.tiles().entrySet()), pack.manifest().bounds(), central.isEmpty() ? null : central.getFirst(), List.of());
+            var bounds = pack.manifest().bounds();
+            // Packs keep absolute coordinates, so the range follows the lobby rather than the origin.
+            return tiles(new ArrayList<>(pack.tiles().entrySet()), bounds, central.isEmpty() ? null : central.getFirst(), horizontalCenter(bounds), List.of());
         };
     }
 
@@ -86,14 +88,29 @@ final class DraftImport {
             }
             TileSanitizer.checkTotals(tiles.stream().map(Map.Entry::getValue).toList());
             var bounds = new Box(at, at.offset(structure.sizeX() - 1, structure.sizeY() - 1, structure.sizeZ() - 1));
-            return tiles(tiles, bounds, null, structure.notes());
+            return tiles(tiles, bounds, null, null, structure.notes());
         };
     }
 
     /** A new structure-file draft: centred horizontally on the origin, bottom face at Y 64 (design 19.2). */
     static Cell centredOnOrigin(ImportedStructure s) { return new Cell(-s.sizeX() / 2, 64, -s.sizeZ() / 2); }
 
-    private static Content tiles(List<Map.Entry<TileKey, CompoundTag>> tiles, Box bounds, Point entry, List<String> notes) {
+    /** Room left around imported content on each side, so its edges are not flush with the world border. */
+    static final int MARGIN = 16;
+
+    /** A diameter that holds {@code content} with {@link #MARGIN}, never below {@code current} nor above {@code maxSize}. */
+    static int diameterFor(int current, Box content, int maxSize) {
+        long span = Math.max(content.sizeX(), content.sizeZ()) + 2L * MARGIN;
+        return (int) Math.min(maxSize, Math.max(current, span));
+    }
+
+    /** The column a build range centred on it covers {@code bounds} from, for {@link Draft#range}'s rounding. */
+    static Cell horizontalCenter(Box bounds) {
+        return new Cell((int) Math.floorDiv((long) bounds.min().x() + bounds.max().x() + 1, 2), bounds.min().y(),
+                (int) Math.floorDiv((long) bounds.min().z() + bounds.max().z() + 1, 2));
+    }
+
+    private static Content tiles(List<Map.Entry<TileKey, CompoundTag>> tiles, Box bounds, Point entry, Cell center, List<String> notes) {
         return new Content() {
             public Box bounds() { return bounds; }
             public int steps() { return tiles.size(); }
@@ -102,6 +119,7 @@ final class DraftImport {
                 PackPlacer.place(level, tile.getKey(), tile.getValue(), bounds);
             }
             public Point entry() { return entry; }
+            public Cell center() { return center; }
             public List<String> notes() { return notes; }
         };
     }
