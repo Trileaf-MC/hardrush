@@ -265,7 +265,7 @@ public final class FullFlowGameTest {
                 }).thenExecute(state::seedHistory)
                 .thenWaitUntil(()->f.await(state.io.isDone(),"Synthetic history pagination dataset committed"))
                 .thenExecute(()->{state.io.join();state.facility(visitor.player,LobbyFunction.HISTORY);})
-                .thenWaitUntil(()->f.await(state.hasReopening(visitor.player,LobbyFunction.HISTORY,"下一批轮次"),"More than twenty terminal rounds exposes history next page"))
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"下一批轮次"),"More than twenty terminal rounds exposes history next page"))
                 .thenExecute(()->state.click(visitor.player,"下一批轮次"))
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"上一批轮次"),"History second page is independently reachable"))
                 .thenExecute(()->state.facility(visitor.player,LobbyFunction.HISTORY))
@@ -297,19 +297,21 @@ public final class FullFlowGameTest {
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"领取其他卷"),"Selected round again"))
                 .thenExecute(()->state.click(visitor.player,"领取其他卷"))
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"领取第 2 卷"),"Second volume offered again"))
-                .thenExecute(()->state.click(visitor.player,"领取第 2 卷"))
+                .thenExecute(()->{
+                    // Reopen the library while the claim is still in flight: its answer must not close a menu opened since.
+                    state.pageTurns=state.pageTurns(visitor.connection.packets);
+                    state.click(visitor.player,"领取第 2 卷");state.facility(visitor.player,LobbyFunction.HISTORY);
+                })
                 .thenWaitUntil(()->f.await(WrittenBookPort.isHistoryBook(visitor.player.getInventory().getItem(35)),"Selected second volume succeeds on retry"))
                 .thenWaitUntil(()->state.assertBookClaim(visitor.profile.id(),true))
-                // The claim's completion callback closes whatever menu is open (see HistoryLibrary/RoundRuntime.manualBook),
-                // so let it land before the library is opened again.
-                .thenIdle(5)
-                .thenExecute(()->state.facility(visitor.player,LobbyFunction.HISTORY))
-                .thenWaitUntil(()->f.await(state.hasReopening(visitor.player,LobbyFunction.HISTORY,"阅读背包里的战绩书"),"Library offers reading"))
+                .thenWaitUntil(()->f.await(state.pageTurns(visitor.connection.packets)>state.pageTurns,"Claim answer landed"))
+                .thenExecute(()->test.assertTrue(LobbyMenus.isMenu(visitor.player)&&state.has(visitor.player,"阅读背包里的战绩书"),
+                        "Claim answer leaves the library opened since the click alone"))
                 .thenExecute(()->state.click(visitor.player,"阅读背包里的战绩书"))
                 .thenWaitUntil(()->f.await(visitor.connection.packets.stream().anyMatch(ClientboundOpenBookPacket.class::isInstance),"Library reads a book from inventory slot 35 via native open-book packet"))
                 .thenExecute(()->{
                     state.facility(visitor.player,LobbyFunction.HISTORY);
-                }).thenWaitUntil(()->f.await(state.hasReopening(visitor.player,LobbyFunction.HISTORY,"普通模式排行榜"),"Mode leaderboards available"))
+                }).thenWaitUntil(()->f.await(state.has(visitor.player,"普通模式排行榜"),"Mode leaderboards available"))
                 .thenExecute(()->state.click(visitor.player,"普通模式排行榜"))
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"还没有通关成绩"),"Normal board excludes hardcore victory and synthetic aborted rounds"))
                 .thenExecute(()->{
@@ -320,7 +322,7 @@ public final class FullFlowGameTest {
 
     static final class State {
         final LobbyRuntimeGameTest.Fixture f; final GameTestHelper test;
-        int attacks; boolean expectedFailure; java.util.concurrent.CompletableFuture<Void> io;
+        int attacks; long pageTurns; boolean expectedFailure; java.util.concurrent.CompletableFuture<Void> io;
         EnderDragonFight fight; UUID oldRound; RoundWorldBundle oldWorlds;
         State(LobbyRuntimeGameTest.Fixture f,GameTestHelper test){this.f=f;this.test=test;}
         void clearClock(){try{var field=TenRoundGameTest.class.getDeclaredField("accelerated");field.setAccessible(true);field.set(null,null);}catch(ReflectiveOperationException e){throw new IllegalStateException(e);}}
@@ -397,11 +399,7 @@ public final class FullFlowGameTest {
         void altar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),LobbyPlanFixtures.onAltar(f.server));}
         void offAltar(ServerPlayer p){var l=LobbyWorld.open(f.server);move(p,l.holdingLevel(),LobbyPlanFixtures.offAltar(f.server));}
         void facility(ServerPlayer p,LobbyFunction facility){var l=LobbyWorld.open(f.server);var pos=LobbyPlanFixtures.block(f.server,facility);move(p,l.holdingLevel(),LobbyPlanFixtures.before(pos));p.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,new BlockHitResult(Vec3.atCenterOf(pos),Direction.UP,pos,false),2));test.assertTrue(LobbyMenus.isMenu(p),"Physical facility opened "+facility);}
-        /** The camp closes a menu whenever the body is briefly not verified (a checkpoint save, say); a patient player just reopens it. */
-        boolean hasReopening(ServerPlayer p,LobbyFunction facility,String label){
-            if(!LobbyMenus.isMenu(p)){try{facility(p,facility);}catch(RuntimeException closedAgain){return false;}}
-            return has(p,label);
-        }
+        long pageTurns(List<net.minecraft.network.protocol.Packet<?>> packets){return packets.stream().filter(p->p instanceof ClientboundSoundPacket sound&&sound.getSound().value()==net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN).count();}
         boolean has(ServerPlayer p,String label){for(int n=0;n<45&&n<p.containerMenu.slots.size();n++)if(p.containerMenu.getSlot(n).getItem().getHoverName().getString().contains(label))return true;return false;}
         void click(ServerPlayer p,String label){java.util.concurrent.locks.LockSupport.parkNanos(ButtonMenu.BUTTON_COOLDOWN_NANOS+1_000_000);test.assertTrue(clickIfPresent(p,label),"Expected native menu action: "+label);}
         boolean clickIfPresent(ServerPlayer p,String label){for(short n=0;n<45&&n<p.containerMenu.slots.size();n++)if(p.containerMenu.getSlot(n).getItem().getHoverName().getString().contains(label)){var m=p.containerMenu;p.connection.handleContainerClick(new ServerboundContainerClickPacket(m.containerId,m.getStateId(),n,(byte)0,ContainerInput.PICKUP,new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>(),HashedStack.EMPTY));return true;}return false;}
