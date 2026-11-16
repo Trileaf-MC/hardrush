@@ -163,7 +163,8 @@ final class ToolboxMenu {
                 boolean set = button.value().equals("set");
                 report(player, workshop.setBottom(player, set ? y : null), set ? "低于 Y " + y + " 的方块不会发布" : "已取消底部高度");
             }
-            case "clear-mobs" -> Notices.hint(player, "已清除 " + workshop.clearMobs(player) + " 个实体");
+            case "clear-mobs" -> workshop.clearMobs(player, n -> Notices.hint(player, "已清除 " + n + " 个实体"))
+                    .ifPresent(refusal -> Notices.refuse(player, refusal));
             case "paste-list" -> view.page = Page.PASTE;
             case "paste-pick" -> { view.file = button.value(); view.page = Page.PASTE_CONFIRM; }
             case "paste" -> {
