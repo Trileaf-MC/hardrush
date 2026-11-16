@@ -86,7 +86,7 @@ public final class PackFile {
         if (!problems.isEmpty()) throw new PackException(String.join("；", problems));
         var plan = LobbyPlanJson.planFromPack(json, manifest.bounds());
         for (var key : tiles.keySet()) {
-            if (!key.box().intersects(manifest.bounds()))
+            if (!key.touches(manifest.bounds()))
                 throw new PackException("瓦片 " + key.entryName() + " 不在大厅范围内");
         }
         return new PackContents(manifest, plan, tiles);

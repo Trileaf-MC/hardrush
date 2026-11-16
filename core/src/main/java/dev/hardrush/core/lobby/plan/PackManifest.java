@@ -10,6 +10,8 @@ public record PackManifest(int format, String id, String name, List<String> auth
     public static final Pattern ID = Pattern.compile("[a-z0-9_-]{1,32}");
     public static final int MAX_NAME = 64, MAX_AUTHORS = 32;
     public static final String EXTENSION = ".hrlobby";
+    /** Vanilla's world limits: {@code Level.MAX_LEVEL_SIZE} horizontally, {@code DimensionType.MIN_Y..MAX_Y} vertically. */
+    public static final int MAX_HORIZONTAL_COORDINATE = 30_000_000, MIN_Y = -2032, MAX_Y = 2031;
 
     public PackManifest { authors = authors == null ? List.of() : List.copyOf(authors); }
 
@@ -26,10 +28,22 @@ public record PackManifest(int format, String id, String name, List<String> auth
         if (dataVersion > serverDataVersion)
             problems.add("大厅包来自更新的游戏版本（数据版本 " + dataVersion + "），本服务端是 " + serverDataVersion + "，请先升级服务端");
         if (bounds == null) problems.add("大厅包缺少范围");
+        else if (!inWorld(bounds))
+            problems.add("大厅范围 " + shown(bounds.min()) + " 到 " + shown(bounds.max()) + " 超出了世界范围（水平 ±" + MAX_HORIZONTAL_COORDINATE
+                    + "，高度 " + MIN_Y + "–" + MAX_Y + "）");
         else if (bounds.sizeX() > maxHorizontalSize || bounds.sizeZ() > maxHorizontalSize)
             problems.add("大厅范围 " + bounds.sizeX() + "×" + bounds.sizeZ() + " 超过了本服务端的水平上限 " + maxHorizontalSize + "×" + maxHorizontalSize);
         return List.copyOf(problems);
     }
+
+    /** Whether every block of {@code box} is a block a world can hold. */
+    public static boolean inWorld(Box box) {
+        return Math.abs((long) box.min().x()) <= MAX_HORIZONTAL_COORDINATE && Math.abs((long) box.max().x()) <= MAX_HORIZONTAL_COORDINATE
+                && Math.abs((long) box.min().z()) <= MAX_HORIZONTAL_COORDINATE && Math.abs((long) box.max().z()) <= MAX_HORIZONTAL_COORDINATE
+                && box.min().y() >= MIN_Y && box.max().y() <= MAX_Y;
+    }
+
+    private static String shown(Cell c) { return c.x() + " " + c.y() + " " + c.z(); }
 
     public String fileName() { return id + "-v" + version + EXTENSION; }
 }

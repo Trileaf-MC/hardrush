@@ -21,6 +21,16 @@ public record TileKey(int x, int y, int z) {
         return new TileKey(Math.floorDiv(worldX, SIZE), Math.floorDiv(worldY, SIZE), Math.floorDiv(worldZ, SIZE));
     }
 
+    /**
+     * Whether this tile touches {@code bounds}. Compares tile indices rather than {@link #box()}, whose origin
+     * overflows for the absurd keys an entry name can spell.
+     */
+    public boolean touches(Box bounds) {
+        var from = of(bounds.min().x(), bounds.min().y(), bounds.min().z());
+        var to = of(bounds.max().x(), bounds.max().y(), bounds.max().z());
+        return x >= from.x && x <= to.x && y >= from.y && y <= to.y && z >= from.z && z <= to.z;
+    }
+
     public int originX() { return x * SIZE; }
     public int originY() { return y * SIZE; }
     public int originZ() { return z * SIZE; }

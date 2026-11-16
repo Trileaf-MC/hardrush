@@ -90,7 +90,7 @@ public sealed interface Zone permits Zone.Floor, Zone.Volume {
     record Volume(Box box) implements Zone {
         @Override public boolean containsPoint(double x, double y, double z) { return box.contains(x, y, z); }
         @Override public Point center() {
-            return new Point((box.min().x() + box.max().x() + 1) / 2.0, box.min().y(), (box.min().z() + box.max().z() + 1) / 2.0, 0);
+            return new Point(((double) box.min().x() + box.max().x() + 1) / 2, box.min().y(), ((double) box.min().z() + box.max().z() + 1) / 2, 0);
         }
         @Override public Box extent() { return box; }
         @Override public boolean overlaps(Zone other) {

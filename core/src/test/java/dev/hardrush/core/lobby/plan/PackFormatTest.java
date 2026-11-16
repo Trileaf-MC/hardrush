@@ -30,6 +30,18 @@ class PackFormatTest {
         assertEquals(1, manifest(1, "a", "n", List.of(), 1, 0, null).problems(256, 0).size());
         assertEquals(List.of(), manifest(1, "a", "n", null, 1, 0, BOUNDS).authors());
     }
+    @Test void boundsMustLieInTheWorld() {
+        // int arithmetic made this box 0 wide, which passed the horizontal limit.
+        var whole = new Box(new Cell(Integer.MIN_VALUE, 0, Integer.MIN_VALUE), new Cell(Integer.MAX_VALUE, 0, Integer.MAX_VALUE));
+        assertEquals(1L << 32, whole.sizeX());
+        assertEquals(1, manifest(1, "a", "n", List.of(), 1, 0, whole).problems(256, 0).size());
+        for (var outside : List.of(new Box(new Cell(30_000_000, 0, 0), new Cell(30_000_001, 0, 0)),
+                new Box(new Cell(0, 0, -30_000_001), new Cell(0, 0, -30_000_000)),
+                new Box(new Cell(0, -2033, 0), new Cell(0, 0, 0)), new Box(new Cell(0, 0, 0), new Cell(0, 2032, 0))))
+            assertEquals(1, manifest(1, "a", "n", List.of(), 1, 0, outside).problems(256, 0).size(), outside.toString());
+        for (var edge : List.of(new Box(new Cell(29_999_990, -2032, -30_000_000), new Cell(30_000_000, 2031, -29_999_990))))
+            assertEquals(List.of(), manifest(1, "a", "n", List.of(), 1, 0, edge).problems(256, 0));
+    }
 
     @Test void blockStateStrings() {
         assertEquals(new BlockStateString("minecraft:stone", Map.of()), BlockStateString.parse("stone"));

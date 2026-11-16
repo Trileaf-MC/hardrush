@@ -1,5 +1,6 @@
 package dev.hardrush.lobby.pack;
 
+import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.lobby.plan.Box;
 import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
@@ -17,6 +18,12 @@ import net.minecraft.world.level.ChunkPos;
  */
 public final class ChunkWarmup implements AutoCloseable {
     public static final int LOAD_BUDGET = 4;
+    /**
+     * The most chunks one warmup may hold: the chunks a box as wide as the largest configurable lobby can touch per
+     * axis (it may straddle a chunk edge at both ends). A last line behind the size checks upstream, so a box that
+     * slipped past them fails here instead of queueing millions of chunks on the server thread.
+     */
+    public static final int MAX_CHUNKS_PER_AXIS = (HardRushProperties.MAX_LOBBY_MAX_SIZE + 30) / 16;
     private static final TicketType TICKET = new TicketType(TicketType.NO_TIMEOUT,
             TicketType.FLAG_LOADING | TicketType.FLAG_SIMULATION | TicketType.FLAG_KEEP_DIMENSION_ACTIVE);
 
@@ -26,6 +33,9 @@ public final class ChunkWarmup implements AutoCloseable {
     private boolean closed;
 
     public ChunkWarmup(ServerLevel level, Box box) {
+        long spanX = (long) (box.max().x() >> 4) - (box.min().x() >> 4) + 1, spanZ = (long) (box.max().z() >> 4) - (box.min().z() >> 4) + 1;
+        if (spanX > MAX_CHUNKS_PER_AXIS || spanZ > MAX_CHUNKS_PER_AXIS)
+            throw new IllegalArgumentException("区域横跨 " + spanX + "×" + spanZ + " 个区块，超过上限 " + MAX_CHUNKS_PER_AXIS + "×" + MAX_CHUNKS_PER_AXIS);
         this.level = level;
         for (int x = box.min().x() >> 4; x <= box.max().x() >> 4; x++)
             for (int z = box.min().z() >> 4; z <= box.max().z() >> 4; z++) queued.add(new ChunkPos(x, z));
