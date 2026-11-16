@@ -284,6 +284,15 @@ final class WorkshopToolSteps {
                             && workshop(f).setBottom(f.a.player, Workshop.bottomUnderfoot(f.a.player)).isEmpty(), "Range and bottom height set");
                     test.assertValueEqual(workshop(f).draft("draft3").orElseThrow().bottomY(), BOTTOM, "Bottom height recorded");
                     check(test, workshop(f).publish(f.a.player, "draft3").isEmpty(), "Publishing the save starts");
+                    // The scan and the tile captures span ticks: the mod's own bulk edits wait for the publish.
+                    try {
+                        SampleFiles.write(f.server.getWorldPath(LevelResource.ROOT).resolve("hardrush/workshop/import"), "sample.schem",
+                                SampleFiles.schemV2().tag());
+                    } catch (IOException e) { throw new UncheckedIOException(e); }
+                    var pasting = workshop(f).paste(f.a.player, "sample.schem");
+                    check(test, pasting.filter(r -> r.contains("正在发布")).isPresent(), "Pasting waits for the publish: " + pasting);
+                    var clearing = workshop(f).clearMobs(f.a.player, n -> {});
+                    check(test, clearing.filter(r -> r.contains("正在发布")).isPresent(), "Clearing mobs waits for the publish: " + clearing);
                 })
                 .thenWaitUntil(() -> f.await(state(f, "draft3").startsWith("CONFIRM") || state(f, "draft3").startsWith("FAILED"), "The save is packed"))
                 .thenExecute(() -> {

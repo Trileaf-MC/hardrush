@@ -386,8 +386,10 @@ public final class Workshop {
      * Removes every loaded non-player entity inside the build range that installing would drop anyway (design 19.1):
      * saves bring their animals and mobs. Decorations on the entity whitelist stay. Returns how many went.
      */
-    public int clearMobs(ServerPlayer player) {
-        if (!PlayerProfiles.building(player)) return 0;
+    public Optional<String> clearMobs(ServerPlayer player, java.util.function.IntConsumer removedCount) {
+        var draft = buildingIn(player).orElse(null);
+        if (draft == null || !PlayerProfiles.building(player)) return Optional.of("只能在工坊里清除生物");
+        if (publishing(draft.id())) return Optional.of(PUBLISHING);
         var level = (ServerLevel) player.level();
         int removed = 0;
         for (var entity : toList(level.getAllEntities())) {
@@ -398,7 +400,8 @@ public final class Workshop {
             entity.discard();
             removed++;
         }
-        return removed;
+        removedCount.accept(removed);
+        return Optional.empty();
     }
     private static List<net.minecraft.world.entity.Entity> toList(Iterable<net.minecraft.world.entity.Entity> entities) {
         var out = new ArrayList<net.minecraft.world.entity.Entity>();
@@ -415,6 +418,7 @@ public final class Workshop {
         if (draft == null || !PlayerProfiles.building(player)) return Optional.of("只能在工坊里贴入");
         if (!gamemaster(player)) return Optional.of("需要 2 级管理员权限");
         if (pastes.containsKey(draft.id())) return Optional.of("这个草稿正在贴入另一个建筑");
+        if (publishing(draft.id())) return Optional.of(PUBLISHING);
         var entry = importFolder.find(name).filter(e -> e.kind() == ImportFolder.Kind.STRUCTURE).orElse(null);
         if (entry == null) return Optional.of("import 目录里没有建筑文件 " + name);
         var level = (ServerLevel) player.level();
@@ -429,6 +433,18 @@ public final class Workshop {
 
     // ---- Publishing (design 11.5) --------------------------------------------------------------------------------
 
+    private static final String PUBLISHING = "草稿正在发布，等发布完成再操作";
+
+    /**
+     * A publish job of {@code id} has not finished. It scans and then captures tile by tile, so the mod's own bulk
+     * world edits (pasting, clearing mobs) must wait: they would leave half a building in the pack or move what the
+     * scan accepted. A builder's hand edits cannot be held back and are their own business.
+     */
+    private boolean publishing(String id) {
+        var job = publishes.get(id);
+        return job != null && job.stage() != PublishJob.Stage.DONE && job.stage() != PublishJob.Stage.FAILED;
+    }
+
     /** Starts publishing a draft (4-level operators); returns why it cannot. */
     public Optional<String> publish(ServerPlayer actor, String id) {
         if (!owner(actor)) return Optional.of("需要 4 级管理员权限");
@@ -436,8 +452,7 @@ public final class Workshop {
         if (draft == null) return Optional.of("草稿不存在了");
         if (draft.state() != Draft.State.READY) return Optional.of("草稿还在导入，稍等片刻");
         var running = publishes.get(id);
-        if (running != null && running.stage() != PublishJob.Stage.DONE && running.stage() != PublishJob.Stage.FAILED)
-            return Optional.of("这个草稿正在发布");
+        if (publishing(id)) return Optional.of("这个草稿正在发布");
         if (pastes.containsKey(id)) return Optional.of("草稿正在贴入建筑，完成后再发布");
         var level = openLevel(draft);
         if (level == null) return Optional.of("草稿正在保存，稍后再试");
