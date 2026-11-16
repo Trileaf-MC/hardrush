@@ -8,7 +8,15 @@ import static dev.hardrush.gametest.WorkshopGameTest.workshop;
 
 import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.lobby.plan.Binding;
+import dev.hardrush.core.lobby.plan.Box;
 import dev.hardrush.core.lobby.plan.Cell;
+import dev.hardrush.core.lobby.plan.LobbyPlan;
+import dev.hardrush.core.lobby.plan.Model;
+import dev.hardrush.core.lobby.plan.PackManifest;
+import dev.hardrush.core.lobby.plan.Point;
+import dev.hardrush.core.lobby.plan.TextSlot;
+import dev.hardrush.core.lobby.plan.Trigger;
+import dev.hardrush.core.lobby.plan.Zone;
 import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.lobby.plan.MarkerSpec;
 import dev.hardrush.core.lobby.plan.MarkerTags;
@@ -73,6 +81,7 @@ final class WorkshopToolSteps {
         Display.BlockDisplay statue;
         ArmorStand flood, volume;
         Path pack;
+        LobbyPlan far;
     }
 
     private WorkshopToolSteps() {}
@@ -340,8 +349,61 @@ final class WorkshopToolSteps {
                         test.assertValueEqual(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()).toString(), id,
                                 "Building block at " + pos);
                     }
+                    // A lobby far from the origin, made by moving the first pack 104 tiles east: tile contents are
+                    // relative to their tile, so only the keys, the bounds and the plan move.
+                    var first = read(packsOf(f, "draft1").getFirst());
+                    var m = first.manifest();
+                    var bounds = shift(m.bounds());
+                    s.far = shift(first.plan(), bounds);
+                    var tiles = new java.util.HashMap<dev.hardrush.lobby.pack.TileKey, net.minecraft.nbt.CompoundTag>();
+                    first.tiles().forEach((k, t) -> tiles.put(new dev.hardrush.lobby.pack.TileKey(k.x() + FAR_TILES, k.y(), k.z()), t));
+                    var manifest = new PackManifest(m.format(), "far", "远处的营地", m.authors(), 1, m.created(), m.modVersion(), m.dataVersion(), bounds);
+                    try {
+                        PackFile.write(LobbyWorld.open(f.server).storage().packs().resolve(manifest.fileName()), manifest, s.far, tiles);
+                    } catch (IOException e) { throw new UncheckedIOException(e); }
+                    op(f, f.a, PermissionLevel.OWNERS);
+                    check(test, workshop(f).create(f.a.player, new Workshop.Seed.Pack(manifest.fileName())).isEmpty(), "A draft from the far pack starts");
+                })
+                .thenWaitUntil(() -> f.await(ready(f, "draft5"), "The far pack is a draft"))
+                .thenExecute(() -> {
+                    var draft = workshop(f).draft("draft5").orElseThrow();
+                    var bounds = s.far.bounds();
+                    var range = draft.range(bounds.min().y(), bounds.max().y());
+                    check(test, range.contains(bounds.min()) && range.contains(bounds.max()),
+                            "The draft's range follows the far lobby: " + range + " holds " + bounds);
+                    check(test, workshop(f).publish(f.a.player, "draft5").isEmpty(), "Publishing the far draft starts");
+                })
+                .thenWaitUntil(() -> f.await(state(f, "draft5").startsWith("CONFIRM") || state(f, "draft5").startsWith("FAILED"), "The far draft is packed"))
+                .thenExecute(() -> {
+                    check(test, state(f, "draft5").startsWith("CONFIRM"), "The far draft is publishable: " + state(f, "draft5"));
+                    workshop(f).confirmPublish(f.a.player, "draft5");
+                })
+                .thenWaitUntil(() -> f.await(state(f, "draft5").startsWith("DONE"), "The far draft is published"))
+                .thenExecute(() -> {
+                    test.assertValueEqual(read(packsOf(f, "draft5").getFirst()).plan(), s.far, "Republishing keeps the far lobby's plan");
+                    workshop(f).dismissPublish("draft5");
                     op(f, f.a, PermissionLevel.GAMEMASTERS);
                 });
+    }
+
+    /** 104 tiles: 4992 blocks, far outside a build range centred on the origin. */
+    private static final int FAR_TILES = 104, FAR = FAR_TILES * dev.hardrush.lobby.pack.TileKey.SIZE;
+    private static Cell shift(Cell c) { return c == null ? null : new Cell(c.x() + FAR, c.y(), c.z()); }
+    private static Box shift(Box b) { return new Box(shift(b.min()), shift(b.max())); }
+    private static Point shift(Point p) { return new Point(p.x() + FAR, p.y(), p.z(), p.yaw()); }
+    private static LobbyPlan shift(LobbyPlan plan, Box bounds) {
+        var points = new java.util.EnumMap<LobbyFunction, List<Point>>(LobbyFunction.class);
+        plan.points().forEach((fn, list) -> points.put(fn, list.stream().map(WorkshopToolSteps::shift).toList()));
+        var zones = new java.util.EnumMap<LobbyFunction, List<Zone>>(LobbyFunction.class);
+        plan.zones().forEach((fn, list) -> zones.put(fn, list.stream().map(z -> switch (z) {
+            case Zone.Floor floor -> (Zone) new Zone.Floor(floor.floor().stream().map(WorkshopToolSteps::shift).collect(java.util.stream.Collectors.toSet()));
+            case Zone.Volume volume -> new Zone.Volume(shift(volume.box()));
+        }).toList()));
+        return new LobbyPlan(bounds,
+                plan.triggers().stream().map(t -> new Trigger(t.function(), shift(t.block()), t.blockId(), shift(t.anchor()))).toList(),
+                plan.models().stream().map(m -> new Model(m.function(), shift(m.point()))).toList(), points, zones,
+                plan.altarLights().stream().map(WorkshopToolSteps::shift).toList(),
+                plan.texts().stream().map(t -> new TextSlot(t.function(), shift(t.sign()), shift(t.anchor()))).toList());
     }
 
     private static ServerLevel draft(HumanEntryGameTest.Fixture f, String id) { return workshop(f).level(id).orElseThrow(); }

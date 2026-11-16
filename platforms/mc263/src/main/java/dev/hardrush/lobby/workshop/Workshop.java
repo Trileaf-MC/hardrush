@@ -621,9 +621,12 @@ public final class Workshop {
             var content = job.content();
             var ready = drafts.get(id).ready();
             if (content.center() != null) {
-                ready = ready.withBorder(content.center().x(), content.center().z(), ready.borderDiameter());
+                ready = ready.withBorder(content.center().x(), content.center().z(), DraftImport.diameterFor(ready.borderDiameter(), content.bounds(), HardRushProperties.lobbyMaxSize()));
                 var border = level(id).map(ServerLevel::getWorldBorder).orElse(null);
-                if (border != null) border.setCenter(content.center().x(), content.center().z());
+                if (border != null) {
+                    border.setCenter(content.center().x(), content.center().z());
+                    border.setSize(ready.borderDiameter());
+                }
             }
             if (content.entry() != null) ready = ready.withEntry(content.entry());
             drafts.put(id, ready);
