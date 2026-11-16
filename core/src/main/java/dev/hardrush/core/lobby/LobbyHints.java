@@ -2,7 +2,9 @@ package dev.hardrush.core.lobby;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BooleanSupplier;
 
 /** One arbiter per viewer; callers refresh leases, then render once per tick. Monotonic milliseconds. */
 public final class LobbyHints {
@@ -13,7 +15,10 @@ public final class LobbyHints {
     public enum Priority { GUIDANCE, FACILITY, TARGET, READY, ITEM, PROGRESS, NOTICE, RECOVERY }
     /** {@code flash} lines are sent once, never refreshed, and blank the bar when withdrawn while shown. */
     private record Hint(Priority priority, String text, long expires, boolean flash) {}
+    /** A line waiting for the bar to come into view; its lease only starts once {@code covered} stops holding. */
+    private record Held(Priority priority, String text, long leaseMillis, BooleanSupplier covered) {}
     private final Map<String, Hint> hints = new HashMap<>();
+    private final Map<String, Held> held = new HashMap<>();
     private String shownSource, shownText;
     private boolean blank;
 
@@ -26,17 +31,28 @@ public final class LobbyHints {
      */
     public void flash(String source, Priority priority, String text, long expires) { put(source, priority, text, expires, true); }
 
+    /**
+     * An ongoing line for an answer the player could not see yet: while {@code covered} holds (a screen over the
+     * action bar, say) it waits without ageing, then shows for {@code leaseMillis} like {@link #offer}.
+     */
+    public void offerWhenUncovered(String source, Priority priority, String text, long leaseMillis, BooleanSupplier covered) {
+        hints.remove(source);
+        held.put(source, new Held(Objects.requireNonNull(priority), Objects.requireNonNull(text), leaseMillis, Objects.requireNonNull(covered)));
+    }
+
     private void put(String source, Priority priority, String text, long expires, boolean flash) {
-        hints.put(source, new Hint(java.util.Objects.requireNonNull(priority), java.util.Objects.requireNonNull(text), expires, flash));
+        held.remove(source);
+        hints.put(source, new Hint(Objects.requireNonNull(priority), Objects.requireNonNull(text), expires, flash));
     }
 
     public void clear(String source) {
+        held.remove(source);
         var removed = hints.remove(source);
         // A withdrawn flash must not linger over whatever replaced it in the player's hand.
         if (removed != null && removed.flash && source.equals(shownSource) && removed.text.equals(shownText)) blank = true;
     }
 
-    public void clear() { hints.clear(); shownSource = null; shownText = null; blank = false; }
+    public void clear() { hints.clear(); held.clear(); shownSource = null; shownText = null; blank = false; }
 
     public Optional<String> current(long now) { return top(now).map(e -> e.getValue().text); }
 
@@ -60,6 +76,12 @@ public final class LobbyHints {
     }
 
     private Optional<Map.Entry<String, Hint>> top(long now) {
+        held.entrySet().removeIf(entry -> {
+            var line = entry.getValue();
+            if (line.covered.getAsBoolean()) return false;
+            hints.put(entry.getKey(), new Hint(line.priority, line.text, now + line.leaseMillis, false));
+            return true;
+        });
         hints.values().removeIf(h -> h.expires <= now);
         return hints.entrySet().stream().sorted(java.util.Comparator
                 .<Map.Entry<String, Hint>, Priority>comparing(e -> e.getValue().priority).reversed()
