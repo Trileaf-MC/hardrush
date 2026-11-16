@@ -424,13 +424,8 @@ public final class ServerRestartRegression implements ModInitializer {
             waitFor("persisted deployed role", () -> idle()&&round().participants().get(a.profile.id()).role()==ParticipantRole.MONSTER_DEPLOYED&&!PlayerProfiles.isLocked(a.player));
             act("native last-human attack", () -> {
                 move(a,b.player.level(),b.player.position().add(1,0,0));b.player.setHealth(1);b.player.setInvulnerableTime(0);
-                // Combat opens at the first dusk; do not bypass the production pact gate.
-                dev.hardrush.pact.DuskPactRuntime.tick(server);
-                var overworld=worlds.level(Level.OVERWORLD);var daylight=overworld.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK).getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
-                overworld.clockManager().setTotalTicks(daylight,dev.hardrush.core.combat.DuskPact.DUSK_TICKS+5_000);
-                dev.hardrush.pact.DuskPactRuntime.tick(server);
-                // Random birth gear may be a spear or a bow, whose native inputs have their own suites: attack empty-handed.
-                a.player.getInventory().setItem(8,net.minecraft.world.item.ItemStack.EMPTY);a.player.getInventory().setSelectedSlot(8);
+                pastFirstDusk();
+                MonsterRoleGameTest.emptyHanded(a.player);
                 require(dev.hardrush.monster.MonsterRoles.attack(a.player,b.player),"native monster attack accepted");
             });
             waitFor("rescue and award persist together", () -> idle()&&round().phase()==RoundPhase.RESCUE&&round().participants().get(a.profile.id()).revivalEntitled());
@@ -649,6 +644,13 @@ public final class ServerRestartRegression implements ModInitializer {
         void waitFor(String name, BooleanSupplier work) { steps.add(new Step(name, work)); }
         void advance(long seconds) { CLOCK.addAndGet(TimeUnit.SECONDS.toNanos(seconds)); }
         void command(Actor actor, String text) { if (SpatialInputFixtures.handle(actor.player, text)) return; try { server.getCommands().getDispatcher().execute(text, actor.player.createCommandSourceStack()); } catch (Exception error) { throw new IllegalStateException(error); } }
+        /** Player combat opens at the first dusk; advance the real round clock rather than bypass the production pact gate. */
+        void pastFirstDusk() {
+            dev.hardrush.pact.DuskPactRuntime.tick(server);
+            var overworld=worlds.level(Level.OVERWORLD);var daylight=overworld.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK).getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+            overworld.clockManager().setTotalTicks(daylight,dev.hardrush.core.combat.DuskPact.DUSK_TICKS+5_000);
+            dev.hardrush.pact.DuskPactRuntime.tick(server);
+        }
         void move(Actor actor, ServerLevel level, Vec3 pos) { actor.player.teleport(new TeleportTransition(level, pos, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING)); acknowledge(actor); }
         void acknowledge(Actor actor) {
             if (actor.player == null || actor.player.connection == null) return;
