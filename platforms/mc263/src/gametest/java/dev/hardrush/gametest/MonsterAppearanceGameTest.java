@@ -20,7 +20,6 @@ import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.network.protocol.game.ClientboundUpdateAttributesPacket;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
@@ -196,7 +195,7 @@ public final class MonsterAppearanceGameTest {
                     var connection = new RecordingConnection();
                     channel[0] = new EmbeddedChannel(connection);
                     dev.hardrush.gametest.UnmanagedProfileFixtures.run(() ->
-                            player[0] = preparation[0].spawnPlayer(connection, CommonListenerCookie.createInitial(profile, false)));
+                            player[0] = preparation[0].spawnPlayer(connection, TestClients.cookie(profile)));
                     preparation[0].close(); preparation[0] = null;
                     MonsterDisguise.onJoin(player[0]);
                     MonsterDisguise.tick(server);
@@ -494,7 +493,7 @@ public final class MonsterAppearanceGameTest {
             var connection = new RecordingConnection();
             packets = connection.packets; channel = new EmbeddedChannel(connection);
             player.connection = new ServerGamePacketListenerImpl(player.level().getServer(), connection, player,
-                CommonListenerCookie.createInitial(player.getGameProfile(), false));
+                TestClients.cookie(player.getGameProfile()));
         }
         @Override public void close() { player.connection = original; channel.finishAndReleaseAll(); }
     }

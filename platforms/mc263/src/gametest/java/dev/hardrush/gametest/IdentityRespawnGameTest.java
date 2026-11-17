@@ -23,7 +23,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
@@ -390,7 +389,7 @@ public final class IdentityRespawnGameTest {
             var old = player;
             profiles.onDisconnect(old);
             server.getPlayerList().remove(old);
-            player = new ServerPlayer(server, test.getLevel(), old.getGameProfile(), ClientInformation.createDefault());
+            player = new ServerPlayer(server, test.getLevel(), old.getGameProfile(), TestClients.information());
             test.assertValueEqual(player.getStats().getValue(Stats.CUSTOM.get(Stats.JUMP)), 11,
                     "The replacement native player loads cumulative statistics from its separate UUID file");
             player.load(TagValueInput.create(net.minecraft.util.ProblemReporter.DISCARDING, player.registryAccess(), saved));
@@ -407,7 +406,7 @@ public final class IdentityRespawnGameTest {
             var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
             new io.netty.channel.embedded.EmbeddedChannel(connection);
             dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player,
-                    net.minecraft.server.network.CommonListenerCookie.createInitial(player.getGameProfile(), false)));
+                    TestClients.cookie(player.getGameProfile())));
             ((ProfileTagged) player).hardrush$isolated(true);
             profiles.onConnected(player);
             profiles.tick(round);
