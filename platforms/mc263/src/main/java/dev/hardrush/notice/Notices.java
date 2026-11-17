@@ -118,6 +118,15 @@ public final class Notices {
         } else player.connection.send(new ClientboundSetActionBarTextPacket(format(markup)));
     }
 
+    /**
+     * Takes back a T1 line the player has not seen through yet because a later answer superseded it (a refusal
+     * followed by a successful retry under the same screen). A different line since then is left alone.
+     */
+    public static void withdraw(ServerPlayer player, String markup) {
+        if (!online(player)) return;
+        LobbyInteractions.get(player.level().getServer()).ifPresent(router -> router.hints(player).withdraw("notice", markup));
+    }
+
     /** T1 with the shared rejection sound: the request was understood but cannot be done now. The sound never waits. */
     public static void refuse(ServerPlayer player, String markup) {
         hint(player, markup);

@@ -52,6 +52,14 @@ public final class LobbyHints {
         if (removed != null && removed.flash && source.equals(shownSource) && removed.text.equals(shownText)) blank = true;
     }
 
+    /** Withdraws {@code source}'s line only while it still says {@code text}, waiting or shown; a newer line stays. */
+    public void withdraw(String source, String text) {
+        var waiting = held.get(source);
+        var shown = hints.get(source);
+        if (waiting != null && waiting.text.equals(text)) held.remove(source);
+        if (shown != null && shown.text.equals(text)) clear(source);
+    }
+
     public void clear() { hints.clear(); held.clear(); shownSource = null; shownText = null; blank = false; }
 
     public Optional<String> current(long now) { return top(now).map(e -> e.getValue().text); }
