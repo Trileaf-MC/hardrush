@@ -11,7 +11,9 @@ public record RoundTab(String header, String footer) {
     public static RoundTab from(RoundSnapshot round, long endEntrants, String problem) {
         Objects.requireNonNull(round);
         if (endEntrants < 0) throw new IllegalArgumentException("Negative End entrant count");
-        long offline = round.participants().values().stream().filter(p -> p.role().isActiveHuman() && !p.online()).count();
+        // A life still entering is on the server: it counts as present, never as offline.
+        long humans = round.participants().values().stream().filter(p -> p.role().isActiveHuman() && p.connected()).count();
+        long offline = round.participants().values().stream().filter(p -> p.role().isActiveHuman() && !p.connected()).count();
         long monsters = round.participants().values().stream().filter(p -> p.role().isMonster() && p.online()).count();
         long offlineMonsters = round.participants().values().stream().filter(p -> p.role().isMonster() && !p.online()).count();
         // The status bar shows state and progress; TAB is the scoreboard players hold open for the exact numbers.
@@ -24,7 +26,7 @@ public record RoundTab(String header, String footer) {
         }
         String header = "HardRush · 第 " + round.sequence() + " 轮 · " + LibraryText.mode(round.rules().mode())
                 + "\n" + state + " · 用时 " + duration(round.challengeMillis());
-        String footer = "人类 " + round.onlineHumans() + (offline > 0 ? "（离线 " + offline + "）· " : " · ")
+        String footer = "人类 " + humans + (offline > 0 ? "（离线 " + offline + "）· " : " · ")
                 + "怪物 " + monsters + (offlineMonsters > 0 ? "（离线 " + offlineMonsters + "）" : "")
                 + "\n进入过末地 " + endEntrants + " 人";
         long withdrawn = round.participants().values().stream().filter(p -> p.role() == dev.hardrush.core.round.ParticipantRole.WITHDRAWN).count();

@@ -182,6 +182,11 @@ class DeathBatchSessionTest {
         pump(() -> session.state() == RoundSession.State.OPEN);
         session.adaptersReady(round);
         pump(() -> !session.mutationPending());
+        // A human that can be hunted is playing; left offline, the round would be waiting for it instead.
+        if (session.snapshot().orElseThrow().participants().get(victim).role() == ParticipantRole.HUMAN_ACTIVE) {
+            session.onOnline(victim, "Human", true);
+            pump(() -> !session.mutationPending());
+        }
         session.onOnline(hunter, "Hunter", true);
         pump(() -> !session.mutationPending());
         var monster = session.snapshot().orElseThrow().participants().get(hunter);

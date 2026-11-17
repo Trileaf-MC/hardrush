@@ -310,8 +310,8 @@ class DeathBatchRevivalTest {
         assertTrue(engine.view().participants().get(monster).revivalEntitled());
         assertEquals(RoundPhase.RESCUE, engine.view().phase());
         assertTrue(engine.view().awaitingReconnect());
-        assertEquals(60_000, engine.view().remainingPhaseMillis());
-        clock.seconds(60);
+        assertEquals(180_000, engine.view().remainingPhaseMillis());
+        clock.seconds(180);
         apply(engine, engine.proposeTick(UUID.randomUUID()));
         assertEquals(RoundPhase.SETTLING, engine.view().phase());
         assertEquals("HUMANS_OFFLINE", engine.view().result().reason());
