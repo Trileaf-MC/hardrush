@@ -2,7 +2,6 @@ package dev.hardrush.lobby;
 
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.MonsterCoins;
-import dev.hardrush.core.round.Participant;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.round.RoundSession;
 import java.util.*;
@@ -20,31 +19,26 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.level.entity.EntityTypeTest;
 
-/** Both camp currencies move through durable balances before a native floor stack can be claimed. */
+/**
+ * Monster coins are the one camp item that may be thrown: a gift moves through the durable balance
+ * before its native floor stack can be claimed. Revival totems stay with their owner.
+ */
 public final class CampTransfers {
-    enum Kind {
-        REVIVAL("复生图腾", "个"), COIN("怪物币", "枚");
-        final String title, unit;
-        Kind(String title, String unit) { this.title = title; this.unit = unit; }
-        int balance(Participant player) { return this == REVIVAL ? player.revivalCharges() : player.wallet().coins(); }
-    }
-    private record Holder(UUID player, Kind kind) {}
     private static final class Loose {
         final UUID round, owner;
         final String ownerName;
-        final Kind kind;
         final int count;
         final ItemEntity entity;
         boolean claimed;
-        Loose(UUID round, ServerPlayer owner, Kind kind, int count, ItemEntity entity) {
+        Loose(UUID round, ServerPlayer owner, int count, ItemEntity entity) {
             this.round = round; this.owner = owner.getUUID(); this.ownerName = owner.getScoreboardName();
-            this.kind = kind; this.count = count; this.entity = entity;
+            this.count = count; this.entity = entity;
         }
     }
     private static final String TOKEN = "hardrush_camp_transfer";
     private static final Map<MinecraftServer, CampTransfers> INSTANCES = new IdentityHashMap<>();
     private final RevivalTotems.Access access;
-    private final Map<Holder, Integer> pendingDrops = new HashMap<>();
+    private final Map<UUID, Integer> pendingDrops = new HashMap<>();
     private final Map<UUID, Loose> loose = new HashMap<>();
     private UUID round;
 
@@ -52,13 +46,13 @@ public final class CampTransfers {
     static void configure(MinecraftServer server, RevivalTotems.Access access) { INSTANCES.put(server, new CampTransfers(access)); }
     static void unconfigure(MinecraftServer server) { INSTANCES.remove(server); }
 
-    public static boolean is(ItemStack stack) { return RevivalTotems.is(stack) || CampKit.isCoin(stack); }
-    static int pending(ServerPlayer player, Kind kind) {
+    public static boolean is(ItemStack stack) { return CampKit.isCoin(stack); }
+    static int pending(ServerPlayer player) {
         var transfers = INSTANCES.get(player.level().getServer());
-        return transfers == null ? 0 : transfers.pendingDrops.getOrDefault(new Holder(player.getUUID(), kind), 0);
+        return transfers == null ? 0 : transfers.pendingDrops.getOrDefault(player.getUUID(), 0);
     }
 
-    /** Only native Q / Ctrl+Q over a currency slot escapes the isolated camp inventory lock. */
+    /** Only native Q / Ctrl+Q over a coin slot escapes the isolated camp inventory lock. */
     public static boolean throwsFromInventory(ServerPlayer player, ServerboundContainerClickPacket packet) {
         var menu = player.inventoryMenu;
         return player.containerMenu == menu && packet.containerInput() == ContainerInput.THROW
@@ -69,27 +63,26 @@ public final class CampTransfers {
     /** Vanilla has removed this stack. On refusal its authoritative projection must repair prediction. */
     public static void thrown(ServerPlayer player, ItemStack stack) {
         var transfers = INSTANCES.get(player.level().getServer());
-        if (transfers != null) transfers.drop(player, RevivalTotems.is(stack) ? Kind.REVIVAL : Kind.COIN, stack.getCount());
+        if (transfers != null) transfers.drop(player, stack.getCount());
         else player.inventoryMenu.sendAllDataToRemote();
     }
 
     private void refresh(ServerPlayer player) {
-        RevivalTotems.refresh(player);
         CampKit.refresh(player);
         // A rejected action may leave the server stack unchanged; diff-only broadcasts cannot undo prediction.
         player.inventoryMenu.sendAllDataToRemote();
     }
 
-    private void drop(ServerPlayer player, Kind kind, int count) {
+    private void drop(ServerPlayer player, int count) {
         var r = access.committed().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
         if (p == null || !access.eligible(player) || access.busy(p.id()) || access.session().mutationPending()
-                || kind == Kind.COIN && !MonsterCoins.enabled(r.rules())) {
+                || !MonsterCoins.enabled(r.rules())) {
             refresh(player);
             dev.hardrush.notice.Notices.refuse(player, "现在不能丢出，物品已放回背包"); return;
         }
-        var holder = new Holder(p.id(), kind);
-        int n = Math.min(count, kind.balance(p) - pendingDrops.getOrDefault(holder, 0));
+        var holder = p.id();
+        int n = Math.min(count, p.wallet().coins() - pendingDrops.getOrDefault(holder, 0));
         if (n <= 0) { refresh(player); return; }
         pendingDrops.merge(holder, n, Integer::sum);
         Consumer<RoundSession.Reply> done = reply -> {
@@ -97,19 +90,18 @@ public final class CampTransfers {
             refresh(player);
             if (!reply.success()) { dev.hardrush.notice.Replies.refuse(player, reply, "现在不能丢出，物品已放回背包"); return; }
             var token = UUID.randomUUID();
-            var entity = player.createItemStackToDrop(thrownStack(r.roundId(), token, kind, n, player.getScoreboardName()), false, true);
+            var entity = player.createItemStackToDrop(thrownStack(token, n, player.getScoreboardName()), false, true);
             if (entity == null) return;
             player.level().addFreshEntity(entity);
-            loose.put(token, new Loose(r.roundId(), player, kind, n, entity));
+            loose.put(token, new Loose(r.roundId(), player, n, entity));
         };
-        if (kind == Kind.REVIVAL) access.session().requestRevivalTotemDrop(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), n, done);
-        else access.session().requestMonsterCoinDrop(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), n, done);
+        access.session().requestMonsterCoinDrop(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), n, done);
         refresh(player);
     }
 
-    private static ItemStack thrownStack(UUID round, UUID token, Kind kind, int count, String owner) {
-        var stack = kind == Kind.REVIVAL ? RevivalTotems.thrown(round, token, count, owner) : CampKit.coin(count);
-        if (kind == Kind.COIN) dev.hardrush.notice.ItemText.lore(stack,
+    private static ItemStack thrownStack(UUID token, int count, String owner) {
+        var stack = CampKit.coin(count);
+        dev.hardrush.notice.ItemText.lore(stack,
                 "来自 " + dev.hardrush.notice.Notices.key(owner) + " 的 " + dev.hardrush.notice.Notices.key(count) + " 枚怪物币",
                 "营地里的怪物捡起即可获得", "落地 5 分钟无人拾取即作废");
         var data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
@@ -149,10 +141,9 @@ public final class CampTransfers {
             // The picker sees the native pickup; only the thrower, possibly far away, is told.
             var owner = player.level().getServer().getPlayerList().getPlayer(entry.owner);
             if (owner != null && owner != player) dev.hardrush.notice.Notices.hint(owner, dev.hardrush.notice.Notices.key(player.getScoreboardName())
-                    + " 捡走了你丢出的 " + dev.hardrush.notice.Notices.key(entry.count) + " " + entry.kind.unit + entry.kind.title);
+                    + " 捡走了你丢出的 " + dev.hardrush.notice.Notices.key(entry.count) + " 枚怪物币");
         };
-        if (entry.kind == Kind.REVIVAL) access.session().requestRevivalTotemPickup(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), entry.count, done);
-        else access.session().requestMonsterCoinPickup(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), entry.count, done);
+        access.session().requestMonsterCoinPickup(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), entry.count, done);
     }
 
     public static void tick(MinecraftServer server) {
@@ -170,7 +161,9 @@ public final class CampTransfers {
                 && (r.phase() == RoundPhase.RUNNING || r.phase() == RoundPhase.RESCUE);
         if (!open) loose.values().removeIf(entry -> !entry.claimed);
         for (var level : server.getAllLevels()) {
-            for (var item : level.getEntities(EntityTypeTest.forClass(ItemEntity.class), item -> is(item.getItem()))) {
+            // A totem can never lie on the floor; a stray one is removed like an unclaimed coin stack.
+            for (var item : level.getEntities(EntityTypeTest.forClass(ItemEntity.class),
+                    item -> is(item.getItem()) || RevivalTotems.is(item.getItem()))) {
                 var entry = token(item.getItem()).map(loose::get).orElse(null);
                 if (entry == null || entry.entity != item) item.discard();
             }

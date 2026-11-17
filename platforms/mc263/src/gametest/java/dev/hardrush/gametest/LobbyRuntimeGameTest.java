@@ -328,32 +328,10 @@ public final class LobbyRuntimeGameTest {
                         f.test.assertFalse(held.has(net.minecraft.core.component.DataComponents.DEATH_PROTECTION), "A revival totem never guards against death");
                         f.test.assertValueEqual(held.getMaxStackSize(), RevivalTotems.MAX_STACK, "Charges stack in one native slot");
                         throwTotem(hunter.player);
-                    })
-                    .thenWaitUntil(() -> f.await(iteration != 0 || hunter.participant().revivalCharges() == 0
-                            && thrownTotem(hunter.player) != null && heldTotems(hunter.player) == 0 && !f.session.mutationPending(),
-                            "A thrown totem commits its charge before it lands"))
-                    .thenExecute(() -> {
-                        if (iteration != 0) return;
-                        var floor = thrownTotem(hunter.player);
-                        floor.playerTouch(prey.current());
-                        f.test.assertFalse(floor.isRemoved() || f.session.mutationPending(), "Native pickup delay still applies");
-                        floor.setPickUpDelay(0);
-                        floor.playerTouch(prey.current());
-                    })
-                    .thenWaitUntil(() -> f.await(iteration != 0 || prey.participant().revivalCharges() == 1
-                            && thrownTotem(hunter.player) == null && heldTotems(prey.current()) == 1 && !f.session.mutationPending(),
-                            "Another camp monster picks up the transferred charge"))
-                    .thenExecute(() -> { if (iteration == 0) throwTotem(prey.current()); })
-                    .thenWaitUntil(() -> f.await(iteration != 0 || prey.participant().revivalCharges() == 0
-                            && thrownTotem(prey.current()) != null && !f.session.mutationPending(), "The receiver can pass it back"))
-                    .thenExecute(() -> {
-                        if (iteration != 0) return;
-                        var floor = thrownTotem(prey.current());
-                        floor.setPickUpDelay(0);
-                        floor.playerTouch(hunter.player);
-                    })
-                    .thenWaitUntil(() -> f.await(iteration != 0 || hunter.participant().revivalCharges() == 1
-                            && heldTotems(hunter.player) == 1 && !f.session.mutationPending(), "The original owner regains the charge"));
+                        f.test.assertTrue(hunter.participant().revivalCharges() == 1 && heldTotems(hunter.player) == 1
+                                && thrownTotem(hunter.player) == null && !f.session.mutationPending(),
+                                "A revival totem cannot be thrown: the charge stays with its owner");
+                    });
             if (iteration == 0) CampTransferFixtures.append(sequence, f, hunter, prey);
             sequence.thenExecute(() -> {
                         f.test.assertTrue(hunter.participant().monsterCooldownNanos() > 0, "Revival is tested during the deployment cooldown");
@@ -366,8 +344,8 @@ public final class LobbyRuntimeGameTest {
                                 f.level.getChunkAt(floor).setBlockState(floor, Blocks.AIR.defaultBlockState(), 2);
                                 f.test.assertFalse(RoundWorldBundle.safeStanding(f.level, worlds.spawn()), "The fixture really removed the natural spawn floor");
                                 var hints = dev.hardrush.lobby.LobbyInteractions.get(f.server).orElseThrow().hints(hunter.player);
-                                // The totem pickup's one-shot notice outranks the altar for a few wall-clock seconds by
-                                // design; how long the transfer steps above took must not decide which line is read.
+                                // The refused throw's one-shot notice outranks the altar for a few wall-clock seconds by
+                                // design; how long the steps above took must not decide which line is read.
                                 hints.clear("notice");
                                 hunter.command("hardrush revive");
                                 dev.hardrush.lobby.RevivalAltar.tick(f.server, f.round(), f.session);
@@ -900,7 +878,7 @@ public final class LobbyRuntimeGameTest {
         return near.level().getEntitiesOfClass(ItemEntity.class, near.getBoundingBox().inflate(8)).stream()
                 .filter(item -> RevivalTotems.is(item.getItem())).findFirst().orElse(null);
     }
-    /** The real Q-key packet: vanilla removes the stack, RevivalTotems commits it before spawning. */
+    /** The real Q-key packet, which the camp refuses for a revival totem. */
     static void throwTotem(ServerPlayer player) {
         for (int slot = 0; slot < 9; slot++) if (RevivalTotems.is(player.getInventory().getItem(slot))) {
             player.connection.handleSetCarriedItem(new net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket(slot));

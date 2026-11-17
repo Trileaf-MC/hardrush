@@ -998,18 +998,6 @@ public final class RoundSession implements AutoCloseable {
                 lifeSequence, deploymentSequence), reply, "复生资格已消费，正在空装降落到远离出生点的荒野。");
     }
 
-    public void requestRevivalTotemDrop(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
-            int count, Consumer<Reply> reply) {
-        requestAction(() -> engine.proposeRevivalTotemDrop(UUID.randomUUID(), roundId, playerId,
-                lifeSequence, deploymentSequence, count), reply, "复生图腾已丢出。");
-    }
-
-    public void requestRevivalTotemPickup(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
-            int count, Consumer<Reply> reply) {
-        requestAction(() -> engine.proposeRevivalTotemPickup(UUID.randomUUID(), roundId, playerId,
-                lifeSequence, deploymentSequence, count), reply, "复生图腾已拾取。");
-    }
-
     public void requestShopPurchase(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             dev.hardrush.core.round.ShopOffer offer, int price, Consumer<Reply> reply) {
         requestAction(() -> engine.proposeShopPurchase(UUID.randomUUID(), roundId, playerId,
