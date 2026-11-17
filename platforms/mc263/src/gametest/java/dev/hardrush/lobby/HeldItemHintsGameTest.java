@@ -2,6 +2,7 @@ package dev.hardrush.lobby;
 
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.lobby.LobbyHints;
+import dev.hardrush.gametest.TestClients;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.notice.Notices;
 import io.netty.channel.ChannelFutureListener;
@@ -18,10 +19,8 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
-import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -111,10 +110,10 @@ public final class HeldItemHintsGameTest {
                 level.setBlockAndUpdate(pos.below(), Blocks.SMOOTH_STONE.defaultBlockState());
             }
             var profile = new GameProfile(UUID.randomUUID(), "HRHeld" + ARENAS.get());
-            player = new ServerPlayer(level.getServer(), level, profile, ClientInformation.createDefault());
+            player = new ServerPlayer(level.getServer(), level, profile, TestClients.information());
             var connection = new SinkConnection(); channel = new EmbeddedChannel(connection);
             dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> level.getServer().getPlayerList().placeNewPlayer(connection, player,
-                    CommonListenerCookie.createInitial(profile, false)));
+                    TestClients.cookie(profile)));
             player.teleportTo(center.x, center.y, center.z);
             player.setGameMode(GameType.SURVIVAL); player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
         }

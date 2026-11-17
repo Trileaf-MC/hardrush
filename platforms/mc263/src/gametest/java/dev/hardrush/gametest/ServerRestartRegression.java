@@ -39,7 +39,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.clock.WorldClocks;
@@ -518,7 +517,7 @@ public final class ServerRestartRegression implements ModInitializer {
             waitFor("load native UUID " + actor.profile.name(), () -> actor.prepare.tick());
             act("register native player " + actor.profile.name(), () -> {
                 actor.connection = new RecordingConnection(); actor.channel = new EmbeddedChannel(actor.connection);
-                actor.player = actor.prepare.spawnPlayer(actor.connection, CommonListenerCookie.createInitial(actor.profile, false)); actor.prepare.close();
+                actor.player = actor.prepare.spawnPlayer(actor.connection, TestClients.cookie(actor.profile)); actor.prepare.close();
                 acknowledge(actor);
                 require(PlayerProfiles.isLocked(actor.player) && actor.player.level() == LobbyWorld.open(server).holdingLevel(), "native login quarantined before world/profile verification");
             });

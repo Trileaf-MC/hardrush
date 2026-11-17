@@ -22,7 +22,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
@@ -282,7 +281,7 @@ public final class ServerCrashRegression implements ModInitializer {
             waitFor("load quarantined UUID", () -> actor.prepare.tick());
             act("connect quarantined UUID", () -> {
                 actor.connection = new RecordingConnection(); actor.channel = new EmbeddedChannel(actor.connection);
-                actor.player = actor.prepare.spawnPlayer(actor.connection, CommonListenerCookie.createInitial(actor.profile, false)); actor.prepare.close(); acknowledge(actor);
+                actor.player = actor.prepare.spawnPlayer(actor.connection, TestClients.cookie(actor.profile)); actor.prepare.close(); acknowledge(actor);
                 require(actor.player.level() == LobbyWorld.open(server).holdingLevel() && PlayerProfiles.isLocked(actor.player), "login cannot restore uncertain native effects");
             });
         }

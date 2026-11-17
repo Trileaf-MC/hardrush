@@ -25,7 +25,6 @@ import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundTabListPacket;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 
 /** Headless packet capture: TAB presentation never replaces native online-player entries. */
@@ -116,7 +115,7 @@ public final class TabListGameTest {
             packets = connection.packets;
             channel = new EmbeddedChannel(connection);
             player.connection = new ServerGamePacketListenerImpl(player.level().getServer(), connection, player,
-                    CommonListenerCookie.createInitial(player.getGameProfile(), false));
+                    TestClients.cookie(player.getGameProfile()));
         }
         @Override public void close() { player.connection = previous; channel.finishAndReleaseAll(); }
     }
