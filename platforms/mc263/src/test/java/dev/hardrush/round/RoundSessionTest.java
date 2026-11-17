@@ -631,6 +631,74 @@ final class RoundSessionTest {
         }
     }
 
+    @Test
+    void repeatedOnlineReportsWhileCommitIsStalledDoNotStopTheRound() throws Exception {
+        var callbacks = new LinkedBlockingQueue<Runnable>();
+        var clock = new AtomicLong();
+        UUID player = UUID.randomUUID();
+        try (var session = new RoundSession(directory.resolve("stalled-online.sqlite"), clock::get, callbacks::add)) {
+            startRunningWithOneHuman(session, callbacks, clock, player);
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(7));
+            session.humanDeath(player, 1, null);
+            assertTrue(session.mutationPending(), "The death commit stays stalled while no callback is pumped");
+            // A held death keeps the profile locked, so the adapter reports the same connection every tick.
+            for (int tick = 0; tick < 600; tick++) session.onOnline(player, "Human", true);
+            assertEquals(RoundSession.State.OPEN, session.state(), session.status());
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertEquals(RoundSession.State.OPEN, session.state(), session.status());
+            assertTrue(session.snapshot().orElseThrow().participants().get(player).online());
+            assertNotEquals(ParticipantRole.HUMAN_ACTIVE, session.snapshot().orElseThrow().participants().get(player).role());
+        }
+    }
+
+    @Test
+    void leavingAndRejoiningWhileCommitIsStalledStillCommitsBothInOrder() throws Exception {
+        var callbacks = new LinkedBlockingQueue<Runnable>();
+        var clock = new AtomicLong();
+        UUID player = UUID.randomUUID();
+        try (var session = new RoundSession(directory.resolve("stalled-rejoin.sqlite"), clock::get, callbacks::add)) {
+            startRunningWithOneHuman(session, callbacks, clock, player);
+            var seenOffline = new java.util.concurrent.atomic.AtomicBoolean();
+            session.onCommitted((before, after) -> {
+                var participant = after.participants().get(player);
+                if (participant != null && !participant.online()) seenOffline.set(true);
+            });
+            clock.addAndGet(TimeUnit.SECONDS.toNanos(31));
+            session.tick();
+            assertTrue(session.mutationPending(), "The checkpoint commit stays stalled while no callback is pumped");
+            for (int tick = 0; tick < 300; tick++) session.onOnline(player, "Human", true);
+            session.onOnline(player, "Human", false);
+            for (int tick = 0; tick < 300; tick++) session.onOnline(player, "Human", true);
+            assertEquals(RoundSession.State.OPEN, session.state(), session.status());
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertEquals(RoundSession.State.OPEN, session.state(), session.status());
+            assertTrue(seenOffline.get(), "The leave between reports is still committed");
+            assertTrue(session.snapshot().orElseThrow().participants().get(player).online());
+        }
+    }
+
+    private static void startRunningWithOneHuman(RoundSession session, LinkedBlockingQueue<Runnable> callbacks,
+            AtomicLong clock, UUID player) throws Exception {
+        var reply = new AtomicReference<RoundSession.Reply>();
+        pumpUntil(callbacks, () -> session.state() == RoundSession.State.OPEN);
+        session.adaptersReady(session.snapshot().orElseThrow().roundId());
+        pumpUntil(callbacks, () -> !session.mutationPending());
+        session.onOnline(player, "Human", true);
+        session.requestJoin(player, "Human", reply::set);
+        pumpUntil(callbacks, () -> reply.get() != null);
+        reply.set(null);
+        session.requestReady(player, true, reply::set);
+        pumpUntil(callbacks, () -> reply.get() != null);
+        assertTrue(reply.get().success(), reply.get().message());
+        clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
+        session.tick();
+        pumpUntil(callbacks, () -> !session.mutationPending());
+        assertEquals(RoundPhase.RUNNING, session.snapshot().orElseThrow().phase());
+        session.onOnline(player, "Human", true); // The adapter's play-unlock report.
+        pumpUntil(callbacks, () -> !session.mutationPending());
+        assertTrue(session.snapshot().orElseThrow().participants().get(player).online());
+    }
+
     private static void pumpUntil(LinkedBlockingQueue<Runnable> callbacks, BooleanSupplier complete) throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(8);
         while (!complete.getAsBoolean() && System.nanoTime() < deadline) {
