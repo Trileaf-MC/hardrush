@@ -129,11 +129,19 @@ public final class MonsterShop {
         access.session().requestShopPurchase(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
                 offer, price, reply -> {
                     menu.buying = false;
-                    if (player.containerMenu != menu) return;
-                    if (!reply.success()) { dev.hardrush.notice.Notices.hint(player, dev.hardrush.notice.Replies.text(reply, "女巫：这笔交易现在做不了")); sound(player, SoundEvents.VILLAGER_NO); menu.resync(); return; }
+                    if (player.level().getServer().getPlayerList().getPlayer(player.getUUID()) != player) return;
+                    // The answer is told even to a player who already closed the screen; only the screen itself
+                    // needs updating while it is still open. The reason waits for the trading screen to close.
+                    boolean open = player.containerMenu == menu;
+                    if (!reply.success()) {
+                        dev.hardrush.notice.Notices.hint(player, dev.hardrush.notice.Replies.text(reply, "女巫：这笔交易现在做不了"));
+                        sound(player, SoundEvents.VILLAGER_NO);
+                        if (open) menu.resync();
+                        return;
+                    }
                     sound(player, SoundEvents.WITCH_CELEBRATE);
                     // The witch's cheer, the coin count and the goods' description tell the rest.
-                    menu.afterPurchase();
+                    if (open) menu.afterPurchase();
                 });
     }
 

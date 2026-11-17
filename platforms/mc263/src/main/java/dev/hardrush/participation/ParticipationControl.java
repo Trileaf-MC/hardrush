@@ -109,11 +109,13 @@ public final class ParticipationControl {
         var round = b.session.snapshot().orElseThrow();
         var p = round.participants().get(player.getUUID());
         if (!round.roundId().equals(expectedRound) || !token(p).equals(token)) return;
+        // Either answer closes the confirmation chest, which covers the action bar, but never a screen opened since.
+        var origin = player.containerMenu;
         b.session.requestParticipationExit(expectedRound, p.id(), p.role(), p.lifeSequence(), p.monsterDeploymentSequence(),
                 ParticipantRole.WITHDRAWN, "player:" + p.id(), "玩家主动确认退出本轮并观战", reply -> {
+                    if (origin != player.inventoryMenu && player.containerMenu == origin) player.closeContainer();
                     // Success is told once by the round's identity change; only a refusal needs words here.
                     if (!reply.success()) dev.hardrush.notice.Replies.refuse(player, reply, "现在不能退出本轮");
-                    if (reply.success() && player.containerMenu != player.inventoryMenu) player.closeContainer();
                 });
     }
 

@@ -658,7 +658,16 @@ public final class LobbyRuntimeGameTest {
             var wallet = monster.participant().wallet();
             test.assertValueEqual(wallet.coins(), 0, "The egg cost exactly its first ladder price");
             test.assertTrue(monster.player.containerMenu.getSlot(0).getItem().isEmpty(), "Paid coins leave the payment slot");
+            // The trading screen covers the action bar: a T1 answer waits under it and shows once it closes.
+            var hints = dev.hardrush.lobby.LobbyInteractions.get(server).orElseThrow().hints(monster.player);
+            String refusal = "女巫：这笔交易现在做不了";
+            dev.hardrush.notice.Notices.hint(monster.player, refusal);
+            test.assertFalse(hints.current(System.nanoTime() / 1_000_000).filter(refusal::equals).isPresent(),
+                    "A line sent under the trading screen waits instead of fading unseen");
             monster.player.closeContainer();
+            test.assertValueEqual(hints.current(System.nanoTime() / 1_000_000), java.util.Optional.of(refusal),
+                    "Once the screen closes the waiting line takes the action bar");
+            hints.clear("notice");
             dev.hardrush.lobby.CampKit.tick(server);
             test.assertValueEqual(coins(), 0, "Closing the shop never returns spent coins");
             boolean projected = false;
