@@ -33,7 +33,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.InteractionHand;
@@ -533,7 +532,7 @@ public final class PersonalHuntGameTest {
                 s.thenExecute(() -> { prepare=new PrepareSpawnTask(server,new NameAndId(profile));prepare.start(packet -> {}); })
                         .thenWaitUntil(() -> await(prepare.tick(),"native login "+profile.name()))
                         .thenExecute(() -> { connection=new Recording();channel=new EmbeddedChannel(connection);ack=Integer.MIN_VALUE;
-                            player=prepare.spawnPlayer(connection,CommonListenerCookie.createInitial(profile,false));prepare.close();ack(); })
+                            player=prepare.spawnPlayer(connection,TestClients.cookie(profile));prepare.close();ack(); })
                         .thenWaitUntil(() -> await(profiles.isReady(id(),round()),"profile ready "+profile.name()));
             }
             void role(String role) { HuntInputFixtures.role(player,role); ack(); }

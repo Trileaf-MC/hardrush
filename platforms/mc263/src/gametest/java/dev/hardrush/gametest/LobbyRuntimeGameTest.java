@@ -46,7 +46,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -838,7 +837,7 @@ public final class LobbyRuntimeGameTest {
                         .thenExecute(() -> {
                             connection = new RecordingConnection(); channel = new EmbeddedChannel(connection); acknowledged = Integer.MIN_VALUE;
                             acknowledgedChunkBatches = 0;
-                            player = prepare.spawnPlayer(connection, CommonListenerCookie.createInitial(profile, false)); prepare.close(); acknowledge();
+                            player = prepare.spawnPlayer(connection, TestClients.cookie(profile)); prepare.close(); acknowledge();
                             test.assertTrue(player.level() == LobbyWorld.open(server).holdingLevel() && PlayerProfiles.isLocked(player), "Native login starts in real profile quarantine");
                         }).thenWaitUntil(() -> await(profiles.isReady(profile.id(), round()), "Real profile journal ready: " + profile.name()));
             }
