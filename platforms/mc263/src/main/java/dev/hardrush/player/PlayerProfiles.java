@@ -529,7 +529,13 @@ public final class PlayerProfiles implements AutoCloseable {
                 && isLocked(player);
     }
 
-    public void onLogin(ServerPlayer player) {
+    public void onLogin(ServerPlayer player) { suspend(player, true); }
+
+    /**
+     * Quarantines the player's current body in the lobby. {@code fromLogin} distinguishes a real
+     * (re)connection from an online player being re-suspended by a round change or respawn.
+     */
+    private void suspend(ServerPlayer player, boolean fromLogin) {
         requireMainThread();
         var tagged = (ProfileTagged) player;
         var source = tagged.hardrush$generation();
@@ -544,6 +550,7 @@ public final class PlayerProfiles implements AutoCloseable {
         // native menu removal must not drop or return another copy while that suspension is retained.
         closeSuspendedContainer(player);
         var entry = new Entry(player, source, wasIsolated, original);
+        entry.fromLogin = fromLogin;
         players.put(player.getUUID(), entry);
         tagged.hardrush$isolated(true);
         tagged.hardrush$respawnPermitted(false);
@@ -911,7 +918,7 @@ public final class PlayerProfiles implements AutoCloseable {
         var entry = players.get(previous.getUUID());
         if (round.rules().mode() != GameMode.NORMAL || entry == null || entry.player != previous || !entry.admitted && !entry.deathScreenPermit
                 || !generation(round).equals(entry.target)) {
-            onLogin(replacement);
+            suspend(replacement, false);
             moveToLobby(replacement);
             return;
         }
@@ -1029,7 +1036,7 @@ public final class PlayerProfiles implements AutoCloseable {
                 endBuilding(entry);
             }
             if (entry.target != null && !entry.target.equals(target)) {
-                onLogin(entry.player);
+                suspend(entry.player, false);
                 entry = players.get(entry.player.getUUID());
                 moveToLobby(entry.player);
             }
@@ -1433,7 +1440,7 @@ public final class PlayerProfiles implements AutoCloseable {
             else applyLobbyMode(player);
             return;
         }
-        onLogin(player);
+        suspend(player, false);
         var suspended = players.get(player.getUUID());
         // Session failure can stop tick(). Save the captured same-generation survival state immediately,
         // so a normal stop while quarantined cannot discard the player's latest inventory or coordinates.
@@ -1518,7 +1525,8 @@ public final class PlayerProfiles implements AutoCloseable {
             }
             try {
                 resetForNewRound(entry.player, target);
-                if (entry.source.isPresent() && !entry.source.get().equals(target)) {
+                // Online players already saw the round end broadcast; only a real login missed it.
+                if (entry.fromLogin && entry.source.isPresent() && !entry.source.get().equals(target)) {
                     dev.hardrush.notice.Notices.personal(entry.player, "你离线期间上一轮已结束，上一轮的物品已封存。现在是第 "
                             + dev.hardrush.notice.Notices.key(target.sequence()) + " 轮");
                 }
@@ -1803,6 +1811,8 @@ public final class PlayerProfiles implements AutoCloseable {
         final Optional<ProfileJournal.Generation> source;
         final boolean wasIsolated;
         final CompoundTag original;
+        /** Created by a real (re)connection rather than an in-session re-suspension. */
+        boolean fromLogin;
         ProfileJournal.Generation target;
         CompoundTag resume;
         boolean connected = true;
