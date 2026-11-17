@@ -20,7 +20,6 @@ import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.clock.WorldClocks;
@@ -151,7 +150,7 @@ public final class HardRushWorldBoundaryGameTest {
         prepare.start(packet -> {});
         test.startSequence().thenWaitUntil(() -> test.assertTrue(prepare.tick(), "Native login spawn preparation is ready"))
                 .thenExecute(() -> {
-                    var cookie = CommonListenerCookie.createInitial(profile, false);
+                    var cookie = TestClients.cookie(profile);
                     var connection = new Connection(PacketFlow.SERVERBOUND);
                     var channel = new EmbeddedChannel(connection);
                     var reconnectFixture = new ServerPlayer[1];
