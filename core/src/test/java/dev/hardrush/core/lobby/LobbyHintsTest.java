@@ -43,17 +43,17 @@ class LobbyHintsTest {
 
     @Test void aSupersededAnswerIsWithdrawnOnlyWhileItStillSaysTheSame() {
         var hints = new LobbyHints();
-        hints.offerWhenUncovered("notice", LobbyHints.Priority.NOTICE, "服务器正忙", 3_000, () -> true);
-        hints.withdraw("notice", "服务器正忙");
         hints.offerWhenUncovered("notice", LobbyHints.Priority.NOTICE, "背包满了", 3_000, () -> false);
         hints.withdraw("notice", "服务器正忙");
         assertEquals(Optional.of("背包满了"), hints.render(0, false), "A newer line from the same source is kept");
         hints.withdraw("notice", "背包满了");
         assertEquals(Optional.empty(), hints.render(1, true), "A shown line is withdrawn too");
         var waiting = new LobbyHints();
-        waiting.offerWhenUncovered("notice", LobbyHints.Priority.NOTICE, "服务器正忙", 3_000, () -> true);
+        var covered = new java.util.concurrent.atomic.AtomicBoolean(true);
+        waiting.offerWhenUncovered("notice", LobbyHints.Priority.NOTICE, "服务器正忙", 3_000, covered::get);
         waiting.withdraw("notice", "服务器正忙");
-        assertEquals(Optional.empty(), waiting.render(0, true), "A waiting line never surfaces once withdrawn");
+        covered.set(false);
+        assertEquals(Optional.empty(), waiting.render(0, true), "A waiting line never surfaces once withdrawn, even uncovered");
     }
 
     @Test void itemFlashOutranksAmbientGuidanceButNotProgressAndIsSentOnce() {
