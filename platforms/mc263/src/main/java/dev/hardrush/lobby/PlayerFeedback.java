@@ -55,6 +55,7 @@ public final class PlayerFeedback {
         if (recovery) text = "比赛已暂停 · 等待管理员处理";
         else if (rescue) text = (round.awaitingReconnect() ? "人类全部离线 · 等待重连或救场" : "救场 · 祭坛复生或集结区加入")
                 + " · " + Notices.key((round.remainingPhaseMillis() + 999) / 1000) + " 秒";
+        else if (displaying && round.result().kind() == RoundResult.Kind.FAILED) text = "挑战失败，等待下一局";
         else text = displaying ? RoundResultText.stageLabel(round.result(), celebrating ? "通关庆祝" : "挑战成功") : "";
         stageBar.setName(Notices.bar(text));
         long total = rescue ? round.rules().combatValues().get("round.rescueMillis").longValue() : completed
