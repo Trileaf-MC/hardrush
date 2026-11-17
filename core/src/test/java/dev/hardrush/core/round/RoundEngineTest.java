@@ -105,7 +105,7 @@ class RoundEngineTest {
         assertEquals(5_000, engine.view().challengeMillis());
         assertEquals(RoundPhase.RESCUE, engine.view().phase());
         assertTrue(engine.view().awaitingReconnect());
-        assertEquals(10_000, engine.view().remainingPhaseMillis());
+        assertEquals(130_000, engine.view().remainingPhaseMillis());
         assertEquals(ParticipantRole.HUMAN_ACTIVE, engine.view().participants().get(A).role());
         apply(engine, engine.proposeOnline(UUID.randomUUID(), A, "Alice", true));
         assertEquals(RoundPhase.RUNNING, engine.view().phase());

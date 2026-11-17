@@ -1271,7 +1271,9 @@ public final class RoundSession implements AutoCloseable {
             // A newly admitted life deliberately remains offline until the profile adapter unlocks it.
             if (participant.role() == dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE && !participant.online() && connected) continue;
             if (restoredReady.contains(participant.id()) && !participant.online() && connected) continue;
-            if (participant.online() != connected || connected && !participant.name().equals(name)) {
+            // A life that left while still entering is no longer present; its admission will not come.
+            if (participant.online() != connected || participant.entering() && !connected
+                    || connected && !participant.name().equals(name)) {
                 submit(engine.proposeOnline(UUID.randomUUID(), participant.id(),
                         connected ? name : participant.name(), connected));
                 return;
