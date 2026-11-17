@@ -16,7 +16,9 @@ import net.minecraft.world.phys.AABB;
  * World → {@link LobbyPlan}: reads marker armor stands and entity triggers inside an area, resolves them by the
  * position rules of design 4.2 and 5, applies the acceptance rules that need the world ({@link PlanWorldChecks}), finds the content's
  * tight bounds and finally runs {@link LobbyPlanValidator}. The caller must have loaded every chunk of {@code area}
- * including its entity sections ({@link ChunkWarmup}); the scan runs in one call.
+ * including its entity sections ({@link ChunkWarmup}) and keep them loaded until the scan ends. The block scan is the
+ * expensive part, so {@link #begin} spreads it over ticks a chunk column at a time ({@link Scan}); {@link #scan} runs
+ * it all in one call.
  */
 public final class MarkerScan {
     /**
@@ -30,9 +32,66 @@ public final class MarkerScan {
 
     private MarkerScan() {}
 
-    /** {@code bottomY}: blocks below it do not count toward the bounds (imported saves, design 19.1). */
+    /** {@link #begin} run to the end in one call. */
     public static ScanResult scan(ServerLevel level, Box area, OptionalInt bottomY, int maxHorizontalSize) {
-        return new Run(level, area, bottomY, false).scan(maxHorizontalSize);
+        var scan = begin(level, area, bottomY, maxHorizontalSize);
+        while (!scan.step(Long.MAX_VALUE)) { }
+        return scan.result();
+    }
+
+    /** {@code bottomY}: blocks below it do not count toward the bounds (imported saves, design 19.1). */
+    public static Scan begin(ServerLevel level, Box area, OptionalInt bottomY, int maxHorizontalSize) {
+        return new Scan(new Run(level, area, bottomY, false), maxHorizontalSize);
+    }
+
+    /**
+     * A publish scan advanced by {@link #step}: the non-air blocks a chunk column at a time, then in one last step the
+     * markers, triggers and entities, the floods and the acceptance checks. Those read the world as it is in that last
+     * step, so markers moved meanwhile are seen where they ended up; the flood search is capped at
+     * {@link FloodFill#LIMIT} cells, so that step stays bounded.
+     */
+    public static final class Scan {
+        private final Run run;
+        private final int maxHorizontalSize;
+        private final int minCx, minCz, columnsZ, total;
+        private int scanned;
+        private ScanResult result;
+
+        private Scan(Run run, int maxHorizontalSize) {
+            this.run = run;
+            this.maxHorizontalSize = maxHorizontalSize;
+            minCx = run.area.min().x() >> 4;
+            minCz = run.area.min().z() >> 4;
+            columnsZ = (run.area.max().z() >> 4) - minCz + 1;
+            total = ((run.area.max().x() >> 4) - minCx + 1) * columnsZ;
+        }
+
+        /**
+         * Scans chunk columns until {@code budgetNanos} is spent (always at least one), or, once all are scanned,
+         * resolves the markers. True once {@link #result} is ready; further calls do nothing.
+         */
+        public boolean step(long budgetNanos) {
+            if (result != null) return true;
+            if (scanned == total) {
+                result = run.finish(maxHorizontalSize);
+                return true;
+            }
+            long started = System.nanoTime();
+            do {
+                run.column(minCx + scanned / columnsZ, minCz + scanned % columnsZ);
+                scanned++;
+            } while (scanned < total && System.nanoTime() - started < budgetNanos);
+            return false;
+        }
+
+        /** Chunk columns scanned so far, out of {@link #total}. */
+        public int scanned() { return scanned; }
+        public int total() { return total; }
+
+        public ScanResult result() {
+            if (result == null) throw new IllegalStateException("scan not finished");
+            return result;
+        }
     }
 
     /**
@@ -41,7 +100,7 @@ public final class MarkerScan {
      * the content bounds are unknown, so bounds problems are left to the publish scan. The plan is never null.
      */
     public static ScanResult preview(ServerLevel level, Box area, int maxHorizontalSize) {
-        return new Run(level, area, OptionalInt.empty(), true).scan(maxHorizontalSize);
+        return new Run(level, area, OptionalInt.empty(), true).finish(maxHorizontalSize);
     }
 
     /** A flood marker's floor as the light check sees it: loaded chunks inside {@code area} only. */
@@ -83,8 +142,8 @@ public final class MarkerScan {
             this.level = level; this.area = area; this.bottomY = bottomY; this.preview = preview;
         }
 
-        ScanResult scan(int maxHorizontalSize) {
-            if (!preview) blocks();
+        /** Everything after the block scan: the preview's whole run, a publish scan's last step. */
+        ScanResult finish(int maxHorizontalSize) {
             for (var entity : entities()) entity(entity);
             if (preview) {
                 var plan = new LobbyPlan(bounds == null ? new Box(area.min(), area.min()) : bounds, triggers, models, points, zones, altarLights, texts);
@@ -101,28 +160,35 @@ public final class MarkerScan {
             return new ScanResult(plan, problems, bounds);
         }
 
-        /** Non-air blocks, a chunk section at a time; all-air sections are skipped without reading a block. */
-        void blocks() {
+        /**
+         * The non-air blocks of one chunk column, a section at a time; all-air sections are skipped without reading a
+         * block. Only their extent matters, so it is folded into the bounds once per column.
+         */
+        void column(int cx, int cz) {
             int minY = Math.max(area.min().y(), bottomY.orElse(Integer.MIN_VALUE));
             int maxY = area.max().y();
             if (minY > maxY) return;
-            for (int cx = area.min().x() >> 4; cx <= area.max().x() >> 4; cx++)
-                for (int cz = area.min().z() >> 4; cz <= area.max().z() >> 4; cz++) {
-                    var chunk = level.getChunkSource().getChunkNow(cx, cz);
-                    if (chunk == null) throw new IllegalStateException("区块未加载：" + cx + " " + cz);
-                    int x0 = Math.max(area.min().x(), cx << 4), x1 = Math.min(area.max().x(), (cx << 4) + 15);
-                    int z0 = Math.max(area.min().z(), cz << 4), z1 = Math.min(area.max().z(), (cz << 4) + 15);
-                    int fromSection = Math.max(level.getMinSectionY(), minY >> 4), toSection = Math.min(level.getMaxSectionY(), maxY >> 4);
-                    for (int sy = fromSection; sy <= toSection; sy++) {
-                        var section = chunk.getSection(level.getSectionIndexFromSectionY(sy));
-                        if (section.hasOnlyAir()) continue;
-                        int y0 = Math.max(minY, sy << 4), y1 = Math.min(maxY, (sy << 4) + 15);
-                        for (int y = y0; y <= y1; y++)
-                            for (int z = z0; z <= z1; z++)
-                                for (int x = x0; x <= x1; x++)
-                                    if (!section.getBlockState(x & 15, y & 15, z & 15).isAir()) include(new Cell(x, y, z));
-                    }
-                }
+            var chunk = level.getChunkSource().getChunkNow(cx, cz);
+            if (chunk == null) throw new IllegalStateException("区块未加载：" + cx + " " + cz);
+            int x0 = Math.max(area.min().x(), cx << 4), x1 = Math.min(area.max().x(), (cx << 4) + 15);
+            int z0 = Math.max(area.min().z(), cz << 4), z1 = Math.min(area.max().z(), (cz << 4) + 15);
+            int fromSection = Math.max(level.getMinSectionY(), minY >> 4), toSection = Math.min(level.getMaxSectionY(), maxY >> 4);
+            int loX = Integer.MAX_VALUE, loY = Integer.MAX_VALUE, loZ = Integer.MAX_VALUE;
+            int hiX = Integer.MIN_VALUE, hiY = Integer.MIN_VALUE, hiZ = Integer.MIN_VALUE;
+            for (int sy = fromSection; sy <= toSection; sy++) {
+                var section = chunk.getSection(level.getSectionIndexFromSectionY(sy));
+                if (section.hasOnlyAir()) continue;
+                int y0 = Math.max(minY, sy << 4), y1 = Math.min(maxY, (sy << 4) + 15);
+                for (int y = y0; y <= y1; y++)
+                    for (int z = z0; z <= z1; z++)
+                        for (int x = x0; x <= x1; x++)
+                            if (!section.getBlockState(x & 15, y & 15, z & 15).isAir()) {
+                                loX = Math.min(loX, x); hiX = Math.max(hiX, x);
+                                loY = Math.min(loY, y); hiY = Math.max(hiY, y);
+                                loZ = Math.min(loZ, z); hiZ = Math.max(hiZ, z);
+                            }
+            }
+            if (loX != Integer.MAX_VALUE) include(new Box(new Cell(loX, loY, loZ), new Cell(hiX, hiY, hiZ)));
         }
 
         /** Non-player entities whose position is inside the area, in a stable order for stable problem lists. */
