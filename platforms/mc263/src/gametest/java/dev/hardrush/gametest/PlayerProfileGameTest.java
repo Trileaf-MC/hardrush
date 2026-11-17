@@ -19,7 +19,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -489,7 +488,7 @@ public final class PlayerProfileGameTest {
     public void loginCaptureBeforeConnectionHasNoNetworkingDependency(GameTestHelper test) {
         if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var server = test.getLevel().getServer();
-        var player = new ServerPlayer(server, test.getLevel(), new GameProfile(UUID.randomUUID(), "profile-login-test"), ClientInformation.createDefault());
+        var player = new ServerPlayer(server, test.getLevel(), new GameProfile(UUID.randomUUID(), "profile-login-test"), TestClients.information());
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
         fixtureStanding(test, position);
         var profiles = new PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT)
@@ -970,7 +969,7 @@ public final class PlayerProfileGameTest {
         var server = test.getLevel().getServer();
         var identity = UUID.randomUUID();
         var profile = new GameProfile(identity, "profile-pending-world");
-        var player = new ServerPlayer(server, test.getLevel(), profile, ClientInformation.createDefault());
+        var player = new ServerPlayer(server, test.getLevel(), profile, TestClients.information());
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
         var generation = new ProfileJournal.Generation(round.roundId(), 1);
@@ -1017,7 +1016,7 @@ public final class PlayerProfileGameTest {
                     var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
                     new io.netty.channel.embedded.EmbeddedChannel(connection);
                     dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player,
-                            net.minecraft.server.network.CommonListenerCookie.createInitial(profile, false)));
+                            TestClients.cookie(profile)));
                     ((ProfileTagged) player).hardrush$isolated(true);
                     profiles.onConnected(player);
                     profiles.tick(round);

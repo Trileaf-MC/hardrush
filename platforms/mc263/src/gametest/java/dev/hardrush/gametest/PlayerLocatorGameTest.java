@@ -16,7 +16,6 @@ import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket;
 import net.minecraft.server.level.ChunkTrackingView;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.GameType;
@@ -163,7 +162,7 @@ public final class PlayerLocatorGameTest {
             };
             channel = new EmbeddedChannel(connection);
             player.connection = new ServerGamePacketListenerImpl(player.level().getServer(), connection, player,
-                    CommonListenerCookie.createInitial(player.getGameProfile(), false));
+                    TestClients.cookie(player.getGameProfile()));
         }
         boolean saw(UUID source, String operation) {
             return packets.stream().anyMatch(packet -> packet.waypoint().id().left().filter(source::equals).isPresent()

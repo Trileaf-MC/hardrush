@@ -11,8 +11,6 @@ import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.server.level.ClientInformation;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.core.BlockPos;
@@ -615,11 +613,11 @@ public final class MonsterRoleGameTest {
         int center=1000+ARENA.getAndIncrement()*24;
         var server=test.getLevel().getServer();
         var profile=new GameProfile(java.util.UUID.randomUUID(),"HRRole"+center);
-        var player=new ServerPlayer(server,test.getLevel(),profile,ClientInformation.createDefault());
+        var player=new ServerPlayer(server,test.getLevel(),profile,TestClients.information());
         var connection=new SinkConnection();
         CHANNELS.put(player.getUUID(),new EmbeddedChannel(connection));
         dev.hardrush.gametest.UnmanagedProfileFixtures.run(() ->
-                server.getPlayerList().placeNewPlayer(connection,player,CommonListenerCookie.createInitial(profile,false)));
+                server.getPlayerList().placeNewPlayer(connection,player,TestClients.cookie(profile)));
         for(int dx=-6;dx<=6;dx++)for(int dz=-6;dz<=6;dz++) {
             test.getLevel().setBlockAndUpdate(new BlockPos(center+dx,149,dz),Blocks.SMOOTH_STONE.defaultBlockState());
             for(int y=150;y<=154;y++)test.getLevel().setBlockAndUpdate(new BlockPos(center+dx,y,dz),Blocks.AIR.defaultBlockState());
