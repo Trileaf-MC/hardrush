@@ -14,6 +14,7 @@ import dev.hardrush.core.round.RoundTransition;
 import dev.hardrush.core.round.MonsterRole;
 import dev.hardrush.core.round.MonsterSkill;
 import dev.hardrush.core.round.MonsterDimension;
+import dev.hardrush.core.round.Participant;
 import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.DragonDeathArbiter;
 import dev.hardrush.core.round.RoundDeath;
@@ -86,6 +87,8 @@ public final class RoundSession implements AutoCloseable {
     private final CompletableFuture<Loaded> opening;
     private final Map<UUID, String> online = new LinkedHashMap<>();
     private final Map<UUID, Integer> requestedRespawns = new LinkedHashMap<>();
+    // The newest connection report each player still has waiting in {@link #events}; see onOnline.
+    private final Map<UUID, ConnectionReport> queuedConnections = new LinkedHashMap<>();
     // Assigned and used only by the single IO worker.
     private SqliteRoundStore store;
     private State state = State.OPENING;
@@ -751,7 +754,7 @@ public final class RoundSession implements AutoCloseable {
         engine = RoundEngine.restoreForRecovery(loaded.snapshot(), this::engineTime);
         nextRules = loaded.nextRules();
         endEntrants = loaded.endEntrants();
-        events.clear(); queuedDamage.clear(); requestedRespawns.clear(); deathBatches.clear(); capturedDeaths.clear();
+        events.clear(); queuedConnections.clear(); queuedDamage.clear(); requestedRespawns.clear(); deathBatches.clear(); capturedDeaths.clear();
         terminalCandidate = null; firstDragonId = null; terminalQueued = false;
         evidenceFailure = null; failureBoundary = null; adminBoundary = null;
         recoveringCountdown = false; adaptersReady = false; unsupportedPhase = true;
@@ -1143,8 +1146,29 @@ public final class RoundSession implements AutoCloseable {
         if (recoveringCountdown || awaitingProof) return;
         if (adaptersReady && engine != null && (engine.committed().participants().containsKey(playerId)
                 || pendingTransition != null && pendingTransition.after().participants().containsKey(playerId))) {
-            enqueue(e -> e.proposeOnline(UUID.randomUUID(), playerId, name, connected));
+            enqueueConnection(playerId, new ConnectionReport(name, connected));
         }
+    }
+
+    /**
+     * Adapters may repeat the same connection report every tick (for example while a held death keeps the profile
+     * locked), so a report that would not change what the engine is heading to is dropped instead of filling the
+     * critical event queue while a commit is slow. Distinct reports, such as a quick leave and rejoin, still queue in
+     * order because a deployed monster's disconnect ends its sortie.
+     */
+    private void enqueueConnection(UUID playerId, ConnectionReport report) {
+        var queued = queuedConnections.get(playerId);
+        if (queued != null ? queued.sameAs(report) : events.isEmpty() && report.matches(projected().participants().get(playerId))) return;
+        queuedConnections.put(playerId, report);
+        if (!enqueueAt(clock.nanoTime(), e -> {
+            if (queuedConnections.get(playerId) == report) queuedConnections.remove(playerId);
+            return e.proposeOnline(UUID.randomUUID(), playerId, report.name(), report.connected());
+        }) && queuedConnections.get(playerId) == report) queuedConnections.remove(playerId);
+    }
+
+    /** The participants the engine reaches once the in-flight transition commits; queued events are not included. */
+    private RoundSnapshot projected() {
+        return pendingTransition != null ? pendingTransition.after() : engine.committed();
     }
 
     public void normalDeath(UUID playerId, int lifeSequence) {
@@ -1490,5 +1514,16 @@ public final class RoundSession implements AutoCloseable {
     private static String modeName(GameMode mode) { return mode == GameMode.HARDCORE ? "极限" : "普通"; }
     private record Loaded(RoundSnapshot snapshot, RulesConfig nextRules, boolean fresh, long endEntrants) {}
     private record QueuedEvent(long time, Function<RoundEngine, RoundTransition> action) {}
+
+    /** Compared by identity in {@link #queuedConnections}: equal reports may be queued more than once. */
+    private record ConnectionReport(String name, boolean connected) {
+        boolean sameAs(ConnectionReport other) {
+            return connected == other.connected && (!connected || name.equals(other.name));
+        }
+
+        boolean matches(Participant participant) {
+            return participant != null && participant.online() == connected && (!connected || participant.name().equals(name));
+        }
+    }
     @FunctionalInterface private interface IoAction<T> { T run() throws Exception; }
 }
