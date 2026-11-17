@@ -1522,7 +1522,9 @@ public final class RoundSession implements AutoCloseable {
         }
 
         boolean matches(Participant participant) {
-            return participant != null && participant.online() == connected && (!connected || participant.name().equals(name));
+            // A life still entering is present though not online: its disconnect is news to the engine.
+            return participant != null && (connected ? participant.online() && participant.name().equals(name)
+                    : !participant.connected());
         }
     }
     @FunctionalInterface private interface IoAction<T> { T run() throws Exception; }
