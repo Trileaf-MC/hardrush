@@ -6,13 +6,12 @@ import dev.hardrush.protection.ProtectionRuntime;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.core.api.DamagePort.AttackKind;
 import dev.hardrush.core.combat.CombatOrigin;
+import dev.hardrush.core.combat.CombatOriginCodec;
+import dev.hardrush.combat.MonsterCombatRuntime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
@@ -20,7 +19,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -82,14 +80,11 @@ public final class MonsterSoulcatcher {
     private static final List<String> TRANSIENT = List.of("UUID", "Pos", "Motion", "Rotation", "Passengers", "leash",
             "fall_distance", "FallDistance", "OnGround", "hardrush_monster_source", "hardrush_combat_origin");
     /**
-     * Which release of which outing let this creature out: {@code owner/number/binding}. Descendants of a
-     * companion carry their ancestor's release; caught again and let out, a creature takes a new number.
+     * Whom this creature's kills are credited to: the encoded combat origin of the owner's formal identity
+     * when the bag let it out. Descendants of a companion carry their ancestor's; caught again and let out
+     * by anyone, a creature takes that releaser's.
      */
-    private static final String RELEASE = "hardrush.soul-release=";
-    /** The outing's binding and the number of its latest release, per owner. */
-    private record Releases(String binding, long latest) {}
-    private record Release(UUID owner, long number, String binding) {}
-    private static final Map<UUID, Releases> RELEASES = new HashMap<>();
+    private static final String RELEASE = "hardrush.soul-credit=";
 
     private MonsterSoulcatcher() {}
 
@@ -287,12 +282,10 @@ public final class MonsterSoulcatcher {
         if (rule(mob).map(Catch::companion).orElse(false)) MonsterCompanions.adopt(player, mob);
         else MonsterCompanions.release(mob);
         mob.setPersistenceRequired();
-        var binding = MonsterRoles.binding(player);
-        var previous = RELEASES.get(player.getUUID());
-        var releases = new Releases(binding, previous != null && previous.binding().equals(binding) ? previous.latest() + 1 : 1);
-        setRelease(mob, player.getUUID() + "/" + releases.latest() + "/" + binding);
+        var credit = CombatRuntime.originOf(mob).or(() -> MonsterCombatRuntime.formalOrigin(mob, player, AttackKind.SUMMON));
+        if (credit.isPresent()) setRelease(mob, CombatOriginCodec.encode(credit.get()));
+        else clearRelease(mob);
         if (!level.addFreshEntity(mob)) { mob.discard(); return false; }
-        RELEASES.put(player.getUUID(), releases);
         if (!stack.isEmpty()) mutable.tryInsert(stack);
         bag.set(DataComponents.BUNDLE_CONTENTS, mutable.toImmutable());
         level.playSound(null, mob.getX(), mob.getY(), mob.getZ(), SoundEvents.BUNDLE_REMOVE_ONE, SoundSource.PLAYERS, 1, 0.8F);
@@ -305,29 +298,14 @@ public final class MonsterSoulcatcher {
 
 
     /**
-     * The revival kill credit of damage a released creature deals. The bag only vouches for the latest
-     * releases, as many as it holds now: a creature (or a companion's descendant) among the owner's last
-     * {@code capacity} releases of the current outing credits its owner, whether it is a companion or an
-     * ordinary creature; an older one, or one whose outing has ended, credits no one. Damage that did not
-     * come from a released creature keeps its own provenance.
+     * The revival kill credit of damage a released creature deals: every creature the bag let out credits
+     * the identity its owner had at the release, however many were let out since and even after that outing
+     * ended (death, recall, a pause); the round decides whether that owner can still be paid. A companion's
+     * sealed origin already names that identity. Damage that did not come from a released creature keeps
+     * its own provenance.
      */
-    public static Optional<CombatOrigin> killCredit(ServerLevel level, DamageSource source, Optional<CombatOrigin> origin) {
-        var creature = release(source.getEntity()).isPresent() ? source.getEntity() : source.getDirectEntity();
-        var release = release(creature).orElse(null);
-        if (release == null) return origin;
-        var owner = level.getServer().getPlayerList().getPlayer(release.owner());
-        var releases = owner == null ? null : RELEASES.get(owner.getUUID());
-        if (owner == null || releases == null || !releases.binding().equals(release.binding())
-                || !release.binding().equals(MonsterRoles.binding(owner))
-                || !counts(release.number(), releases.latest(), capacity(owner))) return Optional.empty();
-        // A companion keeps its sealed creation identity; an ordinary creature borrows its owner's present one.
-        return origin.filter(value -> value.actor().playerId().equals(owner.getUUID()))
-                .or(() -> CombatRuntime.ownerOrigin(level, owner, AttackKind.SUMMON, Optional.of(creature.getUUID())));
-    }
-
-    /** Whether release {@code number} is among the latest {@code capacity} releases up to {@code latest}. */
-    static boolean counts(long number, long latest, int capacity) {
-        return number > 0 && number <= latest && number > latest - capacity;
+    public static Optional<CombatOrigin> killCredit(DamageSource source, Optional<CombatOrigin> origin) {
+        return origin.isPresent() ? origin : release(source.getEntity()).or(() -> release(source.getDirectEntity()));
     }
 
     /** A companion's descendant (infection, conversion, split, an evoker's vex) shares its ancestor's release. */
@@ -339,8 +317,6 @@ public final class MonsterSoulcatcher {
 
     static void clearRelease(Entity entity) { entity.entityTags().removeIf(tag -> tag.startsWith(RELEASE)); }
 
-    public static void clear() { RELEASES.clear(); }
-
     private static void setRelease(Entity entity, String value) {
         clearRelease(entity);
         entity.entityTags().add(RELEASE + value);
@@ -351,13 +327,8 @@ public final class MonsterSoulcatcher {
         return null;
     }
 
-    private static Optional<Release> release(Entity entity) {
+    private static Optional<CombatOrigin> release(Entity entity) {
         var value = entity == null ? null : releaseTag(entity);
-        if (value == null) return Optional.empty();
-        var fields = value.split("/", 3);
-        try {
-            return fields.length == 3 ? Optional.of(new Release(UUID.fromString(fields[0]), Long.parseLong(fields[1]), fields[2]))
-                    : Optional.empty();
-        } catch (IllegalArgumentException malformed) { return Optional.empty(); }
+        return value == null ? Optional.empty() : CombatOriginCodec.decode(value);
     }
 }

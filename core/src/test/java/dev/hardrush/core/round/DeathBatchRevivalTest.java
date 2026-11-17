@@ -158,8 +158,19 @@ class DeathBatchRevivalTest {
         }
     }
 
+    @Test void aCreatureLeftBehindStillPaysItsOwnerAfterTheOutingEnded() {
+        // A soulcatcher creature keeps its owner's identity from the release; the owner has since died.
+        var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), monster(true, false));
+        apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
+        var released = origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON);
+        apply(engine, batch(engine, death(engine, monster, origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.MELEE))));
+        assertEquals(ParticipantRole.MONSTER_LOBBY, engine.view().participants().get(monster).role());
+        apply(engine, batch(engine, creditedDeath(engine, other, null, released)));
+        assertEquals(1, engine.view().participants().get(monster).revivalCharges());
+    }
+
     @Test void theKillCreditNotTheLethalSourceDecidesTheReward() {
-        // A soulcatcher creature outside its owner's latest releases: the lethal hit carries no credit.
+        // A lethal hit whose credit the adapter resolved to no one pays no one, whatever its own source.
         var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), monster(true, false));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         apply(engine, batch(engine, creditedDeath(engine, other, origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON), null)));
