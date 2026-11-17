@@ -36,14 +36,17 @@ import net.minecraft.world.BossEvent;
 
 /**
  * Publishing a draft (design 11.5), spread over ticks: load every chunk of the build range with its entities, scan
- * markers into a plan and check it, capture one tile per tick, list what installing would strip, wait for the
- * publisher to confirm the authors, then write {@code hardrush/lobby/packs/<id>-v<version>.hrlobby} on the IO thread.
+ * its blocks a few milliseconds per tick, resolve the markers into a plan and check it, capture one tile per tick, list
+ * what installing would strip, wait for the publisher to confirm the authors, then write
+ * {@code hardrush/lobby/packs/<id>-v<version>.hrlobby} on the IO thread.
  * Any failure, or the draft being deleted, ends the job and drops its chunk tickets.
  */
 final class PublishJob {
     enum Stage { LOADING, SCANNING, CAPTURING, CONFIRM, WRITING, DONE, FAILED }
     static final long LOAD_TIMEOUT_NANOS = TimeUnit.MINUTES.toNanos(5);
     static final long CONFIRM_TIMEOUT_NANOS = TimeUnit.MINUTES.toNanos(10);
+    /** Server-thread time the block scan may take per tick; a terrain-heavy 256×256 draft then spreads over seconds. */
+    static final long SCAN_BUDGET_NANOS = TimeUnit.MILLISECONDS.toNanos(5);
     /** Problems listed at most, then "还有 N 条". */
     static final int SHOWN_PROBLEMS = 10;
 
@@ -58,6 +61,7 @@ final class PublishJob {
     private final ChunkWarmup chunks;
     private long stageStarted = System.nanoTime();
     private Stage stage = Stage.LOADING;
+    private MarkerScan.Scan scanning;
     private MarkerScan.ScanResult scan;
     private List<TileKey> keys;
     private final Map<TileKey, CompoundTag> tiles = new LinkedHashMap<>();
@@ -90,10 +94,14 @@ final class PublishJob {
         switch (stage) {
             case LOADING -> {
                 if (System.nanoTime() - stageStarted > LOAD_TIMEOUT_NANOS) { fail("加载草稿区块超时（" + chunks.pending() + "）"); return; }
-                if (chunks.tick()) next(Stage.SCANNING);
+                if (chunks.tick()) {
+                    scanning = MarkerScan.begin(level, range, bottomY, maxSize);
+                    next(Stage.SCANNING);
+                }
             }
             case SCANNING -> {
-                scan = MarkerScan.scan(level, range, bottomY, maxSize);
+                if (!scanning.step(SCAN_BUDGET_NANOS)) return;
+                scan = scanning.result();
                 var problems = scan.problems();
                 for (var p : problems) if (p.severity() == Severity.WARNING) warnings.add(p.message());
                 if (scan.hasErrors()) {
@@ -176,7 +184,7 @@ final class PublishJob {
     String progress() {
         return switch (stage) {
             case LOADING -> "加载区块 · " + chunks.pending();
-            case SCANNING -> "检查标记";
+            case SCANNING -> "检查标记 " + scanning.scanned() + " / " + scanning.total();
             case CAPTURING -> "打包 " + captured + " / " + keys.size();
             case CONFIRM -> "等待确认作者";
             case WRITING -> "写入文件";
@@ -188,8 +196,8 @@ final class PublishJob {
     float fraction() {
         return switch (stage) {
             case LOADING -> .05f;
-            case SCANNING -> .1f;
-            case CAPTURING -> .1f + .8f * captured / Math.max(1, keys.size());
+            case SCANNING -> .05f + .1f * scanning.scanned() / Math.max(1, scanning.total());
+            case CAPTURING -> .15f + .75f * captured / Math.max(1, keys.size());
             case CONFIRM, WRITING -> .95f;
             case DONE, FAILED -> 1f;
         };

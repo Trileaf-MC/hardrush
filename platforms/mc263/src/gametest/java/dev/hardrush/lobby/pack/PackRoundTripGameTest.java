@@ -209,6 +209,19 @@ public final class PackRoundTripGameTest {
         var history = plan.triggers(HISTORY);
         test.assertTrue(history.size() == 1 && history.getFirst().block() == null, "The tagged item display is an entity trigger: " + history);
 
+        // The publish scan spread over steps: with no time budget, one chunk column per step, then the markers.
+        var stepped = MarkerScan.begin(source, AREA, OptionalInt.empty(), MAX_SIZE);
+        test.assertValueEqual(stepped.total(), 9, "The area spans 3×3 chunk columns");
+        int steps = 1;
+        while (!stepped.step(0)) {
+            test.assertValueEqual(stepped.scanned(), steps, "One column per step");
+            steps++;
+        }
+        test.assertValueEqual(steps, 10, "Nine column steps, then the step that resolves the markers");
+        test.assertValueEqual(stepped.result().plan(), plan, "The stepped scan finds the same plan");
+        test.assertValueEqual(stepped.result().problems(), scan.problems(), "The stepped scan reports the same problems");
+        test.assertValueEqual(stepped.result().contentBounds(), scan.contentBounds(), "The stepped scan finds the same bounds");
+
         // Capture and write.
         var bounds = scan.contentBounds();
         var keys = PackCapture.tiles(bounds, OptionalInt.empty());
