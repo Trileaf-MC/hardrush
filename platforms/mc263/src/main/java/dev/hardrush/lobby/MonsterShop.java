@@ -129,11 +129,22 @@ public final class MonsterShop {
         access.session().requestShopPurchase(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
                 offer, price, reply -> {
                     menu.buying = false;
-                    if (player.containerMenu != menu) return;
-                    if (!reply.success()) { dev.hardrush.notice.Notices.hint(player, dev.hardrush.notice.Replies.text(reply, "女巫：这笔交易现在做不了")); sound(player, SoundEvents.VILLAGER_NO); menu.resync(); return; }
+                    if (player.level().getServer().getPlayerList().getPlayer(player.getUUID()) != player) return;
+                    // The answer is told even to a player who already closed the screen; only the screen itself
+                    // needs updating while it is still open. The reason waits for the trading screen to close.
+                    boolean open = player.containerMenu == menu;
+                    if (!reply.success()) {
+                        var reason = dev.hardrush.notice.Replies.text(reply, "女巫：这笔交易现在做不了");
+                        dev.hardrush.notice.Notices.hint(player, reason);
+                        sound(player, SoundEvents.VILLAGER_NO);
+                        if (open) { menu.refusal = reason; menu.resync(); }
+                        return;
+                    }
+                    // A refusal still waiting under this screen is out of date once a retry goes through.
+                    if (open && menu.refusal != null) { dev.hardrush.notice.Notices.withdraw(player, menu.refusal); menu.refusal = null; }
                     sound(player, SoundEvents.WITCH_CELEBRATE);
                     // The witch's cheer, the coin count and the goods' description tell the rest.
-                    menu.afterPurchase();
+                    if (open) menu.afterPurchase();
                 });
     }
 
@@ -200,6 +211,8 @@ public final class MonsterShop {
     public static final class ShopMenu extends MerchantMenu {
         private final Trader trader;
         private boolean buying;
+        /** The last refusal told under this screen, withdrawn if a retry succeeds before the player sees it. */
+        private String refusal;
 
         ShopMenu(int containerId, Inventory inventory, Trader trader) {
             super(containerId, inventory, trader);

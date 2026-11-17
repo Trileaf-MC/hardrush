@@ -104,33 +104,33 @@ public final class Notices {
         text.setLength(0);
     }
 
-    /** T1: a short, personal, immediately useful line. Shares the action bar with the lobby hint arbiter. */
+    /**
+     * T1: a short, personal, immediately useful line. Shares the action bar with the lobby hint arbiter. A screen the
+     * server opened (a chest menu, the witch's trades) covers the bar, so the line waits there without ageing and
+     * shows its full seconds once the player is back in the world; nothing is moved to chat.
+     */
     public static void hint(ServerPlayer player, String markup) {
         if (!online(player)) return;
         var router = LobbyInteractions.get(player.level().getServer()).orElse(null);
         if (router != null) {
-            router.hints(player).offer("notice", LobbyHints.Priority.NOTICE, markup, System.nanoTime() / 1_000_000 + HINT_MILLIS);
+            router.hints(player).offerWhenUncovered("notice", LobbyHints.Priority.NOTICE, markup, HINT_MILLIS,
+                    () -> player.containerMenu != player.inventoryMenu);
         } else player.connection.send(new ClientboundSetActionBarTextPacket(format(markup)));
     }
 
-    /** T1 with the shared rejection sound: the request was understood but cannot be done now. */
+    /**
+     * Takes back a T1 line the player has not seen through yet because a later answer superseded it (a refusal
+     * followed by a successful retry under the same screen). A different line since then is left alone.
+     */
+    public static void withdraw(ServerPlayer player, String markup) {
+        if (!online(player)) return;
+        LobbyInteractions.get(player.level().getServer()).ifPresent(router -> router.hints(player).withdraw("notice", markup));
+    }
+
+    /** T1 with the shared rejection sound: the request was understood but cannot be done now. The sound never waits. */
     public static void refuse(ServerPlayer player, String markup) {
         hint(player, markup);
         if (online(player)) rejectionSound(player);
-    }
-
-    /**
-     * T1 refusal for an answer that lands after the player has moved on to another screen, which covers the action
-     * bar: the rejection sound plays now, and the line waits until the player is back in the world to show its usual
-     * seconds. Without a screen open it behaves like {@link #refuse}.
-     */
-    public static void refuseWhenUncovered(ServerPlayer player, String markup) {
-        if (!online(player)) return;
-        var router = LobbyInteractions.get(player.level().getServer()).orElse(null);
-        if (router == null) { refuse(player, markup); return; }
-        router.hints(player).offerWhenUncovered("notice", LobbyHints.Priority.NOTICE, markup, HINT_MILLIS,
-                () -> player.containerMenu != player.inventoryMenu);
-        rejectionSound(player);
     }
 
     private static void rejectionSound(ServerPlayer player) {

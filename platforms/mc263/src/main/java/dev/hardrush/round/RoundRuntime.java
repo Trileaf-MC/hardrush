@@ -734,7 +734,7 @@ public final class RoundRuntime {
             var status = error == null ? result.status() : HistoryBookService.Status.RETRYABLE_FAILURE;
             if (origin != player.inventoryMenu && player.containerMenu == origin) player.closeContainer();
             if (status == HistoryBookService.Status.DELIVERED || status == HistoryBookService.Status.ALREADY_DELIVERED) pageTurn(player);
-            else manualBookRefusal(status, volume).ifPresent(text -> dev.hardrush.notice.Notices.refuseWhenUncovered(player, text));
+            else manualBookRefusal(status, volume).ifPresent(text -> dev.hardrush.notice.Notices.refuse(player, text));
         });
     }
 
