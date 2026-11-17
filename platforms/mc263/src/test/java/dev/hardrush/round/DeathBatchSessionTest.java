@@ -126,7 +126,7 @@ class DeathBatchSessionTest {
             assertEquals(40_000, session.view().orElseThrow().remainingPhaseMillis());
             clock.addAndGet(TimeUnit.SECONDS.toNanos(39));
             var selection = new AtomicReference<RoundSession.Reply>();
-            session.requestRevivalTotemDrop(round, hunter, 1, 1, 1, selection::set);
+            session.requestMonsterCoinPickup(round, hunter, 1, 1, 1, selection::set);
             assertTrue(session.mutationPending());
             clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
             assertTrue(session.competitionLocked(), "An unrelated pending write must not extend the rescue deadline");

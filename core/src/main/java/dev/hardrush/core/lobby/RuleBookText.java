@@ -40,7 +40,7 @@ public final class RuleBookText {
                     + " 级起，伤害人类会上涨，最高 " + (long) value(rules, MonsterWorth.MAX_LEVEL, 30) + " 级。\n\n被玩家击杀时掉出经验，满 "
                     + (long) value(rules, MonsterWorth.BOOK_MIN_LEVEL, 15) + " 级再掉一本附魔书。");
             pages.add("复生\n\n击杀一名人类获得 1 个复生图腾。有图腾时只能去营地北侧的祭坛复生：站上金块 4 秒，空手回到挑战世界，怪物币清空。\n\n"
-                    + "图腾可以丢给同伴，落地 5 分钟作废。");
+                    + "图腾不能丢弃或转赠。");
             pages.add("救场\n\n所有人类阵亡后进入 " + seconds(value(rules, "round.rescueMillis", 60_000))
                     + " 秒救场：有图腾的怪物可以复生，也可以从集结区加入。");
         }

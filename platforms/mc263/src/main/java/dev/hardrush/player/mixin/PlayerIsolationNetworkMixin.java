@@ -125,9 +125,10 @@ public abstract class PlayerIsolationNetworkMixin {
                     player.connection.ackBlockChangesUpTo(packet.getSequence());
                     player.connection.send(new ClientboundBlockUpdatePacket(player.level(), packet.getPos()));
                 }
-                // Camp currencies are committed before their floor stacks appear.
+                // Monster coins are committed before their floor stacks appear.
                 case DROP_ITEM, DROP_ALL_ITEMS -> {
                     if (CampTransfers.is(player.getInventory().getSelectedItem())) return;
+                    dev.hardrush.lobby.RevivalTotems.refuseThrow(player, player.getInventory().getSelectedItem());
                     player.inventoryMenu.sendAllDataToRemote();
                 }
                 default -> { }

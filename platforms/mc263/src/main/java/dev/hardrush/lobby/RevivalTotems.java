@@ -21,8 +21,8 @@ import net.minecraft.world.item.component.ItemLore;
 
 /**
  * Camp monsters carry their revival charges as native totems. The committed round snapshot stays the
- * only balance: held stacks are re-projected from it, and a thrown stack is spawned only after its
- * charges have durably left the owner. Floor stacks live in memory and expire like vanilla items.
+ * only balance and held stacks are re-projected from it. A totem never leaves its owner: a charge on
+ * the floor would belong to nobody, and the rescue rule only counts charges somebody holds.
  */
 public final class RevivalTotems {
     public static final int MAX_STACK = 99;
@@ -61,19 +61,18 @@ public final class RevivalTotems {
     /** The stack a camp monster holds; its count is the balance capped at {@link #MAX_STACK}. */
     public static ItemStack held(UUID round, int charges, int count) {
         var lore = new java.util.ArrayList<>(List.of(USAGE, "每个图腾复生一次，复生为人类后空手出发",
-                "丢出可送给营地里的其他怪物", "落地 5 分钟无人拾取即作废 · 本轮结束时清空"));
+                "不能丢弃或转赠 · 本轮结束时清空"));
         // Beyond a full stack the item count no longer shows every charge.
         if (charges > MAX_STACK) lore.add(1, "共 " + Notices.key(charges) + " 个");
-        return totem(round, null, count, lore);
+        return totem(round, count, lore);
     }
 
-    static ItemStack thrown(UUID round, UUID token, int count, String owner) {
-        return totem(round, token, count, List.of(
-                "来自 " + Notices.key(owner) + " 的 " + Notices.key(count) + " 个复生图腾",
-                "营地里的怪物捡起即可获得", "落地 5 分钟无人拾取即作废"));
+    /** Tells a camp monster why the throw it just tried bounced back. */
+    public static void refuseThrow(ServerPlayer player, ItemStack stack) {
+        if (is(stack)) Notices.refuse(player, "复生图腾不能丢弃 · 站上营地北侧祭坛的金块复生");
     }
 
-    private static ItemStack totem(UUID round, UUID token, int count, List<String> lore) {
+    private static ItemStack totem(UUID round, int count, List<String> lore) {
         var stack = new ItemStack(Items.TOTEM_OF_UNDYING, count);
         // Never a native death guard, even if it somehow reaches a body that can die.
         stack.remove(DataComponents.DEATH_PROTECTION);
@@ -84,8 +83,6 @@ public final class RevivalTotems {
         ItemText.lore(stack, lore);
         var data = new CompoundTag();
         data.putString("round", round.toString());
-        // A per-throw token keeps native item merging from combining two separately committed stacks.
-        if (token != null) data.putString("token", token.toString());
         var tag = new CompoundTag();
         tag.put(KEY, data);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
@@ -110,8 +107,7 @@ public final class RevivalTotems {
     private void reproject(ServerPlayer player, RoundSnapshot r) {
         var p = r == null ? null : r.participants().get(player.getUUID());
         if (p == null || !access.eligible(player)) { project(player, null, 0, 0); return; }
-        int balance = Math.max(0, p.revivalCharges() - CampTransfers.pending(player, CampTransfers.Kind.REVIVAL));
-        project(player, r.roundId(), balance, Math.min(MAX_STACK, balance));
+        project(player, r.roundId(), p.revivalCharges(), Math.min(MAX_STACK, p.revivalCharges()));
     }
 
     /** Converge every copy the player holds, including cursor and 2x2 grid, to exactly {@code want}. */
