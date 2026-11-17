@@ -404,6 +404,56 @@ public final class MonsterAppearanceGameTest {
         test.succeed();
     }
 
+    /**
+     * A hunter launched from the quarry's camera stood on the quarry, then landed several blocks away in the same
+     * tick that the quarry began to see it. The quarry's spawn packet must name the landing, not the stale spot.
+     */
+    @GameTest(maxTicks = 200)
+    public void teleportedPlayerSpawnsAtItsLandingForNewViewers(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var player = test.makeMockServerPlayerInLevel();
+        var viewer = test.makeMockServerPlayerInLevel();
+        record Sync(Packet<?> packet, boolean toViewer) {}
+        var synced = new ArrayList<Sync>();
+        var tracker = new net.minecraft.server.level.ServerEntity(test.getLevel(), player,
+            net.minecraft.world.entity.UpdateInterval.periodic(EntityTypes.PLAYER.updateInterval()), EntityTypes.PLAYER.trackDeltas(),
+            new net.minecraft.server.level.ServerEntity.Synchronizer() {
+                @Override public void sendToTrackingPlayers(Packet<? super net.minecraft.network.protocol.game.ClientGamePacketListener> packet) {
+                    synced.add(new Sync(packet, true));
+                }
+                @Override public void sendToTrackingPlayersAndSelf(Packet<? super net.minecraft.network.protocol.game.ClientGamePacketListener> packet) {
+                    synced.add(new Sync(packet, true));
+                }
+                @Override public void sendToTrackingPlayersFiltered(Packet<? super net.minecraft.network.protocol.game.ClientGamePacketListener> packet,
+                                                                    java.util.function.Predicate<ServerPlayer> filter) {
+                    synced.add(new Sync(packet, filter.test(viewer)));
+                }
+            });
+        try {
+            var landing = player.position().add(10, 0, 0);
+            player.setPos(landing);
+            var spawned = new ArrayList<Packet<?>>();
+            tracker.sendPairingData(viewer, spawned::add);
+            var spawn = spawned.stream().filter(ClientboundAddEntityPacket.class::isInstance)
+                .map(ClientboundAddEntityPacket.class::cast).findFirst().orElseThrow();
+            test.assertTrue(new Vec3(spawn.getX(), spawn.getY(), spawn.getZ()).distanceTo(landing) < 1.0E-3,
+                "A new viewer sees a teleported player at its landing, not where it left");
+            test.assertTrue(synced.stream().anyMatch(s -> s.packet() instanceof net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket
+                    && !s.toViewer()), "Existing viewers get the same landing; the new viewer learns it from its own spawn");
+            test.assertTrue(tracker.getPositionBase().distanceTo(landing) < 1.0E-3, "Later deltas start from the landing");
+
+            synced.clear();
+            spawned.clear();
+            player.setPos(landing.add(1, 0, 0));
+            tracker.sendPairingData(viewer, spawned::add);
+            test.assertTrue(synced.isEmpty(), "Ordinary movement between updates keeps vanilla pairing untouched");
+        } finally {
+            server.getPlayerList().remove(player);
+            server.getPlayerList().remove(viewer);
+        }
+        test.succeed();
+    }
+
     @GameTest(maxTicks = 200)
     public void ridingDefersCosmeticRefreshWithoutClearingAppearance(GameTestHelper test) {
         var server = test.getLevel().getServer();
