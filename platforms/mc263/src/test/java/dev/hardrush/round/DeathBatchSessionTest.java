@@ -101,6 +101,12 @@ class DeathBatchSessionTest {
             assertEquals(2, saved.participants().get(hunter).lifeSequence());
             assertFalse(saved.participants().get(hunter).revivalEntitled());
             assertFalse(saved.participants().get(hunter).online(), "Human clock waits for the profile adapter");
+            assertTrue(saved.participants().get(hunter).connected());
+            // Leaving before the adapter unlocks the new life must still reach the engine, or nobody waits for it.
+            session.onOnline(hunter, "Hunter", false);
+            pump(() -> !session.mutationPending());
+            assertEquals(RoundPhase.RESCUE, session.snapshot().orElseThrow().phase());
+            assertTrue(session.snapshot().orElseThrow().awaitingReconnect());
         }
         try (var store = new SqliteRoundStore(path)) {
             var snapshot = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload());
