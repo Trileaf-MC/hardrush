@@ -21,7 +21,6 @@ import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.damagesource.DamageSource;
@@ -320,7 +319,7 @@ public final class DuskPactGameTest {
             var connection = new RecordingConnection(); packets = connection.packets;
             channel = new EmbeddedChannel(connection);
             player.connection = new ServerGamePacketListenerImpl(player.level().getServer(), connection, player,
-                    CommonListenerCookie.createInitial(player.getGameProfile(), false));
+                    TestClients.cookie(player.getGameProfile()));
             if (loaded) loaded();
         }
         void loaded() { player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket()); }

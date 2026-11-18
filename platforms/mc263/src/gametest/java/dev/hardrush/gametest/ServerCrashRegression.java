@@ -22,7 +22,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
@@ -53,11 +52,12 @@ public final class ServerCrashRegression implements ModInitializer {
         final String boundary = System.getProperty(TestProperties.CRASH_BOUNDARY);
         final Path database;
         final AtomicBoolean armed = new AtomicBoolean();
-        RoundSnapshot before;
+        volatile RoundSnapshot before;
         Vec3 arena;
         CompletableFuture<?> ioTask;
         int recoveryTicks;
         long baselineWalBytes;
+        volatile Throwable barrierFailure;
 
         CrashFixture(MinecraftServer server) {
             super(server, false);
@@ -66,6 +66,15 @@ public final class ServerCrashRegression implements ModInitializer {
             require(Set.of("SNAPSHOT", "INDEX", "COMMIT").contains(boundary), "known crash boundary");
             details.addProperty("scenario", scenario); details.addProperty("boundary", boundary);
             if (operation.equals("write")) writeCrash(); else recoverCrash();
+        }
+
+        @Override void tick() {
+            var error = barrierFailure;
+            if (error != null && !stopping) {
+                failure = error; error.printStackTrace(); stopping = true; server.halt(false);
+                return;
+            }
+            super.tick();
         }
 
         void writeCrash() {
@@ -169,9 +178,19 @@ public final class ServerCrashRegression implements ModInitializer {
                     var callbacks = (Executor) get(session, "callbacks");
                     set(session, "callbacks", (Executor) work -> {
                         try {
-                            if (armed.get() && RoundSnapshotCodec.decode(store.latest().orElseThrow().payload()).version() == before.version() + 1
-                                    && armed.compareAndSet(true, false)) reached(store);
-                        } catch (Exception error) { throw new CompletionException(error); }
+                            var latest = armed.get() ? RoundSnapshotCodec.decode(store.latest().orElseThrow().payload()) : null;
+                            if (latest != null && latest.version() > before.version()) {
+                                // The lethal hit's damage coins commit just ahead of the kill; let such side commits
+                                // apply normally and stop only at the transaction that carries the scenario effect.
+                                if (!carriesScenarioEffect(latest)) before = latest;
+                                else if (armed.compareAndSet(true, false)) reached(store);
+                            }
+                        } catch (Throwable error) {
+                            // This runs inside the IO worker's whenComplete, which would swallow the error and leave
+                            // the commit callback undelivered; hand it to the server thread so the writer fails loudly.
+                            barrierFailure = error;
+                            throw error instanceof RuntimeException runtime ? runtime : new CompletionException(error);
+                        }
                         callbacks.execute(work);
                     });
                 } else {
@@ -192,8 +211,17 @@ public final class ServerCrashRegression implements ModInitializer {
             } catch (Exception error) { throw new CompletionException(error); }
         }
 
+        boolean carriesScenarioEffect(RoundSnapshot snapshot) {
+            return switch (scenario) {
+                case "AWARD" -> snapshot.participants().get(a.profile.id()).revivalEntitled();
+                case "CONSUME" -> snapshot.participants().get(a.profile.id()).lifeSequence() != before.participants().get(a.profile.id()).lifeSequence();
+                default -> snapshot.result() != null;
+            };
+        }
+
         void reached(SqliteRoundStore store) {
             try {
+                details.addProperty("before", Base64.getEncoder().encodeToString(RoundSnapshotCodec.encode(before)));
                 long walBytes = Files.size(database.resolveSibling(database.getFileName() + "-wal"));
                 require(walBytes > baselineWalBytes, "real committed or uncommitted WAL frames reached disk");
                 details.addProperty("walBytesBefore", baselineWalBytes); details.addProperty("walBytesAtKill", walBytes);
@@ -253,7 +281,7 @@ public final class ServerCrashRegression implements ModInitializer {
             waitFor("load quarantined UUID", () -> actor.prepare.tick());
             act("connect quarantined UUID", () -> {
                 actor.connection = new RecordingConnection(); actor.channel = new EmbeddedChannel(actor.connection);
-                actor.player = actor.prepare.spawnPlayer(actor.connection, CommonListenerCookie.createInitial(actor.profile, false)); actor.prepare.close(); acknowledge(actor);
+                actor.player = actor.prepare.spawnPlayer(actor.connection, TestClients.cookie(actor.profile)); actor.prepare.close(); acknowledge(actor);
                 require(actor.player.level() == LobbyWorld.open(server).holdingLevel() && PlayerProfiles.isLocked(actor.player), "login cannot restore uncertain native effects");
             });
         }

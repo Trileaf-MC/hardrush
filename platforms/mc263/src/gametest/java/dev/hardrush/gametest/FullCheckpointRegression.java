@@ -274,7 +274,7 @@ public final class FullCheckpointRegression implements ModInitializer {
             waitFor("native player file read", () -> a.prepare.tick());
             act("native connection established", () -> {
                 a.connection = new RecordingConnection(); a.channel = new io.netty.channel.embedded.EmbeddedChannel(a.connection);
-                a.player = a.prepare.spawnPlayer(a.connection, net.minecraft.server.network.CommonListenerCookie.createInitial(a.profile, false));
+                a.player = a.prepare.spawnPlayer(a.connection, TestClients.cookie(a.profile));
                 a.prepare.close(); acknowledge(a);
                 if (earlyOnline) session.onOnline(a.profile.id(), a.profile.name(), true);
             });
