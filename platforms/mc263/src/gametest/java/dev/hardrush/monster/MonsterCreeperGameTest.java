@@ -8,6 +8,7 @@ import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.combat.MonsterCombatRuntime;
+import dev.hardrush.gametest.TestClients;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.*;
@@ -21,10 +22,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
-import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -235,10 +234,10 @@ public final class MonsterCreeperGameTest {
             }
             for (int index = 0; index < count; index++) {
                 var profile = new GameProfile(UUID.randomUUID(), "HRCreep" + ARENAS.get() + index);
-                var player = new ServerPlayer(level.getServer(), level, profile, ClientInformation.createDefault());
+                var player = new ServerPlayer(level.getServer(), level, profile, TestClients.information());
                 var connection = new SinkConnection(); channels.add(new EmbeddedChannel(connection));
                 dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> level.getServer().getPlayerList().placeNewPlayer(connection, player,
-                        CommonListenerCookie.createInitial(profile, false)));
+                        TestClients.cookie(profile)));
                 player.teleportTo(center.x + index * 24, center.y, center.z);
                 player.setGameMode(GameType.SURVIVAL); player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
                 players.add(player);

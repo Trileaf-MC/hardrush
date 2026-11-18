@@ -11,7 +11,8 @@
       "dev.hardrush.gametest.FullCheckpointRegression",
       "dev.hardrush.gametest.ServerCrashRegression",
       "dev.hardrush.gametest.ProfileCrashRegression",
-      "dev.hardrush.gametest.UnprotectedLobbyFixtures"
+      "dev.hardrush.gametest.UnprotectedLobbyFixtures",
+      "dev.hardrush.gametest.TestClients"
     ],
     "fabric-gametest": [
       "dev.hardrush.gametest.ParticipationExitGameTest",
@@ -63,7 +64,8 @@
       "dev.hardrush.lobby.HeldItemHintsGameTest",
       "dev.hardrush.lobby.pack.PackRoundTripGameTest",
       "dev.hardrush.lobby.pack.LobbyInstallGameTest",
-      "dev.hardrush.gametest.LobbyAdminGameTest"
+      "dev.hardrush.gametest.LobbyAdminGameTest",
+      "dev.hardrush.gametest.TestClientsGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"
