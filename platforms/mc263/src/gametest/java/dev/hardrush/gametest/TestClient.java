@@ -15,6 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
@@ -25,6 +26,7 @@ import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
 import net.minecraft.network.protocol.game.ClientboundLoginPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
 import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
+import net.minecraft.network.protocol.game.GameProtocols;
 import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
@@ -36,6 +38,7 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.entity.Relative;
 import net.minecraft.world.phys.Vec3;
 
@@ -194,7 +197,11 @@ public final class TestClient implements AutoCloseable {
         requireOffline();
         open(Mode.ATTACHED);
         replaced = player.connection;
-        player.connection = new ServerGamePacketListenerImpl(server, connection, player, TestClients.cookie(player.getGameProfile(), viewDistance));
+        var attachedListener = new ServerGamePacketListenerImpl(server, connection, player, TestClients.cookie(player.getGameProfile(), viewDistance));
+        // As PlayerList.placeNewPlayer does, so a kick reaches this listener's onDisconnect and the player leaves.
+        connection.setupInboundProtocol(GameProtocols.SERVERBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator(server.registryAccess()),
+                attachedListener), attachedListener);
+        player.connection = attachedListener;
         // The player already stands in its level, but this new connection has not reported it loaded.
         levelLoading = true;
         levelChunksStarted = true;
@@ -234,6 +241,11 @@ public final class TestClient implements AutoCloseable {
                 if (player.connection == listener) {
                     replaced.player = player;
                     player.connection = replaced;
+                    // A teleport the original client still awaits from before is stale now. When that client is a test
+                    // client, the server tells it where the player is, which supersedes the old teleport.
+                    var original = replaced;
+                    if (LIVE.stream().anyMatch(other -> other != this && other.listener == original))
+                        original.teleport(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
                 }
                 release();
             }
@@ -431,37 +443,39 @@ public final class TestClient implements AutoCloseable {
     }
 
     /**
-     * The destination the client applies: the packet's absolute components, and its relative ones added to where the
-     * client stands. While an earlier teleport is unaccepted the client stands at that one's destination. Otherwise it
-     * stands where the server had the player before this teleport: the server moves the player before sending, so that
-     * is the player's position now less the packet's offset.
-     * TODO: [Refactor] two relative teleports in one bundle (sent after both moved the player) start the first from the
-     * wrong place; tracking the client's own position needs every test-driven movement to go through this class first.
+     * The destination the client applies, computed as the vanilla client does with
+     * {@link PositionMoveRotation#calculateAbsolute}: absolute components from the packet, relative ones added to where
+     * the client stands (pitch clamped to ±90°). While an earlier teleport is unaccepted the client stands at that one's
+     * destination. Otherwise it stands where the server had the player before this teleport: every position packet
+     * comes from {@code ServerGamePacketListenerImpl.teleport}, which moves the player before sending, so that is the
+     * player's position now less the packet's offset. A riding client applies no position packet and acknowledges
+     * where it is.
+     * TODO: [Refactor] tracking the client's own position (#52) would also cover position packets that do not come from
+     * {@code teleport()}, which only tests construct, and two relative teleports bundled after both moved the player.
      */
     private Teleport arrival(ClientboundPlayerPositionPacket packet) {
         var change = packet.change();
         var relatives = packet.relatives();
-        if (relatives.stream().noneMatch(PLACEMENT_FLAGS::contains)) return new Teleport(packet.id(), change.position(), change.yRot(), change.xRot());
-        var offset = change.position();
-        Vec3 from; float fromYRot, fromXRot;
+        var player = listener != null ? listener.player : placing;
+        if (player != null && player.isPassenger()) return new Teleport(packet.id(), player.position(), player.getYRot(), player.getXRot());
+        PositionMoveRotation from;
         var standing = pendingTeleports.isEmpty() ? null : lastReceived;
         if (standing != null) {
-            from = standing.position(); fromYRot = standing.yRot(); fromXRot = standing.xRot();
+            from = new PositionMoveRotation(standing.position(), Vec3.ZERO, standing.yRot(), standing.xRot());
+        } else if (relatives.stream().noneMatch(PLACEMENT_FLAGS::contains)) {
+            from = new PositionMoveRotation(Vec3.ZERO, Vec3.ZERO, 0, 0);
         } else {
-            var player = listener != null ? listener.player : placing;
             if (player == null) throw new IllegalStateException("Relative teleport " + packet.id() + " before " + profile.name() + " has a player");
-            from = new Vec3(player.getX() - (relatives.contains(Relative.X) ? offset.x : 0),
+            var offset = change.position();
+            from = new PositionMoveRotation(new Vec3(
+                    player.getX() - (relatives.contains(Relative.X) ? offset.x : 0),
                     player.getY() - (relatives.contains(Relative.Y) ? offset.y : 0),
-                    player.getZ() - (relatives.contains(Relative.Z) ? offset.z : 0));
-            fromYRot = player.getYRot() - (relatives.contains(Relative.Y_ROT) ? change.yRot() : 0);
-            fromXRot = player.getXRot() - (relatives.contains(Relative.X_ROT) ? change.xRot() : 0);
+                    player.getZ() - (relatives.contains(Relative.Z) ? offset.z : 0)), Vec3.ZERO,
+                    player.getYRot() - (relatives.contains(Relative.Y_ROT) ? change.yRot() : 0),
+                    player.getXRot() - (relatives.contains(Relative.X_ROT) ? change.xRot() : 0));
         }
-        return new Teleport(packet.id(), new Vec3(
-                relatives.contains(Relative.X) ? from.x + offset.x : offset.x,
-                relatives.contains(Relative.Y) ? from.y + offset.y : offset.y,
-                relatives.contains(Relative.Z) ? from.z + offset.z : offset.z),
-                relatives.contains(Relative.Y_ROT) ? fromYRot + change.yRot() : change.yRot(),
-                relatives.contains(Relative.X_ROT) ? fromXRot + change.xRot() : change.xRot());
+        var arrival = PositionMoveRotation.calculateAbsolute(from, change, relatives);
+        return new Teleport(packet.id(), arrival.position(), arrival.yRot(), arrival.xRot());
     }
 
     /** The relative flags that change where the player ends up or faces, as opposed to its velocity. */

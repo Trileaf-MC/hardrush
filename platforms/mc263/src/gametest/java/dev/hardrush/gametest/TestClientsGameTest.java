@@ -17,6 +17,7 @@ import net.minecraft.util.Util;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.entity.PositionMoveRotation;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.Relative;
 import net.minecraft.server.level.ChunkTrackingView;
 import net.minecraft.server.level.ServerLevel;
@@ -274,10 +275,75 @@ public final class TestClientsGameTest {
                             "The client attached over sends no acknowledgement");
                     test.assertTrue(player.position().distanceTo(second) < 1.0E-6, "The player stays where the attached connection put it: " + player.position());
                     attached.close();
+                })
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    test.assertTrue(player.position().distanceTo(second) < 1.0E-6,
+                            "Once handed back, the original client's stale teleport cannot pull the player back: " + player.position());
+                    test.assertTrue(owner.connected() && player.connection == owner.listener(), "The original client is in control again");
                     owner.close();
                     clear(level, floor);
                 })
                 .thenSucceed();
+    }
+
+    /** Kicking an attached client disconnects the player, as kicking any real client does. */
+    @GameTest(maxTicks = 100)
+    public void kickingAnAttachedClientRemovesThePlayer(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var owner = TestClient.named(server, "HRAttachKick");
+        var player = owner.place(test.getLevel());
+        var attached = new TestClient(server, player.getGameProfile());
+        attached.attach(player);
+        attached.listener().disconnect(Component.literal("Kicked by TestClientsGameTest"));
+        test.startSequence()
+                .thenWaitUntil(() -> test.assertTrue(!attached.connected() && server.getPlayerList().getPlayer(player.getUUID()) == null,
+                        "The kicked attached client is disconnected and the player has left"))
+                .thenExecute(() -> {
+                    attached.close();
+                    owner.close();
+                })
+                .thenSucceed();
+    }
+
+    /** Pitch is clamped to ±90° at every step, as vanilla's calculateAbsolute does. */
+    @GameTest(maxTicks = 100)
+    public void relativePitchIsClampedAtEveryStep(GameTestHelper test) {
+        var client = TestClient.named(test.getLevel().getServer(), "HRPitch");
+        client.place(test.getLevel());
+        client.acknowledge();
+        var at = new Vec3(10.5, 200, 10.5);
+        client.listener().send(new ClientboundBundlePacket(List.of(
+                ClientboundPlayerPositionPacket.of(9201, new PositionMoveRotation(at, Vec3.ZERO, 0, 80), Set.of()),
+                ClientboundPlayerPositionPacket.of(9202, new PositionMoveRotation(Vec3.ZERO, Vec3.ZERO, 0, 30), Set.of(Relative.X, Relative.Y, Relative.Z, Relative.X_ROT)),
+                ClientboundPlayerPositionPacket.of(9203, new PositionMoveRotation(Vec3.ZERO, Vec3.ZERO, 0, -20), Set.of(Relative.X, Relative.Y, Relative.Z, Relative.X_ROT)))));
+        client.acknowledge();
+        var accepted = client.acceptedTeleports();
+        var pitches = accepted.subList(accepted.size() - 3, accepted.size()).stream().map(TestClient.Teleport::xRot).toList();
+        test.assertValueEqual(pitches, List.of(80f, 90f, 70f), "Each relative pitch starts from the clamped one before it");
+        client.close();
+        test.succeed();
+    }
+
+    /** A riding client applies no position packet: it acknowledges the teleport where it is. */
+    @GameTest(maxTicks = 100)
+    public void ridingClientAcknowledgesWhereItIs(GameTestHelper test) {
+        var level = test.getLevel();
+        var client = TestClient.named(level.getServer(), "HRRider");
+        var player = client.place(level);
+        client.acknowledge();
+        var seat = new ArmorStand(level, player.getX(), player.getY(), player.getZ());
+        test.assertTrue(level.addFreshEntity(seat) && player.startRiding(seat, true, false), "The player rides the stand");
+        var riding = player.position();
+        client.listener().send(new ClientboundBundlePacket(List.of(
+                ClientboundPlayerPositionPacket.of(9301, new PositionMoveRotation(riding.add(30, 0, 30), Vec3.ZERO, 45, 10), Set.of()))));
+        client.acknowledge();
+        var accepted = client.acceptedTeleports().getLast();
+        test.assertTrue(accepted.id() == 9301 && accepted.position().equals(riding), "The rider acknowledges at its own position: " + accepted);
+        player.stopRiding();
+        seat.discard();
+        client.close();
+        test.succeed();
     }
 
     /** Disconnecting while the native login is still loading player data cancels that login. */
