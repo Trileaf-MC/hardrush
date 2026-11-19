@@ -37,7 +37,9 @@ import net.minecraft.world.entity.Entity;
  * client:
  * <ul>
  *   <li>accepts the latest teleport the server sent ({@link Reply#ACCEPT_TELEPORTS});</li>
- *   <li>reports that it has loaded the level whenever the server waits for that ({@link Reply#REPORT_LOADED});</li>
+ *   <li>reports that it has loaded the level after each accepted teleport, and whenever the server waits for that
+ *   ({@link Reply#REPORT_LOADED}). HardRush waits for a fresh report after every level change and counts it only once
+ *   the teleport that follows the respawn is accepted, so the report always follows the acceptance;</li>
  *   <li>confirms every finished chunk batch, so the server keeps streaming its view ({@link Reply#CONFIRM_CHUNK_BATCHES}).</li>
  * </ul>
  * A client that misses any of these differs from a real one in ways that surface only as flaky timeouts: a position
@@ -231,15 +233,16 @@ public final class TestClient implements AutoCloseable {
     public void acknowledge() {
         if (!live()) return;
         if (!withheld.contains(Reply.CONFIRM_CHUNK_BATCHES)) confirmChunkBatches();
-        if (!withheld.contains(Reply.ACCEPT_TELEPORTS)) acceptTeleport();
-        if (!withheld.contains(Reply.REPORT_LOADED) && !teleportPending && !listener.hasClientLoaded()) reportLoaded();
+        boolean arrived = !withheld.contains(Reply.ACCEPT_TELEPORTS) && acceptTeleport();
+        if (!withheld.contains(Reply.REPORT_LOADED) && (arrived || !teleportPending && !listener.hasClientLoaded())) reportLoaded();
     }
 
-    /** Accepts the latest teleport the server sent, at the player's position, if one is still unaccepted. */
-    public void acceptTeleport() {
-        if (!live() || !teleportPending) return;
+    /** Accepts the latest teleport the server sent, at the player's position; {@code false} if none was unaccepted. */
+    public boolean acceptTeleport() {
+        if (!live() || !teleportPending) return false;
         teleportPending = false;
         acceptTeleport(pendingTeleport);
+        return true;
     }
 
     /** Accepts one particular teleport id, even a stale one. */
