@@ -1,6 +1,7 @@
 package dev.hardrush.gametest;
 
 import com.mojang.authlib.GameProfile;
+import dev.hardrush.gametest.mixin.AwaitingTeleportAccessor;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -241,11 +242,11 @@ public final class TestClient implements AutoCloseable {
                 if (player.connection == listener) {
                     replaced.player = player;
                     player.connection = replaced;
-                    // A teleport the original client still awaits from before is stale now. When that client is a test
-                    // client, the server tells it where the player is, which supersedes the old teleport.
+                    // A teleport the original connection still awaited from before is overtaken: the player has moved on
+                    // through this one. Neither side waits for it any more, and no packet says so (see the accessor).
                     var original = replaced;
-                    if (LIVE.stream().anyMatch(other -> other != this && other.listener == original))
-                        original.teleport(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+                    ((AwaitingTeleportAccessor) original).hardrush$awaitingPositionFromClient(null);
+                    LIVE.stream().filter(other -> other != this && other.listener == original).forEach(other -> other.pendingTeleports.clear());
                 }
                 release();
             }
