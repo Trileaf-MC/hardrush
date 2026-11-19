@@ -439,8 +439,7 @@ public final class PersonalHuntGameTest {
         }
         /** The world spawn last sent to this peer's client, which is where its compass points. */
         Optional<net.minecraft.core.GlobalPos> spawnSent(Peer p) {
-            return p.connection.packets.stream().filter(ClientboundSetDefaultSpawnPositionPacket.class::isInstance)
-                    .map(ClientboundSetDefaultSpawnPositionPacket.class::cast).reduce((prev, next) -> next)
+            return p.client.packets(ClientboundSetDefaultSpawnPositionPacket.class).stream().reduce((prev, next) -> next)
                     .map(packet -> packet.respawnData().globalPos());
         }
         net.minecraft.world.item.ItemStack compass(Peer p) {
