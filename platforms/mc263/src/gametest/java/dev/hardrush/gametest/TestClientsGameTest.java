@@ -1,9 +1,18 @@
 package dev.hardrush.gametest;
 
+import dev.hardrush.player.ClientLevelLoad;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
+import net.minecraft.server.network.ServerCommonPacketListenerImpl;
+import net.minecraft.util.Util;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.entity.PositionMoveRotation;
+import net.minecraft.world.entity.Relative;
 import net.minecraft.server.level.ChunkTrackingView;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -14,6 +23,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /** Fixture clients see and answer the server the way a real vanilla client does. */
 public final class TestClientsGameTest {
@@ -78,6 +88,90 @@ public final class TestClientsGameTest {
                     clear(level, floor);
                 })
                 .thenSucceed();
+    }
+
+    /** Two relative teleports in one tick: the client accepts each at the destination the server already applied. */
+    @GameTest(maxTicks = 200)
+    public void relativeTeleportsAreAcceptedAtTheirDestination(GameTestHelper test) {
+        var level = test.getLevel();
+        var floor = arena(level);
+        var client = TestClient.named(level.getServer(), "HRRelative");
+        var player = client.place(level);
+        player.teleportTo(floor.getX() + .5, floor.getY() + 1, floor.getZ() + .5);
+        client.acknowledge();
+        var start = player.position();
+        var step = new PositionMoveRotation(new Vec3(1, 0, 0), Vec3.ZERO, 0, 0);
+        client.listener().teleport(step, Relative.ALL);
+        client.listener().teleport(step, Relative.ALL);
+        client.acknowledge();
+        test.assertTrue(client.connected(), "Accepting both relative teleports keeps the client connected");
+        test.assertTrue(client.player().position().distanceTo(start.add(2, 0, 0)) < 1.0E-6,
+                "Each relative offset applies once: " + start + " -> " + client.player().position());
+        client.close();
+        clear(level, floor);
+        test.succeed();
+    }
+
+    /** A kick completes: the disconnect packet's send listener closes the connection and the player leaves. */
+    @GameTest(maxTicks = 100)
+    public void serverKickClosesTheConnection(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var client = TestClient.named(server, "HRKicked");
+        client.place(test.getLevel());
+        client.listener().disconnect(Component.literal("Kicked by TestClientsGameTest"));
+        test.startSequence()
+                .thenWaitUntil(() -> test.assertTrue(!client.connected() && server.getPlayerList().getPlayer(client.id()) == null,
+                        "The kicked client is disconnected and removed from the player list"))
+                .thenExecute(client::close)
+                .thenSucceed();
+    }
+
+    /** A ticked connection stays open across keep-alive deadlines, because the client answers each challenge. */
+    @GameTest(maxTicks = 100)
+    public void tickedConnectionAnswersKeepAlives(GameTestHelper test) {
+        var client = TestClient.named(test.getLevel().getServer(), "HRKeepAlive");
+        client.place(test.getLevel());
+        for (int round = 0; round < 2; round++) {
+            keepAliveDue(client);
+            client.tickConnection();
+            client.acknowledge();
+        }
+        test.assertValueEqual(client.packets(ClientboundKeepAlivePacket.class).size(), 2, "Each overdue tick sends one challenge");
+        test.assertTrue(client.connected(), "Answered challenges keep the connection open");
+        client.close();
+        test.succeed();
+    }
+
+    /** After a level change the client reports the new level loaded once, and a withheld report is still sent on resume. */
+    @GameTest(maxTicks = 300)
+    public void levelChangeWaitsForAFreshLoadReport(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var client = TestClient.named(server, "HRRespawn");
+        client.place(test.getLevel());
+        test.startSequence()
+                .thenWaitUntil(() -> test.assertTrue(ClientLevelLoad.loaded(client.player()), "The joined client reports its level loaded"))
+                .thenExecute(() -> {
+                    client.withhold(TestClient.Reply.REPORT_LOADED);
+                    var nether = server.getLevel(Level.NETHER);
+                    client.player().teleport(new TeleportTransition(nether, new Vec3(.5, 128, .5), Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
+                })
+                .thenIdle(5)
+                .thenExecute(() -> {
+                    test.assertFalse(ClientLevelLoad.loaded(client.player()), "The new level waits for the client's report");
+                    client.resume(TestClient.Reply.REPORT_LOADED);
+                })
+                .thenWaitUntil(() -> test.assertTrue(ClientLevelLoad.loaded(client.player()), "The resumed client reports the new level loaded"))
+                .thenExecute(client::close)
+                .thenSucceed();
+    }
+
+    /** Makes the connection's keep-alive timer due, instead of waiting fifteen real seconds. */
+    private static void keepAliveDue(TestClient client) {
+        try {
+            var field = ServerCommonPacketListenerImpl.class.getDeclaredField("keepAliveTime");
+            field.setAccessible(true);
+            field.setLong(client.listener(), Util.getMillis() - 15_001L);
+        } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
     }
 
     /** A stone floor far from every other arena, kept loaded for the test. */

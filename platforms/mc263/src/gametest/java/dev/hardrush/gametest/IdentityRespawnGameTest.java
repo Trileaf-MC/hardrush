@@ -403,10 +403,7 @@ public final class IdentityRespawnGameTest {
             // Production quarantine precedes registration, while the loaded Dimension still
             // identifies the round instead of the safe lobby used by native registration.
             profiles.onLogin(player);
-            var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
-            new io.netty.channel.embedded.EmbeddedChannel(connection);
-            dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player,
-                    TestClients.cookie(player.getGameProfile())));
+            new TestClient(server, player.getGameProfile()).place(player);
             ((ProfileTagged) player).hardrush$isolated(true);
             profiles.onConnected(player);
             profiles.tick(round);
