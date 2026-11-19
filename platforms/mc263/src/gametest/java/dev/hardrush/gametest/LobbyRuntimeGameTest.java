@@ -12,7 +12,7 @@ import dev.hardrush.round.RoundSession;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.RoundWorldBundle;
 import dev.hardrush.lobby.LobbyRuntime;
-import dev.hardrush.lobby.RevivalTotems;
+import dev.hardrush.revival.RevivalTotems;
 import dev.hardrush.locator.PlayerLocator;
 import dev.hardrush.monster.MonsterRoundRuntime;
 import dev.hardrush.protection.ProtectionRuntime;

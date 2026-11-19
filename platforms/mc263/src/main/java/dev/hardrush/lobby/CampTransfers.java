@@ -37,13 +37,13 @@ public final class CampTransfers {
     }
     private static final String TOKEN = "hardrush_camp_transfer";
     private static final Map<MinecraftServer, CampTransfers> INSTANCES = new IdentityHashMap<>();
-    private final RevivalTotems.Access access;
+    private final CampAccess access;
     private final Map<UUID, Integer> pendingDrops = new HashMap<>();
     private final Map<UUID, Loose> loose = new HashMap<>();
     private UUID round;
 
-    private CampTransfers(RevivalTotems.Access access) { this.access = access; }
-    static void configure(MinecraftServer server, RevivalTotems.Access access) { INSTANCES.put(server, new CampTransfers(access)); }
+    private CampTransfers(CampAccess access) { this.access = access; }
+    static void configure(MinecraftServer server, CampAccess access) { INSTANCES.put(server, new CampTransfers(access)); }
     static void unconfigure(MinecraftServer server) { INSTANCES.remove(server); }
 
     public static boolean is(ItemStack stack) { return CampKit.isCoin(stack); }
@@ -163,7 +163,7 @@ public final class CampTransfers {
         for (var level : server.getAllLevels()) {
             // A totem can never lie on the floor; a stray one is removed like an unclaimed coin stack.
             for (var item : level.getEntities(EntityTypeTest.forClass(ItemEntity.class),
-                    item -> is(item.getItem()) || RevivalTotems.is(item.getItem()))) {
+                    item -> is(item.getItem()) || dev.hardrush.revival.RevivalTotems.is(item.getItem()))) {
                 var entry = token(item.getItem()).map(loose::get).orElse(null);
                 if (entry == null || entry.entity != item) item.discard();
             }

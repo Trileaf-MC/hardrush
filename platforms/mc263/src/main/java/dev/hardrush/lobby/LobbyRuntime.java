@@ -115,7 +115,7 @@ public final class LobbyRuntime {
             }
         });
         MonsterRoundRuntime.configure(server, session, profiles, worlds);
-        var camp = new RevivalTotems.Access() {
+        var camp = new CampAccess() {
             @Override public Optional<RoundSnapshot> committed() { return session.snapshot(); }
             @Override public boolean eligible(ServerPlayer player) {
                 var r = session.snapshot().orElse(null);
@@ -132,7 +132,20 @@ public final class LobbyRuntime {
             }
             @Override public RoundSession session() { return session; }
         };
-        RevivalTotems.configure(server, camp);
+        dev.hardrush.revival.RevivalTotems.configure(server, new dev.hardrush.revival.RevivalTotems.Access() {
+            @Override public Optional<RoundSnapshot> committed() { return session.snapshot(); }
+            @Override public boolean competitionLocked() { return session.competitionLocked(); }
+            @Override public boolean bodyReady(ServerPlayer player, dev.hardrush.core.round.Participant participant) {
+                if (!current(player, binding) || !player.isAlive()) return false;
+                return switch (participant.role()) {
+                    case MONSTER_LOBBY -> PlayerProfiles.verifiedLobbyBody(player);
+                    // The same body AFTER_DEATH would capture a death from: admitted, verified, unlocked, this life.
+                    case HUMAN_ACTIVE -> PlayerProfiles.verifiedRoundBody(player)
+                            && ((dev.hardrush.player.ProfileTagged) player).hardrush$lifeSequence() == participant.lifeSequence();
+                    default -> false;
+                };
+            }
+        });
         CampTransfers.configure(server, camp);
         CampKit.configure(server, camp);
         MonsterShop.configure(server, camp);
@@ -167,7 +180,7 @@ public final class LobbyRuntime {
         });
     }
     public static void unconfigure(MinecraftServer server) {
-        BINDINGS.remove(server); LobbyInteractions.close(server); LobbyMenus.unconfigure(server); RevivalTotems.unconfigure(server); CampTransfers.unconfigure(server);
+        BINDINGS.remove(server); LobbyInteractions.close(server); LobbyMenus.unconfigure(server); dev.hardrush.revival.RevivalTotems.unconfigure(server); CampTransfers.unconfigure(server);
         CampKit.unconfigure(server); MonsterShop.unconfigure(server); MonsterVaults.unconfigure(server);
         MonsterRoundRuntime.unconfigure(server); MonsterCombatRuntime.unconfigure(server);
     }
@@ -278,7 +291,7 @@ public final class LobbyRuntime {
         var b = BINDINGS.get(server); if (b == null) return;
         synchronize(server, b);
         CampTransfers.tick(server);
-        RevivalTotems.tick(server);
+        dev.hardrush.revival.RevivalTotems.tick(server);
         CampKit.tick(server);
         MonsterVaults.tick(server);
         var round = b.session.view().orElse(null);
