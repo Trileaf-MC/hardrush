@@ -162,11 +162,12 @@ public record RulesConfig(
 
     /**
      * A deliberate return pauses the sortie, so hunting again may follow at once; death keeps the deploy cooldown.
+     * The tracking compass rests ten seconds after each landing.
      * A zombie's soulcatcher holds three creatures before the witch enlarges it. A round whose humans
      * have all left waits three minutes for one of them: long enough to restart a client and rejoin.
      */
     private static final Map<String, Double> SORTIE_DEFAULTS = Map.of("monster.returnCooldownMillis", 0.0,
-            "soulcatcher.capacity", 3.0, "round.reconnectMillis", 180_000.0);
+            "monster.retrackCooldownMillis", 10_000.0, "soulcatcher.capacity", 3.0, "round.reconnectMillis", 180_000.0);
 
     /** Adds missing coin, worth and sortie values to stored pending rules; values an operator already set are kept. */
     public RulesConfig withEconomyDefaults() {

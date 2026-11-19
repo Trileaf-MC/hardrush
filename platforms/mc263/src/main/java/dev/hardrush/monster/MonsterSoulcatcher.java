@@ -197,7 +197,7 @@ public final class MonsterSoulcatcher {
         if (owner != null && (!owner.equals(player.getUUID()) || MonsterCompanions.isDismissing(mob))) {
             dev.hardrush.notice.Notices.refuse(player, "这是别人的随从"); return false;
         }
-        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品");
+        dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "使用物品");
         var hatched = owner == null ? Optional.<Boolean>empty() : MonsterCompanions.hatchedBaby(mob);
         if (hatched.isPresent()) {
             if (!MonsterRoles.returnEgg(player, hatched.get())) { dev.hardrush.notice.Notices.refuse(player, "背包满了，放不下僵尸蛋"); return false; }
@@ -268,7 +268,7 @@ public final class MonsterSoulcatcher {
         var bag = player.getItemInHand(hand);
         var contents = bag.getOrDefault(DataComponents.BUNDLE_CONTENTS, BundleContents.EMPTY);
         if (contents.isEmpty()) { dev.hardrush.notice.Notices.refuse(player, "拘魂袋是空的 · 右键生物收编"); return false; }
-        dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品");
+        dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "使用物品");
         var mutable = contents.asMutable();
         var stack = mutable.removeOne();
         var egg = stack.split(1);

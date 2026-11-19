@@ -74,11 +74,11 @@ public final class HeldItemHintsGameTest {
                     f.select(6);
                     var compass = f.player.getMainHandItem();
                     var dark = f.tick().orElseThrow();
-                    test.assertTrue(dark.contains("发光"), "An unlit compass says when it lights: " + dark);
-                    test.assertValueEqual(Notices.format(dark).getString(), lore(compass, 1), "The same condition the description gives");
+                    test.assertTrue(dark.contains("失去了指向"), "Without a quarry the dark compass says it is lost: " + dark);
                     compass.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
                     var lit = f.tick().orElseThrow();
-                    test.assertTrue(lit.contains("循迹到目标附近"), "A lit compass says how to retrack: " + lit);
+                    test.assertTrue(lit.contains("循迹到目标附近") && lit.contains("边走"), "A lit compass says how to retrack: " + lit);
+                    test.assertValueEqual(Notices.format(lit).getString(), lore(compass, 0), "The same usage the description gives");
                     test.assertValueEqual(f.tick(), Optional.<String>empty(), "Nothing new to send");
                 }).thenExecuteAfter(1, f::close).thenSucceed();
     }
