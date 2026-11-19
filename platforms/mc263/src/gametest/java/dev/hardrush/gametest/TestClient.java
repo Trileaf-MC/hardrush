@@ -103,6 +103,8 @@ public final class TestClient implements AutoCloseable {
     private final ConcurrentLinkedQueue<Teleport> pendingTeleports = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<Long> pendingKeepAlives = new ConcurrentLinkedQueue<>();
     private final List<Teleport> acceptedTeleports = Collections.synchronizedList(new ArrayList<>());
+    /** The newest teleport received; while any is unaccepted, it is where the client stands. */
+    private volatile Teleport lastReceived;
     private final AtomicInteger pendingChunkBatches = new AtomicInteger();
     /** Between a login or respawn packet and the loaded report: the vanilla client's loading screen. */
     private volatile boolean levelLoading;
@@ -204,6 +206,7 @@ public final class TestClient implements AutoCloseable {
     public void disconnect() { disconnect(Component.literal("Fixture client disconnected")); }
 
     public void disconnect(Component reason) {
+        if (prepare != null) { prepare.close(); prepare = null; }
         if (connection == null) return;
         if (mode == Mode.ATTACHED) throw new IllegalStateException("An attached client leaves through close()");
         connection.disconnect(reason);
@@ -372,21 +375,24 @@ public final class TestClient implements AutoCloseable {
 
     /**
      * The session is over without the test closing it: the server closed the connection (a kick), or a placed or
-     * logged-in player left the player list and nobody of this UUID is online any more. A player of this UUID on
-     * another connection does not end it: another client may be {@linkplain #attach(ServerPlayer) attached} for now.
+     * logged-in player left the player list and no entity of this UUID is on this connection any more. A test client
+     * {@linkplain #attach(ServerPlayer) attached} over this one only borrows the player and does not end it.
      */
     private boolean ended() {
         if (connection == null) return false;
         if (!connection.isConnected()) return true;
         if (mode == Mode.ATTACHED || listener == null) return false;
-        return server.getPlayerList().getPlayer(profile.id()) == null;
+        var online = server.getPlayerList().getPlayer(profile.id());
+        if (online == null) return true;
+        return online.connection != listener && LIVE.stream().noneMatch(other -> other.mode == Mode.ATTACHED && other.replaced == listener);
     }
 
     private boolean live() {
         if (listener == null || !connection.isConnected()) return false;
         // A placed or logged-in player the player list has dropped no longer has a client to answer for.
         if (mode == Mode.ATTACHED) return listener.player.connection == listener && !listener.player.isRemoved();
-        return server.getPlayerList().getPlayer(profile.id()) == listener.player;
+        // Only the connection the player is on answers; one another client is attached over stays quiet.
+        return server.getPlayerList().getPlayer(profile.id()) == listener.player && listener.player.connection == listener;
     }
 
     private void open(Mode mode) {
@@ -394,6 +400,7 @@ public final class TestClient implements AutoCloseable {
         pendingTeleports.clear();
         pendingKeepAlives.clear();
         acceptedTeleports.clear();
+        lastReceived = null;
         pendingChunkBatches.set(0);
         levelLoading = false;
         levelChunksStarted = false;
@@ -409,7 +416,11 @@ public final class TestClient implements AutoCloseable {
 
     private void observe(Packet<?> packet) {
         switch (packet) {
-            case ClientboundPlayerPositionPacket position -> pendingTeleports.add(arrival(position));
+            case ClientboundPlayerPositionPacket position -> {
+                var teleport = arrival(position);
+                lastReceived = teleport;
+                pendingTeleports.add(teleport);
+            }
             case ClientboundChunkBatchFinishedPacket ignored -> pendingChunkBatches.incrementAndGet();
             case ClientboundKeepAlivePacket keepAlive -> pendingKeepAlives.add(keepAlive.getId());
             case ClientboundLoginPacket ignored -> { levelLoading = true; levelChunksStarted = false; }
@@ -420,25 +431,37 @@ public final class TestClient implements AutoCloseable {
     }
 
     /**
-     * The destination the client applies. Absolute components come from the packet itself, so several teleports in one
-     * bundle each keep their own. A relative component needs the position the client started from; the server moved the
-     * player before sending, so the player's position when the packet goes out already includes that offset.
-     * TODO: [Refactor] two relative teleports in one bundle both read the later position; tracking the client's own
-     * position instead needs every test-driven movement to go through this class first.
+     * The destination the client applies: the packet's absolute components, and its relative ones added to where the
+     * client stands. While an earlier teleport is unaccepted the client stands at that one's destination. Otherwise it
+     * stands where the server had the player before this teleport: the server moves the player before sending, so that
+     * is the player's position now less the packet's offset.
+     * TODO: [Refactor] two relative teleports in one bundle (sent after both moved the player) start the first from the
+     * wrong place; tracking the client's own position needs every test-driven movement to go through this class first.
      */
     private Teleport arrival(ClientboundPlayerPositionPacket packet) {
         var change = packet.change();
         var relatives = packet.relatives();
         if (relatives.stream().noneMatch(PLACEMENT_FLAGS::contains)) return new Teleport(packet.id(), change.position(), change.yRot(), change.xRot());
-        var player = listener != null ? listener.player : placing;
-        if (player == null) throw new IllegalStateException("Relative teleport " + packet.id() + " before " + profile.name() + " has a player");
-        var target = change.position();
+        var offset = change.position();
+        Vec3 from; float fromYRot, fromXRot;
+        var standing = pendingTeleports.isEmpty() ? null : lastReceived;
+        if (standing != null) {
+            from = standing.position(); fromYRot = standing.yRot(); fromXRot = standing.xRot();
+        } else {
+            var player = listener != null ? listener.player : placing;
+            if (player == null) throw new IllegalStateException("Relative teleport " + packet.id() + " before " + profile.name() + " has a player");
+            from = new Vec3(player.getX() - (relatives.contains(Relative.X) ? offset.x : 0),
+                    player.getY() - (relatives.contains(Relative.Y) ? offset.y : 0),
+                    player.getZ() - (relatives.contains(Relative.Z) ? offset.z : 0));
+            fromYRot = player.getYRot() - (relatives.contains(Relative.Y_ROT) ? change.yRot() : 0);
+            fromXRot = player.getXRot() - (relatives.contains(Relative.X_ROT) ? change.xRot() : 0);
+        }
         return new Teleport(packet.id(), new Vec3(
-                relatives.contains(Relative.X) ? player.getX() : target.x,
-                relatives.contains(Relative.Y) ? player.getY() : target.y,
-                relatives.contains(Relative.Z) ? player.getZ() : target.z),
-                relatives.contains(Relative.Y_ROT) ? player.getYRot() : change.yRot(),
-                relatives.contains(Relative.X_ROT) ? player.getXRot() : change.xRot());
+                relatives.contains(Relative.X) ? from.x + offset.x : offset.x,
+                relatives.contains(Relative.Y) ? from.y + offset.y : offset.y,
+                relatives.contains(Relative.Z) ? from.z + offset.z : offset.z),
+                relatives.contains(Relative.Y_ROT) ? fromYRot + change.yRot() : change.yRot(),
+                relatives.contains(Relative.X_ROT) ? fromXRot + change.xRot() : change.xRot());
     }
 
     /** The relative flags that change where the player ends up or faces, as opposed to its velocity. */
@@ -462,6 +485,7 @@ public final class TestClient implements AutoCloseable {
 
     private void requireOffline() {
         settle();
+        if (prepare != null) throw new IllegalStateException(profile.name() + " is preparing a native login");
         if (connection != null) throw new IllegalStateException(profile.name() + " is already connected");
     }
 
