@@ -313,11 +313,14 @@ final class RoundSessionTest {
             pumpUntil(callbacks, () -> session.state() == RoundSession.State.OPEN);
             session.adaptersReady(session.snapshot().orElseThrow().roundId());
             pumpUntil(callbacks, () -> !session.mutationPending());
-            assertEquals(RoundPhase.RESCUE, session.snapshot().orElseThrow().phase());
-            assertTrue(session.snapshot().orElseThrow().awaitingReconnect());
-            assertEquals(40_000, session.view().orElseThrow().remainingPhaseMillis(), "A normal stop freezes the rescue deadline");
+            // Nobody could reconnect during the downtime: the wait starts again once somebody is back.
+            assertEquals(RoundPhase.RUNNING, session.snapshot().orElseThrow().phase());
+            assertEquals(PauseReason.NO_ONLINE_HUMANS, session.snapshot().orElseThrow().pauseReason());
             assertEquals(TimeUnit.SECONDS.toNanos(12), session.view().orElseThrow().challengeNanos());
             assertFalse(session.snapshot().orElseThrow().timingUncertain());
+            session.onOnline(player, "Human", true);
+            pumpUntil(callbacks, () -> !session.mutationPending());
+            assertEquals(PauseReason.NONE, session.snapshot().orElseThrow().pauseReason());
         }
     }
 

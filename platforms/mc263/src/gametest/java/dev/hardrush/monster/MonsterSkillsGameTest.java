@@ -4,6 +4,7 @@ import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
+import dev.hardrush.gametest.TestClients;
 import dev.hardrush.monster.mixin.MonsterLivingAccessor;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.player.PlayerProfiles;
@@ -20,10 +21,8 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
-import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
@@ -494,10 +493,10 @@ public final class MonsterSkillsGameTest {
             }
             for (int index = 0; index < count; index++) {
                 var profile = new GameProfile(UUID.randomUUID(), "HRSkill" + ARENAS.get() + index);
-                var player = new ServerPlayer(level.getServer(), level, profile, ClientInformation.createDefault());
+                var player = new ServerPlayer(level.getServer(), level, profile, TestClients.information());
                 var connection = new SinkConnection(); channels.add(new EmbeddedChannel(connection));
                 dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> level.getServer().getPlayerList().placeNewPlayer(connection, player,
-                        CommonListenerCookie.createInitial(profile, false)));
+                        TestClients.cookie(profile)));
                 player.teleportTo(center.x + index * 24, center.y, center.z);
                 player.setGameMode(GameType.SURVIVAL); player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
                 players.add(player); connections.put(player.getUUID(), connection);

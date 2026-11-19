@@ -22,8 +22,8 @@ public final class RuleBookText {
         var pages = new ArrayList<String>();
         pages.add("HardRush\n\n人类击败末影龙即通关，对末影龙打出最后一击的人类是胜者。\n\n本轮模式：" + (hardcore ? "极限挑战" : "普通模式"));
         pages.add("开局与加入\n\n开局前走进集结区即准备，走出即取消。\n\n挑战开始后，在集结区站 4 秒可以空手中途加入，落在远离出生点的荒野，没有出生保护。");
-        pages.add("离线与救场\n\n人类离线时保留资格。所有人类都离线时进入 " + seconds(value(rules, "round.rescueMillis", 60_000))
-                + " 秒救场，期间有人重连就继续，否则本轮结束。");
+        pages.add("离线与救场\n\n人类离线时保留资格。所有人类都离线时等待 " + seconds(RoundEngine.reconnectMillis(rules))
+                + " 秒，期间有人重连、复生或中途加入就继续，否则本轮结束。");
         pages.add("黄昏契约\n\n开局后到第一次日落前，玩家之间不能互相伤害。");
         if (!hardcore) {
             pages.add("阵亡\n\n普通模式下阵亡后按原版重生。");
@@ -40,8 +40,8 @@ public final class RuleBookText {
                     + " 级起，伤害人类会上涨，最高 " + (long) value(rules, MonsterWorth.MAX_LEVEL, 30) + " 级。\n\n被玩家击杀时掉出经验，满 "
                     + (long) value(rules, MonsterWorth.BOOK_MIN_LEVEL, 15) + " 级再掉一本附魔书。");
             pages.add("复生\n\n击杀一名人类获得 1 个复生图腾。有图腾时只能去营地北侧的祭坛复生：站上金块 4 秒，空手回到挑战世界，怪物币清空。\n\n"
-                    + "图腾可以丢给同伴，落地 5 分钟作废。");
-            pages.add("救场\n\n所有人类阵亡后进入 " + seconds(value(rules, "round.rescueMillis", 60_000))
+                    + "图腾不能丢弃或转赠。");
+            pages.add("救场\n\n所有人类阵亡后进入 " + seconds(RoundEngine.rescueMillis(rules))
                     + " 秒救场：有图腾的怪物可以复生，也可以从集结区加入。");
         }
         pages.add("结局\n\n通关后所有人到末地为胜者庆祝，最长 " + seconds(RoundEngine.successCelebrationMillis(rules))

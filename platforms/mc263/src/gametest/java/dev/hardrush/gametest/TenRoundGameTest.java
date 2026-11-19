@@ -35,7 +35,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -303,7 +302,7 @@ public final class TenRoundGameTest {
                     .thenExecute(() -> {
                         actor.connection = new RecordingConnection();
                         actor.channel = new EmbeddedChannel(actor.connection);
-                        actor.player = actor.prepare.spawnPlayer(actor.connection, CommonListenerCookie.createInitial(actor.profile, false));
+                        actor.player = actor.prepare.spawnPlayer(actor.connection, TestClients.cookie(actor.profile));
                         actor.prepare.close();
                         acknowledge(actor.player);
                         test.assertTrue(PlayerProfiles.isLocked(actor.player), "Actual login is quarantined before any participation");
