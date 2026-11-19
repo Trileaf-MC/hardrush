@@ -28,7 +28,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -656,11 +655,7 @@ public final class ServerRestartRegression implements ModInitializer {
             actor.client.acknowledge(); actor.client.clearPackets();
         }
         void hunt(Actor hunter, Actor target) {
-            HuntInputFixtures.hunt(hunter.player, target.profile.id(), new AbstractList<Packet<?>>() {
-                @Override public Packet<?> get(int index) { return hunter.client.packets().get(index); }
-                @Override public int size() { return hunter.client.connection().size(); }
-                @Override public Spliterator<Packet<?>> spliterator() { return hunter.client.packets().spliterator(); }
-            });
+            HuntInputFixtures.hunt(hunter.client, target.profile.id());
         }
         <T> T service(String name, Class<T> type) { return type.cast(((Map<?, ?>) getStatic(RoundRuntime.class, name)).get(server)); }
     }

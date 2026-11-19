@@ -17,12 +17,8 @@ import dev.hardrush.locator.PlayerLocator;
 import dev.hardrush.monster.MonsterRoundRuntime;
 import dev.hardrush.protection.ProtectionRuntime;
 import dev.hardrush.persistence.SqliteRoundStore;
-import java.util.AbstractList;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.Spliterator;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -34,7 +30,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.network.HashedStack;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
@@ -818,12 +813,10 @@ public final class LobbyRuntimeGameTest {
         final class Peer {
             final GameProfile profile;
             final TestClient client;
-            final PacketView connection;
             ServerPlayer player;
             Peer(String name) {
                 profile = new GameProfile(UUID.randomUUID(), name);
                 client = new TestClient(server, profile);
-                connection = new PacketView(client);
             }
             Participant participant() { return round().participants().get(profile.id()); }
             ServerPlayer current() { return server.getPlayerList().getPlayer(profile.id()); }
@@ -849,7 +842,7 @@ public final class LobbyRuntimeGameTest {
                         new net.minecraft.world.entity.player.Input(forward, false, false, false, false, false, false)));
             }
             void move(Vec3 position) { player.teleport(new TeleportTransition(level, position, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING)); client.acknowledge(); }
-            void hunt(UUID target) { HuntInputFixtures.hunt(player, target, connection.packets); }
+            void hunt(UUID target) { HuntInputFixtures.hunt(client, target); }
             void acknowledge() { client.acknowledge(); }
             void disconnect() {
                 client.disconnect(Component.literal("Lobby native reconnect"));
@@ -890,18 +883,5 @@ public final class LobbyRuntimeGameTest {
             return;
         }
         throw new IllegalStateException("No revival totem on the hotbar");
-    }
-
-    static final class PacketView {
-        final List<Packet<?>> packets;
-        PacketView(TestClient client) {
-            packets = new AbstractList<>() {
-                @Override public Packet<?> get(int index) { return client.packets().get(index); }
-                @Override public int size() { return client.packets().size(); }
-                @Override public Iterator<Packet<?>> iterator() { return client.packets().iterator(); }
-                @Override public Spliterator<Packet<?>> spliterator() { return client.packets().spliterator(); }
-                @Override public List<Packet<?>> subList(int from, int to) { return client.packets().subList(from, to); }
-            };
-        }
     }
 }
