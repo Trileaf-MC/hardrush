@@ -11,7 +11,6 @@ import dev.hardrush.world.LobbyWorld;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.persistence.SqliteRoundStore;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.nio.file.*;
 import java.sql.Connection;
 import java.util.*;
@@ -22,8 +21,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.config.PrepareSpawnTask;
-import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -111,7 +108,7 @@ public final class ServerCrashRegression implements ModInitializer {
                 return idle() && round().participants().get(a.profile.id()).role() == ParticipantRole.MONSTER_LOBBY
                         && a.player.isAlive() && a.player.level() == LobbyWorld.open(server).holdingLevel() && profiles.isReady(a.profile.id(), round());
             });
-            act("cooldown and formal deployment", () -> { advance(31); HuntInputFixtures.hunt(a.player, b.profile.id(), a.connection.packets); });
+            act("cooldown and formal deployment", () -> { advance(31); hunt(a, b); });
             waitFor("formal deployed zombie", () -> idle() && round().participants().get(a.profile.id()).role() == ParticipantRole.MONSTER_DEPLOYED
                     && MonsterRoles.isMonster(a.player) && !PlayerProfiles.isLocked(a.player));
             if (scenario.equals("AWARD")) arm();
@@ -277,11 +274,10 @@ public final class ServerCrashRegression implements ModInitializer {
         }
 
         void quarantinedLogin(Actor actor) {
-            act("prepare quarantined UUID", () -> { actor.prepare = new PrepareSpawnTask(server, new NameAndId(actor.profile)); actor.prepare.start(packet -> {}); });
-            waitFor("load quarantined UUID", () -> actor.prepare.tick());
+            act("prepare quarantined UUID", actor.client::beginLogin);
+            waitFor("load quarantined UUID", actor.client::finishLogin);
             act("connect quarantined UUID", () -> {
-                actor.connection = new RecordingConnection(); actor.channel = new EmbeddedChannel(actor.connection);
-                actor.player = actor.prepare.spawnPlayer(actor.connection, TestClients.cookie(actor.profile)); actor.prepare.close(); acknowledge(actor);
+                actor.player = actor.client.player(); actor.client.acknowledge(); actor.client.clearPackets();
                 require(actor.player.level() == LobbyWorld.open(server).holdingLevel() && PlayerProfiles.isLocked(actor.player), "login cannot restore uncertain native effects");
             });
         }
