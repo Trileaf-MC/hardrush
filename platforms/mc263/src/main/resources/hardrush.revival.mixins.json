@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "package": "dev.hardrush.revival.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "TotemMenuMixin",
+    "TotemDropMixin",
+    "TotemDeathLootMixin",
+    "TotemBundleMixin",
+    "TotemShelfMixin",
+    "TotemItemFrameMixin",
+    "TotemArmorStandMixin",
+    "TotemDecoratedPotMixin",
+    "TotemAllayMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}

@@ -55,7 +55,7 @@ public abstract class ProtectionNetworkMixin {
                 // Monster coins are the only lobby items that may be thrown.
                 if (ProtectionRuntime.protectedEntity(player)
                         && !CampTransfers.is(player.getInventory().getSelectedItem())) {
-                    dev.hardrush.lobby.RevivalTotems.refuseThrow(player, player.getInventory().getSelectedItem());
+                    dev.hardrush.revival.RevivalTotems.refuse(player, player.getInventory().getSelectedItem());
                     player.inventoryMenu.sendAllDataToRemote();
                     ci.cancel();
                 }
@@ -97,7 +97,7 @@ public abstract class ProtectionNetworkMixin {
         if (player.containerMenu != player.inventoryMenu || packet.containerInput() == ContainerInput.THROW
                 || packet.slotNum() < 0 && packet.containerInput() != ContainerInput.QUICK_CRAFT) {
             if (packet.containerInput() == ContainerInput.THROW && packet.slotNum() >= 0 && packet.slotNum() < player.containerMenu.slots.size())
-                dev.hardrush.lobby.RevivalTotems.refuseThrow(player, player.containerMenu.getSlot(packet.slotNum()).getItem());
+                dev.hardrush.revival.RevivalTotems.refuse(player, player.containerMenu.getSlot(packet.slotNum()).getItem());
             player.containerMenu.sendAllDataToRemote(); ci.cancel();
         }
     }
