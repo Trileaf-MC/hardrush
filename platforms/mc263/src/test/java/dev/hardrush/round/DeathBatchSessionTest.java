@@ -52,6 +52,67 @@ class DeathBatchSessionTest {
         }
     }
 
+    @Test void droppedTotemRegistersOnCommitIsTakenOnceAndLaterRevivalConsumesItExactlyOnce() throws Exception {
+        Path path = seed(ParticipantRole.HUMAN_ACTIVE);
+        UUID token = UUID.randomUUID();
+        try (var session = open(path)) {
+            UUID batch = UUID.randomUUID();
+            var origin = new CombatOrigin(round, UUID.randomUUID(), new CombatActor(hunter, ParticipantRole.HUMAN_ACTIVE, 1, 0),
+                    AttackKind.MELEE, Optional.empty(), List.of());
+            var cause = new CombatEvent(round, UUID.randomUUID(), batch, 1, victim, Optional.of(origin),
+                    CombatEvent.Attribution.HUMAN, "minecraft:player_attack", Optional.of(hunter), Optional.of(hunter),
+                    20, true, clock.get());
+            assertTrue(session.captureDeath(round, victim, 1, 0, batch, cause.origin(), false, Optional.of(token)));
+            assertFalse(session.captureDeath(round, victim, 1, 0, batch, cause.origin(), false, Optional.of(UUID.randomUUID())),
+                    "The same death is captured once; a second drop would not be registered");
+            session.captureLethalEvidence(cause);
+            session.finishDamageBatch(round, batch);
+            pump(() -> !session.mutationPending());
+            assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
+            var committed = session.snapshot().orElseThrow();
+            assertEquals(Set.of(token), committed.looseTotems().keySet(), "The platform's drop token is registered");
+            assertEquals(victim, committed.looseTotems().get(token).victim());
+            assertEquals(0, committed.participants().get(hunter).revivalCharges(), "The killer earns nothing by itself");
+
+            var taken = new AtomicReference<RoundSession.Reply>();
+            session.requestLooseTotemPickup(round, token, hunter, 1, taken::set);
+            pump(() -> taken.get() != null);
+            assertTrue(taken.get().success(), taken.get().message());
+            committed = session.snapshot().orElseThrow();
+            assertEquals(1, committed.participants().get(hunter).revivalCharges());
+            assertTrue(committed.looseTotems().isEmpty(), "A taken totem leaves the registry");
+            var again = new AtomicReference<RoundSession.Reply>();
+            session.requestLooseTotemPickup(round, token, hunter, 1, again::set);
+            pump(() -> again.get() != null);
+            assertFalse(again.get().success(), "The same token cannot be taken twice");
+            assertEquals(1, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges());
+
+            UUID later = UUID.randomUUID();
+            session.captureDeath(round, hunter, 1, 0, later, Optional.empty(), false);
+            session.finishDamageBatch(round, later);
+            pump(() -> !session.mutationPending());
+            assertEquals(RoundPhase.RESCUE, session.snapshot().orElseThrow().phase());
+            assertEquals(1, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges(), "The charge goes along to camp");
+            var reply = new AtomicReference<RoundSession.Reply>();
+            session.requestRevival(round, hunter, 1, 0, reply::set);
+            pump(() -> reply.get() != null);
+            assertTrue(reply.get().success(), reply.get().message());
+            assertEquals(0, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges());
+            var duplicate = new AtomicReference<RoundSession.Reply>();
+            session.requestRevival(round, hunter, 1, 0, duplicate::set);
+            pump(() -> duplicate.get() != null);
+            assertFalse(duplicate.get().success(), "A spent charge cannot revive again");
+        }
+        try (var store = new SqliteRoundStore(path)) {
+            var saved = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload());
+            assertEquals(0, saved.participants().get(hunter).revivalCharges());
+            assertEquals(2, saved.participants().get(hunter).lifeSequence());
+            assertTrue(saved.looseTotems().isEmpty());
+            assertEquals(1, store.participantRecord(round, hunter).orElseThrow().revivalCount());
+            assertEquals(1, store.participantRecord(round, victim).orElseThrow().deathCount());
+        }
+    }
+
     @Test void lethalEvidenceAndSelfDeathCommitBeforeRescueAndDuplicateRevivalCannotConsumeAgain() throws Exception {
         Path path = seed();
         try (var session = open(path)) {

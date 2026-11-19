@@ -21,7 +21,8 @@ import net.minecraft.world.level.entity.EntityTypeTest;
 
 /**
  * Monster coins are the one camp item that may be thrown: a gift moves through the durable balance
- * before its native floor stack can be claimed. Revival totems stay with their owner.
+ * before its native floor stack can be claimed. Revival totems stay with their owner ({@code revival.TotemKeeping});
+ * the floor totems a human's death leaves are {@code revival.TotemDrops}.
  */
 public final class CampTransfers {
     private static final class Loose {
@@ -160,10 +161,9 @@ public final class CampTransfers {
         boolean open = r != null && r.rules().mode() == GameMode.HARDCORE
                 && (r.phase() == RoundPhase.RUNNING || r.phase() == RoundPhase.RESCUE);
         if (!open) loose.values().removeIf(entry -> !entry.claimed);
+        // Floor revival totems are TotemDrops' business; only coin stacks are swept here.
         for (var level : server.getAllLevels()) {
-            // A totem can never lie on the floor; a stray one is removed like an unclaimed coin stack.
-            for (var item : level.getEntities(EntityTypeTest.forClass(ItemEntity.class),
-                    item -> is(item.getItem()) || dev.hardrush.revival.RevivalTotems.is(item.getItem()))) {
+            for (var item : level.getEntities(EntityTypeTest.forClass(ItemEntity.class), item -> is(item.getItem()))) {
                 var entry = token(item.getItem()).map(loose::get).orElse(null);
                 if (entry == null || entry.entity != item) item.discard();
             }

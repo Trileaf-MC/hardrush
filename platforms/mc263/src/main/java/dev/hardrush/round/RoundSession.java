@@ -299,21 +299,32 @@ public final class RoundSession implements AutoCloseable {
      */
     public void captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId,
             Optional<CombatOrigin> killCredit, boolean recentlyHurtByPlayer) {
-        Objects.requireNonNull(killCredit);
+        captureDeath(roundId, playerId, lifeSequence, deploymentSequence, batchId, killCredit, recentlyHurtByPlayer, Optional.empty());
+    }
+
+    /**
+     * As above; {@code dropToken} names the revival totem the adapter is dropping at this death
+     * ({@link RoundDeath#dropToken}). Returns whether the death was taken into a batch: a refused death drops nothing.
+     * The batch may commit before this returns when it closes at once and the write completes on this thread.
+     */
+    public boolean captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId,
+            Optional<CombatOrigin> killCredit, boolean recentlyHurtByPlayer, Optional<UUID> dropToken) {
+        Objects.requireNonNull(killCredit); Objects.requireNonNull(dropToken);
         if (engine == null || stopping || state != State.OPEN || !roundId.equals(engine.committed().roundId())
-                || engine.committed().result() != null || terminalQueued) return;
+                || engine.committed().result() != null || terminalQueued) return false;
         var participant = engine.committed().participants().get(playerId);
         var identity = new DeathIdentity(lifeSequence, deploymentSequence);
         if (participant == null || participant.lifeSequence() != lifeSequence
                 || participant.monsterDeploymentSequence() != deploymentSequence
                 || participant.role() != ParticipantRole.HUMAN_ACTIVE && participant.role() != ParticipantRole.MONSTER_DEPLOYED
-                || identity.equals(capturedDeaths.get(playerId))) return;
+                || identity.equals(capturedDeaths.get(playerId))) return false;
         capturedDeaths.put(playerId, identity);
         UUID batch = batchId == null ? UUID.randomUUID() : batchId;
-        deathBatches.computeIfAbsent(batch, ignored -> new LinkedHashMap<>()).putIfAbsent(playerId,
-                new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.empty(), killCredit, recentlyHurtByPlayer,
-                        Optional.empty()));
+        var death = new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.empty(), killCredit, recentlyHurtByPlayer,
+                dropToken);
+        boolean taken = deathBatches.computeIfAbsent(batch, ignored -> new LinkedHashMap<>()).putIfAbsent(playerId, death) == null;
         if (batchId == null) finishDamageBatch(roundId, batch);
+        return taken;
     }
 
     public void captureLethalEvidence(CombatEvent event) {
@@ -1018,6 +1029,12 @@ public final class RoundSession implements AutoCloseable {
             int count, Consumer<Reply> reply) {
         requestAction(() -> engine.proposeMonsterCoinPickup(UUID.randomUUID(), roundId, playerId,
                 lifeSequence, deploymentSequence, count), reply, "怪物币已拾取。");
+    }
+
+    /** A human takes the registered floor totem {@code token}; refused (busy, frozen, taken, expired) like any action. */
+    public void requestLooseTotemPickup(UUID roundId, UUID token, UUID playerId, int lifeSequence, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeLooseTotemPickup(UUID.randomUUID(), roundId, token, playerId, lifeSequence),
+                reply, "复生图腾已拾取。");
     }
 
     public void requestVaultOpen(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
