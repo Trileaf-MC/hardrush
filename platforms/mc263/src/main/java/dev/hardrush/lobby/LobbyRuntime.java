@@ -289,7 +289,7 @@ public final class LobbyRuntime {
         tellArrivals(server, b);
         boolean active = round != null && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE)
                 && !b.session.competitionLocked();
-        HuntRetracks.tick(server, active ? round : null);
+        HuntRetracks.tick(server, active ? round : null, LobbyRuntime::retrackReady);
         if (!active) {
             for (var d : List.copyOf(b.searches.values())) searchFailed(b, d, "本轮即将结束，追猎取消");
             for (var d : b.pending.values()) d.cancelled = true;
@@ -524,14 +524,23 @@ public final class LobbyRuntime {
         if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) return true;
         // The native cooldown overlay on the compass already says it is not ready.
         if (player.getCooldowns().isOnCooldown(compass)) return false;
-        var target = HuntRetracks.quarry(player).orElse(null);
-        if (target == null || !validTarget(b, target, (ServerLevel) target.level()) || dimension(b, (ServerLevel) target.level()).equals("lobby")) {
+        if (retrackTarget(b, player).isEmpty()) {
             Notices.refuse(player, "罗盘失去了指向：" + quarryName(player) + " 已离线、阵亡或不在挑战世界"); return false;
         }
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), true));
         ChannelEffects.start(player, true, channelNanos(r));
         return true;
+    }
+    /** The quarry a retrack may set out for: alive, online, unprotected and in the challenge world, any dimension. */
+    private static Optional<ServerPlayer> retrackTarget(Binding b, ServerPlayer hunter) {
+        return HuntRetracks.quarry(hunter).filter(target -> validTarget(b, target, (ServerLevel) target.level())
+                && !dimension(b, (ServerLevel) target.level()).equals("lobby"));
+    }
+    /** Whether a press on the compass would start a retrack now, apart from its rest: what its glint shows. */
+    public static boolean retrackReady(ServerPlayer hunter) {
+        var b = BINDINGS.get(hunter.level().getServer());
+        return b != null && !channeling(hunter) && retrackTarget(b, hunter).isPresent();
     }
     private static void beginRetrackSearch(Binding b, Channel ch, dev.hardrush.core.round.Participant p) {
         var target = HuntRetracks.quarry(ch.player).orElse(null);

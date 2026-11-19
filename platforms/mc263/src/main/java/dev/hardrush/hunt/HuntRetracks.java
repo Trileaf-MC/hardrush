@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.UUID;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.component.DataComponents;
@@ -29,6 +30,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.LevelData;
 import org.jspecify.annotations.Nullable;
@@ -36,8 +38,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * The tracking compass of a deployed monster. Its needle points at the bound quarry: a vanilla compass points at the
  * world spawn its client was last told about, so only this player's client is told the spawn stands where the quarry
- * is. Another dimension, or a lost quarry, sets the needle spinning exactly as vanilla does. The compass glints
- * whenever a retrack can start and rests after each landing. Arrivals near the quarry sound the species' native call.
+ * is. A quarry in another dimension, or a lost one, is sent as nowhere at all, so the needle spins exactly as vanilla
+ * does and the client never learns where the quarry went. The compass glints whenever a press would start a retrack
+ * and rests after each landing. Arrivals near the quarry sound the species' native call.
  */
 public final class HuntRetracks {
     public static final String PURPOSE = "retrack";
@@ -55,8 +58,9 @@ public final class HuntRetracks {
     /**
      * Server tick: the glint and the needle. {@code round} is null outside the challenge and rescue phases;
      * then, as for anyone no longer deployed, the needle goes back to the real world spawn.
+     * @param ready whether a press would start a retrack now, apart from the compass's rest: the same rule the press obeys
      */
-    public static void tick(MinecraftServer server, @Nullable RoundSnapshot round) {
+    public static void tick(MinecraftServer server, @Nullable RoundSnapshot round, Predicate<ServerPlayer> ready) {
         var pointers = POINTERS.computeIfAbsent(server, ignored -> new HashMap<>());
         int now = server.getTickCount();
         var online = new HashSet<UUID>();
@@ -70,11 +74,10 @@ public final class HuntRetracks {
                 if (old.body == player) restore(player);
                 continue;
             }
-            var target = quarry(player, round).orElse(null);
-            light(player, target != null);
+            light(player, ready.test(player));
             var level = player.level().dimension();
             if (old == null || old.body != player || old.level != level || now - old.sentTick >= POINT_INTERVAL_TICKS) {
-                send(player, pointAt(target));
+                send(player, pointAt(player, quarry(player, round).orElse(null)));
                 pointers.put(player.getUUID(), new Pointer(player, level, now));
             }
         }
@@ -92,12 +95,16 @@ public final class HuntRetracks {
         return p != null && p.role() == ParticipantRole.MONSTER_DEPLOYED && MonsterRoles.isMonster(player);
     }
 
-    /** Where the hunter's compass needle points: the quarry's block, or nowhere it could stand, so it spins. */
+    /**
+     * Where the hunter's compass needle points: the quarry's block in the hunter's own dimension; otherwise nowhere
+     * any client stands, so it spins and the packet carries no position of the quarry.
+     */
     public static GlobalPos needle(ServerPlayer hunter) {
-        return pointAt(quarry(hunter).orElse(null));
+        return pointAt(hunter, quarry(hunter).orElse(null));
     }
-    private static GlobalPos pointAt(@Nullable ServerPlayer target) {
-        return target == null ? GlobalPos.of(NOWHERE, BlockPos.ZERO) : GlobalPos.of(target.level().dimension(), target.blockPosition());
+    private static GlobalPos pointAt(ServerPlayer hunter, @Nullable ServerPlayer target) {
+        return target == null || target.level() != hunter.level() ? GlobalPos.of(NOWHERE, BlockPos.ZERO)
+                : GlobalPos.of(target.level().dimension(), target.blockPosition());
     }
     private static void send(ServerPlayer player, GlobalPos at) {
         if (player.connection != null) player.connection.send(new ClientboundSetDefaultSpawnPositionPacket(new LevelData.RespawnData(at, 0, 0)));
@@ -132,11 +139,18 @@ public final class HuntRetracks {
 
     /** A personal hunt landed. */
     public static void arrived(ServerPlayer hunter, ServerPlayer target) { announce(hunter, target); }
-    /** A retrack landed: the compass rests. */
+    /** A retrack landed: the compass rests, wherever it is held, even on the inventory cursor. */
     public static void retracked(ServerPlayer hunter, ServerPlayer target) {
         announce(hunter, target);
-        for (var stack : compasses(hunter)) { hunter.getCooldowns().addCooldown(stack, cooldownTicks(hunter.level().getServer())); break; }
+        hunter.getCooldowns().addCooldown(cooldownGroup(hunter), cooldownTicks(hunter.level().getServer()));
         light(hunter, false);
+    }
+    /** The compass's native cooldown group: it rests as an item kind, not as one stack in one slot. */
+    public static Identifier cooldownGroup(ServerPlayer hunter) {
+        return hunter.getCooldowns().getCooldownGroup(new ItemStack(Items.COMPASS));
+    }
+    public static boolean resting(ServerPlayer hunter) {
+        return hunter.getCooldowns().isOnCooldown(new ItemStack(Items.COMPASS));
     }
 
     /** Vanilla mobs groan or rattle now and then; a creeper stays the silent one. */
@@ -151,10 +165,10 @@ public final class HuntRetracks {
         };
         hunter.level().playSound(null, hunter.getX(), hunter.getY(), hunter.getZ(), sound, SoundSource.HOSTILE, 1, 1);
     }
-    /** Glints while a press would start a retrack: a quarry to follow and no rest or channel on the compass. */
-    private static void light(ServerPlayer hunter, boolean tracking) {
+    /** Glints while a press would start a retrack: {@code ready}, and no rest or channel overlay on the compass. */
+    private static void light(ServerPlayer hunter, boolean ready) {
+        boolean lit = ready && !resting(hunter);
         for (var stack : compasses(hunter)) {
-            boolean lit = tracking && !hunter.getCooldowns().isOnCooldown(stack);
             if (!Boolean.valueOf(lit).equals(stack.get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE)))
                 stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, lit);
         }

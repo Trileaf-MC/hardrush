@@ -1,6 +1,5 @@
 package dev.hardrush.lobby;
 
-import dev.hardrush.monster.MonsterItems;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -36,8 +35,7 @@ final class ChannelEffects {
     static void start(ServerPlayer player, boolean retrack, long durationNanos) {
         STAGE.put(player.getUUID(), 0);
         int ticks = (int) Math.max(1, Math.min(Integer.MAX_VALUE, durationNanos / 50_000_000L));
-        var stack = item(player, retrack);
-        if (stack != null) player.getCooldowns().addCooldown(stack, ticks);
+        player.getCooldowns().addCooldown(group(player, retrack), ticks);
         tick(player, retrack, 0, durationNanos);
     }
 
@@ -78,18 +76,13 @@ final class ChannelEffects {
     }
 
     private static void clearOverlay(ServerPlayer player, boolean retrack) {
-        var stack = item(player, retrack);
-        if (stack != null) player.getCooldowns().removeCooldown(player.getCooldowns().getCooldownGroup(stack));
+        player.getCooldowns().removeCooldown(group(player, retrack));
     }
 
-    private static net.minecraft.world.item.ItemStack item(ServerPlayer player, boolean retrack) {
-        String purpose = retrack ? dev.hardrush.hunt.HuntRetracks.PURPOSE : dev.hardrush.monster.MonsterRoles.RETURN_SHARD;
-        var inventory = player.getInventory();
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            var stack = inventory.getItem(i);
-            if (MonsterItems.matches(player, stack, purpose)) return stack;
-        }
-        return null;
+    /** Cooldowns belong to the item kind, so the overlay follows the control into any slot or onto the cursor. */
+    private static net.minecraft.resources.Identifier group(ServerPlayer player, boolean retrack) {
+        return retrack ? dev.hardrush.hunt.HuntRetracks.cooldownGroup(player)
+                : player.getCooldowns().getCooldownGroup(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ECHO_SHARD));
     }
 
     private static SimpleParticleType particle(boolean retrack) {

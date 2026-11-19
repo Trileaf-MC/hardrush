@@ -905,7 +905,7 @@ public final class MonsterRoles {
     }
     /**
      * The fixed sortie controls' action-bar usage while held; the echo shard's and the trident's are also the first line
-     * of their descriptions. A lit compass gives its usage too; a dark one says why: resting, or its quarry lost.
+     * of their descriptions. A lit compass gives its usage too; a dark one says why: tracking, quarry lost, resting, or out of reach.
      */
     public static Optional<String> heldHint(ServerPlayer player, ItemStack stack) {
         var role = ROLES.get(player.getUUID());
@@ -913,7 +913,9 @@ public final class MonsterRoles {
         if (stack.is(Items.ECHO_SHARD) && MonsterItems.matches(player, stack, RETURN_SHARD)) return Optional.of(returnUsage(role));
         if (stack.is(Items.COMPASS) && MonsterItems.matches(player, stack, HuntRetracks.PURPOSE))
             return Optional.of(Boolean.TRUE.equals(stack.get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE)) ? retrackUsage(role)
-                    : HuntRetracks.quarry(player).isPresent() ? "罗盘冷却中 · 指针仍指向目标" : "目标已离线或阵亡，罗盘失去了指向");
+                    : dev.hardrush.lobby.LobbyRuntime.channeling(player) ? "正在循迹"
+                    : HuntRetracks.quarry(player).isEmpty() ? "目标已离线或阵亡，罗盘失去了指向"
+                    : HuntRetracks.resting(player) ? "罗盘冷却中" : "目标暂时无法循迹");
         if (stack.is(Items.TRIDENT) && MonsterItems.matches(player, stack, SEA_TRIDENT)) return Optional.of(TRIDENT_USAGE);
         return Optional.empty();
     }
