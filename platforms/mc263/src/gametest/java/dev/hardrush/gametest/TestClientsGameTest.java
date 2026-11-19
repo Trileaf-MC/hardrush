@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import net.minecraft.util.Util;
 import net.minecraft.world.level.Level;
@@ -103,8 +104,11 @@ public final class TestClientsGameTest {
         var step = new PositionMoveRotation(new Vec3(1, 0, 0), Vec3.ZERO, 0, 0);
         client.listener().teleport(step, Relative.ALL);
         client.listener().teleport(step, Relative.ALL);
+        int sent = client.packets(ClientboundPlayerPositionPacket.class).size();
         client.acknowledge();
         test.assertTrue(client.connected(), "Accepting both relative teleports keeps the client connected");
+        test.assertValueEqual(client.packets(ClientboundPlayerPositionPacket.class).size(), sent,
+                "No acceptance reads as moving too quickly and draws a corrective teleport");
         test.assertTrue(client.player().position().distanceTo(start.add(2, 0, 0)) < 1.0E-6,
                 "Each relative offset applies once: " + start + " -> " + client.player().position());
         client.close();
