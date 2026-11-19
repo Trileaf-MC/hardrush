@@ -311,7 +311,8 @@ public final class RoundSession implements AutoCloseable {
         capturedDeaths.put(playerId, identity);
         UUID batch = batchId == null ? UUID.randomUUID() : batchId;
         deathBatches.computeIfAbsent(batch, ignored -> new LinkedHashMap<>()).putIfAbsent(playerId,
-                new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.empty(), killCredit, recentlyHurtByPlayer));
+                new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.empty(), killCredit, recentlyHurtByPlayer,
+                        Optional.empty()));
         if (batchId == null) finishDamageBatch(roundId, batch);
     }
 

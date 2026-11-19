@@ -20,7 +20,7 @@ class DeathBatchSessionTest {
     final AtomicLong clock = new AtomicLong();
     final LinkedBlockingQueue<Runnable> callbacks = new LinkedBlockingQueue<>();
 
-    @Test void humanKillPersistsOneChargeBeforeDeathAndLaterRevivalConsumesItExactlyOnce() throws Exception {
+    @Test void humanKillCommitsOnceWithoutPayingTheKillerOrDroppingATotemBeforeThePlatformDropsOne() throws Exception {
         Path path = seed(ParticipantRole.HUMAN_ACTIVE);
         try (var session = open(path)) {
             UUID batch = UUID.randomUUID();
@@ -33,31 +33,21 @@ class DeathBatchSessionTest {
             session.captureLethalEvidence(cause);
             session.captureLethalEvidence(cause);
             session.finishDamageBatch(round, batch);
-            assertEquals(0, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges());
             pump(() -> !session.mutationPending());
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
-            assertEquals(1, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges());
-            assertEquals(ParticipantRole.HUMAN_ACTIVE, session.snapshot().orElseThrow().participants().get(hunter).role());
+            var committed = session.snapshot().orElseThrow();
+            assertEquals(0, committed.participants().get(hunter).revivalCharges(), "A human kill no longer pays the killer");
+            assertEquals(ParticipantRole.HUMAN_ACTIVE, committed.participants().get(hunter).role());
+            assertEquals(ParticipantRole.MONSTER_LOBBY, committed.participants().get(victim).role());
+            // This adapter drops no totem yet and passes no token, so nothing is registered.
+            assertTrue(committed.looseTotems().isEmpty());
             session.finishDamageBatch(round, batch);
             assertFalse(session.mutationPending());
-
-            UUID later = UUID.randomUUID();
-            session.captureDeath(round, hunter, 1, 0, later, Optional.empty(), false);
-            session.finishDamageBatch(round, later);
-            pump(() -> !session.mutationPending());
-            assertEquals(RoundPhase.RESCUE, session.snapshot().orElseThrow().phase());
-            assertEquals(1, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges());
-            var reply = new AtomicReference<RoundSession.Reply>();
-            session.requestRevival(round, hunter, 1, 0, reply::set);
-            pump(() -> reply.get() != null);
-            assertTrue(reply.get().success(), reply.get().message());
-            assertEquals(0, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges());
         }
         try (var store = new SqliteRoundStore(path)) {
             var saved = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload());
             assertEquals(0, saved.participants().get(hunter).revivalCharges());
-            assertEquals(2, saved.participants().get(hunter).lifeSequence());
-            assertEquals(1, store.participantRecord(round, hunter).orElseThrow().revivalCount());
+            assertEquals(1, saved.participants().get(hunter).lifeSequence());
             assertEquals(1, store.participantRecord(round, victim).orElseThrow().deathCount());
         }
     }
