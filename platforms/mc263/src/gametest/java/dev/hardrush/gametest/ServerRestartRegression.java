@@ -237,8 +237,9 @@ public final class ServerRestartRegression implements ModInitializer {
             waitFor("unique terminal committed", () -> round().result() != null && idle());
             act("first celebration checkpoint interval", () -> advance(1));
             waitFor("celebration committed", () -> round().phase() == RoundPhase.CELEBRATING && idle());
-            // Rotation may start closing the old worlds before stop(); record the clock while they are still live.
-            act("record round clock before rotation", this::recordWorldClock);
+            // The dusk pact left the paused clock at 0, which a recovery that wrongly zeroes it would also yield.
+            // Pin a distinct sentinel, then record it now: rotation may start closing the old worlds before stop().
+            act("pin and record round clock before rotation", () -> { pinWorldClock(6000); recordWorldClock(); });
             if (target == RoundPhase.CELEBRATING) {
                 waitFor("everyone gathered around the winner", () -> dev.hardrush.celebration.CelebrationRuntime.arena(a.player)
                         && dev.hardrush.celebration.CelebrationRuntime.arena(b.player));
@@ -493,8 +494,7 @@ public final class ServerRestartRegression implements ModInitializer {
             }
             var overworld = worlds.level(Level.OVERWORLD);
             overworld.getGameRules().set(GameRules.ADVANCE_TIME, false, server);
-            overworld.clockManager().setTotalTicks(overworld.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(WorldClocks.OVERWORLD), 17000);
-            overworld.clockManager().setPaused(overworld.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(WorldClocks.OVERWORLD), true);
+            pinWorldClock(17000);
             overworld.getWeatherData().setRaining(true); overworld.getWeatherData().setRainTime(999999);
         }
         void checkWorlds() {
@@ -569,6 +569,12 @@ public final class ServerRestartRegression implements ModInitializer {
             server.halt(false);
         }
 
+        void pinWorldClock(long ticks) {
+            var overworld = worlds.level(Level.OVERWORLD);
+            var clock = overworld.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(WorldClocks.OVERWORLD);
+            overworld.clockManager().setTotalTicks(clock, ticks);
+            overworld.clockManager().setPaused(clock, true);
+        }
         void recordWorldClock() {
             require(worlds != null && worlds.ready(), "round worlds live while recording their clock");
             details.addProperty("worldClock", worlds.level(Level.OVERWORLD).getOverworldClockTime());
