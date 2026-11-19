@@ -2,11 +2,9 @@ package dev.hardrush.lobby;
 
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.lobby.LobbyHints;
-import dev.hardrush.gametest.TestClients;
+import dev.hardrush.gametest.TestClient;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.notice.Notices;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -14,10 +12,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -94,7 +88,7 @@ public final class HeldItemHintsGameTest {
     private static final class Fixture {
         final ServerLevel level;
         final ServerPlayer player;
-        final EmbeddedChannel channel;
+        final TestClient client;
         final Vec3 center;
         /** The viewer's own arbiter, apart from the one the runtime keeps for real connections. */
         final LobbyHints hints = new LobbyHints();
@@ -110,12 +104,10 @@ public final class HeldItemHintsGameTest {
                 level.setBlockAndUpdate(pos.below(), Blocks.SMOOTH_STONE.defaultBlockState());
             }
             var profile = new GameProfile(UUID.randomUUID(), "HRHeld" + ARENAS.get());
-            player = new ServerPlayer(level.getServer(), level, profile, TestClients.information());
-            var connection = new SinkConnection(); channel = new EmbeddedChannel(connection);
-            dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> level.getServer().getPlayerList().placeNewPlayer(connection, player,
-                    TestClients.cookie(profile)));
+            client = new TestClient(level.getServer(), profile);
+            player = client.place(level);
             player.teleportTo(center.x, center.y, center.z);
-            player.setGameMode(GameType.SURVIVAL); player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+            player.setGameMode(GameType.SURVIVAL); client.acknowledge();
         }
 
         /** The hotbar packet a vanilla client sends when the selection changes. */
@@ -130,16 +122,9 @@ public final class HeldItemHintsGameTest {
 
         void close() {
             MonsterRoles.clear(player);
-            level.getServer().getPlayerList().remove(player);
-            channel.finishAndReleaseAll();
+            client.close();
             level.setChunkForced((int) Math.floor(center.x) >> 4, 0, false);
         }
     }
 
-    private static final class SinkConnection extends Connection {
-        SinkConnection() { super(PacketFlow.SERVERBOUND); }
-        @Override public void send(Packet<?> packet) {}
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) {}
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) {}
-    }
 }
