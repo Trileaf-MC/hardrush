@@ -155,6 +155,10 @@ public final class LobbyRuntime {
                     || !session.captureTotemSave(round, player.getUUID(), life, killCredit)) return OptionalInt.empty();
             return OptionalInt.of(session.totemChargesLeft(player.getUUID()));
         });
+        dev.hardrush.revival.TotemTab.configure(server, new dev.hardrush.revival.TotemTab.Access() {
+            @Override public Optional<RoundSnapshot> committed() { return session.snapshot(); }
+            @Override public int chargesLeft(UUID player) { return session.totemChargesLeft(player); }
+        });
         dev.hardrush.revival.TotemDrops.configure(server, new dev.hardrush.revival.TotemDrops.Access() {
             @Override public Optional<RoundSnapshot> view() { return session.view(); }
             @Override public boolean open() { return session.state() == RoundSession.State.OPEN; }
@@ -199,7 +203,8 @@ public final class LobbyRuntime {
     }
     public static void unconfigure(MinecraftServer server) {
         BINDINGS.remove(server); LobbyInteractions.close(server); LobbyMenus.unconfigure(server); dev.hardrush.revival.RevivalTotems.unconfigure(server);
-        dev.hardrush.revival.TotemDrops.unconfigure(server); dev.hardrush.revival.TotemSave.unconfigure(server); CampTransfers.unconfigure(server);
+        dev.hardrush.revival.TotemDrops.unconfigure(server); dev.hardrush.revival.TotemSave.unconfigure(server);
+        dev.hardrush.revival.TotemTab.unconfigure(server); CampTransfers.unconfigure(server);
         CampKit.unconfigure(server); MonsterShop.unconfigure(server); MonsterVaults.unconfigure(server);
         MonsterRoundRuntime.unconfigure(server); MonsterCombatRuntime.unconfigure(server);
     }

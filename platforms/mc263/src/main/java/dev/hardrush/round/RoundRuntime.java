@@ -349,6 +349,9 @@ public final class RoundRuntime {
                 } catch (RuntimeException error) { LOGGER.error("Far landing preparation failed", error); }
                 try { dev.hardrush.pact.DuskPactRuntime.tick(server); }
                 catch (RuntimeException error) { session.adapterFailure("黄昏契约状态更新失败", error); }
+                // Every phase, including rotation and settling, so a round's end clears the list at once.
+                try { dev.hardrush.revival.TotemTab.tick(server); }
+                catch (RuntimeException error) { LOGGER.error("Revival totem TAB update failed", error); }
                 // Observers follow the same committed phase; their hints also feed the action bar.
                 try {
                     dev.hardrush.observe.Observation.tick(server);
@@ -371,6 +374,7 @@ public final class RoundRuntime {
             dev.hardrush.lobby.RevivalAltar.disconnected(handler.player);
             dev.hardrush.notice.StatusBars.forget(handler.player);
             dev.hardrush.hunt.HuntBossBars.disconnected(handler.player);
+            dev.hardrush.revival.TotemTab.disconnected(handler.player);
             var session = SESSIONS.get(server);
             if (session != null) session.onOnline(handler.player.getUUID(), handler.player.getScoreboardName(), false);
             var admitted = ADMITTED.get(server);
