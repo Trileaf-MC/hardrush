@@ -162,9 +162,15 @@ class DeathBatchRevivalTest {
         // A soulcatcher creature keeps its owner's identity from the release; the owner has since died.
         var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), monster(true, false));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
-        var released = origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON);
+        // The release happens during this very outing: the identity is the deployed body's, not an older one.
+        var deployed = engine.view().participants().get(monster);
+        assertEquals(4, deployed.monsterDeploymentSequence(), "The fixture deploys a fresh sortie");
+        var released = new CombatOrigin(round, UUID.randomUUID(), new CombatActor(monster, ParticipantRole.MONSTER_DEPLOYED,
+                deployed.lifeSequence(), deployed.monsterDeploymentSequence()), AttackKind.SUMMON, Optional.of(UUID.randomUUID()), List.of());
         apply(engine, batch(engine, death(engine, monster, origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.MELEE))));
-        assertEquals(ParticipantRole.MONSTER_LOBBY, engine.view().participants().get(monster).role());
+        var ended = engine.view().participants().get(monster);
+        assertEquals(ParticipantRole.MONSTER_LOBBY, ended.role());
+        assertEquals(deployed.monsterDeploymentSequence(), ended.monsterDeploymentSequence(), "The credited sortie is the one that just ended");
         apply(engine, batch(engine, creditedDeath(engine, other, null, released)));
         assertEquals(1, engine.view().participants().get(monster).revivalCharges());
     }
