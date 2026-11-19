@@ -27,7 +27,7 @@ final class ChannelEffects {
 
     private ChannelEffects() {}
 
-    /** Only the player's own movement keys break a channel; water, bubble columns and pushes do not. */
+    /** Only the player's own movement keys break a return channel; water, bubble columns and pushes do not. */
     static boolean moving(ServerPlayer player) {
         var input = player.getLastClientInput();
         return input.forward() || input.backward() || input.left() || input.right() || input.jump();

@@ -33,17 +33,20 @@ import net.minecraft.world.phys.Vec3;
 public final class LobbyRuntime {
     /** A role click that would discard a paused sortie, waiting for a separate second click; times are server ticks. */
     private record AbandonAsk(MonsterRole role, long asked, long lastClick) {}
-    /** A five-second standing channel: back to camp, or (retrack) onto the quarry's trail again. */
-    private record Channel(ServerPlayer player, ServerLevel level, Vec3 origin, long started, int life, int sortie, boolean retrack) {}
-    /** The in-place search after a completed retrack channel; the body must keep standing still. */
+    /**
+     * A five-second channel: back to camp, standing still, or (retrack) onto the quarry's trail again, which the
+     * monster may keep walking through. Taking damage or acting breaks either.
+     */
+    private record Channel(ServerPlayer player, ServerLevel level, long started, int life, int sortie, boolean retrack) {}
+    /** The search for a landing after a completed retrack channel; the monster may keep walking meanwhile. */
     private static final class Retrack {
         final ServerPlayer player, targetPlayer;
-        final Vec3 origin; final ServerLevel origLevel;
+        final ServerLevel origLevel;
         final int life, sortie, targetLife;
         final long started;
         SafeDeployment.Search search;
         Retrack(ServerPlayer player, ServerPlayer target, int life, int sortie, int targetLife, long started) {
-            this.player = player; targetPlayer = target; origin = player.position(); origLevel = (ServerLevel) player.level();
+            this.player = player; targetPlayer = target; origLevel = (ServerLevel) player.level();
             this.life = life; this.sortie = sortie; this.targetLife = targetLife; this.started = started;
         }
     }
@@ -284,14 +287,16 @@ public final class LobbyRuntime {
         var round = b.session.view().orElse(null);
         updateDisplays(server, b);
         tellArrivals(server, b);
-        if (round == null || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE || b.session.competitionLocked()) {
+        boolean active = round != null && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE)
+                && !b.session.competitionLocked();
+        HuntRetracks.tick(server, active ? round : null);
+        if (!active) {
             for (var d : List.copyOf(b.searches.values())) searchFailed(b, d, "本轮即将结束，追猎取消");
             for (var d : b.pending.values()) d.cancelled = true;
             for (var channel : List.copyOf(b.channels.values())) interruptChannel(channel.player, "比赛状态变化");
             for (var retrack : List.copyOf(b.retracks.values())) interruptChannel(retrack.player, "比赛状态变化");
             b.resumptions.clear(); return;
         }
-        HuntRetracks.tick(server, round);
         for (var refund : List.copyOf(b.refunds.values())) compensate(b, refund);
         for (var d : List.copyOf(b.resumptions.values())) {
             if (!current(d.player, b)) {
@@ -308,10 +313,11 @@ public final class LobbyRuntime {
         }
         for (var entry : List.copyOf(b.channels.entrySet())) {
             var ch = entry.getValue(); var p = round.participants().get(entry.getKey());
-            if (current(ch.player, b) && ChannelEffects.moving(ch.player)) { interruptChannel(ch.player, "移动"); continue; }
+            if (current(ch.player, b) && !ch.retrack && ChannelEffects.moving(ch.player)) { interruptChannel(ch.player, "移动"); continue; }
+            if (current(ch.player, b) && ch.player.level() != ch.level) { interruptChannel(ch.player, "切换维度"); continue; }
             if (!current(ch.player, b) || p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED
                     || p.lifeSequence() != ch.life || p.monsterDeploymentSequence() != ch.sortie
-                    || ch.player.level() != ch.level || MonsterRoles.isIgniting(ch.player)) {
+                    || MonsterRoles.isIgniting(ch.player)) {
                 interruptChannel(ch.player, "比赛状态变化"); continue;
             }
             long duration = channelNanos(round);
@@ -482,7 +488,7 @@ public final class LobbyRuntime {
         if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) return;
         if (ChannelEffects.moving(player)) { Notices.hint(player, "站稳后才能返回营地"); sound(player, false); return; }
         var round = b.session.view().orElseThrow();
-        b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), player.position(), System.nanoTime(),
+        b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), false));
         // The progress hint shows the countdown; the echo shard's held hint and description already state the rule.
         ChannelEffects.start(player, false, channelNanos(round));
@@ -504,7 +510,7 @@ public final class LobbyRuntime {
     }
     private static final String CELEBRATION_RETRACK = "庆祝期间不能循迹";
 
-    /** Right-click on the bound tracking compass: a five-second channel, then the quarry's trail again. */
+    /** Right-click on the bound tracking compass: a five-second channel, walking allowed, then the quarry's trail again. */
     public static boolean useRetrack(ServerPlayer player, net.minecraft.world.item.ItemStack compass) {
         if (dev.hardrush.celebration.CelebrationRuntime.arena(player)) { Notices.hint(player, CELEBRATION_RETRACK); return false; }
         var b = BINDINGS.get(player.level().getServer());
@@ -522,12 +528,7 @@ public final class LobbyRuntime {
         if (target == null || !validTarget(b, target, (ServerLevel) target.level()) || dimension(b, (ServerLevel) target.level()).equals("lobby")) {
             Notices.refuse(player, "罗盘失去了指向：" + quarryName(player) + " 已离线、阵亡或不在挑战世界"); return false;
         }
-        if (!HuntRetracks.available(player)) {
-            Notices.refuse(player, "罗盘未亮：离 " + Notices.key(target.getScoreboardName()) + " " + Notices.key(HuntRetracks.FAR_DISTANCE)
-                    + " 格以上持续 " + Notices.key(HuntRetracks.FAR_SECONDS) + " 秒才会亮"); return false;
-        }
-        if (ChannelEffects.moving(player)) { Notices.hint(player, "站稳后才能循迹"); sound(player, false); return false; }
-        b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), player.position(), System.nanoTime(),
+        b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), true));
         ChannelEffects.start(player, true, channelNanos(r));
         return true;
@@ -554,10 +555,10 @@ public final class LobbyRuntime {
         var p = round.participants().get(r.player.getUUID());
         var target = r.targetPlayer;
         var targetIdentity = round.participants().get(target.getUUID());
-        if (current(r.player, b) && ChannelEffects.moving(r.player)) { interruptChannel(r.player, "移动"); return; }
+        if (current(r.player, b) && r.player.level() != r.origLevel) { interruptChannel(r.player, "切换维度"); return; }
         if (!current(r.player, b) || p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED || !r.player.isAlive()
                 || p.lifeSequence() != r.life || p.monsterDeploymentSequence() != r.sortie
-                || r.player.level() != r.origLevel || MonsterRoles.isIgniting(r.player)) { interruptChannel(r.player, "比赛状态变化"); return; }
+                || MonsterRoles.isIgniting(r.player)) { interruptChannel(r.player, "比赛状态变化"); return; }
         if (target.level().getServer().getPlayerList().getPlayer(target.getUUID()) != target || targetIdentity == null
                 || targetIdentity.lifeSequence() != r.targetLife || !validTarget(b, target, (ServerLevel) target.level())
                 || dimension(b, (ServerLevel) target.level()).equals("lobby")) {
@@ -585,7 +586,10 @@ public final class LobbyRuntime {
         sound(r.player, true);
         if (result.fallback()) Notices.hint(r.player, "去 " + Notices.key(target.getScoreboardName()) + " 的路被切断，这是能到的最近处");
     }
-    /** @param reason one of the plain words players see: 移动、受到伤害、攻击、互动、使用物品、施放技能、敲门、比赛状态变化 */
+    /**
+     * Breaks a return or retrack channel, or the retrack's search that follows it.
+     * @param reason one of the plain words players see: 移动、切换维度、受到伤害、攻击、互动、使用物品、施放技能、敲门、比赛状态变化
+     */
     public static void interruptChannel(ServerPlayer player, String reason) {
         var b = BINDINGS.get(player.level().getServer());
         if (b == null) return;
