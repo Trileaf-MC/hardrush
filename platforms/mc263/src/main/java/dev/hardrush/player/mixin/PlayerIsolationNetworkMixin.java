@@ -157,6 +157,10 @@ public abstract class PlayerIsolationNetworkMixin {
         if (player.level().getServer().isSameThread() && !dev.hardrush.lobby.LobbyMenus.isMenu(player)
                 && !dev.hardrush.lobby.MonsterShop.isShop(player) && !ObservationMenu.isMenu(player)
                 && (PlayerProfiles.sealed(player) || CombatRuntime.competitionFrozen(player.level()))) {
+            // This handler runs before the protection mixin, so a refused totem throw is explained here.
+            if (packet.containerInput() == net.minecraft.world.inventory.ContainerInput.THROW && packet.slotNum() >= 0
+                    && packet.slotNum() < player.containerMenu.slots.size())
+                dev.hardrush.lobby.RevivalTotems.refuseThrow(player, player.containerMenu.getSlot(packet.slotNum()).getItem());
             player.containerMenu.sendAllDataToRemote();
             ci.cancel();
         }

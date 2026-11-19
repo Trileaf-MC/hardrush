@@ -71,9 +71,10 @@ public final class RoundEngine {
             phase = RoundPhase.ROTATING;
             remaining = 0;
         }
-        // Nobody could reconnect while the server was down: the wait for absent humans restarts in full
-        // once the first participant is back (see live()). A rescue with no human left keeps its deadline.
-        if (phase == RoundPhase.RESCUE && hasHuman(players)) {
+        // Nobody could reconnect while the server was down: an open wait for absent humans restarts in full
+        // once the first participant is back (see live()). A wait that had already expired stays expired for
+        // the next tick to settle, and a rescue with no human left keeps its deadline.
+        if (phase == RoundPhase.RESCUE && remaining > 0 && hasHuman(players)) {
             phase = RoundPhase.RUNNING;
             remaining = 0;
         }
@@ -1053,7 +1054,11 @@ public final class RoundEngine {
         if (players.values().stream().noneMatch(p -> p.role().isMonster() && p.revivalEntitled())) {
             return failureProposal(eventId, type, before, players, reason, uncertain);
         }
-        long remaining = before.phase() == RoundPhase.RESCUE ? before.remainingPhaseNanos() : rescueNanos(before.rules());
+        long remaining = rescueNanos(before.rules());
+        if (before.phase() == RoundPhase.RESCUE) {
+            // A wait for absent humans may have longer left than a rescue is allowed; never extend either.
+            remaining = before.awaitingReconnect() ? Math.min(before.remainingPhaseNanos(), remaining) : before.remainingPhaseNanos();
+        }
         return proposal(eventId, type, before, RoundPhase.RESCUE, remaining, players, null, false, uncertain);
     }
 
@@ -1072,8 +1077,10 @@ public final class RoundEngine {
         return players.values().stream().anyMatch(p -> p.connected() && human(p));
     }
 
-    private static boolean anyoneConnected(Map<UUID, Participant> players) {
-        return players.values().stream().anyMatch(Participant::connected);
+    /** A player still competing in this round is present; spectators and lobby-only entries do not count. */
+    private static boolean competitorConnected(Map<UUID, Participant> players) {
+        return players.values().stream().anyMatch(p -> p.connected() && (human(p) || p.role().isMonster()
+                || p.role() == ParticipantRole.TRANSITION_PENDING));
     }
 
     private static boolean human(Participant p) {
@@ -1099,8 +1106,8 @@ public final class RoundEngine {
      * otherwise waits, on a deadline, for a reconnect, a revival or a mid-round join. It is a rule about
      * the resulting state, not about the event that produced it, so a restart, a life that leaves while
      * entering and any later path are covered alike. Two limits: an expired wait is closed only by the
-     * tick, and the wait starts only when somebody is, or just was, on the server, so a restored round
-     * stays paused until its first participant returns.
+     * tick, and the wait starts only when a competitor (human or monster of this round) is, or just was,
+     * on the server, so a restored round stays paused until its first competitor returns.
      * <p>
      * With no human left the caller's phase stands: {@link #lastHumanGone} decides between rescue and failure.
      */
@@ -1110,7 +1117,7 @@ public final class RoundEngine {
         if (!hasHuman(players)) return new LivePhase(phase, remaining);
         if (hasConnectedHuman(players)) return new LivePhase(RoundPhase.RUNNING, 0);
         if (waiting) return new LivePhase(RoundPhase.RESCUE, before.remainingPhaseNanos());
-        if (anyoneConnected(players) || anyoneConnected(before.participants())) {
+        if (competitorConnected(players) || competitorConnected(before.participants())) {
             return new LivePhase(RoundPhase.RESCUE, millisToNanos(reconnectMillis(before.rules())));
         }
         return new LivePhase(RoundPhase.RUNNING, 0);
