@@ -19,6 +19,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -32,6 +33,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -282,9 +284,7 @@ public final class MonsterSoulcatcher {
         if (rule(mob).map(Catch::companion).orElse(false)) MonsterCompanions.adopt(player, mob);
         else MonsterCompanions.release(mob);
         mob.setPersistenceRequired();
-        var credit = CombatRuntime.originOf(mob).or(() -> MonsterCombatRuntime.formalOrigin(mob, player, AttackKind.SUMMON));
-        if (credit.isPresent()) setRelease(mob, CombatOriginCodec.encode(credit.get()));
-        else clearRelease(mob);
+        markRelease(mob, CombatRuntime.originOf(mob).or(() -> MonsterCombatRuntime.formalOrigin(mob, player, AttackKind.SUMMON)));
         if (!level.addFreshEntity(mob)) { mob.discard(); return false; }
         if (!stack.isEmpty()) mutable.tryInsert(stack);
         bag.set(DataComponents.BUNDLE_CONTENTS, mutable.toImmutable());
@@ -313,6 +313,22 @@ public final class MonsterSoulcatcher {
         var value = source == null ? null : releaseTag(source);
         if (value == null) clearRelease(child);
         else setRelease(child, value);
+    }
+
+    /**
+     * A projectile carries its shooter's credit from launch: the owner reference it scores through resolves
+     * only while the shooter is still in the world, and a shooter killed or caught again after firing must not
+     * take the shot's credit with it. Called on every native owner change, so a deflected shot takes the
+     * deflector's credit, or none.
+     */
+    public static void projectileLaunched(Projectile projectile, Entity owner) {
+        if (projectile.level() instanceof ServerLevel) inheritRelease(owner, projectile);
+    }
+
+    /** The credit a creature leaving the bag carries; none when its releaser had no formal identity. */
+    static void markRelease(Entity entity, Optional<CombatOrigin> credit) {
+        if (credit.isPresent()) setRelease(entity, CombatOriginCodec.encode(credit.get()));
+        else clearRelease(entity);
     }
 
     static void clearRelease(Entity entity) { entity.entityTags().removeIf(tag -> tag.startsWith(RELEASE)); }
