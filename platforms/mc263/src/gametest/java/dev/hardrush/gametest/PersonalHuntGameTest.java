@@ -209,25 +209,55 @@ public final class PersonalHuntGameTest {
                 .thenWaitUntil(() -> f.await(f.deployed(f.c, 0), "hunt anchor A before attacking B"))
                 .thenWaitUntil(() -> f.await(f.huntBars(f.c).equals(List.of("追猎目标 · HuntA")) && f.huntBars(f.a).isEmpty(),
                         "hunter sees the target at once; an 8-24 block deployment never alerts it"))
+                .thenIdle(2)
                 .thenExecute(() -> {
                     var compass = f.compass(f.c);
-                    test.assertTrue(compass != null, "A deployed monster carries the bound tracking compass");
-                    test.assertFalse(Boolean.TRUE.equals(compass.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE)),
-                            "The compass stays dark near its quarry");
-                    test.assertFalse(LobbyRuntime.useRetrack(f.c.player, compass), "A nearby quarry refuses a retrack");
+                    test.assertTrue(compass != null && compass.is(net.minecraft.world.item.Items.COMPASS),
+                            "A deployed monster carries a plain bound tracking compass");
+                    test.assertTrue(f.glint(compass), "The compass glints at once, even beside its quarry");
+                    var quarry = net.minecraft.core.GlobalPos.of(f.a.player.level().dimension(), f.a.player.blockPosition());
+                    test.assertValueEqual(dev.hardrush.hunt.HuntRetracks.needle(f.c.player), quarry, "The needle points at the quarry");
+                    test.assertValueEqual(f.spawnSent(f.c), Optional.of(quarry),
+                            "The hunter's client hears the quarry as its spawn, even after the skin refresh resends the real one");
+                    test.assertTrue(f.spawnSent(f.a).map(pos -> !pos.equals(quarry)).orElse(true), "The quarry's own compass keeps the world spawn");
+                    test.assertTrue(LobbyRuntime.useRetrack(f.c.player, compass), "A lit compass starts the channel right beside its quarry");
+                    test.assertFalse(LobbyRuntime.retrackReady(f.c.player), "A running channel is not ready for another press");
+                    LobbyRuntime.interruptChannel(f.c.player, "攻击");
+                    test.assertFalse(dev.hardrush.hunt.HuntRetracks.resting(f.c.player), "A broken channel leaves the compass ready");
                     f.c.player.teleportTo(f.a.player.level(), f.a.player.getX()+60, f.a.player.getY(), f.a.player.getZ(), Set.of(),0,0,true);
+                    test.assertTrue(LobbyRuntime.useRetrack(f.c.player, compass), "A lit compass starts the channel far away too");
+                    f.c.input(new Input(true, false, false, false, false, false, false));
                 })
-                .thenIdle(dev.hardrush.hunt.HuntRetracks.FAR_SECONDS * 20 + 10)
+                .thenIdle(10)
                 .thenExecute(() -> {
-                    var compass = f.compass(f.c);
-                    test.assertTrue(Boolean.TRUE.equals(compass.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE)),
-                            "The compass lights after ten seconds beyond forty blocks");
-                    test.assertTrue(LobbyRuntime.useRetrack(f.c.player, compass), "A lit compass starts the five-second channel");
+                    test.assertTrue(LobbyRuntime.channeling(f.c.player), "Walking keeps the retrack channel");
+                    // The compass rides the inventory cursor across the landing; the rest must still be counted.
+                    var inventory = f.c.player.getInventory();
+                    for (int slot = 0; slot < inventory.getContainerSize(); slot++)
+                        if (dev.hardrush.monster.MonsterItems.matches(f.c.player, inventory.getItem(slot), dev.hardrush.hunt.HuntRetracks.PURPOSE)) {
+                            f.compassSlot = slot; f.c.player.containerMenu.setCarried(inventory.removeItemNoUpdate(slot)); break;
+                        }
+                    test.assertTrue(f.compassSlot >= 0 && f.compass(f.c) == null, "The compass is on the cursor, in no slot");
                 })
                 .thenWaitUntil(() -> f.await(f.c.player.position().distanceTo(f.a.player.position()) <= dev.hardrush.hunt.SafeDeployment.MAX_PATH + 1
-                        && f.c.player.getCooldowns().isOnCooldown(f.compass(f.c)), "retrack lands within a short walk and cools down"))
-                .thenExecute(() -> test.assertFalse(Boolean.TRUE.equals(f.compass(f.c).get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE)),
-                        "A cooling compass is dark"))
+                        && dev.hardrush.hunt.HuntRetracks.resting(f.c.player), "retrack lands within a short walk and rests a compass held on the cursor"))
+                .thenExecute(() -> {
+                    f.c.input(Input.EMPTY);
+                    test.assertValueEqual(dev.hardrush.hunt.HuntRetracks.cooldownTicks(f.server), 200, "The compass rests ten seconds by default");
+                    f.c.player.getInventory().setItem(f.compassSlot, f.c.player.containerMenu.getCarried());
+                    f.c.player.containerMenu.setCarried(net.minecraft.world.item.ItemStack.EMPTY);
+                })
+                .thenIdle(1)
+                .thenExecute(() -> {
+                    test.assertFalse(f.glint(f.compass(f.c)), "A resting compass is dark");
+                    f.move(f.c, 1);
+                })
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    var nowhere = net.minecraft.core.GlobalPos.of(dev.hardrush.hunt.HuntRetracks.NOWHERE, BlockPos.ZERO);
+                    test.assertValueEqual(dev.hardrush.hunt.HuntRetracks.needle(f.c.player), nowhere, "Across dimensions the needle spins");
+                    test.assertValueEqual(f.spawnSent(f.c), Optional.of(nowhere), "Across dimensions the packet carries no position of the quarry");
+                })
                 .thenExecute(() -> {
                     f.c.player.teleportTo(f.a.player.level(), f.a.player.getX()+3, f.a.player.getY(), f.a.player.getZ(), Set.of(),0,0,true);
                 })
@@ -261,8 +291,12 @@ public final class PersonalHuntGameTest {
                 // The kill's revival recalls the hunter to the camp; it never keeps hunting while entitled.
                 .thenWaitUntil(() -> f.await(f.lobby(f.c) && f.huntBars(f.c).isEmpty() && f.huntBars(f.b).isEmpty(),
                         "entitled hunter recalled to the camp without hunt bars"))
+                .thenIdle(2)
                 .thenExecute(() -> {
-                    f.c.player = f.c.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); f.useSearchClock();
+                    f.c.player = f.c.current();
+                    test.assertValueEqual(f.spawnSent(f.c), Optional.of(f.c.player.level().getRespawnData().globalPos()),
+                            "Back in camp, the compass points at the real spawn again");
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); f.useSearchClock();
                     f.moveVoid(f.a, 1);
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.b.participant().monsterCooldownNanos() == 0, "death-life setup"))
@@ -402,6 +436,16 @@ public final class PersonalHuntGameTest {
             return titles;
         }
         boolean idle() { return !session.mutationPending(); }
+        int compassSlot = -1;
+        boolean glint(net.minecraft.world.item.ItemStack stack) {
+            return Boolean.TRUE.equals(stack.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE));
+        }
+        /** The world spawn last sent to this peer's client, which is where its compass points. */
+        Optional<net.minecraft.core.GlobalPos> spawnSent(Peer p) {
+            return p.connection.packets.stream().filter(ClientboundSetDefaultSpawnPositionPacket.class::isInstance)
+                    .map(ClientboundSetDefaultSpawnPositionPacket.class::cast).reduce((prev, next) -> next)
+                    .map(packet -> packet.respawnData().globalPos());
+        }
         net.minecraft.world.item.ItemStack compass(Peer p) {
             var inventory=p.player.getInventory();
             for(int slot=0; slot<inventory.getContainerSize(); slot++)
