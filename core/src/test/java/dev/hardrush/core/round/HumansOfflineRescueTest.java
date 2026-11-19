@@ -161,6 +161,60 @@ class HumansOfflineRescueTest {
         assertEquals(180_000, e.view().remainingPhaseMillis());
     }
 
+    private RoundEngine restoredWait(long remainingSeconds, Participant... participants) {
+        var players = new LinkedHashMap<UUID, Participant>();
+        for (var p : participants) players.put(p.id(), p);
+        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults().withMode(GameMode.HARDCORE), RoundPhase.RESCUE,
+                PauseReason.SERVER_STOPPED, 0, remainingSeconds * SECOND, players, true, false, null);
+        return RoundEngine.restore(stored, clock::get);
+    }
+
+    @Test void waitThatExpiredBeforeAStopStaysExpiredAfterTheRestart() {
+        var expired = restoredWait(0, human(a, false), monster(false, false));
+        apply(expired, online(expired, a, true));
+        assertEquals(RoundPhase.RESCUE, expired.view().phase(), "A late reconnect cannot reopen the round across a restart");
+        assertTrue(expired.rescueExpiredAt(clock.get()));
+        apply(expired, expired.proposeTick(UUID.randomUUID()));
+        assertEquals("HUMANS_OFFLINE", expired.view().result().reason());
+
+        var open = restoredWait(1, human(a, false), monster(false, false));
+        apply(open, online(open, a, true));
+        assertEquals(RoundPhase.RUNNING, open.view().phase(), "One second left is still an open wait");
+        assertEquals(PauseReason.NONE, open.view().pauseReason());
+    }
+
+    @Test void onlyCompetitorsReturningStartTheWaitAfterARestart() {
+        var spectator = new Participant(b, "Spectator", ParticipantRole.WITHDRAWN, false, false, 0, 0, 1, false);
+        var lobbyOnly = new Participant(UUID.randomUUID(), "Lobby", ParticipantRole.LOBBY, false, false, 0, -1, 0, false);
+        var e = engine(GameMode.HARDCORE, human(a, false), monster(false, false), spectator, lobbyOnly);
+        apply(e, online(e, b, true));
+        apply(e, online(e, lobbyOnly.id(), true));
+        seconds(600);
+        apply(e, e.proposeTick(UUID.randomUUID()));
+        assertEquals(RoundPhase.RUNNING, e.view().phase(), "A spectator or a lobby-only entry cannot fail the round");
+        assertEquals(PauseReason.NO_ONLINE_HUMANS, e.view().pauseReason());
+        apply(e, online(e, b, false));
+        assertEquals(RoundPhase.RUNNING, e.view().phase(), "Nor can one leaving again");
+        apply(e, online(e, m, true));
+        assertEquals(RoundPhase.RESCUE, e.view().phase(), "A returning monster still starts the wait");
+    }
+
+    @Test void waitTurningIntoATotemRescueNeverRunsLongerThanARescue() {
+        var e = engine(GameMode.HARDCORE, human(a, true), monster(true, true));
+        apply(e, online(e, a, false));
+        seconds(10);
+        apply(e, e.proposeParticipationExit(UUID.randomUUID(), round, a, ParticipantRole.HUMAN_ACTIVE, 1, 0, ParticipantRole.DISQUALIFIED));
+        assertEquals(RoundPhase.RESCUE, e.view().phase());
+        assertFalse(e.view().awaitingReconnect());
+        assertEquals(60_000, e.view().remainingPhaseMillis(), "Capped at the rescue length");
+
+        var late = engine(GameMode.HARDCORE, human(a, true), monster(true, true));
+        apply(late, online(late, a, false));
+        seconds(150);
+        apply(late, late.proposeParticipationExit(UUID.randomUUID(), round, a, ParticipantRole.HUMAN_ACTIVE, 1, 0, ParticipantRole.WITHDRAWN));
+        assertEquals(30_000, late.view().remainingPhaseMillis(), "A sanction never extends the wait either");
+    }
+
     @Test void lifeThatLeavesWhileStillEnteringStartsTheWaitToo() {
         var revived = engine(GameMode.HARDCORE, human(a, true), monster(true, true));
         apply(revived, online(revived, a, false));
