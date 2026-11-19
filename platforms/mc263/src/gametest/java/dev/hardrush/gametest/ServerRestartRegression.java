@@ -106,7 +106,11 @@ public final class ServerRestartRegression implements ModInitializer {
         Throwable failure;
         boolean stopping;
         BlockPos marker;
-        long expectedWorldClock = 17_000;
+        /**
+         * Round overworld clock the writer observed while its worlds were live. There is no default: the value
+         * differs by phase (writeWorlds pins 17000, the dusk pact rewinds it to 0 once RUNNING begins).
+         */
+        Long expectedWorldClock;
 
         Fixture(MinecraftServer server) { this(server, true); }
 
@@ -141,7 +145,7 @@ public final class ServerRestartRegression implements ModInitializer {
                         require(data.get("pid").getAsLong() != ProcessHandle.current().pid(), "must use a distinct JVM");
                         expected = RoundSnapshotCodec.decode(Base64.getDecoder().decode(data.get("checkpoint").getAsString()));
                         marker = BlockPos.of(data.get("marker").getAsLong());
-                        if (data.has("worldClock")) expectedWorldClock = data.get("worldClock").getAsLong();
+                        if (data.has("worldClock") && !data.get("worldClock").isJsonNull()) expectedWorldClock = data.get("worldClock").getAsLong();
                         sameIdentity(expected, round());
                         // A successful result is never resumed as a celebration; the restart rotates directly.
                         boolean rotates = expected.result() != null && expected.result().kind() == RoundResult.Kind.COMPLETED
@@ -233,6 +237,8 @@ public final class ServerRestartRegression implements ModInitializer {
             waitFor("unique terminal committed", () -> round().result() != null && idle());
             act("first celebration checkpoint interval", () -> advance(1));
             waitFor("celebration committed", () -> round().phase() == RoundPhase.CELEBRATING && idle());
+            // Rotation may start closing the old worlds before stop(); record the clock while they are still live.
+            act("record round clock before rotation", this::recordWorldClock);
             if (target == RoundPhase.CELEBRATING) {
                 waitFor("everyone gathered around the winner", () -> dev.hardrush.celebration.CelebrationRuntime.arena(a.player)
                         && dev.hardrush.celebration.CelebrationRuntime.arena(b.player));
@@ -508,6 +514,7 @@ public final class ServerRestartRegression implements ModInitializer {
                 require(chest != null && chest.getItem(0).is(Items.AMETHYST_SHARD) && chest.getItem(0).getCount() == ++index, "actual native chest contents survived");
                 require(level.clockManager() != server.overworld().clockManager(), "round clock independent of permanent lobby");
             }
+            require(expectedWorldClock != null, "writer evidence lacks worldClock: phase=" + target + " (worlds were not live when it was recorded)");
             require(worlds.level(Level.OVERWORLD).getOverworldClockTime() == expectedWorldClock, "native SavedData clock restored: actual=" + worlds.level(Level.OVERWORLD).getOverworldClockTime() + " expected=" + expectedWorldClock + " phase=" + target);
             require(worlds.level(Level.OVERWORLD).getWeatherData().isRaining(), "native weather SavedData restored");
         }
@@ -554,11 +561,17 @@ public final class ServerRestartRegression implements ModInitializer {
         void stop() {
             details.addProperty("observedPhase", round().phase().name());
             details.addProperty("marker", marker.asLong());
-            if (worlds != null && worlds.ready()) details.addProperty("worldClock", worlds.level(Level.OVERWORLD).getOverworldClockTime());
+            // A rotating stop may find the old worlds already closing; the earlier recorded clock then stands.
+            if (worlds != null && worlds.ready()) recordWorldClock();
             if (fight != null) details.addProperty("nativeDragonId", fight.dragonUUID().toString());
             stopping = true;
             // Same production halt path as the console stop command; do not pre-close any competition service.
             server.halt(false);
+        }
+
+        void recordWorldClock() {
+            require(worlds != null && worlds.ready(), "round worlds live while recording their clock");
+            details.addProperty("worldClock", worlds.level(Level.OVERWORLD).getOverworldClockTime());
         }
         void stoppedNativeCallbacks() {
             try {
