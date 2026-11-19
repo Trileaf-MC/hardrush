@@ -220,20 +220,44 @@ public final class PersonalHuntGameTest {
                     test.assertValueEqual(f.spawnSent(f.c), Optional.of(quarry),
                             "The hunter's client hears the quarry as its spawn, even after the skin refresh resends the real one");
                     test.assertTrue(f.spawnSent(f.a).map(pos -> !pos.equals(quarry)).orElse(true), "The quarry's own compass keeps the world spawn");
+                    test.assertTrue(LobbyRuntime.useRetrack(f.c.player, compass), "A lit compass starts the channel right beside its quarry");
+                    test.assertFalse(LobbyRuntime.retrackReady(f.c.player), "A running channel is not ready for another press");
+                    LobbyRuntime.interruptChannel(f.c.player, "攻击");
+                    test.assertFalse(dev.hardrush.hunt.HuntRetracks.resting(f.c.player), "A broken channel leaves the compass ready");
                     f.c.player.teleportTo(f.a.player.level(), f.a.player.getX()+60, f.a.player.getY(), f.a.player.getZ(), Set.of(),0,0,true);
-                    test.assertTrue(LobbyRuntime.useRetrack(f.c.player, compass), "A lit compass starts the channel at once, at any distance");
+                    test.assertTrue(LobbyRuntime.useRetrack(f.c.player, compass), "A lit compass starts the channel far away too");
                     f.c.input(new Input(true, false, false, false, false, false, false));
                 })
                 .thenIdle(10)
-                .thenExecute(() -> test.assertTrue(LobbyRuntime.channeling(f.c.player), "Walking keeps the retrack channel"))
+                .thenExecute(() -> {
+                    test.assertTrue(LobbyRuntime.channeling(f.c.player), "Walking keeps the retrack channel");
+                    // The compass rides the inventory cursor across the landing; the rest must still be counted.
+                    var inventory = f.c.player.getInventory();
+                    for (int slot = 0; slot < inventory.getContainerSize(); slot++)
+                        if (dev.hardrush.monster.MonsterItems.matches(f.c.player, inventory.getItem(slot), dev.hardrush.hunt.HuntRetracks.PURPOSE)) {
+                            f.compassSlot = slot; f.c.player.containerMenu.setCarried(inventory.removeItemNoUpdate(slot)); break;
+                        }
+                    test.assertTrue(f.compassSlot >= 0 && f.compass(f.c) == null, "The compass is on the cursor, in no slot");
+                })
                 .thenWaitUntil(() -> f.await(f.c.player.position().distanceTo(f.a.player.position()) <= dev.hardrush.hunt.SafeDeployment.MAX_PATH + 1
-                        && f.c.player.getCooldowns().isOnCooldown(f.compass(f.c)), "retrack lands within a short walk and cools down"))
+                        && dev.hardrush.hunt.HuntRetracks.resting(f.c.player), "retrack lands within a short walk and rests a compass held on the cursor"))
                 .thenExecute(() -> {
                     f.c.input(Input.EMPTY);
                     test.assertValueEqual(dev.hardrush.hunt.HuntRetracks.cooldownTicks(f.server), 200, "The compass rests ten seconds by default");
+                    f.c.player.getInventory().setItem(f.compassSlot, f.c.player.containerMenu.getCarried());
+                    f.c.player.containerMenu.setCarried(net.minecraft.world.item.ItemStack.EMPTY);
                 })
                 .thenIdle(1)
-                .thenExecute(() -> test.assertFalse(f.glint(f.compass(f.c)), "A resting compass is dark"))
+                .thenExecute(() -> {
+                    test.assertFalse(f.glint(f.compass(f.c)), "A resting compass is dark");
+                    f.move(f.c, 1);
+                })
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    var nowhere = net.minecraft.core.GlobalPos.of(dev.hardrush.hunt.HuntRetracks.NOWHERE, BlockPos.ZERO);
+                    test.assertValueEqual(dev.hardrush.hunt.HuntRetracks.needle(f.c.player), nowhere, "Across dimensions the needle spins");
+                    test.assertValueEqual(f.spawnSent(f.c), Optional.of(nowhere), "Across dimensions the packet carries no position of the quarry");
+                })
                 .thenExecute(() -> {
                     f.c.player.teleportTo(f.a.player.level(), f.a.player.getX()+3, f.a.player.getY(), f.a.player.getZ(), Set.of(),0,0,true);
                 })
@@ -412,6 +436,7 @@ public final class PersonalHuntGameTest {
             return titles;
         }
         boolean idle() { return !session.mutationPending(); }
+        int compassSlot = -1;
         boolean glint(net.minecraft.world.item.ItemStack stack) {
             return Boolean.TRUE.equals(stack.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE));
         }
