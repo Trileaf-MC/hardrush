@@ -136,7 +136,7 @@ public final class IdentityRespawnGameTest {
     }
 
     @GameTest(maxTicks = 1600)
-    public void normalDeathScreenSurvivesCleanStopAndNativeReconnectBeforeRespawn(GameTestHelper test) {
+    public void deathScreenSurvivesCleanStopAndNativeReconnectBeforeRespawn(GameTestHelper test) {
         if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var overworld = roundLevel(test, Level.OVERWORLD);
         var bed = new BlockPos(176, 200, 176);

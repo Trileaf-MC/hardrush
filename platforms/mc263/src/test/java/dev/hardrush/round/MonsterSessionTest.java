@@ -79,28 +79,6 @@ class MonsterSessionTest {
         }
     }
 
-    @Test void totemThrowAndPickupCommitBeforeRepliesAndRejectOverlappingWrites() throws Exception {
-        Path path = seed(true);
-        try (var session = open(path)) {
-            var thrown = new AtomicReference<RoundSession.Reply>();
-            session.requestRevivalTotemDrop(round, player, 3, 4, 1, thrown::set);
-            assertNull(thrown.get(), "The floor stack waits for the durable write");
-            var overlapping = new AtomicReference<RoundSession.Reply>();
-            session.requestRevivalTotemPickup(round, player, 3, 4, 1, overlapping::set);
-            assertFalse(overlapping.get().success());
-            pump(() -> thrown.get() != null);
-            assertTrue(thrown.get().success(), thrown.get().message());
-            assertEquals(0, session.snapshot().orElseThrow().participants().get(player).revivalCharges());
-            var overdraw = new AtomicReference<RoundSession.Reply>();
-            session.requestRevivalTotemDrop(round, player, 3, 4, 1, overdraw::set);
-            assertFalse(overdraw.get().success());
-            request(reply -> session.requestRevivalTotemPickup(round, player, 3, 4, 2, reply));
-        }
-        try (var session = open(path)) {
-            assertEquals(2, session.snapshot().orElseThrow().participants().get(player).revivalCharges());
-        }
-    }
-
     @Test void bufferedDamagePaysCoinsThatBuyGoodsForTheNextSortie() throws Exception {
         UUID human = UUID.randomUUID();
         Path path = seed(new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 50, 1, false));
@@ -141,8 +119,8 @@ class MonsterSessionTest {
             assertNull(thrown.get(), "Floor coins must wait for durable debit");
             assertEquals(70, session.snapshot().orElseThrow().participants().get(player).wallet().coins());
             var overlap = new AtomicReference<RoundSession.Reply>();
-            session.requestRevivalTotemDrop(round, player, 3, 4, 1, overlap::set);
-            assertFalse(overlap.get().success(), "Coin and revival transfers share the mutation barrier");
+            session.requestMonsterCoinPickup(round, player, 3, 4, 1, overlap::set);
+            assertFalse(overlap.get().success(), "Coin transfers share the mutation barrier");
             pump(() -> thrown.get() != null);
             assertTrue(thrown.get().success(), thrown.get().message());
             var overdraw = new AtomicReference<RoundSession.Reply>();

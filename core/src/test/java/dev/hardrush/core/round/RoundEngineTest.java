@@ -7,7 +7,9 @@ import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -105,7 +107,7 @@ class RoundEngineTest {
         assertEquals(5_000, engine.view().challengeMillis());
         assertEquals(RoundPhase.RESCUE, engine.view().phase());
         assertTrue(engine.view().awaitingReconnect());
-        assertEquals(10_000, engine.view().remainingPhaseMillis());
+        assertEquals(130_000, engine.view().remainingPhaseMillis());
         assertEquals(ParticipantRole.HUMAN_ACTIVE, engine.view().participants().get(A).role());
         apply(engine, engine.proposeOnline(UUID.randomUUID(), A, "Alice", true));
         assertEquals(RoundPhase.RUNNING, engine.view().phase());
@@ -143,16 +145,17 @@ class RoundEngineTest {
         assertEquals(7_000_000_000L, engine.view().participants().get(A).humanNanos());
     }
 
-    @Test void normalDeathScreenPausesOnlyDeadHumansWithoutEndingTheRound() {
+    @Test void deathScreenPausesOnlyDeadHumansWithoutEndingTheRound() {
         RoundEngine engine = running();
         clock.millis(2_000);
-        apply(engine, engine.proposeNormalDeath(UUID.randomUUID(), A, 1));
+        apply(engine, firstLifeDeath(engine));
         clock.millis(30_000);
         assertEquals(RoundPhase.RUNNING, engine.view().phase());
         assertEquals(2_000, engine.view().challengeMillis());
         assertThrows(IllegalStateException.class, () -> engine.proposeJoin(UUID.randomUUID(), A, "Alice"));
-        apply(engine, engine.proposeNormalRespawn(UUID.randomUUID(), A, 1));
-        assertThrows(IllegalStateException.class, () -> engine.proposeNormalDeath(UUID.randomUUID(), A, 1));
+        apply(engine, engine.proposeAdmissionRespawn(UUID.randomUUID(), A, 1));
+        apply(engine, engine.proposeOnline(UUID.randomUUID(), A, "Alice", true));
+        assertThrows(IllegalStateException.class, () -> firstLifeDeath(engine));
         clock.millis(3_000);
         assertEquals(5_000, engine.view().challengeMillis());
         assertEquals(2, engine.view().participants().get(A).lifeSequence());
@@ -161,11 +164,16 @@ class RoundEngineTest {
     @Test void oneDeadHumanDoesNotPauseOtherLiveHumans() {
         RoundEngine engine = running();
         apply(engine, engine.proposeJoin(UUID.randomUUID(), B, "Bob"));
-        apply(engine, engine.proposeNormalDeath(UUID.randomUUID(), A, 1));
+        apply(engine, firstLifeDeath(engine));
         clock.millis(5_000);
         assertEquals(5_000, engine.view().challengeMillis());
         assertEquals(0, engine.view().participants().get(A).humanNanos());
         assertEquals(5_000_000_000L, engine.view().participants().get(B).humanNanos());
+    }
+
+    private static RoundTransition firstLifeDeath(RoundEngine engine) {
+        return engine.proposeDeathBatch(UUID.randomUUID(), engine.committed().roundId(),
+                List.of(new RoundDeath(A, 1, 0, Optional.empty())), null);
     }
 
     @Test void writeFailureNeverPublishesProposedParticipantAndHaltsConflictActions() {

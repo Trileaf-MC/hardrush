@@ -50,23 +50,34 @@ public final class MonsterCombatRuntime {
         var round = access == null ? null : access.snapshot().orElse(null);
         var actor = round == null ? null : round.participants().get(owner.getUUID());
         if (actor == null || !actor.role().isMonster()) return; // Isolated development fixtures retain their own scope.
-        boolean formal = actor.role() == ParticipantRole.MONSTER_DEPLOYED && actor.monsterDeploymentSequence() > 0
-                && actor.online() && owner.isAlive()
-                && round.phase() == RoundPhase.RUNNING && !access.competitionLocked() && access.formalLevel(owner.level())
-                && !PlayerProfiles.isLocked(owner) && !ProtectionRuntime.protectedEntity(owner);
         // A celebration body may still fight, but never seals a combat origin: nothing it does is attributed.
         boolean celebrating = actor.role() == ParticipantRole.MONSTER_DEPLOYED && owner.isAlive()
                 && dev.hardrush.celebration.CelebrationRuntime.arena(owner);
+        var origin = formalOrigin(entity, owner, entity instanceof AbstractArrow ? AttackKind.ARROW
+                : entity instanceof net.minecraft.world.entity.monster.Creeper ? AttackKind.CREEPER
+                : dev.hardrush.monster.MonsterRoles.summonOwner(entity) != null ? AttackKind.SUMMON : AttackKind.MELEE);
         holder.hardrush$stampMonsterSource(new FrozenMonsterSource(round.roundId(), owner.getUUID(),
-                actor.lifeSequence(), actor.monsterDeploymentSequence(), formal || celebrating));
-        if (formal && entity instanceof CombatOriginHolder combat && !combat.hardrush$combatOriginSealed()) {
-            combat.hardrush$sealCombatOrigin(Optional.of(new CombatOrigin(round.roundId(), UUID.randomUUID(),
-                    new CombatActor(owner.getUUID(), actor.role(), actor.lifeSequence(), actor.monsterDeploymentSequence()),
-                    entity instanceof AbstractArrow ? AttackKind.ARROW
-                            : entity instanceof net.minecraft.world.entity.monster.Creeper ? AttackKind.CREEPER
-                            : dev.hardrush.monster.MonsterRoles.summonOwner(entity) != null ? AttackKind.SUMMON : AttackKind.MELEE,
-                    Optional.of(entity.getUUID()), List.of())));
+                actor.lifeSequence(), actor.monsterDeploymentSequence(), origin.isPresent() || celebrating));
+        if (origin.isPresent() && entity instanceof CombatOriginHolder combat && !combat.hardrush$combatOriginSealed()) {
+            combat.hardrush$sealCombatOrigin(origin);
         }
+    }
+
+    /**
+     * The owner's formal identity right now, as the origin of {@code entity}: present only while the owner is a
+     * deployed, online, living monster of a running round on a formal level, outside protection.
+     */
+    public static Optional<CombatOrigin> formalOrigin(Entity entity, ServerPlayer owner, AttackKind kind) {
+        var access = BINDINGS.get(owner.level().getServer());
+        var round = access == null ? null : access.snapshot().orElse(null);
+        var actor = round == null ? null : round.participants().get(owner.getUUID());
+        if (actor == null || actor.role() != ParticipantRole.MONSTER_DEPLOYED || actor.monsterDeploymentSequence() <= 0
+                || !actor.online() || !owner.isAlive()
+                || round.phase() != RoundPhase.RUNNING || access.competitionLocked() || !access.formalLevel(owner.level())
+                || PlayerProfiles.isLocked(owner) || ProtectionRuntime.protectedEntity(owner)) return Optional.empty();
+        return Optional.of(new CombatOrigin(round.roundId(), UUID.randomUUID(),
+                new CombatActor(owner.getUUID(), actor.role(), actor.lifeSequence(), actor.monsterDeploymentSequence()),
+                kind, Optional.of(entity.getUUID()), List.of()));
     }
     public static Scope action(Entity entity) {
         SOURCES.get().push(entity);

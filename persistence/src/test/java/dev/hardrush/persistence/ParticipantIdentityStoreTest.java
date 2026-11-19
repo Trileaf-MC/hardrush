@@ -7,7 +7,9 @@ import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.record.ProgressWrite;
 import dev.hardrush.core.round.*;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -36,10 +38,12 @@ class ParticipantIdentityStoreTest {
             commit(store, engine, engine.proposeReady(UUID.randomUUID(), PLAYER, true));
             clock.millis(30_000);
             commit(store, engine, engine.proposeTick(UUID.randomUUID()));
+            commit(store, engine, engine.proposeJoin(UUID.randomUUID(), UUID.randomUUID(), "Survivor"));
             clock.millis(2_000);
             assertEquals(CommitResult.APPLIED, store.recordProgress(new ProgressWrite(round, UUID.randomUUID(),
                     PLAYER, "Alice", Set.of("minecraft:story/mine_stone"), "a".repeat(64), true, 2_000_000_000L)));
-            RoundTransition death = engine.proposeHardcoreDeath(UUID.randomUUID(), PLAYER, 1);
+            RoundTransition death = engine.proposeDeathBatch(UUID.randomUUID(), round,
+                    List.of(new RoundDeath(PLAYER, 1, 0, Optional.empty())), null);
             deathWrite = write(death);
             commit(store, engine, death);
             assertEquals(CommitResult.DUPLICATE, store.commit(deathWrite));

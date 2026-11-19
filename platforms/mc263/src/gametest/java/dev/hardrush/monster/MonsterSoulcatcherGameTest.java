@@ -1,8 +1,14 @@
 package dev.hardrush.monster;
 
 import dev.hardrush.combat.MonsterCombatRuntime;
+import dev.hardrush.core.api.DamagePort.AttackKind;
+import dev.hardrush.core.combat.CombatActor;
+import dev.hardrush.core.combat.CombatOrigin;
+import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.gametest.MonsterRoleGameTest;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -22,6 +28,7 @@ import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.projectile.ShulkerBullet;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -80,6 +87,30 @@ public final class MonsterSoulcatcherGameTest {
             } finally { clean(owner); }
             test.succeed();
         });
+    }
+
+    @GameTest(maxTicks = 100)
+    public void aShotKeepsItsShootersCreditAfterTheShooterIsGone(GameTestHelper test) {
+        var level = test.getLevel();
+        var shulker = test.spawn(EntityTypes.SHULKER, new BlockPos(1, 2, 1));
+        var target = test.spawn(EntityTypes.ZOMBIE, new BlockPos(3, 2, 3));
+        var credit = new CombatOrigin(UUID.randomUUID(), UUID.randomUUID(),
+                new CombatActor(UUID.randomUUID(), ParticipantRole.MONSTER_DEPLOYED, 1, 1),
+                AttackKind.SUMMON, Optional.of(shulker.getUUID()), List.of());
+        MonsterSoulcatcher.markRelease(shulker, Optional.of(credit));
+        var bullet = new ShulkerBullet(level, shulker, target, Direction.Axis.Y);
+        test.assertTrue(level.addFreshEntity(bullet), "The bullet enters the world");
+        // Caught again (or killed) after firing: the native owner reference no longer resolves.
+        shulker.discard();
+        test.assertTrue(bullet.getOwner() == null, "A removed shooter is no longer the bullet's native owner");
+        test.assertValueEqual(MonsterSoulcatcher.killCredit(level.damageSources().mobProjectile(bullet, null), Optional.empty()),
+                Optional.of(credit), "The shot still credits the identity that released its shooter");
+        var deflector = test.spawn(EntityTypes.ZOMBIE, new BlockPos(1, 2, 3));
+        bullet.setOwner(deflector);
+        test.assertTrue(MonsterSoulcatcher.killCredit(level.damageSources().mobProjectile(bullet, deflector), Optional.empty()).isEmpty(),
+                "A deflected shot takes its deflector's credit, here none");
+        bullet.discard(); target.discard(); deflector.discard();
+        test.succeed();
     }
 
     @GameTest(maxTicks = 200)

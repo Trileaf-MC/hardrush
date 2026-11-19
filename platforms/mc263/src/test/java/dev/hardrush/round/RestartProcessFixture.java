@@ -99,7 +99,7 @@ public final class RestartProcessFixture {
                 tick(session);
                 unlock(session, NEW_NAME);
                 clock.addAndGet(nanos(2));
-                session.normalDeath(PLAYER, 1);
+                session.captureDeath(snapshot(session).roundId(), PLAYER, 1, 0, null, Optional.empty(), false);
                 idle(session);
                 clock.addAndGet(nanos(4)); // Respawning time must not accrue challenge or human time.
                 session.normalRespawn(PLAYER, 1);

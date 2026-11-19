@@ -1,6 +1,6 @@
 # 委派规则（delegate-skills）
 
-仅在你当前有类似于 `codex-delegate` 这样的 skill 时遵守此规则，否则请直接忽略本文档。  
+**在 claude cloud 环境，以及你当前没有 `codex-delegate` 这样的 skill 时直接忽略本文档。** 
 
 本文档只用于指导担任编排者的 Claude 主会话如何委派任务给子代理。被委派的实现者（Codex、Cursor 等）不读这个文件，它们读的是 AGENTS.md 和你写的任务书。
 

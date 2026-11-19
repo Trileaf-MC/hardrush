@@ -1001,18 +1001,6 @@ public final class RoundSession implements AutoCloseable {
                 lifeSequence, deploymentSequence), reply, "复生资格已消费，正在空装降落到远离出生点的荒野。");
     }
 
-    public void requestRevivalTotemDrop(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
-            int count, Consumer<Reply> reply) {
-        requestAction(() -> engine.proposeRevivalTotemDrop(UUID.randomUUID(), roundId, playerId,
-                lifeSequence, deploymentSequence, count), reply, "复生图腾已丢出。");
-    }
-
-    public void requestRevivalTotemPickup(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
-            int count, Consumer<Reply> reply) {
-        requestAction(() -> engine.proposeRevivalTotemPickup(UUID.randomUUID(), roundId, playerId,
-                lifeSequence, deploymentSequence, count), reply, "复生图腾已拾取。");
-    }
-
     public void requestShopPurchase(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             dev.hardrush.core.round.ShopOffer offer, int price, Consumer<Reply> reply) {
         requestAction(() -> engine.proposeShopPurchase(UUID.randomUUID(), roundId, playerId,
@@ -1183,25 +1171,6 @@ public final class RoundSession implements AutoCloseable {
         return pendingTransition != null ? pendingTransition.after() : engine.committed();
     }
 
-    public void normalDeath(UUID playerId, int lifeSequence) {
-        normalDeath(playerId, lifeSequence, null);
-    }
-
-    public void normalDeath(UUID playerId, int lifeSequence, UUID batchId) {
-        humanDeath(playerId, lifeSequence, batchId);
-    }
-
-    public void humanDeath(UUID playerId, int lifeSequence, UUID batchId) {
-        if (engine == null || engine.committed().phase() != RoundPhase.RUNNING) return;
-        Function<RoundEngine, RoundTransition> proposal = e -> e.committed().rules().mode() == GameMode.NORMAL
-                ? e.proposeNormalDeath(UUID.randomUUID(), playerId, lifeSequence)
-                : e.proposeHardcoreDeath(UUID.randomUUID(), playerId, lifeSequence);
-        if (terminalCandidate != null) {
-            if (terminalQueued || !terminalCandidate.batchId().equals(batchId)) return;
-            enqueueAt(terminalCandidate.observedNanoTime(), proposal);
-        } else enqueue(proposal);
-    }
-
     public void normalRespawn(UUID playerId, int lifeSequence) {
         if (stopping || state != State.OPEN || !adaptersReady || competitionLocked()
                 || Objects.equals(requestedRespawns.get(playerId), lifeSequence)) return;
@@ -1307,7 +1276,9 @@ public final class RoundSession implements AutoCloseable {
             // A newly admitted life deliberately remains offline until the profile adapter unlocks it.
             if (participant.role() == dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE && !participant.online() && connected) continue;
             if (restoredReady.contains(participant.id()) && !participant.online() && connected) continue;
-            if (participant.online() != connected || connected && !participant.name().equals(name)) {
+            // A life that left while still entering is no longer present; its admission will not come.
+            if (participant.online() != connected || participant.entering() && !connected
+                    || connected && !participant.name().equals(name)) {
                 submit(engine.proposeOnline(UUID.randomUUID(), participant.id(),
                         connected ? name : participant.name(), connected));
                 return;
@@ -1532,7 +1503,9 @@ public final class RoundSession implements AutoCloseable {
         }
 
         boolean matches(Participant participant) {
-            return participant != null && participant.online() == connected && (!connected || participant.name().equals(name));
+            // A life still entering is present though not online: its disconnect is news to the engine.
+            return participant != null && (connected ? participant.online() && participant.name().equals(name)
+                    : !participant.connected());
         }
     }
     @FunctionalInterface private interface IoAction<T> { T run() throws Exception; }
