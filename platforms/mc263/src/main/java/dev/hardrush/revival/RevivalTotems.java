@@ -123,6 +123,35 @@ public final class RevivalTotems {
         return stack;
     }
 
+    /**
+     * The floor stack a human's death by a human leaves (design 2.3): the held item's look, its own description, and the
+     * drop token plus round instead of a holder identity, so it never passes for a projected copy. {@link #is} still
+     * holds, so every keeping rule applies to it; were it ever to reach an inventory, the projection would replace it.
+     */
+    static ItemStack dropped(UUID token, UUID round) {
+        var stack = held(new Identity(round, ParticipantRole.HUMAN_ACTIVE, 0, 0), 1, 1);
+        ItemText.lore(stack, List.of(DROP_USAGE));
+        var data = new CompoundTag();
+        data.putString(DROP, token.toString());
+        data.putString("round", round.toString());
+        var tag = new CompoundTag();
+        tag.put(KEY, data);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        return stack;
+    }
+
+    /** What a dropped totem's description says; also the gametest's reference. */
+    static final String DROP_USAGE = "人类捡起即得 · 拿在手上阵亡时原地复生";
+    private static final String DROP = "drop";
+
+    /** The drop token of a floor totem; empty for a projected copy (or anything else). */
+    public static Optional<UUID> dropToken(ItemStack stack) {
+        if (!is(stack)) return Optional.empty();
+        var value = stack.get(DataComponents.CUSTOM_DATA).copyTag().getCompoundOrEmpty(KEY).getStringOr(DROP, "");
+        try { return value.isEmpty() ? Optional.empty() : Optional.of(UUID.fromString(value)); }
+        catch (IllegalArgumentException unreadable) { return Optional.empty(); }
+    }
+
     /** The identity a copy was projected for; empty for a copy from before identities were stamped. */
     static Optional<Identity> identity(ItemStack stack) {
         if (!is(stack)) return Optional.empty();
@@ -153,11 +182,25 @@ public final class RevivalTotems {
     }
 
     private void reproject(ServerPlayer player, RoundSnapshot r) {
+        project(player, decision(player, r));
+    }
+
+    private Decision decision(ServerPlayer player, RoundSnapshot r) {
         var p = r == null ? null : r.participants().get(player.getUUID());
         boolean holds = p != null && (p.role() == ParticipantRole.HUMAN_ACTIVE || p.role() == ParticipantRole.MONSTER_LOBBY);
-        var decision = TotemProjection.decide(r, player.getUUID(), player.isSpectator(), access.competitionLocked(),
+        return TotemProjection.decide(r, player.getUUID(), player.isSpectator(), access.competitionLocked(),
                 holds && access.bodyReady(player, p), p == null ? 0 : pendingSaves.applyAsInt(p.id()));
-        project(player, decision);
+    }
+
+    /**
+     * Whether the player's inventory shows an active human's committed balance right now ({@link State#PROJECT} for a
+     * human): the one test of who may take a dropped totem ({@link TotemDrops}), so pickup and holding agree.
+     */
+    public static boolean projectsHuman(ServerPlayer player) {
+        var totems = INSTANCES.get(player.level().getServer());
+        if (totems == null) return false;
+        var decision = totems.decision(player, totems.access.committed().orElse(null));
+        return decision.state() == State.PROJECT && decision.identity().holder() == Holder.HUMAN;
     }
 
     /**

@@ -11,7 +11,9 @@
     "TotemItemFrameMixin",
     "TotemArmorStandMixin",
     "TotemDecoratedPotMixin",
-    "TotemAllayMixin"
+    "TotemAllayMixin",
+    "TotemPickupMixin",
+    "TotemHopperMixin"
   ],
   "injectors": { "defaultRequire": 1 }
 }

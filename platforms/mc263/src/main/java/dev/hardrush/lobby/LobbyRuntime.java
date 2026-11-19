@@ -146,6 +146,15 @@ public final class LobbyRuntime {
                 };
             }
         });
+        dev.hardrush.revival.TotemDrops.configure(server, new dev.hardrush.revival.TotemDrops.Access() {
+            @Override public Optional<RoundSnapshot> view() { return session.view(); }
+            @Override public boolean open() { return session.state() == RoundSession.State.OPEN; }
+            @Override public boolean collects(ServerPlayer player) { return dev.hardrush.revival.RevivalTotems.projectsHuman(player); }
+            @Override public void refresh(ServerPlayer player) { dev.hardrush.revival.RevivalTotems.refresh(player); }
+            @Override public void requestPickup(UUID round, UUID token, UUID player, int life, java.util.function.Consumer<RoundSession.Reply> reply) {
+                session.requestLooseTotemPickup(round, token, player, life, reply);
+            }
+        });
         CampTransfers.configure(server, camp);
         CampKit.configure(server, camp);
         MonsterShop.configure(server, camp);
@@ -180,7 +189,8 @@ public final class LobbyRuntime {
         });
     }
     public static void unconfigure(MinecraftServer server) {
-        BINDINGS.remove(server); LobbyInteractions.close(server); LobbyMenus.unconfigure(server); dev.hardrush.revival.RevivalTotems.unconfigure(server); CampTransfers.unconfigure(server);
+        BINDINGS.remove(server); LobbyInteractions.close(server); LobbyMenus.unconfigure(server); dev.hardrush.revival.RevivalTotems.unconfigure(server);
+        dev.hardrush.revival.TotemDrops.unconfigure(server); CampTransfers.unconfigure(server);
         CampKit.unconfigure(server); MonsterShop.unconfigure(server); MonsterVaults.unconfigure(server);
         MonsterRoundRuntime.unconfigure(server); MonsterCombatRuntime.unconfigure(server);
     }
@@ -291,6 +301,7 @@ public final class LobbyRuntime {
         var b = BINDINGS.get(server); if (b == null) return;
         synchronize(server, b);
         CampTransfers.tick(server);
+        dev.hardrush.revival.TotemDrops.tick(server);
         dev.hardrush.revival.RevivalTotems.tick(server);
         CampKit.tick(server);
         MonsterVaults.tick(server);
@@ -662,13 +673,15 @@ public final class LobbyRuntime {
                 var owner = server.getPlayerList().getPlayer(p.id());
                 if (owner != null) coinFeedback(owner, b.session.committedEventType(), old, p);
             }
-            if (old != null && p.revivalCharges() > old.revivalCharges()) {
+            // A human's pickup tells itself (TotemDrops); a human's other gains are used in the world, a monster's at the altar.
+            if (old != null && p.revivalCharges() > old.revivalCharges() && !"TOTEM_PICKUP".equals(b.session.committedEventType())) {
                 var owner = server.getPlayerList().getPlayer(p.id());
                 if (owner != null) {
                     boolean recalled = old.role() == ParticipantRole.MONSTER_DEPLOYED && p.role() == ParticipantRole.MONSTER_LOBBY
                             && dev.hardrush.core.round.MonsterCoins.enabled(after.rules());
-                    Notices.hint(owner, recalled ? "获得复生图腾，可在营地祭坛复生"
-                            : "获得 " + Notices.key(p.revivalCharges() - old.revivalCharges()) + " 个复生图腾 · 可在营地祭坛复生");
+                    String gained = "获得 " + Notices.key(p.revivalCharges() - old.revivalCharges()) + " 个复生图腾 · ";
+                    Notices.hint(owner, p.role() == ParticipantRole.HUMAN_ACTIVE ? gained + "拿在手上阵亡时原地复生"
+                            : recalled ? "获得复生图腾，可在营地祭坛复生" : gained + "可在营地祭坛复生");
                     sound(owner, true);
                 }
             }

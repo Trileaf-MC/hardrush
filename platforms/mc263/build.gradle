@@ -375,6 +375,15 @@ loom.runs.named('gameTest') {
     }
 }
 
+// Revival totems dropped by a human's death (spawn, registration, pickup, announcement, patrol) in the default fresh storage.
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushTotemDrops').orNull == 'true') {
+        if (providers.gradleProperty('hardrushCompetition').orNull == 'true')
+            throw new GradleException('Totem drop fixtures require their own run without the competition runtime');
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:totem_drop_game_test*'
+    }
+}
+
 // Only production artifacts: no Loom classpath, test mod, MCPFabric or debug tools.
 configurations { demoFabricApi { transitive = false } }
 dependencies { demoFabricApi "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}" }

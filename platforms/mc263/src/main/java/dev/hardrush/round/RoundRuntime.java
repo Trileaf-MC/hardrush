@@ -394,8 +394,12 @@ public final class RoundRuntime {
                     && RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());
                 if (profiles != null) profiles.holdDeath(player);
-                session.captureDeath(round.roundId(), player.getUUID(), participant.lifeSequence(), participant.monsterDeploymentSequence(),
-                        CombatRuntime.currentBatch(player.level()).orElse(null), killCredit, false);
+                // A human killed by a human drops a revival totem at the body, judged now as the engine will on commit.
+                var drop = dev.hardrush.revival.TotemDrops.prepare(player, round, killCredit);
+                boolean captured = session.captureDeath(round.roundId(), player.getUUID(), participant.lifeSequence(),
+                        participant.monsterDeploymentSequence(), CombatRuntime.currentBatch(player.level()).orElse(null), killCredit,
+                        false, drop);
+                drop.ifPresent(token -> dev.hardrush.revival.TotemDrops.captured(player, round.roundId(), token, captured));
             } else if (participant != null && participant.role() == ParticipantRole.MONSTER_DEPLOYED
                     && RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());
@@ -639,6 +643,7 @@ public final class RoundRuntime {
         refreshTab(server, true);
         dev.hardrush.pact.DuskPactRuntime.tick(server);
         if (before.result() == null && CelebrationRuntime.successful(after)) CelebrationRuntime.start(server, after);
+        dev.hardrush.revival.TotemDrops.onCommitted(server, before, after);
         LobbyRuntime.onCommitted(server, before, after);
         if (!before.roundId().equals(after.roundId())) {
             CelebrationRuntime.nextRound(server);
