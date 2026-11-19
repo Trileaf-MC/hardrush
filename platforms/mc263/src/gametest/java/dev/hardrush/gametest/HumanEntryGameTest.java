@@ -14,9 +14,6 @@ import dev.hardrush.lobby.LobbyInteractions;
 import dev.hardrush.book.WrittenBookPort;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.LobbyWorld;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,15 +25,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.config.PrepareSpawnTask;
-import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
@@ -169,6 +162,7 @@ public final class HumanEntryGameTest {
                 .thenExecute(() -> {
                     test.assertTrue(f.server.getTickCount() - f.guideStarted >= 80, "Admission waits the vanilla portal delay");
                     test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(f.b.player), "Submitted admission ends guidance");
+                    f.b.client.withhold(TestClient.Reply.REPORT_LOADED);
                     f.place(f.b, Landing.CENTRAL); f.hold = false;
                 })
                 .thenWaitUntil(() -> f.await(!PlayerProfiles.isLocked(f.b.player) && f.idle(), "Submitted admission survives leaving the circle"))
@@ -178,7 +172,9 @@ public final class HumanEntryGameTest {
                     double far = Math.hypot(f.b.player.getX() - worlds.spawn().getX() - .5, f.b.player.getZ() - worlds.spawn().getZ() - .5);
                     test.assertTrue(f.b.player.level() == worlds.level(net.minecraft.world.level.Level.OVERWORLD) && far >= 127 && far <= 1001
                             && dev.hardrush.world.RoundWorldBundle.safeStanding(f.b.player.level(), f.b.player.blockPosition()), "A mid-round life lands in the far ring: " + far);
-                    f.b.player.connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
+                    f.b.client.acknowledge();
+                    f.b.client.reportLoaded();
+                    f.b.client.resume(TestClient.Reply.REPORT_LOADED);
                 })
                 .thenWaitUntil(() -> f.await(f.hint(f.b).startsWith("你在出生点"), "The far landing's bearing reaches the action bar"))
                 .thenExecute(() -> {
@@ -248,7 +244,7 @@ public final class HumanEntryGameTest {
         final MinecraftServer server;
         final AtomicLong clock = new AtomicLong(System.nanoTime());
         final AtomicReference<RoundSession.Reply> reply = new AtomicReference<>();
-        final Peer a = new Peer("CampHumanA"), b = new Peer("CampHumanB");
+        final Peer a, b;
         RoundSession session;
         PlayerProfiles profiles;
         Vec3 savedPosition;
@@ -256,7 +252,10 @@ public final class HumanEntryGameTest {
         String lastStage;
         int stageStarted;
         Map<LobbyFunction, List<Integer>> oldRoleModels;
-        Fixture(GameTestHelper test) { this.test = test; server = test.getLevel().getServer(); }
+        Fixture(GameTestHelper test) {
+            this.test = test; server = test.getLevel().getServer();
+            a = new Peer("CampHumanA"); b = new Peer("CampHumanB");
+        }
         @SuppressWarnings("unchecked") <T> T service(String name) {
             try { var field = RoundRuntime.class.getDeclaredField(name); field.setAccessible(true); return (T) ((Map<?, ?>) field.get(null)).get(server); }
             catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
@@ -380,8 +379,7 @@ public final class HumanEntryGameTest {
             test.assertTrue(ids.values().stream().flatMap(List::stream).noneMatch(others::contains), "Each connection owns independent role IDs");
             for (var facility : List.of(LobbyFunction.ROLE_ZOMBIE, LobbyFunction.ROLE_SKELETON, LobbyFunction.ROLE_CREEPER)) {
                 int id = ids.get(facility).getFirst();
-                var spawn = a.connection.packets.stream().filter(ClientboundAddEntityPacket.class::isInstance)
-                        .map(ClientboundAddEntityPacket.class::cast).filter(p -> p.getId() == id).findFirst().orElseThrow();
+                var spawn = a.client.packets(ClientboundAddEntityPacket.class).stream().filter(p -> p.getId() == id).findFirst().orElseThrow();
                 var type = switch (facility) {
                     case ROLE_ZOMBIE -> net.minecraft.world.entity.EntityTypes.ZOMBIE;
                     case ROLE_SKELETON -> net.minecraft.world.entity.EntityTypes.SKELETON;
@@ -392,14 +390,13 @@ public final class HumanEntryGameTest {
                 var pos = LobbyPlanFixtures.model(server, facility);
                 test.assertTrue(pos.distanceToSqr(new Vec3(spawn.getX(), spawn.getY(), spawn.getZ())) < .000001, "Model occupies the former lectern position");
                 test.assertTrue(a.player.level().getEntity(id) == null, "Display is never a live hostile mob");
-                test.assertTrue(a.connection.packets.stream().anyMatch(p -> p instanceof ClientboundSetEntityDataPacket data && data.id() == id), "Native model metadata is sent");
+                test.assertTrue(a.client.packets().stream().anyMatch(p -> p instanceof ClientboundSetEntityDataPacket data && data.id() == id), "Native model metadata is sent");
             }
             int witch = ids.get(LobbyFunction.MERCHANT).getFirst();
-            test.assertTrue(a.connection.packets.stream().filter(ClientboundAddEntityPacket.class::isInstance)
-                    .map(ClientboundAddEntityPacket.class::cast).anyMatch(p -> p.getId() == witch
+            test.assertTrue(a.client.packets(ClientboundAddEntityPacket.class).stream().anyMatch(p -> p.getId() == witch
                             && p.getType() == net.minecraft.world.entity.EntityTypes.WITCH), "The merchant is a native witch model");
             test.assertTrue(a.player.level().getEntity(witch) == null, "The witch is never a live mob");
-            test.assertTrue(a.connection.packets.stream().anyMatch(p -> p instanceof ClientboundSetEquipmentPacket equipment
+            test.assertTrue(a.client.packets().stream().anyMatch(p -> p instanceof ClientboundSetEquipmentPacket equipment
                     && equipment.getEntity() == ids.get(LobbyFunction.ROLE_SKELETON).getFirst()
                     && equipment.getSlots().stream().anyMatch(slot -> slot.getFirst() == net.minecraft.world.entity.EquipmentSlot.MAINHAND
                     && slot.getSecond().is(Items.BOW))), "Skeleton carries its native bow");
@@ -413,12 +410,12 @@ public final class HumanEntryGameTest {
             var forged = new ServerboundInteractPacket(id, InteractionHand.MAIN_HAND, new Vec3(Double.NaN, 1, 0), false);
             test.assertValueEqual(LobbyInteractions.entity(a.player, forged), LobbyInteractions.Result.INPUT, "Invalid model hit is rejected");
             var packet = new ServerboundInteractPacket(id, InteractionHand.MAIN_HAND, new Vec3(0, 1, 0), false);
-            int before = a.connection.packets.size();
+            int before = a.client.packets().size();
             test.assertValueEqual(LobbyInteractions.entity(a.player, packet), LobbyInteractions.Result.ACCEPTED, "Role model reaches the existing facility action");
-            int after = a.connection.packets.size();
+            int after = a.client.packets().size();
             test.assertTrue(after > before, "Existing closed-area feedback is preserved");
             LobbyInteractions.entity(a.player, packet);
-            test.assertValueEqual(a.connection.packets.size(), after, "Two network guards dispatch each click once");
+            test.assertValueEqual(a.client.packets().size(), after, "Two network guards dispatch each click once");
             test.assertFalse(session.mutationPending(), "Waiting humans cannot bypass existing role restrictions");
             place(a, Landing.CENTRAL);
         }
@@ -453,29 +450,28 @@ public final class HumanEntryGameTest {
             a.player.getInventory().clearContent();
             var book = new BookPort.Book(UUID.randomUUID(), 1, 1, "大厅测试历史书", "HardRush", List.of("只读历史"));
             a.player.getInventory().setItem(0, WrittenBookPort.createItem(new OperationTag(book.roundId(), UUID.randomUUID(), 1), book));
-            int before = a.connection.packets.size();
+            int before = a.client.packets().size();
             a.player.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, 3, 0, 0));
-            test.assertTrue(a.connection.packets.subList(before, a.connection.packets.size()).stream().anyMatch(ClientboundOpenBookPacket.class::isInstance), "History book still opens through the actual use-item packet");
+            var packets = a.client.packets();
+            test.assertTrue(packets.subList(before, packets.size()).stream().anyMatch(ClientboundOpenBookPacket.class::isInstance), "History book still opens through the actual use-item packet");
             a.player.getInventory().clearContent();
         }
         final class Peer {
             final GameProfile profile;
-            PrepareSpawnTask prepare;
-            RecordingConnection connection;
-            EmbeddedChannel channel;
+            final TestClient client;
             ServerPlayer player;
-            int acknowledged = Integer.MIN_VALUE;
-            int batchCount;
             int observedFrom;
-            Peer(String name) { profile = new GameProfile(UUID.randomUUID(), name); }
-            List<Packet<?>> receivedPackets() { return List.copyOf(connection.packets); }
+            Peer(String name) {
+                profile = new GameProfile(UUID.randomUUID(), name);
+                client = new TestClient(server, profile);
+            }
+            List<Packet<?>> receivedPackets() { return client.packets(); }
             void login(GameTestSequence sequence) { login(sequence, false); }
             void login(GameTestSequence sequence, boolean active) {
-                sequence.thenExecute(() -> { prepare = new PrepareSpawnTask(server, new NameAndId(profile)); prepare.start(packet -> {}); })
-                        .thenWaitUntil(() -> await(prepare.tick(), "Native login data loaded"))
+                sequence.thenExecute(client::beginLogin)
+                        .thenWaitUntil(() -> await(client.finishLogin(), "Native login data loaded"))
                         .thenExecute(() -> {
-                            connection = new RecordingConnection(); channel = new EmbeddedChannel(connection); acknowledged = Integer.MIN_VALUE; batchCount = 0;
-                            player = prepare.spawnPlayer(connection, TestClients.cookie(profile)); prepare.close(); acknowledge();
+                            player = client.player(); client.acknowledge();
                             test.assertTrue(PlayerProfiles.isLocked(player), "Native login begins in quarantine");
                             assertFrozen();
                         }).thenWaitUntil(() -> await(active ? !PlayerProfiles.isLocked(player) : PlayerProfiles.canMoveInLobby(player), active ? "Living profile restored" : "Profile verification opens lobby movement"));
@@ -497,7 +493,8 @@ public final class HumanEntryGameTest {
                         + ", mobile=" + PlayerProfiles.canMoveInLobby(player));
             }
             boolean seesMovement(ServerPlayer other, boolean position, boolean rotation) {
-                return connection.packets.subList(observedFrom, connection.packets.size()).stream().anyMatch(packet -> packet instanceof ClientboundMoveEntityPacket move
+                var packets = client.packets();
+                return packets.subList(observedFrom, packets.size()).stream().anyMatch(packet -> packet instanceof ClientboundMoveEntityPacket move
                             && move.getEntity(player.level()) == other && (!position || move.hasPosition()) && (!rotation || move.hasRotation())
                         || packet instanceof ClientboundEntityPositionSyncPacket sync && sync.id() == other.getId()
                             && (!position || sync.hasPosition()) && (!rotation || sync.hasRotation()));
@@ -508,35 +505,15 @@ public final class HumanEntryGameTest {
             }
             void tickConnection() {
                 if (player == null) return;
-                acknowledge();
+                client.acknowledge();
                 // Embedded connections are not in the server's socket list. Run vanilla's
                 // connection tick/doTick exactly as a real network connection would.
-                player.connection.tick();
+                client.tickConnection();
             }
-            void acknowledge() {
-                if (player == null) return;
-                connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
-                        .reduce((first, last) -> last).filter(packet -> packet.id() != acknowledged).ifPresent(packet -> {
-                            acknowledged = packet.id();
-                            player.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(packet.id(), player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
-                            player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-                        });
-                int batches = (int) connection.packets.stream().filter(ClientboundChunkBatchFinishedPacket.class::isInstance).count();
-                while (batchCount < batches) { batchCount++; player.connection.handleChunkBatchReceived(new ServerboundChunkBatchReceivedPacket(64)); }
-            }
+            void acknowledge() { client.acknowledge(); }
             void disconnect() {
-                connection.disconnect(Component.literal("大厅原生重连回归")); connection.handleDisconnection(); channel.finishAndReleaseAll(); player = null;
+                client.disconnect(Component.literal("大厅原生重连回归")); player = null;
             }
         }
-    }
-    private static final class RecordingConnection extends Connection {
-        final ArrayList<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        void record(Packet<?> packet) {
-            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record); else packets.add(packet);
-        }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
     }
 }

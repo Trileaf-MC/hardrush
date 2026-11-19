@@ -8,13 +8,12 @@ import dev.hardrush.observe.Observation;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.lobby.LobbyInteractions;
+import dev.hardrush.lobby.LobbyProjections;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.LobbyWorld;
 import dev.hardrush.world.RoundWorldBundle;
 import dev.hardrush.lobby.LobbyRuntime;
 import dev.hardrush.protection.ProtectionRuntime;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -24,17 +23,12 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.server.network.config.PrepareSpawnTask;
-import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ChunkPos;
@@ -79,7 +73,7 @@ public final class PersonalHuntGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterRole() == MonsterRole.SKELETON, "physical role booth"))
                 .thenExecute(() -> {
-                    var selected = HuntInputFixtures.model(f.c.player, f.a.id(), f.c.connection.packets);
+                    var selected = f.c.selectModel(f.a);
                     HuntInputFixtures.click(f.c.player, selected.entityId(), InteractionHand.OFF_HAND);
                     test.assertTrue(f.searches().isEmpty(), "Offhand model packet cannot start search");
                     HuntInputFixtures.click(f.c.player, selected.entityId(), InteractionHand.MAIN_HAND);
@@ -115,7 +109,7 @@ public final class PersonalHuntGameTest {
                     test.assertTrue(f.c.player.getCamera() == f.a.player, "A camp monster cannot pick a monster from the spectator menu");
                     test.assertFalse(f.c.player.position().closerThan(camp, 1), "The camp body went with the camera");
                 })
-                .thenWaitUntil(() -> f.await(Observation.audience(f.a.player) == 1 && f.a.connection.packets.stream()
+                .thenWaitUntil(() -> f.await(Observation.audience(f.a.player) == 1 && f.a.client.packets().stream()
                         .anyMatch(packet -> packet instanceof ClientboundSoundPacket sound && sound.getSound().value() == net.minecraft.sounds.SoundEvents.SPYGLASS_USE),
                         "the watched human counts one camera and hears a spyglass"))
                 .thenExecute(() -> { f.c.input(new Input(false, false, false, false, true, false, false)); f.d.hunt(f.a); })
@@ -335,8 +329,8 @@ public final class PersonalHuntGameTest {
 
     private static final class Fixture {
         final GameTestHelper test; final MinecraftServer server;
-        final Peer a = new Peer("HuntA"), b = new Peer("HuntB"), c = new Peer("HuntC"), d = new Peer("HuntD");
-        final List<Peer> peers = List.of(a,b,c,d);
+        final Peer a, b, c, d;
+        final List<Peer> peers;
         final AtomicLong clock = new AtomicLong(System.nanoTime()), searchClock = new AtomicLong(1_000_000_000L);
         final LinkedBlockingQueue<Runnable> held = new LinkedBlockingQueue<>();
         final AtomicReference<RoundSession.Reply> reply = new AtomicReference<>();
@@ -345,7 +339,11 @@ public final class PersonalHuntGameTest {
         boolean hold; String stage; int refunds, oldModel, faultSortie, stageAt, restoringShows; long started; Object originalAttempt, oldAttempt;
         ServerPlayer oldBody;
         java.util.concurrent.CompletableFuture<Void> ioTask;
-        Fixture(GameTestHelper test) { this.test=test; server=test.getLevel().getServer(); }
+        Fixture(GameTestHelper test) {
+            this.test=test; server=test.getLevel().getServer();
+            a=new Peer("HuntA"); b=new Peer("HuntB"); c=new Peer("HuntC"); d=new Peer("HuntD");
+            peers=List.of(a,b,c,d);
+        }
         void bind() {
             session = service("SESSIONS",RoundSession.class); profiles=service("PROFILES",PlayerProfiles.class);
             set(session,"clock", (MonotonicClock)clock::get);
@@ -357,7 +355,7 @@ public final class PersonalHuntGameTest {
                     var prior = before.participants().get(changed.id());
                     if (prior != null && prior.role().isMonster() && changed.role() == ParticipantRole.HUMAN_ACTIVE) {
                         refresh(); int id = model(d, changed.id().equals(a.id()) ? a : c);
-                        test.assertTrue(d.connection.packets.stream().filter(ClientboundSetEntityDataPacket.class::isInstance).map(ClientboundSetEntityDataPacket.class::cast)
+                        test.assertTrue(d.client.packets(ClientboundSetEntityDataPacket.class).stream()
                                 .filter(data -> data.id()==id).flatMap(data -> data.packedItems().stream())
                                 .anyMatch(data -> data.value().toString().contains("正在复生")), "Committed revival is RESTORING before profile/online admission, never AWAY");
                         restoringShows++;
@@ -370,7 +368,7 @@ public final class PersonalHuntGameTest {
         void tick() {
             clock.accumulateAndGet(System.nanoTime(), Math::max);
             if(!hold) { Runnable task; while((task=held.poll())!=null) task.run(); }
-            for(var p:peers) p.ack();
+            for(var p:peers) p.client.acknowledge();
         }
         void await(boolean ok,String text) {
             if(!Objects.equals(stage,text)) { stage=text; stageAt=server.getTickCount(); System.out.println("PERSONAL_HUNT_STAGE: "+text+"; tick="+server.getTickCount()); }
@@ -436,8 +434,8 @@ public final class PersonalHuntGameTest {
                 if(!levels[i].isPositionEntityTicking(BlockPos.containing(anchor[i]).offset(x,0,z))) return false;
             return true;
         }
-        void move(Peer p,int dimension) { var pos=anchor[dimension]; p.player.teleportTo(levels[dimension],pos.x,pos.y,pos.z,Set.of(),0,0,true); p.ack(); }
-        void moveVoid(Peer p,int dimension) { var pos=anchor[dimension].add(1800,80,1800); p.player.teleportTo(levels[dimension],pos.x,pos.y,pos.z,Set.of(),0,0,true); p.ack(); }
+        void move(Peer p,int dimension) { var pos=anchor[dimension]; p.player.teleportTo(levels[dimension],pos.x,pos.y,pos.z,Set.of(),0,0,true); p.client.acknowledge(); }
+        void moveVoid(Peer p,int dimension) { var pos=anchor[dimension].add(1800,80,1800); p.player.teleportTo(levels[dimension],pos.x,pos.y,pos.z,Set.of(),0,0,true); p.client.acknowledge(); }
         void kill(Peer p) { test.assertTrue(p.player.hurtServer(p.player.level(),p.player.damageSources().genericKill(),Float.MAX_VALUE),"Native lethal damage accepted"); }
         boolean lobby(Peer p) {
             var body=p.current(); return idle() && p.participant().role()==ParticipantRole.MONSTER_LOBBY && body!=null && body.isAlive()
@@ -455,7 +453,7 @@ public final class PersonalHuntGameTest {
             for(var model:view.entities()) test.assertTrue(c.player.level().getEntity(model.entityId())==null,"Projection never enters world simulation");
             for(var p:List.of(a,b)) {
                 int id=model(c,p);
-                test.assertTrue(c.connection.packets.stream().filter(ClientboundSetEntityDataPacket.class::isInstance).map(ClientboundSetEntityDataPacket.class::cast)
+                test.assertTrue(c.client.packets(ClientboundSetEntityDataPacket.class).stream()
                         .filter(data -> data.id()==id).flatMap(data -> data.packedItems().stream()).anyMatch(data -> data.value() instanceof net.minecraft.world.item.component.ResolvableProfile profile
                                 && profile.partialProfile().equals(p.player.getGameProfile())),"Full original authenticated profile reaches mannequin");
             }
@@ -463,7 +461,7 @@ public final class PersonalHuntGameTest {
         }
         void assertAway() {
             int id=model(c,a);
-            test.assertTrue(c.connection.packets.stream().filter(ClientboundSetEntityDataPacket.class::isInstance).map(ClientboundSetEntityDataPacket.class::cast)
+            test.assertTrue(c.client.packets(ClientboundSetEntityDataPacket.class).stream()
                     .filter(data -> data.id()==id).flatMap(data -> data.packedItems().stream()).anyMatch(data -> data.value().toString().contains("离线")),"Disconnected human retains an away display");
         }
         void commitRace(GameTestSequence s,boolean terrain) {
@@ -474,7 +472,7 @@ public final class PersonalHuntGameTest {
                         var attempt=pending().get(c.id()); var search=(dev.hardrush.hunt.SafeDeployment.Search)field(attempt,"search"); found[0]=search.result().position();
                         test.assertTrue(c.player.level()==LobbyWorld.open(server).holdingLevel(),"No teleport before real SQLite callback");
                         if(terrain) levels[0].setBlock(BlockPos.containing(found[0]).below(),Blocks.AIR.defaultBlockState(),2);
-                        else { a.player.teleportTo(levels[0],found[0].x,found[0].y,found[0].z,Set.of(),0,0,true); a.ack(); }
+                        else { a.player.teleportTo(levels[0],found[0].x,found[0].y,found[0].z,Set.of(),0,0,true); a.client.acknowledge(); }
                         hold=false;
                     })
                     .thenWaitUntil(() -> await(deployed(c,0),"compensated and revalidated "+(terrain?"terrain":"movement")+" race"))
@@ -494,13 +492,13 @@ public final class PersonalHuntGameTest {
             var beforeC=projections.view(c.player).orElseThrow(); var beforeD=projections.view(d.player).orElseThrow();
             test.assertValueEqual(beforeC.pages(),2,"Production roster has two pages without a participant cap");
             oldModel=model(c,a);
-            HuntInputFixtures.role(c.player,"next"); c.ack();
+            HuntInputFixtures.role(c.player,"next"); c.client.acknowledge();
             var next=projections.view(c.player).orElseThrow();
             test.assertValueEqual(next.page(),1,"Actual protected paging facility changes own page");
             test.assertValueEqual(projections.view(d.player).orElseThrow(),beforeD,"Another observer retains page, generation and IDs");
             HuntInputFixtures.click(c.player,oldModel,InteractionHand.MAIN_HAND);
             test.assertTrue(searches().isEmpty(),"Old page cannot select replacement model");
-            HuntInputFixtures.role(c.player,"previous"); c.ack();
+            HuntInputFixtures.role(c.player,"previous"); c.client.acknowledge();
             test.assertValueEqual(projections.view(c.player).orElseThrow().page(),0,"Previous facility restores own page");
             test.assertTrue(model(c,a)!=oldModel,"Returning page uses fresh entity IDs");
             test.assertValueEqual(server.getPlayerList().getPlayerCount(),4,"Eighteen offline fixture candidates never count as native connections");
@@ -524,37 +522,35 @@ public final class PersonalHuntGameTest {
         static Object field(Object object,String name) { try { var f=object.getClass().getDeclaredField(name);f.setAccessible(true);return f.get(object); } catch(ReflectiveOperationException e) {throw new IllegalStateException(e);} }
         static void set(Object object,String name,Object value) { try { var f=object.getClass().getDeclaredField(name);f.setAccessible(true);f.set(object,value); } catch(ReflectiveOperationException e) {throw new IllegalStateException(e);} }
         final class Peer {
-            final GameProfile profile; PrepareSpawnTask prepare; Recording connection; EmbeddedChannel channel; ServerPlayer player; int ack=Integer.MIN_VALUE;
-            Peer(String name) { profile=new GameProfile(UUID.randomUUID(),name); }
-            UUID id() { return profile.id(); } Participant participant() { return round().participants().get(id()); }
+            final TestClient client; ServerPlayer player;
+            Peer(String name) { client=new TestClient(server,new GameProfile(UUID.randomUUID(),name)); }
+            UUID id() { return client.id(); } Participant participant() { return round().participants().get(id()); }
             ServerPlayer current() { return server.getPlayerList().getPlayer(id()); }
             void login(GameTestSequence s) {
-                s.thenExecute(() -> { prepare=new PrepareSpawnTask(server,new NameAndId(profile));prepare.start(packet -> {}); })
-                        .thenWaitUntil(() -> await(prepare.tick(),"native login "+profile.name()))
-                        .thenExecute(() -> { connection=new Recording();channel=new EmbeddedChannel(connection);ack=Integer.MIN_VALUE;
-                            player=prepare.spawnPlayer(connection,TestClients.cookie(profile));prepare.close();ack(); })
-                        .thenWaitUntil(() -> await(profiles.isReady(id(),round()),"profile ready "+profile.name()));
+                s.thenExecute(client::beginLogin)
+                        .thenWaitUntil(() -> await(client.finishLogin(),"native login "+client.name()))
+                        .thenExecute(() -> { player=client.player(); client.acknowledge(); })
+                        .thenWaitUntil(() -> await(profiles.isReady(id(),round()),"profile ready "+client.name()));
             }
-            void role(String role) { HuntInputFixtures.role(player,role); ack(); }
-            void hunt(Peer target) { HuntInputFixtures.hunt(player,target.id(),connection.packets); ack(); }
-            void watch(Peer target) { HuntInputFixtures.watch(player,target.id(),connection.packets); ack(); }
-            void input(net.minecraft.world.entity.player.Input keys) { player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(keys)); ack(); }
-            void ack() {
-                var body=current(); if(connection==null || body==null) return;
-                connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
-                        .reduce((prev,next) -> next).filter(packet -> packet.id()!=ack).ifPresent(packet -> {
-                            ack=packet.id(); body.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(packet.id(),body.getX(),body.getY(),body.getZ(),body.getYRot(),body.getXRot()));
-                            body.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-                        });
+            void role(String role) { HuntInputFixtures.role(player,role); client.acknowledge(); }
+            LobbyProjections.Selection selectModel(Peer target) {
+                refresh(); var projections=LobbyInteractions.get(server).orElseThrow().projections();
+                var selection=projections.view(player).orElseThrow().entities().stream().filter(model -> model.target().equals(target.id())).findFirst().orElseThrow();
+                if (spawnPacket(selection.entityId()).isEmpty()) {
+                    projections.remove(player); refresh();
+                    selection=projections.view(player).orElseThrow().entities().stream().filter(model -> model.target().equals(target.id())).findFirst().orElseThrow();
+                }
+                var spawn=spawnPacket(selection.entityId()).orElseThrow();
+                HuntInputFixtures.move(player,new Vec3(spawn.getX(),spawn.getY(),spawn.getZ()-2));
+                return selection;
             }
-            void disconnect() { connection.disconnect(Component.literal("personal hunt reconnect fixture"));connection.handleDisconnection();channel.finishAndReleaseAll();player=null; }
+            Optional<ClientboundAddEntityPacket> spawnPacket(int id) {
+                return client.packets(ClientboundAddEntityPacket.class).stream().filter(packet -> packet.getId()==id).findFirst();
+            }
+            void hunt(Peer target) { HuntInputFixtures.click(player,selectModel(target).entityId(),InteractionHand.MAIN_HAND); client.acknowledge(); }
+            void watch(Peer target) { client.listener().handleAttack(new ServerboundAttackPacket(selectModel(target).entityId())); client.acknowledge(); }
+            void input(Input keys) { player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(keys)); client.acknowledge(); }
+            void disconnect() { client.disconnect(Component.literal("personal hunt reconnect fixture")); player=null; }
         }
-    }
-    private static final class Recording extends Connection {
-        final ArrayList<Packet<?>> packets=new ArrayList<>(); Recording(){super(PacketFlow.SERVERBOUND);}
-        void record(Packet<?> p) {if(p instanceof ClientboundBundlePacket b)b.subPackets().forEach(this::record);else packets.add(p);}
-        @Override public void send(Packet<?> p){record(p);}
-        @Override public void send(Packet<?> p,ChannelFutureListener l){record(p);}
-        @Override public void send(Packet<?> p,ChannelFutureListener l,boolean f){record(p);}
     }
 }
