@@ -17,10 +17,12 @@ import dev.hardrush.locator.PlayerLocator;
 import dev.hardrush.monster.MonsterRoundRuntime;
 import dev.hardrush.protection.ProtectionRuntime;
 import dev.hardrush.persistence.SqliteRoundStore;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
+import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Spliterator;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -30,24 +32,16 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
-import net.minecraft.network.Connection;
 import net.minecraft.network.HashedStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ClientboundBundlePacket;
-import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
-import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.server.network.config.PrepareSpawnTask;
-import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -133,10 +127,10 @@ public final class LobbyRuntimeGameTest {
                         && !f.session.mutationPending(), "The witch purchase commits durably"))
                 .thenExecute(() -> {
                     f.assertWitchPurchase();
-                    HuntInputFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
+                    f.monster.hunt(f.target.profile.id());
                     f.test.assertValueEqual(f.monster.participant().role(), ParticipantRole.MONSTER_LOBBY, "Early deploy cannot bypass the first 30 seconds");
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
-                    HuntInputFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
+                    f.monster.hunt(f.target.profile.id());
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(1), "First formal safe deployment"))
                 .thenExecute(() -> {
@@ -184,7 +178,7 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertValueEqual(f.monster.participant().monsterCooldownNanos(), 0L, "A deliberate return pauses the sortie without a deploy wait");
                     f.test.assertTrue(f.monster.participant().wallet().hasParkedBody(), "The paused sortie parks its body in the round record");
                     f.test.assertTrue(f.monster.player.getHealth() < f.monster.player.getMaxHealth(), "The camp body keeps the wounds it returned with");
-                    HuntInputFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
+                    f.monster.hunt(f.target.profile.id());
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(2), "The paused sortie resumes at once"))
                 .thenExecute(() -> {
@@ -214,7 +208,7 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(() -> {
                     f.test.assertFalse(f.monster.participant().wallet().hasParkedBody(), "The confirmed role change gives up the paused sortie");
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
-                    HuntInputFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
+                    f.monster.hunt(f.target.profile.id());
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(3), "Second formal safe deployment"))
                 .thenExecute(() -> {
@@ -255,7 +249,7 @@ public final class LobbyRuntimeGameTest {
                 .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.CREEPER && !f.session.mutationPending(), "Creeper selection keeps both skill deadlines"))
                 .thenExecute(() -> {
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
-                    HuntInputFixtures.hunt(f.monster.player, f.target.profile.id(), f.monster.connection.packets);
+                    f.monster.hunt(f.target.profile.id());
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(4), "Third formal safe deployment"))
                 .thenExecute(() -> { f.assertDeployment(4); f.monster.disconnect(); })
@@ -284,7 +278,7 @@ public final class LobbyRuntimeGameTest {
                     .thenWaitUntil(() -> f.await(hunter.participant().monsterRole() == MonsterRole.ZOMBIE && !f.session.mutationPending(), "Cycle role selected " + iteration))
                     .thenExecute(() -> {
                         f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
-                        HuntInputFixtures.hunt(hunter.player, prey.profile.id(), hunter.connection.packets);
+                        hunter.hunt(prey.profile.id());
                     })
                     .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_DEPLOYED
                             && MonsterRoles.isMonster(hunter.player) && !f.session.mutationPending(), "Cycle formal deployment " + iteration))
@@ -416,7 +410,7 @@ public final class LobbyRuntimeGameTest {
     static final class Fixture {
         final GameTestHelper test;
         final MinecraftServer server;
-        final Peer monster = new Peer("LobbyMonster"), target = new Peer("LobbyTarget");
+        final Peer monster, target;
         RoundSession session;
         PlayerProfiles profiles;
         AtomicLong clock;
@@ -438,6 +432,7 @@ public final class LobbyRuntimeGameTest {
         String lastStage = "";
         Fixture(GameTestHelper test) {
             this.test = test; server = test.getLevel().getServer();
+            monster = new Peer("LobbyMonster"); target = new Peer("LobbyTarget");
             FROZEN_SUMMON_OWNERS.add(monster.profile.id());
         }
 
@@ -822,22 +817,21 @@ public final class LobbyRuntimeGameTest {
 
         final class Peer {
             final GameProfile profile;
-            PrepareSpawnTask prepare;
-            RecordingConnection connection;
-            EmbeddedChannel channel;
+            final TestClient client;
+            final PacketView connection;
             ServerPlayer player;
-            int acknowledged = Integer.MIN_VALUE;
-            int acknowledgedChunkBatches;
-            Peer(String name) { profile = new GameProfile(UUID.randomUUID(), name); }
+            Peer(String name) {
+                profile = new GameProfile(UUID.randomUUID(), name);
+                client = new TestClient(server, profile);
+                connection = new PacketView(client);
+            }
             Participant participant() { return round().participants().get(profile.id()); }
             ServerPlayer current() { return server.getPlayerList().getPlayer(profile.id()); }
             void login(GameTestSequence sequence) {
-                sequence.thenExecute(() -> { prepare = new PrepareSpawnTask(server, new NameAndId(profile)); prepare.start(packet -> {}); })
-                        .thenWaitUntil(() -> await(prepare.tick(), "Native UUID player-data load: " + profile.name()))
+                sequence.thenExecute(client::beginLogin)
+                        .thenWaitUntil(() -> await(client.finishLogin(), "Native UUID player-data load: " + profile.name()))
                         .thenExecute(() -> {
-                            connection = new RecordingConnection(); channel = new EmbeddedChannel(connection); acknowledged = Integer.MIN_VALUE;
-                            acknowledgedChunkBatches = 0;
-                            player = prepare.spawnPlayer(connection, TestClients.cookie(profile)); prepare.close(); acknowledge();
+                            player = client.player(); client.acknowledge();
                             test.assertTrue(player.level() == LobbyWorld.open(server).holdingLevel() && PlayerProfiles.isLocked(player), "Native login starts in real profile quarantine");
                         }).thenWaitUntil(() -> await(profiles.isReady(profile.id(), round()), "Real profile journal ready: " + profile.name()));
             }
@@ -854,26 +848,13 @@ public final class LobbyRuntimeGameTest {
                 player.connection.handlePlayerInput(new net.minecraft.network.protocol.game.ServerboundPlayerInputPacket(
                         new net.minecraft.world.entity.player.Input(forward, false, false, false, false, false, false)));
             }
-            void move(Vec3 position) { player.teleport(new TeleportTransition(level, position, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING)); acknowledge(); }
-            void acknowledge() {
-                if (connection == null) return;
-                var nativePlayer = current(); if (nativePlayer == null) return;
-                int batches = (int) connection.packets.stream().filter(net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket.class::isInstance).count();
-                while (acknowledgedChunkBatches < batches) {
-                    acknowledgedChunkBatches++;
-                    nativePlayer.connection.handleChunkBatchReceived(new net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket(64));
-                }
-                connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
-                        .reduce((previous, latest) -> latest).filter(packet -> packet.id() != acknowledged).ifPresent(packet -> {
-                            acknowledged = packet.id();
-                            nativePlayer.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(packet.id(), nativePlayer.getX(), nativePlayer.getY(), nativePlayer.getZ(), nativePlayer.getYRot(), nativePlayer.getXRot()));
-                            nativePlayer.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-                        });
-            }
+            void move(Vec3 position) { player.teleport(new TeleportTransition(level, position, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING)); client.acknowledge(); }
+            void hunt(UUID target) { HuntInputFixtures.hunt(player, target, connection.packets); }
+            void acknowledge() { client.acknowledge(); }
             void disconnect() {
-                connection.disconnect(Component.literal("Lobby native reconnect")); connection.handleDisconnection();
+                client.disconnect(Component.literal("Lobby native reconnect"));
                 test.assertTrue(current() == null && !profiles.manages(player), "Native disconnect releases both PlayerList and the profile binding");
-                channel.finishAndReleaseAll(); player = null;
+                player = client.player();
             }
         }
     }
@@ -911,15 +892,16 @@ public final class LobbyRuntimeGameTest {
         throw new IllegalStateException("No revival totem on the hotbar");
     }
 
-    static final class RecordingConnection extends Connection {
-        final ArrayList<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        private void record(Packet<?> packet) {
-            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record);
-            else packets.add(packet);
+    static final class PacketView {
+        final List<Packet<?>> packets;
+        PacketView(TestClient client) {
+            packets = new AbstractList<>() {
+                @Override public Packet<?> get(int index) { return client.packets().get(index); }
+                @Override public int size() { return client.packets().size(); }
+                @Override public Iterator<Packet<?>> iterator() { return client.packets().iterator(); }
+                @Override public Spliterator<Packet<?>> spliterator() { return client.packets().spliterator(); }
+                @Override public List<Packet<?>> subList(int from, int to) { return client.packets().subList(from, to); }
+            };
         }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
     }
 }
