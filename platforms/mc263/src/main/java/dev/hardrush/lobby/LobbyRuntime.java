@@ -100,7 +100,7 @@ public final class LobbyRuntime {
         if (initialized) return;
         initialized = true;
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
-            if (entity instanceof ServerPlayer player && taken > 0) interruptReturn(player, "受到伤害");
+            if (entity instanceof ServerPlayer player && taken > 0) interruptChannel(player, "受到伤害");
         });
     }
 
@@ -287,8 +287,8 @@ public final class LobbyRuntime {
         if (round == null || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE || b.session.competitionLocked()) {
             for (var d : List.copyOf(b.searches.values())) searchFailed(b, d, "本轮即将结束，追猎取消");
             for (var d : b.pending.values()) d.cancelled = true;
-            for (var channel : List.copyOf(b.channels.values())) interruptReturn(channel.player, "比赛状态变化");
-            for (var retrack : List.copyOf(b.retracks.values())) interruptReturn(retrack.player, "比赛状态变化");
+            for (var channel : List.copyOf(b.channels.values())) interruptChannel(channel.player, "比赛状态变化");
+            for (var retrack : List.copyOf(b.retracks.values())) interruptChannel(retrack.player, "比赛状态变化");
             b.resumptions.clear(); return;
         }
         HuntRetracks.tick(server, round);
@@ -308,11 +308,11 @@ public final class LobbyRuntime {
         }
         for (var entry : List.copyOf(b.channels.entrySet())) {
             var ch = entry.getValue(); var p = round.participants().get(entry.getKey());
-            if (current(ch.player, b) && ChannelEffects.moving(ch.player)) { interruptReturn(ch.player, "移动"); continue; }
+            if (current(ch.player, b) && ChannelEffects.moving(ch.player)) { interruptChannel(ch.player, "移动"); continue; }
             if (!current(ch.player, b) || p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED
                     || p.lifeSequence() != ch.life || p.monsterDeploymentSequence() != ch.sortie
                     || ch.player.level() != ch.level || MonsterRoles.isIgniting(ch.player)) {
-                interruptReturn(ch.player, "比赛状态变化"); continue;
+                interruptChannel(ch.player, "比赛状态变化"); continue;
             }
             long duration = channelNanos(round);
             long elapsed = System.nanoTime() - ch.started;
@@ -554,10 +554,10 @@ public final class LobbyRuntime {
         var p = round.participants().get(r.player.getUUID());
         var target = r.targetPlayer;
         var targetIdentity = round.participants().get(target.getUUID());
-        if (current(r.player, b) && ChannelEffects.moving(r.player)) { interruptReturn(r.player, "移动"); return; }
+        if (current(r.player, b) && ChannelEffects.moving(r.player)) { interruptChannel(r.player, "移动"); return; }
         if (!current(r.player, b) || p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED || !r.player.isAlive()
                 || p.lifeSequence() != r.life || p.monsterDeploymentSequence() != r.sortie
-                || r.player.level() != r.origLevel || MonsterRoles.isIgniting(r.player)) { interruptReturn(r.player, "比赛状态变化"); return; }
+                || r.player.level() != r.origLevel || MonsterRoles.isIgniting(r.player)) { interruptChannel(r.player, "比赛状态变化"); return; }
         if (target.level().getServer().getPlayerList().getPlayer(target.getUUID()) != target || targetIdentity == null
                 || targetIdentity.lifeSequence() != r.targetLife || !validTarget(b, target, (ServerLevel) target.level())
                 || dimension(b, (ServerLevel) target.level()).equals("lobby")) {
@@ -586,7 +586,7 @@ public final class LobbyRuntime {
         if (result.fallback()) Notices.hint(r.player, "去 " + Notices.key(target.getScoreboardName()) + " 的路被切断，这是能到的最近处");
     }
     /** @param reason one of the plain words players see: 移动、受到伤害、攻击、互动、使用物品、施放技能、敲门、比赛状态变化 */
-    public static void interruptReturn(ServerPlayer player, String reason) {
+    public static void interruptChannel(ServerPlayer player, String reason) {
         var b = BINDINGS.get(player.level().getServer());
         if (b == null) return;
         var channel = b.channels.remove(player.getUUID());
@@ -633,9 +633,9 @@ public final class LobbyRuntime {
             b.searches.clear(); b.resumptions.clear(); b.channels.clear(); b.retracks.clear(); return;
         }
         if (before.phase() != after.phase() && after.phase() != RoundPhase.RUNNING && after.phase() != RoundPhase.RESCUE)
-            for (var ch : List.copyOf(b.channels.values())) interruptReturn(ch.player, "比赛状态变化");
+            for (var ch : List.copyOf(b.channels.values())) interruptChannel(ch.player, "比赛状态变化");
         if (before.phase() != after.phase() && after.phase() != RoundPhase.RUNNING && after.phase() != RoundPhase.RESCUE)
-            for (var r : List.copyOf(b.retracks.values())) interruptReturn(r.player, "比赛状态变化");
+            for (var r : List.copyOf(b.retracks.values())) interruptChannel(r.player, "比赛状态变化");
         for (var p : after.participants().values()) {
             var old = before.participants().get(p.id());
             if (old != null && old.role().isMonster() && p.role() == ParticipantRole.HUMAN_ACTIVE) {
