@@ -67,7 +67,7 @@ class ParticipationExitTest {
             assertThrows(IllegalStateException.class, () -> e.proposeJoin(UUID.randomUUID(), a, "Again"));
             assertThrows(IllegalStateException.class, () -> e.proposeRevival(UUID.randomUUID(), round, a, 2, 4));
             assertThrows(IllegalStateException.class, () -> e.proposeAdminGrantRevival(UUID.randomUUID(), round, a, 2, 0, 1));
-            assertThrows(IllegalStateException.class, () -> e.proposeNormalRespawn(UUID.randomUUID(), a, 2));
+            assertThrows(IllegalStateException.class, () -> e.proposeAdmissionRespawn(UUID.randomUUID(), a, 2));
             assertFalse(e.pending());
         }
     }

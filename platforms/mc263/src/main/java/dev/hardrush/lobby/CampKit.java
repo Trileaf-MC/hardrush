@@ -133,7 +133,7 @@ public final class CampKit {
     private static List<Want> desired(ServerPlayer player, dev.hardrush.core.config.RulesConfig rules, Participant p) {
         var wallet = p.wallet();
         var wants = new ArrayList<Want>();
-        int available = Math.max(0, wallet.coins() - CampTransfers.pending(player, CampTransfers.Kind.COIN));
+        int available = Math.max(0, wallet.coins() - CampTransfers.pending(player));
         int shown = Math.min(available, MAX_SHOWN_COINS);
         if (shown > 0) {
             var coins = coin(shown);

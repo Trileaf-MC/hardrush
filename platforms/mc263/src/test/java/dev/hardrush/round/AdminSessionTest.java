@@ -7,6 +7,7 @@ import dev.hardrush.persistence.*;
 import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -87,7 +88,7 @@ final class AdminSessionTest {
                 assertTrue(session.competitionLocked()); assertNull(reply.get());
                 clock.set(TimeUnit.SECONDS.toNanos(100));
                 session.onOnline(player, "Human", false);
-                session.normalDeath(player, 1);
+                session.captureDeath(initial.roundId(), player, 1, 0, null, Optional.empty(), false);
                 sql.execute("ROLLBACK");
             }
             pump(tasks, () -> reply.get() != null && !session.mutationPending());

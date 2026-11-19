@@ -62,13 +62,9 @@ public final class CombatRuntime {
     private static Optional<CombatOrigin> created(ServerLevel level, Entity owner, AttackKind kind, Optional<UUID> direct) {
         if (!(owner instanceof ServerPlayer player) || owner.level() != level
                 || owner.isRemoved() || !player.isAlive() || rejectDamage(level)) return Optional.empty();
-        return ownerOrigin(level, player, kind, direct);
-    }
-    /** A fresh origin for the owner's present round identity, wherever the owner currently stands. */
-    public static Optional<CombatOrigin> ownerOrigin(ServerLevel level, ServerPlayer owner, AttackKind kind, Optional<UUID> direct) {
         var round = round(level);
-        if (round.isEmpty() || dev.hardrush.participation.ParticipationControl.disabled(level.getServer(), owner.getUUID())) return Optional.empty();
-        var actor = BINDINGS.get(level.getServer()).rounds.actor(round.get(), owner.getUUID());
+        if (round.isEmpty() || dev.hardrush.participation.ParticipationControl.disabled(level.getServer(), player.getUUID())) return Optional.empty();
+        var actor = BINDINGS.get(level.getServer()).rounds.actor(round.get(), player.getUUID());
         if (actor.isEmpty() || !actor.get().mayCreateAttack()) return Optional.empty();
         return Optional.of(new CombatOrigin(round.get(), UUID.randomUUID(), actor.get(), kind, direct, List.of()));
     }
@@ -109,6 +105,7 @@ public final class CombatRuntime {
         catch (IllegalArgumentException chainOverflow) { return Optional.empty(); }
     }
     public static void projectileCreated(Projectile projectile, Entity owner) {
+        dev.hardrush.monster.MonsterSoulcatcher.projectileLaunched(projectile, owner);
         if (!(projectile instanceof AbstractArrow) || !(projectile.level() instanceof ServerLevel level)
                 || !(projectile instanceof CombatOriginHolder holder) || holder.hardrush$combatOriginSealed()) return;
         // ProjectileUtil.getMobArrow assigns the native model before MonsterRoles replaces its
@@ -224,7 +221,7 @@ public final class CombatRuntime {
         var origin = cause == null ? Optional.<CombatOrigin>empty() : cause.origin;
         var memory = CREDITS.get(level.getServer());
         if (memory != null && victim.isAlive()) {
-            killCredit(level, source, origin).ifPresent(credit -> memory.hurt(victim.getUUID(), credit, level.getServer().getTickCount()));
+            killCredit(source, origin).ifPresent(credit -> memory.hurt(victim.getUUID(), credit, level.getServer().getTickCount()));
         }
         if (origin.isEmpty() || !origin.get().roundId().equals(round.get())
                 || origin.get().actor().identity() != dev.hardrush.core.round.ParticipantRole.MONSTER_DEPLOYED) return;
@@ -242,12 +239,12 @@ public final class CombatRuntime {
         var memory = CREDITS.get(level.getServer());
         if (memory == null || round(level).isEmpty()) return Optional.empty();
         var cause = current(level);
-        var lethal = killCredit(level, source, cause == null ? resolve(level, source) : cause.origin);
+        var lethal = killCredit(source, cause == null ? resolve(level, source) : cause.origin);
         return memory.died(victim.getUUID(), lethal, level.getServer().getTickCount());
     }
-    /** The hit's own provenance, except that a soulcatcher creature only credits within its owner's latest releases. */
-    private static Optional<CombatOrigin> killCredit(ServerLevel level, DamageSource source, Optional<CombatOrigin> origin) {
-        return dev.hardrush.monster.MonsterSoulcatcher.killCredit(level, source, origin);
+    /** The hit's own provenance; an unattributed soulcatcher creature credits the identity that released it. */
+    private static Optional<CombatOrigin> killCredit(DamageSource source, Optional<CombatOrigin> origin) {
+        return dev.hardrush.monster.MonsterSoulcatcher.killCredit(source, origin);
     }
     /** Called once after actual damage; dragon parts use the parent dragon UUID. */
     public static void observed(ServerLevel level, Entity victim, DamageSource source, float actualDamage, boolean lethal) {

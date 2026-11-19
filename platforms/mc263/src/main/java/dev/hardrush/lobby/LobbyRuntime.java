@@ -693,7 +693,6 @@ public final class LobbyRuntime {
         // a dead human's payout is not called a monster's ("阵亡不等于变成怪物").
         String reason = switch (event) {
             case "MONSTER_DAMAGE_COINS" -> null;
-            case "HARDCORE_DEATH" -> "阵亡补给";
             case "DEATH_BATCH" -> before.role().isActiveHuman() ? "阵亡补给" : "阵亡奖励";
             case "MONSTER_DEPLOY", "MONSTER_SELECTION" -> "出击退回";
             default -> "奖励";
@@ -1000,8 +999,7 @@ public final class LobbyRuntime {
         if (p == null || !p.role().isMonster()) return "阵亡后才能在祭坛复生 · 参赛去集结区";
         if (p.role() != ParticipantRole.MONSTER_LOBBY || !p.online()) return HumanEntry.STEP_PENDING;
         if (b.session.competitionLocked() || !lobbyAvailable(player, b)) return "服务器正忙，稍后再试";
-        if (p.revivalCharges() - CampTransfers.pending(player, CampTransfers.Kind.REVIVAL) <= 0)
-            return "你没有复生图腾 · 击杀人类或捡起同伴丢的图腾可获得";
+        if (!p.revivalEntitled()) return "你没有复生图腾 · 击杀人类可获得";
         var worlds = b.worlds.get();
         if (worlds == null || !worlds.ready() || !RoundWorldBundle.safeStanding(worlds.level(Level.OVERWORLD), worlds.spawn())) {
             reportUnsafeSpawn(player, b);
