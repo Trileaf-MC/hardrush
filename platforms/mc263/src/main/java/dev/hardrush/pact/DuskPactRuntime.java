@@ -207,7 +207,7 @@ public final class DuskPactRuntime {
             boolean hardcore = round.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE;
             for (var player : viewers) {
                 // Long enough to read the hardcore subtitle about the revival totem a human kill now drops.
-                title(player, 5, 70, 10, DuskPact.RELEASED, DuskPact.releasedSubtitle(hardcore));
+                title(player, 5, hardcore ? 70 : 50, 10, DuskPact.RELEASED, DuskPact.releasedSubtitle(hardcore));
                 sound(player, SoundEvents.BELL_BLOCK, 1);
             }
         }

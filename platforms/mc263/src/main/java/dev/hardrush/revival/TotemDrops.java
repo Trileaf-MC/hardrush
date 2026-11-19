@@ -172,10 +172,14 @@ public final class TotemDrops {
         if (!registered.isEmpty()) announce(server, after, registered);
     }
 
-    /** The pending death has not committed yet: its human life is still the committed one. */
+    /**
+     * The pending death has not committed yet: its human life is still the committed one of a live round. A recovery
+     * drops every queued death, so a round outside RUNNING and RESCUE can no longer register the token.
+     */
     private boolean waiting(RoundSnapshot round, Pending drop) {
         var victim = round == null ? null : round.participants().get(drop.victim());
         return victim != null && access.open() && round.roundId().equals(drop.round())
+                && (round.phase() == dev.hardrush.core.round.RoundPhase.RUNNING || round.phase() == dev.hardrush.core.round.RoundPhase.RESCUE)
                 && victim.role() == ParticipantRole.HUMAN_ACTIVE && victim.lifeSequence() == drop.life();
     }
 
@@ -199,8 +203,7 @@ public final class TotemDrops {
         String line = victims.size() == 1 ? Notices.key(first) + " 被人类击杀，掉落了复生图腾"
                 : Notices.key(first) + " 等 " + Notices.key(victims.size()) + " 人被人类击杀，掉落了复生图腾";
         for (var p : after.participants().values()) {
-            if (involved.contains(p.id()) || !p.online() || p.role() != ParticipantRole.HUMAN_ACTIVE
-                    && p.role() != ParticipantRole.MONSTER_LOBBY && p.role() != ParticipantRole.MONSTER_DEPLOYED) continue;
+            if (involved.contains(p.id()) || !p.online() || p.role().isExcluded()) continue;
             var player = server.getPlayerList().getPlayer(p.id());
             if (player == null || dev.hardrush.player.PlayerProfiles.isAdministrativeSpectator(player)) continue;
             if (Notices.firstInRound(player, after.roundId(), DROP_TOLD)) Notices.hint(player, line);
