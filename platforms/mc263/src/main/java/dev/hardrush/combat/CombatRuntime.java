@@ -105,6 +105,7 @@ public final class CombatRuntime {
         catch (IllegalArgumentException chainOverflow) { return Optional.empty(); }
     }
     public static void projectileCreated(Projectile projectile, Entity owner) {
+        dev.hardrush.monster.MonsterSoulcatcher.projectileLaunched(projectile, owner);
         if (!(projectile instanceof AbstractArrow) || !(projectile.level() instanceof ServerLevel level)
                 || !(projectile instanceof CombatOriginHolder holder) || holder.hardrush$combatOriginSealed()) return;
         // ProjectileUtil.getMobArrow assigns the native model before MonsterRoles replaces its
