@@ -1,21 +1,9 @@
 package dev.hardrush.gametest;
 
-import com.mojang.authlib.GameProfile;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
-import java.util.ArrayList;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
-import net.minecraft.network.protocol.game.ClientboundBundlePacket;
-import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
-import net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket;
 import net.minecraft.server.level.ChunkTrackingView;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -23,8 +11,11 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 
-/** Fixture clients receive entities as far away as a real vanilla client would, not only within 32 blocks. */
+/** Fixture clients see and answer the server the way a real vanilla client does. */
 public final class TestClientsGameTest {
     private static final AtomicInteger ARENAS = new AtomicInteger();
     /** Past the 32 blocks of {@code ClientInformation.createDefault()}, inside an item's 96-block tracking range. */
@@ -36,9 +27,9 @@ public final class TestClientsGameTest {
                 "The headless GameTest server runs with the dedicated server's view distance");
         var watch = new Watch(test, TestClients.VIEW_DISTANCE);
         test.startSequence()
-                .thenWaitUntil(() -> { watch.acknowledge(); watch.assertReady(); })
+                .thenWaitUntil(watch::assertReady)
                 .thenExecute(watch::drop)
-                .thenWaitUntil(() -> { watch.acknowledge(); test.assertTrue(watch.sawItem(), "The item 40 blocks away reaches the fixture client"); })
+                .thenWaitUntil(() -> test.assertTrue(watch.client.sawEntity(watch.item), "The item 40 blocks away reaches the fixture client"))
                 .thenExecute(watch::close)
                 .thenSucceed();
     }
@@ -47,14 +38,64 @@ public final class TestClientsGameTest {
     public void shortSightedClientMissesItemFortyBlocksAway(GameTestHelper test) {
         var watch = new Watch(test, 2);
         test.startSequence()
-                .thenWaitUntil(() -> { watch.acknowledge(); watch.assertReady(); })
+                .thenWaitUntil(watch::assertReady)
                 .thenExecute(watch::drop)
-                .thenExecuteFor(40, watch::acknowledge)
+                .thenIdle(40)
                 .thenExecute(() -> {
-                    test.assertFalse(watch.sawItem(), "A short-sighted client sees only 32 blocks, even inside a chunk it tracks");
+                    test.assertFalse(watch.client.sawEntity(watch.item), "A short-sighted client sees only 32 blocks, even inside a chunk it tracks");
                     watch.close();
                 })
                 .thenSucceed();
+    }
+
+    /** Two players join, each throws an item with the Q key, and each client receives the other's item. */
+    @GameTest(maxTicks = 200)
+    public void playersSeeEachOthersThrownItems(GameTestHelper test) {
+        var level = test.getLevel();
+        var floor = arena(level);
+        var alice = TestClient.named(level.getServer(), "HRAlice");
+        var bob = TestClient.named(level.getServer(), "HRBob");
+        for (var client : new TestClient[] {alice, bob}) {
+            var player = client.place(level);
+            player.setGameMode(GameType.SURVIVAL);
+            player.teleportTo(floor.getX() + (client == alice ? -2.5 : 3.5), floor.getY() + 1, floor.getZ() + .5);
+            level.getChunkSource().move(player);
+            player.getInventory().setItem(player.getInventory().getSelectedSlot(), new ItemStack(client == alice ? Items.DIAMOND : Items.EMERALD));
+        }
+        test.startSequence()
+                .thenWaitUntil(() -> test.assertTrue(level.isPositionEntityTicking(floor), "The arena is loaded"))
+                .thenExecute(() -> { alice.dropSelected(false); bob.dropSelected(false); })
+                .thenWaitUntil(() -> {
+                    var diamond = thrown(level, floor, Items.DIAMOND.getDefaultInstance());
+                    var emerald = thrown(level, floor, Items.EMERALD.getDefaultInstance());
+                    test.assertTrue(diamond != null && emerald != null, "Both throws reach the level");
+                    test.assertTrue(bob.sawEntity(diamond) && alice.sawEntity(emerald), "Each client receives the item the other threw");
+                })
+                .thenExecute(() -> {
+                    level.getEntitiesOfClass(ItemEntity.class, new AABB(floor).inflate(8)).forEach(ItemEntity::discard);
+                    alice.close();
+                    bob.close();
+                    clear(level, floor);
+                })
+                .thenSucceed();
+    }
+
+    /** A stone floor far from every other arena, kept loaded for the test. */
+    private static BlockPos arena(ServerLevel level) {
+        var floor = new BlockPos(24008 + ARENAS.getAndIncrement() * 512, 149, 8);
+        level.setChunkForced(floor.getX() >> 4, floor.getZ() >> 4, true);
+        for (int dx = -6; dx <= 6; dx++) for (int dz = -6; dz <= 6; dz++) level.setBlockAndUpdate(floor.offset(dx, 0, dz), Blocks.STONE.defaultBlockState());
+        return floor;
+    }
+
+    private static void clear(ServerLevel level, BlockPos floor) {
+        for (int dx = -6; dx <= 6; dx++) for (int dz = -6; dz <= 6; dz++) level.setBlockAndUpdate(floor.offset(dx, 0, dz), Blocks.AIR.defaultBlockState());
+        level.setChunkForced(floor.getX() >> 4, floor.getZ() >> 4, false);
+    }
+
+    private static ItemEntity thrown(ServerLevel level, BlockPos floor, ItemStack kind) {
+        return level.getEntitiesOfClass(ItemEntity.class, new AABB(floor).inflate(8), item -> ItemStack.isSameItem(item.getItem(), kind))
+                .stream().findFirst().orElse(null);
     }
 
     /** A watcher {@link #DISTANCE} blocks east of an item drop, in an arena of its own. */
@@ -62,11 +103,9 @@ public final class TestClientsGameTest {
         final GameTestHelper test;
         final ServerLevel level;
         final BlockPos drop;
+        final TestClient client;
         final ServerPlayer player;
-        final RecordingConnection connection = new RecordingConnection();
-        final EmbeddedChannel channel = new EmbeddedChannel(connection);
         final int expectedView;
-        int acknowledgedBatches;
         ItemEntity item;
 
         Watch(GameTestHelper test, int viewDistance) {
@@ -76,21 +115,10 @@ public final class TestClientsGameTest {
             // Chunk-centred, far from every other arena, three chunks from the watcher: tracked even at view 2, but 40 blocks away.
             drop = new BlockPos(24008 + ARENAS.getAndIncrement() * 512, 150, 8);
             level.setChunkForced(drop.getX() >> 4, drop.getZ() >> 4, true);
-            var profile = new GameProfile(UUID.randomUUID(), "HRWatch" + ARENAS.get());
-            player = new ServerPlayer(level.getServer(), level, profile, TestClients.information(viewDistance));
-            UnmanagedProfileFixtures.run(() -> level.getServer().getPlayerList().placeNewPlayer(connection, player,
-                    TestClients.cookie(profile, viewDistance)));
+            client = TestClient.named(level.getServer(), "HRWatch").viewDistance(viewDistance);
+            player = client.place(level);
             player.teleportTo(drop.getX() + DISTANCE + .5, drop.getY(), drop.getZ() + .5);
             level.getChunkSource().move(player);
-        }
-
-        /** The chunk batches a vanilla client confirms, so the server keeps streaming the view. */
-        void acknowledge() {
-            int batches = (int) connection.packets.stream().filter(ClientboundChunkBatchFinishedPacket.class::isInstance).count();
-            while (acknowledgedBatches < batches) {
-                acknowledgedBatches++;
-                player.connection.handleChunkBatchReceived(new ServerboundChunkBatchReceivedPacket(64));
-            }
         }
 
         /** Both watchers track the drop chunk (vanilla adds a ring beyond the view border), so only distance decides. */
@@ -110,27 +138,10 @@ public final class TestClientsGameTest {
             test.assertTrue(level.addFreshEntity(item), "The item joins the level");
         }
 
-        boolean sawItem() {
-            return connection.packets.stream().anyMatch(packet -> packet instanceof ClientboundAddEntityPacket add && add.getId() == item.getId());
-        }
-
         void close() {
             item.discard();
-            level.getServer().getPlayerList().remove(player);
-            channel.finishAndReleaseAll();
+            client.close();
             level.setChunkForced(drop.getX() >> 4, drop.getZ() >> 4, false);
         }
-    }
-
-    private static final class RecordingConnection extends Connection {
-        final ArrayList<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        private void record(Packet<?> packet) {
-            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record);
-            else packets.add(packet);
-        }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
     }
 }
