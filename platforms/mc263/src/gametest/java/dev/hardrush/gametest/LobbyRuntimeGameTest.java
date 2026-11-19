@@ -20,6 +20,8 @@ import dev.hardrush.persistence.SqliteRoundStore;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -157,13 +159,15 @@ public final class LobbyRuntimeGameTest {
                     f.monster.useReturn();
                     f.ageReturnChannel();
                     // The session's own once-a-second admission write is the real SQLite transaction the channel waits
-                    // behind; a repeated online report no longer writes (#35). A write whose IO finishes before submit
-                    // attaches its callback completes inline on the server thread, so retry until one is in flight.
-                    for (int attempt = 0; attempt < 5 && !f.session.mutationPending(); attempt++) {
-                        f.clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
-                        f.session.tick();
-                    }
+                    // behind (a repeated online report no longer writes, #35). Its commit callback is held, so the
+                    // write stays in flight however fast the IO finishes.
+                    f.holdCommits();
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
+                    f.session.tick();
                     f.test.assertTrue(f.session.mutationPending(), "The mature return channel competes with a real SQLite write");
+                    LobbyRuntime.tick(f.server);
+                    f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "A mature return channel waits while the write is in flight");
+                    f.releaseCommits();
                 })
                 .thenWaitUntil(() -> f.await(f.monsterReady(false), "Completed return channel durably enters lobby"))
                 .thenExecute(() -> {
@@ -390,6 +394,9 @@ public final class LobbyRuntimeGameTest {
         RoundSession session;
         PlayerProfiles profiles;
         AtomicLong clock;
+        final ConcurrentLinkedQueue<Runnable> heldCommits = new ConcurrentLinkedQueue<>();
+        volatile boolean holdingCommits;
+        Executor committing;
         ServerLevel level;
         Vec3 anchor;
         ServerPlayer dead;
@@ -421,7 +428,17 @@ public final class LobbyRuntimeGameTest {
             try {
                 var field = RoundSession.class.getDeclaredField("clock"); field.setAccessible(true);
                 field.set(session, (MonotonicClock) clock::get);
+                var callbacks = RoundSession.class.getDeclaredField("callbacks"); callbacks.setAccessible(true);
+                var original = (Executor) callbacks.get(session);
+                committing = original;
+                callbacks.set(session, (Executor) task -> { if (holdingCommits) heldCommits.add(task); else original.execute(task); });
             } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
+        }
+        /** Every SQLite commit that completes from now on waits, unapplied, until {@link #releaseCommits()}. */
+        void holdCommits() { holdingCommits = true; }
+        void releaseCommits() {
+            holdingCommits = false;
+            for (Runnable task; (task = heldCommits.poll()) != null; ) committing.execute(task);
         }
         RoundSnapshot round() { return RoundRuntime.snapshot(server).orElseThrow(); }
         void await(boolean condition, String message) {
