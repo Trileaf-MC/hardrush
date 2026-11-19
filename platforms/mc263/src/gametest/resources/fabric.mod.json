@@ -64,6 +64,7 @@
       "dev.hardrush.lobby.HeldItemHintsGameTest",
       "dev.hardrush.revival.RevivalTotemGameTest",
       "dev.hardrush.revival.TotemDropGameTest",
+      "dev.hardrush.revival.TotemSaveGameTest",
       "dev.hardrush.lobby.pack.PackRoundTripGameTest",
       "dev.hardrush.lobby.pack.LobbyInstallGameTest",
       "dev.hardrush.gametest.LobbyAdminGameTest",

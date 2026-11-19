@@ -13,7 +13,8 @@
     "TotemDecoratedPotMixin",
     "TotemAllayMixin",
     "TotemPickupMixin",
-    "TotemHopperMixin"
+    "TotemHopperMixin",
+    "TotemSaveMixin"
   ],
   "injectors": { "defaultRequire": 1 }
 }
