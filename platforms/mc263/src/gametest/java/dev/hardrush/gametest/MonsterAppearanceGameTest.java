@@ -2,15 +2,11 @@ package dev.hardrush.gametest;
 
 import dev.hardrush.disguise.MonsterDisguise;
 import dev.hardrush.development.world.DevelopmentWorlds;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
@@ -20,8 +16,6 @@ import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.network.protocol.game.ClientboundUpdateAttributesPacket;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ServerGamePacketListenerImpl;
-import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.portal.TeleportTransition;
@@ -47,10 +41,10 @@ public final class MonsterAppearanceGameTest {
         var permission = server.getProfilePermissions(new NameAndId(profile));
         var attributes = player.getAttributes().getSyncableAttributes().stream()
             .collect(java.util.stream.Collectors.toMap(a -> a.getAttribute(), a -> a.getValue()));
-        try (var owner = new Capture(player)) {
+        try (var owner = capture(player)) {
             for (String kind : List.of("zombie", "skeleton", "creeper")) {
                 for (int cycle = 0; cycle < 20; cycle++) {
-                    owner.packets.clear();
+                    owner.clearPackets();
                     MonsterDisguise.apply(player, kind);
                     MonsterDisguise.tick(server);
                     assertSelected(test, player, observer, kind);
@@ -63,7 +57,7 @@ public final class MonsterAppearanceGameTest {
                         "Appearance cycles preserve permissions");
                     attributes.forEach((attribute, value) -> test.assertValueEqual(player.getAttributeValue(attribute), value,
                         "Appearance cycles preserve every authoritative attribute"));
-                    test.assertValueEqual(owner.packets.stream().filter(p -> p instanceof ClientboundRespawnPacket).count(), 2L,
+                    test.assertValueEqual(owner.packets().stream().filter(p -> p instanceof ClientboundRespawnPacket).count(), 2L,
                         "One native cosmetic refresh for apply and one for clear");
                 }
             }
@@ -175,8 +169,7 @@ public final class MonsterAppearanceGameTest {
         var player = new ServerPlayer[] { test.makeMockServerPlayerInLevel() };
         var observer = test.makeMockServerPlayerInLevel();
         var profile = player[0].getGameProfile();
-        var preparation = new PrepareSpawnTask[1];
-        var channel = new EmbeddedChannel[1];
+        var client = new TestClient(server, profile).unmanaged();
         var previousSpawn = new ClientboundAddEntityPacket[1];
         var sequence = test.startSequence();
         for (int cycle = 0; cycle < 20; cycle++) {
@@ -186,17 +179,12 @@ public final class MonsterAppearanceGameTest {
                 previousSpawn[0] = spawn(player[0]);
                 MonsterDisguise.onDisconnect(player[0]);
                 test.assertTrue(MonsterDisguise.rewrite(observer, previousSpawn[0]) == previousSpawn[0], "Disconnect unbinds the old entity");
-                server.getPlayerList().remove(player[0]);
-                if (channel[0] != null) channel[0].finishAndReleaseAll();
-                preparation[0] = new PrepareSpawnTask(server, new NameAndId(profile));
-                preparation[0].start(packet -> {});
-            }).thenWaitUntil(() -> test.assertTrue(preparation[0].tick(), "Native login player-data load is ready"))
+                if (client.player() == null) server.getPlayerList().remove(player[0]);
+                else client.close();
+                client.beginLogin();
+            }).thenWaitUntil(() -> test.assertTrue(client.finishLogin(), "Native login player-data load is ready"))
                 .thenExecute(() -> {
-                    var connection = new RecordingConnection();
-                    channel[0] = new EmbeddedChannel(connection);
-                    dev.hardrush.gametest.UnmanagedProfileFixtures.run(() ->
-                            player[0] = preparation[0].spawnPlayer(connection, TestClients.cookie(profile)));
-                    preparation[0].close(); preparation[0] = null;
+                    player[0] = client.player();
                     MonsterDisguise.onJoin(player[0]);
                     MonsterDisguise.tick(server);
                     test.assertValueEqual(player[0].getUUID(), profile.id(), "Native reconnect retains UUID");
@@ -208,9 +196,8 @@ public final class MonsterAppearanceGameTest {
                 });
         }
         sequence.thenExecute(() -> {
-            server.getPlayerList().remove(player[0]);
+            client.close();
             server.getPlayerList().remove(observer);
-            channel[0].finishAndReleaseAll();
             System.out.println("HardRush appearance lifecycle: same UUID native save/login loads=20; disconnected bindings removed");
         }).thenSucceed();
     }
@@ -240,7 +227,7 @@ public final class MonsterAppearanceGameTest {
         var server = test.getLevel().getServer();
         var owner = test.makeMockServerPlayerInLevel();
         var observer = test.makeMockServerPlayerInLevel();
-        try (var owned = new Capture(owner); var watched = new Capture(observer)) {
+        try (var owned = capture(owner); var watched = capture(observer)) {
             owner.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_SWORD));
             owner.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
             owner.setHealth(17);
@@ -254,9 +241,9 @@ public final class MonsterAppearanceGameTest {
             var id = owner.getId();
             var ownerSkins = new java.util.HashSet<String>();
             for (String kind : List.of("zombie", "skeleton", "creeper")) {
-                owned.packets.clear();
+                owned.clearPackets();
                 MonsterDisguise.apply(owner, kind);
-                test.assertTrue(owned.packets.stream().noneMatch(p -> p instanceof ClientboundRespawnPacket),
+                test.assertTrue(owned.packets().stream().noneMatch(p -> p instanceof ClientboundRespawnPacket),
                     "Owner skin refresh waits for the tick's end");
                 MonsterDisguise.tick(server);
                 test.assertTrue(owner.getGameProfile() == profile, "Authenticated profile object is unchanged");
@@ -269,10 +256,10 @@ public final class MonsterAppearanceGameTest {
                 test.assertTrue(owner.getMainHandItem().is(Items.DIAMOND_SWORD)
                     && owner.getItemBySlot(EquipmentSlot.HEAD).is(Items.DIAMOND_HELMET), "Equipment remains owned");
                 test.assertTrue(!owner.isInvisible(), "No authoritative invisibility");
-                test.assertTrue(owned.packets.stream().noneMatch(p -> p instanceof ClientboundAddEntityPacket
+                test.assertTrue(owned.packets().stream().noneMatch(p -> p instanceof ClientboundAddEntityPacket
                     || p instanceof ClientboundSetPlayerTeamPacket || p instanceof ClientboundSetCameraPacket),
                     "Owner receives no self mob, private team or camera replacement");
-                var selfInfo = owned.packets.stream().filter(p -> p instanceof ClientboundPlayerInfoUpdatePacket)
+                var selfInfo = owned.packets().stream().filter(p -> p instanceof ClientboundPlayerInfoUpdatePacket)
                     .map(p -> (ClientboundPlayerInfoUpdatePacket) p).findFirst().orElseThrow();
                 var selfEntry = selfInfo.entries().getFirst();
                 test.assertValueEqual(selfEntry.profileId(), profile.id(), "Cosmetic profile preserves UUID");
@@ -281,16 +268,16 @@ public final class MonsterAppearanceGameTest {
                 test.assertTrue(textures.size() == 1 && textures.iterator().next().signature() == null,
                     "One unsigned owner-only skin property");
                 test.assertTrue(ownerSkins.add(textures.iterator().next().value()), "Each monster kind has its own owner skin");
-                test.assertValueEqual(owned.packets.stream().filter(p -> p instanceof ClientboundRespawnPacket r
+                test.assertValueEqual(owned.packets().stream().filter(p -> p instanceof ClientboundRespawnPacket r
                     && r.dataToKeep() == ClientboundRespawnPacket.KEEP_ALL_DATA
                     && r.commonPlayerSpawnInfo().dimension().equals(owner.level().dimension())).count(), 1L,
                     "One native same-dimension client refresh, also when the kind changes");
 
                 var spawn = spawn(owner);
                 owner.connection.send(spawn);
-                test.assertTrue(owned.packets.getLast() == spawn, "Owner's native player packet passes through");
+                test.assertTrue(owned.packets().getLast() == spawn, "Owner's native player packet passes through");
                 observer.connection.send(spawn);
-                var transformed = (ClientboundAddEntityPacket) watched.packets.getLast();
+                var transformed = (ClientboundAddEntityPacket) watched.packets().getLast();
                 test.assertValueEqual(transformed.getType(), switch (kind) {
                     case "zombie" -> EntityTypes.ZOMBIE;
                     case "skeleton" -> EntityTypes.SKELETON;
@@ -311,17 +298,17 @@ public final class MonsterAppearanceGameTest {
                 var displayed = (ClientboundUpdateAttributesPacket) MonsterDisguise.rewrite(observer, attributes);
                 var speed = displayed.getValues().stream().filter(a -> a.attribute().equals(Attributes.MOVEMENT_SPEED)).findFirst().orElseThrow();
                 test.assertValueEqual(speed.base(), 0.13, "Mob display uses authoritative player speed");
-                int sent = owned.packets.size();
+                int sent = owned.packets().size();
                 MonsterDisguise.apply(owner, kind);
                 MonsterDisguise.tick(server);
-                test.assertValueEqual(owned.packets.size(), sent, "Repeated apply is idempotent");
+                test.assertValueEqual(owned.packets().size(), sent, "Repeated apply is idempotent");
             }
             MonsterDisguise.clear(owner);
             test.assertTrue(MonsterDisguise.rewrite(observer, spawn(owner)).getClass() == ClientboundAddEntityPacket.class,
                 "Clear removes observer mapping");
             test.assertValueEqual(((ClientboundAddEntityPacket) MonsterDisguise.rewrite(observer, spawn(owner))).getType(), EntityTypes.PLAYER,
                 "Clear restores native player appearance");
-            var restored = owned.packets.stream().filter(p -> p instanceof ClientboundPlayerInfoUpdatePacket)
+            var restored = owned.packets().stream().filter(p -> p instanceof ClientboundPlayerInfoUpdatePacket)
                 .map(p -> (ClientboundPlayerInfoUpdatePacket) p).reduce((a, b) -> b).orElseThrow();
             test.assertValueEqual(restored.entries().getFirst().profile(), profile, "Clear restores original cosmetic profile");
         } finally {
@@ -336,25 +323,25 @@ public final class MonsterAppearanceGameTest {
     public void conversionInOneTickRefreshesOwnerSkinOnce(GameTestHelper test) {
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
-        try (var capture = new Capture(player)) {
+        try (var capture = capture(player)) {
             MonsterDisguise.apply(player, "zombie");
             MonsterDisguise.tick(server);
             var zombieSkin = ownerTextures(capture);
-            capture.packets.clear();
+            capture.clearPackets();
             MonsterDisguise.apply(player, "drowned");
             MonsterDisguise.tick(server);
-            test.assertValueEqual(capture.packets.stream().filter(p -> p instanceof ClientboundRespawnPacket).count(), 1L,
+            test.assertValueEqual(capture.packets().stream().filter(p -> p instanceof ClientboundRespawnPacket).count(), 1L,
                 "Conversion refreshes the owner skin");
             test.assertTrue(!ownerTextures(capture).equals(zombieSkin), "Drowned owner skin differs from zombie");
-            capture.packets.clear();
+            capture.clearPackets();
             // A zombie rising from the sea is bound and converted within one tick.
             MonsterDisguise.clear(player);
             MonsterDisguise.tick(server);
-            capture.packets.clear();
+            capture.clearPackets();
             MonsterDisguise.apply(player, "zombie");
             MonsterDisguise.apply(player, "drowned");
             MonsterDisguise.tick(server);
-            test.assertValueEqual(capture.packets.stream().filter(p -> p instanceof ClientboundRespawnPacket).count(), 1L,
+            test.assertValueEqual(capture.packets().stream().filter(p -> p instanceof ClientboundRespawnPacket).count(), 1L,
                 "Bind and conversion in one tick reset the owner client once");
             test.assertTrue(MonsterDisguise.status(player).contains("selfSkin=drowned"), "Final form decides the owner skin");
         } finally {
@@ -364,8 +351,8 @@ public final class MonsterAppearanceGameTest {
         test.succeed();
     }
 
-    private static String ownerTextures(Capture capture) {
-        var info = capture.packets.stream().filter(p -> p instanceof ClientboundPlayerInfoUpdatePacket)
+    private static String ownerTextures(TestClient capture) {
+        var info = capture.packets().stream().filter(p -> p instanceof ClientboundPlayerInfoUpdatePacket)
             .map(p -> (ClientboundPlayerInfoUpdatePacket) p).reduce((a, b) -> b).orElseThrow();
         return info.entries().getFirst().profile().properties().get("textures").iterator().next().value();
     }
@@ -458,17 +445,17 @@ public final class MonsterAppearanceGameTest {
         var server = test.getLevel().getServer();
         var player = test.makeMockServerPlayerInLevel();
         var vehicle = EntityTypes.PIG.create(player.level(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-        try (var capture = new Capture(player)) {
+        try (var capture = capture(player)) {
             vehicle.snapTo(player.position());
             player.level().addFreshEntity(vehicle);
             test.assertTrue(player.startRiding(vehicle, true, false), "Player can mount test vehicle");
-            capture.packets.clear();
+            capture.clearPackets();
             MonsterDisguise.apply(player, "creeper");
             test.assertTrue(player.isPassenger() && MonsterDisguise.status(player).contains("disguise=creeper"), "Riding keeps monster appearance");
-            test.assertTrue(capture.packets.stream().noneMatch(p -> p instanceof ClientboundRespawnPacket), "No disruptive refresh while riding");
+            test.assertTrue(capture.packets().stream().noneMatch(p -> p instanceof ClientboundRespawnPacket), "No disruptive refresh while riding");
             player.stopRiding();
             MonsterDisguise.tick(server);
-            test.assertTrue(capture.packets.stream().anyMatch(p -> p instanceof ClientboundRespawnPacket), "Owner skin applied at safe point");
+            test.assertTrue(capture.packets().stream().anyMatch(p -> p instanceof ClientboundRespawnPacket), "Owner skin applied at safe point");
         } finally {
             player.stopRiding();
             MonsterDisguise.clear(player);
@@ -483,30 +470,9 @@ public final class MonsterAppearanceGameTest {
             player.getXRot(), player.getYRot(), EntityTypes.PLAYER, 0, player.getDeltaMovement(), player.getYHeadRot());
     }
 
-    private static final class Capture implements AutoCloseable {
-        final ServerPlayer player;
-        final ServerGamePacketListenerImpl original;
-        final ArrayList<Packet<?>> packets;
-        final EmbeddedChannel channel;
-        Capture(ServerPlayer player) {
-            this.player = player; original = player.connection;
-            var connection = new RecordingConnection();
-            packets = connection.packets; channel = new EmbeddedChannel(connection);
-            player.connection = new ServerGamePacketListenerImpl(player.level().getServer(), connection, player,
-                TestClients.cookie(player.getGameProfile()));
-        }
-        @Override public void close() { player.connection = original; channel.finishAndReleaseAll(); }
-    }
-
-    private static final class RecordingConnection extends Connection {
-        final ArrayList<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        private void record(Packet<?> packet) {
-            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record);
-            else packets.add(packet);
-        }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
+    private static TestClient capture(ServerPlayer player) {
+        var client = new TestClient(player.level().getServer(), player.getGameProfile());
+        client.attach(player);
+        return client;
     }
 }
