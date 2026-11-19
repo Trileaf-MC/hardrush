@@ -156,10 +156,13 @@ public final class LobbyRuntimeGameTest {
                     f.monster.player.setHealth(2);
                     f.monster.useReturn();
                     f.ageReturnChannel();
-                    // A write whose IO finishes before submit attaches its callback completes inline on the server
-                    // thread; under heavy load that can happen, so resubmit until a write is really in flight.
-                    for (int attempt = 0; attempt < 5 && !f.session.mutationPending(); attempt++)
-                        f.session.onOnline(f.target.profile.id(), f.target.player.getScoreboardName(), true);
+                    // The session's own once-a-second admission write is the real SQLite transaction the channel waits
+                    // behind; a repeated online report no longer writes (#35). A write whose IO finishes before submit
+                    // attaches its callback completes inline on the server thread, so retry until one is in flight.
+                    for (int attempt = 0; attempt < 5 && !f.session.mutationPending(); attempt++) {
+                        f.clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
+                        f.session.tick();
+                    }
                     f.test.assertTrue(f.session.mutationPending(), "The mature return channel competes with a real SQLite write");
                 })
                 .thenWaitUntil(() -> f.await(f.monsterReady(false), "Completed return channel durably enters lobby"))
