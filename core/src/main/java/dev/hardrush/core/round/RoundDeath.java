@@ -13,10 +13,19 @@ import java.util.UUID;
  * the adapter resolves like vanilla's {@code getKillCredit}: the lethal hit's own source, otherwise the
  * last attributed hit within {@link dev.hardrush.core.combat.KillCreditMemory#WINDOW_TICKS}. A fall or
  * burn after a player's hit is therefore still that player's kill.
+ *
+ * <p>{@code dropToken} names the revival totem the adapter dropped at this death because
+ * {@link TotemDrop#qualifies} held when it died; the engine registers it only if that still holds on commit.
  */
 public record RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence,
                          Optional<CombatEvent> cause, Optional<CombatOrigin> killCredit,
-                         boolean recentlyHurtByPlayer) {
+                         boolean recentlyHurtByPlayer, Optional<UUID> dropToken) {
+    /** A death that dropped no revival totem. */
+    public RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence,
+                      Optional<CombatEvent> cause, Optional<CombatOrigin> killCredit, boolean recentlyHurtByPlayer) {
+        this(playerId, lifeSequence, deploymentSequence, cause, killCredit, recentlyHurtByPlayer, Optional.empty());
+    }
+
     /** The lethal hit's own source is the credit; no native player-damage memory for the monster death reward. */
     public RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence, Optional<CombatEvent> cause) {
         this(playerId, lifeSequence, deploymentSequence, cause, false);
@@ -31,6 +40,7 @@ public record RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence
 
     public RoundDeath {
         Objects.requireNonNull(playerId); Objects.requireNonNull(cause); Objects.requireNonNull(killCredit);
+        Objects.requireNonNull(dropToken);
         if (lifeSequence < 1 || deploymentSequence < 0) throw new IllegalArgumentException("Invalid death identity");
         cause.ifPresent(event -> {
             if (!event.lethal() || !event.victimId().equals(playerId)) {
@@ -39,7 +49,13 @@ public record RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence
         });
     }
 
+    public RoundDeath withDropToken(UUID token) {
+        return new RoundDeath(playerId, lifeSequence, deploymentSequence, cause, killCredit, recentlyHurtByPlayer,
+                Optional.of(token));
+    }
+
     public RoundDeath withCause(CombatEvent event) {
-        return new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.of(event), killCredit, recentlyHurtByPlayer);
+        return new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.of(event), killCredit, recentlyHurtByPlayer,
+                dropToken);
     }
 }
