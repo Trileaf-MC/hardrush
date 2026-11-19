@@ -211,6 +211,93 @@ public final class TestClientsGameTest {
         test.succeed();
     }
 
+    /** An absolute teleport then a relative one in one bundle: the relative one starts where the first put the client. */
+    @GameTest(maxTicks = 100)
+    public void relativeTeleportStartsWhereTheBundlesPreviousTeleportLeftTheClient(GameTestHelper test) {
+        var client = TestClient.named(test.getLevel().getServer(), "HRMixed");
+        client.place(test.getLevel());
+        client.acknowledge();
+        var absolute = new Vec3(10.5, 200, 10.5);
+        client.listener().send(new ClientboundBundlePacket(List.of(
+                ClientboundPlayerPositionPacket.of(9101, new PositionMoveRotation(absolute, Vec3.ZERO, 0, 0), Set.of()),
+                ClientboundPlayerPositionPacket.of(9102, new PositionMoveRotation(new Vec3(1, 0, 0), Vec3.ZERO, 0, 0),
+                        Set.of(Relative.X, Relative.Y, Relative.Z)))));
+        client.acknowledge();
+        var accepted = client.acceptedTeleports();
+        accepted = accepted.subList(accepted.size() - 2, accepted.size());
+        test.assertTrue(accepted.get(0).position().equals(absolute) && accepted.get(1).position().equals(absolute.add(1, 0, 0)),
+                "The relative teleport applies to the bundle's absolute destination: " + accepted);
+        client.close();
+        test.succeed();
+    }
+
+    /** Replacing a placed player by a new one of the same UUID within a tick ends the old client's session. */
+    @GameTest(maxTicks = 100)
+    public void sameUuidReplacementEndsTheOldSession(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var old = TestClient.named(server, "HRReplaced");
+        old.place(test.getLevel());
+        server.getPlayerList().remove(old.player());
+        var replacement = new TestClient(server, old.profile());
+        replacement.place(test.getLevel());
+        test.startSequence()
+                .thenIdle(1)
+                .thenExecute(() -> {
+                    test.assertFalse(old.connected(), "The replaced client's session ended while the new entity stays online");
+                    test.assertTrue(replacement.connected() && server.getPlayerList().getPlayer(old.id()) == replacement.player(),
+                            "The replacement keeps the UUID");
+                    replacement.close();
+                })
+                .thenSucceed();
+    }
+
+    /** While another client is attached, the player's own client stays quiet: its old teleport cannot pull the player back. */
+    @GameTest(maxTicks = 100)
+    public void attachedOverClientDoesNotAnswer(GameTestHelper test) {
+        var level = test.getLevel();
+        var floor = arena(level);
+        var owner = TestClient.named(level.getServer(), "HROwner");
+        var player = owner.place(level);
+        var first = Vec3.atBottomCenterOf(floor.above());
+        var second = first.add(3, 0, 0);
+        owner.withhold(TestClient.Reply.ACCEPT_TELEPORTS);
+        player.teleportTo(first.x, first.y, first.z);
+        int pending = owner.packets(ClientboundPlayerPositionPacket.class).getLast().id();
+        var attached = new TestClient(level.getServer(), player.getGameProfile());
+        attached.attach(player);
+        owner.resume(TestClient.Reply.ACCEPT_TELEPORTS);
+        player.teleportTo(second.x, second.y, second.z);
+        test.startSequence()
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    test.assertTrue(owner.acceptedTeleports().stream().noneMatch(teleport -> teleport.id() == pending),
+                            "The client attached over sends no acknowledgement");
+                    test.assertTrue(player.position().distanceTo(second) < 1.0E-6, "The player stays where the attached connection put it: " + player.position());
+                    attached.close();
+                    owner.close();
+                    clear(level, floor);
+                })
+                .thenSucceed();
+    }
+
+    /** Disconnecting while the native login is still loading player data cancels that login. */
+    @GameTest(maxTicks = 100)
+    public void disconnectCancelsAPreparingLogin(GameTestHelper test) {
+        var client = TestClient.named(test.getLevel().getServer(), "HRPreparing");
+        client.beginLogin();
+        test.assertTrue(rejects(client::beginLogin), "A second login cannot start while one is preparing");
+        test.assertTrue(rejects(() -> client.place(test.getLevel())), "Nor can the client join another way meanwhile");
+        client.disconnect();
+        test.assertTrue(rejects(client::finishLogin), "The cancelled login cannot finish");
+        test.assertFalse(client.connected(), "The client never joined");
+        test.succeed();
+    }
+
+    private static boolean rejects(Runnable action) {
+        try { action.run(); return false; }
+        catch (IllegalStateException expected) { return true; }
+    }
+
     /** Closing an attached client after a respawn hands the new entity back to its own connection. */
     @GameTest(maxTicks = 100)
     public void closingAnAttachedClientAfterRespawnRestoresTheNewEntity(GameTestHelper test) {
