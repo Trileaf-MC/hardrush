@@ -228,7 +228,7 @@ public final class RevivalTotems {
                     if (!identity(stack).filter(decision.identity()::equals).isPresent()) slot.set().accept(ItemStack.EMPTY, i);
                     continue;
                 }
-                // Surplus goes first from the grid and cursor, then from the end of the inventory.
+                // Copies are kept first in the grid and cursor, then from the end of the inventory; surplus goes from its start.
                 int keep = Math.min(stack.getCount(), want - have);
                 if (keep <= 0) { slot.set().accept(ItemStack.EMPTY, i); continue; }
                 // A holder change (human and camp monster) changes the template and so replaces every old copy.
