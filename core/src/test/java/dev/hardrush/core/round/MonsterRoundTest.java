@@ -4,13 +4,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.RulesConfig;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class MonsterRoundTest {
     private final UUID round = UUID.randomUUID();
     private final UUID player = UUID.randomUUID();
+    private final UUID survivor = UUID.randomUUID();
     private final Clock clock = new Clock();
     private static class Clock implements MonotonicClock {
         long now;
@@ -26,8 +29,10 @@ class MonsterRoundTest {
         apply(engine, engine.proposeReady(UUID.randomUUID(), player, true));
         clock.seconds(30);
         apply(engine, engine.proposeTick(UUID.randomUUID()));
+        apply(engine, engine.proposeJoin(UUID.randomUUID(), survivor, "Survivor"));
         clock.seconds(4);
-        apply(engine, engine.proposeHardcoreDeath(UUID.randomUUID(), player, 1));
+        apply(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
+                List.of(new RoundDeath(player, 1, 0, Optional.empty())), null));
         return engine;
     }
     private void deploy(RoundEngine engine, int expected) {
@@ -36,6 +41,7 @@ class MonsterRoundTest {
 
     @Test void firstDeathStartsFullWaitAndMonsterWaitDoesNotResumeHumanTiming() {
         var engine = monster();
+        apply(engine, engine.proposeOnline(UUID.randomUUID(), survivor, "Survivor", false));
         assertEquals(30_000_000_000L, player(engine).monsterCooldownNanos());
         assertEquals(MonsterRole.ZOMBIE, player(engine).monsterRole());
         assertEquals(MonsterDimension.OVERWORLD, player(engine).monsterDimension());
@@ -48,7 +54,7 @@ class MonsterRoundTest {
         assertEquals(1, player(engine).monsterDeploymentSequence());
         assertEquals(4_000_000_000L, player(engine).humanNanos());
         assertEquals(4_000_000_000L, engine.view().challengeNanos());
-        assertEquals(PauseReason.NO_ONLINE_HUMANS, engine.view().pauseReason());
+        assertEquals(PauseReason.RESCUE, engine.view().pauseReason());
     }
 
     @Test void choicesAndQualificationSurviveOutingsReturnsDeathsAndSessionUpdates() {

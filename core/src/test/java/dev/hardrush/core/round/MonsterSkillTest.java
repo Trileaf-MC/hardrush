@@ -6,7 +6,9 @@ import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -143,12 +145,14 @@ class MonsterSkillTest {
     @Test void normalNewHumanLifeAndHardcoreDeathKeepTheSameUuidSkillDeadlines() {
         var cooldowns = Map.of(MonsterSkill.ZOMBIE_SUMMON, NOW + 90_000, MonsterSkill.SKELETON_BURST, NOW + 20_000);
         var normal = fixture(ParticipantRole.HUMAN_ACTIVE, RulesConfig.defaults().withMode(GameMode.NORMAL), cooldowns);
-        apply(normal, normal.proposeNormalDeath(UUID.randomUUID(), player, 3));
-        apply(normal, normal.proposeNormalRespawn(UUID.randomUUID(), player, 3));
+        apply(normal, normal.proposeDeathBatch(UUID.randomUUID(), round,
+                List.of(new RoundDeath(player, 3, 4, Optional.empty())), null));
+        apply(normal, normal.proposeAdmissionRespawn(UUID.randomUUID(), player, 3));
         assertEquals(4, current(normal).lifeSequence());
         assertEquals(cooldowns, current(normal).monsterSkillReadyAtMillis());
         var hardcore = fixture(ParticipantRole.HUMAN_ACTIVE, RulesConfig.defaults(), cooldowns);
-        apply(hardcore, hardcore.proposeHardcoreDeath(UUID.randomUUID(), player, 3));
+        apply(hardcore, hardcore.proposeDeathBatch(UUID.randomUUID(), round,
+                List.of(new RoundDeath(player, 3, 4, Optional.empty())), null));
         assertEquals(cooldowns, current(hardcore).monsterSkillReadyAtMillis());
         var p = current(hardcore);
         assertEquals(cooldowns, p.withSession("Copy", false).monsterSkillReadyAtMillis());

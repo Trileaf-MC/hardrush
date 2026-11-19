@@ -141,11 +141,12 @@ class MonsterCoinsTest {
 
     @Test void everyMonsterLifeStartsWithTheGiftAndRevivalEmptiesTheWallet() {
         var engine = engine(humanParticipant());
-        accept(engine, engine.proposeHardcoreDeath(UUID.randomUUID(), human, 1));
+        accept(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, human, 1, 0, 1));
+        accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
+                List.of(new RoundDeath(human, 1, 0, Optional.empty())), null));
         var wallet = engine.committed().participants().get(human).wallet();
         assertEquals(6, wallet.coins());
         assertFalse(wallet.roleChosen());
-        accept(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, human, 1, 0, 1));
         accept(engine, engine.proposeAdmissionRevival(UUID.randomUUID(), round, human, 1, 0));
         var revived = engine.committed().participants().get(human);
         assertEquals(MonsterWallet.EMPTY, revived.wallet(), "Coins and paid goods never outlive the monster");

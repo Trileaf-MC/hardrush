@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.util.UUID;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -293,7 +294,7 @@ final class RoundSessionTest {
             clock.addAndGet(TimeUnit.SECONDS.toNanos(7));
             session.tick(); // Keep a durable checkpoint pending while the death arrives.
             clock.addAndGet(TimeUnit.SECONDS.toNanos(2));
-            session.normalDeath(player, 1);
+            session.captureDeath(session.snapshot().orElseThrow().roundId(), player, 1, 0, null, Optional.empty(), false);
             clock.addAndGet(TimeUnit.SECONDS.toNanos(100)); // Delayed IO callback must not extend the death time.
             pumpUntil(callbacks, () -> session.snapshot().orElseThrow().participants().get(player).role() == ParticipantRole.HUMAN_RESPAWNING);
             assertEquals(TimeUnit.SECONDS.toNanos(9), session.snapshot().orElseThrow().challengeNanos());
@@ -349,7 +350,8 @@ final class RoundSessionTest {
             session.onOnline(player, "Human", true);
             pumpUntil(callbacks, () -> !session.mutationPending());
             clock.addAndGet(TimeUnit.SECONDS.toNanos(7));
-            session.humanDeath(player, 1, null);
+            admitSurvivor(session, callbacks);
+            session.captureDeath(session.snapshot().orElseThrow().roundId(), player, 1, 0, null, Optional.empty(), false);
             pumpUntil(callbacks, () -> !session.mutationPending());
             assertEquals(ParticipantRole.MONSTER_LOBBY, session.snapshot().orElseThrow().participants().get(player).role());
             assertEquals(TimeUnit.SECONDS.toNanos(7), session.view().orElseThrow().challengeNanos());
@@ -641,14 +643,16 @@ final class RoundSessionTest {
         UUID player = UUID.randomUUID();
         try (var session = new RoundSession(directory.resolve("stalled-online.sqlite"), clock::get, callbacks::add)) {
             startRunningWithOneHuman(session, callbacks, clock, player);
+            admitSurvivor(session, callbacks);
             clock.addAndGet(TimeUnit.SECONDS.toNanos(7));
-            session.humanDeath(player, 1, null);
+            session.captureDeath(session.snapshot().orElseThrow().roundId(), player, 1, 0, null, Optional.empty(), false);
             assertTrue(session.mutationPending(), "The death commit stays stalled while no callback is pumped");
             // A held death keeps the profile locked, so the adapter reports the same connection every tick.
             for (int tick = 0; tick < 600; tick++) session.onOnline(player, "Human", true);
             assertEquals(RoundSession.State.OPEN, session.state(), session.status());
             pumpUntil(callbacks, () -> !session.mutationPending());
             assertEquals(RoundSession.State.OPEN, session.state(), session.status());
+            assertEquals(RoundPhase.RUNNING, session.snapshot().orElseThrow().phase());
             assertTrue(session.snapshot().orElseThrow().participants().get(player).online());
             assertNotEquals(ParticipantRole.HUMAN_ACTIVE, session.snapshot().orElseThrow().participants().get(player).role());
         }
@@ -678,6 +682,18 @@ final class RoundSessionTest {
             assertTrue(seenOffline.get(), "The leave between reports is still committed");
             assertTrue(session.snapshot().orElseThrow().participants().get(player).online());
         }
+    }
+
+    private static void admitSurvivor(RoundSession session, LinkedBlockingQueue<Runnable> callbacks) throws Exception {
+        UUID survivor = UUID.randomUUID();
+        var reply = new AtomicReference<RoundSession.Reply>();
+        session.onOnline(survivor, "Survivor", true);
+        session.requestJoin(survivor, "Survivor", reply::set);
+        pumpUntil(callbacks, () -> reply.get() != null);
+        assertTrue(reply.get().success(), reply.get().message());
+        session.onOnline(survivor, "Survivor", true);
+        pumpUntil(callbacks, () -> !session.mutationPending());
+        assertTrue(session.snapshot().orElseThrow().participants().get(survivor).online());
     }
 
     private static void startRunningWithOneHuman(RoundSession session, LinkedBlockingQueue<Runnable> callbacks,
