@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -28,6 +29,8 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.PositionMoveRotation;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * One fixture player whose client speaks the vanilla protocol back to the server.
@@ -36,7 +39,7 @@ import net.minecraft.world.entity.Entity;
  * client runs on its own. At the end of every server tick, and whenever a test calls {@link #acknowledge()}, the
  * client:
  * <ul>
- *   <li>accepts the latest teleport the server sent ({@link Reply#ACCEPT_TELEPORTS});</li>
+ *   <li>accepts every teleport the server sent, in order ({@link Reply#ACCEPT_TELEPORTS});</li>
  *   <li>reports that it has loaded the level after each accepted teleport, and whenever the server waits for that
  *   ({@link Reply#REPORT_LOADED}). HardRush waits for a fresh report after every level change and counts it only once
  *   the teleport that follows the respawn is accepted, so the report always follows the acceptance;</li>
@@ -80,8 +83,7 @@ public final class TestClient implements AutoCloseable {
     private ServerGamePacketListenerImpl listener;
     private ServerGamePacketListenerImpl replaced;
     /** Written by the connection as packets arrive, consumed by {@link #acknowledge()}. */
-    private volatile int pendingTeleport;
-    private volatile boolean teleportPending;
+    private final ConcurrentLinkedQueue<ClientboundPlayerPositionPacket> pendingTeleports = new ConcurrentLinkedQueue<>();
     private final AtomicInteger pendingChunkBatches = new AtomicInteger();
 
     public TestClient(MinecraftServer server, GameProfile profile) {
@@ -234,22 +236,35 @@ public final class TestClient implements AutoCloseable {
         if (!live()) return;
         if (!withheld.contains(Reply.CONFIRM_CHUNK_BATCHES)) confirmChunkBatches();
         boolean arrived = !withheld.contains(Reply.ACCEPT_TELEPORTS) && acceptTeleport();
-        if (!withheld.contains(Reply.REPORT_LOADED) && (arrived || !teleportPending && !listener.hasClientLoaded())) reportLoaded();
+        if (!withheld.contains(Reply.REPORT_LOADED) && (arrived || pendingTeleports.isEmpty() && !listener.hasClientLoaded())) reportLoaded();
     }
 
-    /** Accepts the latest teleport the server sent, at the player's position; {@code false} if none was unaccepted. */
+    /**
+     * Accepts, in order, the teleports the server had sent when this was called, each at the destination the vanilla
+     * client applies; {@code false} if none was unaccepted. The server moves the player only for the latest, but
+     * HardRush recognises a level's arrival by the first one after it. A teleport the server sends in answer to these
+     * acceptances waits for the next call, as it would wait for the next packet a real client reads.
+     */
     public boolean acceptTeleport() {
-        if (!live() || !teleportPending) return false;
-        teleportPending = false;
-        acceptTeleport(pendingTeleport);
+        if (!live() || pendingTeleports.isEmpty()) return false;
+        for (int count = pendingTeleports.size(); count > 0; count--) {
+            var teleport = pendingTeleports.poll();
+            if (teleport == null) break;
+            var player = listener.player;
+            var arrival = PositionMoveRotation.calculateAbsolute(PositionMoveRotation.of(player), teleport.change(), teleport.relatives());
+            accept(teleport.id(), arrival.position(), arrival.yRot(), arrival.xRot());
+        }
         return true;
     }
 
-    /** Accepts one particular teleport id, even a stale one. */
+    /** Accepts one particular teleport id, even a stale one, at the player's current position. */
     public void acceptTeleport(int id) {
         var player = listener.player;
-        listener.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(id, player.getX(), player.getY(), player.getZ(),
-                player.getYRot(), player.getXRot()));
+        accept(id, player.position(), player.getYRot(), player.getXRot());
+    }
+
+    private void accept(int id, Vec3 position, float yRot, float xRot) {
+        listener.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(id, position.x, position.y, position.z, yRot, xRot));
     }
 
     public void reportLoaded() { listener.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket()); }
@@ -294,7 +309,7 @@ public final class TestClient implements AutoCloseable {
 
     private void open(Mode mode) {
         this.mode = mode;
-        teleportPending = false;
+        pendingTeleports.clear();
         pendingChunkBatches.set(0);
         connection = new TestConnection(this::observe);
         channel = new EmbeddedChannel(connection);
@@ -307,7 +322,7 @@ public final class TestClient implements AutoCloseable {
     }
 
     private void observe(Packet<?> packet) {
-        if (packet instanceof ClientboundPlayerPositionPacket position) { pendingTeleport = position.id(); teleportPending = true; }
+        if (packet instanceof ClientboundPlayerPositionPacket position) pendingTeleports.add(position);
         else if (packet instanceof ClientboundChunkBatchFinishedPacket) pendingChunkBatches.incrementAndGet();
     }
 

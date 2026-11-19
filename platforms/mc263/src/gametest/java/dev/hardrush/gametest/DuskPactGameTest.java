@@ -317,7 +317,7 @@ public final class DuskPactGameTest {
             if (loaded) loaded();
         }
         void loaded() { client.reportLoaded(); }
-        /** The native client acknowledges the last position packet it received. */
+        /** The native client acknowledges every position packet it received, the last one included. */
         void arrived() { client.acceptTeleport(); }
         void arrived(int teleport) { client.acceptTeleport(teleport); }
         List<ClientboundGameEventPacket> elderGhosts() {
