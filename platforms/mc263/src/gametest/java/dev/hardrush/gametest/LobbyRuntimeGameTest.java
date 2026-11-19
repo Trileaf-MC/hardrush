@@ -729,7 +729,7 @@ public final class LobbyRuntimeGameTest {
                 test.assertTrue(old != null, "The production command created a channel before fixture clock adjustment");
                 var constructor = old.getClass().getDeclaredConstructors()[0]; constructor.setAccessible(true);
                 var p = peer.participant();
-                channels.put(peer.profile.id(), constructor.newInstance(peer.player, peer.player.level(), peer.player.position(),
+                channels.put(peer.profile.id(), constructor.newInstance(peer.player, peer.player.level(),
                         System.nanoTime() - TimeUnit.SECONDS.toNanos(6), p.lifeSequence(), p.monsterDeploymentSequence(), false));
             } catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
         }
