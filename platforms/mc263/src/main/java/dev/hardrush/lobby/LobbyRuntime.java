@@ -146,6 +146,15 @@ public final class LobbyRuntime {
                 };
             }
         });
+        // A save in flight already left the hand: the projection shows the balance it will commit to.
+        dev.hardrush.revival.RevivalTotems.pendingSaves(server, session::pendingTotemSaves);
+        dev.hardrush.revival.TotemSave.configure(server, (player, round, life, killCredit) -> {
+            // The body whose death AFTER_DEATH would capture, inside its lethal hit; the session decides the rest.
+            if (!current(player, binding) || !PlayerProfiles.verifiedDyingRoundBody(player)
+                    || ((dev.hardrush.player.ProfileTagged) player).hardrush$lifeSequence() != life
+                    || !session.captureTotemSave(round, player.getUUID(), life, killCredit)) return OptionalInt.empty();
+            return OptionalInt.of(session.totemChargesLeft(player.getUUID()));
+        });
         dev.hardrush.revival.TotemDrops.configure(server, new dev.hardrush.revival.TotemDrops.Access() {
             @Override public Optional<RoundSnapshot> view() { return session.view(); }
             @Override public boolean open() { return session.state() == RoundSession.State.OPEN; }
@@ -190,7 +199,7 @@ public final class LobbyRuntime {
     }
     public static void unconfigure(MinecraftServer server) {
         BINDINGS.remove(server); LobbyInteractions.close(server); LobbyMenus.unconfigure(server); dev.hardrush.revival.RevivalTotems.unconfigure(server);
-        dev.hardrush.revival.TotemDrops.unconfigure(server); CampTransfers.unconfigure(server);
+        dev.hardrush.revival.TotemDrops.unconfigure(server); dev.hardrush.revival.TotemSave.unconfigure(server); CampTransfers.unconfigure(server);
         CampKit.unconfigure(server); MonsterShop.unconfigure(server); MonsterVaults.unconfigure(server);
         MonsterRoundRuntime.unconfigure(server); MonsterCombatRuntime.unconfigure(server);
     }

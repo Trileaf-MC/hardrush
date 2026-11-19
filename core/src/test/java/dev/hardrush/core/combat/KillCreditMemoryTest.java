@@ -56,4 +56,17 @@ class KillCreditMemoryTest {
         assertEquals(Optional.empty(), memory.died(other, Optional.empty(), 1));
         assertEquals(Optional.of(hit), memory.died(victim, Optional.empty(), 1));
     }
+
+    @Test void peekResolvesAsDeathWouldButKeepsTheMemoryOfASurvivedLethalHit() {
+        var memory = new KillCreditMemory();
+        var hit = origin(UUID.randomUUID());
+        memory.hurt(victim, hit, 0);
+        assertEquals(Optional.of(hit), memory.peek(victim, Optional.empty(), 10));
+        assertEquals(Optional.of(hit), memory.peek(victim, Optional.empty(), 10), "Peeking forgets nothing");
+        var lethal = origin(UUID.randomUUID());
+        assertEquals(Optional.of(lethal), memory.peek(victim, Optional.of(lethal), 10), "The lethal hit's own credit comes first");
+        assertEquals(Optional.empty(), memory.peek(victim, Optional.empty(), KillCreditMemory.WINDOW_TICKS + 1), "Same window as died");
+        assertEquals(Optional.of(hit), memory.died(victim, Optional.empty(), 20), "A later death still sees the remembered hit");
+        assertEquals(Optional.empty(), memory.peek(victim, Optional.empty(), 21));
+    }
 }

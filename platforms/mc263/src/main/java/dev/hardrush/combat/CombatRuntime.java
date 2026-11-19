@@ -42,6 +42,8 @@ public final class CombatRuntime {
     private static final ThreadLocal<Deque<Cause>> CAUSES = ThreadLocal.withInitial(ArrayDeque::new);
     private static final Map<MinecraftServer, Long> SEQUENCES = new IdentityHashMap<>();
     private static final Map<MinecraftServer, KillCreditMemory> CREDITS = new IdentityHashMap<>();
+    // Main thread only; a mark lives from the totem pop to the end of the same hurtServer call.
+    private static final Set<ServerPlayer> REVIVED = Collections.newSetFromMap(new IdentityHashMap<>());
     private CombatRuntime() {}
 
     public static void configure(MinecraftServer server, RoundAccess access, Consumer<CombatEvent> events) {
@@ -238,10 +240,29 @@ public final class CombatRuntime {
     public static Optional<CombatOrigin> killCredit(ServerLevel level, ServerPlayer victim, DamageSource source) {
         var memory = CREDITS.get(level.getServer());
         if (memory == null || round(level).isEmpty()) return Optional.empty();
-        var cause = current(level);
-        var lethal = killCredit(source, cause == null ? resolve(level, source) : cause.origin);
-        return memory.died(victim.getUUID(), lethal, level.getServer().getTickCount());
+        return memory.died(victim.getUUID(), lethalCredit(level, source), level.getServer().getTickCount());
     }
+    /**
+     * The credit {@link #killCredit(ServerLevel, ServerPlayer, DamageSource)} would resolve for this lethal hit right now,
+     * by the same rule, but forgetting nothing: an in-place revival is not a death, and the body keeps its memory.
+     */
+    public static Optional<CombatOrigin> peekKillCredit(ServerLevel level, ServerPlayer victim, DamageSource source) {
+        var memory = CREDITS.get(level.getServer());
+        if (memory == null || round(level).isEmpty()) return Optional.empty();
+        return memory.peek(victim.getUUID(), lethalCredit(level, source), level.getServer().getTickCount());
+    }
+    private static Optional<CombatOrigin> lethalCredit(ServerLevel level, DamageSource source) {
+        var cause = current(level);
+        return killCredit(source, cause == null ? resolve(level, source) : cause.origin);
+    }
+    /**
+     * A revival totem has just saved {@code victim} inside the hit being taken. The pop restores health and grants
+     * absorption, so the hit's before-minus-after loss would read near zero; {@link #takeRevivedInPlace} tells the
+     * damage wrapper to count everything the body had before the hit instead.
+     */
+    public static void revivedInPlace(ServerPlayer victim) { REVIVED.add(victim); }
+    /** Whether {@link #revivedInPlace} marked {@code victim} since the last call; forgets the mark. */
+    public static boolean takeRevivedInPlace(ServerPlayer victim) { return REVIVED.remove(victim); }
     /** The hit's own provenance; an unattributed soulcatcher creature credits the identity that released it. */
     private static Optional<CombatOrigin> killCredit(DamageSource source, Optional<CombatOrigin> origin) {
         return dev.hardrush.monster.MonsterSoulcatcher.killCredit(source, origin);

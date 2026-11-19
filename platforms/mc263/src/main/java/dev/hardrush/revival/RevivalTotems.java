@@ -57,9 +57,9 @@ public final class RevivalTotems {
     private static final Map<MinecraftServer, RevivalTotems> INSTANCES = new IdentityHashMap<>();
     private final Access access;
     /**
-     * In-place revivals already performed in the world whose charge is not yet committed, per player. Nothing produces
-     * them yet: the in-place revival (design 2.5) binds this through {@link #pendingSaves(MinecraftServer, ToIntFunction)}
-     * so that the stack shrinks at once instead of flickering back until the commit lands.
+     * In-place revivals already performed in the world whose charge is not yet committed, per player
+     * ({@code RoundSession.pendingTotemSaves}, bound through {@link #pendingSaves(MinecraftServer, ToIntFunction)}): the
+     * stack {@link TotemSave} shrank stays shrunk instead of flickering back until the commit lands.
      */
     private ToIntFunction<UUID> pendingSaves = player -> 0;
 
