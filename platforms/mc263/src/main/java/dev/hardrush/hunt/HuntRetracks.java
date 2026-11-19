@@ -1,51 +1,110 @@
 package dev.hardrush.hunt;
 
 import dev.hardrush.core.round.ParticipantRole;
+import dev.hardrush.core.round.RoundEngine;
 import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.monster.MonsterForm;
 import dev.hardrush.monster.MonsterItems;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.round.RoundRuntime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.protocol.game.ClientboundSetDefaultSpawnPositionPacket;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.LevelData;
+import org.jspecify.annotations.Nullable;
 
 /**
- * The tracking compass of a deployed monster: lit once the quarry has slipped away (far for a while, or into
- * another dimension), cooling down after each use. Arrivals near the quarry sound the species' native ambient call.
+ * The tracking compass of a deployed monster. Its needle points at the bound quarry: a vanilla compass points at the
+ * world spawn its client was last told about, so only this player's client is told the spawn stands where the quarry
+ * is. Another dimension, or a lost quarry, sets the needle spinning exactly as vanilla does. The compass glints
+ * whenever a retrack can start and rests after each landing. Arrivals near the quarry sound the species' native call.
  */
 public final class HuntRetracks {
     public static final String PURPOSE = "retrack";
-    public static final int FAR_DISTANCE = 40;
-    public static final int FAR_SECONDS = 10;
-    public static final int COOLDOWN_TICKS = 15 * 20;
     public static final int ANNOUNCE_DISTANCE = 16;
-    private static final Map<MinecraftServer, Map<UUID, Integer>> FAR_SINCE = new IdentityHashMap<>();
+    /** How often the needle follows a moving quarry; a dimension change is answered at once. */
+    public static final int POINT_INTERVAL_TICKS = 20;
+    /** A dimension no client stands in: the needle spins while the quarry is lost. */
+    public static final ResourceKey<Level> NOWHERE =
+            ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("hardrush", "lost_quarry"));
+    /** The body the needle was last pointed for, its dimension then, and when. */
+    private record Pointer(ServerPlayer body, ResourceKey<Level> level, int sentTick) {}
+    private static final Map<MinecraftServer, Map<UUID, Pointer>> POINTERS = new IdentityHashMap<>();
     private HuntRetracks() {}
 
-    /** Server tick while a round is running: the far timer and the compass glint. */
-    public static void tick(MinecraftServer server, RoundSnapshot round) {
-        var far = FAR_SINCE.computeIfAbsent(server, ignored -> new HashMap<>());
-        far.keySet().removeIf(id -> Optional.ofNullable(round.participants().get(id))
-                .filter(p -> p.role() == ParticipantRole.MONSTER_DEPLOYED).isEmpty());
+    /**
+     * Server tick: the glint and the needle. {@code round} is null outside the challenge and rescue phases;
+     * then, as for anyone no longer deployed, the needle goes back to the real world spawn.
+     */
+    public static void tick(MinecraftServer server, @Nullable RoundSnapshot round) {
+        var pointers = POINTERS.computeIfAbsent(server, ignored -> new HashMap<>());
+        int now = server.getTickCount();
+        var online = new HashSet<UUID>();
         for (var player : server.getPlayerList().getPlayers()) {
-            if (!MonsterRoles.isMonster(player)) continue;
+            online.add(player.getUUID());
+            var old = pointers.get(player.getUUID());
+            if (round == null || !deployed(player, round)) {
+                if (old == null) continue;
+                pointers.remove(player.getUUID());
+                // A fresh body was already told the real spawn by vanilla's own login or respawn.
+                if (old.body == player) restore(player);
+                continue;
+            }
             var target = quarry(player, round).orElse(null);
-            if (target == null || target.level() != player.level()
-                    || target.position().distanceToSqr(player.position()) <= FAR_DISTANCE * FAR_DISTANCE) far.remove(player.getUUID());
-            else far.putIfAbsent(player.getUUID(), server.getTickCount());
-            light(player, available(player, round));
+            light(player, target != null);
+            var level = player.level().dimension();
+            if (old == null || old.body != player || old.level != level || now - old.sentTick >= POINT_INTERVAL_TICKS) {
+                send(player, pointAt(target));
+                pointers.put(player.getUUID(), new Pointer(player, level, now));
+            }
         }
+        pointers.keySet().retainAll(online);
+    }
+    /** Vanilla just told this client the real spawn: a needle already pointing at a quarry points there again at once. */
+    public static void levelInfoSent(ServerPlayer player) {
+        var pointer = POINTERS.getOrDefault(player.level().getServer(), Map.of()).get(player.getUUID());
+        if (pointer == null || pointer.body != player) return;
+        send(player, needle(player));
+        POINTERS.get(player.level().getServer()).put(player.getUUID(), new Pointer(player, player.level().dimension(), player.level().getServer().getTickCount()));
+    }
+    private static boolean deployed(ServerPlayer player, RoundSnapshot round) {
+        var p = round.participants().get(player.getUUID());
+        return p != null && p.role() == ParticipantRole.MONSTER_DEPLOYED && MonsterRoles.isMonster(player);
+    }
+
+    /** Where the hunter's compass needle points: the quarry's block, or nowhere it could stand, so it spins. */
+    public static GlobalPos needle(ServerPlayer hunter) {
+        return pointAt(quarry(hunter).orElse(null));
+    }
+    private static GlobalPos pointAt(@Nullable ServerPlayer target) {
+        return target == null ? GlobalPos.of(NOWHERE, BlockPos.ZERO) : GlobalPos.of(target.level().dimension(), target.blockPosition());
+    }
+    private static void send(ServerPlayer player, GlobalPos at) {
+        if (player.connection != null) player.connection.send(new ClientboundSetDefaultSpawnPositionPacket(new LevelData.RespawnData(at, 0, 0)));
+    }
+    /** The same spawn vanilla sends with the level's other info. */
+    private static void restore(ServerPlayer player) {
+        if (player.connection != null) player.connection.send(new ClientboundSetDefaultSpawnPositionPacket(player.level().getRespawnData()));
     }
 
     public static Optional<ServerPlayer> quarry(ServerPlayer hunter) {
@@ -64,33 +123,22 @@ public final class HuntRetracks {
         });
     }
 
-    /** The quarry slipped away: another dimension at once, or beyond 40 blocks for 10 seconds. */
-    public static boolean available(ServerPlayer hunter) {
-        return RoundRuntime.snapshot(hunter.level().getServer()).map(round -> available(hunter, round)).orElse(false);
-    }
-    private static boolean available(ServerPlayer hunter, RoundSnapshot round) {
-        var target = quarry(hunter, round).orElse(null);
-        if (target == null) return false;
-        if (target.level() != hunter.level()) return true;
-        var far = FAR_SINCE.getOrDefault(hunter.level().getServer(), Map.of()).get(hunter.getUUID());
-        return far != null && hunter.level().getServer().getTickCount() - far >= FAR_SECONDS * 20;
+    /** The compass's rest after a landing, from the round's rules. */
+    public static int cooldownTicks(MinecraftServer server) {
+        long millis = RoundRuntime.snapshot(server).map(round -> RoundEngine.retrackCooldownMillis(round.rules()))
+                .orElse(RoundEngine.RETRACK_COOLDOWN_MILLIS);
+        return (int) Math.max(1, Math.min(Integer.MAX_VALUE, millis / 50));
     }
 
     /** A personal hunt landed. */
-    public static void arrived(ServerPlayer hunter, ServerPlayer target) {
-        reset(hunter); announce(hunter, target);
-    }
-    /** A retrack landed: the compass cools down for 15 seconds. */
+    public static void arrived(ServerPlayer hunter, ServerPlayer target) { announce(hunter, target); }
+    /** A retrack landed: the compass rests. */
     public static void retracked(ServerPlayer hunter, ServerPlayer target) {
-        reset(hunter); announce(hunter, target);
-        for (var stack : compasses(hunter)) { hunter.getCooldowns().addCooldown(stack, COOLDOWN_TICKS); break; }
+        announce(hunter, target);
+        for (var stack : compasses(hunter)) { hunter.getCooldowns().addCooldown(stack, cooldownTicks(hunter.level().getServer())); break; }
         light(hunter, false);
     }
 
-    private static void reset(ServerPlayer hunter) {
-        var far = FAR_SINCE.get(hunter.level().getServer());
-        if (far != null) far.remove(hunter.getUUID());
-    }
     /** Vanilla mobs groan or rattle now and then; a creeper stays the silent one. */
     private static void announce(ServerPlayer hunter, ServerPlayer target) {
         if (target.level() != hunter.level() || target.distanceToSqr(hunter) > ANNOUNCE_DISTANCE * ANNOUNCE_DISTANCE) return;
@@ -103,16 +151,17 @@ public final class HuntRetracks {
         };
         hunter.level().playSound(null, hunter.getX(), hunter.getY(), hunter.getZ(), sound, SoundSource.HOSTILE, 1, 1);
     }
-    private static void light(ServerPlayer hunter, boolean available) {
+    /** Glints while a press would start a retrack: a quarry to follow and no rest or channel on the compass. */
+    private static void light(ServerPlayer hunter, boolean tracking) {
         for (var stack : compasses(hunter)) {
-            boolean lit = available && !hunter.getCooldowns().isOnCooldown(stack);
+            boolean lit = tracking && !hunter.getCooldowns().isOnCooldown(stack);
             if (!Boolean.valueOf(lit).equals(stack.get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE)))
                 stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, lit);
         }
     }
-    private static java.util.List<ItemStack> compasses(ServerPlayer hunter) {
+    private static List<ItemStack> compasses(ServerPlayer hunter) {
         var inventory = hunter.getInventory();
-        var found = new java.util.ArrayList<ItemStack>();
+        var found = new ArrayList<ItemStack>();
         for (int slot = 0; slot < Inventory.INVENTORY_SIZE; slot++)
             if (MonsterItems.matches(hunter, inventory.getItem(slot), PURPOSE)) found.add(inventory.getItem(slot));
         var offhand = inventory.getItem(Inventory.SLOT_OFFHAND);
@@ -120,5 +169,5 @@ public final class HuntRetracks {
         return found;
     }
 
-    public static void stop(MinecraftServer server) { FAR_SINCE.remove(server); }
+    public static void stop(MinecraftServer server) { POINTERS.remove(server); }
 }
