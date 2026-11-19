@@ -101,6 +101,12 @@ class DeathBatchSessionTest {
             assertEquals(2, saved.participants().get(hunter).lifeSequence());
             assertFalse(saved.participants().get(hunter).revivalEntitled());
             assertFalse(saved.participants().get(hunter).online(), "Human clock waits for the profile adapter");
+            assertTrue(saved.participants().get(hunter).connected());
+            // Leaving before the adapter unlocks the new life must still reach the engine, or nobody waits for it.
+            session.onOnline(hunter, "Hunter", false);
+            pump(() -> !session.mutationPending());
+            assertEquals(RoundPhase.RESCUE, session.snapshot().orElseThrow().phase());
+            assertTrue(session.snapshot().orElseThrow().awaitingReconnect());
         }
         try (var store = new SqliteRoundStore(path)) {
             var snapshot = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload());
@@ -126,7 +132,7 @@ class DeathBatchSessionTest {
             assertEquals(40_000, session.view().orElseThrow().remainingPhaseMillis());
             clock.addAndGet(TimeUnit.SECONDS.toNanos(39));
             var selection = new AtomicReference<RoundSession.Reply>();
-            session.requestRevivalTotemDrop(round, hunter, 1, 1, 1, selection::set);
+            session.requestMonsterCoinPickup(round, hunter, 1, 1, 1, selection::set);
             assertTrue(session.mutationPending());
             clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
             assertTrue(session.competitionLocked(), "An unrelated pending write must not extend the rescue deadline");
@@ -182,6 +188,11 @@ class DeathBatchSessionTest {
         pump(() -> session.state() == RoundSession.State.OPEN);
         session.adaptersReady(round);
         pump(() -> !session.mutationPending());
+        // A human that can be hunted is playing; left offline, the round would be waiting for it instead.
+        if (session.snapshot().orElseThrow().participants().get(victim).role() == ParticipantRole.HUMAN_ACTIVE) {
+            session.onOnline(victim, "Human", true);
+            pump(() -> !session.mutationPending());
+        }
         session.onOnline(hunter, "Hunter", true);
         pump(() -> !session.mutationPending());
         var monster = session.snapshot().orElseThrow().participants().get(hunter);

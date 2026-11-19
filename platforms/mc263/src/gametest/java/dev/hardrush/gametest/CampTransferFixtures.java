@@ -10,14 +10,11 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.network.HashedStack;
 import net.minecraft.network.protocol.game.*;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.portal.TeleportTransition;
-import net.minecraft.world.phys.Vec3;
 
 /** Real camp identities and native packets, including the client's optimistic inventory correction. */
 final class CampTransferFixtures {
@@ -35,13 +32,6 @@ final class CampTransferFixtures {
         int[] balances = new int[2];
         ItemEntity[] floor = new ItemEntity[1];
         sequence.thenExecute(() -> {
-            // The donor arrives through a recall landing while the receiver respawned somewhere in vanilla's scatter
-            // square, so their distance is luck. A vanilla client sees an item only within its render distance (this
-            // fixture client keeps the default 2 chunks, i.e. 32 blocks), so stand the receiver beside the donor.
-            var lobby = (ServerLevel) donor.current().level();
-            receiver.current().teleport(new TeleportTransition(lobby, donor.current().position(), Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
-            receiver.acknowledge();
-        }).thenExecute(() -> {
             CampKit.tick(f.server);
             balances[0] = donor.participant().wallet().coins();
             balances[1] = receiver.participant().wallet().coins();
@@ -50,7 +40,7 @@ final class CampTransferFixtures {
             f.test.assertTrue(f.session.mutationPending(), "The floor stack waits for durable debit");
             f.test.assertTrue(floor(donor.current(), CampKit::isCoin) == null, "No spendable coins spawn before commit");
             int packets = donor.connection.packets.size();
-            // A second currency is still visible, but must not race the pending coin write.
+            // The totem beside the coins is not a currency: its throw bounces straight back.
             throwKey(donor.current(), RevivalTotems::is, true);
             f.test.assertValueEqual(LobbyRuntimeGameTest.heldTotems(donor.current()), 1,
                     "Rejected Q restores the server totem immediately, before the next tick");
@@ -95,28 +85,14 @@ final class CampTransferFixtures {
                     floor[0].playerTouch(donor.current());
                 }).thenWaitUntil(() -> f.await(!f.session.mutationPending() && floor[0].isRemoved()
                         && donor.participant().wallet().coins() == balances[0] + balances[1], "The owner can reclaim their own coins"))
-                .thenExecute(() -> throwKey(donor.current(), RevivalTotems::is, true))
-                .thenWaitUntil(() -> f.await(!f.session.mutationPending() && donor.participant().revivalCharges() == 0
-                        && floor(donor.current(), RevivalTotems::is) != null, "Totem Ctrl+Q consumes the last charge"))
                 .thenExecute(() -> {
-                    var p = donor.participant();
-                    var reply = new AtomicReference<RoundSession.Reply>();
-                    f.session.requestRevival(f.round().roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), reply::set);
-                    f.test.assertTrue(reply.get() != null && !reply.get().success(), "Dropping the last totem removes altar eligibility");
-                    floor[0] = floor(donor.current(), RevivalTotems::is);
-                    floor[0].setPickUpDelay(0);
-                    floor[0].playerTouch(donor.current());
-                }).thenWaitUntil(() -> f.await(!f.session.mutationPending() && floor[0].isRemoved()
-                        && donor.participant().revivalCharges() == 1, "Only reclaiming the totem restores altar eligibility"))
-                .thenExecute(() -> throwInventory(donor.current(), RevivalTotems::is, false))
-                .thenWaitUntil(() -> f.await(!f.session.mutationPending() && donor.participant().revivalCharges() == 0
-                        && floor(donor.current(), RevivalTotems::is) != null, "Inventory Q shares the totem transfer path"))
-                .thenExecute(() -> {
-                    floor[0] = floor(donor.current(), RevivalTotems::is);
-                    floor[0].setPickUpDelay(0);
-                    floor[0].playerTouch(donor.current());
-                }).thenWaitUntil(() -> f.await(!f.session.mutationPending() && floor[0].isRemoved()
-                        && donor.participant().revivalCharges() == 1, "The lifecycle can continue with its original revival charge"))
+                    // A revival totem is never a gift: both native throw paths bounce and the charge stays.
+                    throwKey(donor.current(), RevivalTotems::is, true);
+                    throwInventory(donor.current(), RevivalTotems::is, false);
+                    f.test.assertTrue(!f.session.mutationPending() && donor.participant().revivalCharges() == 1
+                            && LobbyRuntimeGameTest.heldTotems(donor.current()) == 1 && floor(donor.current(), RevivalTotems::is) == null,
+                            "Neither Q nor inventory Q can part a monster from its revival totem");
+                })
                 .thenExecute(() -> {
                     // Even forbidden non-currency drops must undo the local client's prediction.
                     var player = donor.current();

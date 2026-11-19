@@ -34,7 +34,7 @@ public abstract class ProtectionServerPlayerMixin {
     /** Every throw path (key, inventory screen, closing menus) reaches here after removing the stack. */
     @Inject(method="drop(Lnet/minecraft/world/item/ItemStack;ZLnet/minecraft/util/Prediction;)Lnet/minecraft/world/entity/item/ItemEntity;",
             at=@At("HEAD"), cancellable=true)
-    private void dropRevivalTotem(ItemStack stack, boolean thrown, Prediction prediction, CallbackInfoReturnable<ItemEntity> ci) {
+    private void dropMonsterCoins(ItemStack stack, boolean thrown, Prediction prediction, CallbackInfoReturnable<ItemEntity> ci) {
         if (!CampTransfers.is(stack)) return;
         CampTransfers.thrown((ServerPlayer)(Object)this, stack.copy());
         ci.setReturnValue(null);

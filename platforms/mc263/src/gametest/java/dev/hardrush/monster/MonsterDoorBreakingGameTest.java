@@ -2,6 +2,7 @@ package dev.hardrush.monster;
 
 import dev.hardrush.gametest.MonsterRoleGameTest;
 import dev.hardrush.gametest.RuntimeFixtures;
+import dev.hardrush.gametest.TestClients;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
@@ -17,7 +18,6 @@ import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
@@ -260,7 +260,7 @@ public final class MonsterDoorBreakingGameTest {
             var connection = new RecordingConnection();
             channel = new EmbeddedChannel(connection); packets = connection.packets;
             player.connection = new ServerGamePacketListenerImpl(level.getServer(), connection, player,
-                    CommonListenerCookie.createInitial(player.getGameProfile(), false));
+                    TestClients.cookie(player.getGameProfile()));
             player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
             difficulty = level.getDifficulty(); mobGriefing = level.getGameRules().get(GameRules.MOB_GRIEFING);
             level.getServer().setDifficulty(Difficulty.HARD, true); griefing(true);
