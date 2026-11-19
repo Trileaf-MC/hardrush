@@ -302,6 +302,10 @@ public final class TestClient implements AutoCloseable {
 
     private void accept(Teleport teleport) {
         var position = teleport.position();
+        // A real acknowledgement arrives after the server's connection tick has reset the movement baseline to where the
+        // teleport put the player. Embedded connections get no such tick, so their baseline would stay wherever the
+        // player joined, every acceptance would read as moving too quickly, and the server would teleport back forever.
+        listener.resetPosition();
         listener.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(teleport.id(), position.x, position.y, position.z,
                 teleport.yRot(), teleport.xRot()));
     }
