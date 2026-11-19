@@ -693,7 +693,6 @@ public final class LobbyRuntime {
         // a dead human's payout is not called a monster's ("阵亡不等于变成怪物").
         String reason = switch (event) {
             case "MONSTER_DAMAGE_COINS" -> null;
-            case "HARDCORE_DEATH" -> "阵亡补给";
             case "DEATH_BATCH" -> before.role().isActiveHuman() ? "阵亡补给" : "阵亡奖励";
             case "MONSTER_DEPLOY", "MONSTER_SELECTION" -> "出击退回";
             default -> "奖励";

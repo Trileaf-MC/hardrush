@@ -1171,25 +1171,6 @@ public final class RoundSession implements AutoCloseable {
         return pendingTransition != null ? pendingTransition.after() : engine.committed();
     }
 
-    public void normalDeath(UUID playerId, int lifeSequence) {
-        normalDeath(playerId, lifeSequence, null);
-    }
-
-    public void normalDeath(UUID playerId, int lifeSequence, UUID batchId) {
-        humanDeath(playerId, lifeSequence, batchId);
-    }
-
-    public void humanDeath(UUID playerId, int lifeSequence, UUID batchId) {
-        if (engine == null || engine.committed().phase() != RoundPhase.RUNNING) return;
-        Function<RoundEngine, RoundTransition> proposal = e -> e.committed().rules().mode() == GameMode.NORMAL
-                ? e.proposeNormalDeath(UUID.randomUUID(), playerId, lifeSequence)
-                : e.proposeHardcoreDeath(UUID.randomUUID(), playerId, lifeSequence);
-        if (terminalCandidate != null) {
-            if (terminalQueued || !terminalCandidate.batchId().equals(batchId)) return;
-            enqueueAt(terminalCandidate.observedNanoTime(), proposal);
-        } else enqueue(proposal);
-    }
-
     public void normalRespawn(UUID playerId, int lifeSequence) {
         if (stopping || state != State.OPEN || !adaptersReady || competitionLocked()
                 || Objects.equals(requestedRespawns.get(playerId), lifeSequence)) return;

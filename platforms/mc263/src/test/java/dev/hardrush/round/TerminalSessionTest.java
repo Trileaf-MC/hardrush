@@ -38,7 +38,7 @@ final class TerminalSessionTest {
             clock.set(TimeUnit.SECONDS.toNanos(7));
             var lethal = lethal(original.roundId(), clock.get());
             session.captureDragonDeath(lethal, dragon);
-            session.normalDeath(player, 1, lethal.batchId());
+            session.captureDeath(lethal.roundId(), player, 1, 0, lethal.batchId(), Optional.empty(), false);
             session.finishDamageBatch(lethal.roundId(), lethal.batchId());
             assertTrue(session.competitionLocked(), "New attacks are blocked at the lethal callback");
             assertEquals(lethal.batchId(), session.terminalBatchId().orElseThrow());
@@ -210,7 +210,7 @@ final class TerminalSessionTest {
         clock.set(TimeUnit.SECONDS.toNanos(3));
         var death = lethal(original.roundId(), clock.get());
         session.captureDragonDeath(death, dragon);
-        session.normalDeath(player, 1, death.batchId());
+        session.captureDeath(death.roundId(), player, 1, 0, death.batchId(), Optional.empty(), false);
         session.prepareStop();
         clock.set(TimeUnit.SECONDS.toNanos(100));
         session.adapterFailure("world save failed", new IllegalStateException("fixture"));

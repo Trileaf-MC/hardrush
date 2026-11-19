@@ -237,7 +237,7 @@ class DeathBatchRevivalTest {
     @Test void adminCanPregrantOfflineHumanAndMonsterKillRewardAddsToExistingCredits() {
         var engine = fixture(GameMode.HARDCORE, human(human, false), human(other, true), monster(true, false));
         apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, human, 1, 0, 3));
-        apply(engine, engine.proposeHardcoreDeath(UUID.randomUUID(), human, 1));
+        apply(engine, batch(engine, new RoundDeath(human, 1, 0, Optional.empty())));
         assertEquals(3, engine.view().participants().get(human).revivalCharges());
         apply(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 0, 4));
         apply(engine, batch(engine, death(engine, other, origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.SUMMON))));
@@ -305,8 +305,8 @@ class DeathBatchRevivalTest {
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         var explosion = origin(monster, ParticipantRole.MONSTER_DEPLOYED, AttackKind.CREEPER);
         clock.seconds(2);
-        var humanDeath = death(engine, human, explosion);
-        var transition = batch(engine, humanDeath, death(engine, other, explosion), death(engine, monster, null));
+        var humanLethal = death(engine, human, explosion);
+        var transition = batch(engine, humanLethal, death(engine, other, explosion), death(engine, monster, null));
         assertFalse(engine.view().participants().get(monster).revivalEntitled());
         assertEquals(RoundPhase.RUNNING, engine.view().phase());
         apply(engine, transition);
@@ -318,7 +318,7 @@ class DeathBatchRevivalTest {
         assertEquals(30_000_000_000L, rewarded.monsterCooldownNanos());
         assertTrue(engine.view().participants().get(human).role().isMonster());
         assertTrue(engine.view().participants().get(other).role().isMonster());
-        assertThrows(IllegalStateException.class, () -> batch(engine, humanDeath));
+        assertThrows(IllegalStateException.class, () -> batch(engine, humanLethal));
     }
 
     @Test void offlineLobbySummonOwnerEarnsAndOfflineHumanTurnsTheLastDeathIntoAReconnectRescue() {

@@ -260,32 +260,18 @@ public final class RoundEngine {
         return proposal(eventId, ready ? "READY" : "UNREADY", before, phase, remaining, players, before.result(), false);
     }
 
-    public RoundTransition proposeNormalDeath(UUID eventId, UUID playerId, int expectedLifeSequence) {
-        return normalIdentity(eventId, playerId, expectedLifeSequence, ParticipantRole.HUMAN_ACTIVE, ParticipantRole.HUMAN_RESPAWNING, "NORMAL_DEATH", false);
-    }
-
-    public RoundTransition proposeNormalRespawn(UUID eventId, UUID playerId, int expectedLifeSequence) {
-        return normalIdentity(eventId, playerId, expectedLifeSequence, ParticipantRole.HUMAN_RESPAWNING, ParticipantRole.HUMAN_ACTIVE, "NORMAL_RESPAWN", false);
-    }
-
     public RoundTransition proposeAdmissionRespawn(UUID eventId, UUID playerId, int expectedLifeSequence) {
-        return normalIdentity(eventId, playerId, expectedLifeSequence, ParticipantRole.HUMAN_RESPAWNING, ParticipantRole.HUMAN_ACTIVE, "NORMAL_RESPAWN", true);
-    }
-
-    /** Vanilla owns death drops; the committed server identity owns every later admission. */
-    public RoundTransition proposeHardcoreDeath(UUID eventId, UUID playerId, int expectedLifeSequence) {
         RoundSnapshot before = capture();
         requirePhase(before, RoundPhase.RUNNING);
-        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("Hardcore death requires HARDCORE mode");
+        if (before.rules().mode() != GameMode.NORMAL) throw new IllegalStateException("Normal identity event requires NORMAL mode");
         Participant player = requirePlayer(before, playerId);
-        requireLife(player, ParticipantRole.HUMAN_ACTIVE, expectedLifeSequence);
+        requireLife(player, ParticipantRole.HUMAN_RESPAWNING, expectedLifeSequence);
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
-        players.put(playerId, new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
-                player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
-                player.lifeSequence(), player.revivalCharges(), MonsterRole.ZOMBIE,
-                MonsterDimension.OVERWORLD, deployCooldownNanos(before.rules()), player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
-                becameMonster(before.rules(), player.wallet())));
-        return proposal(eventId, "HARDCORE_DEATH", before, before.phase(), 0, players, before.result(), false);
+        players.put(playerId, new Participant(player.id(), player.name(), ParticipantRole.HUMAN_ACTIVE, player.online(), false,
+                player.humanNanos(), player.joinedAtChallengeNanos(), Math.addExact(player.lifeSequence(), 1), false,
+                player.monsterRole(), player.monsterDimension(), player.monsterCooldownNanos(),
+                player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis()).awaitingAdmission());
+        return proposal(eventId, "NORMAL_RESPAWN", before, before.phase(), 0, players, before.result(), false);
     }
 
     /**
@@ -745,24 +731,6 @@ public final class RoundEngine {
             throw new IllegalStateException("Stale or offline monster deployment");
         }
         return player;
-    }
-
-    private RoundTransition normalIdentity(UUID eventId, UUID playerId, int expectedLifeSequence, ParticipantRole expected, ParticipantRole target, String type, boolean admissionPending) {
-        RoundSnapshot before = capture();
-        requirePhase(before, RoundPhase.RUNNING);
-        if (before.rules().mode() != GameMode.NORMAL) throw new IllegalStateException("Normal identity event requires NORMAL mode");
-        Participant player = requirePlayer(before, playerId);
-        requireLife(player, expected, expectedLifeSequence);
-        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
-        Participant changed = player.withRole(target);
-        if (target == ParticipantRole.HUMAN_ACTIVE) {
-            changed = new Participant(changed.id(), changed.name(), target, changed.online(), false,
-                    changed.humanNanos(), changed.joinedAtChallengeNanos(), Math.addExact(changed.lifeSequence(), 1), false,
-                    changed.monsterRole(), changed.monsterDimension(), changed.monsterCooldownNanos(), changed.monsterDeploymentSequence(), changed.monsterSkillReadyAtMillis());
-        }
-        if (admissionPending) changed = changed.awaitingAdmission();
-        players.put(playerId, changed);
-        return proposal(eventId, type, before, before.phase(), 0, players, before.result(), false);
     }
 
     /** Terminal batch hook, deliberately not exposed as a command or a dragon attribution substitute. */

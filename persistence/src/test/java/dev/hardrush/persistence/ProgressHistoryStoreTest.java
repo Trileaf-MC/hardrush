@@ -47,7 +47,7 @@ class ProgressHistoryStoreTest {
             var before = RoundSnapshotCodec.decode(store.load(round).orElseThrow().payload());
             var deadPlayer = new Participant(player,"Renamed",ParticipantRole.HUMAN_RESPAWNING,true,false,300,0,1,false);
             var dead = snapshot(before,1,RoundPhase.RUNNING,Map.of(player,deadPlayer),null,false,300);
-            var write = new SnapshotWrite(round,0,1,RoundSnapshotCodec.encode(dead),UUID.randomUUID(),"NORMAL_DEATH");
+            var write = new SnapshotWrite(round,0,1,RoundSnapshotCodec.encode(dead),UUID.randomUUID(),"DEATH_BATCH");
             assertEquals(CommitResult.APPLIED,store.commit(write)); assertEquals(CommitResult.DUPLICATE,store.commit(write));
             var respawned = new Participant(player,"RenamedAgain",ParticipantRole.HUMAN_ACTIVE,true,false,300,0,2,false);
             store.commit(new SnapshotWrite(round,1,2,RoundSnapshotCodec.encode(snapshot(dead,2,RoundPhase.RUNNING,Map.of(player,respawned),null,false,300)),UUID.randomUUID(),"NORMAL_RESPAWN"));

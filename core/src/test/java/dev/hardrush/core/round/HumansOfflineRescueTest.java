@@ -118,7 +118,8 @@ class HumansOfflineRescueTest {
 
     @Test void humanOnTheRespawnScreenStillKeepsTheRaceRunning() {
         var e = engine(GameMode.NORMAL, human(a, true), human(b, true));
-        apply(e, e.proposeNormalDeath(UUID.randomUUID(), a, 1));
+        apply(e, e.proposeDeathBatch(UUID.randomUUID(), round,
+                List.of(new RoundDeath(a, 1, 0, Optional.empty())), null));
         assertEquals(ParticipantRole.HUMAN_RESPAWNING, e.view().participants().get(a).role());
         apply(e, online(e, b, false));
         assertEquals(RoundPhase.RUNNING, e.view().phase());
