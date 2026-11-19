@@ -162,7 +162,6 @@ public final class HumanEntryGameTest {
                 .thenExecute(() -> {
                     test.assertTrue(f.server.getTickCount() - f.guideStarted >= 80, "Admission waits the vanilla portal delay");
                     test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(f.b.player), "Submitted admission ends guidance");
-                    f.b.client.withhold(TestClient.Reply.REPORT_LOADED);
                     f.place(f.b, Landing.CENTRAL); f.hold = false;
                 })
                 .thenWaitUntil(() -> f.await(!PlayerProfiles.isLocked(f.b.player) && f.idle(), "Submitted admission survives leaving the circle"))
@@ -172,9 +171,7 @@ public final class HumanEntryGameTest {
                     double far = Math.hypot(f.b.player.getX() - worlds.spawn().getX() - .5, f.b.player.getZ() - worlds.spawn().getZ() - .5);
                     test.assertTrue(f.b.player.level() == worlds.level(net.minecraft.world.level.Level.OVERWORLD) && far >= 127 && far <= 1001
                             && dev.hardrush.world.RoundWorldBundle.safeStanding(f.b.player.level(), f.b.player.blockPosition()), "A mid-round life lands in the far ring: " + far);
-                    f.b.client.acknowledge();
                     f.b.client.reportLoaded();
-                    f.b.client.resume(TestClient.Reply.REPORT_LOADED);
                 })
                 .thenWaitUntil(() -> f.await(f.hint(f.b).startsWith("你在出生点"), "The far landing's bearing reaches the action bar"))
                 .thenExecute(() -> {

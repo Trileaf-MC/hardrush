@@ -39,12 +39,12 @@ final class CampTransferFixtures {
             throwKey(donor.current(), CampKit::isCoin, false);
             f.test.assertTrue(f.session.mutationPending(), "The floor stack waits for durable debit");
             f.test.assertTrue(floor(donor.current(), CampKit::isCoin) == null, "No spendable coins spawn before commit");
-            int packets = donor.connection.packets.size();
+            int packets = donor.client.packets().size();
             // A second currency is still visible, but must not race the pending coin write.
             throwKey(donor.current(), RevivalTotems::is, true);
             f.test.assertValueEqual(LobbyRuntimeGameTest.heldTotems(donor.current()), 1,
                     "Rejected Q restores the server totem immediately, before the next tick");
-            f.test.assertTrue(donor.connection.packets.subList(packets, donor.connection.packets.size()).stream()
+            f.test.assertTrue(donor.client.packets().subList(packets, donor.client.packets().size()).stream()
                     .anyMatch(packet -> packet instanceof ClientboundContainerSetContentPacket content
                             && content.items().stream().anyMatch(RevivalTotems::is)),
                     "Rejected Q explicitly corrects the sender's predicted empty slot");
@@ -55,7 +55,7 @@ final class CampTransferFixtures {
                     floor[0] = floor(donor.current(), CampKit::isCoin);
                     floor[0].playerTouch(receiver.current());
                     f.test.assertFalse(f.session.mutationPending(), "Coins retain the native pickup delay");
-                }).thenWaitUntil(() -> f.await(receiver.connection.packets.stream().anyMatch(packet ->
+                }).thenWaitUntil(() -> f.await(receiver.client.packets().stream().anyMatch(packet ->
                         packet instanceof ClientboundAddEntityPacket added && added.getId() == floor[0].getId()),
                         "The other player's connection receives the actual coin drop entity"))
                 .thenExecute(() -> {
@@ -111,10 +111,10 @@ final class CampTransferFixtures {
                     // Even forbidden non-currency drops must undo the local client's prediction.
                     var player = donor.current();
                     player.getInventory().setItem(8, new ItemStack(Items.STICK));
-                    int packets = donor.connection.packets.size();
+                    int packets = donor.client.packets().size();
                     throwKey(player, stack -> stack.is(Items.STICK), false);
                     f.test.assertTrue(player.getInventory().getItem(8).is(Items.STICK), "Ordinary camp items remain sealed");
-                    f.test.assertTrue(donor.connection.packets.subList(packets, donor.connection.packets.size()).stream()
+                    f.test.assertTrue(donor.client.packets().subList(packets, donor.client.packets().size()).stream()
                             .anyMatch(ClientboundContainerSetContentPacket.class::isInstance), "Rejected ordinary Q also corrects client prediction");
                     player.getInventory().setItem(8, ItemStack.EMPTY);
                 });

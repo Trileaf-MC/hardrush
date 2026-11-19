@@ -8,7 +8,6 @@ import dev.hardrush.observe.Observation;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.lobby.LobbyInteractions;
-import dev.hardrush.lobby.LobbyProjections;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.LobbyWorld;
 import dev.hardrush.world.RoundWorldBundle;
@@ -73,7 +72,7 @@ public final class PersonalHuntGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterRole() == MonsterRole.SKELETON, "physical role booth"))
                 .thenExecute(() -> {
-                    var selected = f.c.selectModel(f.a);
+                    var selected = HuntInputFixtures.model(f.c.client, f.a.id());
                     HuntInputFixtures.click(f.c.player, selected.entityId(), InteractionHand.OFF_HAND);
                     test.assertTrue(f.searches().isEmpty(), "Offhand model packet cannot start search");
                     HuntInputFixtures.click(f.c.player, selected.entityId(), InteractionHand.MAIN_HAND);
@@ -533,22 +532,8 @@ public final class PersonalHuntGameTest {
                         .thenWaitUntil(() -> await(profiles.isReady(id(),round()),"profile ready "+client.name()));
             }
             void role(String role) { HuntInputFixtures.role(player,role); client.acknowledge(); }
-            LobbyProjections.Selection selectModel(Peer target) {
-                refresh(); var projections=LobbyInteractions.get(server).orElseThrow().projections();
-                var selection=projections.view(player).orElseThrow().entities().stream().filter(model -> model.target().equals(target.id())).findFirst().orElseThrow();
-                if (spawnPacket(selection.entityId()).isEmpty()) {
-                    projections.remove(player); refresh();
-                    selection=projections.view(player).orElseThrow().entities().stream().filter(model -> model.target().equals(target.id())).findFirst().orElseThrow();
-                }
-                var spawn=spawnPacket(selection.entityId()).orElseThrow();
-                HuntInputFixtures.move(player,new Vec3(spawn.getX(),spawn.getY(),spawn.getZ()-2));
-                return selection;
-            }
-            Optional<ClientboundAddEntityPacket> spawnPacket(int id) {
-                return client.packets(ClientboundAddEntityPacket.class).stream().filter(packet -> packet.getId()==id).findFirst();
-            }
-            void hunt(Peer target) { HuntInputFixtures.click(player,selectModel(target).entityId(),InteractionHand.MAIN_HAND); client.acknowledge(); }
-            void watch(Peer target) { client.listener().handleAttack(new ServerboundAttackPacket(selectModel(target).entityId())); client.acknowledge(); }
+            void hunt(Peer target) { HuntInputFixtures.hunt(client,target.id()); client.acknowledge(); }
+            void watch(Peer target) { HuntInputFixtures.watch(client,target.id()); client.acknowledge(); }
             void input(Input keys) { player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(keys)); client.acknowledge(); }
             void disconnect() { client.disconnect(Component.literal("personal hunt reconnect fixture")); player=null; }
         }
