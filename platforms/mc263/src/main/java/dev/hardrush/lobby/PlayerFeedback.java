@@ -58,7 +58,7 @@ public final class PlayerFeedback {
         else if (displaying && round.result().kind() == RoundResult.Kind.FAILED) text = "挑战失败，等待下一局";
         else text = displaying ? RoundResultText.stageLabel(round.result(), celebrating ? "通关庆祝" : "挑战成功") : "";
         stageBar.setName(Notices.bar(text));
-        long total = rescue ? round.rules().combatValues().get("round.rescueMillis").longValue() : completed
+        long total = rescue ? round.awaitingReconnect() ? RoundEngine.reconnectMillis(round.rules()) : RoundEngine.rescueMillis(round.rules()) : completed
                 ? RoundEngine.successCelebrationMillis(round.rules()) : round.rules().failureDisplayMillis();
         stageBar.setProgress(recovery ? 0 : Math.max(0, Math.min(1, (float) round.remainingPhaseMillis() / Math.max(1, total))));
         stageBar.setVisible(visible);
@@ -75,11 +75,10 @@ public final class PlayerFeedback {
         if (server.getTickCount() % 5 == 0) stage(server, r);
         long now = System.nanoTime() / 1_000_000;
         boolean frozen = session.competitionLocked();
-        long humans = r.participants().values().stream().filter(p -> p.role().isActiveHuman()).count();
         var lobby = LobbyWorld.open(server);
         for (var player : server.getPlayerList().getPlayers()) {
             var hints = router.hints(player); var p = r.participants().get(player.getUUID());
-            for (var source : java.util.List.of("profile", "away", "celebration")) hints.clear(source);
+            for (var source : java.util.List.of("profile", "celebration")) hints.clear(source);
             if (!LobbyWorld.isLobby(player.level())) { hints.clear("assembly"); hints.clear("facility"); }
             if (p == null || p.role() != ParticipantRole.MONSTER_LOBBY) { hints.clear("hunt"); hints.clear("hunt-target"); hints.clear("hunt-guide"); }
             if (!dev.hardrush.lobby.LobbyRuntime.channeling(player)) hints.clear("return");
@@ -94,10 +93,7 @@ public final class PlayerFeedback {
                     && dev.hardrush.core.round.MonsterCoins.enabled(r.rules());
             if (holdsTotem && !suspended && lobby.ready() && LobbyWorld.isLobby(player.level()) && server.getTickCount() % 10 == 0) altarBeam(player, lobby);
             dev.hardrush.world.FarLandings.arrived(player).ifPresent(text -> hints.offer("landing", LobbyHints.Priority.TARGET, text, now + 6000));
-            // Rescue speaks through its stage bar, and totem holders see the altar beam. Only a restored round
-            // still waits for its offline humans while running; see RoundEngine.live.
-            if (r.phase() == RoundPhase.RUNNING && humans > 0 && r.onlineHumans() == 0)
-                hints.offer("away", LobbyHints.Priority.FACILITY, "等待人类重新上线，计时暂停 · 暂无可追猎目标", now + 300);
+            // Absent humans are waited for as a rescue, which speaks through its stage bar; see RoundEngine.live.
             if (dev.hardrush.celebration.CelebrationRuntime.arena(player)) {
                 hints.offer("celebration", LobbyHints.Priority.FACILITY, dev.hardrush.celebration.CelebrationRuntime.winner(player)
                         ? "跳进末地传送门即可结束庆祝"
