@@ -12,7 +12,6 @@ import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.player.ProfileJournal;
 import dev.hardrush.player.ProfileTagged;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.Map;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -1014,10 +1013,7 @@ public final class PlayerProfileGameTest {
                     player.setYRot(0);
                     player.setXRot(0);
                     profiles.onLogin(player);
-                    var connection = new TestConnection();
-                    new EmbeddedChannel(connection);
-                    dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player,
-                            TestClients.cookie(profile)));
+                    new TestClient(server, profile).place(player);
                     ((ProfileTagged) player).hardrush$isolated(true);
                     profiles.onConnected(player);
                     profiles.tick(round);

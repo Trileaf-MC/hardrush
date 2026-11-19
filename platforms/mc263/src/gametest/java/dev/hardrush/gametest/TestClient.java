@@ -16,8 +16,13 @@ import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
+import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
+import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
+import net.minecraft.network.protocol.game.ClientboundLoginPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
+import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
@@ -29,7 +34,6 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -39,12 +43,16 @@ import net.minecraft.world.phys.Vec3;
  * client runs on its own. At the end of every server tick, and whenever a test calls {@link #acknowledge()}, the
  * client:
  * <ul>
- *   <li>accepts every teleport the server sent, in order ({@link Reply#ACCEPT_TELEPORTS});</li>
- *   <li>reports that it has loaded the level after each accepted teleport, and whenever the server waits for that
- *   ({@link Reply#REPORT_LOADED}). HardRush waits for a fresh report after every level change and counts it only once
- *   the teleport that follows the respawn is accepted, so the report always follows the acceptance;</li>
- *   <li>confirms every finished chunk batch, so the server keeps streaming its view ({@link Reply#CONFIRM_CHUNK_BATCHES}).</li>
+ *   <li>accepts every teleport the server sent, in order, at its destination ({@link Reply#ACCEPT_TELEPORTS});</li>
+ *   <li>reports once that it has loaded the level, after a login or respawn packet, once the server has started
+ *   sending that level's chunks ({@code LEVEL_CHUNKS_LOAD_START}) and every teleport so far is accepted, as the vanilla
+ *   loading screen does ({@link Reply#REPORT_LOADED});</li>
+ *   <li>confirms every finished chunk batch, so the server keeps streaming its view ({@link Reply#CONFIRM_CHUNK_BATCHES});</li>
+ *   <li>answers every keep-alive challenge, which matters to tests that {@linkplain #tickConnection() tick the
+ *   connection} ({@link Reply#ANSWER_KEEP_ALIVE}).</li>
  * </ul>
+ * The client never sees chunk contents, so unlike the vanilla loading screen it does not wait for the chunk it stands
+ * in.
  * A client that misses any of these differs from a real one in ways that surface only as flaky timeouts: a position
  * that never settles, or chunks and entities that stop arriving. A test of exactly such an abnormal client
  * {@linkplain #withhold(Reply...) withholds} the reply it is about and sends it by hand when it chooses.
@@ -54,7 +62,8 @@ import net.minecraft.world.phys.Vec3;
  *   <li>{@link #beginLogin()} / {@link #finishLogin()} (or {@link #login(GameTestHelper, GameTestSequence)}): the native
  *   configuration-phase login, so HardRush manages the player exactly as on a real server;</li>
  *   <li>{@link #place(ServerLevel)}: a fixture-only player placed straight into a level, outside HardRush's player
- *   profiles;</li>
+ *   profiles; {@link #place(ServerPlayer)} places one a fixture prepared itself, for tests of what happens before
+ *   registration;</li>
  *   <li>{@link #attach(ServerPlayer)}: a client connection for a player some other fixture already created.</li>
  * </ul>
  *
@@ -63,9 +72,12 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class TestClient implements AutoCloseable {
     /** What a vanilla client answers on its own. */
-    public enum Reply { ACCEPT_TELEPORTS, REPORT_LOADED, CONFIRM_CHUNK_BATCHES }
+    public enum Reply { ACCEPT_TELEPORTS, REPORT_LOADED, CONFIRM_CHUNK_BATCHES, ANSWER_KEEP_ALIVE }
 
     private enum Mode { LOGIN, PLACED, ATTACHED }
+
+    /** A teleport as the client applies it: the absolute destination, which the server reached before sending it. */
+    private record Teleport(int id, Vec3 position, float yRot, float xRot) {}
 
     private static final Set<TestClient> LIVE = ConcurrentHashMap.newKeySet();
     private static final AtomicInteger NAMES = new AtomicInteger();
@@ -82,9 +94,15 @@ public final class TestClient implements AutoCloseable {
     private EmbeddedChannel channel;
     private ServerGamePacketListenerImpl listener;
     private ServerGamePacketListenerImpl replaced;
-    /** Written by the connection as packets arrive, consumed by {@link #acknowledge()}. */
-    private final ConcurrentLinkedQueue<ClientboundPlayerPositionPacket> pendingTeleports = new ConcurrentLinkedQueue<>();
+    /** The player being placed, before its listener exists. */
+    private ServerPlayer placing;
+    // Written by the connection as packets arrive, consumed by acknowledge().
+    private final ConcurrentLinkedQueue<Teleport> pendingTeleports = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<Long> pendingKeepAlives = new ConcurrentLinkedQueue<>();
     private final AtomicInteger pendingChunkBatches = new AtomicInteger();
+    /** Between a login or respawn packet and the loaded report: the vanilla client's loading screen. */
+    private volatile boolean levelLoading;
+    private volatile boolean levelChunksStarted;
 
     public TestClient(MinecraftServer server, GameProfile profile) {
         this.server = server;
@@ -145,11 +163,22 @@ public final class TestClient implements AutoCloseable {
 
     /** Places a fixture-only player into {@code level}, outside HardRush's player profiles. */
     public ServerPlayer place(ServerLevel level) {
+        return place(new ServerPlayer(server, level, profile, TestClients.information(viewDistance)));
+    }
+
+    /**
+     * Places a player object the fixture constructed and prepared itself (loaded data, login hooks), outside HardRush's
+     * player profiles. It must carry this client's profile.
+     */
+    public ServerPlayer place(ServerPlayer player) {
         requireOffline();
+        if (!player.getUUID().equals(profile.id())) throw new IllegalArgumentException("Player " + player.getUUID() + " is not " + profile.name());
         open(Mode.PLACED);
-        var player = new ServerPlayer(server, level, profile, TestClients.information(viewDistance));
-        UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player,
-                TestClients.cookie(profile, viewDistance)));
+        placing = player;
+        try {
+            UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player,
+                    TestClients.cookie(profile, viewDistance)));
+        } finally { placing = null; }
         joined(player.connection);
         return player;
     }
@@ -160,6 +189,9 @@ public final class TestClient implements AutoCloseable {
         open(Mode.ATTACHED);
         replaced = player.connection;
         player.connection = new ServerGamePacketListenerImpl(server, connection, player, TestClients.cookie(player.getGameProfile(), viewDistance));
+        // The player already stands in its level, but this new connection has not reported it loaded.
+        levelLoading = true;
+        levelChunksStarted = true;
         joined(player.connection);
         return player;
     }
@@ -234,9 +266,10 @@ public final class TestClient implements AutoCloseable {
     /** Sends now whatever replies the client has not withheld, instead of waiting for the end of the tick. */
     public void acknowledge() {
         if (!live()) return;
+        if (!withheld.contains(Reply.ANSWER_KEEP_ALIVE)) answerKeepAlives();
         if (!withheld.contains(Reply.CONFIRM_CHUNK_BATCHES)) confirmChunkBatches();
-        boolean arrived = !withheld.contains(Reply.ACCEPT_TELEPORTS) && acceptTeleport();
-        if (!withheld.contains(Reply.REPORT_LOADED) && (arrived || pendingTeleports.isEmpty() && !listener.hasClientLoaded())) reportLoaded();
+        if (!withheld.contains(Reply.ACCEPT_TELEPORTS)) acceptTeleport();
+        if (!withheld.contains(Reply.REPORT_LOADED) && levelLoading && levelChunksStarted && pendingTeleports.isEmpty()) reportLoaded();
     }
 
     /**
@@ -250,24 +283,39 @@ public final class TestClient implements AutoCloseable {
         for (int count = pendingTeleports.size(); count > 0; count--) {
             var teleport = pendingTeleports.poll();
             if (teleport == null) break;
-            var player = listener.player;
-            var arrival = PositionMoveRotation.calculateAbsolute(PositionMoveRotation.of(player), teleport.change(), teleport.relatives());
-            accept(teleport.id(), arrival.position(), arrival.yRot(), arrival.xRot());
+            accept(teleport);
         }
         return true;
     }
 
-    /** Accepts one particular teleport id, even a stale one, at the player's current position. */
+    /**
+     * Accepts one particular teleport id, which no longer waits for the automatic reply. An id the client never received
+     * (a stale or invented one, for tests of the server's checks) goes out at the player's current position.
+     */
     public void acceptTeleport(int id) {
+        for (var teleport : pendingTeleports) {
+            if (teleport.id() == id && pendingTeleports.remove(teleport)) { accept(teleport); return; }
+        }
         var player = listener.player;
-        accept(id, player.position(), player.getYRot(), player.getXRot());
+        accept(new Teleport(id, player.position(), player.getYRot(), player.getXRot()));
     }
 
-    private void accept(int id, Vec3 position, float yRot, float xRot) {
-        listener.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(id, position.x, position.y, position.z, yRot, xRot));
+    private void accept(Teleport teleport) {
+        var position = teleport.position();
+        listener.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(teleport.id(), position.x, position.y, position.z,
+                teleport.yRot(), teleport.xRot()));
     }
 
-    public void reportLoaded() { listener.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket()); }
+    /** The loading screen closes: the client reports the level loaded. */
+    public void reportLoaded() {
+        levelLoading = false;
+        listener.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+    }
+
+    public void answerKeepAlives() {
+        if (!live()) return;
+        for (Long challenge; (challenge = pendingKeepAlives.poll()) != null; ) listener.handleKeepAlive(new ServerboundKeepAlivePacket(challenge));
+    }
 
     public void confirmChunkBatches() {
         if (!live()) return;
@@ -310,7 +358,10 @@ public final class TestClient implements AutoCloseable {
     private void open(Mode mode) {
         this.mode = mode;
         pendingTeleports.clear();
+        pendingKeepAlives.clear();
         pendingChunkBatches.set(0);
+        levelLoading = false;
+        levelChunksStarted = false;
         connection = new TestConnection(this::observe);
         channel = new EmbeddedChannel(connection);
     }
@@ -322,8 +373,28 @@ public final class TestClient implements AutoCloseable {
     }
 
     private void observe(Packet<?> packet) {
-        if (packet instanceof ClientboundPlayerPositionPacket position) pendingTeleports.add(position);
-        else if (packet instanceof ClientboundChunkBatchFinishedPacket) pendingChunkBatches.incrementAndGet();
+        switch (packet) {
+            case ClientboundPlayerPositionPacket position -> pendingTeleports.add(arrival(position));
+            case ClientboundChunkBatchFinishedPacket ignored -> pendingChunkBatches.incrementAndGet();
+            case ClientboundKeepAlivePacket keepAlive -> pendingKeepAlives.add(keepAlive.getId());
+            case ClientboundLoginPacket ignored -> { levelLoading = true; levelChunksStarted = false; }
+            case ClientboundRespawnPacket ignored -> { levelLoading = true; levelChunksStarted = false; }
+            case ClientboundGameEventPacket event when event.getEvent() == ClientboundGameEventPacket.LEVEL_CHUNKS_LOAD_START -> levelChunksStarted = true;
+            default -> { }
+        }
+    }
+
+    /**
+     * The server moves the player before it sends the position packet, so the player's position at that moment is the
+     * absolute destination, relative flags already applied. Before the player's listener exists only absolute
+     * teleports arrive, which name their destination.
+     */
+    private Teleport arrival(ClientboundPlayerPositionPacket packet) {
+        var player = listener != null ? listener.player : placing;
+        if (player != null) return new Teleport(packet.id(), player.position(), player.getYRot(), player.getXRot());
+        if (!packet.relatives().isEmpty()) throw new IllegalStateException("Relative teleport " + packet.id() + " before " + profile.name() + " has a player");
+        var change = packet.change();
+        return new Teleport(packet.id(), change.position(), change.yRot(), change.xRot());
     }
 
     private void release() {

@@ -1,6 +1,8 @@
 package dev.hardrush.gametest;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -20,12 +22,16 @@ import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
  * distance, and keeping several hundred chunk payloads per client only costs memory; the batch boundaries that
  * {@link TestClient} confirms are still recorded.
  *
+ * <p>A send that carries a completion listener completes at once, as a socket would once the packet was written:
+ * vanilla closes a kicked player's connection from the listener of its disconnect packet.
+ *
  * <p>Tests normally reach this through {@link TestClient}. Use it directly only for a connection the test builds by
  * hand on purpose, for example to swap a connection halfway through an exceptional path.
  */
 public final class TestConnection extends Connection {
     private final List<Packet<?>> packets = Collections.synchronizedList(new ArrayList<>());
     private final Consumer<Packet<?>> observer;
+    private Channel channel;
 
     public TestConnection() { this(packet -> {}); }
 
@@ -57,7 +63,17 @@ public final class TestConnection extends Connection {
         }
     }
 
+    @Override public void channelActive(ChannelHandlerContext context) throws Exception {
+        super.channelActive(context);
+        channel = context.channel();
+    }
+
     @Override public void send(Packet<?> packet) { record(packet); }
-    @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-    @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
+    @Override public void send(Packet<?> packet, ChannelFutureListener listener) { send(packet, listener, true); }
+    @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) {
+        record(packet);
+        if (listener == null || channel == null) return;
+        try { listener.operationComplete(channel.newSucceededFuture()); }
+        catch (Exception error) { throw new IllegalStateException("Send listener of " + packet.type() + " failed", error); }
+    }
 }
