@@ -1,13 +1,17 @@
 package dev.hardrush.gametest;
 
 import dev.hardrush.player.ClientLevelLoad;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
+import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
+import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import net.minecraft.util.Util;
 import net.minecraft.world.level.Level;
@@ -104,8 +108,16 @@ public final class TestClientsGameTest {
         var step = new PositionMoveRotation(new Vec3(1, 0, 0), Vec3.ZERO, 0, 0);
         client.listener().teleport(step, Relative.ALL);
         client.listener().teleport(step, Relative.ALL);
-        int sent = client.packets(ClientboundPlayerPositionPacket.class).size();
+        var sentIds = client.packets(ClientboundPlayerPositionPacket.class).stream().map(ClientboundPlayerPositionPacket::id).toList();
+        int sent = sentIds.size();
         client.acknowledge();
+        // The server moved the player itself; what proves the client is the two acknowledgements it sent.
+        var accepted = client.acceptedTeleports();
+        accepted = accepted.subList(accepted.size() - 2, accepted.size());
+        test.assertValueEqual(accepted.stream().map(TestClient.Teleport::id).toList(), sentIds.subList(sent - 2, sent),
+                "Both relative teleports are acknowledged, in order");
+        test.assertTrue(accepted.get(0).position().distanceTo(start.add(1, 0, 0)) < 1.0E-6
+                && accepted.get(1).position().distanceTo(start.add(2, 0, 0)) < 1.0E-6, "Each is acknowledged at its own destination: " + accepted);
         test.assertTrue(client.connected(), "Accepting both relative teleports keeps the client connected");
         test.assertValueEqual(client.packets(ClientboundPlayerPositionPacket.class).size(), sent,
                 "No acceptance reads as moving too quickly and draws a corrective teleport");
@@ -126,7 +138,13 @@ public final class TestClientsGameTest {
         test.startSequence()
                 .thenWaitUntil(() -> test.assertTrue(!client.connected() && server.getPlayerList().getPlayer(client.id()) == null,
                         "The kicked client is disconnected and removed from the player list"))
-                .thenExecute(client::close)
+                .thenExecute(() -> {
+                    test.assertTrue(client.player() == null, "The kicked session is over, with no player left to control");
+                    client.place(test.getLevel());
+                    test.assertTrue(client.connected() && server.getPlayerList().getPlayer(client.id()) == client.player(),
+                            "The same client object joins again after the kick");
+                    client.close();
+                })
                 .thenSucceed();
     }
 
@@ -158,6 +176,8 @@ public final class TestClientsGameTest {
                     client.withhold(TestClient.Reply.REPORT_LOADED);
                     var nether = server.getLevel(Level.NETHER);
                     client.player().teleport(new TeleportTransition(nether, new Vec3(.5, 128, .5), Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
+                    // A report still in flight from the previous level: the server ignores it before the arrival is acknowledged.
+                    client.reportLoaded();
                 })
                 .thenIdle(5)
                 .thenExecute(() -> {
@@ -167,6 +187,48 @@ public final class TestClientsGameTest {
                 .thenWaitUntil(() -> test.assertTrue(ClientLevelLoad.loaded(client.player()), "The resumed client reports the new level loaded"))
                 .thenExecute(client::close)
                 .thenSucceed();
+    }
+
+    /** Two absolute teleports in one bundle: the client applies them in turn, each at the destination it names. */
+    @GameTest(maxTicks = 100)
+    public void bundledTeleportsAreAcceptedEachAtItsOwnDestination(GameTestHelper test) {
+        var client = TestClient.named(test.getLevel().getServer(), "HRBundle");
+        client.place(test.getLevel());
+        client.acknowledge();
+        var first = new Vec3(10.5, 200, 10.5);
+        var second = new Vec3(20.5, 200, 20.5);
+        // Ids the server is not waiting for, so it ignores both acknowledgements and the test sees only the client.
+        client.listener().send(new ClientboundBundlePacket(List.of(
+                ClientboundPlayerPositionPacket.of(9001, new PositionMoveRotation(first, Vec3.ZERO, 0, 0), Set.of()),
+                ClientboundPlayerPositionPacket.of(9002, new PositionMoveRotation(second, Vec3.ZERO, 0, 0), Set.of()))));
+        client.acknowledge();
+        var accepted = client.acceptedTeleports();
+        accepted = accepted.subList(accepted.size() - 2, accepted.size());
+        test.assertValueEqual(accepted.stream().map(TestClient.Teleport::id).toList(), List.of(9001, 9002), "Both bundled teleports are acknowledged, in order");
+        test.assertTrue(accepted.get(0).position().equals(first) && accepted.get(1).position().equals(second),
+                "Each is acknowledged at its own destination: " + accepted);
+        client.close();
+        test.succeed();
+    }
+
+    /** Closing an attached client after a respawn hands the new entity back to its own connection. */
+    @GameTest(maxTicks = 100)
+    public void closingAnAttachedClientAfterRespawnRestoresTheNewEntity(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var owner = TestClient.named(server, "HRAttached");
+        var player = owner.place(test.getLevel());
+        var attached = new TestClient(server, player.getGameProfile());
+        attached.attach(player);
+        player.hurtServer(test.getLevel(), player.damageSources().genericKill(), Float.MAX_VALUE);
+        attached.listener().handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+        var respawned = server.getPlayerList().getPlayer(owner.id());
+        test.assertTrue(respawned != null && respawned != player && respawned.connection == attached.listener(),
+                "The respawn replaces the entity on the attached connection");
+        attached.close();
+        test.assertTrue(respawned.connection == owner.listener() && owner.player() == respawned,
+                "The original connection takes back the respawned entity");
+        owner.close();
+        test.succeed();
     }
 
     /** Makes the connection's keep-alive timer due, instead of waiting fifteen real seconds. */

@@ -2,6 +2,8 @@ package dev.hardrush.gametest;
 
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.embedded.EmbeddedChannel;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -34,6 +36,7 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Relative;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -76,8 +79,8 @@ public final class TestClient implements AutoCloseable {
 
     private enum Mode { LOGIN, PLACED, ATTACHED }
 
-    /** A teleport as the client applies it: the absolute destination, which the server reached before sending it. */
-    private record Teleport(int id, Vec3 position, float yRot, float xRot) {}
+    /** A teleport as the client applies and acknowledges it: its id and absolute destination. */
+    public record Teleport(int id, Vec3 position, float yRot, float xRot) {}
 
     private static final Set<TestClient> LIVE = ConcurrentHashMap.newKeySet();
     private static final AtomicInteger NAMES = new AtomicInteger();
@@ -99,6 +102,7 @@ public final class TestClient implements AutoCloseable {
     // Written by the connection as packets arrive, consumed by acknowledge().
     private final ConcurrentLinkedQueue<Teleport> pendingTeleports = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<Long> pendingKeepAlives = new ConcurrentLinkedQueue<>();
+    private final List<Teleport> acceptedTeleports = Collections.synchronizedList(new ArrayList<>());
     private final AtomicInteger pendingChunkBatches = new AtomicInteger();
     /** Between a login or respawn packet and the loaded report: the vanilla client's loading screen. */
     private volatile boolean levelLoading;
@@ -222,8 +226,12 @@ public final class TestClient implements AutoCloseable {
                 release();
             }
             case ATTACHED -> {
+                // A respawn while attached moved this listener to a new entity; the original listener takes that one back.
                 var player = listener.player;
-                if (player.connection == listener) player.connection = replaced;
+                if (player.connection == listener) {
+                    replaced.player = player;
+                    player.connection = replaced;
+                }
                 release();
             }
         }
@@ -236,15 +244,21 @@ public final class TestClient implements AutoCloseable {
     public String name() { return profile.name(); }
 
     /** The player this client currently controls; a respawn replaces it. Null before joining and after leaving. */
-    public ServerPlayer player() { return listener == null ? null : listener.player; }
+    public ServerPlayer player() { settle(); return listener == null ? null : listener.player; }
 
     /** Where the test sends serverbound packets, for inputs this class has no shorthand for. */
     public ServerGamePacketListenerImpl listener() {
+        settle();
         if (listener == null) throw new IllegalStateException(profile.name() + " is not connected");
         return listener;
     }
 
-    public boolean connected() { return connection != null && connection.isConnected(); }
+    public boolean connected() { settle(); return connection != null; }
+
+    /** Every acknowledgement sent in this session, in order, automatic and manual alike. */
+    public List<Teleport> acceptedTeleports() {
+        synchronized (acceptedTeleports) { return List.copyOf(acceptedTeleports); }
+    }
 
     /** The connection of the current session, for exceptional paths that need it directly. */
     public TestConnection connection() { return connection; }
@@ -301,6 +315,7 @@ public final class TestClient implements AutoCloseable {
     }
 
     private void accept(Teleport teleport) {
+        acceptedTeleports.add(teleport);
         var position = teleport.position();
         // A real acknowledgement arrives after the server's connection tick has reset the movement baseline to where the
         // teleport put the player. Embedded connections get no such tick, so their baseline would stay wherever the
@@ -310,9 +325,12 @@ public final class TestClient implements AutoCloseable {
                 teleport.yRot(), teleport.xRot()));
     }
 
-    /** The loading screen closes: the client reports the level loaded. */
+    /**
+     * Sends a loaded report now. It completes the current load only once that level's chunks have started and every
+     * teleport is accepted; one sent earlier still belongs to the previous level, so the automatic report stays due.
+     */
     public void reportLoaded() {
-        levelLoading = false;
+        if (levelChunksStarted && pendingTeleports.isEmpty()) levelLoading = false;
         listener.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
     }
 
@@ -347,9 +365,21 @@ public final class TestClient implements AutoCloseable {
     static void tick(MinecraftServer server) {
         for (var client : LIVE) {
             if (client.server != server) continue;
-            if (client.connection == null || !client.connection.isConnected()) { LIVE.remove(client); continue; }
+            if (client.ended()) { client.release(); continue; }
             client.acknowledge();
         }
+    }
+
+    /**
+     * The session is over without the test closing it: the server closed the connection (a kick), or a placed or
+     * logged-in player left the player list and nobody of this UUID is online any more. A player of this UUID on
+     * another connection does not end it: another client may be {@linkplain #attach(ServerPlayer) attached} for now.
+     */
+    private boolean ended() {
+        if (connection == null) return false;
+        if (!connection.isConnected()) return true;
+        if (mode == Mode.ATTACHED || listener == null) return false;
+        return server.getPlayerList().getPlayer(profile.id()) == null;
     }
 
     private boolean live() {
@@ -363,6 +393,7 @@ public final class TestClient implements AutoCloseable {
         this.mode = mode;
         pendingTeleports.clear();
         pendingKeepAlives.clear();
+        acceptedTeleports.clear();
         pendingChunkBatches.set(0);
         levelLoading = false;
         levelChunksStarted = false;
@@ -389,20 +420,38 @@ public final class TestClient implements AutoCloseable {
     }
 
     /**
-     * The server moves the player before it sends the position packet, so the player's position at that moment is the
-     * absolute destination, relative flags already applied. Before the player's listener exists only absolute
-     * teleports arrive, which name their destination.
+     * The destination the client applies. Absolute components come from the packet itself, so several teleports in one
+     * bundle each keep their own. A relative component needs the position the client started from; the server moved the
+     * player before sending, so the player's position when the packet goes out already includes that offset.
+     * TODO: [Refactor] two relative teleports in one bundle both read the later position; tracking the client's own
+     * position instead needs every test-driven movement to go through this class first.
      */
     private Teleport arrival(ClientboundPlayerPositionPacket packet) {
-        var player = listener != null ? listener.player : placing;
-        if (player != null) return new Teleport(packet.id(), player.position(), player.getYRot(), player.getXRot());
-        if (!packet.relatives().isEmpty()) throw new IllegalStateException("Relative teleport " + packet.id() + " before " + profile.name() + " has a player");
         var change = packet.change();
-        return new Teleport(packet.id(), change.position(), change.yRot(), change.xRot());
+        var relatives = packet.relatives();
+        if (relatives.stream().noneMatch(PLACEMENT_FLAGS::contains)) return new Teleport(packet.id(), change.position(), change.yRot(), change.xRot());
+        var player = listener != null ? listener.player : placing;
+        if (player == null) throw new IllegalStateException("Relative teleport " + packet.id() + " before " + profile.name() + " has a player");
+        var target = change.position();
+        return new Teleport(packet.id(), new Vec3(
+                relatives.contains(Relative.X) ? player.getX() : target.x,
+                relatives.contains(Relative.Y) ? player.getY() : target.y,
+                relatives.contains(Relative.Z) ? player.getZ() : target.z),
+                relatives.contains(Relative.Y_ROT) ? player.getYRot() : change.yRot(),
+                relatives.contains(Relative.X_ROT) ? player.getXRot() : change.xRot());
+    }
+
+    /** The relative flags that change where the player ends up or faces, as opposed to its velocity. */
+    private static final Set<Relative> PLACEMENT_FLAGS = Set.of(Relative.X, Relative.Y, Relative.Z, Relative.Y_ROT, Relative.X_ROT);
+
+    /** A session the server closed (a kick) is over as soon as anyone looks, not only at the end of the tick. */
+    private void settle() {
+        if (connection != null && !connection.isConnected()) release();
     }
 
     private void release() {
         LIVE.remove(this);
+        if (channel == null) return;
         channel.finishAndReleaseAll();
         connection = null;
         channel = null;
@@ -412,6 +461,7 @@ public final class TestClient implements AutoCloseable {
     }
 
     private void requireOffline() {
+        settle();
         if (connection != null) throw new IllegalStateException(profile.name() + " is already connected");
     }
 
