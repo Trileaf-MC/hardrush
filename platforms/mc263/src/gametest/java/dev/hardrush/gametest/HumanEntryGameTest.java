@@ -212,7 +212,8 @@ public final class HumanEntryGameTest {
                 .thenExecute(() -> {
                     var plan = LobbyPlanFixtures.plan(f.server); var feet = f.a.player.blockPosition();
                     test.assertTrue(LandingRules.scatterAllowed(plan, Landing.MONSTER, LandingRules.candidates(plan, Landing.MONSTER).getFirst(),
-                            feet.getX(), feet.getY(), feet.getZ()), "A monster scatters inside the monster camp");
+                            feet.getX(), feet.getY(), feet.getZ()), "A monster scatters inside the monster camp: feet=" + feet
+                            + ", level=" + f.a.player.level().dimension().identifier() + ", camp=" + LandingRules.candidates(plan, Landing.MONSTER).getFirst());
                     f.place(f.a, Landing.RESTORE_READY);
                 })
                 .thenIdle(100)
