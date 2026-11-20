@@ -2,9 +2,7 @@ package dev.hardrush.monster;
 
 import dev.hardrush.gametest.MonsterRoleGameTest;
 import dev.hardrush.gametest.RuntimeFixtures;
-import dev.hardrush.gametest.TestClients;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
+import dev.hardrush.gametest.TestClient;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
@@ -12,13 +10,9 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -163,7 +157,7 @@ public final class MonsterDoorBreakingGameTest {
             test.runAfterDelay(20, () -> {
                 try {
                     test.assertTrue(f.level.getBlockState(f.lower).is(Blocks.OAK_DOOR), "A single punch never auto-completes");
-                    test.assertTrue(f.packets.stream().anyMatch(p -> p instanceof ClientboundBlockDestructionPacket progress
+                    test.assertTrue(f.client.packets().stream().anyMatch(p -> p instanceof ClientboundBlockDestructionPacket progress
                             && progress.getId() == ~f.player.getId() && progress.getProgress() == -1), "Missing held input clears the owner's cracks");
                     f.mining(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, f.lower);
                     held[0] = true;
@@ -189,7 +183,7 @@ public final class MonsterDoorBreakingGameTest {
             test.assertTrue(f.level.getBlockState(f.lower).is(Blocks.OAK_DOOR), "Looking without holding attack cannot break a door");
             test.assertValueEqual(f.interact(f.lower), InteractionResult.FAIL, "Old right-click activation has been removed");
             for (var pos : List.of(f.lower, f.lower.above()))
-                test.assertTrue(f.packets.stream().anyMatch(p -> p instanceof ClientboundBlockUpdatePacket update && update.getPos().equals(pos)),
+                test.assertTrue(f.client.packets().stream().anyMatch(p -> p instanceof ClientboundBlockUpdatePacket update && update.getPos().equals(pos)),
                         "Rejected right-click corrects both predicted-open halves");
             f.tick(260);
             test.assertTrue(f.level.getBlockState(f.lower).is(Blocks.OAK_DOOR), "Right-click plus looking still does not break it");
@@ -215,23 +209,23 @@ public final class MonsterDoorBreakingGameTest {
         try (var f = new Fixture(test)) {
             var speed = f.player.getAttribute(Attributes.BLOCK_BREAK_SPEED);
             speed.setBaseValue(2.5);
-            f.door(Blocks.OAK_DOOR); f.packets.clear(); f.tick(1);
+            f.door(Blocks.OAK_DOOR); f.client.clearPackets(); f.tick(1);
             test.assertValueEqual(f.player.gameMode.getGameModeForPlayer(), GameType.ADVENTURE, "Server game mode stays adventure");
             test.assertFalse(f.player.mayBuild(), "Server never grants building permission");
             test.assertValueEqual(f.player.getDestroySpeed(f.level.getBlockState(f.lower)), 0f, "Vanilla prediction cannot finish early");
             test.assertTrue(f.clientMode(GameType.SURVIVAL), "Only the owner's client receives native mining input mode");
-            test.assertTrue(f.packets.stream().anyMatch(ClientboundUpdateAttributesPacket.class::isInstance), "Zero mining speed is sent to the owner");
+            test.assertTrue(f.client.packets().stream().anyMatch(ClientboundUpdateAttributesPacket.class::isInstance), "Zero mining speed is sent to the owner");
             f.mining(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, f.lower);
-            f.player.connection.tick();
-            test.assertTrue(f.packets.stream().anyMatch(ClientboundBlockChangedAckPacket.class::isInstance), "Native handler acknowledges prediction sequences");
+            f.client.tickConnection();
+            test.assertTrue(f.client.packets().stream().anyMatch(ClientboundBlockChangedAckPacket.class::isInstance), "Native handler acknowledges prediction sequences");
             f.hold(50);
-            test.assertTrue(f.packets.stream().anyMatch(p -> p instanceof ClientboundBlockDestructionPacket progress
+            test.assertTrue(f.client.packets().stream().anyMatch(p -> p instanceof ClientboundBlockDestructionPacket progress
                     && progress.getId() == ~f.player.getId() && progress.getProgress() > 0), "Owner gets cracks under an ID distinct from local mining");
             f.mining(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, f.lower);
-            test.assertTrue(f.packets.getLast() instanceof ClientboundBlockUpdatePacket, "Release resynchronizes the door");
-            test.assertTrue(f.packets.stream().anyMatch(p -> p instanceof ClientboundBlockDestructionPacket progress
+            test.assertTrue(f.client.packets().getLast() instanceof ClientboundBlockUpdatePacket, "Release resynchronizes the door");
+            test.assertTrue(f.client.packets().stream().anyMatch(p -> p instanceof ClientboundBlockDestructionPacket progress
                     && progress.getId() == ~f.player.getId() && progress.getProgress() == -1), "Release clears owner progress");
-            f.packets.clear(); MonsterDoorBreaking.refreshInput(f.player);
+            f.client.clearPackets(); MonsterDoorBreaking.refreshInput(f.player);
             test.assertTrue(f.clientMode(GameType.SURVIVAL), "Cosmetic respawn can restore the active input mode");
             f.player.setYRot(180); f.tick(1);
             test.assertValueEqual(speed.getValue(), 2.5, "Looking away restores the original attribute without overwriting its base");
@@ -249,19 +243,13 @@ public final class MonsterDoorBreakingGameTest {
         final BlockPos lower;
         final Difficulty difficulty;
         final boolean mobGriefing;
-        final ServerGamePacketListenerImpl originalConnection;
-        final EmbeddedChannel channel;
-        final ArrayList<Packet<?>> packets;
+        final TestClient client;
         int sequence;
 
         Fixture(GameTestHelper test) {
             player = MonsterRoleGameTest.actor(test); level = player.level(); lower = player.blockPosition().south();
-            originalConnection = player.connection;
-            var connection = new RecordingConnection();
-            channel = new EmbeddedChannel(connection); packets = connection.packets;
-            player.connection = new ServerGamePacketListenerImpl(level.getServer(), connection, player,
-                    TestClients.cookie(player.getGameProfile()));
-            player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+            client = new TestClient(level.getServer(), player.getGameProfile());
+            client.attach(player);
             difficulty = level.getDifficulty(); mobGriefing = level.getGameRules().get(GameRules.MOB_GRIEFING);
             level.getServer().setDifficulty(Difficulty.HARD, true); griefing(true);
             MonsterRoles.select(player, "zombie"); emptyHand(); faceDoor();
@@ -278,7 +266,7 @@ public final class MonsterDoorBreakingGameTest {
         }
         boolean use() { return MonsterDoorBreaking.start(player, lower); }
         boolean clientMode(GameType mode) {
-            return packets.stream().anyMatch(p -> p instanceof ClientboundGameEventPacket game
+            return client.packets().stream().anyMatch(p -> p instanceof ClientboundGameEventPacket game
                     && game.getEvent() == ClientboundGameEventPacket.CHANGE_GAME_MODE && game.getParam() == mode.getId());
         }
         InteractionResult interact(BlockPos clicked) {
@@ -301,22 +289,10 @@ public final class MonsterDoorBreakingGameTest {
         }
         @Override public void close() {
             MonsterRoles.clear(player);
-            player.connection = originalConnection;
-            channel.finishAndReleaseAll();
+            client.close();
             MonsterRoleGameTest.remove(player);
             level.getServer().setDifficulty(difficulty, true); griefing(mobGriefing);
         }
     }
 
-    private static final class RecordingConnection extends Connection {
-        final ArrayList<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        private void record(Packet<?> packet) {
-            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record);
-            else packets.add(packet);
-        }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
-    }
 }

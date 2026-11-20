@@ -21,8 +21,6 @@ import dev.hardrush.book.WrittenBookPort;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.LobbyWorld;
 import dev.hardrush.lobby.LobbyMenus;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,15 +33,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.config.PrepareSpawnTask;
-import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
@@ -142,7 +135,7 @@ public final class LobbyFoundationGameTest {
         }
         /** Rule books the lectern has shown so far: the open-book packets on the recorded connection. */
         int rulesOpened() {
-            return (int) f.a.connection.packets.stream().filter(net.minecraft.network.protocol.game.ClientboundOpenBookPacket.class::isInstance).count();
+            return f.a.client.packets(ClientboundOpenBookPacket.class).size();
         }
         void place(BlockPos pos, net.minecraft.world.level.block.Block block) {
             // Fixture terrain only; production protection is restored BEFORE any input packet.
@@ -204,12 +197,11 @@ public final class LobbyFoundationGameTest {
             test.assertValueEqual(aView.entities().size(), 20, "A sees 20 full models");
             test.assertValueEqual(bView.entities().size(), 1, "B independently sees page 2");
             var first = aView.entities().getFirst();
-            test.assertTrue(f.a.connection.packets.stream().filter(ClientboundSetEntityDataPacket.class::isInstance)
-                    .map(ClientboundSetEntityDataPacket.class::cast).filter(p -> p.id() == first.entityId())
+            test.assertTrue(f.a.client.packets(ClientboundSetEntityDataPacket.class).stream().filter(p -> p.id() == first.entityId())
                     .flatMap(p -> p.packedItems().stream()).anyMatch(d -> d.value() instanceof ResolvableProfile profile
                             && profile.partialProfile().equals(f.a.profile)), "Native metadata retains the entire ORIGINAL profile including textures");
-            var data = f.a.connection.packets.stream().filter(ClientboundSetEntityDataPacket.class::isInstance)
-                    .map(ClientboundSetEntityDataPacket.class::cast).filter(p -> p.id() == first.entityId()).findFirst().orElseThrow();
+            var data = f.a.client.packets(ClientboundSetEntityDataPacket.class).stream()
+                    .filter(p -> p.id() == first.entityId()).findFirst().orElseThrow();
             var wire = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), f.server.registryAccess());
             try {
                 ClientboundSetEntityDataPacket.STREAM_CODEC.encode(wire, data);
@@ -219,7 +211,7 @@ public final class LobbyFoundationGameTest {
             } finally { wire.release(); }
             for (var id : aView.entities()) test.assertTrue(f.a.player.level().getEntity(id.entityId()) == null, "Projection has no real world entity");
             test.assertValueEqual(f.server.getPlayerList().getPlayerCount(), 2, "Models never count as real players");
-            test.assertFalse(f.b.connection.packets.stream().anyMatch(p -> p instanceof ClientboundAddEntityPacket add && add.getId() == first.entityId()), "A projection is never broadcast to B");
+            test.assertFalse(f.b.client.packets(ClientboundAddEntityPacket.class).stream().anyMatch(add -> add.getId() == first.entityId()), "A projection is never broadcast to B");
         }
         void pagination() {
             var old = aView; var bBefore = bView;
@@ -230,13 +222,13 @@ public final class LobbyFoundationGameTest {
             var nextSign = BlockPos.containing(f.a.player.position()).offset(-1,0,0);
             place(nextSign, Blocks.OAK_SIGN);
             router.registerBlock(nextSign, Blocks.OAK_SIGN, LobbyContext.DISPLAY, p -> router.projections().turn(p, 1));
-            int packetsBefore = f.b.connection.packets.size();
+            int packetsBefore = f.b.client.packets().size();
             useBlock(f.a.player, nextSign, 32, InteractionHand.MAIN_HAND);
             aView = router.projections().view(f.a.player).orElseThrow();
             test.assertValueEqual(aView.page(), 1, "Actual registered pagination-sign packet flips only this observer");
             test.assertTrue(aView.generation() != old.generation(), "Every display has a new generation");
             test.assertValueEqual(router.projections().view(f.b.player).orElseThrow(), bBefore, "A paging preserves B page and IDs");
-            test.assertValueEqual(f.b.connection.packets.size(), packetsBefore, "A paging sends no packets to B");
+            test.assertValueEqual(f.b.client.packets().size(), packetsBefore, "A paging sends no packets to B");
             moveToModel(f.a, aView.entities().getFirst().entityId());
             click(f.a.player, old.entities().getFirst().entityId());
             click(f.a.player, bView.entities().getFirst().entityId());
@@ -269,12 +261,11 @@ public final class LobbyFoundationGameTest {
             teleport(f.a.player, LobbyPlanFixtures.outsideAssembly(f.server));
         }
         void moveToModel(Fixture.Peer peer, int id) {
-            var packet = peer.connection.packets.stream().filter(ClientboundAddEntityPacket.class::isInstance)
-                    .map(ClientboundAddEntityPacket.class::cast).filter(p -> p.getId()==id).findFirst().orElseThrow();
+            var packet = peer.client.packets(ClientboundAddEntityPacket.class).stream().filter(p -> p.getId()==id).findFirst().orElseThrow();
             test.assertValueEqual(packet.getType(), EntityTypes.MANNEQUIN, "Actual native full-body entity type");
-            teleport(peer.player, new Vec3(packet.getX(),packet.getY(),packet.getZ()-2)); peer.acknowledge();
+            teleport(peer.player, new Vec3(packet.getX(),packet.getY(),packet.getZ()-2)); peer.client.acknowledge();
         }
-        void teleport(ServerPlayer p, Vec3 pos) { p.connection.teleport(pos.x,pos.y,pos.z,0,0); if (p==f.a.player) f.a.acknowledge(); else f.b.acknowledge(); }
+        void teleport(ServerPlayer p, Vec3 pos) { p.connection.teleport(pos.x,pos.y,pos.z,0,0); if (p==f.a.player) f.a.client.acknowledge(); else f.b.client.acknowledge(); }
         void click(ServerPlayer p, int id) {
             // Round-trip the vanilla 26.3 wire codec: no page/generation exists in the packet.
             var bytes = io.netty.buffer.Unpooled.buffer();
@@ -289,14 +280,17 @@ public final class LobbyFoundationGameTest {
         final MinecraftServer server;
         final AtomicLong clock = new AtomicLong(System.nanoTime());
         final AtomicReference<RoundSession.Reply> reply = new AtomicReference<>();
-        final Peer a = new Peer("LobbyMovingA"), b = new Peer("LobbyMovingB");
+        final Peer a, b;
         RoundSession session;
         java.util.concurrent.CompletableFuture<?> historyDrain;
         PlayerProfiles profiles;
         BlockPos rules;
         String lastStage;
         int stageStarted;
-        Fixture(GameTestHelper test) { this.test = test; server = test.getLevel().getServer(); }
+        Fixture(GameTestHelper test) {
+            this.test = test; server = test.getLevel().getServer();
+            a = new Peer("LobbyMovingA"); b = new Peer("LobbyMovingB");
+        }
         @SuppressWarnings("unchecked") <T> T service(String name) {
             try { var field = RoundRuntime.class.getDeclaredField(name); field.setAccessible(true); return (T) ((Map<?, ?>) field.get(null)).get(server); }
             catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
@@ -327,31 +321,29 @@ public final class LobbyFoundationGameTest {
         }
         final class Peer {
             final GameProfile profile;
-            PrepareSpawnTask prepare;
-            RecordingConnection connection;
-            EmbeddedChannel channel;
+            final TestClient client;
             ServerPlayer player;
-            int acknowledged = Integer.MIN_VALUE;
-            int batchCount;
             int observedFrom;
-            Peer(String name) { profile = new GameProfile(UUID.randomUUID(), name,
-                    new PropertyMap(ImmutableMultimap.of("textures", new Property("textures", "original-texture-" + name)))); }
+            Peer(String name) {
+                profile = new GameProfile(UUID.randomUUID(), name,
+                        new PropertyMap(ImmutableMultimap.of("textures", new Property("textures", "original-texture-" + name))));
+                client = new TestClient(server, profile);
+            }
             void login(GameTestSequence sequence) {
-                sequence.thenExecute(() -> { prepare = new PrepareSpawnTask(server, new NameAndId(profile)); prepare.start(packet -> {}); })
-                        .thenWaitUntil(() -> await(prepare.tick(), "Native login data loaded"))
+                sequence.thenExecute(client::beginLogin)
+                        .thenWaitUntil(() -> await(client.finishLogin(), "Native login data loaded"))
                         .thenExecute(() -> {
-                            connection = new RecordingConnection(); channel = new EmbeddedChannel(connection); acknowledged = Integer.MIN_VALUE; batchCount = 0;
-                            player = prepare.spawnPlayer(connection, TestClients.cookie(profile)); prepare.close(); acknowledge();
+                            player = client.player(); client.acknowledge();
                             test.assertTrue(PlayerProfiles.isLocked(player), "Native login begins in quarantine");
                             assertFrozen();
                         }).thenWaitUntil(() -> await(PlayerProfiles.canMoveInLobby(player), "Profile verification opens lobby movement"));
             }
             void assertFrozen() {
-                acknowledge();
+                client.acknowledge();
                 var position = player.position();
                 player.connection.handleMovePlayer(new ServerboundMovePlayerPacket.PosRot(position.add(.4, 0, 0), 40, 0, true, false));
                 test.assertTrue(player.position().distanceToSqr(position) < .000001 && !PlayerProfiles.canMoveInLobby(player), "Pending or failed profiles cannot move");
-                acknowledge();
+                client.acknowledge();
                 if (rules != null) {
                     player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,
                             new BlockHitResult(Vec3.atCenterOf(rules), Direction.UP, rules, false), 80));
@@ -359,7 +351,7 @@ public final class LobbyFoundationGameTest {
                 }
             }
             void move(double x, double y, float yaw, float pitch, boolean ground) {
-                acknowledge();
+                client.acknowledge();
                 var target = player.position().add(x, y, 0);
                 player.connection.handleMovePlayer(new ServerboundMovePlayerPacket.PosRot(target, yaw, pitch, ground, false));
                 player.connection.handleClientTickEnd(ServerboundClientTickEndPacket.INSTANCE);
@@ -368,7 +360,8 @@ public final class LobbyFoundationGameTest {
                         + ", mobile=" + PlayerProfiles.canMoveInLobby(player));
             }
             boolean seesMovement(ServerPlayer other, boolean position, boolean rotation) {
-                return connection.packets.subList(observedFrom, connection.packets.size()).stream().anyMatch(packet -> packet instanceof ClientboundMoveEntityPacket move
+                var packets = client.packets();
+                return packets.subList(observedFrom, packets.size()).stream().anyMatch(packet -> packet instanceof ClientboundMoveEntityPacket move
                             && move.getEntity(player.level()) == other && (!position || move.hasPosition()) && (!rotation || move.hasRotation())
                         || packet instanceof ClientboundEntityPositionSyncPacket sync && sync.id() == other.getId()
                             && (!position || sync.hasPosition()) && (!rotation || sync.hasRotation()));
@@ -379,35 +372,12 @@ public final class LobbyFoundationGameTest {
             }
             void tickConnection() {
                 if (player == null) return;
-                acknowledge();
-                // Embedded connections are not in the server's socket list. Run vanilla's
-                // connection tick/doTick exactly as a real network connection would.
-                player.connection.tick();
-            }
-            void acknowledge() {
-                if (player == null) return;
-                connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
-                        .reduce((first, last) -> last).filter(packet -> packet.id() != acknowledged).ifPresent(packet -> {
-                            acknowledged = packet.id();
-                            player.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(packet.id(), player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
-                            player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-                        });
-                int batches = (int) connection.packets.stream().filter(ClientboundChunkBatchFinishedPacket.class::isInstance).count();
-                while (batchCount < batches) { batchCount++; player.connection.handleChunkBatchReceived(new ServerboundChunkBatchReceivedPacket(64)); }
+                client.acknowledge();
+                client.tickConnection();
             }
             void disconnect() {
-                connection.disconnect(Component.literal("大厅原生重连回归")); connection.handleDisconnection(); channel.finishAndReleaseAll(); player = null;
+                client.disconnect(Component.literal("大厅原生重连回归")); player = client.player();
             }
         }
-    }
-    private static final class RecordingConnection extends Connection {
-        final ArrayList<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        void record(Packet<?> packet) {
-            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record); else packets.add(packet);
-        }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
     }
 }

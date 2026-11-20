@@ -2,15 +2,12 @@ package dev.hardrush.gametest;
 
 import dev.hardrush.development.world.DevelopmentWorlds;
 import com.mojang.authlib.GameProfile;
-import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.advancements.predicates.LocationPredicate;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtAccounter;
@@ -20,8 +17,6 @@ import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.server.network.config.PrepareSpawnTask;
-import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.clock.PackedClockStates;
 import net.minecraft.world.attribute.EnvironmentAttributes;
@@ -146,17 +141,11 @@ public final class HardRushWorldBoundaryGameTest {
         }
         var server = test.getLevel().getServer();
         // 26.3 loads player data during configuration, before PlayerList.placeNewPlayer.
-        var prepare = new PrepareSpawnTask(server, new NameAndId(profile));
-        prepare.start(packet -> {});
-        test.startSequence().thenWaitUntil(() -> test.assertTrue(prepare.tick(), "Native login spawn preparation is ready"))
+        var client = new TestClient(server, profile).unmanaged();
+        client.beginLogin();
+        test.startSequence().thenWaitUntil(() -> test.assertTrue(client.finishLogin(), "Native login spawn preparation is ready"))
                 .thenExecute(() -> {
-                    var cookie = TestClients.cookie(profile);
-                    var connection = new Connection(PacketFlow.SERVERBOUND);
-                    var channel = new EmbeddedChannel(connection);
-                    var reconnectFixture = new ServerPlayer[1];
-                    dev.hardrush.gametest.UnmanagedProfileFixtures.run(() ->
-                            reconnectFixture[0] = prepare.spawnPlayer(connection, cookie));
-                    ServerPlayer reconnected = reconnectFixture[0];
+                    ServerPlayer reconnected = client.player();
                     try {
                         test.assertTrue(reconnected.level() == nether && reconnected.position().distanceTo(position) < 0.01, "Same UUID loads the persisted round location");
                         test.assertTrue(reconnected.getInventory().getItem(0).is(Items.DIAMOND)
@@ -164,9 +153,7 @@ public final class HardRushWorldBoundaryGameTest {
                         test.assertTrue(reconnected.getRespawnConfig().respawnData().dimension().equals(nether.dimension()), "Respawn dimension survives reconnect");
                         assertAdvancement(test, reconnected, "story/enter_the_nether");
                     } finally {
-                        remove(reconnected);
-                        channel.finishAndReleaseAll();
-                        prepare.close();
+                        client.close();
                     }
                 }).thenSucceed();
     }

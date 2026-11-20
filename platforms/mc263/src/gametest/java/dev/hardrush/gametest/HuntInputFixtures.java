@@ -5,12 +5,9 @@ import dev.hardrush.lobby.LobbyInteractions;
 import dev.hardrush.lobby.LobbyProjections;
 import dev.hardrush.world.LobbyWorld;
 import dev.hardrush.lobby.LobbyRuntime;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -40,29 +37,32 @@ final class HuntInputFixtures {
         player.connection.handleUseItemOn(new ServerboundUseItemOnPacket(InteractionHand.MAIN_HAND,
                 new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false), 100));
     }
-    static LobbyProjections.Selection model(ServerPlayer player, UUID target, List<Packet<?>> packets) {
+    /** Walks up to {@code target}'s hunt model as the client sees it, from the spawn packet the client received. */
+    static LobbyProjections.Selection model(TestClient client, UUID target) {
+        var player = client.player();
         LobbyRuntime.tick(player.level().getServer());
         var projections = LobbyInteractions.get(player.level().getServer()).orElseThrow().projections();
         var selection = projections.view(player).orElseThrow().entities().stream().filter(s -> s.target().equals(target)).findFirst().orElseThrow();
-        int entity = selection.entityId();
-        if (packets.stream().noneMatch(packet -> packet instanceof ClientboundAddEntityPacket add && add.getId() == entity)) {
+        if (spawn(client, selection.entityId()) == null) {
             // Dedicated crash fixtures discard acknowledged outbound buffers. Request a fresh native display,
             // then observe its NEW spawn packet; never invent coordinates or call the hunt business directly.
             projections.remove(player); LobbyRuntime.tick(player.level().getServer());
             selection = projections.view(player).orElseThrow().entities().stream().filter(s -> s.target().equals(target)).findFirst().orElseThrow();
         }
-        int observed = selection.entityId();
-        var spawn = packets.stream().filter(ClientboundAddEntityPacket.class::isInstance).map(ClientboundAddEntityPacket.class::cast)
-                .filter(p -> p.getId() == observed).findFirst().orElseThrow();
+        var spawn = spawn(client, selection.entityId());
+        if (spawn == null) throw new IllegalStateException("The client never received the hunt model of " + target);
         move(player, new Vec3(spawn.getX(), spawn.getY(), spawn.getZ() - 2));
         return selection;
     }
-    static void hunt(ServerPlayer player, UUID target, List<Packet<?>> packets) {
-        click(player, model(player, target, packets).entityId(), InteractionHand.MAIN_HAND);
+    static void hunt(TestClient client, UUID target) {
+        click(client.player(), model(client, target).entityId(), InteractionHand.MAIN_HAND);
     }
     /** Left-click: the native attack packet a vanilla client sends for a pickable model. */
-    static void watch(ServerPlayer player, UUID target, List<Packet<?>> packets) {
-        player.connection.handleAttack(new ServerboundAttackPacket(model(player, target, packets).entityId()));
+    static void watch(TestClient client, UUID target) {
+        client.player().connection.handleAttack(new ServerboundAttackPacket(model(client, target).entityId()));
+    }
+    private static ClientboundAddEntityPacket spawn(TestClient client, int entity) {
+        return client.packets(ClientboundAddEntityPacket.class).stream().filter(add -> add.getId() == entity).findFirst().orElse(null);
     }
     static void click(ServerPlayer player, int entity, InteractionHand hand) {
         var bytes = io.netty.buffer.Unpooled.buffer();

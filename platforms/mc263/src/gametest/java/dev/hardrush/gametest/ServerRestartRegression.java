@@ -15,8 +15,6 @@ import dev.hardrush.player.ProfileTagged;
 import dev.hardrush.world.RoundWorldBundle;
 import dev.hardrush.world.RoundWorldPaths;
 import dev.hardrush.persistence.SqliteRoundStore;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -30,17 +28,12 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.*;
+import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.config.PrepareSpawnTask;
-import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -90,7 +83,7 @@ public final class ServerRestartRegression implements ModInitializer {
         final Path directory = Path.of(System.getProperty(TestProperties.RESTART_DIRECTORY));
         final Path root;
         final ArrayDeque<Step> steps = new ArrayDeque<>();
-        final Actor a = new Actor("RestartA"), b = new Actor("RestartB"), visitor = new Actor("RestartVisitor");
+        final Actor a, b, visitor;
         final JsonObject details = new JsonObject();
         final java.util.concurrent.atomic.AtomicBoolean escapedCallbacks = new java.util.concurrent.atomic.AtomicBoolean();
         final long started = System.nanoTime();
@@ -116,6 +109,7 @@ public final class ServerRestartRegression implements ModInitializer {
 
         Fixture(MinecraftServer server, boolean normalScenario) {
             this.server = server;
+            a = new Actor(server, "RestartA"); b = new Actor(server, "RestartB"); visitor = new Actor(server, "RestartVisitor");
             root = server.getWorldPath(LevelResource.ROOT);
             details.addProperty("operation", operation); details.addProperty("phase", target.name());
             details.addProperty("pid", ProcessHandle.current().pid());
@@ -207,8 +201,8 @@ public final class ServerRestartRegression implements ModInitializer {
             act("ordinary native death", () -> a.player.hurtServer(a.player.level(), a.player.damageSources().genericKill(), Float.MAX_VALUE));
             waitFor("durable death", () -> idle() && round().participants().get(a.profile.id()).role() == ParticipantRole.HUMAN_RESPAWNING);
             act("native respawn packet", () -> {
-                a.player.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
-                a.player = a.player.connection.player; acknowledge(a);
+                a.client.listener().handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+                a.player = a.client.player(); a.client.acknowledge(); a.client.clearPackets();
             });
             waitFor("second native life admitted", () -> idle() && round().participants().get(a.profile.id()).lifeSequence() == 2
                     && !PlayerProfiles.isLocked(a.player));
@@ -291,7 +285,8 @@ public final class ServerRestartRegression implements ModInitializer {
 
         void assemble(Actor actor) {
             act("stand in real assembly circle " + actor.profile.name(), () -> {
-                profiles.placeInLobby(actor.player, dev.hardrush.core.lobby.plan.Landing.RESTORE_READY); acknowledge(actor);
+                profiles.placeInLobby(actor.player, dev.hardrush.core.lobby.plan.Landing.RESTORE_READY);
+                actor.client.acknowledge(); actor.client.clearPackets();
             });
             waitFor("spatial preparation committed " + actor.profile.name(), () -> idle() && round().participants().containsKey(actor.profile.id())
                     && round().participants().get(actor.profile.id()).ready());
@@ -426,7 +421,7 @@ public final class ServerRestartRegression implements ModInitializer {
                 a.player=server.getPlayerList().getPlayer(a.profile.id());
                 return idle()&&a.player.isAlive()&&round().participants().get(a.profile.id()).role()==ParticipantRole.MONSTER_LOBBY&&profiles.isReady(a.profile.id(),round());
             });
-            act("model-directed sortie", () -> {advance(31);HuntInputFixtures.hunt(a.player,b.profile.id(),a.connection.packets);});
+            act("model-directed sortie", () -> {advance(31);hunt(a,b);});
             waitFor("persisted deployed role", () -> idle()&&round().participants().get(a.profile.id()).role()==ParticipantRole.MONSTER_DEPLOYED&&!PlayerProfiles.isLocked(a.player));
             act("native last-human attack", () -> {
                 move(a,b.player.level(),b.player.position().add(1,0,0));b.player.setHealth(1);b.player.setInvulnerableTime(0);
@@ -520,13 +515,17 @@ public final class ServerRestartRegression implements ModInitializer {
         }
 
         void login(Actor actor) {
-            act("begin native login " + actor.profile.name(), () -> { actor.prepare = new PrepareSpawnTask(server, new NameAndId(actor.profile)); actor.prepare.start(packet -> {}); });
-            waitFor("load native UUID " + actor.profile.name(), () -> actor.prepare.tick());
+            boolean[] quarantinedAtLogin = new boolean[1];
+            act("begin native login " + actor.profile.name(), actor.client::beginLogin);
+            waitFor("load native UUID " + actor.profile.name(), () -> {
+                if (!actor.client.finishLogin()) return false;
+                var player = actor.client.player();
+                quarantinedAtLogin[0] = PlayerProfiles.isLocked(player) && player.level() == LobbyWorld.open(server).holdingLevel();
+                return true;
+            });
             act("register native player " + actor.profile.name(), () -> {
-                actor.connection = new RecordingConnection(); actor.channel = new EmbeddedChannel(actor.connection);
-                actor.player = actor.prepare.spawnPlayer(actor.connection, TestClients.cookie(actor.profile)); actor.prepare.close();
-                acknowledge(actor);
-                require(PlayerProfiles.isLocked(actor.player) && actor.player.level() == LobbyWorld.open(server).holdingLevel(), "native login quarantined before world/profile verification");
+                actor.player = actor.client.player(); actor.client.acknowledge(); actor.client.clearPackets();
+                require(quarantinedAtLogin[0], "native login quarantined before world/profile verification");
             });
             waitFor("durable native profile " + actor.profile.name(), () -> profiles.isReady(actor.profile.id(), round()));
         }
@@ -651,7 +650,8 @@ public final class ServerRestartRegression implements ModInitializer {
                 require(System.nanoTime() - started < TimeUnit.MINUTES.toNanos(5)
                         && System.nanoTime() - stepStarted < TimeUnit.MINUTES.toNanos(2), "scenario timeout at " + (steps.isEmpty() ? "complete" : steps.getFirst().name()));
                 if (!operation.equals("online")) require(RoundRuntime.sessionState(server).filter(s -> s == RoundSession.State.FAILED).isEmpty(), RoundRuntime.status(server));
-                acknowledge(a); acknowledge(b);
+                a.client.acknowledge(); a.client.clearPackets();
+                b.client.acknowledge(); b.client.clearPackets();
                 var step = steps.peek();
                 if (step != null && step.work().getAsBoolean()) { steps.remove(); stepStarted = System.nanoTime(); LoggerFactory.getLogger("hardrush-round-server-restart").info("Step passed: {}", step.name()); }
             } catch (Throwable error) { failure = error; error.printStackTrace(); stopping = true; server.halt(false); }
@@ -669,12 +669,12 @@ public final class ServerRestartRegression implements ModInitializer {
             overworld.clockManager().setTotalTicks(daylight,dev.hardrush.core.combat.DuskPact.DUSK_TICKS+5_000);
             dev.hardrush.pact.DuskPactRuntime.tick(server);
         }
-        void move(Actor actor, ServerLevel level, Vec3 pos) { actor.player.teleport(new TeleportTransition(level, pos, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING)); acknowledge(actor); }
-        void acknowledge(Actor actor) {
-            if (actor.player == null || actor.player.connection == null) return;
-            actor.connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
-                    .reduce((old, packet) -> packet).ifPresent(packet -> actor.player.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(packet.id(), actor.player.getX(), actor.player.getY(), actor.player.getZ(), actor.player.getYRot(), actor.player.getXRot())));
-            actor.player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket()); actor.connection.packets.clear();
+        void move(Actor actor, ServerLevel level, Vec3 pos) {
+            actor.player.teleport(new TeleportTransition(level, pos, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
+            actor.client.acknowledge(); actor.client.clearPackets();
+        }
+        void hunt(Actor hunter, Actor target) {
+            HuntInputFixtures.hunt(hunter.client, target.profile.id());
         }
         <T> T service(String name, Class<T> type) { return type.cast(((Map<?, ?>) getStatic(RoundRuntime.class, name)).get(server)); }
     }
@@ -687,15 +687,11 @@ public final class ServerRestartRegression implements ModInitializer {
     static void set(Object owner, String name, Object value) { try { var field = owner.getClass().getDeclaredField(name); field.setAccessible(true); field.set(owner, value); } catch (Exception error) { throw new IllegalStateException(error); } }
     static final class Actor {
         final GameProfile profile;
-        ServerPlayer player; PrepareSpawnTask prepare; RecordingConnection connection; EmbeddedChannel channel;
-        Actor(String name) { profile = new GameProfile(UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes(java.nio.charset.StandardCharsets.UTF_8)), name); }
-    }
-    static final class RecordingConnection extends Connection {
-        final ArrayList<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        private void record(Packet<?> packet) { if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record); else packets.add(packet); }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
+        final TestClient client;
+        ServerPlayer player;
+        Actor(MinecraftServer server, String name) {
+            profile = new GameProfile(UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes(java.nio.charset.StandardCharsets.UTF_8)), name);
+            client = new TestClient(server, profile);
+        }
     }
 }
