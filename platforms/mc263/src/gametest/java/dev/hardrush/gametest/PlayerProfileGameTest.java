@@ -418,10 +418,9 @@ public final class PlayerProfileGameTest {
                 ServerboundPlayerActionPacket.Action.DROP_ALL_ITEMS, player.blockPosition(), Direction.UP, 0));
         test.assertTrue(player.getInventory().getItem(0).is(Items.EMERALD), "An old item cannot be dropped during archive preparation");
         profiles.tick(first);
-        var firstFailure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
         test.startSequence()
-                .thenWaitUntil(await(firstFailure, () -> test.assertTrue(profiles.isReady(player.getUUID(), first), "Archive/reset journal verified: " + profiles.failure(player.getUUID()))))
-                .thenExecute(guarded(firstFailure, () -> {
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), first), "Archive/reset journal verified: " + profiles.failure(player.getUUID())))
+                .thenExecute(() -> {
                     test.assertTrue(player.getInventory().isEmpty() && player.getEnderChestInventory().isEmpty(), "Cross-round inventory and ender storage cleared");
                     test.assertTrue(player.inventoryMenu.getCarried().isEmpty() && player.inventoryMenu.getCraftSlots().isEmpty(), "Cursor and crafting slots cleared");
                     test.assertValueEqual(player.totalExperience, 0, "Cross-round experience cleared");
@@ -444,9 +443,9 @@ public final class PlayerProfileGameTest {
                     profiles.returnToLobby(player);
                     profiles.returnToLobby(player);
                     profiles.tick(first);
-                }))
-                .thenWaitUntil(await(firstFailure, () -> test.assertTrue(profiles.isReady(player.getUUID(), first), "Same-generation suspension is durable")))
-                .thenExecute(guarded(firstFailure, () -> {
+                })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), first), "Same-generation suspension is durable"))
+                .thenExecute(() -> {
                     try {
                         var stored = new ProfileJournal(root).suspended(player.getUUID(), new ProfileJournal.Generation(first.roundId(), 1)).orElseThrow();
                         var snapshot = net.minecraft.nbt.NbtIo.readCompressed(new java.io.ByteArrayInputStream(stored), net.minecraft.nbt.NbtAccounter.defaultQuota());
@@ -466,9 +465,9 @@ public final class PlayerProfileGameTest {
                     profiles.onDisconnect(player);
                     profiles.onLogin(player);
                     profiles.tick(fourth);
-                }))
-                .thenWaitUntil(await(firstFailure, () -> test.assertTrue(profiles.isReady(player.getUUID(), fourth), "Offline player converts directly from round 1 to round 4: " + profiles.failure(player.getUUID()))))
-                .thenExecute(guarded(firstFailure, () -> {
+                })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), fourth), "Offline player converts directly from round 1 to round 4: " + profiles.failure(player.getUUID())))
+                .thenExecute(() -> {
                     test.assertTrue(player.getInventory().isEmpty() && player.getEnderChestInventory().isEmpty(), "No old item survives three offline rounds");
                     test.assertTrue(player.getRespawnConfig() == null && player.getActiveEffects().isEmpty(), "Old spawn and effects cannot leak");
                     test.assertTrue(!player.getAdvancements().getOrStartProgress(progress).hasProgress(), "No old advancement leaks");
@@ -481,7 +480,7 @@ public final class PlayerProfileGameTest {
                     } catch (Exception error) { throw new IllegalStateException(error); }
                     ((ProfileTagged) player).hardrush$isolated(false);
                     server.getPlayerList().remove(player);
-                })).thenSucceed();
+                }).thenSucceed();
     }
 
     @GameTest(maxTicks = 100)
@@ -570,42 +569,41 @@ public final class PlayerProfileGameTest {
         Runnable deliveredOnce = () -> test.assertTrue(delivery.getLast().isDone()
                 && delivery.getLast().join().value().orElse(null) == dev.hardrush.core.api.BookPort.Delivery.DELIVERED,
                 "Delivery acknowledged: " + (delivery.getLast().isDone() ? delivery.getLast().join() : "pending"));
-        var failure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
         profiles.onLogin(player);
         profiles.tick(round);
         test.startSequence()
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), round), "Fresh camp body verified")))
-                .thenExecute(guarded(failure, () -> {
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), round), "Fresh camp body verified"))
+                .thenExecute(() -> {
                     test.assertTrue(player.getInventory().isEmpty(), "A fresh life starts empty-handed");
                     delivery.add(port.deliver(automatic, player.getUUID(), book).toCompletableFuture());
-                }))
-                .thenWaitUntil(await(failure, deliveredOnce))
-                .thenExecute(guarded(failure, () -> delivery.add(port.deliver(automatic, player.getUUID(), book).toCompletableFuture())))
-                .thenWaitUntil(await(failure, deliveredOnce))
-                .thenExecute(guarded(failure, () -> {
+                })
+                .thenWaitUntil(deliveredOnce)
+                .thenExecute(() -> delivery.add(port.deliver(automatic, player.getUUID(), book).toCompletableFuture()))
+                .thenWaitUntil(deliveredOnce)
+                .thenExecute(() -> {
                     test.assertValueEqual(historyBooks(player), 1, "Retrying the same delivery adds no second book");
                     profiles.onDisconnect(player);
                     profiles.onLogin(player);
                     profiles.tick(round);
-                }))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), round), "Reconnected camp body verified: " + profiles.failure(player.getUUID()))))
-                .thenExecute(guarded(failure, () -> {
+                })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), round), "Reconnected camp body verified: " + profiles.failure(player.getUUID())))
+                .thenExecute(() -> {
                     test.assertValueEqual(historyBooks(player), 1, "The camp book survives a reconnect of a fresh body");
                     test.assertTrue(profiles.admit(player, round, test.getLevel(), position, level -> level == test.getLevel()), "Fresh life enters");
                     test.assertValueEqual(historyBooks(player), 1, "The fresh life enters with its camp book");
                     profiles.returnToLobby(player);
                     profiles.tick(round);
-                }))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), round), "Resumed camp body verified")))
-                .thenExecute(guarded(failure, () -> delivery.add(port.deliver(manual, player.getUUID(), book).toCompletableFuture())))
-                .thenWaitUntil(await(failure, deliveredOnce))
-                .thenExecute(guarded(failure, () -> {
+                })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), round), "Resumed camp body verified"))
+                .thenExecute(() -> delivery.add(port.deliver(manual, player.getUUID(), book).toCompletableFuture()))
+                .thenWaitUntil(deliveredOnce)
+                .thenExecute(() -> {
                     test.assertValueEqual(historyBooks(player), 2, "A resumed camp body receives the library copy");
                     test.assertTrue(profiles.admit(player, round, test.getLevel(), position, level -> level == test.getLevel()), "Same-round life re-enters");
                     test.assertValueEqual(historyBooks(player), 2, "Re-entry restores the suspension with the camp book in it");
                     try { profiles.close(); } catch (Exception error) { throw new IllegalStateException(error); }
                     server.getPlayerList().remove(player);
-                })).thenSucceed();
+                }).thenSucceed();
     }
 
     /** A monster or excluded camp body is rebuilt on every reconnect; its sealed camp book comes back each time. */
@@ -617,33 +615,32 @@ public final class PlayerProfileGameTest {
         var profiles = fixture.profiles;
         var monster = life(fixture.round, ParticipantRole.MONSTER_LOBBY, 1, true);
         var withdrawn = life(fixture.round, ParticipantRole.WITHDRAWN, 1, true);
-        var failure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
         test.startSequence()
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified")))
-                .thenExecute(guarded(failure, () -> test.assertTrue(profiles.enterMonsterLobby(player, monster), "Camp body becomes a lobby monster")))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), monster), "Monster lobby sealed")))
-                .thenExecute(guarded(failure, () -> fixture.deliver(fixture.automatic)))
-                .thenWaitUntil(await(failure, fixture::delivered))
-                .thenExecute(guarded(failure, () -> fixture.reconnect(monster)))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), monster), "Reconnected monster verified")))
-                .thenExecute(guarded(failure, () -> test.assertTrue(profiles.enterMonsterLobby(player, monster), "Reconnect rebuilds the monster lobby")))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), monster), "Rebuilt monster lobby sealed")))
-                .thenExecute(guarded(failure, () -> {
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified"))
+                .thenExecute(() -> test.assertTrue(profiles.enterMonsterLobby(player, monster), "Camp body becomes a lobby monster"))
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), monster), "Monster lobby sealed"))
+                .thenExecute(() -> fixture.deliver(fixture.automatic))
+                .thenWaitUntil(fixture::delivered)
+                .thenExecute(() -> fixture.reconnect(monster))
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), monster), "Reconnected monster verified"))
+                .thenExecute(() -> test.assertTrue(profiles.enterMonsterLobby(player, monster), "Reconnect rebuilds the monster lobby"))
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), monster), "Rebuilt monster lobby sealed"))
+                .thenExecute(() -> {
                     test.assertValueEqual(historyBooks(player), 1, "The monster keeps its camp book through the rebuild");
                     profiles.reconcileParticipationExit(player, withdrawn);
-                }))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), withdrawn), "Withdrawn body sealed")))
-                .thenExecute(guarded(failure, () -> {
+                })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), withdrawn), "Withdrawn body sealed"))
+                .thenExecute(() -> {
                     test.assertValueEqual(historyBooks(player), 1, "Withdrawing keeps the camp book");
                     fixture.reconnect(withdrawn);
-                }))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), withdrawn), "Reconnected withdrawn body verified")))
-                .thenExecute(guarded(failure, () -> profiles.reconcileParticipationExit(player, withdrawn)))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), withdrawn), "Rebuilt withdrawn body sealed")))
-                .thenExecute(guarded(failure, () -> {
+                })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), withdrawn), "Reconnected withdrawn body verified"))
+                .thenExecute(() -> profiles.reconcileParticipationExit(player, withdrawn))
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), withdrawn), "Rebuilt withdrawn body sealed"))
+                .thenExecute(() -> {
                     test.assertValueEqual(historyBooks(player), 1, "A withdrawn reconnect keeps exactly one camp book");
                     fixture.close();
-                })).thenSucceed();
+                }).thenSucceed();
     }
 
     /** A failed book write stays a retryable delivery; it must not block later checkpoints or a normal stop. */
@@ -654,10 +651,9 @@ public final class PlayerProfileGameTest {
         var player = fixture.player;
         var suspension = fixture.root.resolve(player.getUUID().toString()).resolve("suspended-" + fixture.round.roundId() + ".bin");
         var saved = new byte[1][];
-        var failure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
         test.startSequence()
-                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified")))
-                .thenExecute(guarded(failure, () -> {
+                .thenWaitUntil(() -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified"))
+                .thenExecute(() -> {
                     try {
                         // A non-empty directory where the suspension lives makes its atomic replacement fail.
                         saved[0] = java.nio.file.Files.readAllBytes(suspension);
@@ -665,9 +661,9 @@ public final class PlayerProfileGameTest {
                         java.nio.file.Files.createDirectories(suspension.resolve("blocker"));
                     } catch (java.io.IOException error) { throw new IllegalStateException(error); }
                     fixture.deliver(fixture.automatic);
-                }))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.last().isDone(), "Failed delivery answered")))
-                .thenExecute(guarded(failure, () -> {
+                })
+                .thenWaitUntil(() -> test.assertTrue(fixture.last().isDone(), "Failed delivery answered"))
+                .thenExecute(() -> {
                     test.assertValueEqual(fixture.last().join().outcome(), dev.hardrush.core.api.OperationResult.Outcome.RETRYABLE_FAILURE,
                             "An unsealed book stays pending");
                     try {
@@ -676,14 +672,14 @@ public final class PlayerProfileGameTest {
                         java.nio.file.Files.write(suspension, saved[0]);
                     } catch (java.io.IOException error) { throw new IllegalStateException(error); }
                     fixture.deliver(fixture.automatic);
-                }))
-                .thenWaitUntil(await(failure, fixture::delivered))
-                .thenExecute(guarded(failure, () -> {
+                })
+                .thenWaitUntil(fixture::delivered)
+                .thenExecute(() -> {
                     test.assertValueEqual(historyBooks(player), 1, "The retry seals the same book once");
                     try { fixture.profiles.flushForFullCheckpoint(); }
                     catch (Exception error) { throw new IllegalStateException("A retried book write blocked the full checkpoint", error); }
                     fixture.close();
-                })).thenSucceed();
+                }).thenSucceed();
     }
 
     /** Entry puts each crafting-table stack into a free slot, so a book may not take the last one. */
@@ -693,10 +689,9 @@ public final class PlayerProfileGameTest {
         var fixture = new BookFixture(test, GameMode.NORMAL);
         var player = fixture.player;
         var profiles = fixture.profiles;
-        var failure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
         test.startSequence()
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified")))
-                .thenExecute(guarded(failure, () -> {
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified"))
+                .thenExecute(() -> {
                     test.assertTrue(fixture.admit(), "Fresh life enters");
                     for (int slot = 0; slot < 35; slot++) player.getInventory().setItem(slot, new ItemStack(Items.COBBLESTONE, 64));
                     var table = test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1));
@@ -705,11 +700,11 @@ public final class PlayerProfileGameTest {
                     ((net.minecraft.world.inventory.CraftingMenu) player.containerMenu).getInputGridSlots().getFirst().set(new ItemStack(Items.OAK_LOG, 3));
                     profiles.returnToLobby(player);
                     profiles.tick(fixture.round);
-                }))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(profiles.isReady(player.getUUID(), fixture.round), "Resumed camp body verified")))
-                .thenExecute(guarded(failure, () -> fixture.deliver(fixture.automatic)))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.last().isDone(), "Delivery answered")))
-                .thenExecute(guarded(failure, () -> {
+                })
+                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), fixture.round), "Resumed camp body verified"))
+                .thenExecute(() -> fixture.deliver(fixture.automatic))
+                .thenWaitUntil(() -> test.assertTrue(fixture.last().isDone(), "Delivery answered"))
+                .thenExecute(() -> {
                     test.assertValueEqual(fixture.last().join().outcome(), dev.hardrush.core.api.OperationResult.Outcome.RETRYABLE_FAILURE,
                             "The last free slot stays reserved for the crafting-table input");
                     test.assertTrue(fixture.admit(), "The same life still enters: " + profiles.failure(player.getUUID()));
@@ -718,7 +713,7 @@ public final class PlayerProfileGameTest {
                     test.assertValueEqual(logs, 3, "Crafting-table input comes back");
                     test.assertValueEqual(historyBooks(player), 0, "The pending book is not smuggled in");
                     fixture.close();
-                })).thenSucceed();
+                }).thenSucceed();
     }
 
     /** After a crash the vanilla file can predate a sealed camp book; a resumed camp body still shows it, once. */
@@ -727,31 +722,30 @@ public final class PlayerProfileGameTest {
         if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var fixture = new BookFixture(test, GameMode.NORMAL);
         var player = fixture.player;
-        var failure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
         test.startSequence()
-                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified")))
-                .thenExecute(guarded(failure, () -> {
+                .thenWaitUntil(() -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified"))
+                .thenExecute(() -> {
                     test.assertTrue(fixture.admit(), "Fresh life enters");
                     fixture.profiles.returnToLobby(player);
                     fixture.profiles.tick(fixture.round);
-                }))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Resumed camp body verified")))
-                .thenExecute(guarded(failure, () -> fixture.deliver(fixture.automatic)))
-                .thenWaitUntil(await(failure, fixture::delivered))
-                .thenExecute(guarded(failure, () -> {
+                })
+                .thenWaitUntil(() -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Resumed camp body verified"))
+                .thenExecute(() -> fixture.deliver(fixture.automatic))
+                .thenWaitUntil(fixture::delivered)
+                .thenExecute(() -> {
                     // Models the vanilla .dat from before the delivery, loaded after a crash.
                     for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
                         if (dev.hardrush.book.WrittenBookPort.isHistoryBook(player.getInventory().getItem(slot))) player.getInventory().setItem(slot, ItemStack.EMPTY);
                     }
                     fixture.restart();
-                }))
-                .thenWaitUntil(await(failure, () -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Restarted camp body verified")))
-                .thenExecute(guarded(failure, () -> {
+                })
+                .thenWaitUntil(() -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Restarted camp body verified"))
+                .thenExecute(() -> {
                     test.assertValueEqual(historyBooks(player), 1, "The camp body shows the sealed book");
                     test.assertTrue(fixture.admit(), "The same life re-enters");
                     test.assertValueEqual(historyBooks(player), 1, "Re-entry gives exactly one book");
                     fixture.close();
-                })).thenSucceed();
+                }).thenSucceed();
     }
 
     /** One player, a local profile service and the real book port and saver bound to it. */
@@ -1042,20 +1036,5 @@ public final class PlayerProfileGameTest {
                 true, false, 0, 0, 1, false);
         return new RoundSnapshot(roundId, sequence, 17, 1, RulesConfig.defaults().withMode(mode), RoundPhase.RUNNING,
                 PauseReason.NONE, 0, 0, Map.of(player.getUUID(), participant), false, false, null);
-    }
-
-    private static Runnable guarded(java.util.concurrent.atomic.AtomicReference<RuntimeException> failure, Runnable action) {
-        return () -> {
-            if (failure.get() != null) throw failure.get();
-            try { action.run(); }
-            catch (RuntimeException error) { failure.compareAndSet(null, error); throw failure.get(); }
-        };
-    }
-
-    private static Runnable await(java.util.concurrent.atomic.AtomicReference<RuntimeException> failure, Runnable condition) {
-        return () -> {
-            if (failure.get() != null) throw failure.get();
-            condition.run();
-        };
     }
 }

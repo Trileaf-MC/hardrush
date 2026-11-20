@@ -1,7 +1,6 @@
 package dev.hardrush.gametest;
 
 import dev.hardrush.player.ClientLevelLoad;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -72,23 +71,23 @@ public final class TestClientsGameTest {
         var floor = arena(level);
         var alice = TestClient.named(level.getServer(), "HRAlice");
         var bob = TestClient.named(level.getServer(), "HRBob");
-        var players = new ArrayList<ServerPlayer>();
         for (var client : new TestClient[] {alice, bob}) {
             var player = client.place(level);
-            players.add(player);
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(floor.getX() + (client == alice ? -2.5 : 3.5), floor.getY() + 1, floor.getZ() + .5);
             level.getChunkSource().move(player);
             player.getInventory().setItem(player.getInventory().getSelectedSlot(), new ItemStack(client == alice ? Items.DIAMOND : Items.EMERALD));
         }
+        var floorChunk = ChunkPos.containing(floor);
         test.startSequence()
+                .thenWaitUntil(() -> test.assertTrue(level.isPositionEntityTicking(floor), "The arena is loaded"))
+                // A chunk ticks before it is ready to send (its light may still be pending), and an item that appears
+                // in a chunk a client has not received is never paired with that client afterwards unless the item
+                // or the client changes section, which a stationary fixture never does: throw only once both have it.
                 .thenWaitUntil(() -> {
-                    test.assertTrue(level.isPositionEntityTicking(floor), "The arena is loaded");
-                    // Vanilla adds an entity only for players whose client already has its chunk, and re-checks only when
-                    // the entity or the player changes section: an item thrown into a still-pending chunk is never sent.
-                    var arena = ChunkPos.containing(floor);
-                    for (var player : players) test.assertTrue(level.getChunkSource().chunkMap.isChunkTracked(player, arena.x(), arena.z()),
-                            "Both clients have received the arena chunk");
+                    var chunks = level.getChunkSource().chunkMap;
+                    test.assertTrue(chunks.isChunkTracked(alice.player(), floorChunk.x(), floorChunk.z())
+                            && chunks.isChunkTracked(bob.player(), floorChunk.x(), floorChunk.z()), "Both clients have received the arena chunk");
                 })
                 .thenExecute(() -> { alice.dropSelected(false); bob.dropSelected(false); })
                 .thenWaitUntil(() -> {

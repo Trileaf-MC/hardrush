@@ -35,7 +35,7 @@ public final class MonsterVaults {
     private static final double RANGE = 4.5;
     private static final int CYCLE_TICKS = 20, UNLOCK_TICKS = 14, EJECT_TICKS = 20, PICKUP_TICKS = 20;
 
-    private final RevivalTotems.Access access;
+    private final CampAccess access;
     private final RandomSource random = RandomSource.create();
     /** Per player, the vaults currently showing that player's active state. */
     private final Map<UUID, Map<BlockPos, Boolean>> shown = new HashMap<>();
@@ -51,9 +51,9 @@ public final class MonsterVaults {
         }
     }
 
-    private MonsterVaults(RevivalTotems.Access access) { this.access = access; }
+    private MonsterVaults(CampAccess access) { this.access = access; }
 
-    static void configure(MinecraftServer server, RevivalTotems.Access access) { INSTANCES.put(server, new MonsterVaults(access)); }
+    static void configure(MinecraftServer server, CampAccess access) { INSTANCES.put(server, new MonsterVaults(access)); }
     static void unconfigure(MinecraftServer server) { INSTANCES.remove(server); }
 
     private static final Map<ShopOffer, LobbyFunction> FUNCTIONS = Map.of(

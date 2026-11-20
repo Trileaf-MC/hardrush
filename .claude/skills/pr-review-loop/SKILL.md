@@ -1,7 +1,6 @@
 ---
 name: pr-review-loop
-description: >-
-  把分支上完成的改动送进主干的评审闭环：发 PR => 让 Codex 之类的独立评审者评审 => 把评审意见贴到 PR => 逐条核实并修复或驳回，复审，门禁满足后合并。只想要一次性的本地 diff 评审、不涉及 PR 时不要用。
+description: 仅当用户主动要求进行 PR 评审闭环的时候使用。
 ---
 
 # PR 评审闭环
@@ -10,9 +9,10 @@ description: >-
 
 ## 前提
 
+- 当前不是 Claude Cloud 等云端环境。
 - GitHub 仓库，PR 的分支和目标分支在同一个仓库里。
 - 本机有 `git`、已登录的 `gh`、`node`、`python3`。
-- 已安装 [delegate-skills](https://github.com/amElnagdy/delegate-skills)，并配置了担任评审者的 lane。默认 lane 是 `critic-codex`。评审者一律以只读方式运行，没有只读模式的实现者不能当评审者。
+- 已安装 [delegate-skills](https://github.com/amElnagdy/delegate-skills)，并配置了担任评审者的 lane。默认 lane 是 `critic-codex`。
 - 脚本是本 skill 目录下的 `scripts/pr_review.py`，下文写作 `pr_review.py`。本 skill 目录就是这份 `SKILL.md` 所在的目录，Claude Code 加载 skill 时会显示为 Base directory。从仓库内任意位置运行都可以。
 
 缺少任何一项时不要绕过，告诉用户缺什么。

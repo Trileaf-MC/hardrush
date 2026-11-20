@@ -192,6 +192,14 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
                 monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering);
     }
 
+    /** One charge spent where the human stands (a revival totem saved this life); the life itself goes on. */
+    Participant spendRevivalCharge() {
+        if (revivalCharges == 0) throw new IllegalStateException("No revival charge to spend");
+        return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
+                lifeSequence, revivalCharges - 1, monsterRole, monsterDimension,
+                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering);
+    }
+
     Participant revive(boolean admissionPending) {
         return new Participant(id, name, ParticipantRole.HUMAN_ACTIVE, online && !admissionPending,
                 false, humanNanos, joinedAtChallengeNanos, Math.addExact(lifeSequence, 1), revivalCharges - 1,
