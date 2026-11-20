@@ -203,11 +203,7 @@ public final class ProgressGameTest {
             test.assertValueEqual(writes.size(), 2, "Leaving, native death/respawn and reentry cannot recount the same UUID");
             var profile = player[0].getGameProfile();
             server.getPlayerList().remove(player[0]);
-            player[0] = new ServerPlayer(server, test.getLevel(), profile, TestClients.information());
-            var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
-            new io.netty.channel.embedded.EmbeddedChannel(connection);
-            dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player[0],
-                    TestClients.cookie(profile)));
+            player[0] = new TestClient(server, profile).place(test.getLevel());
             ProgressRuntime.tick(server);
             test.assertValueEqual(writes.size(), 2, "Same-UUID disconnected/reconnected native player does not recount End entry or completed advancements");
             test.assertValueEqual(writes.getLast().playerId(), player[0].getUUID(), "Statistics key the UUID rather than a player object or name");

@@ -25,11 +25,9 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import io.netty.channel.embedded.EmbeddedChannel;
 
 /** Test mod only. JDI suspends the actual journal worker immediately after a durable method returns. */
 public final class ProfileCrashRegression implements ModInitializer {
@@ -60,20 +58,17 @@ public final class ProfileCrashRegression implements ModInitializer {
             act("native world sentinels", this::writeWorlds);
             // Fully initialize one real login before attaching JDI, so the journal class is loaded.
             login(b);
-            act("prepare native baseline UUID", () -> { a.prepare = new PrepareSpawnTask(server, new NameAndId(a.profile)); a.prepare.start(packet -> {}); });
-            waitFor("load native baseline UUID", () -> a.prepare.tick());
+            var baseline = new TestClient(server, a.profile).unmanaged();
+            act("prepare native baseline UUID", baseline::beginLogin);
+            waitFor("load native baseline UUID", baseline::finishLogin);
             act("seed pre-HardRush native player file", () -> {
                 try {
-                    a.connection = new RecordingConnection(); a.channel = new EmbeddedChannel(a.connection);
-                    // Explicit test-artifact scope prepares a vanilla checkpoint before HardRush manages this UUID.
-                    dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> a.player = a.prepare.spawnPlayer(a.connection, TestClients.cookie(a.profile)));
-                    a.prepare.close(); acknowledge(a);
-                    var player = a.player;
+                    baseline.acknowledge();
+                    var player = baseline.player();
                     player.getInventory().setItem(4, new ItemStack(Items.DIAMOND, 13));
                     player.getEnderChestInventory().setItem(0, new ItemStack(Items.GOLD_INGOT, 17));
                     player.totalExperience = 100; player.experienceLevel = 7;
-                    a.connection.disconnect(net.minecraft.network.chat.Component.literal("Profile crash native baseline fixture"));
-                    a.connection.handleDisconnection(); a.channel.finishAndReleaseAll(); a.player = null;
+                    baseline.disconnect(net.minecraft.network.chat.Component.literal("Profile crash native baseline fixture"));
                     var loaded = server.getPlayerList().loadPlayerData(new NameAndId(a.profile)).orElseThrow();
                     require(loaded.getListOrEmpty("Inventory").size() == 1 && loaded.getIntOr("XpTotal", 0) == 100,
                             "native player storage reads the seeded original before conversion");
@@ -133,11 +128,10 @@ public final class ProfileCrashRegression implements ModInitializer {
         }
 
         void quarantinedLogin(Actor actor) {
-            act("prepare quarantined UUID", () -> { actor.prepare = new PrepareSpawnTask(server, new NameAndId(actor.profile)); actor.prepare.start(packet -> {}); });
-            waitFor("load quarantined UUID", () -> actor.prepare.tick());
+            act("prepare quarantined UUID", actor.client::beginLogin);
+            waitFor("load quarantined UUID", actor.client::finishLogin);
             act("connect quarantined UUID", () -> {
-                actor.connection = new RecordingConnection(); actor.channel = new EmbeddedChannel(actor.connection);
-                actor.player = actor.prepare.spawnPlayer(actor.connection, TestClients.cookie(actor.profile)); actor.prepare.close(); acknowledge(actor);
+                actor.player = actor.client.player(); actor.client.acknowledge(); actor.client.clearPackets();
                 require(actor.player.level() == LobbyWorld.open(server).holdingLevel() && PlayerProfiles.isLocked(actor.player), "native login stays locked in permanent lobby");
             });
         }

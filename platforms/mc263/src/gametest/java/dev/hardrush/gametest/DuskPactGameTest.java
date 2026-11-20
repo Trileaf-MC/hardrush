@@ -9,19 +9,14 @@ import dev.hardrush.pact.DuskPactData;
 import dev.hardrush.pact.DuskPactRuntime;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.combat.MonsterCombatRuntime;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
+import dev.hardrush.gametest.TestClient.Reply;
 import java.util.*;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -145,7 +140,7 @@ public final class DuskPactGameTest {
                 test.assertValueEqual(reconnected.elderGhosts().size(), 0, "Replacing a loaded connection does not replay the ghost or sound");
                 test.assertValueEqual(reconnected.titles(DuskPact.TITLE), 0L, "Replacing a loaded connection does not repeat the title");
             }
-            test.assertFalse(capture.packets.stream().anyMatch(ClientboundBossEventPacket.class::isInstance), "Daylight shows no bossbar");
+            test.assertFalse(capture.client.packets().stream().anyMatch(ClientboundBossEventPacket.class::isInstance), "Daylight shows no bossbar");
             test.assertValueEqual(DuskPactRuntime.tabLine(server).orElse(""), "黄昏契约 · 日落前暂息纷争 · 10:50", "TAB footer carries the countdown");
             DuskPactRuntime.reject(f.victim, f.attacker);
             String blocked = "黄昏契约生效中，不能攻击其他玩家 · 10:50";
@@ -177,7 +172,7 @@ public final class DuskPactGameTest {
             test.assertValueEqual(capture.subtitles(DuskPact.releasedSubtitle(true)), 1L, "Hardcore subtitle announces the hunt");
             test.assertValueEqual(capture.titles(DuskPact.TITLE), 1L, "Entry title never repeats within the round");
             test.assertValueEqual(capture.elderGhosts().size(), 1, "Warnings and pact release do not replay the entry ghost or sound");
-            test.assertFalse(capture.packets.stream().anyMatch(ClientboundSystemChatPacket.class::isInstance), "Pact never writes to public chat");
+            test.assertFalse(capture.client.packets().stream().anyMatch(ClientboundSystemChatPacket.class::isInstance), "Pact never writes to public chat");
             test.assertTrue(DuskPactRuntime.tabLine(server).isEmpty(), "TAB countdown ends with the pact");
             var encoded = DuskPactData.CODEC.encodeStart(JsonOps.INSTANCE, f.data).getOrThrow();
             f.data = DuskPactData.CODEC.parse(JsonOps.INSTANCE, encoded).getOrThrow();
@@ -257,6 +252,7 @@ public final class DuskPactGameTest {
         final UUID round = UUID.randomUUID();
         final Map<UUID, ParticipantRole> roles = new LinkedHashMap<>();
         final ServerPlayer attacker, victim;
+        final List<TestClient> clients = new ArrayList<>();
         final List<RuntimeFixtures.Scope> scopes = new ArrayList<>();
         final net.minecraft.world.clock.ClockState original;
         final net.minecraft.world.Difficulty difficulty;
@@ -286,7 +282,9 @@ public final class DuskPactGameTest {
         }
         ServerPlayer player() {
             var player = test.makeMockServerPlayerInLevel();
-            player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+            var client = new TestClient(level.getServer(), player.getGameProfile());
+            client.attach(player);
+            clients.add(client);
             player.setGameMode(GameType.SURVIVAL); player.getAbilities().invulnerable = false; player.setHealth(20);
             var position = test.absoluteVec(new Vec3(4, 4, 4));
             player.setPosRaw(position.x, position.y, position.z);
@@ -307,52 +305,41 @@ public final class DuskPactGameTest {
             clock().loadFrom(original);
             level.getServer().setDifficulty(difficulty, true);
             for (var player : List.of(attacker, victim)) level.getServer().getPlayerList().remove(player);
+            clients.forEach(TestClient::close);
         }
     }
     private static final class Capture implements AutoCloseable {
-        final ServerPlayer player;
-        final ServerGamePacketListenerImpl previous;
-        final List<Packet<?>> packets;
-        final EmbeddedChannel channel;
+        final TestClient client;
         Capture(ServerPlayer player, boolean loaded) {
-            this.player = player; previous = player.connection;
-            var connection = new RecordingConnection(); packets = connection.packets;
-            channel = new EmbeddedChannel(connection);
-            player.connection = new ServerGamePacketListenerImpl(player.level().getServer(), connection, player,
-                    TestClients.cookie(player.getGameProfile()));
+            client = new TestClient(player.level().getServer(), player.getGameProfile())
+                    .withhold(Reply.ACCEPT_TELEPORTS, Reply.REPORT_LOADED);
+            client.attach(player);
             if (loaded) loaded();
         }
-        void loaded() { player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket()); }
-        /** The native client acknowledges the last position packet it received. */
-        void arrived() {
-            arrived(packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
-                    .reduce((first, second) -> second).orElseThrow().id());
-        }
-        void arrived(int teleport) {
-            player.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(teleport,
-                    player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
-        }
+        void loaded() { client.reportLoaded(); }
+        /** The native client acknowledges every position packet it received, the last one included. */
+        void arrived() { client.acceptTeleport(); }
+        void arrived(int teleport) { client.acceptTeleport(teleport); }
         List<ClientboundGameEventPacket> elderGhosts() {
-            return packets.stream().filter(ClientboundGameEventPacket.class::isInstance).map(ClientboundGameEventPacket.class::cast)
+            return client.packets(ClientboundGameEventPacket.class).stream()
                     .filter(packet -> packet.getEvent() == ClientboundGameEventPacket.GUARDIAN_ELDER_EFFECT).toList();
         }
-        long sounds() { return packets.stream().filter(ClientboundSoundPacket.class::isInstance).count(); }
+        long sounds() { return client.packets(ClientboundSoundPacket.class).size(); }
         Object lastSound() {
-            return packets.stream().filter(ClientboundSoundPacket.class::isInstance).map(ClientboundSoundPacket.class::cast)
-                    .reduce((first, second) -> second).orElseThrow().getSound().value();
+            return client.packets(ClientboundSoundPacket.class).getLast().getSound().value();
         }
         BossView boss() {
             var state = new BossView();
-            packets.stream().filter(ClientboundBossEventPacket.class::isInstance).map(ClientboundBossEventPacket.class::cast).forEach(packet -> packet.dispatch(state));
+            client.packets(ClientboundBossEventPacket.class).forEach(packet -> packet.dispatch(state));
             return state;
         }
-        long titles(String text) { return packets.stream().filter(ClientboundSetTitleTextPacket.class::isInstance)
-                .map(ClientboundSetTitleTextPacket.class::cast).filter(packet -> packet.text().getString().equals(text)).count(); }
-        long subtitles(String text) { return packets.stream().filter(ClientboundSetSubtitleTextPacket.class::isInstance)
-                .map(ClientboundSetSubtitleTextPacket.class::cast).filter(packet -> packet.text().getString().equals(text)).count(); }
-        long actionBars(String text) { return packets.stream().filter(ClientboundSetActionBarTextPacket.class::isInstance)
-                .map(ClientboundSetActionBarTextPacket.class::cast).filter(packet -> packet.text().getString().equals(text)).count(); }
-        public void close() { player.connection = previous; channel.finishAndReleaseAll(); }
+        long titles(String text) { return client.packets(ClientboundSetTitleTextPacket.class).stream()
+                .filter(packet -> packet.text().getString().equals(text)).count(); }
+        long subtitles(String text) { return client.packets(ClientboundSetSubtitleTextPacket.class).stream()
+                .filter(packet -> packet.text().getString().equals(text)).count(); }
+        long actionBars(String text) { return client.packets(ClientboundSetActionBarTextPacket.class).stream()
+                .filter(packet -> packet.text().getString().equals(text)).count(); }
+        public void close() { client.close(); }
     }
     private static final class BossView implements ClientboundBossEventPacket.Handler {
         String name = "";
@@ -367,15 +354,5 @@ public final class DuskPactGameTest {
         @Override public void updateName(UUID id, net.minecraft.network.chat.Component text) { name = text.getString(); }
         @Override public void updateStyle(UUID id, net.minecraft.world.BossEvent.BossBarColor color, net.minecraft.world.BossEvent.BossBarOverlay overlay) { this.color = color; }
         @Override public void remove(UUID id) { active = false; }
-    }
-    private static final class RecordingConnection extends Connection {
-        final List<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        private void record(Packet<?> packet) {
-            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record); else packets.add(packet);
-        }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
     }
 }
