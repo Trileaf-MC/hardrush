@@ -4,7 +4,6 @@ import dev.hardrush.player.ClientLevelLoad;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -81,10 +80,8 @@ public final class TestClientsGameTest {
             player.getInventory().setItem(player.getInventory().getSelectedSlot(), new ItemStack(client == alice ? Items.DIAMOND : Items.EMERALD));
         }
         test.startSequence()
-                // Vanilla shows an entity only once the client has its chunk, and looks again only when one of them moves.
-                .thenWaitUntil(() -> test.assertTrue(level.isPositionEntityTicking(floor) && Stream.of(alice, bob).allMatch(client ->
-                        level.getChunkSource().chunkMap.isChunkTracked(client.player(), floor.getX() >> 4, floor.getZ() >> 4)),
-                        "Both clients have received the arena"))
+                .thenWaitUntil(() -> test.assertTrue(level.isPositionEntityTicking(floor)
+                        && alice.receivedChunksAround(floor, 0) && bob.receivedChunksAround(floor, 0), "Both clients have received the arena"))
                 .thenExecute(() -> { alice.dropSelected(false); bob.dropSelected(false); })
                 .thenWaitUntil(() -> {
                     var diamond = thrown(level, floor, Items.DIAMOND.getDefaultInstance());
