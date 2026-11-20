@@ -4,11 +4,13 @@ import dev.hardrush.core.api.DamagePort.AttackKind;
 import dev.hardrush.core.combat.*;
 import java.util.*;
 import java.util.function.Consumer;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -185,16 +187,22 @@ public final class CombatRuntime {
             var cause = current(level);
             return cause == null ? Optional.empty() : cause.origin;
         }
-        if ((source.is(DamageTypes.PLAYER_ATTACK) || source.is(DamageTypes.MOB_ATTACK)) && direct instanceof ServerPlayer) {
+        if (direct instanceof ServerPlayer && direct == source.getEntity()) {
+            // Inside this player's own weapon action, whatever damage type the weapon deals (a spear's own type, a
+            // mace smash, an item's DAMAGE_TYPE component) is that action's hit. Thorns name the wearer, not the
+            // acting player, so they never match.
             var action = current(level);
             if (action != null && action.origin.filter(origin -> origin.kind() == AttackKind.MELEE
                     && origin.actor().playerId().equals(direct.getUUID()) && origin.roundId().equals(action.roundId)).isPresent()) {
                 return action.origin;
             }
-            return created(level, direct, AttackKind.MELEE, Optional.of(direct.getUUID()));
+            if (MELEE_TYPES.stream().anyMatch(source::is)) return created(level, direct, AttackKind.MELEE, Optional.of(direct.getUUID()));
         }
         return Optional.empty();
     }
+    /** A player's own melee hit reaching damage without a weapon action around it. */
+    private static final List<ResourceKey<DamageType>> MELEE_TYPES = List.of(
+            DamageTypes.PLAYER_ATTACK, DamageTypes.MOB_ATTACK, DamageTypes.SPEAR, DamageTypes.MACE_SMASH);
     /** Only the dragon's native arrow acceptance branch may use this; the raw damage type remains unchanged. */
     public static boolean trustedHumanArrow(ServerLevel level, DamageSource source) {
         var round = round(level);
