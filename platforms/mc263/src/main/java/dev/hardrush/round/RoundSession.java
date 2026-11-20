@@ -74,6 +74,8 @@ public final class RoundSession implements AutoCloseable {
     }
 
     private static final long CHECKPOINT_NANOS = TimeUnit.SECONDS.toNanos(1);
+    /** Queued critical events beyond this fail the session (keep the save and stop the competition). */
+    private static final int EVENT_BUDGET = 256;
     private static final String ADAPTERS_PENDING =
             "世界准备与玩家档案适配器尚未接通，暂不能加入或就绪。";
 
@@ -125,6 +127,11 @@ public final class RoundSession implements AutoCloseable {
     private final Map<UUID, Map<UUID, RoundDeath>> deathBatches = new LinkedHashMap<>();
     private record DeathIdentity(int life, int deployment) {}
     private final Map<UUID, DeathIdentity> capturedDeaths = new LinkedHashMap<>();
+    // In-place revivals already performed in the world, per (player, life), whose TOTEM_SAVE event has not committed;
+    // and the queued event of each, released on that event's commit callback whatever its outcome.
+    private record TotemSaveKey(UUID player, int life) {}
+    private final Map<TotemSaveKey, Integer> totemSaves = new LinkedHashMap<>();
+    private final Map<UUID, TotemSaveKey> totemSaveEvents = new LinkedHashMap<>();
     private CompletableFuture<CommitResult> pendingRotationWrite;
     private RoundSnapshot pendingNextRound;
     private Long shutdownBoundary;
@@ -299,21 +306,88 @@ public final class RoundSession implements AutoCloseable {
      */
     public void captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId,
             Optional<CombatOrigin> killCredit, boolean recentlyHurtByPlayer) {
-        Objects.requireNonNull(killCredit);
+        captureDeath(roundId, playerId, lifeSequence, deploymentSequence, batchId, killCredit, recentlyHurtByPlayer, Optional.empty());
+    }
+
+    /**
+     * As above; {@code dropToken} names the revival totem the adapter is dropping at this death
+     * ({@link RoundDeath#dropToken}). Returns whether the death was taken into a batch: a refused death drops nothing.
+     * The batch may commit before this returns when it closes at once and the write completes on this thread.
+     */
+    public boolean captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId,
+            Optional<CombatOrigin> killCredit, boolean recentlyHurtByPlayer, Optional<UUID> dropToken) {
+        Objects.requireNonNull(killCredit); Objects.requireNonNull(dropToken);
         if (engine == null || stopping || state != State.OPEN || !roundId.equals(engine.committed().roundId())
-                || engine.committed().result() != null || terminalQueued) return;
+                || engine.committed().result() != null || terminalQueued) return false;
         var participant = engine.committed().participants().get(playerId);
         var identity = new DeathIdentity(lifeSequence, deploymentSequence);
         if (participant == null || participant.lifeSequence() != lifeSequence
                 || participant.monsterDeploymentSequence() != deploymentSequence
                 || participant.role() != ParticipantRole.HUMAN_ACTIVE && participant.role() != ParticipantRole.MONSTER_DEPLOYED
-                || identity.equals(capturedDeaths.get(playerId))) return;
+                || identity.equals(capturedDeaths.get(playerId))) return false;
         capturedDeaths.put(playerId, identity);
         UUID batch = batchId == null ? UUID.randomUUID() : batchId;
-        deathBatches.computeIfAbsent(batch, ignored -> new LinkedHashMap<>()).putIfAbsent(playerId,
-                new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.empty(), killCredit, recentlyHurtByPlayer));
+        var death = new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.empty(), killCredit, recentlyHurtByPlayer,
+                dropToken);
+        boolean taken = deathBatches.computeIfAbsent(batch, ignored -> new LinkedHashMap<>()).putIfAbsent(playerId, death) == null;
         if (batchId == null) finishDamageBatch(roundId, batch);
+        return taken;
     }
+
+    /**
+     * An active human's revival totem is about to save it in place from a lethal hit (docs/plan/复生图腾掉落.md 2.5). The
+     * world acts at once and the ledger follows, as for deaths: this decides synchronously whether the pop may happen
+     * and, when it may, queues {@code TOTEM_SAVE} on the critical event queue. A death of the same body captured
+     * afterwards (even in the same tick) closes into a batch that is queued behind it, so the charge is spent first.
+     *
+     * <p>True only when the save was queued: the session takes events (as {@link #enqueueAt} requires) within budget,
+     * the competition is not locked, the player is the committed active human of {@code lifeSequence} and still has a
+     * committed charge beyond the saves already in flight. The save then counts as in flight
+     * ({@link #pendingTotemSaves}) until its event's commit callback, whether it commits, voids or fails.
+     */
+    public boolean captureTotemSave(UUID roundId, UUID playerId, int lifeSequence, Optional<CombatOrigin> killCredit) {
+        Objects.requireNonNull(roundId); Objects.requireNonNull(playerId); Objects.requireNonNull(killCredit);
+        long now = clock.nanoTime();
+        if (stopping || state != State.OPEN || !adaptersReady || adminBoundary != null
+                || shutdownBoundary != null && now > shutdownBoundary || events.size() >= EVENT_BUDGET
+                || competitionLocked()) return false;
+        var committed = engine.committed();
+        var player = committed.participants().get(playerId);
+        if (!committed.roundId().equals(roundId) || player == null || player.role() != ParticipantRole.HUMAN_ACTIVE
+                || player.lifeSequence() != lifeSequence) return false;
+        var key = new TotemSaveKey(playerId, lifeSequence);
+        if (player.revivalCharges() - totemSaves.getOrDefault(key, 0) < 1) return false;
+        UUID eventId = UUID.randomUUID();
+        // Counted before queueing: the event may apply and even commit inside enqueueAt.
+        totemSaves.merge(key, 1, Integer::sum);
+        totemSaveEvents.put(eventId, key);
+        boolean queued = enqueueAt(now, e -> {
+            try { return e.proposeTotemSave(eventId, roundId, playerId, lifeSequence, killCredit); }
+            catch (RuntimeException error) { releaseTotemSave(eventId); throw error; }
+        });
+        if (!queued) releaseTotemSave(eventId);
+        return queued;
+    }
+
+    /** In-place revivals of the player's committed life already performed in the world but not yet committed. */
+    public int pendingTotemSaves(UUID playerId) {
+        if (engine == null || totemSaves.isEmpty()) return 0;
+        var player = engine.committed().participants().get(playerId);
+        return player == null ? 0 : totemSaves.getOrDefault(new TotemSaveKey(playerId, player.lifeSequence()), 0);
+    }
+
+    /** The player's committed revival charges not already spent by a save in flight: what the held stack shows. */
+    public int totemChargesLeft(UUID playerId) {
+        var player = engine == null ? null : engine.committed().participants().get(playerId);
+        return player == null ? 0 : Math.max(0, player.revivalCharges() - pendingTotemSaves(playerId));
+    }
+
+    private void releaseTotemSave(UUID eventId) {
+        var key = totemSaveEvents.remove(eventId);
+        if (key != null) totemSaves.computeIfPresent(key, (ignored, count) -> count > 1 ? count - 1 : null);
+    }
+
+    private void clearTotemSaves() { totemSaves.clear(); totemSaveEvents.clear(); }
 
     public void captureLethalEvidence(CombatEvent event) {
         if (!event.lethal()) return;
@@ -440,6 +514,7 @@ public final class RoundSession implements AutoCloseable {
         terminalQueued = false;
         deathBatches.clear();
         capturedDeaths.clear();
+        clearTotemSaves();
         adminBoundary = null;
         requestedRespawns.clear();
         endEntrants = 0;
@@ -755,6 +830,7 @@ public final class RoundSession implements AutoCloseable {
         nextRules = loaded.nextRules();
         endEntrants = loaded.endEntrants();
         events.clear(); queuedConnections.clear(); queuedDamage.clear(); requestedRespawns.clear(); deathBatches.clear(); capturedDeaths.clear();
+        clearTotemSaves();
         terminalCandidate = null; firstDragonId = null; terminalQueued = false;
         evidenceFailure = null; failureBoundary = null; adminBoundary = null;
         recoveringCountdown = false; adaptersReady = false; unsupportedPhase = true;
@@ -1019,6 +1095,12 @@ public final class RoundSession implements AutoCloseable {
                 lifeSequence, deploymentSequence, count), reply, "怪物币已拾取。");
     }
 
+    /** A human takes the registered floor totem {@code token}; refused (busy, frozen, taken, expired) like any action. */
+    public void requestLooseTotemPickup(UUID roundId, UUID token, UUID playerId, int lifeSequence, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeLooseTotemPickup(UUID.randomUUID(), roundId, token, playerId, lifeSequence),
+                reply, "复生图腾已拾取。");
+    }
+
     public void requestVaultOpen(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             dev.hardrush.core.round.ShopOffer key, dev.hardrush.core.round.MonsterWallet.GearSlot slot,
             java.util.Set<MonsterRole> roles, String item, Consumer<Reply> reply) {
@@ -1193,7 +1275,7 @@ public final class RoundSession implements AutoCloseable {
     private boolean enqueueAt(long time, Function<RoundEngine, RoundTransition> action) {
         if (stopping || state != State.OPEN || !adaptersReady) return false;
         if (adminBoundary != null || shutdownBoundary != null && time > shutdownBoundary) return false;
-        if (events.size() >= 256) { fail("关键事件队列超出预算", new IllegalStateException("保留存档并停止比赛")); return false; }
+        if (events.size() >= EVENT_BUDGET) { fail("关键事件队列超出预算", new IllegalStateException("保留存档并停止比赛")); return false; }
         events.add(new QueuedEvent(time, action));
         drainEvent();
         return true;
@@ -1334,6 +1416,8 @@ public final class RoundSession implements AutoCloseable {
     }
 
     private void complete(RoundTransition transition, CommitResult result, Throwable error) {
+        // Before the listener: the stack it projects is the committed balance alone, without a flicker.
+        releaseTotemSave(transition.eventId());
         if (error == null && (result == CommitResult.APPLIED || result == CommitResult.DUPLICATE)) {
             if (!engine.accept(transition)) fail("轮次提交回调标签已过期", new IllegalStateException("旧轮次回调被拒绝"));
             else if (!stopping && state != State.FAILED) {
@@ -1445,6 +1529,7 @@ public final class RoundSession implements AutoCloseable {
             }
             catch (Throwable error) { if (failure == null) failure = error; else failure.addSuppressed(error); }
             io.shutdown();
+            clearTotemSaves();
             state = State.CLOSED;
         }
         if (failure != null) throw new IllegalStateException("比赛正常停服保存未完成，请保留数据库并检查日志", failure);

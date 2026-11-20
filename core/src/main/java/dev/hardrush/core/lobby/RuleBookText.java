@@ -24,7 +24,8 @@ public final class RuleBookText {
         pages.add("开局与加入\n\n开局前走进集结区即准备，走出即取消。\n\n挑战开始后，在集结区站 4 秒可以空手中途加入，落在远离出生点的荒野，没有出生保护。");
         pages.add("离线与救场\n\n人类离线时保留资格。所有人类都离线时等待 " + seconds(RoundEngine.reconnectMillis(rules))
                 + " 秒，期间有人重连、复生或中途加入就继续，否则本轮结束。");
-        pages.add("黄昏契约\n\n开局后到第一次日落前，玩家之间不能互相伤害。");
+        pages.add("黄昏契约\n\n开局后到第一次日落前，玩家之间不能互相伤害。"
+                + (hardcore ? "\n\n日落后，人类被人类击杀时会掉落 1 个复生图腾。" : ""));
         if (!hardcore) {
             pages.add("阵亡\n\n普通模式下阵亡后按原版重生。");
         } else {
@@ -39,8 +40,10 @@ public final class RuleBookText {
             if (MonsterWorth.enabled(rules)) pages.add("身价\n\n出击时的经验等级就是身价：从 " + (long) value(rules, MonsterWorth.BASE_LEVEL, 10)
                     + " 级起，伤害人类会上涨，最高 " + (long) value(rules, MonsterWorth.MAX_LEVEL, 30) + " 级。\n\n被玩家击杀时掉出经验，满 "
                     + (long) value(rules, MonsterWorth.BOOK_MIN_LEVEL, 15) + " 级再掉一本附魔书。");
-            pages.add("复生\n\n击杀一名人类获得 1 个复生图腾。有图腾时只能去营地北侧的祭坛复生：站上金块 4 秒，空手回到挑战世界，怪物币清空。\n\n"
-                    + "图腾不能丢弃或转赠。");
+            pages.add("复生图腾\n\n人类被人类击杀会掉落 1 个，人类捡起即得；怪物击杀人类直接获得 1 个。\n\n"
+                    + "图腾不能丢弃或转赠，阵亡时自己的图腾不会掉落。");
+            pages.add("复生\n\n把复生图腾拿在手上阵亡时原地复生，消耗 1 个。\n\n"
+                    + "没拿在手上就阵亡，可到营地北侧的祭坛站上金块 4 秒复生，空手出发，怪物币清空。");
             pages.add("救场\n\n所有人类阵亡后进入 " + seconds(RoundEngine.rescueMillis(rules))
                     + " 秒救场：有图腾的怪物可以复生，也可以从集结区加入。");
         }

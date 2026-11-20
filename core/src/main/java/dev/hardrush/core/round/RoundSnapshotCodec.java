@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 9;
+    private static final int SCHEMA = 10;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -55,6 +55,13 @@ public final class RoundSnapshotCodec {
                 out.writeBoolean(snapshot.result().winner() != null);
                 if (snapshot.result().winner() != null) writeUuid(out, snapshot.result().winner());
                 writeText(out, snapshot.result().reason());
+            }
+            if (snapshot.looseTotems().size() > LooseTotem.MAX_REGISTERED) throw new IllegalArgumentException("Too many loose totems in snapshot");
+            out.writeInt(snapshot.looseTotems().size());
+            for (var entry : snapshot.looseTotems().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).toList()) {
+                LooseTotem totem = entry.getValue();
+                writeUuid(out, entry.getKey()); writeUuid(out, totem.victim()); out.writeInt(totem.victimLife());
+                writeUuid(out, totem.killer()); out.writeLong(totem.droppedAtChallengeNanos());
             }
             out.flush();
             if (bytes.size() > MAX_BYTES) throw new IllegalArgumentException("Snapshot exceeds size limit");
@@ -122,6 +129,17 @@ public final class RoundSnapshotCodec {
                 UUID winner = in.readBoolean() ? readUuid(in) : null;
                 result = new RoundResult(kind, winner, readText(in, 4096));
             }
+            // Schemas 1–9 predate dropped revival totems: nothing lies in the world.
+            var looseTotems = new LinkedHashMap<UUID, LooseTotem>();
+            if (schema >= 10) {
+                int loose = in.readInt();
+                if (loose < 0 || loose > LooseTotem.MAX_REGISTERED) throw new IOException("Invalid loose totem count");
+                for (int i = 0; i < loose; i++) {
+                    UUID token = readUuid(in);
+                    var totem = new LooseTotem(readUuid(in), in.readInt(), readUuid(in), in.readLong());
+                    if (looseTotems.put(token, totem) != null) throw new IOException("Duplicate loose totem token");
+                }
+            }
             if (in.available() != 0) throw new IOException("Trailing snapshot data");
             if (remaining < 0) throw new IOException("Invalid remaining phase time");
             // Schemas 1–4 stored the configured (formerly ten-minute) success timer.
@@ -132,7 +150,7 @@ public final class RoundSnapshotCodec {
                 remaining = Math.max(0, remaining - removedMillis * 1_000_000L);
             }
             return new RoundSnapshot(id, sequence, seed, version, rules, phase, pause, challenge, remaining,
-                    players, clean, uncertain, result);
+                    players, clean, uncertain, result, looseTotems);
         } catch (IOException | IllegalArgumentException invalid) {
             throw new IllegalArgumentException("Invalid round snapshot", invalid);
         }

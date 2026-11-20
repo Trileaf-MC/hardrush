@@ -151,7 +151,7 @@ public final class DuskPactGameTest {
             f.time(9_400); DuskPactRuntime.tick(server);
             test.assertTrue(capture.boss().active, "Bossbar appears at the 180-second warning");
             test.assertValueEqual(capture.boss().color, net.minecraft.world.BossEvent.BossBarColor.YELLOW, "180-second native bar is yellow");
-            test.assertValueEqual(capture.boss().name, "夜幕将至 · 距猎杀开始还有 03:00", "Warning packet uses final user wording");
+            test.assertValueEqual(capture.boss().name, "夜幕将至，击杀人类可夺得复生图腾 · 03:00", "Hardcore warning names the revival totem a human kill drops");
             test.assertValueEqual(capture.boss().progress, 1F, "Late bar starts full");
             test.assertValueEqual(capture.sounds(), 1L, "180-real-second warning plays once");
             f.time(11_800); DuskPactRuntime.tick(server);

@@ -26,8 +26,9 @@ class RoundSnapshotCodecMigrationTest {
             for (long remaining : new long[]{600_000, 480_000, 420_000, 10_000}) {
                 var snapshot = new RoundSnapshot(ROUND, 1, 1, 7, rules, phase, PauseReason.SETTLED, 123, remaining * 1_000_000,
                         Map.of(), true, false, new RoundResult(RoundResult.Kind.COMPLETED, null, "verified old finish"));
-                var bytes = RoundSnapshotCodec.encode(snapshot);
-                ByteBuffer.wrap(bytes).putInt(4, 4); // v4 has the same layout, but the old timer semantics.
+                // Without participants v4 has the same layout up to the result, but the old timer semantics.
+                var bytes = withoutLooseTotems(RoundSnapshotCodec.encode(snapshot));
+                ByteBuffer.wrap(bytes).putInt(4, 4);
                 var migrated = RoundSnapshotCodec.decode(bytes);
                 assertEquals(Math.max(0, remaining - 420_000), migrated.remainingPhaseMillis());
                 assertEquals(123, migrated.challengeNanos());
@@ -60,7 +61,7 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(3, active.lifeSequence());
         assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(9, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(10, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 
@@ -143,6 +144,82 @@ class RoundSnapshotCodecMigrationTest {
         }
         assertTrue(corrupted);
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(bytes));
+    }
+
+    private static final UUID VICTIM = UUID.fromString("00000000-0000-0000-0000-000000000004");
+    private static final UUID KILLER = UUID.fromString("00000000-0000-0000-0000-000000000005");
+
+    private static RoundSnapshot withTotems(Map<UUID, LooseTotem> totems) {
+        var victim = new Participant(VICTIM, "Victim", ParticipantRole.MONSTER_LOBBY, true, false,
+                10, 0, 2, 0, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of());
+        var killer = new Participant(KILLER, "Killer", ParticipantRole.HUMAN_ACTIVE, true, false, 10, 0, 1, false);
+        return new RoundSnapshot(ROUND, 1, 1, 3, RulesConfig.defaults(), RoundPhase.RUNNING, PauseReason.NONE,
+                900_000, 0, Map.of(VICTIM, victim, KILLER, killer), false, false, null, totems);
+    }
+
+    /** The current encoding without its trailing v10 loose-totem count, which an empty registry writes as 0. */
+    private static byte[] withoutLooseTotems(byte[] v10) {
+        assertEquals(0, ByteBuffer.wrap(v10).getInt(v10.length - 4));
+        return java.util.Arrays.copyOf(v10, v10.length - 4);
+    }
+
+    @Test void schemaTenRoundTripsTheLooseTotemRegistryInTokenOrder() {
+        var high = new UUID(2, 0);
+        var low = new UUID(1, 0);
+        var totems = new java.util.LinkedHashMap<UUID, LooseTotem>();
+        totems.put(high, new LooseTotem(VICTIM, 2, KILLER, 800_000));
+        totems.put(low, new LooseTotem(VICTIM, 1, KILLER, 100));
+        var snapshot = withTotems(totems);
+        byte[] bytes = RoundSnapshotCodec.encode(snapshot);
+        assertEquals(10, ByteBuffer.wrap(bytes).getInt(4));
+        var decoded = RoundSnapshotCodec.decode(bytes);
+        assertEquals(snapshot, decoded);
+        assertEquals(List.of(low, high), List.copyOf(decoded.looseTotems().keySet()), "Encoded sorted by token");
+        var reordered = new java.util.LinkedHashMap<UUID, LooseTotem>();
+        reordered.put(low, totems.get(low)); reordered.put(high, totems.get(high));
+        assertArrayEquals(bytes, RoundSnapshotCodec.encode(withTotems(reordered)), "Deterministic regardless of insertion order");
+    }
+
+    @Test void schemaNineAndEarlierReadAnEmptyRegistry() {
+        byte[] v9 = withoutLooseTotems(RoundSnapshotCodec.encode(withTotems(Map.of())));
+        ByteBuffer.wrap(v9).putInt(4, 9);
+        var migrated = RoundSnapshotCodec.decode(v9);
+        assertTrue(migrated.looseTotems().isEmpty());
+        assertEquals(withTotems(Map.of()), migrated);
+        assertEquals(10, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
+        assertTrue(RoundSnapshotCodec.decode(schemaOneFixtureUnchecked()).looseTotems().isEmpty());
+    }
+
+    @Test void corruptRegistryCountsAndDuplicatesAreRejected() {
+        var token = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
+        byte[] one = RoundSnapshotCodec.encode(withTotems(Map.of(token, new LooseTotem(VICTIM, 1, KILLER, 5))));
+        int countAt = one.length - (4 + 16 + 16 + 4 + 16 + 8);
+        assertEquals(1, ByteBuffer.wrap(one).getInt(countAt));
+        for (int count : new int[]{-1, LooseTotem.MAX_REGISTERED + 1, 2}) {
+            byte[] corrupt = one.clone();
+            ByteBuffer.wrap(corrupt).putInt(countAt, count);
+            assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(corrupt), String.valueOf(count));
+        }
+        // The same token twice.
+        byte[] entry = java.util.Arrays.copyOfRange(one, countAt + 4, one.length);
+        byte[] duplicate = java.util.Arrays.copyOf(one, one.length + entry.length);
+        System.arraycopy(entry, 0, duplicate, one.length, entry.length);
+        ByteBuffer.wrap(duplicate).putInt(countAt, 2);
+        assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(duplicate));
+        // A negative drop time is not a valid entry either.
+        byte[] negative = one.clone();
+        ByteBuffer.wrap(negative).putLong(one.length - 8, -1);
+        assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(negative));
+    }
+
+    @Test void theRegistryBoundIsEnforcedOnConstructionToo() {
+        var totems = new java.util.LinkedHashMap<UUID, LooseTotem>();
+        for (int i = 0; i <= LooseTotem.MAX_REGISTERED; i++) totems.put(new UUID(0, i), new LooseTotem(VICTIM, 1, KILLER, 0));
+        assertThrows(IllegalArgumentException.class, () -> withTotems(totems));
+    }
+
+    private static byte[] schemaOneFixtureUnchecked() {
+        try { return schemaOneFixture(); } catch (Exception impossible) { throw new IllegalStateException(impossible); }
     }
 
     /** The exact schema-1 wire layout, independent of the current encoder's schema and added fields. */
