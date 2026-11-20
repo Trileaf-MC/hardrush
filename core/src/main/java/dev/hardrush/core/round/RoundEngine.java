@@ -5,10 +5,13 @@ import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.combat.CombatEvent;
+import dev.hardrush.core.combat.CombatOrigin;
+import java.util.Comparator;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -87,7 +90,7 @@ public final class RoundEngine {
         }
         RoundSnapshot restored = new RoundSnapshot(stored.roundId(), stored.sequence(), stored.seed(), stored.version(),
                 stored.rules(), phase, pause(phase, players), stored.challengeNanos(), remaining,
-                players, stored.cleanShutdown(), uncertain, stored.result());
+                players, stored.cleanShutdown(), uncertain, stored.result(), stored.looseTotems());
         return new RoundEngine(restored, clock);
     }
 
@@ -101,7 +104,7 @@ public final class RoundEngine {
     public static RoundEngine restoreForRecovery(RoundSnapshot stored, MonotonicClock clock) {
         return restore(new RoundSnapshot(stored.roundId(), stored.sequence(), stored.seed(), stored.version(), stored.rules(),
                 stored.phase(), stored.pauseReason(), stored.challengeNanos(), stored.remainingPhaseNanos(),
-                stored.participants(), false, true, stored.result()), clock);
+                stored.participants(), false, true, stored.result(), stored.looseTotems()), clock);
     }
 
     /** Only a complete, verified world + profile + database checkpoint permits crash continuation. */
@@ -113,7 +116,7 @@ public final class RoundEngine {
         stored.participants().forEach((id, p) -> players.put(id, p.withSession(p.name(), false)));
         return new RoundEngine(new RoundSnapshot(stored.roundId(), stored.sequence(), stored.seed(), stored.version(),
                 stored.rules(), RoundPhase.RUNNING, PauseReason.NO_ONLINE_HUMANS, stored.challengeNanos(),
-                stored.remainingPhaseNanos(), players, false, true, null), clock);
+                stored.remainingPhaseNanos(), players, false, true, null, stored.looseTotems()), clock);
     }
 
     /** A full checkpoint pauses native simulation; its disk-copy interval is not challenge time. */
@@ -332,40 +335,20 @@ public final class RoundEngine {
                 players.put(player.id(), endSortie(player, deployCooldownNanos(before.rules())));
             }
         }
-        // Qualify against identity at lethal collection, before applying this batch's human deaths.
-        // Human PvP and monster attacks each add one charge per qualifying victim. The credit is the
-        // vanilla kill credit, so a fall or burn shortly after a player's hit still pays that player.
+        // Qualify against identity at lethal collection, before applying this batch's human deaths. The
+        // credit is the vanilla kill credit, so a fall or burn shortly after a player's hit still counts.
+        // A human killed by a human drops a totem for anyone to take; the killer earns nothing by itself.
+        // A monster's kill adds one charge per qualifying victim. A settling batch keeps no registration.
+        var looseTotems = new LinkedHashMap<>(before.looseTotems());
         if (before.rules().mode() == GameMode.HARDCORE) {
             for (RoundDeath death : deaths) {
-                if (!before.participants().get(death.playerId()).role().isActiveHuman() || death.killCredit().isEmpty()) continue;
-                var origin = death.killCredit().get();
-                if (!origin.roundId().equals(roundId)) continue;
-                Participant owner = before.participants().get(origin.actor().playerId());
-                if (owner == null || owner.id().equals(death.playerId())) continue;
-                if (origin.actor().identity().isActiveHuman()) {
-                    if (directHumanAttack(origin.kind()) && owner.role().isActiveHuman()
-                            && origin.actor().lifeSequence() == owner.lifeSequence()
-                            && origin.actor().deploymentSequence() == owner.monsterDeploymentSequence()) {
-                        Participant rewarded = players.get(owner.id());
-                        if (rewarded.revivalCharges() < Integer.MAX_VALUE) {
-                            players.put(owner.id(), rewarded.addRevivalCharges(1));
-                        }
-                    }
+                if (TotemDrop.qualifies(before, death)) {
+                    death.dropToken().ifPresent(token -> looseTotems.putIfAbsent(token, new LooseTotem(death.playerId(),
+                            death.lifeSequence(), death.killCredit().orElseThrow().actor().playerId(), before.challengeNanos())));
                     continue;
                 }
-                boolean directMonsterAttack = switch (origin.kind()) {
-                    case MELEE, ARROW, CREEPER, SUMMON -> true;
-                    default -> false;
-                };
-                if (!directMonsterAttack || !owner.role().isMonster()
-                        || origin.actor().lifeSequence() > owner.lifeSequence()
-                        || origin.actor().deploymentSequence() > owner.monsterDeploymentSequence()) continue;
-                Participant rewarded = players.get(owner.id());
-                if (rewarded.revivalCharges() < Integer.MAX_VALUE) {
-                    rewarded = rewarded.addRevivalCharges(1);
-                }
-                // A kill pays a revival, never coins; an owner still out hunting is sent back to the altar.
-                players.put(owner.id(), revivalFirst(before.rules(), rewarded));
+                monsterKiller(before, death.playerId(), death.killCredit())
+                        .ifPresent(owner -> rewardMonsterKill(before.rules(), players, owner));
             }
             // Use vanilla's player-damage memory captured at death, including subsequent environmental damage.
             for (RoundDeath death : deaths) {
@@ -379,10 +362,63 @@ public final class RoundEngine {
                     millisToNanos(successCelebrationMillis(before.rules())), withoutEntitlements(players), completion, false);
         }
         if (before.rules().mode() == GameMode.HARDCORE && !hasHuman(players)) {
-            return lastHumanGone(eventId, "DEATH_BATCH", before, players, "ALL_HUMANS_DEAD", false);
+            return lastHumanGone(eventId, "DEATH_BATCH", before, players, "ALL_HUMANS_DEAD", false, looseTotems);
         }
         // With humans left the phase follows from who is still connected; see live().
-        return proposal(eventId, "DEATH_BATCH", before, RoundPhase.RUNNING, 0, players, null, false);
+        return proposal(eventId, "DEATH_BATCH", before, RoundPhase.RUNNING, 0, players, null, false,
+                before.timingUncertain(), looseTotems);
+    }
+
+    /**
+     * A human of this round takes a registered loose totem: the token leaves the registry and the taker gains
+     * one charge (a balance already at {@link Integer#MAX_VALUE} stays there; the totem is still taken).
+     */
+    public RoundTransition proposeLooseTotemPickup(UUID eventId, UUID roundId, UUID token, UUID playerId,
+            int expectedLifeSequence) {
+        Objects.requireNonNull(token);
+        RoundSnapshot before = capture();
+        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("仅极限模式有复生图腾掉落。");
+        requirePhase(before, RoundPhase.RUNNING, RoundPhase.RESCUE);
+        requireOpenRescue(before);
+        if (!before.roundId().equals(roundId)) throw new IllegalStateException("轮次已改变，请重新拾取。");
+        Participant player = requirePlayer(before, playerId);
+        requireLife(player, ParticipantRole.HUMAN_ACTIVE, expectedLifeSequence);
+        if (!player.online()) throw new IllegalStateException("离线玩家不能拾取复生图腾。");
+        if (before.liveLooseTotem(token).isEmpty()) throw new IllegalStateException("这个复生图腾已被拾取或已消失。");
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        if (player.revivalCharges() < Integer.MAX_VALUE) players.put(playerId, player.addRevivalCharges(1));
+        var looseTotems = new LinkedHashMap<>(before.looseTotems());
+        looseTotems.remove(token);
+        return proposal(eventId, "TOTEM_PICKUP", before, before.phase(), before.remainingPhaseNanos(), players,
+                before.result(), false, before.timingUncertain(), looseTotems);
+    }
+
+    /**
+     * A revival totem already saved this human in the world; the ledger follows. Total by design: the event
+     * sits in the adapter's critical queue, so any stale or unqualified state (another round or phase, a
+     * changed life, no charge left) commits {@code TOTEM_SAVE_VOID}, which changes no participant, instead of
+     * failing. A valid save spends one charge without ending the life. {@code killCredit} is resolved like a
+     * death's: a monster it credits is paid exactly as for killing this human, a human it credits earns nothing.
+     */
+    public RoundTransition proposeTotemSave(UUID eventId, UUID roundId, UUID playerId, int expectedLifeSequence,
+            Optional<CombatOrigin> killCredit) {
+        Objects.requireNonNull(eventId); Objects.requireNonNull(roundId);
+        Objects.requireNonNull(playerId); Objects.requireNonNull(killCredit);
+        RoundSnapshot before = capture();
+        Participant player = before.participants().get(playerId);
+        boolean open = before.phase() == RoundPhase.RUNNING
+                || before.phase() == RoundPhase.RESCUE && before.remainingPhaseNanos() > 0;
+        if (before.rules().mode() != GameMode.HARDCORE || !before.roundId().equals(roundId) || !open
+                || player == null || player.role() != ParticipantRole.HUMAN_ACTIVE
+                || player.lifeSequence() != expectedLifeSequence || player.revivalCharges() == 0) {
+            return proposal(eventId, "TOTEM_SAVE_VOID", before, before.phase(), before.remainingPhaseNanos(),
+                    before.participants(), before.result(), false);
+        }
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.spendRevivalCharge());
+        monsterKiller(before, playerId, killCredit).ifPresent(owner -> rewardMonsterKill(before.rules(), players, owner));
+        return proposal(eventId, "TOTEM_SAVE", before, before.phase(), before.remainingPhaseNanos(), players,
+                before.result(), false);
     }
 
     public RoundTransition proposeRevival(UUID eventId, UUID roundId, UUID playerId,
@@ -611,7 +647,8 @@ public final class RoundEngine {
         if (entries.isEmpty()) return base;
         return new RoundSnapshot(base.roundId(), base.sequence(), base.seed(), base.version(), base.rules(), base.phase(),
                 base.pauseReason(), base.challengeNanos(), base.remainingPhaseNanos(),
-                creditDamageCoins(base, roundId, entries), base.cleanShutdown(), base.timingUncertain(), base.result());
+                creditDamageCoins(base, roundId, entries), base.cleanShutdown(), base.timingUncertain(), base.result(),
+                base.looseTotems());
     }
 
     /** A flushed damage batch waiting in the adapter's event queue, credited at its own event time. */
@@ -721,11 +758,34 @@ public final class RoundEngine {
         return MonsterCoins.enabled(rules) ? player.withWallet(player.wallet().credit(MonsterCoins.amount(rules, reward))) : player;
     }
 
-    private static boolean directHumanAttack(dev.hardrush.core.api.DamagePort.AttackKind kind) {
-        return switch (kind) {
-            case MELEE, ARROW, BED, RESPAWN_ANCHOR, TNT, END_CRYSTAL -> true;
+    /**
+     * The player monster credited with killing {@code victimId}, a hardcore human of {@code before}, by
+     * {@code killCredit}: a direct monster attack launched by this round's monster, from no later life or
+     * sortie than its current one. A dying human and a revival totem forced out of one qualify alike.
+     */
+    static Optional<UUID> monsterKiller(RoundSnapshot before, UUID victimId, Optional<CombatOrigin> killCredit) {
+        if (before.rules().mode() != GameMode.HARDCORE || killCredit.isEmpty()) return Optional.empty();
+        Participant victim = before.participants().get(victimId);
+        var origin = killCredit.get();
+        if (victim == null || !victim.role().isActiveHuman() || !origin.roundId().equals(before.roundId())
+                || origin.actor().identity().isActiveHuman()) return Optional.empty();
+        Participant owner = before.participants().get(origin.actor().playerId());
+        if (owner == null || owner.id().equals(victimId)) return Optional.empty();
+        boolean directMonsterAttack = switch (origin.kind()) {
+            case MELEE, ARROW, CREEPER, SUMMON -> true;
             default -> false;
         };
+        if (!directMonsterAttack || !owner.role().isMonster()
+                || origin.actor().lifeSequence() > owner.lifeSequence()
+                || origin.actor().deploymentSequence() > owner.monsterDeploymentSequence()) return Optional.empty();
+        return Optional.of(owner.id());
+    }
+
+    /** A kill pays a revival, never coins; an owner still out hunting is sent back to the altar. */
+    private static void rewardMonsterKill(RulesConfig rules, Map<UUID, Participant> players, UUID owner) {
+        Participant rewarded = players.get(owner);
+        if (rewarded.revivalCharges() < Integer.MAX_VALUE) rewarded = rewarded.addRevivalCharges(1);
+        players.put(owner, revivalFirst(rules, rewarded));
     }
 
     private static Participant requireMonster(RoundSnapshot before, UUID roundId, UUID playerId,
@@ -927,7 +987,7 @@ public final class RoundEngine {
         RoundSnapshot before = transition.before();
         committed = new RoundSnapshot(before.roundId(), before.sequence(), before.seed(), before.version(), before.rules(),
                 RoundPhase.RECOVERY_REQUIRED, PauseReason.RECOVERY_REQUIRED, before.challengeNanos(),
-                before.remainingPhaseNanos(), before.participants(), false, true, before.result());
+                before.remainingPhaseNanos(), before.participants(), false, true, before.result(), before.looseTotems());
         boundary = transition.capturedNanos();
         pending = null;
         return true;
@@ -951,6 +1011,12 @@ public final class RoundEngine {
 
     private RoundTransition proposal(UUID id, String type, RoundSnapshot before, RoundPhase phase, long remaining,
                                      Map<UUID, Participant> players, RoundResult result, boolean clean, boolean uncertain) {
+        return proposal(id, type, before, phase, remaining, players, result, clean, uncertain, before.looseTotems());
+    }
+
+    private RoundTransition proposal(UUID id, String type, RoundSnapshot before, RoundPhase phase, long remaining,
+                                     Map<UUID, Participant> players, RoundResult result, boolean clean, boolean uncertain,
+                                     Map<UUID, LooseTotem> looseTotems) {
         // capture() and proposal() share one event timestamp, even if the clock advances between calls.
         long captured = capturedTime;
         // Every transition of a live round passes here, so no path can leave it running without a
@@ -962,9 +1028,32 @@ public final class RoundEngine {
         }
         RoundSnapshot after = new RoundSnapshot(before.roundId(), before.sequence(), before.seed(),
                 Math.addExact(before.version(), 1), before.rules(), phase, clean ? PauseReason.SERVER_STOPPED : pause(phase, players),
-                before.challengeNanos(), remaining, players, clean, before.timingUncertain() || uncertain, result);
+                before.challengeNanos(), remaining, players, clean, before.timingUncertain() || uncertain, result,
+                retainedLooseTotems(phase, result, before.challengeNanos(), looseTotems));
         pending = new RoundTransition(id, type, before, after, captured);
         return pending;
+    }
+
+    /**
+     * The loose-totem registry a transition leaves, applied to every transition alike: a settled round keeps
+     * none, an entry expires after {@link LooseTotem#LIFETIME_NANOS} of challenge time, and beyond
+     * {@link LooseTotem#MAX_REGISTERED} the earliest drops (then the lowest tokens) give way. It never fails.
+     */
+    private static Map<UUID, LooseTotem> retainedLooseTotems(RoundPhase phase, RoundResult result, long challengeNanos,
+                                                             Map<UUID, LooseTotem> looseTotems) {
+        boolean terminal = phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING || phase == RoundPhase.ROTATING;
+        if (terminal || result != null || looseTotems.isEmpty()) return Map.of();
+        var retained = new LinkedHashMap<UUID, LooseTotem>(looseTotems);
+        retained.values().removeIf(totem -> totem.expiredAt(challengeNanos));
+        if (retained.size() > LooseTotem.MAX_REGISTERED) {
+            retained.entrySet().stream()
+                    .sorted(Comparator.comparingLong((Map.Entry<UUID, LooseTotem> e) -> e.getValue().droppedAtChallengeNanos())
+                            .thenComparing(Map.Entry::getKey))
+                    .limit(retained.size() - LooseTotem.MAX_REGISTERED)
+                    .map(Map.Entry::getKey).toList()
+                    .forEach(retained::remove);
+        }
+        return retained;
     }
 
     private long capturedTime;
@@ -990,7 +1079,7 @@ public final class RoundEngine {
         }
         return new RoundSnapshot(base.roundId(), base.sequence(), base.seed(), base.version(), base.rules(), base.phase(),
                 base.cleanShutdown() ? PauseReason.SERVER_STOPPED : pause(base.phase(), players), challenge, remaining,
-                players, base.cleanShutdown(), base.timingUncertain(), base.result());
+                players, base.cleanShutdown(), base.timingUncertain(), base.result(), base.looseTotems());
     }
 
     private static PauseReason pause(RoundPhase phase, Map<UUID, Participant> players) {
@@ -1026,6 +1115,11 @@ public final class RoundEngine {
      */
     private RoundTransition lastHumanGone(UUID eventId, String type, RoundSnapshot before,
             Map<UUID, Participant> players, String reason, boolean uncertain) {
+        return lastHumanGone(eventId, type, before, players, reason, uncertain, before.looseTotems());
+    }
+
+    private RoundTransition lastHumanGone(UUID eventId, String type, RoundSnapshot before,
+            Map<UUID, Participant> players, String reason, boolean uncertain, Map<UUID, LooseTotem> looseTotems) {
         if (players.values().stream().noneMatch(p -> p.role().isMonster() && p.revivalEntitled())) {
             return failureProposal(eventId, type, before, players, reason, uncertain);
         }
@@ -1034,7 +1128,7 @@ public final class RoundEngine {
             // A wait for absent humans may have longer left than a rescue is allowed; never extend either.
             remaining = before.awaitingReconnect() ? Math.min(before.remainingPhaseNanos(), remaining) : before.remainingPhaseNanos();
         }
-        return proposal(eventId, type, before, RoundPhase.RESCUE, remaining, players, null, false, uncertain);
+        return proposal(eventId, type, before, RoundPhase.RESCUE, remaining, players, null, false, uncertain, looseTotems);
     }
 
     private static Map<UUID, Participant> withoutEntitlements(Map<UUID, Participant> players) {

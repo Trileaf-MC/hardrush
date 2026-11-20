@@ -128,7 +128,7 @@ public abstract class PlayerIsolationNetworkMixin {
                 // Monster coins are committed before their floor stacks appear.
                 case DROP_ITEM, DROP_ALL_ITEMS -> {
                     if (CampTransfers.is(player.getInventory().getSelectedItem())) return;
-                    dev.hardrush.lobby.RevivalTotems.refuseThrow(player, player.getInventory().getSelectedItem());
+                    dev.hardrush.revival.RevivalTotems.refuse(player, player.getInventory().getSelectedItem());
                     player.inventoryMenu.sendAllDataToRemote();
                 }
                 default -> { }
@@ -160,7 +160,7 @@ public abstract class PlayerIsolationNetworkMixin {
             // This handler runs before the protection mixin, so a refused totem throw is explained here.
             if (packet.containerInput() == net.minecraft.world.inventory.ContainerInput.THROW && packet.slotNum() >= 0
                     && packet.slotNum() < player.containerMenu.slots.size())
-                dev.hardrush.lobby.RevivalTotems.refuseThrow(player, player.containerMenu.getSlot(packet.slotNum()).getItem());
+                dev.hardrush.revival.RevivalTotems.refuse(player, player.containerMenu.getSlot(packet.slotNum()).getItem());
             player.containerMenu.sendAllDataToRemote();
             ci.cancel();
         }

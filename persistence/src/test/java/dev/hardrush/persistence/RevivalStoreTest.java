@@ -28,24 +28,37 @@ class RevivalStoreTest {
     private static final String SET = "a".repeat(64);
     private static final Set<String> ADVANCEMENTS = Set.of("minecraft:story/mine_stone", "minecraft:story/upgrade_tools");
 
-    @Test void humanKillChargesStackSurviveSqliteReopenAndPayForLaterHumanLivesWithoutReplayRewards() throws Exception {
+    @Test void pickedUpHumanKillDropsStackSurviveSqliteReopenAndPayForLaterHumanLivesWithoutReplayRewards() throws Exception {
         try (var fixture = new Fixture(directory.toRealPath().resolve("human-kills.sqlite"))) {
             fixture.start();
+            UUID firstDrop = UUID.randomUUID();
             var first = fixture.engine.proposeDeathBatch(UUID.randomUUID(), fixture.round(),
                     List.of(death(fixture.player(BOB), Optional.of(lethal(fixture.round(),
-                            fixture.player(ALICE), BOB, AttackKind.MELEE)))), null);
+                            fixture.player(ALICE), BOB, AttackKind.MELEE))).withDropToken(firstDrop)), null);
             var replay = write(first);
             fixture.commit(first);
+            assertEquals(0, fixture.player(ALICE).revivalCharges(), "A human kill only drops the totem");
+            fixture.reopen();
+            assertTrue(fixture.engine.committed().looseTotems().containsKey(firstDrop), "The drop registry is durable");
+            var pickup = fixture.engine.proposeLooseTotemPickup(UUID.randomUUID(), fixture.round(), firstDrop, ALICE,
+                    fixture.player(ALICE).lifeSequence());
+            var pickupReplay = write(pickup);
+            fixture.commit(pickup);
             assertEquals(1, fixture.player(ALICE).revivalCharges());
             assertEquals(CommitResult.DUPLICATE, fixture.store.commit(replay));
+            assertEquals(CommitResult.DUPLICATE, fixture.store.commit(pickupReplay));
 
             UUID newcomer = UUID.randomUUID();
+            UUID secondDrop = UUID.randomUUID();
             fixture.commit(fixture.engine.proposeJoin(UUID.randomUUID(), newcomer, "Newcomer"));
             fixture.commit(fixture.engine.proposeDeathBatch(UUID.randomUUID(), fixture.round(),
                     List.of(death(fixture.player(newcomer), Optional.of(lethal(fixture.round(),
-                            fixture.player(ALICE), newcomer, AttackKind.ARROW)))), null));
+                            fixture.player(ALICE), newcomer, AttackKind.ARROW))).withDropToken(secondDrop)), null));
+            fixture.commit(fixture.engine.proposeLooseTotemPickup(UUID.randomUUID(), fixture.round(), secondDrop, ALICE,
+                    fixture.player(ALICE).lifeSequence()));
             fixture.reopen();
             assertEquals(2, fixture.player(ALICE).revivalCharges());
+            assertTrue(fixture.engine.committed().looseTotems().isEmpty());
             assertEquals(0, fixture.store.participantRecord(fixture.round(), ALICE).orElseThrow().revivalCount(),
                     "Earning charges is separate from actually reviving");
 
