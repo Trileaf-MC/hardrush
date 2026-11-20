@@ -123,7 +123,12 @@ public final class FullFlowGameTest {
                     test.assertFalse(LobbyRuntime.channeling(f.monster.player),"Skill input cancels return before casting");
                 })
                 .thenWaitUntil(()->f.await(!MonsterRoundRuntime.casting(f.monster.player)&&!f.session.mutationPending(),"Skill durable reservation drained"))
-                .thenExecute(f.target::disconnect)
+                .thenExecute(()->{
+                    var left=f.target.player;
+                    f.target.disconnect();
+                    // The socket closed on its network thread; the leave is still handled, and the old body released.
+                    test.assertFalse(f.service("PROFILES",dev.hardrush.player.PlayerProfiles.class).manages(left),"A real-socket disconnect releases the profile entry");
+                })
                 .thenWaitUntil(()->f.await(!f.target.participant().online()&&!f.session.mutationPending(),"Only human offline commits"))
                 .thenExecute(()->{
                     test.assertValueEqual(f.round().phase(),RoundPhase.RESCUE,"The last human leaving starts a rescue instead of idling forever");

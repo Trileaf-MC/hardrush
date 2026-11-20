@@ -235,11 +235,25 @@ public final class TestClient implements AutoCloseable {
     /** The client closes its connection; the server handles the disconnect as it would for a real socket. */
     public void disconnect() { disconnect(Component.literal("Fixture client disconnected")); }
 
+    /**
+     * As a real socket does: the channel closes on its network thread, so Netty's {@code channelInactive} (and Fabric's
+     * {@code ServerPlayConnectionEvents.DISCONNECT}, which Fabric fires from it) runs there, not on the server thread;
+     * the server thread then handles the disconnection on its next connection tick. Closing on the server thread
+     * instead would hide any disconnect handling that only works there.
+     */
     public void disconnect(Component reason) {
         if (prepare != null) { prepare.close(); prepare = null; }
         if (connection == null) return;
         if (mode == Mode.ATTACHED) throw new IllegalStateException("An attached client leaves through close()");
-        connection.disconnect(reason);
+        var closing = connection;
+        var failure = new java.util.concurrent.atomic.AtomicReference<Throwable>();
+        // The embedded event loop runs its tasks on whichever thread drives it, as Netty's own loop thread would.
+        var network = new Thread(() -> closing.disconnect(reason), "HardRush fixture network thread");
+        network.setUncaughtExceptionHandler((thread, error) -> failure.set(error));
+        network.start();
+        try { network.join(); }
+        catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new IllegalStateException(interrupted); }
+        if (failure.get() != null) throw new IllegalStateException("Closing the fixture connection failed", failure.get());
         connection.handleDisconnection();
         release();
     }

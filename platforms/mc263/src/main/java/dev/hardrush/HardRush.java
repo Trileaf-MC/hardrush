@@ -19,7 +19,7 @@ public final class HardRush implements ModInitializer {
         initialized=true;
         MonsterRoles.initialize();LobbyRuntime.initialize();RoundRuntime.initialize();
         ServerTickEvents.END_SERVER_TICK.register(server->{MonsterRoles.tick(server);dev.hardrush.monster.MonsterWorthRewards.tick(server);MonsterDisguise.tick(server);PlayerLocator.tick(server);dev.hardrush.hunt.HuntTrails.tick(server);});
-        ServerPlayConnectionEvents.DISCONNECT.register((handler,server)->{MonsterRoles.onDisconnect(handler.player);MonsterDisguise.onDisconnect(handler.player);});
+        dev.hardrush.player.PlayerDisconnects.register((player,server)->{MonsterRoles.onDisconnect(player);MonsterDisguise.onDisconnect(player);});
         ServerPlayConnectionEvents.JOIN.register((handler,sender,server)->{MonsterRoles.onJoin(handler.player);MonsterDisguise.onJoin(handler.player);});
         ServerLifecycleEvents.SERVER_STOPPING.register(server->{MonsterRoles.stop(server);dev.hardrush.monster.MonsterWorthRewards.stop(server);MonsterDisguise.stop(server);PlayerLocator.stop(server);dev.hardrush.hunt.HuntTrails.clear(server);dev.hardrush.hunt.HuntRetracks.stop(server);});
         org.slf4j.LoggerFactory.getLogger("hardrush").info("HardRush production runtime; competition enabled={}",HardRushProperties.competitionEnabled());
