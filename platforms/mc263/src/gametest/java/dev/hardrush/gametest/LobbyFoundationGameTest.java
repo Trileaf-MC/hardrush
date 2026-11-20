@@ -94,7 +94,10 @@ public final class LobbyFoundationGameTest {
                     test.assertFalse(LobbyMenus.open(f.a.player, LobbyContext.COMPETITION), "Recovery competition menu is sealed");
                     f.historyDrain = f.session.history(1, 0);
                 })
-                .thenWaitUntil(() -> f.await(f.historyDrain.isDone(), "Read-only history IO drained before audited recovery close"))
+                // Close-recovery refuses while any IO is in flight, including the session's own once-a-second checkpoint;
+                // the next step runs in this same tick, so the session is still idle when it asks.
+                .thenWaitUntil(() -> f.await(f.historyDrain.isDone() && !f.session.mutationPending(),
+                        "Read-only history IO drained before audited recovery close"))
                 .thenExecute(() -> {
                     f.historyDrain.join();
                     test.assertFalse(LobbyMenus.isMenu(f.a.player), "Late history query never reopens the closed menu");
