@@ -106,11 +106,6 @@ def prepare():
                 continue
             existing.append(identity if name == 'whitelist.json' else dict(identity, level=4, bypassesPlayerLimit=False))
         path.write_text(json.dumps(existing, indent=2) + '\n')
-    # Server GameTest and in-process client test servers use a separate EULA file.
-    for side in ['gameTest', 'clientGameTest']:
-        run = ROOT / 'platforms/mc263/build/run' / side
-        run.mkdir(parents=True, exist_ok=True)
-        (run / 'eula.txt').write_text(eula)
     print('Debug tools prepared; credentials remain in .local/debug/*/config.', flush=True)
 
 
