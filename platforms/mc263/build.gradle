@@ -366,6 +366,44 @@ loom.runs.named('gameTest') {
     }
 }
 
+// Revival totems as held items (projection states, death, never leaving the holder) in the default fresh storage.
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushRevivalTotems').orNull == 'true') {
+        if (providers.gradleProperty('hardrushCompetition').orNull == 'true')
+            throw new GradleException('Revival totem fixtures require their own run without the competition runtime');
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:revival_totem_game_test*'
+    }
+}
+
+// Revival totems dropped by a human's death (spawn, registration, pickup, announcement, patrol) in the default fresh storage.
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushTotemDrops').orNull == 'true') {
+        if (providers.gradleProperty('hardrushCompetition').orNull == 'true')
+            throw new GradleException('Totem drop fixtures require their own run without the competition runtime');
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:totem_drop_game_test*'
+    }
+}
+
+// In-place revival by a held revival totem (hand order, ledger, kill credit, coin credit). It binds the combat runtime
+// to the test world, so it never runs beside other fixtures: only through this switch, in the default fresh storage.
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushTotemSave').orNull == 'true') {
+        if (providers.gradleProperty('hardrushCompetition').orNull == 'true')
+            throw new GradleException('Totem save fixtures require their own run without the competition runtime');
+        vmArg '-Dhardrush.test.totemSave=true'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:totem_save_game_test*'
+    }
+}
+
+// Revival charges in the player list (packet-only objective, login resend, per-change diffs) in the default fresh storage.
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushTotemTab').orNull == 'true') {
+        if (providers.gradleProperty('hardrushCompetition').orNull == 'true')
+            throw new GradleException('Totem TAB fixtures require their own run without the competition runtime');
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:totem_tab_game_test*'
+    }
+}
+
 // Only production artifacts: no Loom classpath, test mod, MCPFabric or debug tools.
 configurations { demoFabricApi { transitive = false } }
 dependencies { demoFabricApi "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}" }

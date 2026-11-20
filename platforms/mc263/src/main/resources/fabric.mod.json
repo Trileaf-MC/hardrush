@@ -21,7 +21,8 @@
     "hardrush.book.mixins.json",
     "hardrush.protection.mixins.json",
     "hardrush.combat.monster.mixins.json",
-    "hardrush.locator.mixins.json"
+    "hardrush.locator.mixins.json",
+    "hardrush.revival.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.5",

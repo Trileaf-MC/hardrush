@@ -20,10 +20,12 @@ public final class DuskPact {
     private DuskPact() {}
 
     public static String releasedSubtitle(boolean hardcore) {
-        return hardcore ? "夜幕降临 · 极限追猎开始" : "夜幕降临 · 祝你好运";
+        return hardcore ? "夜幕降临 · 击杀人类可夺得复生图腾" : "夜幕降临 · 祝你好运";
     }
 
-    public static Display display(long ticks, float partialTick, float clockRate, double ticksPerSecond, boolean paused) {
+    /** {@code hardcore} names the revival totem a human kill drops after dusk; normal rounds keep the plain warning. */
+    public static Display display(long ticks, float partialTick, float clockRate, double ticksPerSecond, boolean paused,
+                                  boolean hardcore) {
         double remaining = Math.max(0, DUSK_TICKS - ticks - partialTick);
         boolean advancing = !paused && clockRate > 0 && ticksPerSecond > 0;
         double realRemaining = advancing ? remaining / (clockRate * ticksPerSecond) : Double.MAX_VALUE;
@@ -32,7 +34,7 @@ public final class DuskPact {
         String time = advancing ? "%02d:%02d".formatted(seconds / 60, seconds % 60) : "昼夜暂停";
         String text = switch (color) {
             case GREEN -> "黄昏契约 · 日落前暂息纷争 · " + time;
-            case YELLOW -> "夜幕将至 · 距猎杀开始还有 " + time;
+            case YELLOW -> hardcore ? "夜幕将至，击杀人类可夺得复生图腾 · " + time : "夜幕将至 · 距猎杀开始还有 " + time;
             case RED -> seconds <= FINAL_SECONDS ? "准备作战 · " + seconds : "准备作战";
         };
         String blocked = advancing ? BLOCKED + " · " + time : BLOCKED;
