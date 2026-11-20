@@ -75,8 +75,11 @@ public final class DuskPactRuntime {
     private static DuskPact.Display display(Binding binding, MinecraftServer server) {
         var level = binding.access.overworld();
         var clock = level.clockManager().getInstance(level.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(WorldClocks.OVERWORLD));
+        boolean hardcore = binding.access.snapshot()
+                .map(round -> round.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE).orElse(false);
         return DuskPact.display(clock.totalTicks(), clock.partialTick(), clock.rate(), server.tickRateManager().tickrate(),
-                clock.isPaused() || !level.getGameRules().get(GameRules.ADVANCE_TIME) || server.tickRateManager().isFrozen());
+                clock.isPaused() || !level.getGameRules().get(GameRules.ADVANCE_TIME) || server.tickRateManager().isFrozen(),
+                hardcore);
     }
     /** Countdown line for the native TAB footer while the contract is shown; the bossbar stays hidden until the warning. */
     public static Optional<String> tabLine(MinecraftServer server) {
@@ -203,7 +206,8 @@ public final class DuskPactRuntime {
         } else if (binding.wasProtected && !protectedNow && challenge(round) && access.overworld() != null && access.data().released()) {
             boolean hardcore = round.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE;
             for (var player : viewers) {
-                title(player, 5, 50, 10, DuskPact.RELEASED, DuskPact.releasedSubtitle(hardcore));
+                // Long enough to read the hardcore subtitle about the revival totem a human kill now drops.
+                title(player, 5, hardcore ? 70 : 50, 10, DuskPact.RELEASED, DuskPact.releasedSubtitle(hardcore));
                 sound(player, SoundEvents.BELL_BLOCK, 1);
             }
         }

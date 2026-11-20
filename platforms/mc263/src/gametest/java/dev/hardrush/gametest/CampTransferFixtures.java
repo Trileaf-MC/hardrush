@@ -1,7 +1,7 @@
 package dev.hardrush.gametest;
 
 import dev.hardrush.lobby.CampKit;
-import dev.hardrush.lobby.RevivalTotems;
+import dev.hardrush.revival.RevivalTotems;
 import dev.hardrush.round.RoundSession;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;

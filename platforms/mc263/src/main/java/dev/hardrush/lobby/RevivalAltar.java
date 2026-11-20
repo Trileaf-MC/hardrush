@@ -26,7 +26,7 @@ import net.minecraft.world.BossEvent;
  * on the pad only reads why in the action bar. Rites sound like a beacon; the arrival is a native totem pop.
  */
 public final class RevivalAltar {
-    static final int DWELL_TICKS = HumanEntry.MIDROUND_DWELL_TICKS;
+    public static final int DWELL_TICKS = HumanEntry.MIDROUND_DWELL_TICKS;
     private static final int STAGES = 4;
     /** How long a revived body may take to load into the formal world before its totem pop is dropped. */
     private static final int ARRIVAL_TICKS = 600;
