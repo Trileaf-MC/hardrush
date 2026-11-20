@@ -3,6 +3,7 @@ package dev.hardrush.lobby;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.lobby.LobbyHints;
 import dev.hardrush.gametest.TestClient;
+import dev.hardrush.gametest.TestTeardown;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.notice.Notices;
 import java.util.Optional;
@@ -33,6 +34,7 @@ public final class HeldItemHintsGameTest {
     @GameTest(maxTicks = 100)
     public void usageFlashesWhenAnItemComesIntoTheHandAndClearsWhenItLeaves(GameTestHelper test) {
         var f = new Fixture(test);
+        TestTeardown.atEnd(test, f::close);
         test.startSequence().thenExecute(() -> {
             MonsterRoles.select(f.player, "creeper");
             var igniter = f.player.getMainHandItem();
@@ -58,12 +60,13 @@ public final class HeldItemHintsGameTest {
 
             f.select(0);
             test.assertValueEqual(f.tick(), Optional.of(IGNITER), "Coming back to the item shows it again");
-        }).thenExecuteAfter(1, f::close).thenSucceed();
+        }).thenIdle(1).thenSucceed();
     }
 
     @GameTest(maxTicks = 100)
     public void stateItemsChangeTheirLineWhenWhatTheyCanDoChanges(GameTestHelper test) {
         var f = new Fixture(test);
+        TestTeardown.atEnd(test, f::close);
         test.startSequence().thenExecute(() -> MonsterRoles.select(f.player, "skeleton"))
                 .thenIdle(2).thenExecute(() -> {
                     test.assertValueEqual(f.tick(), Optional.of("潜行时拉满弓松手，触发三连射"), "A ready bow tells how to loose the volley");
@@ -80,7 +83,7 @@ public final class HeldItemHintsGameTest {
                     test.assertTrue(lit.contains("循迹到目标附近") && lit.contains("边走"), "A lit compass says how to retrack: " + lit);
                     test.assertValueEqual(Notices.format(lit).getString(), lore(compass, 0), "The same usage the description gives");
                     test.assertValueEqual(f.tick(), Optional.<String>empty(), "Nothing new to send");
-                }).thenExecuteAfter(1, f::close).thenSucceed();
+                }).thenIdle(1).thenSucceed();
     }
 
     private static String lore(ItemStack stack, int line) { return stack.get(DataComponents.LORE).lines().get(line).getString(); }

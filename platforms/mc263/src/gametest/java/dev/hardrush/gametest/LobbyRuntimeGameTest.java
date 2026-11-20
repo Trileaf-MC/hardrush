@@ -75,6 +75,12 @@ public final class LobbyRuntimeGameTest {
         if (!Boolean.getBoolean(TestProperties.LOBBY_RUNTIME)) { test.succeed(); return; }
         test.assertTrue(HardRushProperties.competitionEnabled(), "The dedicated run requires the production runtime");
         var f = new Fixture(test);
+        TestTeardown.atEnd(test, () -> {
+            f.monster.client.close();
+            f.target.client.close();
+            FROZEN_SUMMON_OWNERS.remove(f.monster.profile.id());
+            if (f.lootChunk != null) f.level.getChunkSource().removeTicketWithRadius(LOOT_FIXTURE, f.lootChunk, ARENA_TICKET_RADIUS);
+        });
         test.onEachTick(() -> {
             if (f.clock != null) f.clock.accumulateAndGet(System.nanoTime(), Math::max);
             f.monster.acknowledge(); f.target.acknowledge();
@@ -383,8 +389,6 @@ public final class LobbyRuntimeGameTest {
                         f.test.assertValueEqual(second.deathCount(), 10, "The second peer has ten native human deaths");
                     } catch (Exception error) { throw new IllegalStateException(error); }
                     f.monster.disconnect(); f.target.disconnect();
-                    FROZEN_SUMMON_OWNERS.remove(f.monster.profile.id());
-                    f.level.getChunkSource().removeTicketWithRadius(LOOT_FIXTURE, f.lootChunk, ARENA_TICKET_RADIUS);
                 }).thenSucceed();
     }
 

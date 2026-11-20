@@ -5,6 +5,7 @@ import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import dev.hardrush.gametest.TestClients;
+import dev.hardrush.gametest.TestTeardown;
 import dev.hardrush.notice.Notices;
 import dev.hardrush.revival.TotemProjection.Identity;
 import io.netty.channel.ChannelFutureListener;
@@ -67,8 +68,10 @@ public final class RevivalTotemGameTest {
     public void projectionFreezesWhileLockedFollowsTheHolderAndSurvivesDeath(GameTestHelper test) {
         if (HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var f = new Fixture(test);
+        TestTeardown.atEnd(test, f::close);
         var access = new ScriptedAccess();
         RevivalTotems.configure(f.server, access);
+        TestTeardown.atEnd(test, () -> RevivalTotems.unconfigure(f.server));
         var round = UUID.randomUUID();
         test.startSequence().thenWaitUntil(f::awaitArena).thenExecute(() -> {
             access.set(round, f.player, ParticipantRole.HUMAN_ACTIVE, 1, 3, 0, true);
@@ -156,13 +159,14 @@ public final class RevivalTotemGameTest {
             access.set(round, f.player, ParticipantRole.MONSTER_LOBBY, 3, 2, 0, true);
             RevivalTotems.refresh(f.player);
             test.assertValueEqual(total(f.player), 2, "In camp the same balance is held again");
-        }).thenExecuteAfter(1, () -> { RevivalTotems.unconfigure(f.server); f.close(); }).thenSucceed();
+        }).thenIdle(1).thenSucceed();
     }
 
     @GameTest(maxTicks = 200)
     public void totemNeverLeavesThroughThrowsMenusBundlesOrWorldDisplays(GameTestHelper test) {
         if (HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var f = new Fixture(test);
+        TestTeardown.atEnd(test, f::close);
         test.startSequence().thenWaitUntil(f::awaitArena).thenExecute(() -> {
             var inventory = f.player.getInventory();
             inventory.setItem(0, RevivalTotems.held(new Identity(UUID.randomUUID(), ParticipantRole.HUMAN_ACTIVE, 1, 0), 3, 3));
@@ -281,7 +285,7 @@ public final class RevivalTotemGameTest {
             test.assertValueEqual(total(f.player), 3, "Nothing was lost on the way");
             f.assertNoFloorTotem("world displays");
             frame.discard(); stand.discard(); allay.discard();
-        }).thenExecuteAfter(1, f::close).thenSucceed();
+        }).thenIdle(1).thenSucceed();
     }
 
     /** Picks the hotbar-0 totem up in an open menu and tries both buttons on a foreign slot, then puts it back. */
