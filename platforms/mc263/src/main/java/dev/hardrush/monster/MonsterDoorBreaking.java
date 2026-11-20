@@ -147,7 +147,7 @@ public final class MonsterDoorBreaking {
     }
 
     private static void resync(ServerPlayer player, BlockPos clicked) {
-        if (!player.level().hasChunkAt(clicked) || !player.isWithinBlockInteractionRange(clicked, 1)) return;
+        if (!player.level().isLoaded(clicked) || !player.isWithinBlockInteractionRange(clicked, 1)) return;
         var upper = upperDoor(player.level(), clicked);
         player.connection.send(new ClientboundBlockUpdatePacket(player.level(), clicked));
         if (upper != null) {
@@ -188,7 +188,7 @@ public final class MonsterDoorBreaking {
     }
 
     private static BlockPos upperDoor(ServerLevel level, BlockPos pos) {
-        if (!level.hasChunkAt(pos)) return null;
+        if (!level.isLoaded(pos)) return null;
         var state = level.getBlockState(pos);
         if (!DoorBlock.isWoodenDoor(state)) return null; // Also includes hand-openable copper doors in 26.3.
         return state.getValue(DoorBlock.HALF) == DoubleBlockHalf.UPPER ? pos.immutable() : pos.above();
