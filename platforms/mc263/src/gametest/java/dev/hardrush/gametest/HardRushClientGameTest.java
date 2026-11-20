@@ -218,6 +218,9 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
                 }
                 return result.getAsJsonObject("result");
             }
-        } catch (Exception failure) { throw new IllegalStateException("Debug command failed: " + command, failure); }
+        } catch (Exception failure) {
+            throw new IllegalStateException("Debug command failed: " + command
+                    + " (the client GameTest drives the debug server; start it with: python3 scripts/debug-tools.py start)", failure);
+        }
     }
 }
