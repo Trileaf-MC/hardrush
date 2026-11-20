@@ -10,6 +10,7 @@ import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import dev.hardrush.gametest.TestClients;
 import dev.hardrush.gametest.TestProperties;
+import dev.hardrush.gametest.TestTeardown;
 import dev.hardrush.notice.Notices;
 import dev.hardrush.persistence.CommitResult;
 import dev.hardrush.persistence.SnapshotWrite;
@@ -82,8 +83,13 @@ public final class TotemSaveGameTest {
     public void heldRevivalTotemsSaveInPlaceByVanillaRulesAndTheLedgerFollows(GameTestHelper test) {
         if (!Boolean.getBoolean(TestProperties.TOTEM_SAVE)) { test.succeed(); return; }
         var f = new Fixture(test);
+        TestTeardown.atEnd(test, f::close);
         var h = new Harness(f);
         harness = h;
+        TestTeardown.atEnd(test, () -> {
+            harness = null;
+            h.close();
+        });
         test.onEachTick(h::pump);
         var monster = UUID.randomUUID();
         // A: monster hit, main hand. B: human hit, off hand. C: totem not in hand. D: void. E: /kill. F: locked.
@@ -137,7 +143,7 @@ public final class TotemSaveGameTest {
             ((CombatOriginHolder) refs.zombie).hardrush$sealCombatOrigin(Optional.of(new CombatOrigin(h.round, UUID.randomUUID(),
                     new CombatActor(monster, ParticipantRole.MONSTER_DEPLOYED, 1, 1), AttackKind.MELEE,
                     Optional.of(refs.zombie.getUUID()), List.of())));
-        }).thenExecute(() -> first(() -> {
+        }).thenExecute(() -> {
             var level = f.level;
             var sources = level.damageSources();
             var a = c.get("A").player();
@@ -209,7 +215,7 @@ public final class TotemSaveGameTest {
 
             for (var tag : List.of("A", "B", "H", "G", "I"))
                 test.assertFalse(h.deaths.contains(c.get(tag).id()), "Saved in place is not a death: " + tag);
-        })).thenWaitUntil(() -> require(h.settled(), "every save and death commits")).thenExecute(() -> first(() -> {
+        }).thenWaitUntil(() -> require(h.settled(), "every save and death commits")).thenExecute(() -> {
             // The ledger: one charge per save, the monster's forced pop counted as its kill, nothing voided.
             test.assertValueEqual(h.types.stream().filter(t -> t.startsWith("TOTEM_SAVE")).toList(),
                     List.of("TOTEM_SAVE", "TOTEM_SAVE", "TOTEM_SAVE", "TOTEM_SAVE"), "A, H, B and J were saved, none voided: " + h.types);
@@ -243,17 +249,7 @@ public final class TotemSaveGameTest {
             test.assertTrue(fp.isDeadOrDying() && h.deaths.contains(fp.getUUID()), "Locked: F dies normally");
             test.assertValueEqual(h.session.pendingTotemSaves(fp.getUUID()), 0, "Nothing is booked while locked");
             h.session.endFullCheckpoint();
-        })).thenExecuteAfter(1, () -> {
-            harness = null;
-            h.close();
-            f.close();
-        }).thenSucceed();
-    }
-
-    /** Prints the first failure of a step: a failed {@code thenExecute} does not stop the sequence, later steps report instead. */
-    private static void first(Runnable step) {
-        try { step.run(); }
-        catch (RuntimeException failure) { System.out.println("TotemSaveGameTest first failure: " + failure.getMessage()); throw failure; }
+        }).thenIdle(1).thenSucceed();
     }
 
     /** The checks every in-place save shares: alive at 1 health, one charge less in hand and in flight, event 35, the line. */
