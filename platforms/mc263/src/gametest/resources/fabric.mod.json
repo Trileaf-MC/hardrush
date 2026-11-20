@@ -69,7 +69,8 @@
       "dev.hardrush.lobby.pack.PackRoundTripGameTest",
       "dev.hardrush.lobby.pack.LobbyInstallGameTest",
       "dev.hardrush.gametest.LobbyAdminGameTest",
-      "dev.hardrush.gametest.TestClientsGameTest"
+      "dev.hardrush.gametest.TestClientsGameTest",
+      "dev.hardrush.gametest.GameTestHarnessGameTest"
     ],
     "fabric-client-gametest": [
       "dev.hardrush.gametest.HardRushClientGameTest"

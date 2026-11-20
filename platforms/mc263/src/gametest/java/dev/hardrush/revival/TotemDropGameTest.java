@@ -9,6 +9,7 @@ import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import dev.hardrush.gametest.TestClients;
+import dev.hardrush.gametest.TestTeardown;
 import dev.hardrush.notice.Notices;
 import dev.hardrush.revival.TotemProjection.Decision;
 import dev.hardrush.revival.TotemProjection.Identity;
@@ -69,6 +70,7 @@ public final class TotemDropGameTest {
     public void droppedTotemsSpawnRegisterAnnounceAndAreTakenOnlyThroughTheRegistry(GameTestHelper test) {
         if (HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var f = new Fixture(test);
+        TestTeardown.atEnd(test, f::close);
         var s = new Script(f.server);
         var killer = f.client("K"); var victim = f.client("V"); var second = f.client("X");
         var human = f.client("H"); var camp = f.client("M"); var deployed = f.client("D");
@@ -81,6 +83,7 @@ public final class TotemDropGameTest {
         s.put(offline, "Offline", ParticipantRole.HUMAN_ACTIVE, 1, 0, 0, false);
         s.collectors.addAll(List.of(killer.id(), human.id()));
         TotemDrops.configure(f.server, s);
+        TestTeardown.atEnd(test, () -> TotemDrops.unconfigure(f.server));
         victim.move(f.base.offset(0, 0, 4)); second.move(f.base.offset(3, 0, 4));
         var refs = new Object() { ItemEntity vetoed, first, other, reload, traveller; UUID firstToken, otherToken, reloadToken; };
 
@@ -345,10 +348,7 @@ public final class TotemDropGameTest {
             test.assertTrue(human.team(p -> p.getTeamAction() == ClientboundSetPlayerTeamPacket.Action.REMOVE)
                     && human.team(p -> p.getTeamAction() == ClientboundSetPlayerTeamPacket.Action.ADD && p.getPlayers().isEmpty()),
                     "The team is rebuilt empty for the new round");
-        }).thenExecuteAfter(1, () -> {
-            TotemDrops.unconfigure(f.server);
-            f.close();
-        }).thenSucceed();
+        }).thenIdle(1).thenSucceed();
     }
 
     private static ItemEntity only(GameTestHelper test, List<ItemEntity> items, String what) {
