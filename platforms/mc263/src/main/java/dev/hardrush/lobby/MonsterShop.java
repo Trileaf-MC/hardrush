@@ -38,12 +38,12 @@ import net.minecraft.world.item.trading.MerchantOffers;
  * goods into the next sortie.
  */
 public final class MonsterShop {
-    private static final Map<MinecraftServer, RevivalTotems.Access> INSTANCES = new IdentityHashMap<>();
+    private static final Map<MinecraftServer, CampAccess> INSTANCES = new IdentityHashMap<>();
     private static final double REACH = 8;
 
     private MonsterShop() {}
 
-    static void configure(MinecraftServer server, RevivalTotems.Access access) { INSTANCES.put(server, access); }
+    static void configure(MinecraftServer server, CampAccess access) { INSTANCES.put(server, access); }
     static void unconfigure(MinecraftServer server) { INSTANCES.remove(server); }
 
     public static boolean isShop(ServerPlayer player) { return player.containerMenu instanceof ShopMenu; }

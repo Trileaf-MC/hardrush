@@ -160,6 +160,29 @@ public final class PlayerProfiles implements AutoCloseable {
                 && dev.hardrush.world.LobbyWorld.isLobby(player.level());
     }
 
+    /**
+     * The round-world counterpart of {@link #verifiedLobbyBody}: an admitted, verified and unlocked human body standing
+     * in a formal round world, i.e. the body whose death {@code AFTER_DEATH} would capture. The caller still matches
+     * the life sequence against the committed participant.
+     */
+    public static boolean verifiedRoundBody(ServerPlayer player) {
+        return player.isAlive() && verifiedDyingRoundBody(player);
+    }
+
+    /**
+     * {@link #verifiedRoundBody} for a body inside its lethal hit (health already at zero, so not "alive"), before
+     * {@code AFTER_DEATH} holds its death: the admitted, verified, unlocked round body in every other respect.
+     */
+    public static boolean verifiedDyingRoundBody(ServerPlayer player) {
+        var service = SERVICES.get(player.level().getServer());
+        var entry = service == null ? null : service.players.get(player.getUUID());
+        return entry != null && entry.player == player && !service.closed && entry.admitted && !entry.adminSpectating
+                && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit && !entry.celebrationGuest
+                && !entry.building && !entry.observing
+                && entry.ready && entry.problem.isEmpty() && entry.diskSafe && !isLocked(player)
+                && !player.isRemoved() && !player.isSpectator() && dev.hardrush.world.RoundWorldBundle.owns(player.level());
+    }
+
     public static boolean simulationFrozen(ServerPlayer player) {
         if (dev.hardrush.participation.ParticipationControl.pending(player)) return true;
         if (dev.hardrush.storage.FullCheckpointRuntime.saving(player.level().getServer())) return true;

@@ -32,8 +32,18 @@ public final class KillCreditMemory {
      * otherwise the last credited hit that is still remembered.
      */
     public Optional<CombatOrigin> died(UUID victim, Optional<CombatOrigin> lethal, long tick) {
+        var credit = peek(victim, lethal, tick);
+        hits.remove(victim);
+        return credit;
+    }
+
+    /**
+     * The credit {@link #died} would resolve right now, without forgetting anything: a body that a lethal hit did not
+     * kill (a totem saved it) keeps its memory, as the vanilla entity keeps {@code lastHurtByPlayer}.
+     */
+    public Optional<CombatOrigin> peek(UUID victim, Optional<CombatOrigin> lethal, long tick) {
         Objects.requireNonNull(lethal);
-        var hit = hits.remove(Objects.requireNonNull(victim));
+        var hit = hits.get(Objects.requireNonNull(victim));
         if (lethal.isPresent()) return lethal;
         return hit == null || expired(hit, tick) ? Optional.empty() : Optional.of(hit.credit());
     }

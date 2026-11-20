@@ -34,13 +34,13 @@ public final class CampKit {
     private static final String COIN_USAGE = "在庭院右键女巫，购买出击增强";
     /** Coins beyond three stacks are still counted; the lore names the true total. */
     public static final int MAX_SHOWN_COINS = 3 * 64;
-    private static final Map<MinecraftServer, RevivalTotems.Access> INSTANCES = new IdentityHashMap<>();
+    private static final Map<MinecraftServer, CampAccess> INSTANCES = new IdentityHashMap<>();
     /** Players watching a vault animation; their new gear appears when it flies into the backpack. */
     private static final Set<UUID> HELD = new HashSet<>();
 
     private CampKit() {}
 
-    static void configure(MinecraftServer server, RevivalTotems.Access access) { INSTANCES.put(server, access); }
+    static void configure(MinecraftServer server, CampAccess access) { INSTANCES.put(server, access); }
     static void unconfigure(MinecraftServer server) { INSTANCES.remove(server); }
 
     static void hold(ServerPlayer player, boolean held) {

@@ -328,17 +328,17 @@ public final class MonsterCompanionGameTest {
         var nether = owner.level().getServer().getLevel(Level.NETHER);
         var landing = new BlockPos(owner.getBlockX(), 100, 0);
         var chunk = new ChunkPos(landing.getX() >> 4, landing.getZ() >> 4);
-        Runnable cleanup = () -> {
+        TestTeardown.atEnd(test, () -> {
             clean(owner);
             for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) nether.setChunkForced(chunk.x() + dx, chunk.z() + dz, false);
-        };
+        });
         var frozen = new FrozenMonsterSource(UUID.randomUUID(), owner.getUUID(), 6, 7, true);
         var travellers = new java.util.LinkedHashMap<UUID, CombatOrigin>();
         test.startSequence()
                 .thenExecute(() -> { for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) nether.setChunkForced(chunk.x() + dx, chunk.z() + dz, true); })
                 .thenIdle(80)
                 .thenWaitUntil(() -> test.assertTrue(nether.isPositionEntityTicking(landing), "The Nether landing is loaded and simulated"))
-                .thenExecute(() -> guarded(cleanup, () -> {
+                .thenExecute(() -> {
                     for (int dx = -6; dx <= 6; dx++) for (int dz = -6; dz <= 6; dz++) {
                         nether.setBlockAndUpdate(landing.offset(dx, -1, dz), Blocks.SMOOTH_STONE.defaultBlockState());
                         for (int dy = 0; dy <= 4; dy++) nether.setBlockAndUpdate(landing.offset(dx, dy, dz), Blocks.AIR.defaultBlockState());
@@ -374,21 +374,16 @@ public final class MonsterCompanionGameTest {
                                 "Loading the copy configures it to follow again");
                         if (arrived instanceof Drowned) test.assertTrue(arrived.getMainHandItem().is(Items.TRIDENT), "A drowned keeps its trident");
                     }
-                }))
+                })
                 .thenIdle(5)
-                .thenExecute(() -> guarded(cleanup, () -> {
+                .thenExecute(() -> {
                     for (var id : travellers.keySet()) {
                         var arrived = nether.getEntity(id);
                         test.assertTrue(arrived != null && arrived.isAlive() && !MonsterCompanions.isDismissing(arrived),
                                 "The copy's sortie binding still matches, so the companion sweep keeps it");
                     }
-                }))
-                .thenExecute(cleanup)
+                })
                 .thenSucceed();
-    }
-    private static void guarded(Runnable cleanup, Runnable body) {
-        try { body.run(); }
-        catch (RuntimeException | Error failure) { cleanup.run(); throw failure; }
     }
 
     /** Loaded but outside simulation: goals no longer run there, so the companion is fetched instead. */
@@ -399,7 +394,7 @@ public final class MonsterCompanionGameTest {
         var far = new BlockPos(owner.getBlockX(), 150, -4096);
         var farChunk = new ChunkPos(far.getX() >> 4, far.getZ() >> 4);
         level.getChunkSource().addTicketWithRadius(LOADED_ONLY, farChunk, 1);
-        Runnable cleanup = () -> { level.getChunkSource().removeTicketWithRadius(LOADED_ONLY, farChunk, 1); clean(owner); };
+        TestTeardown.atEnd(test, () -> { level.getChunkSource().removeTicketWithRadius(LOADED_ONLY, farChunk, 1); clean(owner); });
         Zombie[] drowned = new Zombie[1];
         test.startSequence().thenIdle(80)
                 .thenWaitUntil(() -> test.assertTrue(level.areEntitiesLoaded(farChunk.pack()) && !level.isPositionEntityTicking(far),
@@ -413,7 +408,6 @@ public final class MonsterCompanionGameTest {
                 })
                 .thenWaitUntil(() -> test.assertTrue(drowned[0].isAlive() && drowned[0].distanceToSqr(owner) < 64,
                         "A follower outside entity simulation is brought back beside its owner"))
-                .thenExecute(cleanup)
                 .thenSucceed();
     }
     private static final TicketType LOADED_ONLY = new TicketType(TicketType.NO_TIMEOUT, TicketType.FLAG_LOADING);
