@@ -38,7 +38,6 @@ public final class StabilizationGameTest {
         var state=new State(f,scene,peers,test);
         test.onEachTick(()->{
             if(f.clock!=null)f.clock.accumulateAndGet(System.nanoTime(),Math::max);
-            for(var peer:peers)if(peer.current()!=null){peer.acknowledge();peer.current().connection.tick();}
             test.assertFalse(RoundRuntime.sessionState(f.server).filter(s->s==RoundSession.State.FAILED).isPresent(),"Stabilization failed: "+RoundRuntime.status(f.server));
         });
         var seq=test.startSequence().thenWaitUntil(()->f.await(RoundRuntime.sessionState(f.server).filter(s->s==RoundSession.State.OPEN).isPresent(),"Stabilization bootstrap"))

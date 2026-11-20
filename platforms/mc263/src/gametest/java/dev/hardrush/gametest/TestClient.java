@@ -9,8 +9,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -46,17 +46,24 @@ import net.minecraft.world.phys.Vec3;
 /**
  * One fixture player whose client speaks the vanilla protocol back to the server.
  *
- * <p>A test describes who joins, what they do and what they should receive; this class owns the protocol a vanilla
- * client runs on its own. At the end of every server tick, and whenever a test calls {@link #acknowledge()}, the
- * client:
+ * <p>A test describes who joins, what they do and what they should receive; this class owns what a real connection
+ * does without the test asking.
+ *
+ * <p>Every server tick, the connection ticks where the server ticks its network connections (after the levels, before
+ * the player list and the GameTests), which embedded connections are not part of. That tick runs the player's own
+ * body ({@code ServerPlayer.doTick}: effects, hunger, air, fire, item and attack timers), resets the movement checks'
+ * baseline, flushes block-change acknowledgements and checks keep-alives, spam throttles and floating. A test that
+ * needs a player whose body stands still {@linkplain #freeze() freezes} the connection and steps it by hand with
+ * {@link #tickConnection()}.
+ *
+ * <p>At the end of every server tick, and whenever a test calls {@link #acknowledge()}, the client:
  * <ul>
  *   <li>accepts every teleport the server sent, in order, at its destination ({@link Reply#ACCEPT_TELEPORTS});</li>
  *   <li>reports once that it has loaded the level, after a login or respawn packet, once the server has started
  *   sending that level's chunks ({@code LEVEL_CHUNKS_LOAD_START}) and every teleport so far is accepted, as the vanilla
  *   loading screen does ({@link Reply#REPORT_LOADED});</li>
  *   <li>confirms every finished chunk batch, so the server keeps streaming its view ({@link Reply#CONFIRM_CHUNK_BATCHES});</li>
- *   <li>answers every keep-alive challenge, which matters to tests that {@linkplain #tickConnection() tick the
- *   connection} ({@link Reply#ANSWER_KEEP_ALIVE}).</li>
+ *   <li>answers every keep-alive challenge, so the connection tick never times it out ({@link Reply#ANSWER_KEEP_ALIVE}).</li>
  * </ul>
  * The client never sees chunk contents, so unlike the vanilla loading screen it does not wait for the chunk it stands
  * in.
@@ -86,7 +93,8 @@ public final class TestClient implements AutoCloseable {
     /** A teleport as the client applies and acknowledges it: its id and absolute destination. */
     public record Teleport(int id, Vec3 position, float yRot, float xRot) {}
 
-    private static final Set<TestClient> LIVE = ConcurrentHashMap.newKeySet();
+    /** In joining order, as the server's connection list ticks its connections. */
+    private static final Set<TestClient> LIVE = new CopyOnWriteArraySet<>();
     private static final AtomicInteger NAMES = new AtomicInteger();
 
     private final MinecraftServer server;
@@ -94,6 +102,7 @@ public final class TestClient implements AutoCloseable {
     private final EnumSet<Reply> withheld = EnumSet.noneOf(Reply.class);
     private int viewDistance = TestClients.VIEW_DISTANCE;
     private boolean unmanaged;
+    private volatile boolean frozen;
 
     private Mode mode;
     private PrepareSpawnTask prepare;
@@ -113,6 +122,8 @@ public final class TestClient implements AutoCloseable {
     /** Between a login or respawn packet and the loaded report: the vanilla client's loading screen. */
     private volatile boolean levelLoading;
     private volatile boolean levelChunksStarted;
+    /** A teleport arrived after the connection last ticked, so the server's movement baseline is still where it was. */
+    private volatile boolean teleportedSinceConnectionTick;
 
     public TestClient(MinecraftServer server, GameProfile profile) {
         this.server = server;
@@ -139,6 +150,15 @@ public final class TestClient implements AutoCloseable {
 
     /** Native logins of this client stay outside HardRush's player profiles, for fixtures that seed vanilla data. */
     public TestClient unmanaged() { unmanaged = true; return this; }
+
+    /**
+     * Stops the per-tick connection tick, at any time: the player's body no longer ticks (effects, hunger and timers stand
+     * still) and nothing checks keep-alives. The client still sends its replies. {@link #tickConnection()} steps it by hand.
+     */
+    public TestClient freeze() { frozen = true; return this; }
+
+    /** Resumes the per-tick connection tick. */
+    public TestClient unfreeze() { frozen = false; return this; }
 
     // ---- Joining and leaving.
 
@@ -333,10 +353,12 @@ public final class TestClient implements AutoCloseable {
     private void accept(Teleport teleport) {
         acceptedTeleports.add(teleport);
         var position = teleport.position();
-        // A real acknowledgement arrives after the server's connection tick has reset the movement baseline to where the
-        // teleport put the player. Embedded connections get no such tick, so their baseline would stay wherever the
-        // player joined, every acceptance would read as moving too quickly, and the server would teleport back forever.
-        listener.resetPosition();
+        // The server checks an acceptance as a move from the baseline its connection tick last reset, and the teleport
+        // moved the player away from it. A real client's acceptance travels for a while and normally arrives after the
+        // next connection tick has reset the baseline to the destination. This client answers within the tick, so when
+        // the teleport came after the connection ticked (or the connection is frozen), it applies that reset itself;
+        // otherwise a long teleport would read as moving too quickly, and the server would teleport the player once more.
+        if (teleportedSinceConnectionTick) listener.resetPosition();
         listener.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(teleport.id(), position.x, position.y, position.z,
                 teleport.yRot(), teleport.xRot()));
     }
@@ -363,10 +385,13 @@ public final class TestClient implements AutoCloseable {
     }
 
     /**
-     * Runs the connection tick a network socket would get from the server's connection list, which embedded
-     * connections are not part of. Only for tests about per-connection timers; it also starts keep-alive checks.
+     * Runs one connection tick now, besides the one every server tick runs: for a {@linkplain #freeze() frozen} client,
+     * or a test that plays several ticks within one step.
      */
-    public void tickConnection() { listener().tick(); }
+    public void tickConnection() {
+        listener();
+        runConnectionTick();
+    }
 
     /** The Q key: drops one item, or with {@code wholeStack} (Ctrl+Q) the whole selected stack. */
     public void dropSelected(boolean wholeStack) {
@@ -376,6 +401,22 @@ public final class TestClient implements AutoCloseable {
     }
 
     // ---- Internals.
+
+    /**
+     * Ticks the connection of every live client of {@code server}, in joining order, as the server's connection list does;
+     * called right after it. An exception propagates and crashes the server, as it would for a memory connection.
+     */
+    public static void tickConnections(MinecraftServer server) {
+        for (var client : LIVE) {
+            if (client.server == server && !client.frozen && client.live()) client.runConnectionTick();
+        }
+    }
+
+    private void runConnectionTick() {
+        // Cleared first: a teleport during this tick (by the player's own body) comes after the baseline reset.
+        teleportedSinceConnectionTick = false;
+        connection.tick();
+    }
 
     /** Called by {@link TestClients} at the end of every server tick. */
     static void tick(MinecraftServer server) {
@@ -417,6 +458,7 @@ public final class TestClient implements AutoCloseable {
         pendingChunkBatches.set(0);
         levelLoading = false;
         levelChunksStarted = false;
+        teleportedSinceConnectionTick = false;
         connection = new TestConnection(this::observe);
         channel = new EmbeddedChannel(connection);
     }
@@ -432,6 +474,7 @@ public final class TestClient implements AutoCloseable {
             case ClientboundPlayerPositionPacket position -> {
                 var teleport = arrival(position);
                 lastReceived = teleport;
+                teleportedSinceConnectionTick = true;
                 pendingTeleports.add(teleport);
             }
             case ClientboundChunkBatchFinishedPacket ignored -> pendingChunkBatches.incrementAndGet();
@@ -451,8 +494,9 @@ public final class TestClient implements AutoCloseable {
      * comes from {@code ServerGamePacketListenerImpl.teleport}, which moves the player before sending, so that is the
      * player's position now less the packet's offset. A riding client applies no position packet and acknowledges
      * where it is.
-     * TODO: [Refactor] tracking the client's own position (#52) would also cover position packets that do not come from
-     * {@code teleport()}, which only tests construct, and two relative teleports bundled after both moved the player.
+     * TODO: [Refactor] tracking the client's own position would also cover position packets that do not come from
+     * {@code teleport()}, which only tests construct, and two relative teleports bundled after both moved the player. It
+     * needs every client-side move to go through this class; today fixtures send move packets to the listener directly.
      */
     private Teleport arrival(ClientboundPlayerPositionPacket packet) {
         var change = packet.change();
