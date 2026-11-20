@@ -78,7 +78,7 @@ fabricApi {
         modId = 'hardrush-gametest'
         enableGameTests = true
         enableClientGameTests = true
-        // The helper copies the existing accepted EULA; it never accepts it for the user.
+        // runGameTest copies the user's existing acceptance (checkAcceptedEula); never accept it here.
         eula = false
     }
 }
@@ -178,17 +178,30 @@ loom.runs.named('clientGameTest') {
     }
 }
 
-// Reuse the user's existing acceptance; preparation validates it before test runs.
+// GameTest runs only reuse the user's existing acceptance; they never accept the EULA.
+// Kept apart from prepareDebugTools so GameTests never need the debug-tool downloads.
 def acceptedEula = rootProject.file('.local/server/eula.txt')
+tasks.register('checkAcceptedEula') {
+    group = 'verification'
+    description = 'Fail unless .local/server/eula.txt already records the user accepting the Minecraft EULA.'
+    doLast {
+        if (!acceptedEula.isFile() || !acceptedEula.readLines().collect { it.trim() }.contains('eula=true')) {
+            throw new GradleException('Read https://aka.ms/MinecraftEULA and accept it in .local/server/eula.txt first.')
+        }
+    }
+}
 
 // Every default headless regression uses a new directory; never touch a daily instance.
+// Dedicated suites below replace runDir with their own fresh directory.
 def baselineCheckRunDir = rootProject.file(".local/baseline-check/${UUID.randomUUID()}")
 loom.runs.named('gameTest') { runDir baselineCheckRunDir.absolutePath }
 tasks.named('runGameTest') {
+    dependsOn 'checkAcceptedEula'
     doFirst {
-        baselineCheckRunDir.mkdirs()
-        copy { from acceptedEula; into baselineCheckRunDir }
-        logger.lifecycle("Default isolated GameTest storage (special suites may override): ${baselineCheckRunDir}")
+        def storage = loom.runs.named('gameTest').get().runDirectory.get().asFile
+        storage.mkdirs()
+        copy { from acceptedEula; into storage }
+        logger.lifecycle("Isolated GameTest storage: ${storage}")
     }
 }
 
@@ -207,15 +220,6 @@ loom.runs.named('gameTest') {
         runDir celebrationRunDir.absolutePath
     }
 }
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushCelebration').orNull == 'true') {
-        doFirst {
-            celebrationRunDir.mkdirs()
-            copy { from acceptedEula; into celebrationRunDir }
-            logger.lifecycle("Isolated celebration storage: ${celebrationRunDir}")
-        }
-    }
-}
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushTenRounds').orNull == 'true') {
         if (providers.gradleProperty('hardrushCompetition').orNull != 'true') {
@@ -225,19 +229,6 @@ loom.runs.named('gameTest') {
         vmArg '-Dhardrush.round.initialMode=normal'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:ten_round_game_test*'
         runDir tenRoundsRunDir.absolutePath
-    }
-}
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushTenRounds').orNull == 'true') {
-        doFirst {
-            // prepareDebugTools has already checked the user's accepted EULA; never accept it here.
-            tenRoundsRunDir.mkdirs()
-            copy {
-                from acceptedEula
-                into tenRoundsRunDir
-            }
-            logger.lifecycle("Isolated ten-round storage: ${tenRoundsRunDir}")
-        }
     }
 }
 
@@ -253,18 +244,6 @@ loom.runs.named('gameTest') {
         runDir storageReserveRunDir.absolutePath
     }
 }
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushStorageReserve').orNull == 'true') {
-        doFirst {
-            storageReserveRunDir.mkdirs()
-            copy {
-                from acceptedEula
-                into storageReserveRunDir
-            }
-            logger.lifecycle("Isolated storage reserve admission: ${storageReserveRunDir}")
-        }
-    }
-}
 
 // Recovery mutates the formal runtime deliberately and cannot share another regression's storage.
 def recoveryRunDir = rootProject.file(".local/recovery/${UUID.randomUUID()}")
@@ -277,15 +256,6 @@ loom.runs.named('gameTest') {
         vmArg '-Dhardrush.test.recovery=true'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:recovery_game_test*'
         runDir recoveryRunDir.absolutePath
-    }
-}
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushRecovery').orNull == 'true') {
-        doFirst {
-            recoveryRunDir.mkdirs()
-            copy { from acceptedEula; into recoveryRunDir }
-            logger.lifecycle("Isolated recovery: ${recoveryRunDir}")
-        }
     }
 }
 
@@ -303,24 +273,15 @@ loom.runs.named('gameTest') {
         runDir identityRuntimeRunDir.absolutePath
     }
 }
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushIdentityRuntime').orNull == 'true') {
-        doFirst {
-            identityRuntimeRunDir.mkdirs()
-            copy {
-                from acceptedEula
-                into identityRuntimeRunDir
-            }
-            logger.lifecycle("Isolated identity runtime storage: ${identityRuntimeRunDir}")
-        }
-    }
-}
 
+// Downloads MCPFabric and the debug mods; only the managed debug instances need them.
+// runClientGameTest drives an already running debug server (debug-tools.py start), so it needs nothing here.
 tasks.register('prepareDebugTools', Exec) {
+    dependsOn 'checkAcceptedEula'
     commandLine 'python3', rootProject.file('scripts/debug-tools.py'), 'prepare'
 }
 
-['runDebugServer', 'runDebugClient', 'runGameTest', 'runClientGameTest'].each { name ->
+['runDebugServer', 'runDebugClient'].each { name ->
     tasks.named(name) { dependsOn 'prepareDebugTools' }
 }
 
@@ -432,18 +393,6 @@ loom.runs.named('gameTest') {
         runDir lobbyRuntimeRunDir.absolutePath
     }
 }
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushLobbyRuntime').orNull == 'true') {
-        doFirst {
-            lobbyRuntimeRunDir.mkdirs()
-            copy {
-                from acceptedEula
-                into lobbyRuntimeRunDir
-            }
-            logger.lifecycle("Isolated lobby runtime storage: ${lobbyRuntimeRunDir}")
-        }
-    }
-}
 
 // Shared lobby movement exercises real packets and the production lifecycle in its own storage.
 def lobbyMovementRunDir = rootProject.file(".local/lobby-movement/${UUID.randomUUID()}")
@@ -457,15 +406,6 @@ loom.runs.named('gameTest') {
         vmArg '-Dhardrush.round.initialMode=normal'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:lobby_movement_game_test*'
         runDir lobbyMovementRunDir.absolutePath
-    }
-}
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushLobbyMovement').orNull == 'true') {
-        doFirst {
-            lobbyMovementRunDir.mkdirs()
-            copy { from acceptedEula; into lobbyMovementRunDir }
-            logger.lifecycle("Isolated lobby movement storage: ${lobbyMovementRunDir}")
-        }
     }
 }
 
@@ -484,15 +424,6 @@ loom.runs.named('gameTest') {
         runDir lobbyFoundationRunDir.absolutePath
     }
 }
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushLobbyFoundation').orNull == 'true') {
-        doFirst {
-            lobbyFoundationRunDir.mkdirs()
-            copy { from acceptedEula; into lobbyFoundationRunDir }
-            logger.lifecycle("Isolated lobby foundation storage: ${lobbyFoundationRunDir}")
-        }
-    }
-}
 
 // Round-2 spatial human entry owns the production lobby and must run alone.
 def humanEntryRunDir = rootProject.file(".local/lobby-human-entry/${UUID.randomUUID()}")
@@ -508,15 +439,6 @@ loom.runs.named('gameTest') {
         runDir humanEntryRunDir.absolutePath
     }
 }
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushHumanEntry').orNull == 'true') {
-        doFirst {
-            humanEntryRunDir.mkdirs()
-            copy { from acceptedEula; into humanEntryRunDir }
-            logger.lifecycle("Isolated human entry storage: ${humanEntryRunDir}")
-        }
-    }
-}
 
 // Workshop drafts and builder bodies on the production lifecycle and protection binding.
 def workshopRunDir = rootProject.file(".local/lobby-workshop/${UUID.randomUUID()}")
@@ -527,13 +449,6 @@ loom.runs.named('gameTest') {
         vmArg '-Dhardrush.round.initialMode=normal'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:workshop_game_test*'
         runDir workshopRunDir.absolutePath
-    }
-}
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushWorkshop').orNull == 'true') doFirst {
-        workshopRunDir.mkdirs()
-        copy { from acceptedEula; into workshopRunDir }
-        logger.lifecycle("Isolated workshop storage: ${workshopRunDir}")
     }
 }
 
@@ -554,15 +469,6 @@ loom.runs.named('gameTest') {
         runDir participationExitRunDir.absolutePath
     }
 }
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushParticipationExit').orNull == 'true') {
-        doFirst {
-            participationExitRunDir.mkdirs()
-            copy { from acceptedEula; into participationExitRunDir }
-            logger.lifecycle("Isolated participation exit storage: ${participationExitRunDir}")
-        }
-    }
-}
 def adminSpectatorRunDir = rootProject.file(".local/admin-spectator/${UUID.randomUUID()}")
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushAdminSpectator').orNull == 'true') {
@@ -572,15 +478,6 @@ loom.runs.named('gameTest') {
         vmArg '-Dhardrush.round.initialMode=normal'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:administrative_spectator_game_test*'
         runDir adminSpectatorRunDir.absolutePath
-    }
-}
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushAdminSpectator').orNull == 'true') {
-        doFirst {
-            adminSpectatorRunDir.mkdirs()
-            copy { from acceptedEula; into adminSpectatorRunDir }
-            logger.lifecycle("Isolated administrative spectator storage: ${adminSpectatorRunDir}")
-        }
     }
 }
 def personalHuntRunDir = rootProject.file(".local/personal-hunt/${UUID.randomUUID()}")
@@ -594,13 +491,6 @@ loom.runs.named('gameTest') {
         vmArg '-Dhardrush.round.initialMode=hardcore'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:personal_hunt_game_test*'
         runDir personalHuntRunDir.absolutePath
-    }
-}
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushPersonalHunt').orNull == 'true') doFirst {
-        personalHuntRunDir.mkdirs()
-        copy { from acceptedEula; into personalHuntRunDir }
-        logger.lifecycle("Isolated personal hunt storage: ${personalHuntRunDir}")
     }
 }
 
@@ -618,13 +508,6 @@ loom.runs.named('gameTest') {
         runDir fullFlowRunDir.absolutePath
     }
 }
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushFullFlow').orNull == 'true') doFirst {
-        fullFlowRunDir.mkdirs()
-        copy { from acceptedEula; into fullFlowRunDir }
-        logger.lifecycle("Isolated full flow storage: ${fullFlowRunDir}")
-    }
-}
 
 // Round 5 owns the production camp, twenty native connections and sequential worlds.
 def stabilizationRunDir = rootProject.file(".local/lobby-stabilization/${UUID.randomUUID()}")
@@ -637,13 +520,6 @@ loom.runs.named('gameTest') {
         runDir stabilizationRunDir.absolutePath
     }
 }
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushStabilization').orNull == 'true') doFirst {
-        stabilizationRunDir.mkdirs()
-        copy { from acceptedEula; into stabilizationRunDir }
-        logger.lifecycle("Isolated stabilization storage: ${stabilizationRunDir}")
-    }
-}
 
 // Installing and rolling back lobby packs replaces the production lobby dimension: its own JVM.
 def lobbyAdminRunDir = rootProject.file(".local/lobby-admin/${UUID.randomUUID()}")
@@ -654,13 +530,6 @@ loom.runs.named('gameTest') {
         vmArg '-Dhardrush.round.initialMode=normal'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:lobby_admin_game_test*'
         runDir lobbyAdminRunDir.absolutePath
-    }
-}
-tasks.named('runGameTest') {
-    if (providers.gradleProperty('hardrushLobbyAdmin').orNull == 'true') doFirst {
-        lobbyAdminRunDir.mkdirs()
-        copy { from acceptedEula; into lobbyAdminRunDir }
-        logger.lifecycle("Isolated lobby admin storage: ${lobbyAdminRunDir}")
     }
 }
 
