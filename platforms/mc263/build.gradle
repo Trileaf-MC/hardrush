@@ -78,7 +78,7 @@ fabricApi {
         modId = 'hardrush-gametest'
         enableGameTests = true
         enableClientGameTests = true
-        // The helper copies the existing accepted EULA; it never accepts it for the user.
+        // runGameTest copies the user's existing acceptance (checkAcceptedEula); never accept it here.
         eula = false
     }
 }
@@ -178,7 +178,7 @@ loom.runs.named('clientGameTest') {
     }
 }
 
-// Reuse the user's existing acceptance; nothing in this build ever accepts the EULA.
+// GameTest runs only reuse the user's existing acceptance; they never accept the EULA.
 // Kept apart from prepareDebugTools so GameTests never need the debug-tool downloads.
 def acceptedEula = rootProject.file('.local/server/eula.txt')
 tasks.register('checkAcceptedEula') {

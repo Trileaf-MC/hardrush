@@ -32,7 +32,12 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext test) {
-        command("hardrushdev status"); // Fail early if the debug server is unavailable.
+        try {
+            command("hardrushdev status"); // Fail early if the debug server is unavailable.
+        } catch (IllegalStateException unavailable) {
+            throw new IllegalStateException(
+                    "The client GameTest drives the debug server; start it first with: python3 scripts/debug-tools.py start", unavailable);
+        }
         test.runOnClient(client -> ConnectScreen.startConnecting(new TitleScreen(), client,
                 ServerAddress.parseString("127.0.0.1:25586"),
                 new ServerData("HardRush debug", "127.0.0.1:25586", ServerData.Type.OTHER), false, null));
@@ -218,9 +223,6 @@ public final class HardRushClientGameTest implements FabricClientGameTest {
                 }
                 return result.getAsJsonObject("result");
             }
-        } catch (Exception failure) {
-            throw new IllegalStateException("Debug command failed: " + command
-                    + " (the client GameTest drives the debug server; start it with: python3 scripts/debug-tools.py start)", failure);
-        }
+        } catch (Exception failure) { throw new IllegalStateException("Debug command failed: " + command, failure); }
     }
 }
