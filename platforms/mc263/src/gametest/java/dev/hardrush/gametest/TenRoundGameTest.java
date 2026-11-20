@@ -305,10 +305,10 @@ public final class TenRoundGameTest {
 
         void disconnect(Actor actor) {
             if (actor.player == null) return;
-            // Fabric's DISCONNECT event is hooked on Connection.handleDisconnection, before the listener.
+            // HardRush handles the leave on the server thread, at the head of the listener's onDisconnect.
             actor.client.disconnect(Component.literal("Ten-round headless reconnect fixture"));
             test.assertTrue(server.getPlayerList().getPlayer(actor.profile.id()) == null, "Native listener removes the UUID");
-            test.assertFalse(profiles.manages(actor.player), "Fabric disconnect releases the profile entry");
+            test.assertFalse(profiles.manages(actor.player), "Disconnect releases the profile entry");
             actor.player = null;
         }
 

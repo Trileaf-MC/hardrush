@@ -47,7 +47,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -365,22 +364,23 @@ public final class RoundRuntime {
                 catch (RuntimeException error) { LOGGER.error("Hunt boss bar update failed", error); }
             }
         });
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            CelebrationRuntime.disconnected(handler.player);
-            dev.hardrush.observe.Observation.disconnected(handler.player);
-            LobbyRuntime.disconnected(handler.player);
-            dev.hardrush.record.HistoryLibrary.disconnected(handler.player);
-            dev.hardrush.lobby.HumanEntry.disconnected(handler.player);
-            dev.hardrush.lobby.RevivalAltar.disconnected(handler.player);
-            dev.hardrush.notice.StatusBars.forget(handler.player);
-            dev.hardrush.hunt.HuntBossBars.disconnected(handler.player);
-            dev.hardrush.revival.TotemTab.disconnected(handler.player);
+        // On the server thread before vanilla saves and removes the body; see PlayerDisconnects.
+        dev.hardrush.player.PlayerDisconnects.register((player, server) -> {
+            CelebrationRuntime.disconnected(player);
+            dev.hardrush.observe.Observation.disconnected(player);
+            LobbyRuntime.disconnected(player);
+            dev.hardrush.record.HistoryLibrary.disconnected(player);
+            dev.hardrush.lobby.HumanEntry.disconnected(player);
+            dev.hardrush.lobby.RevivalAltar.disconnected(player);
+            dev.hardrush.notice.StatusBars.forget(player);
+            dev.hardrush.hunt.HuntBossBars.disconnected(player);
+            dev.hardrush.revival.TotemTab.disconnected(player);
             var session = SESSIONS.get(server);
-            if (session != null) session.onOnline(handler.player.getUUID(), handler.player.getScoreboardName(), false);
+            if (session != null) session.onOnline(player.getUUID(), player.getScoreboardName(), false);
             var admitted = ADMITTED.get(server);
-            if (admitted != null) admitted.remove(handler.player.getUUID());
+            if (admitted != null) admitted.remove(player.getUUID());
             var profiles = PROFILES.get(server);
-            if (profiles != null) profiles.onDisconnect(handler.player);
+            if (profiles != null) profiles.onDisconnect(player);
         });
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
             if (!(entity instanceof ServerPlayer player)) return;
