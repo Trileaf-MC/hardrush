@@ -11,10 +11,21 @@ import java.util.UUID;
 public record RoundSnapshot(UUID roundId, long sequence, long seed, long version, RulesConfig rules,
                             RoundPhase phase, PauseReason pauseReason, long challengeNanos,
                             long remainingPhaseNanos, Map<UUID, Participant> participants,
-                            boolean cleanShutdown, boolean timingUncertain, RoundResult result) {
+                            boolean cleanShutdown, boolean timingUncertain, RoundResult result,
+                            Map<UUID, LooseTotem> looseTotems) {
+    /** A snapshot with no revival totem lying in the world. */
+    public RoundSnapshot(UUID roundId, long sequence, long seed, long version, RulesConfig rules,
+                         RoundPhase phase, PauseReason pauseReason, long challengeNanos,
+                         long remainingPhaseNanos, Map<UUID, Participant> participants,
+                         boolean cleanShutdown, boolean timingUncertain, RoundResult result) {
+        this(roundId, sequence, seed, version, rules, phase, pauseReason, challengeNanos, remainingPhaseNanos,
+                participants, cleanShutdown, timingUncertain, result, Map.of());
+    }
+
     public RoundSnapshot {
         Objects.requireNonNull(roundId); Objects.requireNonNull(rules);
         Objects.requireNonNull(phase); Objects.requireNonNull(pauseReason); Objects.requireNonNull(participants);
+        Objects.requireNonNull(looseTotems);
         if (sequence < 1 || version < 0 || challengeNanos < 0 || remainingPhaseNanos < 0) {
             throw new IllegalArgumentException("Invalid round counters");
         }
@@ -22,6 +33,9 @@ public record RoundSnapshot(UUID roundId, long sequence, long seed, long version
             if (!id.equals(player.id())) throw new IllegalArgumentException("Participant key mismatch");
         });
         participants = Collections.unmodifiableMap(new LinkedHashMap<>(participants));
+        looseTotems.forEach((token, totem) -> { Objects.requireNonNull(token); Objects.requireNonNull(totem); });
+        if (looseTotems.size() > LooseTotem.MAX_REGISTERED) throw new IllegalArgumentException("Too many loose totems");
+        looseTotems = Collections.unmodifiableMap(new LinkedHashMap<>(looseTotems));
         boolean terminal = phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING || phase == RoundPhase.ROTATING;
         if (terminal && result == null || !terminal && phase != RoundPhase.RECOVERY_REQUIRED && result != null) {
             throw new IllegalArgumentException("Round phase and result disagree");
@@ -35,6 +49,12 @@ public record RoundSnapshot(UUID roundId, long sequence, long seed, long version
                 throw new IllegalArgumentException("Winner must have entered a human life in this round");
             }
         }
+    }
+
+    /** The registered loose totem behind {@code token}, unless it has already expired at this snapshot's challenge time. */
+    public java.util.Optional<LooseTotem> liveLooseTotem(UUID token) {
+        LooseTotem totem = looseTotems.get(token);
+        return totem == null || totem.expiredAt(challengeNanos) ? java.util.Optional.empty() : java.util.Optional.of(totem);
     }
 
     public long challengeMillis() { return challengeNanos / 1_000_000; }

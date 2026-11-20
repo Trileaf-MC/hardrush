@@ -17,9 +17,13 @@ public abstract class CombatLivingMixin {
         if (!((Object)this instanceof ServerPlayer player)) return original.call(level, source, amount);
         float before = player.getHealth();
         float shielded = before + player.getAbsorptionAmount();
+        CombatRuntime.takeRevivedInPlace(player);
         try (var ignored = CombatRuntime.damage(level, source)) {
             boolean accepted = original.call(level, source, amount);
-            CombatRuntime.playerDamaged(level, player, source, Math.max(0, shielded - Math.max(0, player.getHealth()) - player.getAbsorptionAmount()));
+            // A revival totem popped by this hit refilled health and absorption: the hit took everything there was.
+            float lost = CombatRuntime.takeRevivedInPlace(player) ? shielded
+                    : Math.max(0, shielded - Math.max(0, player.getHealth()) - player.getAbsorptionAmount());
+            CombatRuntime.playerDamaged(level, player, source, lost);
             if (before > 0 && player.getHealth() <= 0) CombatRuntime.observed(level, player, source, Math.max(0, before - player.getHealth()), true);
             return accepted;
         }

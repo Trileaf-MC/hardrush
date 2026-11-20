@@ -1,7 +1,9 @@
 import com.sun.jdi.Bootstrap;
 import com.sun.jdi.LongValue;
+import com.sun.jdi.ObjectCollectedException;
 import com.sun.jdi.ObjectReference;
 import com.sun.jdi.StringReference;
+import com.sun.jdi.ThreadReference;
 import com.sun.jdi.VMDisconnectedException;
 import com.sun.jdi.event.MethodExitEvent;
 import com.sun.jdi.request.EventRequest;
@@ -14,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 
 /** External test-only JDI barrier. No halt, observer, or fault switch is added to production code. */
 public final class ProfileCrashBarrier {
+    private static final String WORKER = "hardrush-profiles";
+
     public static void main(String[] args) throws Exception {
         Path directory = Path.of(args[0]);
         int port = Integer.parseInt(args[1]);
@@ -38,7 +42,16 @@ public final class ProfileCrashBarrier {
             if (((LongValue) type.getValue(type.fieldByName("PID"))).value() != pid) {
                 throw new IllegalStateException("Attached VM is not this runner's dedicated server child");
             }
+            // PlayerProfiles starts its single journal worker eagerly and never retires it while the server runs.
+            var workers = vm.allThreads().stream().filter(ProfileCrashBarrier::isWorker).toList();
+            if (workers.size() != 1) throw new IllegalStateException("Expected exactly one " + WORKER + " thread, found " + workers.size());
+            var worker = workers.getFirst();
             var exits = vm.eventRequestManager().createMethodExitRequest();
+            // The thread filter is load-bearing, not an optimization. Without it JDWP enables JVMTI MethodExit for
+            // every thread, which forces each of them into interpreter-only mode and reports every method return
+            // to the agent before the class filter runs. Server ticks then exceed max-tick-time and the watchdog
+            // kills the writer before the boundary (issue #51). Scoped to the worker, only that thread pays.
+            exits.addThreadFilter(worker);
             exits.addClassFilter("dev.hardrush.player.ProfileJournal");
             // Every thread freezes before the caller can apply another journal write or native effect.
             exits.setSuspendPolicy(EventRequest.SUSPEND_ALL); exits.enable();
@@ -47,7 +60,7 @@ public final class ProfileCrashBarrier {
                 var events = vm.eventQueue().remove(1000);
                 if (events == null) continue;
                 for (var event : events) {
-                    if (!(event instanceof MethodExitEvent exit) || !exit.thread().name().equals("hardrush-profiles")) continue;
+                    if (!(event instanceof MethodExitEvent exit) || !exit.thread().equals(worker)) continue;
                     String method = exit.method().name();
                     boolean matches = boundary.equals("PREPARED") ? method.equals("prepare")
                             : boundary.equals("SUSPENDED") ? method.equals("suspend")
@@ -73,6 +86,15 @@ public final class ProfileCrashBarrier {
             if (!hit) throw disconnected;
         } finally {
             try { vm.dispose(); } catch (VMDisconnectedException ignored) {}
+        }
+    }
+
+    /** A short-lived thread in the snapshot may die and be collected before its name is read. */
+    private static boolean isWorker(ThreadReference thread) {
+        try {
+            return thread.name().equals(WORKER);
+        } catch (ObjectCollectedException collected) {
+            return false;
         }
     }
 
