@@ -152,8 +152,10 @@ public final class TestClient implements AutoCloseable {
     public TestClient unmanaged() { unmanaged = true; return this; }
 
     /**
-     * Stops the per-tick connection tick, at any time: the player's body no longer ticks (effects, hunger and timers stand
-     * still) and nothing checks keep-alives. The client still sends its replies. {@link #tickConnection()} steps it by hand.
+     * Stops the per-tick connection tick, at any time: the player's own body ({@code ServerPlayer.doTick}: effects, hunger,
+     * air, fire, attack and item timers) no longer ticks and nothing checks keep-alives. What the level ticks for every
+     * player still runs (game mode, damage cooldown, client-load timeout, container sync), and the client still sends its
+     * replies. {@link #tickConnection()} steps the connection by hand.
      */
     public TestClient freeze() { frozen = true; return this; }
 
@@ -306,6 +308,25 @@ public final class TestClient implements AutoCloseable {
 
     public void clearPackets() { if (connection != null) connection.clear(); }
 
+    /**
+     * Whether the server has sent this client every chunk within {@code radius} chunks of {@code center}, in the level the
+     * player is in. An entity that appears in a chunk before the client has it stays unseen until the entity changes
+     * section or the player moves: vanilla checks visibility again only then, and a real client, unlike this one, sends a
+     * position packet at least once a second. Wait for this before spawning an entity the client should see.
+     */
+    public boolean receivedChunksAround(BlockPos center, int radius) {
+        var player = player();
+        if (player == null) return false;
+        var chunkMap = player.level().getChunkSource().chunkMap;
+        int chunkX = center.getX() >> 4, chunkZ = center.getZ() >> 4;
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                if (!chunkMap.isChunkTracked(player, chunkX + dx, chunkZ + dz)) return false;
+            }
+        }
+        return true;
+    }
+
     /** Whether the server has sent this client the entity, as a real client would need to render it. */
     public boolean sawEntity(Entity entity) {
         return packets(ClientboundAddEntityPacket.class).stream().anyMatch(add -> add.getId() == entity.getId());
@@ -404,7 +425,9 @@ public final class TestClient implements AutoCloseable {
 
     /**
      * Ticks the connection of every live client of {@code server}, in joining order, as the server's connection list does;
-     * called right after it. An exception propagates and crashes the server, as it would for a memory connection.
+     * called right after it. An exception propagates and crashes the server, as one in the automatic replies does. For a
+     * remote connection vanilla would only log it and kick the player, which a test could mistake for the behaviour it
+     * checks.
      */
     public static void tickConnections(MinecraftServer server) {
         for (var client : LIVE) {

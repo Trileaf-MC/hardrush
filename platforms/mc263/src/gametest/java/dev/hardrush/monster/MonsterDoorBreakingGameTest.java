@@ -216,6 +216,7 @@ public final class MonsterDoorBreakingGameTest {
             test.assertTrue(f.clientMode(GameType.SURVIVAL), "Only the owner's client receives native mining input mode");
             test.assertTrue(f.client.packets().stream().anyMatch(ClientboundUpdateAttributesPacket.class::isInstance), "Zero mining speed is sent to the owner");
             f.mining(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, f.lower);
+            // This test plays its ticks within one step; the connection tick flushes the block-change acknowledgement.
             f.client.tickConnection();
             test.assertTrue(f.client.packets().stream().anyMatch(ClientboundBlockChangedAckPacket.class::isInstance), "Native handler acknowledges prediction sequences");
             f.hold(50);
