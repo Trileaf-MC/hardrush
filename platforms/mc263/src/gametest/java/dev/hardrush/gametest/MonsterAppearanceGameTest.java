@@ -172,6 +172,8 @@ public final class MonsterAppearanceGameTest {
         var client = new TestClient(server, profile).unmanaged();
         TestTeardown.atEnd(test, () -> {
             client.close();
+            // The first mock body is still listed when the test ended before its first native login.
+            if (server.getPlayerList().getPlayer(profile.id()) == player[0]) server.getPlayerList().remove(player[0]);
             server.getPlayerList().remove(observer);
         });
         var previousSpawn = new ClientboundAddEntityPacket[1];

@@ -21,6 +21,8 @@ public final class TestTeardown implements GameTestListener {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private final Deque<Runnable> actions = new ArrayDeque<>();
+    /** Listeners hear the result only at the end of the tick that decided it; {@code isDone()} is set earlier. */
+    private boolean ended;
 
     private TestTeardown() {}
 
@@ -38,10 +40,11 @@ public final class TestTeardown implements GameTestListener {
                 });
         teardown.actions.push(action);
         // Registered from a callback after the end: nothing would announce it any more.
-        if (info.isDone()) teardown.run(info);
+        if (teardown.ended) teardown.run(info);
     }
 
     private void run(GameTestInfo info) {
+        ended = true;
         while (!actions.isEmpty()) {
             try {
                 actions.pop().run();
