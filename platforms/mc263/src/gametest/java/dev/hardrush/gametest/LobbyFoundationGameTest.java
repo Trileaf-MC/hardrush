@@ -52,7 +52,7 @@ public final class LobbyFoundationGameTest {
     public void dedicatedFacilitiesProjectionGenerationsAndRecoveryUseProductionGuards(GameTestHelper test) {
         if (!Boolean.getBoolean(TestProperties.LOBBY_FOUNDATION)) { test.succeed(); return; }
         var f = new Fixture(test); var scenario = new Scenario(f);
-        test.onEachTick(() -> { f.clock.accumulateAndGet(System.nanoTime(), Math::max); f.a.tickConnection(); f.b.tickConnection(); });
+        test.onEachTick(() -> f.clock.accumulateAndGet(System.nanoTime(), Math::max));
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready()
                 && RoundRuntime.sessionState(f.server).filter(state -> state == RoundSession.State.OPEN).isPresent(), "Lobby ready"))
                 .thenExecute(() -> { f.bind(); scenario.register(); });
@@ -369,11 +369,6 @@ public final class LobbyFoundationGameTest {
             void command(String command) {
                 try { server.getCommands().getDispatcher().execute(command, player.createCommandSourceStack()); }
                 catch (Exception error) { throw new IllegalStateException(error); }
-            }
-            void tickConnection() {
-                if (player == null) return;
-                client.acknowledge();
-                client.tickConnection();
             }
             void disconnect() {
                 client.disconnect(Component.literal("大厅原生重连回归")); player = client.player();

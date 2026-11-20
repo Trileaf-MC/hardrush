@@ -41,12 +41,6 @@ public final class FullFlowGameTest {
         var state=new State(f,test);
         test.onEachTick(()->{
             if(f.clock!=null)f.clock.accumulateAndGet(System.nanoTime(),Math::max);
-            for(var peer:List.of(f.monster,f.target,visitor)){
-                peer.acknowledge();
-                // Embedded channels are not in ServerConnectionListener's socket list: tick their
-                // native listener too, including vanilla post-login invulnerability and item timers.
-                if(peer.current()!=null)peer.current().connection.tick();
-            }
             test.assertFalse(!state.expectedFailure && RoundRuntime.sessionState(f.server).filter(s->s==RoundSession.State.FAILED).isPresent(),"Full flow failed: "+RoundRuntime.status(f.server));
         });
         var seq=test.startSequence().thenWaitUntil(()->f.await(RoundRuntime.sessionState(f.server).filter(s->s==RoundSession.State.OPEN).isPresent(),"Full-flow bootstrap"))

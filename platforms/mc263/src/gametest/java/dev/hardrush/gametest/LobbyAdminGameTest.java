@@ -69,7 +69,6 @@ public final class LobbyAdminGameTest {
     public void installWaitsForTheRoundSwitchesEveryoneAndRollsBack(GameTestHelper test) {
         if (!Boolean.getBoolean(TestProperties.LOBBY_ADMIN)) { test.succeed(); return; }
         var f = new Fixture(test);
-        test.onEachTick(() -> { f.a.tickConnection(); f.b.tickConnection(); });
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready()
                 && RoundRuntime.snapshot(f.server).filter(r -> r.phase() == RoundPhase.WAITING).isPresent(), "Lobby ready"))
                 .thenExecute(f::bind);
@@ -411,11 +410,6 @@ public final class LobbyAdminGameTest {
                         .thenExecute(() -> {
                             player = client.player(); client.acknowledge();
                         }).thenWaitUntil(() -> await(PlayerProfiles.canMoveInLobby(player), "Profile verification opens lobby movement"));
-            }
-            void tickConnection() {
-                if (player == null) return;
-                client.acknowledge();
-                client.tickConnection();
             }
             void disconnect() {
                 client.disconnect(Component.literal("大厅安装回归结束")); player = client.player();
