@@ -170,6 +170,9 @@ public final class ParticipationExitGameTest {
         sequence.thenWaitUntil(() -> f.await(f.b.player.gameMode() == GameType.ADVENTURE && PlayerProfiles.canMoveInLobby(f.b.player) && f.idle(), "Sanctioned reconnect stays in lobby"))
                 .thenExecute(() -> { test.assertTrue(f.round().timingUncertain(), "Sanction marks round for review"); f.place(f.b, Landing.RESTORE_READY); })
                 .thenIdle(3)
+                // Admin transitions refuse while any write or event is pending, the session's own checkpoint included;
+                // the next step runs in this same tick, so the session is still idle when the sanction arrives.
+                .thenWaitUntil(() -> f.await(CampTransferFixtures.actionsReady(f.session), "Session idle before the follow-up sanction"))
                 .thenExecute(() -> {
                     test.assertTrue(role(f, f.b.profile.id()) == ParticipantRole.DISQUALIFIED && !f.ready(f.b), "Assembly cannot restore eligibility");
                     test.assertFalse(dev.hardrush.lobby.HumanEntry.midroundAvailable(f.b.player), "Mid-round circle cannot restore eligibility");
