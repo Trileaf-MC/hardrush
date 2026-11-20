@@ -40,7 +40,7 @@ public final class LobbyMovementGameTest {
     public void sharedAdventureLobbyTracksMovementAndKeepsRecoveryAndCompetitionIsolated(GameTestHelper test) {
         if (!Boolean.getBoolean(TestProperties.LOBBY_MOVEMENT)) { test.succeed(); return; }
         var f = new Fixture(test);
-        test.onEachTick(() -> { f.clock.accumulateAndGet(System.nanoTime(), Math::max); f.a.tickConnection(); f.b.tickConnection(); });
+        test.onEachTick(() -> f.clock.accumulateAndGet(System.nanoTime(), Math::max));
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(
                 LobbyWorld.open(f.server).ready() && RoundRuntime.sessionState(f.server)
                     .filter(state -> state == RoundSession.State.OPEN).isPresent(), "Shared lobby ready"))
@@ -244,11 +244,6 @@ public final class LobbyMovementGameTest {
                 if (SpatialInputFixtures.handle(player, command)) return;
                 try { server.getCommands().getDispatcher().execute(command, player.createCommandSourceStack()); }
                 catch (Exception error) { throw new IllegalStateException(error); }
-            }
-            void tickConnection() {
-                if (player == null) return;
-                client.acknowledge();
-                client.tickConnection();
             }
             void disconnect() {
                 client.disconnect(Component.literal("大厅原生重连回归")); player = client.player();

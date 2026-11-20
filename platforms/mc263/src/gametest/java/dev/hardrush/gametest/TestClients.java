@@ -22,7 +22,8 @@ import net.minecraft.server.network.CommonListenerCookie;
  * <p>Tests that need a short-sighted client say so explicitly through {@link TestClient#viewDistance(int)}.
  *
  * <p>This initializer also runs the vanilla client replies of every live {@link TestClient} at the end of each server
- * tick, on the headless GameTest server and on the dedicated servers of the restart and crash regressions alike.
+ * tick, on the headless GameTest server and on the dedicated servers of the restart and crash regressions alike. Their
+ * connections tick earlier in the tick, alongside the server's own ({@code TestClientConnectionTickMixin}).
  */
 public final class TestClients implements ModInitializer {
     /** {@code Options.renderDistance} default of the vanilla client. */

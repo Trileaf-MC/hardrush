@@ -38,7 +38,6 @@ public final class StabilizationGameTest {
         var state=new State(f,scene,peers,test);
         test.onEachTick(()->{
             if(f.clock!=null)f.clock.accumulateAndGet(System.nanoTime(),Math::max);
-            for(var peer:peers)if(peer.current()!=null){peer.acknowledge();peer.current().connection.tick();}
             test.assertFalse(RoundRuntime.sessionState(f.server).filter(s->s==RoundSession.State.FAILED).isPresent(),"Stabilization failed: "+RoundRuntime.status(f.server));
         });
         var seq=test.startSequence().thenWaitUntil(()->f.await(RoundRuntime.sessionState(f.server).filter(s->s==RoundSession.State.OPEN).isPresent(),"Stabilization bootstrap"))
@@ -136,18 +135,20 @@ public final class StabilizationGameTest {
             closedViews.clear();
             for(var peer:peers)if(peer.current()!=null){
                 scene.facility(peer.player,LobbyFunction.HISTORY);
-                closedViews.add(views().get(peer.profile.id()));
+                var view=views().get(peer.profile.id());
+                // A read that finished while the main thread was descheduled fills the page as it opens; only a page
+                // still loading at close is one that late IO could update.
+                if(firstLabel(view).equals(LOADING))closedViews.add(view);
                 peer.player.connection.handleContainerClose(new ServerboundContainerClosePacket(peer.player.containerMenu.containerId));
             }
             drain=f.session.history(1,0);
         }
         void assertClosedLibrary(){
             test.assertValueEqual(views().size(),0,"Closed history pages release owner/selected history");
-            for(var v:closedViews){
-                @SuppressWarnings("unchecked") var buttons=(List<ButtonMenu.Button>)field(v,"buttons");
-                test.assertValueEqual(buttons.getFirst().label(),"正在翻阅记录……","Late IO cannot update a closed page");
-            }
+            for(var v:closedViews)test.assertValueEqual(firstLabel(v),LOADING,"Late IO cannot update a closed page");
         }
+        static final String LOADING="正在翻阅记录……";
+        @SuppressWarnings("unchecked") String firstLabel(Object view){return ((List<ButtonMenu.Button>)field(view,"buttons")).getFirst().label();}
         void projectionAndMenuCycle(){
             var router=LobbyInteractions.get(f.server).orElseThrow();var projections=router.projections();
             for(var peer:peers){

@@ -30,7 +30,7 @@ public final class AdministrativeSpectatorGameTest {
         if (!Boolean.getBoolean(TestProperties.ADMIN_SPECTATOR)) { test.succeed(); return; }
         var f = new HumanEntryGameTest.Fixture(test);
         var ordinaryPosition = new Vec3[1];
-        test.onEachTick(() -> { f.drain(); f.a.tickConnection(); f.b.tickConnection(); });
+        test.onEachTick(f::drain);
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready()
                 && RoundRuntime.snapshot(f.server).filter(r -> r.phase() == RoundPhase.WAITING).isPresent()
                 && !((RoundSession) f.service("SESSIONS")).mutationPending(), "Admin spectator camp ready"))

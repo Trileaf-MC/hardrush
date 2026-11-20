@@ -14,6 +14,8 @@ import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import net.minecraft.util.Util;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.entity.PositionMoveRotation;
@@ -75,20 +77,15 @@ public final class TestClientsGameTest {
             var player = client.place(level);
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(floor.getX() + (client == alice ? -2.5 : 3.5), floor.getY() + 1, floor.getZ() + .5);
-            level.getChunkSource().move(player);
             player.getInventory().setItem(player.getInventory().getSelectedSlot(), new ItemStack(client == alice ? Items.DIAMOND : Items.EMERALD));
         }
-        var floorChunk = ChunkPos.containing(floor);
         test.startSequence()
                 .thenWaitUntil(() -> test.assertTrue(level.isPositionEntityTicking(floor), "The arena is loaded"))
                 // A chunk ticks before it is ready to send (its light may still be pending), and an item that appears
                 // in a chunk a client has not received is never paired with that client afterwards unless the item
                 // or the client changes section, which a stationary fixture never does: throw only once both have it.
-                .thenWaitUntil(() -> {
-                    var chunks = level.getChunkSource().chunkMap;
-                    test.assertTrue(chunks.isChunkTracked(alice.player(), floorChunk.x(), floorChunk.z())
-                            && chunks.isChunkTracked(bob.player(), floorChunk.x(), floorChunk.z()), "Both clients have received the arena chunk");
-                })
+                .thenWaitUntil(() -> test.assertTrue(alice.receivedChunksAround(floor, 0) && bob.receivedChunksAround(floor, 0),
+                        "Both clients have received the arena chunk"))
                 .thenExecute(() -> { alice.dropSelected(false); bob.dropSelected(false); })
                 .thenWaitUntil(() -> {
                     var diamond = thrown(level, floor, Items.DIAMOND.getDefaultInstance());
@@ -158,20 +155,48 @@ public final class TestClientsGameTest {
                 .thenSucceed();
     }
 
-    /** A ticked connection stays open across keep-alive deadlines, because the client answers each challenge. */
+    /**
+     * The connection ticks every server tick like a real one, and stays open across keep-alive deadlines because the client
+     * answers each challenge: the server sends the next one only after the previous was answered, and disconnects otherwise.
+     */
     @GameTest(maxTicks = 100)
-    public void tickedConnectionAnswersKeepAlives(GameTestHelper test) {
+    public void connectionTicksAnswerKeepAlivesOnTheirOwn(GameTestHelper test) {
         var client = TestClient.named(test.getLevel().getServer(), "HRKeepAlive");
         client.place(test.getLevel());
-        for (int round = 0; round < 2; round++) {
-            keepAliveDue(client);
-            client.tickConnection();
-            client.acknowledge();
-        }
-        test.assertValueEqual(client.packets(ClientboundKeepAlivePacket.class).size(), 2, "Each overdue tick sends one challenge");
-        test.assertTrue(client.connected(), "Answered challenges keep the connection open");
-        client.close();
-        test.succeed();
+        test.startSequence()
+                .thenExecute(() -> keepAliveDue(client))
+                .thenWaitUntil(() -> test.assertValueEqual(client.packets(ClientboundKeepAlivePacket.class).size(), 1,
+                        "The next connection tick sends a challenge"))
+                .thenExecute(() -> keepAliveDue(client))
+                .thenWaitUntil(() -> test.assertValueEqual(client.packets(ClientboundKeepAlivePacket.class).size(), 2,
+                        "The first challenge was answered, so the next deadline sends another"))
+                .thenExecute(() -> {
+                    test.assertTrue(client.connected(), "Answered challenges keep the connection open");
+                    client.close();
+                })
+                .thenSucceed();
+    }
+
+    /** The player's own body ticks with its connection, as on a real server; a frozen client's stands still until stepped. */
+    @GameTest(maxTicks = 100)
+    public void playerBodyTicksWithItsConnectionUnlessFrozen(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        var running = TestClient.named(server, "HRRunning");
+        var frozen = TestClient.named(server, "HRFrozen").freeze();
+        var runner = running.place(test.getLevel());
+        var statue = frozen.place(test.getLevel());
+        for (var player : List.of(runner, statue)) player.addEffect(new MobEffectInstance(MobEffects.SPEED, 100));
+        test.startSequence()
+                .thenIdle(10)
+                .thenExecute(() -> {
+                    test.assertTrue(runner.getEffect(MobEffects.SPEED).getDuration() <= 90, "Ten server ticks count the effect down");
+                    test.assertValueEqual(statue.getEffect(MobEffects.SPEED).getDuration(), 100, "A frozen player's effect stands still");
+                    frozen.tickConnection();
+                    test.assertValueEqual(statue.getEffect(MobEffects.SPEED).getDuration(), 99, "Stepping the frozen connection ticks the body once");
+                    running.close();
+                    frozen.close();
+                })
+                .thenSucceed();
     }
 
     /** After a level change the client reports the new level loaded once, and a withheld report is still sent on resume. */
@@ -440,7 +465,6 @@ public final class TestClientsGameTest {
             client = TestClient.named(level.getServer(), "HRWatch").viewDistance(viewDistance);
             player = client.place(level);
             player.teleportTo(drop.getX() + DISTANCE + .5, drop.getY(), drop.getZ() + .5);
-            level.getChunkSource().move(player);
         }
 
         /** Both watchers track the drop chunk (vanilla adds a ring beyond the view border), so only distance decides. */

@@ -45,7 +45,7 @@ public final class HumanEntryGameTest {
     public void campAssemblyCancellationDeathAndMiddleGate(GameTestHelper test) {
         if (!Boolean.getBoolean(TestProperties.HUMAN_ENTRY)) { test.succeed(); return; }
         var f = new Fixture(test);
-        test.onEachTick(() -> { f.drain(); f.a.tickConnection(); f.b.tickConnection(); });
+        test.onEachTick(f::drain);
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready()
                 && RoundRuntime.snapshot(f.server).filter(r -> r.phase() == RoundPhase.WAITING).isPresent()
                 && !((RoundSession) f.service("SESSIONS")).mutationPending(), "Camp ready"))
@@ -500,13 +500,6 @@ public final class HumanEntryGameTest {
             void command(String command) {
                 try { server.getCommands().getDispatcher().execute(command, player.createCommandSourceStack()); }
                 catch (Exception error) { throw new IllegalStateException(error); }
-            }
-            void tickConnection() {
-                if (player == null) return;
-                client.acknowledge();
-                // Embedded connections are not in the server's socket list. Run vanilla's
-                // connection tick/doTick exactly as a real network connection would.
-                client.tickConnection();
             }
             void acknowledge() { client.acknowledge(); }
             void disconnect() {

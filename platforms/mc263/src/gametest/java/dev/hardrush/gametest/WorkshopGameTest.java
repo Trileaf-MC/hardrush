@@ -50,7 +50,7 @@ public final class WorkshopGameTest {
         if (!Boolean.getBoolean(TestProperties.WORKSHOP)) { test.succeed(); return; }
         var f = new HumanEntryGameTest.Fixture(test);
         var s = new State();
-        test.onEachTick(() -> { f.drain(); f.a.tickConnection(); f.b.tickConnection(); });
+        test.onEachTick(f::drain);
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready()
                 && RoundRuntime.snapshot(f.server).filter(r -> r.phase() == RoundPhase.WAITING).isPresent()
                 && !((RoundSession) f.service("SESSIONS")).mutationPending(), "Workshop camp ready"))

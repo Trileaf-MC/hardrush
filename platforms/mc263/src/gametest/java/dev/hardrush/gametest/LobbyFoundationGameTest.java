@@ -52,7 +52,7 @@ public final class LobbyFoundationGameTest {
     public void dedicatedFacilitiesProjectionGenerationsAndRecoveryUseProductionGuards(GameTestHelper test) {
         if (!Boolean.getBoolean(TestProperties.LOBBY_FOUNDATION)) { test.succeed(); return; }
         var f = new Fixture(test); var scenario = new Scenario(f);
-        test.onEachTick(() -> { f.clock.accumulateAndGet(System.nanoTime(), Math::max); f.a.tickConnection(); f.b.tickConnection(); });
+        test.onEachTick(() -> f.clock.accumulateAndGet(System.nanoTime(), Math::max));
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(LobbyWorld.open(f.server).ready()
                 && RoundRuntime.sessionState(f.server).filter(state -> state == RoundSession.State.OPEN).isPresent(), "Lobby ready"))
                 .thenExecute(() -> { f.bind(); scenario.register(); });
@@ -94,7 +94,10 @@ public final class LobbyFoundationGameTest {
                     test.assertFalse(LobbyMenus.open(f.a.player, LobbyContext.COMPETITION), "Recovery competition menu is sealed");
                     f.historyDrain = f.session.history(1, 0);
                 })
-                .thenWaitUntil(() -> f.await(f.historyDrain.isDone(), "Read-only history IO drained before audited recovery close"))
+                // Close-recovery refuses while any IO is in flight, including the session's own once-a-second checkpoint;
+                // the next step runs in this same tick, so the session is still idle when it asks.
+                .thenWaitUntil(() -> f.await(f.historyDrain.isDone() && !f.session.mutationPending(),
+                        "Read-only history IO drained before audited recovery close"))
                 .thenExecute(() -> {
                     f.historyDrain.join();
                     test.assertFalse(LobbyMenus.isMenu(f.a.player), "Late history query never reopens the closed menu");
@@ -369,11 +372,6 @@ public final class LobbyFoundationGameTest {
             void command(String command) {
                 try { server.getCommands().getDispatcher().execute(command, player.createCommandSourceStack()); }
                 catch (Exception error) { throw new IllegalStateException(error); }
-            }
-            void tickConnection() {
-                if (player == null) return;
-                client.acknowledge();
-                client.tickConnection();
             }
             void disconnect() {
                 client.disconnect(Component.literal("大厅原生重连回归")); player = client.player();
