@@ -82,7 +82,7 @@ public final class FullFlowGameTest {
                 .thenWaitUntil(()->f.await(!f.session.mutationPending(),"Role saved"))
                 .thenExecute(state::withdrawalShortcut)
                 .thenExecute(()->f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
-                .thenExecute(()->HuntInputFixtures.hunt(f.monster.player,f.target.profile.id(),f.monster.connection.packets))
+                .thenExecute(()->HuntInputFixtures.hunt(f.monster.client,f.target.profile.id()))
                 .thenWaitUntil(()->f.await(f.deployed(1),"Model right click safely deployed"))
                 .thenExecute(state::withdrawalShortcut)
                 .thenIdle(5)
@@ -94,7 +94,7 @@ public final class FullFlowGameTest {
                     test.assertTrue(f.monster.player.getInventory().getItem(7).is(Items.ECHO_SHARD),"Tick repair preserves fixed return control");
                 })
                 // The echo shard's held hint states the rule; the channel's countdown outranks it on the action bar.
-                .thenWaitUntil(()->f.await(state.actionBar(f.monster.connection.packets,"正在返回营地"),"Return progress shows on the action bar"))
+                .thenWaitUntil(()->f.await(state.actionBar(f.monster.client.packets(),"正在返回营地"),"Return progress shows on the action bar"))
                 .thenExecute(()->{
                     test.assertTrue(LobbyRuntime.channeling(f.monster.player),"Progress action bar appears while the return is still channeling");
                     f.monster.keys(true);
@@ -145,7 +145,7 @@ public final class FullFlowGameTest {
                 })
                 .thenWaitUntil(()->{
                     if(f.target.player.isAlive()){
-                        f.monster.player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+                        f.monster.client.acknowledge();
                         f.monster.player.connection.handleAttack(new ServerboundAttackPacket(f.target.player.getId()));
                         if(++state.attacks>200)throw new IllegalStateException("Packet melee stalled: monster="+f.monster.player.position()+" target="+f.target.player.position()+" health="+f.target.player.getHealth()+" canAct="+MonsterRoundRuntime.canAct(f.monster.player)+" clientLoaded="+f.monster.player.connection.hasClientLoaded()+" legal="+MonsterRoles.legalTarget(f.monster.profile.id(),f.level,f.target.player)+" line="+f.monster.player.hasLineOfSight(f.target.player)+" nativeRange="+MonsterRoles.nativeModel(f.monster.player).isWithinMeleeAttackRange(f.target.player)+" targetInvul="+f.target.player.getAbilities().invulnerable+" targetLocked="+dev.hardrush.player.PlayerProfiles.isLocked(f.target.player)+" lookup="+f.level.getEntity(f.target.player.getId())+" body="+MonsterRoles.status(f.monster.player));
                     }
@@ -199,7 +199,7 @@ public final class FullFlowGameTest {
                     HuntInputFixtures.role(f.target.player,"creeper");
                 })
                 .thenWaitUntil(()->f.await(f.target.participant().monsterRole()==MonsterRole.CREEPER&&!f.session.mutationPending(),"Creeper booth saved"))
-                .thenExecute(()->{f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));HuntInputFixtures.hunt(f.target.player,f.monster.profile.id(),f.target.connection.packets);})
+                .thenExecute(()->{f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));HuntInputFixtures.hunt(f.target.client,f.monster.profile.id());})
                 .thenWaitUntil(()->f.await(f.target.participant().role()==ParticipantRole.MONSTER_DEPLOYED&&MonsterRoles.isMonster(f.target.player)&&!f.session.mutationPending(),"Creeper deployed via model"))
                 .thenExecute(()->{
                     f.target.move(f.monster.player.position().add(1,0,0)); f.monster.player.setHealth(1); f.monster.player.setInvulnerableTime(0);
@@ -221,7 +221,7 @@ public final class FullFlowGameTest {
                 .thenWaitUntil(()->f.await(f.target.participant().role()==ParticipantRole.HUMAN_ACTIVE&&f.target.participant().online()
                         &&!dev.hardrush.player.PlayerProfiles.isLocked(f.target.player)&&!f.session.mutationPending(),"Second altar consumes entitlement once"))
                 .thenWaitUntil(()->f.await(f.monster.current()!=null&&f.monster.current().isAlive()&&f.profiles.isReady(f.monster.profile.id(),f.round()),"Other dead human replacement verified"))
-                .thenExecute(()->{f.monster.player=f.monster.current();f.target.move(f.anchor);f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));HuntInputFixtures.hunt(f.monster.player,f.target.profile.id(),f.monster.connection.packets);})
+                .thenExecute(()->{f.monster.player=f.monster.current();f.target.move(f.anchor);f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));HuntInputFixtures.hunt(f.monster.client,f.target.profile.id());})
                 .thenWaitUntil(()->f.await(f.monster.participant().role()==ParticipantRole.MONSTER_DEPLOYED&&MonsterRoles.isMonster(f.monster.player)&&!f.session.mutationPending(),"Monster ready for ceremony roster"))
                 .thenExecute(()->state.prepareDragon(f.target.player,f.monster.player))
                 .thenWaitUntil(()->f.await(state.dragon()!=null,"Low-health native first dragon fixture"))
@@ -285,7 +285,7 @@ public final class FullFlowGameTest {
                     state.clearBookRate(visitor.profile.id());state.click(visitor.player,"领取第 2 卷");
                 }).thenIdle(25)
                 // The claim's answer closes the library, since a chest screen would cover the action bar.
-                .thenWaitUntil(()->f.await(state.actionBar(visitor.connection.packets,"背包满了")&&!LobbyMenus.isMenu(visitor.player),"Full inventory explicitly retains claim opportunity"))
+                .thenWaitUntil(()->f.await(state.actionBar(visitor.client.packets(),"背包满了")&&!LobbyMenus.isMenu(visitor.player),"Full inventory explicitly retains claim opportunity"))
                 .thenExecute(()->{
                     state.assertBookClaim(visitor.profile.id(),false);
                     test.assertTrue(java.util.stream.IntStream.range(0,36).allMatch(i->visitor.player.getInventory().getItem(i).is(Items.DIAMOND)&&visitor.player.getInventory().getItem(i).getCount()==64),"Full inventory never overwritten or dropped");
@@ -298,19 +298,19 @@ public final class FullFlowGameTest {
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"领取第 2 卷"),"Second volume offered with the inventory still full"))
                 .thenExecute(()->{
                     // Reopen the library while the claim is in flight: the refusal must neither close it nor be lost behind it.
-                    state.refusals=state.sounds(visitor.connection.packets,net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS.value());
+                    state.refusals=state.sounds(visitor.client.packets(),net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS.value());
                     state.click(visitor.player,"领取第 2 卷");state.facility(visitor.player,LobbyFunction.HISTORY);
                 })
-                .thenWaitUntil(()->f.await(state.sounds(visitor.connection.packets,net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS.value())>state.refusals,"Refusal behind the reopened library still sounds"))
+                .thenWaitUntil(()->f.await(state.sounds(visitor.client.packets(),net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS.value())>state.refusals,"Refusal behind the reopened library still sounds"))
                 // The first refusal's line may still be lit from before; count from the answer that replaced it.
-                .thenExecute(()->state.fullBars=state.actionBars(visitor.connection.packets,"背包满了"))
+                .thenExecute(()->state.fullBars=state.actionBars(visitor.client.packets(),"背包满了"))
                 .thenIdle(10)
                 .thenExecute(()->{
                     test.assertTrue(LobbyMenus.isMenu(visitor.player),"Refusal leaves the library opened since the click alone");
-                    test.assertTrue(state.actionBars(visitor.connection.packets,"背包满了")==state.fullBars,"Refusal waits while the library covers the action bar");
+                    test.assertTrue(state.actionBars(visitor.client.packets(),"背包满了")==state.fullBars,"Refusal waits while the library covers the action bar");
                     visitor.player.closeContainer();
                 })
-                .thenWaitUntil(()->f.await(state.actionBars(visitor.connection.packets,"背包满了")>state.fullBars,"Refusal shows once the library is closed"))
+                .thenWaitUntil(()->f.await(state.actionBars(visitor.client.packets(),"背包满了")>state.fullBars,"Refusal shows once the library is closed"))
                 .thenExecute(()->{
                     visitor.player.getInventory().setItem(35,ItemStack.EMPTY);state.clearBookRate(visitor.profile.id());
                     state.facility(visitor.player,LobbyFunction.HISTORY);
@@ -322,16 +322,16 @@ public final class FullFlowGameTest {
                 .thenWaitUntil(()->f.await(state.has(visitor.player,"领取第 2 卷"),"Second volume offered again"))
                 .thenExecute(()->{
                     // Reopen the library while the claim is still in flight: its answer must not close a menu opened since.
-                    state.pageTurns=state.sounds(visitor.connection.packets,net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN);
+                    state.pageTurns=state.sounds(visitor.client.packets(),net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN);
                     state.click(visitor.player,"领取第 2 卷");state.facility(visitor.player,LobbyFunction.HISTORY);
                 })
                 .thenWaitUntil(()->f.await(WrittenBookPort.isHistoryBook(visitor.player.getInventory().getItem(35)),"Selected second volume succeeds on retry"))
                 .thenWaitUntil(()->state.assertBookClaim(visitor.profile.id(),true))
-                .thenWaitUntil(()->f.await(state.sounds(visitor.connection.packets,net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN)>state.pageTurns,"Claim answer landed"))
+                .thenWaitUntil(()->f.await(state.sounds(visitor.client.packets(),net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN)>state.pageTurns,"Claim answer landed"))
                 .thenExecute(()->test.assertTrue(LobbyMenus.isMenu(visitor.player)&&state.has(visitor.player,"阅读背包里的战绩书"),
                         "Claim answer leaves the library opened since the click alone"))
                 .thenExecute(()->state.click(visitor.player,"阅读背包里的战绩书"))
-                .thenWaitUntil(()->f.await(visitor.connection.packets.stream().anyMatch(ClientboundOpenBookPacket.class::isInstance),"Library reads a book from inventory slot 35 via native open-book packet"))
+                .thenWaitUntil(()->f.await(visitor.client.packets().stream().anyMatch(ClientboundOpenBookPacket.class::isInstance),"Library reads a book from inventory slot 35 via native open-book packet"))
                 .thenExecute(()->{
                     state.facility(visitor.player,LobbyFunction.HISTORY);
                 }).thenWaitUntil(()->f.await(state.has(visitor.player,"普通模式排行榜"),"Mode leaderboards available"))

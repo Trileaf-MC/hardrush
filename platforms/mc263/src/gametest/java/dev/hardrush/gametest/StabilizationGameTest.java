@@ -167,7 +167,7 @@ public final class StabilizationGameTest {
             // Each recording connection receives matching removals; these models never join a native world.
             for(var peer:peers){
                 var active=new HashSet<Integer>();
-                for(var packet:peer.connection.packets){
+                for(var packet:peer.client.packets()){
                     if(packet instanceof ClientboundAddEntityPacket add&&add.getType()==net.minecraft.world.entity.EntityTypes.MANNEQUIN)active.add(add.getId());
                     if(packet instanceof ClientboundRemoveEntitiesPacket remove)for(int id:remove.entityIds())active.remove(id);
                 }

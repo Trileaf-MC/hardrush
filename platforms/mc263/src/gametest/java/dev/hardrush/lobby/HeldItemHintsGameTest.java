@@ -2,11 +2,9 @@ package dev.hardrush.lobby;
 
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.lobby.LobbyHints;
-import dev.hardrush.gametest.TestClients;
+import dev.hardrush.gametest.TestClient;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.notice.Notices;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -14,10 +12,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -80,11 +74,11 @@ public final class HeldItemHintsGameTest {
                     f.select(6);
                     var compass = f.player.getMainHandItem();
                     var dark = f.tick().orElseThrow();
-                    test.assertTrue(dark.contains("发光"), "An unlit compass says when it lights: " + dark);
-                    test.assertValueEqual(Notices.format(dark).getString(), lore(compass, 1), "The same condition the description gives");
+                    test.assertTrue(dark.contains("失去了指向"), "Without a quarry the dark compass says it is lost: " + dark);
                     compass.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
                     var lit = f.tick().orElseThrow();
-                    test.assertTrue(lit.contains("循迹到目标附近"), "A lit compass says how to retrack: " + lit);
+                    test.assertTrue(lit.contains("循迹到目标附近") && lit.contains("边走"), "A lit compass says how to retrack: " + lit);
+                    test.assertValueEqual(Notices.format(lit).getString(), lore(compass, 0), "The same usage the description gives");
                     test.assertValueEqual(f.tick(), Optional.<String>empty(), "Nothing new to send");
                 }).thenExecuteAfter(1, f::close).thenSucceed();
     }
@@ -94,7 +88,7 @@ public final class HeldItemHintsGameTest {
     private static final class Fixture {
         final ServerLevel level;
         final ServerPlayer player;
-        final EmbeddedChannel channel;
+        final TestClient client;
         final Vec3 center;
         /** The viewer's own arbiter, apart from the one the runtime keeps for real connections. */
         final LobbyHints hints = new LobbyHints();
@@ -110,12 +104,10 @@ public final class HeldItemHintsGameTest {
                 level.setBlockAndUpdate(pos.below(), Blocks.SMOOTH_STONE.defaultBlockState());
             }
             var profile = new GameProfile(UUID.randomUUID(), "HRHeld" + ARENAS.get());
-            player = new ServerPlayer(level.getServer(), level, profile, TestClients.information());
-            var connection = new SinkConnection(); channel = new EmbeddedChannel(connection);
-            dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> level.getServer().getPlayerList().placeNewPlayer(connection, player,
-                    TestClients.cookie(profile)));
+            client = new TestClient(level.getServer(), profile);
+            player = client.place(level);
             player.teleportTo(center.x, center.y, center.z);
-            player.setGameMode(GameType.SURVIVAL); player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+            player.setGameMode(GameType.SURVIVAL); client.acknowledge();
         }
 
         /** The hotbar packet a vanilla client sends when the selection changes. */
@@ -130,16 +122,9 @@ public final class HeldItemHintsGameTest {
 
         void close() {
             MonsterRoles.clear(player);
-            level.getServer().getPlayerList().remove(player);
-            channel.finishAndReleaseAll();
+            client.close();
             level.setChunkForced((int) Math.floor(center.x) >> 4, 0, false);
         }
     }
 
-    private static final class SinkConnection extends Connection {
-        SinkConnection() { super(PacketFlow.SERVERBOUND); }
-        @Override public void send(Packet<?> packet) {}
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) {}
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) {}
-    }
 }
