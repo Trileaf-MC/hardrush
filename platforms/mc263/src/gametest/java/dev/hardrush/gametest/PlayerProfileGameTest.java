@@ -1013,10 +1013,7 @@ public final class PlayerProfileGameTest {
                     player.setYRot(0);
                     player.setXRot(0);
                     profiles.onLogin(player);
-                    var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
-                    new io.netty.channel.embedded.EmbeddedChannel(connection);
-                    dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player,
-                            TestClients.cookie(profile)));
+                    new TestClient(server, profile).place(player);
                     ((ProfileTagged) player).hardrush$isolated(true);
                     profiles.onConnected(player);
                     profiles.tick(round);

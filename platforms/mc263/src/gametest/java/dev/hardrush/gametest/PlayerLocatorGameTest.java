@@ -2,21 +2,13 @@ package dev.hardrush.gametest;
 
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.locator.PlayerLocator;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket;
 import net.minecraft.server.level.ChunkTrackingView;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.waypoints.WaypointTransmitter;
@@ -135,7 +127,7 @@ public final class PlayerLocatorGameTest {
             player.baseTick();
         }
         boolean saw(ServerPlayer source, String operation) { return capture.saw(source.getUUID(), operation); }
-        void clear() { capture.packets.clear(); }
+        void clear() { capture.client.clearPackets(); }
         @Override public void close() {
             MonsterRoles.clear(player);
             player.level().getServer().getPlayerList().remove(player);
@@ -144,30 +136,15 @@ public final class PlayerLocatorGameTest {
     }
 
     private static final class Capture implements AutoCloseable {
-        final ServerPlayer player;
-        final ServerGamePacketListenerImpl previous;
-        final ArrayList<ClientboundTrackedWaypointPacket> packets = new ArrayList<>();
-        final EmbeddedChannel channel;
+        final TestClient client;
         Capture(ServerPlayer player) {
-            this.player = player;
-            previous = player.connection;
-            var connection = new Connection(PacketFlow.SERVERBOUND) {
-                private void record(Packet<?> packet) {
-                    if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record);
-                    else if (packet instanceof ClientboundTrackedWaypointPacket waypoint) packets.add(waypoint);
-                }
-                @Override public void send(Packet<?> packet) { record(packet); }
-                @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-                @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
-            };
-            channel = new EmbeddedChannel(connection);
-            player.connection = new ServerGamePacketListenerImpl(player.level().getServer(), connection, player,
-                    TestClients.cookie(player.getGameProfile()));
+            client = new TestClient(player.level().getServer(), player.getGameProfile());
+            client.attach(player);
         }
         boolean saw(UUID source, String operation) {
-            return packets.stream().anyMatch(packet -> packet.waypoint().id().left().filter(source::equals).isPresent()
+            return client.packets(ClientboundTrackedWaypointPacket.class).stream().anyMatch(packet -> packet.waypoint().id().left().filter(source::equals).isPresent()
                     && String.valueOf(packet.operation()).equals(operation));
         }
-        @Override public void close() { player.connection = previous; channel.finishAndReleaseAll(); }
+        @Override public void close() { client.close(); }
     }
 }

@@ -89,6 +89,11 @@ class MonsterPauseTest {
 
         values.remove("monster.returnCooldownMillis");
         assertEquals(12_000_000_000L, RoundEngine.returnCooldownNanos(rules(values)), "Older rounds keep one cooldown");
+        assertEquals(10_000L, RoundEngine.retrackCooldownMillis(RULES), "New rounds rest the compass ten seconds");
+        values.put("monster.retrackCooldownMillis", 7_000.0);
+        assertEquals(7_000L, RoundEngine.retrackCooldownMillis(rules(values)));
+        values.remove("monster.retrackCooldownMillis");
+        assertEquals(10_000L, RoundEngine.retrackCooldownMillis(rules(values)), "Older rounds keep the default rest");
         assertThrows(IllegalArgumentException.class, () -> {
             var invalid = new TreeMap<>(RULES.combatValues());
             invalid.put("monster.deployCooldownMillis", 0.0);

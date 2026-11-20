@@ -15,8 +15,6 @@ import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.world.LobbyWorld;
 import dev.hardrush.world.mixin.TextDisplayAccessor;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,16 +26,12 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.server.players.NameAndId;
@@ -194,7 +188,7 @@ public final class LobbyAdminGameTest {
         final GameTestHelper test;
         final MinecraftServer server;
         final AtomicLong clock = new AtomicLong(System.nanoTime());
-        final Peer a = new Peer("LobbyAdminA"), b = new Peer("LobbyAdminB");
+        final Peer a, b;
         RoundSession session;
         PlayerProfiles profiles;
         String lastStage;
@@ -205,7 +199,10 @@ public final class LobbyAdminGameTest {
         Path pack;
         LobbyInstallation before;
         ResourceKey<Level> oldKey;
-        Fixture(GameTestHelper test) { this.test = test; server = test.getLevel().getServer(); }
+        Fixture(GameTestHelper test) {
+            this.test = test; server = test.getLevel().getServer();
+            a = new Peer("LobbyAdminA"); b = new Peer("LobbyAdminB");
+        }
 
         @SuppressWarnings("unchecked") <T> T service(String name) {
             try { var field = RoundRuntime.class.getDeclaredField(name); field.setAccessible(true); return (T) ((Map<?, ?>) field.get(null)).get(server); }
@@ -263,7 +260,7 @@ public final class LobbyAdminGameTest {
         void refresh() { if (ButtonMenu.isMenu(a.player)) a.player.containerMenu.clicked(49, 0, ContainerInput.PICKUP, a.player); }
         dev.hardrush.core.round.RoundSnapshot round() { return session.snapshot().orElseThrow(); }
         boolean idle() { return !session.mutationPending(); }
-        void place(Peer peer, Landing landing) { profiles.placeInLobby(peer.player, landing); peer.acknowledge(); }
+        void place(Peer peer, Landing landing) { profiles.placeInLobby(peer.player, landing); peer.client.acknowledge(); }
 
         /** A throwaway void dimension holding the built-in lobby, to change and capture into the test pack. */
         void openScratch() {
@@ -400,56 +397,29 @@ public final class LobbyAdminGameTest {
                     .equals(LobbyCredits.display(PACK_NAME, 2, AUTHORS));
         }
 
-        void teleport(Peer peer, Vec3 pos) { peer.player.connection.teleport(pos.x, pos.y, pos.z, 0, 0); peer.acknowledge(); }
+        void teleport(Peer peer, Vec3 pos) { peer.player.connection.teleport(pos.x, pos.y, pos.z, 0, 0); peer.client.acknowledge(); }
 
         final class Peer {
             final GameProfile profile;
-            PrepareSpawnTask prepare;
-            RecordingConnection connection;
-            EmbeddedChannel channel;
+            final TestClient client;
             ServerPlayer player;
-            int acknowledged = Integer.MIN_VALUE;
-            int batchCount;
-            Peer(String name) { profile = new GameProfile(UUID.randomUUID(), name); }
-            long books() { return connection.packets.stream().filter(ClientboundOpenBookPacket.class::isInstance).count(); }
+            Peer(String name) { profile = new GameProfile(UUID.randomUUID(), name); client = new TestClient(server, profile); }
+            long books() { return client.packets(ClientboundOpenBookPacket.class).size(); }
             void login(GameTestSequence sequence) {
-                sequence.thenExecute(() -> { prepare = new PrepareSpawnTask(server, new NameAndId(profile)); prepare.start(packet -> {}); })
-                        .thenWaitUntil(() -> await(prepare.tick(), "Native login data loaded"))
+                sequence.thenExecute(client::beginLogin)
+                        .thenWaitUntil(() -> await(client.finishLogin(), "Native login data loaded"))
                         .thenExecute(() -> {
-                            connection = new RecordingConnection(); channel = new EmbeddedChannel(connection); acknowledged = Integer.MIN_VALUE; batchCount = 0;
-                            player = prepare.spawnPlayer(connection, TestClients.cookie(profile)); prepare.close(); acknowledge();
+                            player = client.player(); client.acknowledge();
                         }).thenWaitUntil(() -> await(PlayerProfiles.canMoveInLobby(player), "Profile verification opens lobby movement"));
             }
             void tickConnection() {
                 if (player == null) return;
-                acknowledge();
-                player.connection.tick();
-            }
-            void acknowledge() {
-                if (player == null) return;
-                connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
-                        .reduce((first, last) -> last).filter(packet -> packet.id() != acknowledged).ifPresent(packet -> {
-                            acknowledged = packet.id();
-                            player.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(packet.id(), player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
-                            player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-                        });
-                int batches = (int) connection.packets.stream().filter(ClientboundChunkBatchFinishedPacket.class::isInstance).count();
-                while (batchCount < batches) { batchCount++; player.connection.handleChunkBatchReceived(new ServerboundChunkBatchReceivedPacket(64)); }
+                client.acknowledge();
+                client.tickConnection();
             }
             void disconnect() {
-                connection.disconnect(Component.literal("大厅安装回归结束")); connection.handleDisconnection(); channel.finishAndReleaseAll(); player = null;
+                client.disconnect(Component.literal("大厅安装回归结束")); player = client.player();
             }
         }
-    }
-
-    private static final class RecordingConnection extends Connection {
-        final ArrayList<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        void record(Packet<?> packet) {
-            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record); else packets.add(packet);
-        }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
     }
 }

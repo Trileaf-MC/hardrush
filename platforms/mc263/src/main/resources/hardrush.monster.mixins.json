@@ -53,7 +53,8 @@
     "MonsterNativeBodyDamageMixin",
     "CompanionSpawnAccessor",
     "CompanionMobAccessor",
-    "CompanionConversionMixin"
+    "CompanionConversionMixin",
+    "TrackingCompassNeedleMixin"
   ],
   "injectors": {
     "defaultRequire": 1

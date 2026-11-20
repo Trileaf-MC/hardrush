@@ -14,8 +14,6 @@ import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.player.ProfileJournal;
 import dev.hardrush.player.ProfileTagged;
 import dev.hardrush.world.RoundWorldBundle;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -26,17 +24,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.config.PrepareSpawnTask;
-import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -67,7 +60,7 @@ public final class TenRoundGameTest {
                 // Celebration deaths are replaced by native respawns; follow the live entity.
                 var live = f.server.getPlayerList().getPlayer(actor.profile.id());
                 if (live != null) actor.player = live;
-                f.acknowledge(actor.player);
+                actor.client.acknowledge();
             }
         });
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(RoundRuntime.sessionState(f.server)
@@ -195,9 +188,9 @@ public final class TenRoundGameTest {
     private static final class Fixture {
         final GameTestHelper test;
         final MinecraftServer server;
-        final Actor first = new Actor("TenRoundA");
-        final Actor offline = new Actor("TenRoundB");
-        final Actor visitor = new Actor("TenRoundC");
+        final Actor first;
+        final Actor offline;
+        final Actor visitor;
         final ArrayList<UUID> ids = new ArrayList<>();
         final HashSet<Long> seeds = new HashSet<>();
         final ArrayList<net.minecraft.resources.ResourceKey<Level>> releasedKeys = new ArrayList<>();
@@ -211,7 +204,12 @@ public final class TenRoundGameTest {
         CompletableFuture<?> checked;
         Vec3 savedPosition;
         String savedDimension;
-        Fixture(GameTestHelper test) { this.test = test; server = test.getLevel().getServer(); }
+        Fixture(GameTestHelper test) {
+            this.test = test; server = test.getLevel().getServer();
+            first = new Actor(server, "TenRoundA");
+            offline = new Actor(server, "TenRoundB");
+            visitor = new Actor(server, "TenRoundC");
+        }
 
         void installClock() {
             session = service("SESSIONS", RoundSession.class);
@@ -244,8 +242,8 @@ public final class TenRoundGameTest {
                         }
                         // Exactly enough room for the winner's displaced chestplate and sixteen rocket stacks.
                         for (int slot = 19; slot < 36; slot++) first.player.getInventory().setItem(slot, ItemStack.EMPTY);
-                        move(first.player, worlds.level(Level.END), new Vec3(.5, 128, .5));
-                        move(offline.player, worlds.level(secondInEnd ? Level.END : Level.NETHER), new Vec3(2.5, 128, .5));
+                        move(first, worlds.level(Level.END), new Vec3(.5, 128, .5));
+                        move(offline, worlds.level(secondInEnd ? Level.END : Level.NETHER), new Vec3(2.5, 128, .5));
                         fight = new EnderDragonFight(false, false, false, Optional.empty(), 0, Optional.empty(),
                                 Optional.of(new BlockPos(0, 64, 0)), List.of(), List.of());
                         var end = worlds.level(Level.END);
@@ -295,16 +293,11 @@ public final class TenRoundGameTest {
         }
 
         void login(GameTestSequence sequence, Actor actor) {
-            sequence.thenExecute(() -> {
-                actor.prepare = new PrepareSpawnTask(server, new NameAndId(actor.profile));
-                actor.prepare.start(packet -> {});
-            }).thenWaitUntil(() -> await(actor.prepare.tick(), "Native login loads the saved UUID"))
+            sequence.thenExecute(actor.client::beginLogin)
+                    .thenWaitUntil(() -> await(actor.client.finishLogin(), "Native login loads the saved UUID"))
                     .thenExecute(() -> {
-                        actor.connection = new RecordingConnection();
-                        actor.channel = new EmbeddedChannel(actor.connection);
-                        actor.player = actor.prepare.spawnPlayer(actor.connection, TestClients.cookie(actor.profile));
-                        actor.prepare.close();
-                        acknowledge(actor.player);
+                        actor.player = actor.client.player();
+                        actor.client.acknowledge();
                         test.assertTrue(PlayerProfiles.isLocked(actor.player), "Actual login is quarantined before any participation");
                         test.assertTrue(actor.player.level() == LobbyWorld.open(server).holdingLevel(), "Saved competition coordinates cannot enter before verification");
                     }).thenWaitUntil(() -> await(profiles.isReady(actor.profile.id(), round()), "Durable native profile conversion"));
@@ -313,11 +306,9 @@ public final class TenRoundGameTest {
         void disconnect(Actor actor) {
             if (actor.player == null) return;
             // Fabric's DISCONNECT event is hooked on Connection.handleDisconnection, before the listener.
-            actor.connection.disconnect(Component.literal("Ten-round headless reconnect fixture"));
-            actor.connection.handleDisconnection();
+            actor.client.disconnect(Component.literal("Ten-round headless reconnect fixture"));
             test.assertTrue(server.getPlayerList().getPlayer(actor.profile.id()) == null, "Native listener removes the UUID");
             test.assertFalse(profiles.manages(actor.player), "Fabric disconnect releases the profile entry");
-            actor.channel.finishAndReleaseAll();
             actor.player = null;
         }
 
@@ -371,9 +362,9 @@ public final class TenRoundGameTest {
                                 levels[0].dimension(), worlds.spawn(), 0, 0), true), false);
                         var progress = server.getAdvancements().get(Identifier.parse("minecraft:story/mine_stone"));
                         progress.value().criteria().keySet().forEach(key -> first.player.getAdvancements().award(progress, key));
-                        move(first.player, levels[1], new Vec3(.5, 128, .5));
+                        move(first, levels[1], new Vec3(.5, 128, .5));
                         test.assertTrue(first.player.level() == levels[1], "Native transition stays within this round's nether");
-                        move(first.player, levels[0], Vec3.atBottomCenterOf(worlds.spawn()));
+                        move(first, levels[0], Vec3.atBottomCenterOf(worlds.spawn()));
                     });
             if (number == 1 || number == 5) {
                 sequence.thenExecute(() -> command(offline, "hardrush join"))
@@ -382,13 +373,13 @@ public final class TenRoundGameTest {
                             offline.player.getInventory().setItem(0, new ItemStack(Items.GOLD_INGOT, 7));
                             offline.player.getEnderChestInventory().setItem(0, new ItemStack(Items.LAPIS_LAZULI, 9));
                             offline.player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 12000));
-                            move(offline.player, levels[1], new Vec3(40.5, 128, 40.5));
+                            move(offline, levels[1], new Vec3(40.5, 128, 40.5));
                             disconnect(offline);
                         }).thenWaitUntil(() -> await(!session.mutationPending() && !round().participants().get(offline.profile.id()).online(), "Offline identity is durable"));
             }
             if (number == 3) {
                 sequence.thenExecute(() -> {
-                    move(first.player, levels[1], new Vec3(8.5, 128, 8.5));
+                    move(first, levels[1], new Vec3(8.5, 128, 8.5));
                     savedPosition = first.player.position(); savedDimension = first.player.level().dimension().identifier().toString();
                     disconnect(first);
                 }).thenWaitUntil(() -> await(!session.mutationPending() && !round().participants().get(first.profile.id()).online(), "Same-round disconnect pauses time"));
@@ -408,13 +399,13 @@ public final class TenRoundGameTest {
                         .thenExecute(() -> {
                             first.player.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
                             first.player = first.player.connection.player;
-                            acknowledge(first.player);
+                            first.client.acknowledge();
                         }).thenWaitUntil(() -> await(!session.mutationPending() && round().participants().get(first.profile.id()).lifeSequence() == 2
                                 && !PlayerProfiles.isLocked(first.player), "Native replacement waits for its durable next life"));
             }
             sequence.thenExecute(() -> {
                 advance(number);
-                move(first.player, levels[2], new Vec3(.5, 128, .5));
+                move(first, levels[2], new Vec3(.5, 128, .5));
                 fight = new EnderDragonFight(false, false, false, Optional.empty(), 0, Optional.empty(),
                         Optional.of(new BlockPos(0, 64, 0)), List.of(), List.of());
                 fight.init(levels[2], levels[2].getSeed(), BlockPos.ZERO);
@@ -448,8 +439,7 @@ public final class TenRoundGameTest {
                     }).thenWaitUntil(() -> await(checked.isDone(), "Per-round records are read after atomic terminal"))
                     .thenExecute(() -> {
                         checked.join();
-                        test.assertTrue(first.connection.packets.stream().filter(ClientboundTabListPacket.class::isInstance)
-                                .map(ClientboundTabListPacket.class::cast).anyMatch(packet -> packet.footer().getString().contains("胜者 TenRoundA")),
+                        test.assertTrue(first.client.packets(ClientboundTabListPacket.class).stream().anyMatch(packet -> packet.footer().getString().contains("胜者 TenRoundA")),
                                 "Actual runtime publishes the winner through native TAB packets");
                         // A delayed previous progress callback must never count toward the next round.
                         var stale = new ProgressWrite(round().roundId(), UUID.randomUUID(), first.profile.id(), "TenRoundA",
@@ -471,7 +461,7 @@ public final class TenRoundGameTest {
                                 "Ten-round native round {} released: id={}, seed={}, resultMillis={}, removedDimensions={}, retainedManifests={}",
                                 number, ids.getLast(), levels[0].getSeed(), frozenTime / 1_000_000, releasedKeys.size(), manifests.size());
                         // Drop fixture references too; retained identifiers/manifests cannot retain chunk/world objects.
-                        worlds = null; levels = null; fight = null; first.connection.packets.clear();
+                        worlds = null; levels = null; fight = null; first.client.clearPackets();
                     });
         }
 
@@ -539,19 +529,9 @@ public final class TenRoundGameTest {
             try { server.getCommands().getDispatcher().execute(command, actor.player.createCommandSourceStack()); }
             catch (Exception error) { throw new IllegalStateException(command, error); }
         }
-        void move(ServerPlayer player, ServerLevel level, Vec3 position) {
-            player.teleport(new TeleportTransition(level, position, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
-            acknowledge(player);
-        }
-        void acknowledge(ServerPlayer player) {
-            var actor = player.getUUID().equals(first.profile.id()) ? first
-                    : player.getUUID().equals(offline.profile.id()) ? offline : visitor;
-            // The embedded peer follows the native teleport and dimension-loaded acknowledgements.
-            actor.connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance)
-                    .map(ClientboundPlayerPositionPacket.class::cast).reduce((previous, current) -> current)
-                    .ifPresent(packet -> player.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(
-                            packet.id(), player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot())));
-            player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+        void move(Actor actor, ServerLevel level, Vec3 position) {
+            actor.player.teleport(new TeleportTransition(level, position, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
+            actor.client.acknowledge();
         }
         static boolean book(ServerPlayer player, UUID roundId) {
             return player.getInventory().contains(stack -> WrittenBookPort.isHistoryBook(stack)
@@ -594,22 +574,12 @@ public final class TenRoundGameTest {
 
     private static final class Actor {
         final GameProfile profile;
+        final TestClient client;
         ServerPlayer player;
-        PrepareSpawnTask prepare;
-        RecordingConnection connection;
-        EmbeddedChannel channel;
         ProgressWrite stale;
-        Actor(String name) { profile = new GameProfile(UUID.randomUUID(), name); }
-    }
-    private static final class RecordingConnection extends Connection {
-        final ArrayList<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        private void record(Packet<?> packet) {
-            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record);
-            else packets.add(packet);
+        Actor(MinecraftServer server, String name) {
+            profile = new GameProfile(UUID.randomUUID(), name);
+            client = new TestClient(server, profile);
         }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
     }
 }

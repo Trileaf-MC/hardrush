@@ -20,7 +20,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.DisconnectionDetails;
+import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -152,8 +152,8 @@ public final class FullCheckpointRegression implements ModInitializer {
         }
 
         @Override void tick() {
-            if (operation.equals("online") && a.connection != null) {
-                for (var packet : a.connection.packets) if (packet instanceof net.minecraft.network.protocol.game.ClientboundSystemChatPacket chat) {
+            if (operation.equals("online")) {
+                for (var chat : a.client.packets(ClientboundSystemChatPacket.class)) {
                     long buttons = chat.content().getSiblings().stream().filter(part -> part.getStyle().getClickEvent() instanceof net.minecraft.network.chat.ClickEvent.RunCommand).count();
                     if (buttons == 2 && chat.content().getString().contains("[yes]") && chat.content().getString().contains("[no]")) clickablePrompt = true;
                 }
@@ -259,8 +259,8 @@ public final class FullCheckpointRegression implements ModInitializer {
                 require(itemCount(Items.EMERALD) == 3, "cursor stack retained exactly once across native dimension/menu closure");
                 require(itemCount(Items.STICK) == 2, "crafting input retained exactly once");
                 require(round().participants().get(a.profile.id()).lifeSequence() == expected.participants().get(a.profile.id()).lifeSequence(), "no extra life or revival charge consumed");
-                a.player.connection.onDisconnect(new DisconnectionDetails(Component.literal("full checkpoint quick reconnect fixture")));
-                a.channel.finishAndReleaseAll(); a.player = null;
+                a.client.disconnect(Component.literal("full checkpoint quick reconnect fixture"));
+                a.player = a.client.player();
             });
             waitFor("offline identity committed", () -> idle() && !round().participants().get(a.profile.id()).online());
             nativeLogin(true);
@@ -269,14 +269,14 @@ public final class FullCheckpointRegression implements ModInitializer {
         }
 
         void nativeLogin(boolean earlyOnline) {
-            act("begin native re-login", () -> { a.prepare = new net.minecraft.server.network.config.PrepareSpawnTask(server,
-                    new net.minecraft.server.players.NameAndId(a.profile)); a.prepare.start(packet -> {}); });
-            waitFor("native player file read", () -> a.prepare.tick());
-            act("native connection established", () -> {
-                a.connection = new RecordingConnection(); a.channel = new io.netty.channel.embedded.EmbeddedChannel(a.connection);
-                a.player = a.prepare.spawnPlayer(a.connection, TestClients.cookie(a.profile));
-                a.prepare.close(); acknowledge(a);
+            act("begin native re-login", a.client::beginLogin);
+            waitFor("native player file read", () -> {
+                if (!a.client.finishLogin()) return false;
                 if (earlyOnline) session.onOnline(a.profile.id(), a.profile.name(), true);
+                return true;
+            });
+            act("native connection established", () -> {
+                a.player = a.client.player(); a.client.acknowledge(); a.client.clearPackets();
             });
         }
 
