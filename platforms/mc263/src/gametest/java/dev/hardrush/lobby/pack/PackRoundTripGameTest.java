@@ -75,12 +75,11 @@ public final class PackRoundTripGameTest {
         var target = open(server);
         var warmSource = new ChunkWarmup(source.asLevel(), AREA);
         var warmTarget = new ChunkWarmup(target.asLevel(), AREA);
-        TestTeardown.atEnd(test, () -> {
-            warmSource.close();
-            warmTarget.close();
-            source.delete();
-            target.delete();
-        });
+        // Separate actions, so one failing cleanup does not keep the others from running.
+        TestTeardown.atEnd(test, source::delete);
+        TestTeardown.atEnd(test, target::delete);
+        TestTeardown.atEnd(test, warmSource::close);
+        TestTeardown.atEnd(test, warmTarget::close);
         test.startSequence()
                 .thenWaitUntil(() -> {
                     boolean a = warmSource.tick(), b = warmTarget.tick();
