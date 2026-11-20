@@ -82,7 +82,7 @@ public final class PlayerFeedback {
             if (!LobbyWorld.isLobby(player.level())) { hints.clear("assembly"); hints.clear("facility"); }
             if (p == null || p.role() != ParticipantRole.MONSTER_LOBBY) { hints.clear("hunt"); hints.clear("hunt-target"); hints.clear("hunt-guide"); }
             if (!dev.hardrush.lobby.LobbyRuntime.channeling(player)) hints.clear("return");
-            if (frozen) dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "比赛状态变化");
+            if (frozen) dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "比赛状态变化");
             // A suspended match says so on the stage bar; each facility explains its own refusal when used.
             boolean suspended = session.state() != RoundSession.State.OPEN || r.phase() == RoundPhase.RECOVERY_REQUIRED;
             if (!suspended && PlayerProfiles.simulationFrozen(player) && !dev.hardrush.celebration.CelebrationRuntime.arena(player)) {

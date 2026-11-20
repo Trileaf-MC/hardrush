@@ -8,20 +8,14 @@ import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.combat.MonsterCombatRuntime;
-import dev.hardrush.gametest.TestClients;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
+import dev.hardrush.gametest.TestClient;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -213,7 +207,7 @@ public final class MonsterCreeperGameTest {
         final ServerLevel level;
         final Vec3 center;
         final List<ServerPlayer> players = new ArrayList<>();
-        final List<EmbeddedChannel> channels = new ArrayList<>();
+        final List<TestClient> clients = new ArrayList<>();
         final List<ChunkPos> forced = new ArrayList<>();
         final List<CombatEvent> events = new ArrayList<>();
         final Map<UUID, Participant> participants = new HashMap<>();
@@ -234,12 +228,10 @@ public final class MonsterCreeperGameTest {
             }
             for (int index = 0; index < count; index++) {
                 var profile = new GameProfile(UUID.randomUUID(), "HRCreep" + ARENAS.get() + index);
-                var player = new ServerPlayer(level.getServer(), level, profile, TestClients.information());
-                var connection = new SinkConnection(); channels.add(new EmbeddedChannel(connection));
-                dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> level.getServer().getPlayerList().placeNewPlayer(connection, player,
-                        TestClients.cookie(profile)));
+                var client = new TestClient(level.getServer(), profile); clients.add(client);
+                var player = client.place(level);
                 player.teleportTo(center.x + index * 24, center.y, center.z);
-                player.setGameMode(GameType.SURVIVAL); player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+                player.setGameMode(GameType.SURVIVAL); client.acknowledge();
                 players.add(player);
                 participants.put(player.getUUID(), new Participant(player.getUUID(), profile.name(),
                         index == 0 ? ParticipantRole.MONSTER_DEPLOYED : ParticipantRole.HUMAN_ACTIVE,
@@ -277,16 +269,9 @@ public final class MonsterCreeperGameTest {
 
         @Override public void close() {
             level.getEntities((Entity)null, owner.getBoundingBox().inflate(20), entity -> !(entity instanceof ServerPlayer)).forEach(Entity::discard);
-            for (var player : players) { MonsterRoles.clear(player); level.getServer().getPlayerList().remove(player); }
-            for (var channel : channels) channel.finishAndReleaseAll();
+            for (var client : clients) { MonsterRoles.clear(client.player()); client.close(); }
             for (var chunk : forced) level.setChunkForced(chunk.x(), chunk.z(), false);
         }
     }
 
-    private static final class SinkConnection extends Connection {
-        SinkConnection() { super(PacketFlow.SERVERBOUND); }
-        @Override public void send(Packet<?> packet) {}
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) {}
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) {}
-    }
 }

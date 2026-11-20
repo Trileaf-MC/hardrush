@@ -21,6 +21,7 @@ import java.util.UUID;
 public final class RoundEngine {
     public static final long MAX_SUCCESS_CELEBRATION_MILLIS = 180_000;
     public static final long MONSTER_COOLDOWN_NANOS = 30_000_000_000L;
+    public static final long RETRACK_COOLDOWN_MILLIS = 10_000;
 
     /** Wait before hunting after death, disconnect, recall or a first monster life. */
     public static long deployCooldownNanos(RulesConfig rules) {
@@ -32,6 +33,12 @@ public final class RoundEngine {
     public static long returnCooldownNanos(RulesConfig rules) {
         Double millis = rules.combatValues().get("monster.returnCooldownMillis");
         return millis == null ? deployCooldownNanos(rules) : Math.multiplyExact(Math.round(millis), 1_000_000L);
+    }
+
+    /** The tracking compass's rest after a landing; rounds stored before the setting keep its default. */
+    public static long retrackCooldownMillis(RulesConfig rules) {
+        Double millis = rules.combatValues().get("monster.retrackCooldownMillis");
+        return millis == null ? RETRACK_COOLDOWN_MILLIS : Math.round(millis);
     }
 
     /** Live server milliseconds, shared by every completion path and its player-facing duration. */
