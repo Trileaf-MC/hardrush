@@ -62,6 +62,8 @@ import net.minecraft.world.scores.TeamColor;
  */
 public final class TotemDropGameTest {
     private static final AtomicInteger ARENAS = new AtomicInteger();
+    /** {@code ItemEntity.INFINITE_LIFETIME}, the age {@code setUnlimitedLifetime} fixes. */
+    private static final int UNLIMITED_LIFETIME = -32768;
 
     @GameTest(maxTicks = 1200)
     public void droppedTotemsSpawnRegisterAnnounceAndAreTakenOnlyThroughTheRegistry(GameTestHelper test) {
@@ -125,6 +127,7 @@ public final class TotemDropGameTest {
             test.assertTrue(stack.get(DataComponents.DAMAGE_RESISTANT).isResistantTo(f.level.damageSources().lava()), "Fireproof");
             test.assertTrue(item.isInvulnerable() && item.hasPickUpDelay() && item.hasGlowingTag() && item.isCustomNameVisible()
                     && "复生图腾".equals(item.getCustomName().getString()), "Invulnerable, never natively picked up, glowing, named");
+            test.assertValueEqual(item.getAge(), UNLIMITED_LIFETIME, "It never despawns on its own");
             test.assertTrue(human.team(p -> p.getPlayerAction() == ClientboundSetPlayerTeamPacket.Action.ADD
                     && p.getPlayers().contains(item.getStringUUID())), "Its UUID joins the gold team for everyone");
 
@@ -160,10 +163,14 @@ public final class TotemDropGameTest {
             for (var c : List.of(killer, victim, second, withdrawn, outsider))
                 test.assertValueEqual(c.bars.size(), 0, "Killer, victims, those out of the round and outsiders are not told: " + c.name());
 
-            // Too young: the first 40 ticks nobody takes it.
+            // Too young: nobody takes it before two seconds of race time since its registration, however old the entity.
             refs.first.playerTouch(human.player);
             test.assertValueEqual(s.requests, 0, "A fresh drop waits its pickup delay");
-        }).thenIdle(TotemDrops.PICKUP_DELAY_TICKS + 1).thenExecute(() -> {
+            s.challenge += TotemDrops.PICKUP_DELAY_NANOS - 1;
+            refs.first.playerTouch(human.player);
+            test.assertValueEqual(s.requests, 0, "The delay is race time since registration");
+            s.challenge += 1;
+        }).thenIdle(1).thenExecute(() -> {
             // A camp monster cannot take it; a human whose inventory is full and holds no totem cannot either.
             refs.first.playerTouch(camp.player);
             test.assertValueEqual(s.requests, 0, "A monster player cannot take it");
@@ -241,13 +248,14 @@ public final class TotemDropGameTest {
         }).thenWaitUntil(() -> require(refs.reload.isRemoved(), "the far chunk unloads")).thenExecute(() -> {
             var far = f.base.offset(2000, 0, 0);
             f.level.setChunkForced(far.getX() >> 4, far.getZ() >> 4, true);
-        }).thenWaitUntil(() -> require(!f.drops(refs.reloadToken).isEmpty(), "the far chunk loads again"))
-                // The pickup delay counts only while the drop is simulated, i.e. while its chunk ticks entities.
-                .thenWaitUntil(() -> require(f.drops(refs.reloadToken).getFirst().getAge() - TotemDrops.SPAWN_AGE
-                        >= TotemDrops.PICKUP_DELAY_TICKS, "the reloaded drop is old enough")).thenExecute(() -> {
+        }).thenWaitUntil(() -> require(!f.drops(refs.reloadToken).isEmpty(), "the far chunk loads again")).thenExecute(() -> {
             var reloaded = only(test, f.drops(refs.reloadToken), "Reloaded drop");
             test.assertTrue(reloaded != refs.reload && reloaded.getUUID().equals(refs.reload.getUUID()), "A new object with the same UUID");
+            test.assertValueEqual(reloaded.getAge(), UNLIMITED_LIFETIME, "The unlimited lifetime is saved with the entity");
             int asked = s.requests;
+            reloaded.playerTouch(human.player);
+            test.assertValueEqual(s.requests, asked, "Registered just now in race time: not yet, reload or not");
+            s.challenge += TotemDrops.PICKUP_DELAY_NANOS;
             reloaded.playerTouch(human.player);
             test.assertValueEqual(s.requests, asked + 1, "Asked after a reload (age " + reloaded.getAge() + ")");
             test.assertTrue(reloaded.isRemoved() && s.players.get(human.id()).revivalCharges() == 2, "Taken after a reload");
@@ -275,6 +283,10 @@ public final class TotemDropGameTest {
             // A later single registration tells only who has not been told this round.
             var late = f.client("L");
             s.put(late.id(), late.name(), ParticipantRole.HUMAN_ACTIVE, 1, 0, 0, true);
+            // Connected but not admitted yet: entering still hears it.
+            var entering = f.client("E");
+            s.players.put(entering.id(), new Participant(entering.id(), entering.name(), ParticipantRole.HUMAN_ACTIVE, false, false, 0, 0, 1, 0,
+                    MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of(), MonsterWallet.EMPTY, 0, true));
             s.put(second.id(), second.name(), ParticipantRole.HUMAN_ACTIVE, 2, 0, 0, true);
             int humanBars = human.bars.size(), campBars = camp.bars.size();
             var single = TotemDrops.prepare(second.player, s.snapshot(), s.melee(killer.id())).orElseThrow();
@@ -284,7 +296,23 @@ public final class TotemDropGameTest {
                 s.register(single, second.id(), 2, killer.id());
             });
             test.assertValueEqual(late.bars, List.of(second.name() + " 被人类击杀，掉落了复生图腾"), "A single victim is named alone");
+            test.assertValueEqual(entering.bars, late.bars, "A player still entering is told too");
             test.assertTrue(human.bars.size() == humanBars && camp.bars.size() == campBars, "Everyone else was already told this round");
+
+            // However many ticks a drop lives through, only its registration removes it: at five minutes of race time.
+            var aged = f.registered(s, Vec3.atBottomCenterOf(f.base.offset(6, 0, -6)));
+            var agedToken = RevivalTotems.dropToken(aged.getItem()).orElseThrow();
+            for (int i = 0; i < 13_000; i++) aged.tick();
+            TotemDrops.patrol(f.server);
+            test.assertTrue(!aged.isRemoved() && aged.getAge() == UNLIMITED_LIFETIME, "Thirteen thousand ticks do not despawn it");
+            var agedEntry = s.registry.get(agedToken);
+            s.registry.put(agedToken, new LooseTotem(agedEntry.victim(), agedEntry.victimLife(), agedEntry.killer(),
+                    s.challenge - LooseTotem.LIFETIME_NANOS + 1));
+            TotemDrops.patrol(f.server);
+            test.assertFalse(aged.isRemoved(), "Kept until its registration expires");
+            s.challenge += 1;
+            TotemDrops.patrol(f.server);
+            test.assertTrue(aged.isRemoved(), "Removed once its registration expires");
 
             // The patrol: an expired registration, a token-less copy and a pending drop of a failed session go.
             var expired = f.registered(s, Vec3.atBottomCenterOf(f.base.offset(4, 0, -4)));
