@@ -198,6 +198,8 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertTrue(inventory.getItem(7).is(Items.ECHO_SHARD) && dev.hardrush.monster.MonsterItems.owned(f.monster.player, inventory.getItem(7)),
                             "Parked bound items are rebound to the resumed deployment");
                     f.test.assertValueEqual(f.worldSwords(), 1, "The world sword stayed where the monster returned and is not parked");
+                    // The ticking monster body would pick the sword up again the next time it stands beside it.
+                    f.discardWorldSwords();
                     f.test.assertTrue(f.monster.player.getHealth() < f.monster.player.getMaxHealth(), "The resumed body keeps the camp body's health");
                     f.monster.useReturn();
                     f.ageReturnChannel();
@@ -705,6 +707,9 @@ public final class LobbyRuntimeGameTest {
             test.assertValueEqual(monster.player.getInventory().getItem(slot).getCount(), before - 1, "Successful egg use consumes exactly one charge");
         }
         void restoreSummonRing() { }
+        void discardWorldSwords() {
+            level.getEntitiesOfClass(ItemEntity.class, worldGearDrops, item -> item.getItem().is(Items.DIAMOND_SWORD)).forEach(ItemEntity::discard);
+        }
         int worldSwords() {
             return level.getEntitiesOfClass(ItemEntity.class, worldGearDrops).stream().map(ItemEntity::getItem)
                     .filter(stack -> stack.is(Items.DIAMOND_SWORD)).mapToInt(ItemStack::getCount).sum();
