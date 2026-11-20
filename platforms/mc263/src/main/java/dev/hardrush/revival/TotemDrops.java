@@ -38,7 +38,10 @@ import net.minecraft.world.scores.TeamColor;
  *
  * <p>A drop goes through two states. <em>Pending</em> (memory only): spawned at the death, its batch not committed yet;
  * touching it does nothing and the patrol leaves it alone. <em>Registered</em>: the committed snapshot lists its
- * token; it can be taken once it is {@link #PICKUP_DELAY_TICKS} old, until the registry lets it expire. A pending drop
+ * token; it can be taken once {@link #PICKUP_DELAY_NANOS} of race time have passed since it was registered, until the
+ * registry lets it expire. The entity never despawns on its own ({@code setUnlimitedLifetime}): vanilla's lifetime
+ * counts entity ticks, which a faster tick rate or a paused race with chunks still simulating would run ahead of the
+ * registry's race time, so the patrol alone removes it once its registration is gone or expired. A pending drop
  * whose death committed without registering it (vetoed on commit, a settling or round-ending batch, a failed commit,
  * another round) is removed, and only a registered drop is announced. Registration lives in the snapshot, so it
  * survives a restart or a checkpoint restore together with the world; a pending drop does not, and is swept.
@@ -50,14 +53,11 @@ import net.minecraft.world.scores.TeamColor;
 public final class TotemDrops {
     /** The packet-only team that gives floor totems their gold glow. */
     public static final String TEAM = "hardrush_totem_drop";
-    /** Like the 40 ticks of {@code Inventory.dropAll}: nobody snatches a drop the instant its owner falls. */
-    static final int PICKUP_DELAY_TICKS = 40;
     /**
-     * A drop starts at vanilla's extended lifetime, so its native 6000-tick despawn (counted only while loaded) is ten
-     * ticking minutes away and never beats the registry's five minutes of race time; the patrol removes it instead.
-     * The pickup delay counts from this age, which is saved with the entity and so also holds after a restart.
+     * Like the 40 ticks of {@code Inventory.dropAll}, two seconds, but of race time since registration: nobody snatches
+     * a drop the instant its owner falls, and the registry it counts from survives a restart or a reload.
      */
-    static final int SPAWN_AGE = -6000;
+    static final long PICKUP_DELAY_NANOS = 2_000_000_000L;
     static final String PICKUP_TIP = "获得复生图腾 · 拿在手上阵亡时原地复生";
     private static final String PICKUP_TAUGHT = "revival_totem_pickup";
     private static final String DROP_TOLD = "revival_totem_drop";
@@ -139,7 +139,7 @@ public final class TotemDrops {
                 level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DamageTypeTags.IS_FIRE)));
         var item = new ItemEntity(level, at.x, at.y, at.z, stack);
         item.setNeverPickUp();
-        item.setExtendedLifetime();
+        item.setUnlimitedLifetime();
         item.setPermanentlyInvulnerable(true);
         item.setCustomName(Component.literal("复生图腾").withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GOLD)));
         item.setCustomNameVisible(true);
@@ -191,9 +191,9 @@ public final class TotemDrops {
     }
 
     /**
-     * T1 once per player and round, to everyone of the round still playing (humans and monsters, online) except the
-     * batch's killers and victims and administrative spectators. The killer's name stays out: the native death message
-     * already names both, this line only adds that something now lies there.
+     * T1 once per player and round, to everyone of the round still playing (humans and monsters, connected, a player
+     * still entering included) except the batch's killers and victims and administrative spectators. The killer's name
+     * stays out: the native death message already names both, this line only adds that something now lies there.
      */
     private void announce(MinecraftServer server, RoundSnapshot after, List<LooseTotem> drops) {
         var involved = new HashSet<UUID>();
@@ -203,7 +203,7 @@ public final class TotemDrops {
         String line = victims.size() == 1 ? Notices.key(first) + " 被人类击杀，掉落了复生图腾"
                 : Notices.key(first) + " 等 " + Notices.key(victims.size()) + " 人被人类击杀，掉落了复生图腾";
         for (var p : after.participants().values()) {
-            if (involved.contains(p.id()) || !p.online() || p.role().isExcluded()) continue;
+            if (involved.contains(p.id()) || !p.connected() || p.role().isExcluded()) continue;
             var player = server.getPlayerList().getPlayer(p.id());
             if (player == null || dev.hardrush.player.PlayerProfiles.isAdministrativeSpectator(player)) continue;
             if (Notices.firstInRound(player, after.roundId(), DROP_TOLD)) Notices.hint(player, line);
@@ -211,10 +211,10 @@ public final class TotemDrops {
     }
 
     /**
-     * {@code ItemEntity.playerTouch} on any floor revival totem, after native pickup was cancelled: a registered,
-     * unclaimed drop old enough is taken by a human whose inventory shows the balance and has room for one more
-     * (the stack it already holds, a balance already beyond a full stack, or a free slot; otherwise, like vanilla,
-     * nothing happens). The entity is removed only after the commit.
+     * {@code ItemEntity.playerTouch} on any floor revival totem, after native pickup was cancelled: a drop registered at
+     * least {@link #PICKUP_DELAY_NANOS} of race time ago and unclaimed is taken by a human whose inventory shows the
+     * balance and has room for one more (the stack it already holds, a balance already beyond a full stack, or a free
+     * slot; otherwise, like vanilla, nothing happens). The entity is removed only after the commit.
      */
     public static void touch(ServerPlayer player, ItemEntity item) {
         var drops = INSTANCES.get(player.level().getServer());
@@ -224,12 +224,13 @@ public final class TotemDrops {
     private void pickup(ServerPlayer player, ItemEntity item) {
         var token = RevivalTotems.dropToken(item.getItem()).orElse(null);
         if (token == null || pending.containsKey(token) || claimed.contains(token)) return;
-        if (item.getAge() - SPAWN_AGE < PICKUP_DELAY_TICKS || !player.isAlive() || player.isSpectator()) return;
+        if (!player.isAlive() || player.isSpectator()) return;
         // The gates other playerTouch mixins apply (a frozen competition, a protected lobby body, a monster) are all
         // inside the projection's PROJECT state (unlocked competition, verified round body of an active human), so
         // the outcome does not depend on which HEAD injection runs first.
         var r = access.view().orElse(null);
-        if (r == null || r.liveLooseTotem(token).isEmpty()) return;
+        var registered = r == null ? null : r.liveLooseTotem(token).orElse(null);
+        if (registered == null || r.challengeNanos() - registered.droppedAtChallengeNanos() < PICKUP_DELAY_NANOS) return;
         var p = r.participants().get(player.getUUID());
         if (p == null || p.role() != ParticipantRole.HUMAN_ACTIVE || !p.online() || !access.collects(player) || !room(player, p)) return;
         claimed.add(token);
