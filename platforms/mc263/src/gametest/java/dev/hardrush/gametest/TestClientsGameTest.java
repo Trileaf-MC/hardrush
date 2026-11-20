@@ -80,8 +80,12 @@ public final class TestClientsGameTest {
             player.getInventory().setItem(player.getInventory().getSelectedSlot(), new ItemStack(client == alice ? Items.DIAMOND : Items.EMERALD));
         }
         test.startSequence()
-                .thenWaitUntil(() -> test.assertTrue(level.isPositionEntityTicking(floor)
-                        && alice.receivedChunksAround(floor, 0) && bob.receivedChunksAround(floor, 0), "Both clients have received the arena"))
+                .thenWaitUntil(() -> test.assertTrue(level.isPositionEntityTicking(floor), "The arena is loaded"))
+                // A chunk ticks before it is ready to send (its light may still be pending), and an item that appears
+                // in a chunk a client has not received is never paired with that client afterwards unless the item
+                // or the client changes section, which a stationary fixture never does: throw only once both have it.
+                .thenWaitUntil(() -> test.assertTrue(alice.receivedChunksAround(floor, 0) && bob.receivedChunksAround(floor, 0),
+                        "Both clients have received the arena chunk"))
                 .thenExecute(() -> { alice.dropSelected(false); bob.dropSelected(false); })
                 .thenWaitUntil(() -> {
                     var diamond = thrown(level, floor, Items.DIAMOND.getDefaultInstance());

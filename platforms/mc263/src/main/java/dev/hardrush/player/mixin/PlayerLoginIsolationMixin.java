@@ -19,6 +19,8 @@ public abstract class PlayerLoginIsolationMixin {
     @Inject(method = "placeNewPlayer", at = @At("TAIL"))
     private void hardrush$syncLobbyAfterLogin(Connection connection, ServerPlayer player, CommonListenerCookie cookie, CallbackInfo ci) {
         PlayerProfiles.afterLogin(player);
+        // After vanilla's updateEntireScoreboard, so the packet-only list objective is not covered by the server's.
+        dev.hardrush.revival.TotemTab.joined(player);
     }
     @Inject(method = "save", at = @At("HEAD"), cancellable = true)
     private void hardrush$preserveUnsafeOriginal(ServerPlayer player, CallbackInfo ci) {

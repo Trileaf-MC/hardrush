@@ -170,6 +170,12 @@ public final class MonsterAppearanceGameTest {
         var observer = test.makeMockServerPlayerInLevel();
         var profile = player[0].getGameProfile();
         var client = new TestClient(server, profile).unmanaged();
+        TestTeardown.atEnd(test, () -> {
+            client.close();
+            // The first mock body is still listed when the test ended before its first native login.
+            if (server.getPlayerList().getPlayer(profile.id()) == player[0]) server.getPlayerList().remove(player[0]);
+            server.getPlayerList().remove(observer);
+        });
         var previousSpawn = new ClientboundAddEntityPacket[1];
         var sequence = test.startSequence();
         for (int cycle = 0; cycle < 20; cycle++) {
@@ -195,11 +201,8 @@ public final class MonsterAppearanceGameTest {
                     assertCleared(test, player[0], observer);
                 });
         }
-        sequence.thenExecute(() -> {
-            client.close();
-            server.getPlayerList().remove(observer);
-            System.out.println("HardRush appearance lifecycle: same UUID native save/login loads=20; disconnected bindings removed");
-        }).thenSucceed();
+        sequence.thenExecute(() -> System.out.println("HardRush appearance lifecycle: same UUID native save/login loads=20; disconnected bindings removed"))
+                .thenSucceed();
     }
 
     private static void assertSelected(GameTestHelper test, ServerPlayer player, ServerPlayer observer, String kind) {
