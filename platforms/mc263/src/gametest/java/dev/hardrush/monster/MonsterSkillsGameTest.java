@@ -4,23 +4,18 @@ import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
-import dev.hardrush.gametest.TestClients;
+import dev.hardrush.gametest.TestClient;
 import dev.hardrush.monster.mixin.MonsterLivingAccessor;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.combat.MonsterCombatRuntime;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
@@ -253,7 +248,7 @@ public final class MonsterSkillsGameTest {
         var shots = new ArrayList<Shot>();
         var single = new ArrayList<Shot>();
         SHOTS.put(f.owner.getUUID(), shots); SHOTS.put(f.target.getUUID(), single);
-        var ownerPackets = f.connections.get(f.owner.getUUID()).sent;
+        var ownerClient = f.clients.get(f.owner.getUUID());
         MonsterRoles.select(f.owner, "skeleton"); MonsterRoles.select(f.target, "skeleton");
         test.assertFalse(f.owner.getInventory().contains(stack -> stack.is(Items.BONE)), "The volley needs no separate control item");
         f.ready().thenExecute(() -> {
@@ -261,7 +256,7 @@ public final class MonsterSkillsGameTest {
             test.assertTrue(MonsterRoles.useControl(f.owner, InteractionHand.MAIN_HAND), "A sneaking skeleton draws its bow natively");
             test.assertTrue(MonsterRoles.useControl(f.target, InteractionHand.MAIN_HAND), "A standing skeleton draws its bow natively");
         }).thenIdle(25).thenExecute(() -> {
-            test.assertTrue(ownerPackets.stream().anyMatch(packet -> packet instanceof net.minecraft.network.protocol.game.ClientboundSoundPacket sound
+            test.assertTrue(ownerClient.packets().stream().anyMatch(packet -> packet instanceof net.minecraft.network.protocol.game.ClientboundSoundPacket sound
                     && sound.getSound().is(net.minecraft.sounds.SoundEvents.CROSSBOW_QUICK_CHARGE_3.unwrapKey().orElseThrow())),
                     "A ready sneaking full draw gives the owner a private cue");
             MonsterRoles.releaseBow(f.owner); MonsterRoles.releaseBow(f.target);
@@ -293,11 +288,11 @@ public final class MonsterSkillsGameTest {
     @GameTest(maxTicks = 400)
     public void ownerAloneSeesFormNamedBowWithReadyGlintAndCooldownBar(GameTestHelper test) {
         var f = new Fixture(test, 2);
-        var sent = f.connections.get(f.owner.getUUID()).sent;
+        var ownerClient = f.clients.get(f.owner.getUUID());
         MonsterRoles.select(f.owner, "skeleton");
         int slot = f.owner.getInventory().getSelectedSlot();
         test.startSequence().thenIdle(2).thenExecute(() -> {
-            var shown = shownBow(test, sent, slot);
+            var shown = shownBow(test, ownerClient.packets(), slot);
             test.assertValueEqual(shown.getHoverName().getString(), "骷髅之弓", "The owner sees the skeleton's bow name");
             test.assertFalse(shown.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME), "The bow is named like a native item, not an italic rename");
             test.assertValueEqual(shown.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE), Boolean.TRUE,
@@ -316,10 +311,10 @@ public final class MonsterSkillsGameTest {
             test.assertFalse(MonsterRoles.actualEquipment(f.owner, EquipmentSlot.MAINHAND)
                     .has(net.minecraft.core.component.DataComponents.CUSTOM_NAME), "Observers receive the real bow");
             assertWorldBowUndressed(test, f.owner);
-            sent.clear();
+            ownerClient.clearPackets();
             test.assertTrue(MonsterRoles.burst(f.owner), "The volley starts");
         }).thenIdle(2).thenExecute(() -> {
-            var shown = shownBow(test, sent, slot);
+            var shown = shownBow(test, ownerClient.packets(), slot);
             test.assertValueEqual(shown.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE), Boolean.FALSE,
                     "A cooling volley suppresses the glint");
             test.assertTrue(shown.isBarVisible() && shown.getBarWidth() >= 1 && shown.getBarWidth() < MonsterBowDisplay.BAR_WIDTH,
@@ -329,11 +324,11 @@ public final class MonsterSkillsGameTest {
             test.assertValueEqual(MonsterBowDisplay.heldHint(f.owner, f.owner.getInventory().getItem(slot)).orElseThrow(),
                     "三连射冷却中", "A cooling bow in hand says so instead of the usage");
             assertWorldBowUndressed(test, f.owner);
-            sent.clear();
+            ownerClient.clearPackets();
             MonsterRoles.convert(f.owner, MonsterForm.STRAY);
         }).thenIdle(2).thenExecute(() -> {
             try {
-                test.assertValueEqual(shownBow(test, sent, slot).getHoverName().getString(), "流浪者之弓", "Conversion renames the bow at once");
+                test.assertValueEqual(shownBow(test, ownerClient.packets(), slot).getHoverName().getString(), "流浪者之弓", "Conversion renames the bow at once");
                 MonsterRoles.clear(f.owner);
                 var raw = new net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket(0, new ItemStack(Items.BOW));
                 test.assertTrue(MonsterBowDisplay.rewrite(f.owner, raw) == raw, "A former monster receives authoritative bows");
@@ -369,11 +364,9 @@ public final class MonsterSkillsGameTest {
     }
 
     private static ItemStack shownBow(GameTestHelper test, List<Packet<?>> sent, int slot) {
-        synchronized (sent) {
-            for (int i = sent.size() - 1; i >= 0; i--)
-                if (sent.get(i) instanceof net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket packet
-                        && packet.slot() == slot && packet.contents().is(Items.BOW)) return packet.contents();
-        }
+        for (int i = sent.size() - 1; i >= 0; i--)
+            if (sent.get(i) instanceof net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket packet
+                    && packet.slot() == slot && packet.contents().is(Items.BOW)) return packet.contents();
         throw test.assertionException("The owner received no bow at slot " + slot);
     }
 
@@ -473,8 +466,7 @@ public final class MonsterSkillsGameTest {
         final ServerLevel level;
         final Vec3 center;
         final List<ServerPlayer> players = new ArrayList<>();
-        final List<EmbeddedChannel> channels = new ArrayList<>();
-        final Map<UUID, SinkConnection> connections = new HashMap<>();
+        final Map<UUID, TestClient> clients = new HashMap<>();
         final Map<UUID, Participant> participants = new HashMap<>();
         final List<net.minecraft.world.level.ChunkPos> forced = new ArrayList<>();
         final UUID round = UUID.randomUUID();
@@ -493,13 +485,11 @@ public final class MonsterSkillsGameTest {
             }
             for (int index = 0; index < count; index++) {
                 var profile = new GameProfile(UUID.randomUUID(), "HRSkill" + ARENAS.get() + index);
-                var player = new ServerPlayer(level.getServer(), level, profile, TestClients.information());
-                var connection = new SinkConnection(); channels.add(new EmbeddedChannel(connection));
-                dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> level.getServer().getPlayerList().placeNewPlayer(connection, player,
-                        TestClients.cookie(profile)));
+                var client = new TestClient(level.getServer(), profile);
+                var player = client.place(level);
                 player.teleportTo(center.x + index * 24, center.y, center.z);
-                player.setGameMode(GameType.SURVIVAL); player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-                players.add(player); connections.put(player.getUUID(), connection);
+                player.setGameMode(GameType.SURVIVAL); client.acknowledge();
+                players.add(player); clients.put(player.getUUID(), client);
                 participants.put(player.getUUID(), new Participant(player.getUUID(), profile.name(),
                         index == 0 ? ParticipantRole.MONSTER_DEPLOYED : ParticipantRole.HUMAN_ACTIVE,
                         true, false, 0, 0, 1, false, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 1));
@@ -554,17 +544,8 @@ public final class MonsterSkillsGameTest {
             ((MonsterLivingAccessor)target).hardrush$detectEquipmentUpdates();
         }
         @Override public void close() {
-            for (var player : players) { MonsterRoles.clear(player); level.getServer().getPlayerList().remove(player); }
-            for (var channel : channels) channel.finishAndReleaseAll();
+            for (var player : players) { MonsterRoles.clear(player); clients.get(player.getUUID()).close(); }
             for (var chunk : forced) level.setChunkForced(chunk.x(), chunk.z(), false);
         }
-    }
-    private static final class SinkConnection extends Connection {
-        /** What the client would receive, after HardRush's outgoing rewrites. */
-        final List<Packet<?>> sent = Collections.synchronizedList(new ArrayList<>());
-        SinkConnection() { super(PacketFlow.SERVERBOUND); }
-        @Override public void send(Packet<?> packet) { sent.add(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { sent.add(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { sent.add(packet); }
     }
 }

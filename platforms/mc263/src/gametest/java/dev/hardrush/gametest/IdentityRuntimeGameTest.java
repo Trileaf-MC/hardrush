@@ -12,9 +12,6 @@ import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.RoundWorldBundle;
 import dev.hardrush.protection.ProtectionRuntime;
 import dev.hardrush.persistence.SqliteRoundStore;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -24,21 +21,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.game.ClientboundBundlePacket;
-import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
-import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
-import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.config.PrepareSpawnTask;
-import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -58,8 +46,8 @@ public final class IdentityRuntimeGameTest {
         var offlineHuman = new Fixture(test, "IdentityOffline");
         test.onEachTick(() -> {
             if (fixture.clock != null) fixture.clock.accumulateAndGet(System.nanoTime(), Math::max);
-            fixture.acknowledge();
-            offlineHuman.acknowledge();
+            fixture.client.acknowledge();
+            offlineHuman.client.acknowledge();
             test.assertFalse(RoundRuntime.sessionState(fixture.server).filter(state -> state == RoundSession.State.FAILED).isPresent(),
                     "Production runtime failed: " + RoundRuntime.status(fixture.server));
         });
@@ -116,22 +104,20 @@ public final class IdentityRuntimeGameTest {
         final GameTestHelper test;
         final MinecraftServer server;
         final GameProfile profile;
+        final TestClient client;
         RoundSession session;
         PlayerProfiles profiles;
         AtomicLong clock;
-        PrepareSpawnTask prepare;
-        RecordingConnection connection;
-        EmbeddedChannel channel;
         ServerPlayer player;
         ServerPlayer dead;
         ServerLevel roundLevel;
         Vec3 outside;
         AABB drops;
-        int acknowledged = Integer.MIN_VALUE;
         Fixture(GameTestHelper test) { this(test, "IdentityHuman"); }
         Fixture(GameTestHelper test, String name) {
             this.test = test; server = test.getLevel().getServer();
             profile = new GameProfile(UUID.randomUUID(), name);
+            client = new TestClient(server, profile);
         }
 
         void installClock() {
@@ -154,14 +140,11 @@ public final class IdentityRuntimeGameTest {
         }
 
         void login(GameTestSequence sequence) {
-            sequence.thenExecute(() -> {
-                prepare = new PrepareSpawnTask(server, new NameAndId(profile)); prepare.start(packet -> {});
-            }).thenWaitUntil(() -> await(prepare.tick(), "Native UUID player-data load"))
+            sequence.thenExecute(client::beginLogin)
+                    .thenWaitUntil(() -> await(client.finishLogin(), "Native UUID player-data load"))
                     .thenExecute(() -> {
-                        connection = new RecordingConnection(); channel = new EmbeddedChannel(connection);
-                        acknowledged = Integer.MIN_VALUE;
-                        player = prepare.spawnPlayer(connection, TestClients.cookie(profile));
-                        prepare.close(); acknowledge();
+                        player = client.player();
+                        client.acknowledge();
                         test.assertTrue(player.level() == LobbyWorld.open(server).holdingLevel() && PlayerProfiles.isLocked(player),
                                 "Production native login remains in the lobby while the profile is verified");
                     }).thenWaitUntil(() -> await(profiles.isReady(profile.id(), round()), "Production profile journal is ready"));
@@ -269,7 +252,7 @@ public final class IdentityRuntimeGameTest {
             player = server.getPlayerList().getPlayer(profile.id());
             var before = participant();
             SpatialInputFixtures.standInAssembly(player);
-            acknowledge();
+            client.acknowledge();
             test.assertFalse(dev.hardrush.lobby.HumanEntry.guiding(player), "A committed monster cannot start human admission");
             test.assertTrue(LobbyWorld.open(server).inAssembly(player, true), "The circle never relocates the monster");
             test.assertValueEqual(participant().role(), before.role(), "Rejected admission preserves the monster role");
@@ -280,29 +263,17 @@ public final class IdentityRuntimeGameTest {
             try { server.getCommands().getDispatcher().execute(text, player.createCommandSourceStack()); }
             catch (Exception error) { throw new IllegalStateException(text, error); }
         }
-        void move(Vec3 target) { player.teleport(new TeleportTransition(roundLevel, target, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING)); acknowledge(); }
-        void acknowledge() {
-            if (connection == null) return;
-            var current = server.getPlayerList().getPlayer(profile.id());
-            if (current == null) return;
-            connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
-                    .reduce((previous, latest) -> latest).filter(packet -> packet.id() != acknowledged).ifPresent(packet -> {
-                        acknowledged = packet.id();
-                        current.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(packet.id(),
-                                current.getX(), current.getY(), current.getZ(), current.getYRot(), current.getXRot()));
-                        current.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-                    });
-        }
+        void move(Vec3 target) { player.teleport(new TeleportTransition(roundLevel, target, Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING)); client.acknowledge(); }
         void disconnect() {
             if (player == null) return;
-            connection.disconnect(Component.literal("Identity headless native reconnect")); connection.handleDisconnection();
+            client.disconnect(Component.literal("Identity headless native reconnect"));
             var listed = server.getPlayerList().getPlayer(profile.id());
             boolean managed = profiles.manages(player);
             String details = ": listed=" + identity(listed) + ",expected=" + identity(player)
                     + ",listener=" + identity(player.connection.player) + ",profileManaged=" + managed;
             test.assertTrue(listed == null, "Native disconnect removes the UUID from PlayerList" + details);
             test.assertFalse(managed, "Native disconnect removes the replacement's profile binding" + details);
-            channel.finishAndReleaseAll(); player = null;
+            player = null;
         }
         String identity(ServerPlayer value) {
             return value == null ? "null" : Integer.toHexString(System.identityHashCode(value)) + "[alive="
@@ -316,15 +287,4 @@ public final class IdentityRuntimeGameTest {
         }
     }
 
-    private static final class RecordingConnection extends Connection {
-        final ArrayList<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        private void record(Packet<?> packet) {
-            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record);
-            else packets.add(packet);
-        }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
-    }
 }

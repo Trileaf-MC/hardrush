@@ -10,9 +10,6 @@ import dev.hardrush.round.RoundSession;
 import dev.hardrush.book.WrittenBookPort;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.LobbyWorld;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.embedded.EmbeddedChannel;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,15 +21,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.config.PrepareSpawnTask;
-import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
@@ -57,8 +49,7 @@ public final class LobbyMovementGameTest {
         f.b.login(sequence);
         sequence.thenWaitUntil(() -> f.await(RoundRuntime.snapshot(f.server).orElseThrow().phase() == RoundPhase.WAITING
                         && !f.session.mutationPending(), "Round adapters ready"))
-                .thenWaitUntil(() -> f.await(f.b.connection.packets.stream().anyMatch(p -> p instanceof ClientboundAddEntityPacket add
-                        && add.getId() == f.a.player.getId()), "Native entity tracker introduces the first peer to the second"))
+                .thenWaitUntil(() -> f.await(f.b.client.sawEntity(f.a.player), "Native entity tracker introduces the first peer to the second"))
                 .thenExecute(() -> {
                     f.assertLobby();
                     test.assertTrue(f.a.player.level() != f.server.overworld(), "The original overworld is preserved separately");
@@ -66,7 +57,7 @@ public final class LobbyMovementGameTest {
                     // Arrivals scatter like vanilla respawns, onto the path or the lawn; the exact landing is on the path.
                     test.assertTrue(f.a.player.level().getBlockState(BlockPos.containing(LobbyPlanFixtures.outsideAssembly(f.server)).below()).is(Blocks.STONE_BRICKS), "Built camp central floor");
                     test.assertTrue(dev.hardrush.world.RoundWorldBundle.safeStanding(f.a.player.level(), f.a.player.blockPosition()), "Arrival stands on the camp floor");
-                    f.b.observedFrom = f.b.connection.packets.size();
+                    f.b.observedFrom = f.b.client.packets().size();
                     f.a.move(.6, 0, 45, 15, true);
                     test.assertValueEqual(f.a.player.getYRot(), 45f, "The native move packet updates yaw");
                 })
@@ -76,7 +67,7 @@ public final class LobbyMovementGameTest {
                     test.assertTrue(f.a.player.isSprinting(), "Lobby sprint command reaches vanilla");
                     f.a.player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(new Input(true, false, false, false, true, false, true)));
                     test.assertTrue(f.a.player.getLastClientInput().jump(), "Lobby jump input reaches vanilla");
-                    f.b.observedFrom = f.b.connection.packets.size();
+                    f.b.observedFrom = f.b.client.packets().size();
                     f.a.move(.2, .42, 90, 0, false);
                 })
                 .thenWaitUntil(() -> f.await(f.b.seesMovement(f.a.player, true, false), "Native jump movement reaches the observer"))
@@ -153,12 +144,15 @@ public final class LobbyMovementGameTest {
         final MinecraftServer server;
         final AtomicLong clock = new AtomicLong(System.nanoTime());
         final AtomicReference<RoundSession.Reply> reply = new AtomicReference<>();
-        final Peer a = new Peer("LobbyMovingA"), b = new Peer("LobbyMovingB");
+        final Peer a, b;
         RoundSession session;
         PlayerProfiles profiles;
         String lastStage;
         int stageStarted;
-        Fixture(GameTestHelper test) { this.test = test; server = test.getLevel().getServer(); }
+        Fixture(GameTestHelper test) {
+            this.test = test; server = test.getLevel().getServer();
+            a = new Peer("LobbyMovingA"); b = new Peer("LobbyMovingB");
+        }
         @SuppressWarnings("unchecked") <T> T service(String name) {
             try { var field = RoundRuntime.class.getDeclaredField(name); field.setAccessible(true); return (T) ((Map<?, ?>) field.get(null)).get(server); }
             catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
@@ -202,40 +196,36 @@ public final class LobbyMovementGameTest {
             a.player.getInventory().clearContent();
             var book = new BookPort.Book(UUID.randomUUID(), 1, 1, "大厅测试历史书", "HardRush", List.of("只读历史"));
             a.player.getInventory().setItem(0, WrittenBookPort.createItem(new OperationTag(book.roundId(), UUID.randomUUID(), 1), book));
-            int before = a.connection.packets.size();
+            int before = a.client.packets().size();
             a.player.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, 3, 0, 0));
-            test.assertTrue(a.connection.packets.subList(before, a.connection.packets.size()).stream().anyMatch(ClientboundOpenBookPacket.class::isInstance), "History book still opens through the actual use-item packet");
+            var packets = a.client.packets();
+            test.assertTrue(packets.subList(before, packets.size()).stream().anyMatch(ClientboundOpenBookPacket.class::isInstance), "History book still opens through the actual use-item packet");
             a.player.getInventory().clearContent();
         }
         final class Peer {
             final GameProfile profile;
-            PrepareSpawnTask prepare;
-            RecordingConnection connection;
-            EmbeddedChannel channel;
+            final TestClient client;
             ServerPlayer player;
-            int acknowledged = Integer.MIN_VALUE;
-            int batchCount;
             int observedFrom;
-            Peer(String name) { profile = new GameProfile(UUID.randomUUID(), name); }
+            Peer(String name) { profile = new GameProfile(UUID.randomUUID(), name); client = new TestClient(server, profile); }
             void login(GameTestSequence sequence) {
-                sequence.thenExecute(() -> { prepare = new PrepareSpawnTask(server, new NameAndId(profile)); prepare.start(packet -> {}); })
-                        .thenWaitUntil(() -> await(prepare.tick(), "Native login data loaded"))
+                sequence.thenExecute(client::beginLogin)
+                        .thenWaitUntil(() -> await(client.finishLogin(), "Native login data loaded"))
                         .thenExecute(() -> {
-                            connection = new RecordingConnection(); channel = new EmbeddedChannel(connection); acknowledged = Integer.MIN_VALUE; batchCount = 0;
-                            player = prepare.spawnPlayer(connection, TestClients.cookie(profile)); prepare.close(); acknowledge();
+                            player = client.player(); client.acknowledge();
                             test.assertTrue(PlayerProfiles.isLocked(player), "Native login begins in quarantine");
                             assertFrozen();
                         }).thenWaitUntil(() -> await(PlayerProfiles.canMoveInLobby(player), "Profile verification opens lobby movement"));
             }
             void assertFrozen() {
-                acknowledge();
+                client.acknowledge();
                 var position = player.position();
                 player.connection.handleMovePlayer(new ServerboundMovePlayerPacket.PosRot(position.add(.4, 0, 0), 40, 0, true, false));
                 test.assertTrue(player.position().distanceToSqr(position) < .000001 && !PlayerProfiles.canMoveInLobby(player), "Pending or failed profiles cannot move");
-                acknowledge();
+                client.acknowledge();
             }
             void move(double x, double y, float yaw, float pitch, boolean ground) {
-                acknowledge();
+                client.acknowledge();
                 var target = player.position().add(x, y, 0);
                 player.connection.handleMovePlayer(new ServerboundMovePlayerPacket.PosRot(target, yaw, pitch, ground, false));
                 player.connection.handleClientTickEnd(ServerboundClientTickEndPacket.INSTANCE);
@@ -244,7 +234,8 @@ public final class LobbyMovementGameTest {
                         + ", mobile=" + PlayerProfiles.canMoveInLobby(player));
             }
             boolean seesMovement(ServerPlayer other, boolean position, boolean rotation) {
-                return connection.packets.subList(observedFrom, connection.packets.size()).stream().anyMatch(packet -> packet instanceof ClientboundMoveEntityPacket move
+                var packets = client.packets();
+                return packets.subList(observedFrom, packets.size()).stream().anyMatch(packet -> packet instanceof ClientboundMoveEntityPacket move
                             && move.getEntity(player.level()) == other && (!position || move.hasPosition()) && (!rotation || move.hasRotation())
                         || packet instanceof ClientboundEntityPositionSyncPacket sync && sync.id() == other.getId()
                             && (!position || sync.hasPosition()) && (!rotation || sync.hasRotation()));
@@ -256,35 +247,12 @@ public final class LobbyMovementGameTest {
             }
             void tickConnection() {
                 if (player == null) return;
-                acknowledge();
-                // Embedded connections are not in the server's socket list. Run vanilla's
-                // connection tick/doTick exactly as a real network connection would.
-                player.connection.tick();
-            }
-            void acknowledge() {
-                if (player == null) return;
-                connection.packets.stream().filter(ClientboundPlayerPositionPacket.class::isInstance).map(ClientboundPlayerPositionPacket.class::cast)
-                        .reduce((first, last) -> last).filter(packet -> packet.id() != acknowledged).ifPresent(packet -> {
-                            acknowledged = packet.id();
-                            player.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(packet.id(), player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
-                            player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-                        });
-                int batches = (int) connection.packets.stream().filter(ClientboundChunkBatchFinishedPacket.class::isInstance).count();
-                while (batchCount < batches) { batchCount++; player.connection.handleChunkBatchReceived(new ServerboundChunkBatchReceivedPacket(64)); }
+                client.acknowledge();
+                client.tickConnection();
             }
             void disconnect() {
-                connection.disconnect(Component.literal("大厅原生重连回归")); connection.handleDisconnection(); channel.finishAndReleaseAll(); player = null;
+                client.disconnect(Component.literal("大厅原生重连回归")); player = client.player();
             }
         }
-    }
-    private static final class RecordingConnection extends Connection {
-        final ArrayList<Packet<?>> packets = new ArrayList<>();
-        RecordingConnection() { super(PacketFlow.SERVERBOUND); }
-        void record(Packet<?> packet) {
-            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(this::record); else packets.add(packet);
-        }
-        @Override public void send(Packet<?> packet) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener) { record(packet); }
-        @Override public void send(Packet<?> packet, ChannelFutureListener listener, boolean flush) { record(packet); }
     }
 }

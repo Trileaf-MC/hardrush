@@ -180,7 +180,7 @@ public abstract class PlayerIsolationNetworkMixin {
 
     @Inject(method = {"handleAttack", "handlePunch"}, at = @At("HEAD"))
     private void hardrush$cancelReturn(CallbackInfo ci) {
-        if (player.level().getServer().isSameThread()) dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "攻击");
+        if (player.level().getServer().isSameThread()) dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "攻击");
     }
     // Right-clicking a mob or block with the return item or compass is the same use as clicking air, and the
     // off-hand packets the native client sends for that same click do not break it (see MonsterClicks).
@@ -188,20 +188,20 @@ public abstract class PlayerIsolationNetworkMixin {
     private void hardrush$interactReturn(ServerboundInteractPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread()
                 && !dev.hardrush.monster.MonsterRoles.keepsChannel(player, packet.hand(), false))
-            dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "互动");
+            dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "互动");
     }
 
     @Inject(method = "handleUseItem", at = @At("HEAD"))
     private void hardrush$returnItem(ServerboundUseItemPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread()
                 && !dev.hardrush.monster.MonsterRoles.keepsChannel(player, packet.hand(), true))
-            dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品");
+            dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "使用物品");
     }
     @Inject(method = "handleUseItemOn", at = @At("HEAD"))
     private void hardrush$returnBlockItem(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread()
                 && !dev.hardrush.monster.MonsterRoles.keepsChannel(player, packet.hand(), false))
-            dev.hardrush.lobby.LobbyRuntime.interruptReturn(player, "使用物品");
+            dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "使用物品");
     }
 
     // Celebration allows movement and closing a menu, while sealing all new competitive actions.
