@@ -151,11 +151,11 @@ public final class LobbyRuntime {
         });
         // A save in flight already left the hand: the projection shows the balance it will commit to.
         dev.hardrush.revival.RevivalTotems.pendingSaves(server, session::pendingTotemSaves);
-        dev.hardrush.revival.TotemSave.configure(server, (player, round, life, killCredit) -> {
+        dev.hardrush.revival.TotemSave.configure(server, (player, round, life, killCredit, drop) -> {
             // The body whose death AFTER_DEATH would capture, inside its lethal hit; the session decides the rest.
             if (!current(player, binding) || !PlayerProfiles.verifiedDyingRoundBody(player)
                     || ((dev.hardrush.player.ProfileTagged) player).hardrush$lifeSequence() != life
-                    || !session.captureTotemSave(round, player.getUUID(), life, killCredit)) return OptionalInt.empty();
+                    || !session.captureTotemSave(round, player.getUUID(), life, killCredit, drop)) return OptionalInt.empty();
             return OptionalInt.of(session.totemChargesLeft(player.getUUID()));
         });
         dev.hardrush.revival.TotemTab.configure(server, new dev.hardrush.revival.TotemTab.Access() {
@@ -170,6 +170,7 @@ public final class LobbyRuntime {
             @Override public void requestPickup(UUID round, UUID token, UUID player, int life, java.util.function.Consumer<RoundSession.Reply> reply) {
                 session.requestLooseTotemPickup(round, token, player, life, reply);
             }
+            @Override public boolean saveInFlight(UUID token) { return session.totemSaveDropInFlight(token); }
         });
         CampTransfers.configure(server, camp);
         CampKit.configure(server, camp);

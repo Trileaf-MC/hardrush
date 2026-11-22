@@ -4,7 +4,6 @@ import dev.hardrush.core.combat.CombatOrigin;
 import dev.hardrush.core.round.LooseTotem;
 import dev.hardrush.core.round.Participant;
 import dev.hardrush.core.round.ParticipantRole;
-import dev.hardrush.core.round.RoundDeath;
 import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.core.round.TotemDrop;
 import dev.hardrush.notice.Notices;
@@ -31,13 +30,14 @@ import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.TeamColor;
 
 /**
- * Revival totems lying in the world (docs/plan/复生图腾掉落.md, 1.1 to 1.3 and 2.3, 2.4): a hardcore human killed by
- * a human drops one at the moment of death; any human of the round may take it. The committed round's
+ * Revival totems lying in the world (docs/plan/复生图腾掉落.md, 1.1 to 1.3, 1.5 and 2.3, 2.4): a hardcore human killed
+ * by a human drops one at the moment of death, and a human whose revival totem a human forced out of its hand drops one
+ * at the moment of the save; any human of the round may take it, the saved human included. The committed round's
  * {@code looseTotems} registry is the only proof a floor totem may be taken, and a floor totem is known by its drop
  * token alone, never by its entity object: a chunk unload removes the object and a portal replaces it.
  *
- * <p>A drop goes through two states. <em>Pending</em> (memory only): spawned at the death, its batch not committed yet;
- * touching it does nothing and the patrol leaves it alone. <em>Registered</em>: the committed snapshot lists its
+ * <p>A drop goes through two states. <em>Pending</em> (memory only): spawned at the death or the save, its event not
+ * committed yet; touching it does nothing and the patrol leaves it alone. <em>Registered</em>: the committed snapshot lists its
  * token; it can be taken once {@link #PICKUP_DELAY_NANOS} of race time have passed since it was registered, until the
  * registry lets it expire. The entity never despawns on its own ({@code setUnlimitedLifetime}): vanilla's lifetime
  * counts entity ticks, which a faster tick rate or a paused race with chunks still simulating would run ahead of the
@@ -61,6 +61,7 @@ public final class TotemDrops {
     static final String PICKUP_TIP = "获得复生图腾 · 拿在手上阵亡时原地复生";
     private static final String PICKUP_TAUGHT = "revival_totem_pickup";
     private static final String DROP_TOLD = "revival_totem_drop";
+    private static final String FORCED_TOLD = "revival_totem_forced";
 
     /** What the floor totems read from and ask of the round runtime. */
     public interface Access {
@@ -74,10 +75,15 @@ public final class TotemDrops {
         void refresh(ServerPlayer player);
         /** {@code RoundSession.requestLooseTotemPickup}. */
         void requestPickup(UUID round, UUID token, UUID player, int life, Consumer<RoundSession.Reply> reply);
+        /** {@code RoundSession.totemSaveDropInFlight}: the save that dropped {@code token} may still register it. */
+        boolean saveInFlight(UUID token);
     }
 
-    /** A drop spawned at a death of {@code victim}'s human life {@code life} whose batch has not committed yet. */
-    private record Pending(UUID round, UUID victim, int life) {}
+    /**
+     * A drop spawned at a death of {@code victim}'s human life {@code life}, or at a save of it ({@code save}), whose
+     * event has not committed yet.
+     */
+    private record Pending(UUID round, UUID victim, int life, boolean save) {}
 
     private static final Map<MinecraftServer, TotemDrops> INSTANCES = new IdentityHashMap<>();
     private final Access access;
@@ -108,20 +114,34 @@ public final class TotemDrops {
      * world's minimum height (the void) drops nothing. The returned token is pending until {@link #captured}.
      */
     public static Optional<UUID> prepare(ServerPlayer victim, RoundSnapshot round, Optional<CombatOrigin> killCredit) {
+        return prepare(victim, round, killCredit, false);
+    }
+
+    /**
+     * In {@code TotemSave}, before the save is booked: whether this hit, which a revival totem is about to survive, drops
+     * a totem, by the same {@link TotemDrop#qualifies} as a death, against the round as the session sees it now. The
+     * returned token is pending until {@link #captured} and stays so while its save is in flight.
+     */
+    public static Optional<UUID> prepareSave(ServerPlayer victim, Optional<CombatOrigin> killCredit) {
+        var drops = INSTANCES.get(victim.level().getServer());
+        var round = drops == null ? null : drops.access.view().orElse(null);
+        return round == null ? Optional.empty() : prepare(victim, round, killCredit, true);
+    }
+
+    private static Optional<UUID> prepare(ServerPlayer victim, RoundSnapshot round, Optional<CombatOrigin> killCredit, boolean save) {
         var drops = INSTANCES.get(victim.level().getServer());
         var participant = round.participants().get(victim.getUUID());
         if (drops == null || participant == null || victim.getY() < victim.level().getMinY()) return Optional.empty();
-        var death = new RoundDeath(victim.getUUID(), participant.lifeSequence(), participant.monsterDeploymentSequence(),
-                Optional.empty(), killCredit, false);
-        if (!TotemDrop.qualifies(round, death)) return Optional.empty();
+        if (!TotemDrop.qualifies(round, victim.getUUID(), killCredit)) return Optional.empty();
         var token = UUID.randomUUID();
-        drops.pending.put(token, new Pending(round.roundId(), victim.getUUID(), participant.lifeSequence()));
+        drops.pending.put(token, new Pending(round.roundId(), victim.getUUID(), participant.lifeSequence(), save));
         return Optional.of(token);
     }
 
     /**
-     * After {@code captureDeath}: a captured death drops its totem at the body, in the same tick as vanilla's death
-     * loot; a death the session did not take drops nothing. A commit that already ran inside the capture has decided.
+     * After {@code captureDeath} or {@code captureTotemSave}: a captured death drops its totem at the body, in the same
+     * tick as vanilla's death loot, and a booked save at the saved human's feet as its totem pops; a death the session
+     * did not take, or a save it refused, drops nothing. A commit that already ran inside the capture has decided.
      */
     public static void captured(ServerPlayer victim, UUID round, UUID token, boolean accepted) {
         var drops = INSTANCES.get(victim.level().getServer());
@@ -158,29 +178,34 @@ public final class TotemDrops {
     }
 
     private void settle(MinecraftServer server, RoundSnapshot after) {
-        var registered = new ArrayList<LooseTotem>();
+        var killed = new ArrayList<LooseTotem>();
+        var forced = new ArrayList<LooseTotem>();
         var doomed = new HashSet<UUID>();
         for (var it = pending.entrySet().iterator(); it.hasNext(); ) {
             var entry = it.next();
             var totem = entry.getValue().round().equals(after.roundId()) ? after.looseTotems().get(entry.getKey()) : null;
-            if (totem != null) registered.add(totem);
-            else if (waiting(after, entry.getValue())) continue;
+            if (totem != null) (entry.getValue().save() ? forced : killed).add(totem);
+            else if (waiting(after, entry.getKey(), entry.getValue())) continue;
             else doomed.add(entry.getKey());
             it.remove();
         }
         if (!doomed.isEmpty()) removeLoaded(server, doomed);
-        if (!registered.isEmpty()) announce(server, after, registered);
+        if (!killed.isEmpty()) announce(server, after, killed, false);
+        if (!forced.isEmpty()) announce(server, after, forced, true);
     }
 
     /**
-     * The pending death has not committed yet: its human life is still the committed one of a live round. A recovery
-     * drops every queued death, so a round outside RUNNING and RESCUE can no longer register the token.
+     * The pending event has not committed yet. A death's: its human life is still the committed one of a live round. A
+     * save's: the session still holds its event, which releases it before any listener sees the commit. A recovery
+     * drops every queued event, so a round outside RUNNING and RESCUE can no longer register the token.
      */
-    private boolean waiting(RoundSnapshot round, Pending drop) {
+    private boolean waiting(RoundSnapshot round, UUID token, Pending drop) {
         var victim = round == null ? null : round.participants().get(drop.victim());
-        return victim != null && access.open() && round.roundId().equals(drop.round())
-                && (round.phase() == dev.hardrush.core.round.RoundPhase.RUNNING || round.phase() == dev.hardrush.core.round.RoundPhase.RESCUE)
-                && victim.role() == ParticipantRole.HUMAN_ACTIVE && victim.lifeSequence() == drop.life();
+        if (victim == null || !access.open() || !round.roundId().equals(drop.round())
+                || round.phase() != dev.hardrush.core.round.RoundPhase.RUNNING
+                && round.phase() != dev.hardrush.core.round.RoundPhase.RESCUE) return false;
+        return drop.save() ? access.saveInFlight(token)
+                : victim.role() == ParticipantRole.HUMAN_ACTIVE && victim.lifeSequence() == drop.life();
     }
 
     private static void removeLoaded(MinecraftServer server, Set<UUID> tokens) {
@@ -192,22 +217,32 @@ public final class TotemDrops {
 
     /**
      * T1 once per player and round, to everyone of the round still playing (humans and monsters, connected, a player
-     * still entering included) except the batch's killers and victims and administrative spectators. The killer's name
-     * stays out: the native death message already names both, this line only adds that something now lies there.
+     * still entering included) except the commit's attackers and victims and administrative spectators. The attacker's
+     * name stays out: the native death message already names both, this line only adds that something now lies there.
+     * Drops from deaths ({@link #DROP_TOLD}) and from forced-out totems ({@link #FORCED_TOLD}) are each told once.
      */
-    private void announce(MinecraftServer server, RoundSnapshot after, List<LooseTotem> drops) {
+    private void announce(MinecraftServer server, RoundSnapshot after, List<LooseTotem> drops, boolean forced) {
         var involved = new HashSet<UUID>();
         var victims = new LinkedHashSet<UUID>();
         for (var drop : drops) { involved.add(drop.victim()); involved.add(drop.killer()); victims.add(drop.victim()); }
         var first = Optional.ofNullable(after.participants().get(victims.iterator().next())).map(Participant::name).orElse("一名人类");
-        String line = victims.size() == 1 ? Notices.key(first) + " 被人类击杀，掉落了复生图腾"
-                : Notices.key(first) + " 等 " + Notices.key(victims.size()) + " 人被人类击杀，掉落了复生图腾";
+        String line = forced ? forcedLine(first, victims.size()) : killedLine(first, victims.size());
         for (var p : after.participants().values()) {
             if (involved.contains(p.id()) || !p.connected() || p.role().isExcluded()) continue;
             var player = server.getPlayerList().getPlayer(p.id());
             if (player == null || dev.hardrush.player.PlayerProfiles.isAdministrativeSpectator(player)) continue;
-            if (Notices.firstInRound(player, after.roundId(), DROP_TOLD)) Notices.hint(player, line);
+            if (Notices.firstInRound(player, after.roundId(), forced ? FORCED_TOLD : DROP_TOLD)) Notices.hint(player, line);
         }
+    }
+
+    static String killedLine(String first, int victims) {
+        return victims == 1 ? Notices.key(first) + " 被人类击杀，掉落了复生图腾"
+                : Notices.key(first) + " 等 " + Notices.key(victims) + " 人被人类击杀，掉落了复生图腾";
+    }
+
+    static String forcedLine(String first, int victims) {
+        return victims == 1 ? Notices.key(first) + " 被人类逼出复生图腾，掉落了 1 个"
+                : Notices.key(first) + " 等 " + Notices.key(victims) + " 人被人类逼出复生图腾，各掉落了 1 个";
     }
 
     /**
@@ -312,7 +347,7 @@ public final class TotemDrops {
 
     private void sweep(MinecraftServer server) {
         var r = access.view().orElse(null);
-        pending.values().removeIf(drop -> !waiting(r, drop));
+        pending.entrySet().removeIf(entry -> !waiting(r, entry.getKey(), entry.getValue()));
         for (var level : server.getAllLevels()) {
             for (var item : level.getEntities(EntityTypeTest.forClass(ItemEntity.class), item -> RevivalTotems.is(item.getItem()))) {
                 var token = RevivalTotems.dropToken(item.getItem()).orElse(null);
