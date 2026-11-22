@@ -318,6 +318,12 @@ tasks.named('jar') {
     from(rootProject.file('licenses')) { into 'META-INF/licenses' }
 }
 
+// Any suites alone in the default fresh storage, e.g. -PhardrushGameTestFilter=monster_digging_game_test*
+loom.runs.named('gameTest') {
+    def filter = providers.gradleProperty('hardrushGameTestFilter').orNull
+    if (filter != null) vmArg "-Dfabric-api.gametest.filter=hardrush-gametest:${filter}"
+}
+
 // Native dusk-pact policy/UI regression in the default fresh, headless GameTest storage.
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushDuskPact').orNull == 'true') {
