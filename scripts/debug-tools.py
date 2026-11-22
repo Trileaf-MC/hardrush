@@ -9,8 +9,10 @@ import secrets
 import shutil
 import signal
 import socket
+import stat
 import subprocess
-import tarfile
+import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -38,6 +40,45 @@ def artifact(path, spec, algorithm):
     tmp.replace(path)
 
 
+def remove_tree(path):
+    """Deletes a directory, including the read-only files git and archives leave on Windows."""
+    def writable(function, name, _):
+        os.chmod(name, stat.S_IWRITE)
+        function(name)
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=writable)
+    else:
+        shutil.rmtree(path, onerror=writable)
+
+
+def mcpfabric_source():
+    """Checks out the pinned mcpfabric commit with git and publishes it once the checked-out commit id matches the lock."""
+    if MCP.exists():
+        return
+    spec = LOCK['mcpfabricSource']
+    checkout = MCP.parent
+    print('Fetching mcpfabric ' + spec['commit'], flush=True)
+    # Each run fetches into a directory of its own, removed if anything fails, so concurrent cold starts never
+    # delete each other's work.
+    with tempfile.TemporaryDirectory(dir=CACHE, prefix=checkout.name + '.', ignore_cleanup_errors=True) as staging:
+        fetched = Path(staging) / checkout.name
+        fetched.mkdir()
+        # The user's autocrlf setting does not rewrite line endings; the upstream .gitattributes still applies.
+        git = ['git', '-c', 'core.autocrlf=false', '-C', str(fetched)]
+        subprocess.run(git + ['init', '--quiet'], check=True)
+        subprocess.run(git + ['fetch', '--quiet', '--depth', '1', spec['repository'], spec['commit']], check=True)
+        subprocess.run(git + ['checkout', '--quiet', '--detach', 'FETCH_HEAD'], check=True)
+        head = subprocess.run(git + ['rev-parse', 'HEAD'], check=True, capture_output=True, text=True).stdout.strip()
+        if head != spec['commit']:
+            raise RuntimeError('Fetched mcpfabric ' + head + ' instead of ' + spec['commit'])
+        if MCP.exists():
+            return  # Another run published the same commit meanwhile.
+        if checkout.exists():
+            # An archive extraction by an earlier version of this script that stopped before mcp-server/.
+            remove_tree(checkout)
+        fetched.replace(checkout)
+
+
 def accepted_eula():
     path = ROOT / '.local/server/eula.txt'
     if path.exists() and 'eula=true' in [s.strip() for s in path.read_text().splitlines()]:
@@ -50,11 +91,7 @@ def prepare():
     CACHE.mkdir(parents=True, exist_ok=True)
     for mod in LOCK['mods']:
         artifact(CACHE / 'mods' / mod['filename'], mod, 'sha512')
-    archive = CACHE / 'mcpfabric-source.tar.gz'
-    artifact(archive, LOCK['mcpfabricSource'], 'sha256')
-    if not MCP.exists():
-        with tarfile.open(archive) as tar:
-            tar.extractall(CACHE, filter='data')
+    mcpfabric_source()
     pnpm_lock = ROOT / 'scripts/mcpfabric-pnpm-lock.yaml'
     shutil.copyfile(pnpm_lock, MCP / 'pnpm-lock.yaml')
     if not (MCP / 'dist/index.js').exists() or not (MCP / 'node_modules').exists():
