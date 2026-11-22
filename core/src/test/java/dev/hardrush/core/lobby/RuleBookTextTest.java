@@ -34,10 +34,23 @@ class RuleBookTextTest {
         assertNull(page(normal, "复生"));
     }
 
+    @Test void diggingPageReadsTheRoundsCapAndOnlyHardcoreHuntsHaveIt() {
+        var dig = page(pages(GameMode.HARDCORE), "挖掘与虫穴");
+        assertTrue(dig.contains("最长 7.5 秒，不掉落。苦力怕挖不动。"), dig);
+        assertTrue(dig.contains("破石而出"));
+        var values = new java.util.TreeMap<>(RulesConfig.defaults().combatValues());
+        values.put("monster.digMillis", 3_000.0);
+        var rules = RulesConfig.defaults();
+        rules = new RulesConfig(rules.schemaVersion(), rules.mode(), rules.minecraftVersion(), rules.difficulty(), rules.generationRule(),
+                values, rules.startCountdownMillis(), rules.successCelebrationMillis(), rules.failureDisplayMillis());
+        assertTrue(page(RuleBookText.pages(rules), "挖掘与虫穴").contains("最长 3 秒"));
+        assertNull(page(pages(GameMode.NORMAL), "挖掘与虫穴"));
+    }
+
     @Test void theRewrittenPagesStayWithinTheLongestPageTheBookAlreadyHad() {
         // A written book never scrolls: the pages this plan touched are no longer than any untouched page.
         var hardcore = pages(GameMode.HARDCORE);
-        var touched = List.of(page(hardcore, "黄昏契约"), page(hardcore, "复生图腾"), page(hardcore, "复生"));
+        var touched = List.of(page(hardcore, "黄昏契约"), page(hardcore, "复生图腾"), page(hardcore, "复生"), page(hardcore, "挖掘与虫穴"));
         int limit = hardcore.stream().filter(page -> !touched.contains(page)).mapToInt(String::length).max().orElseThrow();
         for (var page : touched) assertTrue(page.length() <= limit, page);
     }

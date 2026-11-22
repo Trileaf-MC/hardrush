@@ -1,6 +1,6 @@
 package dev.hardrush.monster.mixin;
 
-import dev.hardrush.monster.MonsterDoorBreaking;
+import dev.hardrush.monster.MonsterMining;
 import dev.hardrush.monster.MonsterRoles;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -15,13 +15,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = ServerPlayerGameMode.class, priority = 1100)
-public abstract class MonsterDoorGameModeMixin {
+public abstract class MonsterMiningGameModeMixin {
     @Shadow @Final protected ServerPlayer player;
 
     @Inject(method = "handleBlockBreakAction", at = @At("HEAD"), cancellable = true)
     private void monsterMining(BlockPos pos, Action action, Direction direction, int maxY, int sequence, CallbackInfo callback) {
         if (!MonsterRoles.isMonster(player)) return;
-        MonsterDoorBreaking.action(player, pos, action);
+        MonsterMining.action(player, pos, action);
         callback.cancel();
     }
 }

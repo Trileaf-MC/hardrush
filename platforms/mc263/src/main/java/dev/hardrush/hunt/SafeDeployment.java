@@ -11,7 +11,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
+import dev.hardrush.monster.MonsterDiggable;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -68,6 +70,11 @@ public final class SafeDeployment {
     static final int SEA_COLUMNS = 24;
     /** One sweep never queues more pathfinding than this; earlier sources (trail, ahead, inner ring) win. */
     public static final int MAX_CANDIDATES = 48;
+    /** A burrow lies this far from the quarry (pocket floor to feet), and at least the near one from every human. */
+    public static final double BURROW_NEAR = 2, BURROW_FAR = 10;
+    static final double IDEAL_BURROW = 4;
+    /** How far the quarry's own space is explored for walls, in blocks and in cells. */
+    static final int BURROW_RADIUS = 11, BURROW_VISITS = 1024, BURROW_CANDIDATES = 12;
     private static final double EPSILON = 1.0E-7;
     private static final Set<ResourceKey<Structure>> LAIRS = Set.of(BuiltinStructures.FORTRESS, BuiltinStructures.BASTION_REMNANT,
             BuiltinStructures.WOODLAND_MANSION, BuiltinStructures.MINESHAFT, BuiltinStructures.MINESHAFT_MESA,
@@ -75,26 +82,39 @@ public final class SafeDeployment {
             BuiltinStructures.TRIAL_CHAMBERS);
 
     public enum Status { PENDING, FOUND, FAILED }
-    public enum Source { TRAIL, AHEAD, RING, SEA }
-    /** {@code submerged}: a landing under water, where a zombie rises as a drowned. */
-    public record Result(Status status, Vec3 position, int candidates, boolean fallback, boolean submerged) {}
+    public enum Source { TRAIL, AHEAD, RING, SEA, BURROW }
+    /**
+     * {@code submerged}: a landing under water, where a zombie rises as a drowned. {@code burrowed}: a landing inside a
+     * burrow that is hollowed out only at departure ({@link HuntBurrows#carve}); {@code position} is its floor.
+     */
+    public record Result(Status status, Vec3 position, int candidates, boolean fallback, boolean submerged, boolean burrowed) {}
 
     /**
      * Everything the search may know about its quarry: where it stands and looks, how it moves and where it walked;
      * whether it is out at sea and how fast it has been travelling over the last five seconds.
      */
-    public record Quarry(Vec3 position, Vec3 eye, float yaw, Vec3 velocity, List<Vec3> trail, boolean atSea, Vec3 cruise) {
+    public record Quarry(Vec3 position, Vec3 eye, float yaw, Vec3 velocity, List<Vec3> trail, boolean atSea, Vec3 cruise, Vec3 digging) {
         public Quarry {
             Objects.requireNonNull(position); Objects.requireNonNull(eye); Objects.requireNonNull(velocity);
-            Objects.requireNonNull(cruise);
+            Objects.requireNonNull(cruise); Objects.requireNonNull(digging);
             trail = List.copyOf(trail);
+        }
+        public Quarry(Vec3 position, Vec3 eye, float yaw, Vec3 velocity, List<Vec3> trail, boolean atSea, Vec3 cruise) {
+            this(position, eye, yaw, velocity, trail, atSea, cruise, Vec3.ZERO);
         }
         public Quarry(Vec3 position, Vec3 eye, float yaw, Vec3 velocity, List<Vec3> trail) {
             this(position, eye, yaw, velocity, trail, false, velocity);
         }
         public static Quarry of(ServerPlayer player) {
             return new Quarry(player.position(), player.getEyePosition(), player.getYRot(),
-                    HuntTrails.velocity(player), HuntTrails.trail(player), SafeDeployment.atSea(player), HuntTrails.velocity(player, 5));
+                    HuntTrails.velocity(player), HuntTrails.trail(player), SafeDeployment.atSea(player), HuntTrails.velocity(player, 5),
+                    HuntTrails.digging(player));
+        }
+        /** The way it is tunnelling (its last few seconds of mining), else the way it faces; horizontal and unit length. */
+        public Vec3 heading() {
+            if (digging.horizontalDistanceSqr() > EPSILON) return digging.multiply(1, 0, 1).normalize();
+            double radians = Math.toRadians(yaw);
+            return new Vec3(-Math.sin(radians), 0, Math.cos(radians));
         }
         /** A still body without footprints, facing south. */
         public static Quarry standing(Vec3 position) {
@@ -122,6 +142,8 @@ public final class SafeDeployment {
 
     private static final class Candidate {
         final Vec3 point; final Source source;
+        /** A burrow's way out: the open cell beside its wall, from which the quarry is walked to. */
+        BlockPos exit;
         double score; double gap; boolean primary;
         Candidate(Vec3 point, Source source) { this.point = point; this.source = source; }
     }
@@ -141,8 +163,13 @@ public final class SafeDeployment {
         private int candidates;
         private final ArrayDeque<Candidate> queue = new ArrayDeque<>();
         private boolean sweeping;
+        /**
+         * A sweep that found no walkable landing scans for burrows once, after its ordinary candidates and in a tick of
+         * its own instead of sharing one with paths; a sweep that found one never pays for it.
+         */
+        private boolean burrowsDue, burrowsScanned;
         private long sweepStarted, nextSweep;
-        private Candidate best, closest, lastClosest;
+        private Candidate best, closest, lastClosest, burrow, lastBurrow;
         private Quarry swept;
         private BlockPos goal;
         private PathNavigationRegion region;
@@ -170,7 +197,7 @@ public final class SafeDeployment {
         }
         public Result result() {
             return new Result(status, found == null ? null : found.point, candidates, found != null && !found.primary,
-                    found != null && found.source == Source.SEA);
+                    found != null && found.source == Source.SEA, found != null && found.source == Source.BURROW);
         }
         public long started() { return started; }
         public ServerLevel level() { return level; }
@@ -183,7 +210,11 @@ public final class SafeDeployment {
             if (status != Status.PENDING) return result();
             long tickStarted = clock.getAsLong();
             if (tickStarted - started >= wait) { status = Status.FAILED; return result(); }
-            // The previous sweep's closest spot answers at exactly five seconds, without another full sweep.
+            // The previous sweep's burrow, else its closest spot, answers at exactly five seconds, without another full sweep.
+            if (tickStarted - started >= FALLBACK_AFTER_NANOS && lastBurrow != null && !quarry.atSea()) {
+                if (canBurrowAt(level, player, lastBurrow.point, lastBurrow.exit, quarry.position(), humans)) return found(lastBurrow);
+                lastBurrow = null;
+            }
             if (tickStarted - started >= FALLBACK_AFTER_NANOS && lastClosest != null && !quarry.atSea()) {
                 if (allowed(level, lastClosest.point, quarry.position(), humans, FALLBACK_RADIUS)
                         && canDeployAt(level, player, lastClosest.point)) return found(lastClosest);
@@ -193,11 +224,15 @@ public final class SafeDeployment {
                 if (tickStarted - nextSweep < 0) return result();
                 begin(tickStarted);
             }
+            if (burrowsDue) { burrowsDue = false; burrowsScanned = true; queue.addAll(burrows()); return result(); }
             for (int paths = 0; !queue.isEmpty() && paths < PATHS_PER_TICK; paths++) {
                 if (paths > 0 && clock.getAsLong() - tickStarted >= TICK_BUDGET_NANOS) return result();
                 evaluate(queue.poll());
             }
-            if (queue.isEmpty()) return finish(clock.getAsLong());
+            if (queue.isEmpty()) {
+                if (best == null && !burrowsScanned && !swept.atSea() && HuntBurrows.allowed(level)) { burrowsDue = true; return result(); }
+                return finish(clock.getAsLong());
+            }
             return result();
         }
 
@@ -206,6 +241,7 @@ public final class SafeDeployment {
             if (status != Status.FOUND) return false;
             if (found.source == Source.SEA) return allowed(level, found.point, currentTarget, currentHumans, SEA_RADIUS + 4)
                     && canSubmergeAt(level, player, found.point);
+            if (found.source == Source.BURROW) return canBurrowAt(level, player, found.point, found.exit, currentTarget, currentHumans);
             return allowed(level, found.point, currentTarget, currentHumans, found.primary ? MAX_PATH + 4 : FALLBACK_RADIUS)
                     && canDeployAt(level, player, found.point);
         }
@@ -223,14 +259,16 @@ public final class SafeDeployment {
         private Result finish(long now) {
             sweeping = false;
             if (best != null) return found(best);
+            if (burrow != null) lastBurrow = burrow;
             if (closest != null) lastClosest = closest;
+            if (now - started >= FALLBACK_AFTER_NANOS && burrow != null) return found(burrow);
             if (now - started >= FALLBACK_AFTER_NANOS && closest != null) return found(closest);
             nextSweep = Math.max(now, sweepStarted + SWEEP_INTERVAL_NANOS);
             return result();
         }
 
         private void begin(long now) {
-            sweeping = true; sweepStarted = now; best = null; closest = null; swept = quarry;
+            sweeping = true; sweepStarted = now; best = null; closest = null; burrow = null; burrowsDue = burrowsScanned = false; swept = quarry;
             var center = BlockPos.containing(swept.position());
             int reach = FALLBACK_RADIUS + FALLBACK_PATH + 8;
             region = new PathNavigationRegion(level, center.offset(-reach, -reach, -reach), center.offset(reach, reach, reach));
@@ -275,6 +313,57 @@ public final class SafeDeployment {
                 column(list, seen, angle, radius, Source.RING);
             }
             queue.clear(); queue.addAll(list.subList(0, Math.min(MAX_CANDIDATES, list.size())));
+        }
+
+        /**
+         * Burrow candidates: from every open standing cell the quarry's space reaches within {@link #BURROW_RADIUS}, one
+         * cell of plain ground sideways, and a pocket right behind it. Ranked here by cheap terms; paths come later.
+         */
+        private List<Candidate> burrows() {
+            var start = BlockPos.containing(swept.position());
+            var visited = new HashSet<BlockPos>();
+            var open = new ArrayDeque<BlockPos>();
+            var found = new ArrayList<Candidate>();
+            if (!open(start)) return found;
+            visited.add(start); open.add(start);
+            while (!open.isEmpty() && visited.size() < BURROW_VISITS) {
+                var cell = open.poll();
+                if (open(cell.above()) && !open(cell.below())) {
+                    for (var side : Direction.Plane.HORIZONTAL) {
+                        if (!MonsterDiggable.is(level.getBlockState(cell.relative(side)))) continue;
+                        var pocket = cell.relative(side, 2);
+                        var point = Vec3.atBottomCenterOf(pocket);
+                        if (!canBurrowAt(level, player, point, cell, swept.position(), humans)) continue;
+                        var candidate = new Candidate(point, Source.BURROW);
+                        candidate.exit = cell.immutable();
+                        candidate.score = burrowScore(candidate);
+                        found.add(candidate);
+                    }
+                }
+                for (var side : Direction.values()) {
+                    var next = cell.relative(side);
+                    if (next.distToCenterSqr(swept.position()) > BURROW_RADIUS * BURROW_RADIUS || !visited.add(next) || !open(next)) continue;
+                    open.add(next);
+                }
+            }
+            found.sort(Comparator.comparingDouble((Candidate candidate) -> candidate.score).reversed());
+            return found.subList(0, Math.min(BURROW_CANDIDATES, found.size()));
+        }
+        /** Air a body passes through: no collision, no fluid, already loaded. */
+        private boolean open(BlockPos pos) {
+            return level.isLoaded(pos) && empty(pos) && level.getFluidState(pos).isEmpty();
+        }
+        /** Close but not touching, in the way it is tunnelling, along its own footprints, in the dark. */
+        private double burrowScore(Candidate candidate) {
+            var point = candidate.point;
+            double distance = point.distanceTo(swept.position());
+            double score = 1 - Math.min(1, Math.abs(distance - IDEAL_BURROW) / 6.0);
+            var away = new Vec3(point.x - swept.position().x, 0, point.z - swept.position().z);
+            if (away.lengthSqr() > EPSILON && away.normalize().dot(swept.heading()) >= Math.cos(Math.PI / 4)) score += .8;
+            var exit = Vec3.atBottomCenterOf(candidate.exit);
+            if (swept.trail().stream().anyMatch(step -> step.distanceToSqr(exit) <= 2.25)) score += .3;
+            score += .3 * (1 - level.getMaxLocalRawBrightness(candidate.exit) / 15.0);
+            return score;
         }
 
         private void column(List<Candidate> list, Set<BlockPos> seen, double angle, double radius, Source source) {
@@ -323,6 +412,18 @@ public final class SafeDeployment {
         }
 
         private void evaluate(Candidate candidate) {
+            if (candidate.source == Source.BURROW) {
+                // A walkable landing already wins this sweep: no burrow path is worth computing.
+                if (best != null) return;
+                // The wall is opened by digging; from there on it is an ordinary walk to the quarry.
+                if (!canBurrowAt(level, player, candidate.point, candidate.exit, swept.position(), humans)) return;
+                candidates++;
+                var path = path(Vec3.atBottomCenterOf(candidate.exit));
+                if (path == null || !path.canReach() || length(path) > MAX_PATH + EPSILON) return;
+                candidate.primary = true;
+                if (burrow == null || candidate.score > burrow.score) burrow = candidate;
+                return;
+            }
             if (candidate.source == Source.SEA) {
                 // Open water between them: a drowned swims straight, so the line of sight stands in for a path.
                 var eye = candidate.point.add(0, player.getEyeHeight(), 0);
@@ -467,6 +568,56 @@ public final class SafeDeployment {
         for (var pos : BlockPos.betweenClosed(Mth.floor(support.minX), Mth.floor(support.minY), Mth.floor(support.minZ),
                 Mth.floor(support.maxX), Mth.floor(support.maxY), Mth.floor(support.maxZ))) {
             if (level.getFluidState(pos).is(net.minecraft.tags.FluidTags.LAVA)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * A burrow, judged as it stands now: a pocket of two plain-ground blocks ({@link MonsterDiggable}) that sealed
+     * opaque ground hides on every side, on a safe floor, under nothing that would fall in; one block of plain ground
+     * between it and {@code exit}, an open standing cell of the quarry's space; no fluid that digging would let in.
+     * {@code point} is the pocket's floor center. The pocket is still solid here; it is hollowed only at departure.
+     */
+    public static boolean canBurrowAt(ServerLevel level, ServerPlayer player, Vec3 point, BlockPos exit, Vec3 target, List<Vec3> humans) {
+        if (exit == null || ProtectionRuntime.protectedLevel(level) || !HuntBurrows.allowed(level)) return false;
+        var pocket = BlockPos.containing(point);
+        int dx = pocket.getX() - exit.getX(), dz = pocket.getZ() - exit.getZ();
+        if (pocket.getY() != exit.getY() || Math.abs(dx) + Math.abs(dz) != 2 || dx != 0 && dz != 0) return false;
+        // Cheapest first: most cells of a wide cave fail on distance alone.
+        double distance = point.distanceTo(target);
+        if (distance < BURROW_NEAR - EPSILON || distance > BURROW_FAR + EPSILON) return false;
+        for (var human : humans) if (point.distanceToSqr(human) < BURROW_NEAR * BURROW_NEAR - EPSILON) return false;
+        int ceiling = level.getMinY() + level.dimensionType().logicalHeight();
+        if (target.y < ceiling && point.y >= ceiling) return false;
+        var wall = exit.offset(dx / 2, 0, dz / 2);
+        if (!loaded(level, new AABB(pocket).minmax(new AABB(exit)).inflate(1, 2, 1))
+                || !level.getWorldBorder().isWithinBounds(pocket) || !level.getWorldBorder().isWithinBounds(exit)) return false;
+        // The way out: an open standing cell, two blocks of plain ground, and the pocket behind them.
+        for (var open : new BlockPos[]{exit, exit.above()}) {
+            var state = level.getBlockState(open);
+            if (!state.getCollisionShape(level, open).isEmpty() || !state.getFluidState().isEmpty()) return false;
+        }
+        if (level.getBlockState(exit.below()).getCollisionShape(level, exit.below()).isEmpty()) return false;
+        var cells = java.util.List.of(pocket, pocket.above());
+        var walls = java.util.List.of(wall, wall.above());
+        for (var pos : List.of(pocket, pocket.above(), wall, wall.above())) {
+            if (!MonsterDiggable.is(level.getBlockState(pos)) || level.getServer().isUnderSpawnProtection(level, pos, player)) return false;
+        }
+        // Sealed: every face of the pocket meets opaque ground, so nobody sees in and nothing flows in.
+        for (var cell : cells) for (var side : Direction.values()) {
+            var neighbour = cell.relative(side);
+            if (cells.contains(neighbour)) continue;
+            var state = level.getBlockState(neighbour);
+            if (!state.isSolidRender() || !state.getFluidState().isEmpty()) return false;
+        }
+        var floor = level.getBlockState(pocket.below());
+        if (EntityTypes.PLAYER.isBlockDangerous(floor)) return false;
+        // Nothing to drop into the hollowed pocket, nor to refill the opened wall.
+        if (level.getBlockState(pocket.above(2)).getBlock() instanceof net.minecraft.world.level.block.FallingBlock
+                || level.getBlockState(wall.above(2)).getBlock() instanceof net.minecraft.world.level.block.FallingBlock) return false;
+        // Digging the wall out must not let water or lava in.
+        for (var cell : walls) for (var side : Direction.values()) {
+            if (!level.getFluidState(cell.relative(side)).isEmpty()) return false;
         }
         return true;
     }

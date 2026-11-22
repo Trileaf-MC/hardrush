@@ -137,11 +137,11 @@ public final class HuntRetracks {
         return (int) Math.max(1, Math.min(Integer.MAX_VALUE, millis / 50));
     }
 
-    /** A personal hunt landed. */
-    public static void arrived(ServerPlayer hunter, ServerPlayer target) { announce(hunter, target); }
+    /** A personal hunt landed; a burrowed landing already rustled in the stone instead of the species' voice. */
+    public static void arrived(ServerPlayer hunter, ServerPlayer target, boolean burrowed) { if (!burrowed) announce(hunter, target); }
     /** A retrack landed: the compass rests, wherever it is held, even on the inventory cursor. */
-    public static void retracked(ServerPlayer hunter, ServerPlayer target) {
-        announce(hunter, target);
+    public static void retracked(ServerPlayer hunter, ServerPlayer target, boolean burrowed) {
+        if (!burrowed) announce(hunter, target);
         hunter.getCooldowns().addCooldown(cooldownGroup(hunter), cooldownTicks(hunter.level().getServer()));
         light(hunter, false);
     }

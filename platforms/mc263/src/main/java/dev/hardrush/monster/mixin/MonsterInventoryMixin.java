@@ -1,7 +1,7 @@
 package dev.hardrush.monster.mixin;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.monster.MonsterItems;
-import dev.hardrush.monster.MonsterDoorBreaking;
+import dev.hardrush.monster.MonsterMining;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
@@ -49,20 +49,20 @@ public abstract class MonsterInventoryMixin {
         serverThread(packet);
         if (!MonsterRoles.isMonster(player)) return;
         switch (packet.getAction()) {
-            case START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "攻击");
+            case START_DESTROY_BLOCK, STOP_DESTROY_BLOCK, ABORT_DESTROY_BLOCK -> dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "挖掘");
             default -> {}
         }
         switch (packet.getAction()) {
             case DROP_ITEM, DROP_ALL_ITEMS -> {
                 if (MonsterItems.bound(player.getMainHandItem())) lockInventory(callback);
             }
-            // Mining reaches MonsterDoorGameModeMixin, then vanilla acknowledges its prediction sequence.
+            // Mining reaches MonsterMiningGameModeMixin, then vanilla acknowledges its prediction sequence.
             default -> {}
         }
     }
 
     @Inject(method="handlePunch", at=@At("TAIL"))
-    private void doorPunch(ServerboundPunchPacket packet, CallbackInfo callback) {
-        MonsterDoorBreaking.punch(player);
+    private void miningPunch(ServerboundPunchPacket packet, CallbackInfo callback) {
+        MonsterMining.punch(player);
     }
 }
