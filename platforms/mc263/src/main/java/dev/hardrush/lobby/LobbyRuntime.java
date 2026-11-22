@@ -417,6 +417,8 @@ public final class LobbyRuntime {
                 var committed = b.session.snapshot().orElseThrow();
                 var landing = d.search.result().position();
                 boolean burrowed = d.search.result().burrowed();
+                // Hollowed first so the hunter never lands inside stone for a frame. A departure that fails after this
+                // leaves a sealed, empty pocket behind; like every dug block, it is deliberately never refilled.
                 if (burrowed) dev.hardrush.hunt.HuntBurrows.carve(d.level, landing, d.player);
                 if (b.profiles.deployMonster(d.player, committed, d.level, landing, d.search.yaw(d.targetPlayer.position()))) {
                     MonsterRoles.select(d.player, d.identity.kind().name().toLowerCase(Locale.ROOT));

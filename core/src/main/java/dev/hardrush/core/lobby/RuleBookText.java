@@ -37,7 +37,7 @@ public final class RuleBookText {
                     + "骷髅潜行拉满弓触发三连射，陷进细雪会化身流浪者。\n\n苦力怕按住引爆器引爆。");
             pages.add("挖掘与虫穴\n\n僵尸和骷髅空手按住左键，一次挖开 1×2 的石头、泥土、下界岩、末地石等天然方块，最长 "
                     + decimalSeconds(RoundEngine.digMillis(rules)) + " 秒，不掉落。苦力怕挖不动。\n\n"
-                    + "人类躲在封死的矿道里时，怪物会藏进旁边的石头，挖开墙破石而出。");
+                    + "出击找不到能走到人类身边的落点时，怪物会藏进人类旁边的石头里，挖开墙破石而出。");
             if (MonsterCoins.enabled(rules)) pages.add("怪物币\n\n伤害人类、近期受玩家伤害后阵亡都能获得怪物币，领先的人类身上有悬赏。\n\n"
                     + "怪物币可以在女巫处购买出击增强，试炼钥匙可以在宝库开出一次性装备。");
             if (MonsterWorth.enabled(rules)) pages.add("身价\n\n出击时的经验等级就是身价：从 " + (long) value(rules, MonsterWorth.BASE_LEVEL, 10)
