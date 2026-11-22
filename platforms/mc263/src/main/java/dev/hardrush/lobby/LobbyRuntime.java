@@ -416,6 +416,8 @@ public final class LobbyRuntime {
             try {
                 var committed = b.session.snapshot().orElseThrow();
                 var landing = d.search.result().position();
+                boolean burrowed = d.search.result().burrowed();
+                if (burrowed) dev.hardrush.hunt.HuntBurrows.carve(d.level, landing, d.player);
                 if (b.profiles.deployMonster(d.player, committed, d.level, landing, d.search.yaw(d.targetPlayer.position()))) {
                     MonsterRoles.select(d.player, d.identity.kind().name().toLowerCase(Locale.ROOT));
                     if (!MonsterRoles.isMonster(d.player) || MonsterRoles.nativeModel(d.player) == null)
@@ -424,9 +426,10 @@ public final class LobbyRuntime {
                     if (risen) MonsterRoles.riseFromSea(d.player);
                     b.pending.remove(id, d); b.committing.remove(id);
                     dev.hardrush.hunt.HuntBossBars.deployed(d.player, committed, d.identity);
-                    HuntRetracks.arrived(d.player, d.targetPlayer);
+                    HuntRetracks.arrived(d.player, d.targetPlayer, burrowed);
                     sound(d.player, true);
                     String quarry = Notices.key(d.targetPlayer.getScoreboardName());
+                    if (burrowed) { burrowed(d.player); return; }
                     Notices.hint(d.player, risen ? "已化身溺尸，从水下出击"
                             : d.search.result().fallback()
                             ? "已出击：去 " + quarry + " 的路被切断，这是能到的最近处" : "已出击，" + quarry + " 就在附近"); return;
@@ -625,18 +628,28 @@ public final class LobbyRuntime {
         }
         var landing = result.position();
         var from = r.player.position(); var fromLevel = (ServerLevel) r.player.level();
+        if (result.burrowed()) dev.hardrush.hunt.HuntBurrows.carve(level, landing, r.player);
         if (!r.player.teleportTo(level, landing.x, landing.y, landing.z, java.util.Set.of(), r.search.yaw(target.position()), 0, true)) {
             Notices.hint(r.player, "落点失效，循迹取消"); sound(r.player, false); return;
         }
-        HuntRetracks.retracked(r.player, target);
-        MonsterCompanions.regroup(r.player);
+        HuntRetracks.retracked(r.player, target, result.burrowed());
+        // Followers stay where they are while it hides: there is no room around a burrow but the quarry's tunnel.
+        if (!result.burrowed()) MonsterCompanions.regroup(r.player);
         ChannelEffects.departed(r.player, fromLevel, from, true);
         sound(r.player, true);
-        if (result.fallback()) Notices.hint(r.player, "去 " + Notices.key(target.getScoreboardName()) + " 的路被切断，这是能到的最近处");
+        if (result.burrowed()) burrowed(r.player);
+        else if (result.fallback()) Notices.hint(r.player, "去 " + Notices.key(target.getScoreboardName()) + " 的路被切断，这是能到的最近处");
+    }
+    /** Landed hidden in a burrow: how to get out, which only the hands can do. */
+    private static void burrowed(ServerPlayer hunter) {
+        dev.hardrush.hunt.HuntBurrows.entered(hunter, hunter.position());
+        Notices.hint(hunter, MonsterRoles.currentForm(hunter) == dev.hardrush.monster.MonsterForm.CREEPER
+                ? "你藏进了石头里 · 苦力怕挖不动墙，等人挖到你，或者就地引爆"
+                : "你藏进了石头里 · " + Notices.key("空手") + "挖开前面的墙，破石而出");
     }
     /**
      * Breaks a return or retrack channel, or the retrack's search that follows it.
-     * @param reason one of the plain words players see: 移动、切换维度、受到伤害、攻击、互动、使用物品、施放技能、敲门、比赛状态变化
+     * @param reason one of the plain words players see: 移动、切换维度、受到伤害、攻击、互动、使用物品、施放技能、敲门、挖掘、比赛状态变化
      */
     public static void interruptChannel(ServerPlayer player, String reason) {
         var b = BINDINGS.get(player.level().getServer());
@@ -971,7 +984,9 @@ public final class LobbyRuntime {
                                 }
                             } else state = name + " 在海上，正在寻找水下出击位置";
                         } else state = quarry.onGround()
-                                ? "正在寻找 " + name + " 附近的最佳出击位置 · " + Notices.key(waited) + " 秒" + cancel
+                                ? (waited >= SafeDeployment.FALLBACK_AFTER_NANOS / 1_000_000_000L && dev.hardrush.hunt.HuntBurrows.allowed(attempt.level)
+                                        ? "正在寻找 " + name + " 附近能破石而出的位置 · "
+                                        : "正在寻找 " + name + " 附近的最佳出击位置 · ") + Notices.key(waited) + " 秒" + cancel
                                 : name + " 不在地面，等落地后出击" + cancel;
                         hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, state, now + 300);
                     } else if (attempt != null || b.committing.contains(p.id()) || b.resumptions.containsKey(p.id()))
