@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
@@ -48,6 +49,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.zombie.Zombie;
@@ -94,11 +96,13 @@ public final class TotemSaveGameTest {
         var monster = UUID.randomUUID();
         // A: monster hit, main hand. B: human hit, off hand. C: totem not in hand. D: void. E: /kill. F: locked.
         // G: vanilla totem first, revival second. H: revival first, vanilla second. I: a revival totem that cannot save,
-        // vanilla second. J: two lethal hits in one tick with one charge. K: the human attacker, never hit.
+        // vanilla second. J: two lethal hits in one tick with one charge. K: the human attacker, never hit. L: K's spear
+        // jab, M: K's mace smash, which reach damage outside Player.attack or with their own damage type.
         var c = new LinkedHashMap<String, Client>();
         var charges = Map.ofEntries(Map.entry("A", 2), Map.entry("B", 1), Map.entry("C", 1), Map.entry("D", 1), Map.entry("E", 1),
-                Map.entry("F", 1), Map.entry("G", 1), Map.entry("H", 1), Map.entry("I", 0), Map.entry("J", 1), Map.entry("K", 0));
-        for (var tag : List.of("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K")) c.put(tag, f.client(tag));
+                Map.entry("F", 1), Map.entry("G", 1), Map.entry("H", 1), Map.entry("I", 0), Map.entry("J", 1), Map.entry("K", 0),
+                Map.entry("L", 1), Map.entry("M", 1));
+        for (var tag : List.of("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M")) c.put(tag, f.client(tag));
         var refs = new Object() { Zombie zombie; };
 
         test.startSequence().thenWaitUntil(f::awaitArena).thenExecute(() -> {
@@ -182,13 +186,38 @@ public final class TotemSaveGameTest {
             test.assertTrue(RevivalTotems.is(ip.getMainHandItem()) && ip.getMainHandItem().getCount() == 1, "The revival totem is passed over intact");
             test.assertValueEqual(h.session.pendingTotemSaves(ip.getUUID()), 0, "Nothing is booked for I");
 
-            // B: a human's melee, off hand: saved, the attacker earns nothing, no coin and no floor totem.
+            // B: a human's melee, off hand: saved, no coin, and one totem drops at B's feet, pending until the save commits.
             var b = c.get("B").player();
             b.hurtServer(level, sources.playerAttack(c.get("K").player()), 1000);
             saved(test, h, c.get("B"), 0);
             test.assertTrue(b.getOffhandItem().isEmpty(), "The off-hand stack was used");
             test.assertValueEqual(h.coins.size(), 1, "A human's hit pays no monster coins");
-            test.assertTrue(floorTotems(f, b).isEmpty(), "Nobody died: no totem drops");
+            forcedOut(test, h, f, c.get("B"), "B");
+
+            // L: K's spear jab, through the native weapon component the STAB action calls. M: K's mace smash. Both are
+            // K's human melee (commit 55c17d9), so both force out a totem that drops like B's.
+            var k = c.get("K").player();
+            var l = c.get("L").player();
+            l.teleportTo(f.base.getX() + .5, f.base.getY(), f.base.getZ() - 7.5);
+            k.snapTo(l.getX(), l.getY(), l.getZ() - 3, 0, 0);
+            k.setYHeadRot(0);
+            var spear = new ItemStack(Items.IRON_SPEAR);
+            k.setItemSlot(EquipmentSlot.MAINHAND, spear);
+            // A fixture body is never ticked, so its attack cooldown never charges: any landed hit must be lethal.
+            l.setHealth(0.05F);
+            spear.get(DataComponents.PIERCING_WEAPON).attack(k, EquipmentSlot.MAINHAND);
+            saved(test, h, c.get("L"), 0);
+            forcedOut(test, h, f, c.get("L"), "L");
+            var m = c.get("M").player();
+            m.teleportTo(f.base.getX() + 6.5, f.base.getY(), f.base.getZ() - 7.5);
+            k.snapTo(m.getX(), m.getY(), m.getZ() - 2, 0, 0);
+            k.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.MACE));
+            k.fallDistance = 2;
+            m.setHealth(0.05F);
+            k.attack(m);
+            k.fallDistance = 0;
+            saved(test, h, c.get("M"), 0);
+            forcedOut(test, h, f, c.get("M"), "M");
 
             // C: the totem is carried but not held; D: the void and E: /kill bypass any totem. All die normally.
             var cp = c.get("C").player();
@@ -217,10 +246,25 @@ public final class TotemSaveGameTest {
                 test.assertFalse(h.deaths.contains(c.get(tag).id()), "Saved in place is not a death: " + tag);
         }).thenWaitUntil(() -> require(h.settled(), "every save and death commits")).thenExecute(() -> {
             // The ledger: one charge per save, the monster's forced pop counted as its kill, nothing voided.
-            test.assertValueEqual(h.types.stream().filter(t -> t.startsWith("TOTEM_SAVE")).toList(),
-                    List.of("TOTEM_SAVE", "TOTEM_SAVE", "TOTEM_SAVE", "TOTEM_SAVE"), "A, H, B and J were saved, none voided: " + h.types);
+            test.assertValueEqual(h.types.stream().filter(t -> t.startsWith("TOTEM_SAVE")).toList(), Collections.nCopies(6, "TOTEM_SAVE"),
+                    "A, H, B, L, M and J were saved, none voided: " + h.types);
             test.assertValueEqual(h.committed(c.get("A").id()).revivalCharges(), 1, "A spent one");
-            for (var tag : List.of("B", "H", "K", "I")) test.assertValueEqual(h.committed(c.get(tag).id()).revivalCharges(), 0, "Charges: " + tag);
+            for (var tag : List.of("B", "H", "K", "I", "L", "M")) test.assertValueEqual(h.committed(c.get(tag).id()).revivalCharges(), 0, "Charges: " + tag);
+            // A human forcing out a totem earns nothing by itself: what it forced out lies registered at each saved human.
+            var registry = h.session.snapshot().orElseThrow().looseTotems();
+            test.assertValueEqual(registry.size(), 3, "B's, L's and M's totems are registered: " + registry);
+            for (var tag : List.of("B", "L", "M")) {
+                var token = h.drops.get(tag);
+                test.assertValueEqual(registry.get(token), new LooseTotem(c.get(tag).id(), 1, c.get("K").id(),
+                        registry.get(token).droppedAtChallengeNanos()), "Registered for anyone to take: " + tag);
+                test.assertFalse(h.session.totemSaveDropInFlight(token), "No longer in flight: " + tag);
+                test.assertTrue(floorTotems(f, c.get(tag).player()).stream().anyMatch(item -> RevivalTotems.dropToken(item.getItem())
+                        .equals(Optional.of(token))), "It still lies in the world: " + tag);
+            }
+            // Told once a round to the others, never to the attacker or the saved human.
+            var forced = Notices.format(TotemDrops.forcedLine(c.get("B").name(), 1)).getString();
+            test.assertValueEqual(c.get("A").bars().stream().filter(forced::equals).count(), 1L, "A bystander is told of the first forced drop");
+            test.assertTrue(c.get("K").bars().stream().noneMatch(bar -> bar.contains("逼出")), "The attacker is not told");
             test.assertValueEqual(h.committed(c.get("G").id()).revivalCharges(), 1, "Vanilla's totem spent no charge of G");
             var hunter = h.committed(monster);
             test.assertValueEqual(hunter.revivalCharges(), 1, "Forcing A's totem counts as the monster's kill");
@@ -255,7 +299,8 @@ public final class TotemSaveGameTest {
     /** The checks every in-place save shares: alive at 1 health, one charge less in hand and in flight, event 35, the line. */
     private static void saved(GameTestHelper test, Harness h, Client client, int left) {
         var p = client.player();
-        test.assertTrue(p.isAlive() && !p.isDeadOrDying() && p.getHealth() == 1, "Saved in place at 1 health: " + client.name());
+        test.assertTrue(p.isAlive() && !p.isDeadOrDying() && p.getHealth() == 1, "Saved in place at 1 health: " + client.name()
+                + " (health " + p.getHealth() + ", dying " + p.isDeadOrDying() + ", at " + p.position() + ")");
         test.assertValueEqual(total(p), left, "The stack is one less at once: " + client.name());
         RevivalTotems.refresh(p);
         test.assertValueEqual(total(p), left, "The projection subtracts the save in flight: " + client.name());
@@ -274,6 +319,18 @@ public final class TotemSaveGameTest {
     private static void toOffHand(ServerPlayer player) {
         player.setItemInHand(InteractionHand.OFF_HAND, player.getMainHandItem().copy());
         player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+    }
+
+    /** One floor totem at the saved human's feet, pending (in flight with its save, not yet registered). */
+    private static void forcedOut(GameTestHelper test, Harness h, Fixture f, Client client, String tag) {
+        var totems = floorTotems(f, client.player()).stream()
+                .filter(item -> item.position().distanceTo(client.player().position()) < 2 && !h.drops.containsValue(
+                        RevivalTotems.dropToken(item.getItem()).orElse(null))).toList();
+        test.assertValueEqual(totems.size(), 1, "One totem drops at the saved human's feet: " + tag);
+        var token = RevivalTotems.dropToken(totems.getFirst().getItem()).orElseThrow();
+        test.assertTrue(h.session.totemSaveDropInFlight(token), "Pending with its save: " + tag);
+        test.assertFalse(h.session.snapshot().orElseThrow().looseTotems().containsKey(token), "Not registered before the commit: " + tag);
+        h.drops.put(tag, token);
     }
 
     private static List<ItemEntity> floorTotems(Fixture f, ServerPlayer near) {
@@ -309,6 +366,8 @@ public final class TotemSaveGameTest {
         final List<Float> coins = new ArrayList<>();
         final List<String> types = new ArrayList<>();
         final Map<UUID, List<String>> journeys = new HashMap<>();
+        /** Each forced-out totem's drop token, by the saved human's tag. */
+        final Map<String, UUID> drops = new HashMap<>();
         java.nio.file.Path directory;
         RoundSession session;
         Difficulty difficulty;
@@ -348,6 +407,7 @@ public final class TotemSaveGameTest {
             // Monster melee scales with difficulty and does nothing on peaceful.
             server.setDifficulty(Difficulty.NORMAL, true);
             session.onCommitted((before, after) -> {
+                TotemDrops.onCommitted(server, before, after);
                 types.add(session.committedEventType());
                 after.participants().forEach((id, p) -> {
                     var old = before.participants().get(id);
@@ -362,8 +422,18 @@ public final class TotemSaveGameTest {
             });
             RevivalTotems.pendingSaves(server, session::pendingTotemSaves);
             // As LobbyRuntime binds it, without the profile service's body checks (fixture players have no profile).
-            TotemSave.configure(server, (player, roundId, life, killCredit) -> session.captureTotemSave(roundId, player.getUUID(), life, killCredit)
-                    ? OptionalInt.of(session.totemChargesLeft(player.getUUID())) : OptionalInt.empty());
+            TotemSave.configure(server, (player, roundId, life, killCredit, drop) -> session.captureTotemSave(roundId, player.getUUID(), life,
+                    killCredit, drop) ? OptionalInt.of(session.totemChargesLeft(player.getUUID())) : OptionalInt.empty());
+            TotemDrops.configure(server, new TotemDrops.Access() {
+                @Override public Optional<RoundSnapshot> view() { return session.view(); }
+                @Override public boolean open() { return session.state() == RoundSession.State.OPEN; }
+                @Override public boolean collects(ServerPlayer player) { return true; }
+                @Override public void refresh(ServerPlayer player) { RevivalTotems.refresh(player); }
+                @Override public void requestPickup(UUID round, UUID token, UUID player, int life, java.util.function.Consumer<RoundSession.Reply> reply) {
+                    session.requestLooseTotemPickup(round, token, player, life, reply);
+                }
+                @Override public boolean saveInFlight(UUID token) { return session.totemSaveDropInFlight(token); }
+            });
             // The deployed monster's model may only hit within its own running round.
             dev.hardrush.combat.MonsterCombatRuntime.configure(server, new dev.hardrush.combat.MonsterCombatRuntime.Access() {
                 @Override public Optional<RoundSnapshot> snapshot() { return session.snapshot(); }
@@ -396,6 +466,7 @@ public final class TotemSaveGameTest {
 
         void close() {
             TotemSave.unconfigure(f.server);
+            TotemDrops.unconfigure(f.server);
             RevivalTotems.unconfigure(f.server);
             CombatRuntime.unconfigure(f.server);
             dev.hardrush.combat.MonsterCombatRuntime.unconfigure(f.server);

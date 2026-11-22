@@ -128,10 +128,12 @@ public final class RoundSession implements AutoCloseable {
     private record DeathIdentity(int life, int deployment) {}
     private final Map<UUID, DeathIdentity> capturedDeaths = new LinkedHashMap<>();
     // In-place revivals already performed in the world, per (player, life), whose TOTEM_SAVE event has not committed;
-    // and the queued event of each, released on that event's commit callback whatever its outcome.
+    // and the queued event of each with the revival totem it dropped, if any, released on that event's commit callback
+    // whatever its outcome.
     private record TotemSaveKey(UUID player, int life) {}
+    private record TotemSaveEvent(TotemSaveKey key, Optional<UUID> drop) {}
     private final Map<TotemSaveKey, Integer> totemSaves = new LinkedHashMap<>();
-    private final Map<UUID, TotemSaveKey> totemSaveEvents = new LinkedHashMap<>();
+    private final Map<UUID, TotemSaveEvent> totemSaveEvents = new LinkedHashMap<>();
     private CompletableFuture<CommitResult> pendingRotationWrite;
     private RoundSnapshot pendingNextRound;
     private Long shutdownBoundary;
@@ -344,9 +346,13 @@ public final class RoundSession implements AutoCloseable {
      * the competition is not locked, the player is the committed active human of {@code lifeSequence} and still has a
      * committed charge beyond the saves already in flight. The save then counts as in flight
      * ({@link #pendingTotemSaves}) until its event's commit callback, whether it commits, voids or fails.
+     * {@code dropToken} names the revival totem the adapter drops at the save when a human forced it out
+     * ({@code RoundEngine.proposeTotemSave}); it is {@linkplain #totemSaveDropInFlight in flight} for as long.
      */
-    public boolean captureTotemSave(UUID roundId, UUID playerId, int lifeSequence, Optional<CombatOrigin> killCredit) {
+    public boolean captureTotemSave(UUID roundId, UUID playerId, int lifeSequence, Optional<CombatOrigin> killCredit,
+            Optional<UUID> dropToken) {
         Objects.requireNonNull(roundId); Objects.requireNonNull(playerId); Objects.requireNonNull(killCredit);
+        Objects.requireNonNull(dropToken);
         long now = clock.nanoTime();
         if (stopping || state != State.OPEN || !adaptersReady || adminBoundary != null
                 || shutdownBoundary != null && now > shutdownBoundary || events.size() >= EVENT_BUDGET
@@ -360,9 +366,9 @@ public final class RoundSession implements AutoCloseable {
         UUID eventId = UUID.randomUUID();
         // Counted before queueing: the event may apply and even commit inside enqueueAt.
         totemSaves.merge(key, 1, Integer::sum);
-        totemSaveEvents.put(eventId, key);
+        totemSaveEvents.put(eventId, new TotemSaveEvent(key, dropToken));
         boolean queued = enqueueAt(now, e -> {
-            try { return e.proposeTotemSave(eventId, roundId, playerId, lifeSequence, killCredit); }
+            try { return e.proposeTotemSave(eventId, roundId, playerId, lifeSequence, killCredit, dropToken); }
             catch (RuntimeException error) { releaseTotemSave(eventId); throw error; }
         });
         if (!queued) releaseTotemSave(eventId);
@@ -382,9 +388,19 @@ public final class RoundSession implements AutoCloseable {
         return player == null ? 0 : Math.max(0, player.revivalCharges() - pendingTotemSaves(playerId));
     }
 
+    /**
+     * Whether {@code token} is the drop of a save whose event has not reached its commit callback: until then the engine
+     * may still register it. Released before the committed listener runs, so a listener sees either the registration
+     * or a drop that will never be registered.
+     */
+    public boolean totemSaveDropInFlight(UUID token) {
+        Objects.requireNonNull(token);
+        return totemSaveEvents.values().stream().anyMatch(event -> event.drop().filter(token::equals).isPresent());
+    }
+
     private void releaseTotemSave(UUID eventId) {
-        var key = totemSaveEvents.remove(eventId);
-        if (key != null) totemSaves.computeIfPresent(key, (ignored, count) -> count > 1 ? count - 1 : null);
+        var event = totemSaveEvents.remove(eventId);
+        if (event != null) totemSaves.computeIfPresent(event.key(), (ignored, count) -> count > 1 ? count - 1 : null);
     }
 
     private void clearTotemSaves() { totemSaves.clear(); totemSaveEvents.clear(); }

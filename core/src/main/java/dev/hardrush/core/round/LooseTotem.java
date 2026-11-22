@@ -4,13 +4,14 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * A revival totem lying in the world after a human killed a human (docs/plan/复生图腾掉落.md, 1.1 and 1.2).
+ * A revival totem lying in the world after a human killed a human, or forced a revival totem out of another
+ * human's hand (docs/plan/复生图腾掉落.md, 1.1, 1.2 and 1.5).
  * The snapshot's registry, keyed by the platform's drop token, is the only proof the entity may be picked up.
  *
- * @param victim whose death dropped it
- * @param victimLife the victim's human life that ended
+ * @param victim whose death, or forced-out revival totem, dropped it
+ * @param victimLife the victim's human life that ended, or that the totem saved
  * @param killer the credited attacker; informational, it earns nothing by itself
- * @param droppedAtChallengeNanos challenge time of the death batch that registered it
+ * @param droppedAtChallengeNanos challenge time of the death batch or totem save that registered it
  */
 public record LooseTotem(UUID victim, int victimLife, UUID killer, long droppedAtChallengeNanos) {
     /** Challenge (race) time a registered totem lies in the world before the registry forgets it. */

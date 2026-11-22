@@ -21,9 +21,10 @@ import net.minecraft.world.level.gameevent.GameEvent;
 
 /**
  * The in-place revival (docs/plan/复生图腾掉落.md 1.5, 2.5): an active human holding a revival totem in either hand
- * survives a lethal hit as with vanilla's totem of undying, and one charge is spent. The world acts at once and the
- * ledger follows: {@link Access#save} books the charge synchronously (queued as {@code TOTEM_SAVE}) before anything in
- * the world changes, and only then does the totem pop.
+ * survives a lethal hit as with vanilla's totem of undying, and one charge is spent. When a human's direct attack forced
+ * it out, one revival totem drops at the saved human's feet as it would have at the death ({@link TotemDrops}). The
+ * world acts at once and the ledger follows: {@link Access#save} books the charge synchronously (queued as
+ * {@code TOTEM_SAVE}) before anything in the world changes, and only then does the totem pop.
  *
  * <p>Runs at the head of {@code LivingEntity.checkTotemDeathProtection}, by vanilla's own rules: a hit that bypasses
  * invulnerability (the void, {@code /kill}) is never stopped; otherwise the main hand, then the off hand, and the first
@@ -38,10 +39,11 @@ public final class TotemSave {
         /**
          * Books one in-place revival of {@code player}, whose held copy belongs to {@code life} of {@code round}
          * ({@code RoundSession.captureTotemSave}); {@code killCredit} is this lethal hit's credit, resolved as a death's
-         * would be. The charges left once it commits (the committed balance minus every save in flight), or empty when
-         * the player cannot be saved and nothing was booked.
+         * would be, and {@code dropToken} the totem a human's hit forces out ({@link TotemDrops#prepareSave}). The
+         * charges left once it commits (the committed balance minus every save in flight), or empty when the player
+         * cannot be saved and nothing was booked.
          */
-        OptionalInt save(ServerPlayer player, UUID round, int life, Optional<CombatOrigin> killCredit);
+        OptionalInt save(ServerPlayer player, UUID round, int life, Optional<CombatOrigin> killCredit, Optional<UUID> dropToken);
     }
 
     private static final Map<MinecraftServer, Access> INSTANCES = new IdentityHashMap<>();
@@ -70,7 +72,10 @@ public final class TotemSave {
             var identity = humanCopy(stack);
             if (identity.isEmpty()) continue;
             if (killCredit == null) killCredit = CombatRuntime.peekKillCredit(player.level(), player, source);
-            var left = access.save(player, identity.get().round(), identity.get().life(), killCredit);
+            // A human's direct attack forces out a totem as it would have dropped one at this death (design 1.5).
+            var drop = TotemDrops.prepareSave(player, killCredit);
+            var left = access.save(player, identity.get().round(), identity.get().life(), killCredit, drop);
+            drop.ifPresent(token -> TotemDrops.captured(player, identity.get().round(), token, left.isPresent()));
             // Cannot save: passed over like any item without DEATH_PROTECTION, so vanilla looks at the other hand.
             if (left.isEmpty()) continue;
             pop(player, stack, left.getAsInt());

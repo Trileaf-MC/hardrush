@@ -56,8 +56,8 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.TeamColor;
 
 /**
- * Revival totems dropped by a human's death (docs/plan/复生图腾掉落.md, 1.1 to 1.3, 1.8, 2.3, 2.4) on real fixture players
- * outside the competition runtime: the round runtime is scripted through {@link TotemDrops.Access}, its commits replayed
+ * Revival totems dropped by a human's death or forced out of a human's hand (docs/plan/复生图腾掉落.md, 1.1 to 1.3, 1.5,
+ * 1.8, 2.3, 2.4) on real fixture players outside the competition runtime: the round runtime is scripted through {@link TotemDrops.Access}, its commits replayed
  * through {@link TotemDrops#onCommitted} as {@code RoundRuntime} does. One sequence, because {@link TotemDrops} is
  * configured per server and its patrol sweeps every loaded world. {@code -PhardrushTotemDrops=true} runs it alone.
  */
@@ -338,6 +338,38 @@ public final class TotemDropGameTest {
             test.assertTrue(orphaned.isRemoved(), "A pending drop whose session failed is removed");
             s.open = true;
 
+            // A totem a human forced out of a living human's hand (design 1.5): the same test as a death, pending while
+            // its save is in flight whatever commits in between, removed when its save commits without registering it,
+            // announced on its own line, once a round, when registered.
+            s.put(second.id(), second.name(), ParticipantRole.HUMAN_ACTIVE, 3, 1, 0, true);
+            test.assertTrue(TotemDrops.prepareSave(second.player, s.melee(second.id())).isEmpty(), "One's own hit forces out nothing to drop");
+            test.assertTrue(TotemDrops.prepareSave(second.player, Optional.empty()).isEmpty(), "A hit without credit drops nothing");
+            var refusedSave = TotemDrops.prepareSave(second.player, s.melee(killer.id())).orElseThrow();
+            TotemDrops.captured(second.player, s.roundId, refusedSave, false);
+            test.assertTrue(f.drops(refusedSave).isEmpty(), "A save the session refused drops nothing");
+            var voided = TotemDrops.prepareSave(second.player, s.melee(killer.id())).orElseThrow();
+            s.inFlight.add(voided);
+            TotemDrops.captured(second.player, s.roundId, voided, true);
+            var voidedItem = only(test, f.drops(voided), "A booked save drops one totem");
+            test.assertTrue(voidedItem.position().distanceTo(second.player.position()) < 2, "At the saved human's feet");
+            s.commit(() -> {});
+            TotemDrops.patrol(f.server);
+            test.assertFalse(voidedItem.isRemoved(), "Pending while its save is in flight, its human still alive");
+            int lateTold = late.bars.size();
+            s.commit(() -> s.inFlight.remove(voided));
+            test.assertTrue(voidedItem.isRemoved(), "Removed once its save commits without registering it");
+            test.assertValueEqual(late.bars.size(), lateTold, "Nothing is announced for an unregistered forced drop");
+            var forcedToken = TotemDrops.prepareSave(second.player, s.melee(killer.id())).orElseThrow();
+            s.inFlight.add(forcedToken);
+            TotemDrops.captured(second.player, s.roundId, forcedToken, true);
+            s.commit(() -> { s.inFlight.remove(forcedToken); s.register(forcedToken, second.id(), 3, killer.id()); });
+            test.assertFalse(only(test, f.drops(forcedToken), "The forced-out drop").isRemoved(), "A registered forced drop stays");
+            String forced = Notices.format(TotemDrops.forcedLine(second.name(), 1)).getString();
+            test.assertValueEqual(late.bars.getLast(), forced, "Told on its own line, though the death line was told already");
+            test.assertValueEqual(entering.bars.getLast(), forced, "A player still entering is told too");
+            test.assertTrue(killer.bars.stream().noneMatch(forced::equals) && second.bars.stream().noneMatch(forced::equals),
+                    "The attacker and the saved human are not told");
+
             // A new round: the empty registry clears the last round's drops, and the team is sent afresh.
             for (var c : f.clients) c.teams.clear();
             s.roundId = UUID.randomUUID();
@@ -375,6 +407,8 @@ public final class TotemDropGameTest {
         final Map<UUID, Participant> players = new LinkedHashMap<>();
         final Map<UUID, LooseTotem> registry = new LinkedHashMap<>();
         final Set<UUID> collectors = new HashSet<>();
+        /** Drop tokens of saves the scripted session still holds. */
+        final Set<UUID> inFlight = new HashSet<>();
         long challenge = 10L * 60 * 1_000_000_000L;
         long version;
         boolean open = true, defer;
@@ -427,6 +461,7 @@ public final class TotemDropGameTest {
             var p = players.get(player.getUUID());
             RevivalTotems.project(player, new Decision(State.PROJECT, Identity.of(roundId, p), p.revivalCharges()));
         }
+        @Override public boolean saveInFlight(UUID token) { return inFlight.contains(token); }
         @Override public void requestPickup(UUID round, UUID token, UUID player, int life, Consumer<RoundSession.Reply> reply) {
             requests++;
             Runnable apply = () -> {

@@ -40,7 +40,7 @@ public final class RuleBookText {
             if (MonsterWorth.enabled(rules)) pages.add("身价\n\n出击时的经验等级就是身价：从 " + (long) value(rules, MonsterWorth.BASE_LEVEL, 10)
                     + " 级起，伤害人类会上涨，最高 " + (long) value(rules, MonsterWorth.MAX_LEVEL, 30) + " 级。\n\n被玩家击杀时掉出经验，满 "
                     + (long) value(rules, MonsterWorth.BOOK_MIN_LEVEL, 15) + " 级再掉一本附魔书。");
-            pages.add("复生图腾\n\n人类被人类击杀会掉落 1 个，人类捡起即得；怪物击杀人类直接获得 1 个。\n\n"
+            pages.add("复生图腾\n\n人类被人类击杀或逼出图腾时会掉落 1 个，人类捡起即得；怪物击杀人类或逼出图腾直接获得 1 个。\n\n"
                     + "图腾不能丢弃或转赠，阵亡时自己的图腾不会掉落。");
             pages.add("复生\n\n把复生图腾拿在手上阵亡时原地复生，消耗 1 个。\n\n"
                     + "没拿在手上就阵亡，可到营地北侧的祭坛站上金块 4 秒复生，空手出发，怪物币清空。");

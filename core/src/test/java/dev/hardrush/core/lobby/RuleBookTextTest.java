@@ -22,7 +22,7 @@ class RuleBookTextTest {
     @Test void hardcoreSplitsTheTotemAndRevivalPages() {
         var hardcore = pages(GameMode.HARDCORE);
         var totem = page(hardcore, "复生图腾");
-        assertTrue(totem.contains("人类被人类击杀会掉落 1 个，人类捡起即得；怪物击杀人类直接获得 1 个。"));
+        assertTrue(totem.contains("人类被人类击杀或逼出图腾时会掉落 1 个，人类捡起即得；怪物击杀人类或逼出图腾直接获得 1 个。"));
         assertTrue(totem.contains("阵亡时自己的图腾不会掉落"));
         var revival = page(hardcore, "复生");
         assertTrue(revival.contains("拿在手上阵亡时原地复生，消耗 1 个"));

@@ -398,12 +398,14 @@ public final class RoundEngine {
      * sits in the adapter's critical queue, so any stale or unqualified state (another round or phase, a
      * changed life, no charge left) commits {@code TOTEM_SAVE_VOID}, which changes no participant, instead of
      * failing. A valid save spends one charge without ending the life. {@code killCredit} is resolved like a
-     * death's: a monster it credits is paid exactly as for killing this human, a human it credits earns nothing.
+     * death's: a monster it credits is paid exactly as for killing this human; a hit that would have dropped a totem
+     * at this human's death ({@link TotemDrop#qualifies}) registers {@code dropToken}, the totem the adapter dropped
+     * at the save, for anyone to take. Nothing else is registered, so a void save leaves no takeable drop.
      */
     public RoundTransition proposeTotemSave(UUID eventId, UUID roundId, UUID playerId, int expectedLifeSequence,
-            Optional<CombatOrigin> killCredit) {
+            Optional<CombatOrigin> killCredit, Optional<UUID> dropToken) {
         Objects.requireNonNull(eventId); Objects.requireNonNull(roundId);
-        Objects.requireNonNull(playerId); Objects.requireNonNull(killCredit);
+        Objects.requireNonNull(playerId); Objects.requireNonNull(killCredit); Objects.requireNonNull(dropToken);
         RoundSnapshot before = capture();
         Participant player = before.participants().get(playerId);
         boolean open = before.phase() == RoundPhase.RUNNING
@@ -417,8 +419,13 @@ public final class RoundEngine {
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         players.put(playerId, player.spendRevivalCharge());
         monsterKiller(before, playerId, killCredit).ifPresent(owner -> rewardMonsterKill(before.rules(), players, owner));
+        var looseTotems = new LinkedHashMap<>(before.looseTotems());
+        if (TotemDrop.qualifies(before, playerId, killCredit)) {
+            dropToken.ifPresent(token -> looseTotems.putIfAbsent(token, new LooseTotem(playerId, expectedLifeSequence,
+                    killCredit.orElseThrow().actor().playerId(), before.challengeNanos())));
+        }
         return proposal(eventId, "TOTEM_SAVE", before, before.phase(), before.remainingPhaseNanos(), players,
-                before.result(), false);
+                before.result(), false, before.timingUncertain(), looseTotems);
     }
 
     public RoundTransition proposeRevival(UUID eventId, UUID roundId, UUID playerId,
@@ -761,7 +768,8 @@ public final class RoundEngine {
     /**
      * The player monster credited with killing {@code victimId}, a hardcore human of {@code before}, by
      * {@code killCredit}: a direct monster attack launched by this round's monster, from no later life or
-     * sortie than its current one. A dying human and a revival totem forced out of one qualify alike.
+     * sortie than its current one. A dying human and a revival totem forced out of one qualify alike, as they do
+     * for a human's attack in {@link TotemDrop#qualifies}.
      */
     static Optional<UUID> monsterKiller(RoundSnapshot before, UUID victimId, Optional<CombatOrigin> killCredit) {
         if (before.rules().mode() != GameMode.HARDCORE || killCredit.isEmpty()) return Optional.empty();
