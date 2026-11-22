@@ -28,7 +28,11 @@ public final class HuntBurrows {
 
     private HuntBurrows() {}
 
-    /** Only where monsters may change the ground, since only digging leads out again. */
+    /**
+     * Only where monsters may change the ground: hollowing the pocket is itself a change, and a zombie or skeleton
+     * leaves only by digging. A creeper, which cannot dig, is hidden all the same (a decision of the design): it waits
+     * to be dug into, or explodes where it lies.
+     */
     public static boolean allowed(ServerLevel level) { return MonsterMining.griefing(level); }
 
     /**
@@ -44,10 +48,10 @@ public final class HuntBurrows {
         level.playSound(null, point.x, point.y + 1, point.z, SoundEvents.SILVERFISH_AMBIENT, SoundSource.HOSTILE, 1, 1);
     }
 
-    /** The hunter has landed in its pocket. */
+    /** The hunter has landed in the pocket whose floor center is {@code point}. */
     public static void entered(ServerPlayer hunter, Vec3 point) {
         HIDDEN.computeIfAbsent(hunter.level().getServer(), ignored -> new HashMap<>())
-                .put(hunter.getUUID(), new Hidden(hunter.level(), BlockPos.containing(point)));
+                .put(hunter.getUUID(), new Hidden(hunter.level(), BlockPos.containing(point.x, point.y + .5, point.z)));
     }
 
     /**
@@ -58,7 +62,7 @@ public final class HuntBurrows {
         var hidden = HIDDEN.get(hunter.level().getServer());
         var burrow = hidden == null ? null : hidden.get(hunter.getUUID());
         if (burrow == null) return false;
-        boolean sealed = burrow.level() == hunter.level() && hunter.blockPosition().equals(burrow.pocket());
+        boolean sealed = burrow.level() == hunter.level() && dev.hardrush.monster.MonsterDiggable.bodyCell(hunter).equals(burrow.pocket());
         for (int dy = 0; sealed && dy < 2; dy++) {
             for (var side : Direction.Plane.HORIZONTAL) {
                 var pos = burrow.pocket().above(dy).relative(side);

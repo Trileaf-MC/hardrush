@@ -30,6 +30,14 @@ public final class MonsterDiggable {
 
     public static boolean is(BlockState state) { return BLOCKS.contains(state.getBlock()); }
 
+    /**
+     * The cell a standing body mostly fills. Not {@code blockPosition()}: that floors the feet, so on soul sand
+     * (14/16 high), a bottom slab, a path or farmland it names the floor block itself, one cell too low.
+     */
+    public static BlockPos bodyCell(net.minecraft.world.entity.Entity body) {
+        return BlockPos.containing(body.getX(), body.getY() + .5, body.getZ());
+    }
+
     public static boolean is(ServerLevel level, BlockPos pos) { return level.isLoaded(pos) && is(level.getBlockState(pos)); }
 
     /**

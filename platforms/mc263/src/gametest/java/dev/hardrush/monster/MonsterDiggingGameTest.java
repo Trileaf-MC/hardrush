@@ -84,6 +84,27 @@ public final class MonsterDiggingGameTest {
         test.succeed();
     }
 
+    /** Soul sand (14/16 high) and a bottom slab floor the feet inside the floor block; the pair still fits the body. */
+    @GameTest(maxTicks = 200)
+    public void lowFloorsStillOpenTheCellsTheBodyFills(GameTestHelper test) {
+        try (var f = new Fixture(test)) {
+            for (var floor : List.of(Blocks.SOUL_SAND.defaultBlockState(), Blocks.STONE_SLAB.defaultBlockState())) {
+                f.level.setBlockAndUpdate(f.feet, floor);
+                double height = floor.getCollisionShape(f.level, f.feet).max(Direction.Axis.Y);
+                f.player.setPosRaw(f.feet.getX() + .5, f.feet.getY() + height, f.feet.getZ() + .5);
+                f.player.setOnGround(true);
+                test.assertValueEqual(MonsterDiggable.bodyCell(f.player), f.feet.above(), "The body fills the cell above the low floor");
+                f.set(f.front, Blocks.STONE); f.set(f.front.above(), Blocks.STONE); f.set(f.front.above(2), Blocks.STONE);
+                f.dig(f.front.above());
+                test.assertTrue(f.air(f.front.above()) && f.air(f.front.above(2)) && f.solid(f.front),
+                        "Aiming straight ahead opens the two cells the body fills, not the floor ahead: " + floor);
+            }
+            f.set(f.feet, Blocks.AIR);
+            f.player.setPosRaw(f.feet.getX() + .5, f.feet.getY(), f.feet.getZ() + .5);
+        }
+        test.succeed();
+    }
+
     @GameTest(maxTicks = 200)
     public void onlyHandsOnPlainGroundOutsideProtectionMayDig(GameTestHelper test) {
         try (var f = new Fixture(test)) {

@@ -139,7 +139,7 @@ public final class MonsterMining {
         else syncInput(player, GameType.SURVIVAL);
     }
 
-    /** Whether this body may dig at all right now; the burrow search only hides monsters that can dig back out. */
+    /** Whether monsters may change the ground here at all: digging, and hollowing burrows. */
     public static boolean griefing(ServerLevel level) { return level.getGameRules().get(GameRules.MOB_GRIEFING); }
 
     private static void cancel(ServerPlayer player) {
@@ -277,7 +277,7 @@ public final class MonsterMining {
      * and straight up or down its own column, only the aimed block goes, so no dig leaves a two-deep pit.
      */
     static BlockPos partner(ServerPlayer player, BlockPos primary) {
-        var feet = player.blockPosition();
+        var feet = MonsterDiggable.bodyCell(player);
         if (primary.getX() == feet.getX() && primary.getZ() == feet.getZ()) return null;
         int rise = primary.getY() - feet.getY();
         if (rise < 0) return null;
