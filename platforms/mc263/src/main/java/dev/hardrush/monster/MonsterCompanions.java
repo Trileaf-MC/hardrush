@@ -355,6 +355,8 @@ public final class MonsterCompanions {
      * configured again when it loads.
      */
     private static boolean catchUp(Mob mob, ServerPlayer owner) {
+        // A hidden burrow has no room around it: followers would land in the quarry's tunnel and give it away.
+        if (dev.hardrush.hunt.HuntBurrows.hidden(owner)) return false;
         var destination = besideOwner(mob, owner);
         if (destination == null) return false;
         mob.getNavigation().stop();
