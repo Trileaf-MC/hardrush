@@ -74,7 +74,7 @@ public final class SafeDeployment {
     public static final double BURROW_NEAR = 2, BURROW_FAR = 10;
     static final double IDEAL_BURROW = 4;
     /** How far the quarry's own space is explored for walls, in blocks and in cells. */
-    static final int BURROW_RADIUS = 11, BURROW_VISITS = 2048, BURROW_CANDIDATES = 12;
+    static final int BURROW_RADIUS = 11, BURROW_VISITS = 1024, BURROW_CANDIDATES = 12;
     private static final double EPSILON = 1.0E-7;
     private static final Set<ResourceKey<Structure>> LAIRS = Set.of(BuiltinStructures.FORTRESS, BuiltinStructures.BASTION_REMNANT,
             BuiltinStructures.WOODLAND_MANSION, BuiltinStructures.MINESHAFT, BuiltinStructures.MINESHAFT_MESA,
@@ -163,6 +163,11 @@ public final class SafeDeployment {
         private int candidates;
         private final ArrayDeque<Candidate> queue = new ArrayDeque<>();
         private boolean sweeping;
+        /**
+         * A sweep that found no walkable landing scans for burrows once, after its ordinary candidates and in a tick of
+         * its own instead of sharing one with paths; a sweep that found one never pays for it.
+         */
+        private boolean burrowsDue, burrowsScanned;
         private long sweepStarted, nextSweep;
         private Candidate best, closest, lastClosest, burrow, lastBurrow;
         private Quarry swept;
@@ -219,11 +224,15 @@ public final class SafeDeployment {
                 if (tickStarted - nextSweep < 0) return result();
                 begin(tickStarted);
             }
+            if (burrowsDue) { burrowsDue = false; burrowsScanned = true; queue.addAll(burrows()); return result(); }
             for (int paths = 0; !queue.isEmpty() && paths < PATHS_PER_TICK; paths++) {
                 if (paths > 0 && clock.getAsLong() - tickStarted >= TICK_BUDGET_NANOS) return result();
                 evaluate(queue.poll());
             }
-            if (queue.isEmpty()) return finish(clock.getAsLong());
+            if (queue.isEmpty()) {
+                if (best == null && !burrowsScanned && !swept.atSea() && HuntBurrows.allowed(level)) { burrowsDue = true; return result(); }
+                return finish(clock.getAsLong());
+            }
             return result();
         }
 
@@ -259,7 +268,7 @@ public final class SafeDeployment {
         }
 
         private void begin(long now) {
-            sweeping = true; sweepStarted = now; best = null; closest = null; burrow = null; swept = quarry;
+            sweeping = true; sweepStarted = now; best = null; closest = null; burrow = null; burrowsDue = burrowsScanned = false; swept = quarry;
             var center = BlockPos.containing(swept.position());
             int reach = FALLBACK_RADIUS + FALLBACK_PATH + 8;
             region = new PathNavigationRegion(level, center.offset(-reach, -reach, -reach), center.offset(reach, reach, reach));
@@ -304,8 +313,6 @@ public final class SafeDeployment {
                 column(list, seen, angle, radius, Source.RING);
             }
             queue.clear(); queue.addAll(list.subList(0, Math.min(MAX_CANDIDATES, list.size())));
-            // Walls of the quarry's own space; only dug into if nothing walkable turns up within five seconds.
-            if (HuntBurrows.allowed(level)) queue.addAll(burrows());
         }
 
         /**
@@ -406,6 +413,8 @@ public final class SafeDeployment {
 
         private void evaluate(Candidate candidate) {
             if (candidate.source == Source.BURROW) {
+                // A walkable landing already wins this sweep: no burrow path is worth computing.
+                if (best != null) return;
                 // The wall is opened by digging; from there on it is an ordinary walk to the quarry.
                 if (!canBurrowAt(level, player, candidate.point, candidate.exit, swept.position(), humans)) return;
                 candidates++;
@@ -574,14 +583,15 @@ public final class SafeDeployment {
         var pocket = BlockPos.containing(point);
         int dx = pocket.getX() - exit.getX(), dz = pocket.getZ() - exit.getZ();
         if (pocket.getY() != exit.getY() || Math.abs(dx) + Math.abs(dz) != 2 || dx != 0 && dz != 0) return false;
-        var wall = exit.offset(dx / 2, 0, dz / 2);
-        if (!loaded(level, new AABB(pocket).minmax(new AABB(exit)).inflate(1, 2, 1))
-                || !level.getWorldBorder().isWithinBounds(pocket) || !level.getWorldBorder().isWithinBounds(exit)) return false;
+        // Cheapest first: most cells of a wide cave fail on distance alone.
         double distance = point.distanceTo(target);
         if (distance < BURROW_NEAR - EPSILON || distance > BURROW_FAR + EPSILON) return false;
         for (var human : humans) if (point.distanceToSqr(human) < BURROW_NEAR * BURROW_NEAR - EPSILON) return false;
         int ceiling = level.getMinY() + level.dimensionType().logicalHeight();
         if (target.y < ceiling && point.y >= ceiling) return false;
+        var wall = exit.offset(dx / 2, 0, dz / 2);
+        if (!loaded(level, new AABB(pocket).minmax(new AABB(exit)).inflate(1, 2, 1))
+                || !level.getWorldBorder().isWithinBounds(pocket) || !level.getWorldBorder().isWithinBounds(exit)) return false;
         // The way out: an open standing cell, two blocks of plain ground, and the pocket behind them.
         for (var open : new BlockPos[]{exit, exit.above()}) {
             var state = level.getBlockState(open);

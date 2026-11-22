@@ -147,6 +147,69 @@ public final class HuntBurrowGameTest {
         test.succeed();
     }
 
+    @GameTest(maxTicks = 300)
+    public void aBurrowWinsOverTheClosestWalkAtFiveSeconds(GameTestHelper test) {
+        var f = new Fixture(test, test.getLevel(), 60, Blocks.STONE);
+        boolean griefing = f.level.getGameRules().get(GameRules.MOB_GRIEFING);
+        try (var ignored = f.unprotected()) {
+            // Open ground all round the sealed block: plenty of walks that end at its outside wall.
+            f.ground(32);
+            f.tunnel(7);
+            f.level.getGameRules().set(GameRules.MOB_GRIEFING, false, f.level.getServer());
+            var plainClock = new AtomicLong();
+            var plain = complete(f.search(MonsterRole.ZOMBIE, f.digging(new Vec3(1, 0, 0)), List.of(f.target), plainClock), plainClock);
+            test.assertTrue(plain.status() == SafeDeployment.Status.FOUND && plain.fallback() && !plain.burrowed(),
+                    "Without burrows the closest walk is admitted at five seconds");
+            f.level.getGameRules().set(GameRules.MOB_GRIEFING, true, f.level.getServer());
+            var clock = new AtomicLong();
+            var result = complete(f.search(MonsterRole.ZOMBIE, f.digging(new Vec3(1, 0, 0)), List.of(f.target), clock), clock);
+            test.assertTrue(result.burrowed() && !result.fallback(), "The burrow beside the quarry beats the walk to its outside wall");
+            test.assertTrue(clock.get() <= SafeDeployment.FALLBACK_AFTER_NANOS + 3 * TICK, "And answers at five seconds");
+        } finally {
+            f.level.getGameRules().set(GameRules.MOB_GRIEFING, griefing, f.level.getServer());
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks = 300)
+    public void twoMonstersNeverShareOrTouchABurrow(GameTestHelper test) {
+        var f = new Fixture(test, test.getLevel(), 60, Blocks.STONE);
+        try (var ignored = f.unprotected()) {
+            f.tunnel(7);
+            var firstClock = new AtomicLong();
+            var first = complete(f.search(MonsterRole.ZOMBIE, f.digging(new Vec3(1, 0, 0)), List.of(f.target), firstClock), firstClock);
+            HuntBurrows.carve(f.level, first.position(), f.hunter);
+            var secondClock = new AtomicLong();
+            var second = complete(f.search(MonsterRole.ZOMBIE, f.digging(new Vec3(1, 0, 0)), List.of(f.target), secondClock), secondClock);
+            test.assertTrue(first.burrowed() && second.burrowed(), "Both monsters are hidden");
+            var a = BlockPos.containing(first.position());
+            var b = BlockPos.containing(second.position());
+            test.assertTrue(Math.abs(a.getX() - b.getX()) + Math.abs(a.getY() - b.getY()) + Math.abs(a.getZ() - b.getZ()) > 1
+                    && !b.equals(a.above()) && !b.above().equals(a),
+                    "The second pocket neither reuses nor touches the hollowed first one: " + a + " / " + b);
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks = 200)
+    public void aSoulSandFloorStillCountsAsStandingInThePocket(GameTestHelper test) {
+        var f = new Fixture(test, test.getLevel(), 60, Blocks.NETHERRACK);
+        try (var ignored = f.unprotected()) {
+            f.tunnel(7);
+            var pocket = f.feet.east(2);
+            f.level.setBlock(pocket.below(), Blocks.SOUL_SAND.defaultBlockState(), 2);
+            var point = Vec3.atBottomCenterOf(pocket);
+            test.assertTrue(f.burrow(point, f.feet), "Soul sand is a floor a burrow may stand on");
+            HuntBurrows.carve(f.level, point, f.hunter);
+            f.hunter.teleportTo(f.level, point.x, point.y, point.z, java.util.Set.of(), 0, 0, true);
+            HuntBurrows.entered(f.hunter, point);
+            // Settled onto soul sand, the feet sink into the floor block.
+            f.hunter.setPosRaw(point.x, point.y - .125, point.z);
+            test.assertTrue(HuntBurrows.hidden(f.hunter), "Sunk into soul sand, it is still hidden in its pocket");
+        }
+        test.succeed();
+    }
+
     private static SafeDeployment.Result complete(SafeDeployment.Search search, AtomicLong clock) {
         for (int i = 0; i < 1400 && search.result().status() == SafeDeployment.Status.PENDING; i++) { search.tick(); clock.addAndGet(TICK); }
         if (search.result().status() == SafeDeployment.Status.PENDING) throw new IllegalStateException("Search failed to yield a bounded result");
@@ -174,6 +237,13 @@ public final class HuntBurrowGameTest {
                 level.setBlock(feet.offset(x, y, z), ground.defaultBlockState(), 2);
             for (int x = -length + 1; x <= 0; x++) for (int y = 0; y < 2; y++)
                 level.setBlock(feet.offset(x, y, 0), Blocks.AIR.defaultBlockState(), 2);
+        }
+        /** Open walking ground of {@code radius} around the quarry, with rock below. */
+        void ground(int radius) {
+            for (int x = -radius; x <= radius; x++) for (int z = -radius; z <= radius; z++) {
+                for (int y = -6; y <= -1; y++) level.setBlock(feet.offset(x, y, z), Blocks.STONE.defaultBlockState(), 2);
+                for (int y = 0; y <= 8; y++) level.setBlock(feet.offset(x, y, z), Blocks.AIR.defaultBlockState(), 2);
+            }
         }
         boolean is(BlockPos pos, Block block) { return level.getBlockState(pos).is(block); }
         boolean burrow(Vec3 point, BlockPos exit) { return SafeDeployment.canBurrowAt(level, hunter, point, exit, target, List.of(target)); }
