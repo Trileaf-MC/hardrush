@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -22,8 +23,14 @@ public final class HuntTrails {
     public static final int MOTION_SAMPLES = 21;
     private static final Map<MinecraftServer, Map<ServerPlayer, Track>> TRACKS = new IdentityHashMap<>();
 
+    /** Mining older than this no longer says which way the quarry is tunnelling. */
+    public static final int DIGGING_TICKS = 200;
+
     private static final class Track {
         ServerLevel level;
+        /** The quarry's eye and the block it broke last, and when. */
+        Vec3 minedFrom, mined;
+        int minedTick;
         final ArrayDeque<Vec3> trail = new ArrayDeque<>();
         final ArrayDeque<Vec3> motion = new ArrayDeque<>();
     }
@@ -46,11 +53,30 @@ public final class HuntTrails {
             tracks.remove(player); return;
         }
         var track = tracks.computeIfAbsent(player, ignored -> new Track());
-        if (track.level != level) { track.level = level; track.trail.clear(); track.motion.clear(); }
+        if (track.level != level) { track.level = level; track.trail.clear(); track.motion.clear(); track.mined = null; }
         push(track.motion, player.position(), MOTION_SAMPLES);
         // Only real footing: never a boat, an elytra glide, a swim or a mid-air jump.
         if (player.onGround() && !player.isPassenger() && !player.isFallFlying() && !player.isSwimming())
             push(track.trail, player.position(), TRAIL_SAMPLES);
+    }
+
+    /** A block the player broke by hand; the latest one tells which way it is tunnelling. */
+    public static void mined(ServerPlayer player, BlockPos pos) {
+        if (!(player.level() instanceof ServerLevel level) || !player.isAlive() || player.isSpectator()) return;
+        var tracks = TRACKS.computeIfAbsent(level.getServer(), ignored -> new IdentityHashMap<>());
+        var track = tracks.computeIfAbsent(player, ignored -> new Track());
+        if (track.level != level) { track.level = level; track.trail.clear(); track.motion.clear(); }
+        track.minedFrom = player.getEyePosition(); track.mined = Vec3.atCenterOf(pos);
+        track.minedTick = level.getServer().getTickCount();
+    }
+
+    /** Horizontal unit heading towards the block broken in the last ten seconds, or zero when it has not been mining. */
+    public static Vec3 digging(ServerPlayer player) {
+        var track = track(player);
+        if (track == null || track.mined == null
+                || player.level().getServer().getTickCount() - track.minedTick > DIGGING_TICKS) return Vec3.ZERO;
+        var heading = track.mined.subtract(track.minedFrom).multiply(1, 0, 1);
+        return heading.lengthSqr() < 1.0E-4 ? Vec3.ZERO : heading.normalize();
     }
 
     /** Newest first, in the player's current dimension only. */

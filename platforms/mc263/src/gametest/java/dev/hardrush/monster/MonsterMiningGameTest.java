@@ -29,7 +29,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /** Headless native player/door tests; actual client prediction and appearance remain manual checks. */
-public final class MonsterDoorBreakingGameTest {
+public final class MonsterMiningGameTest {
     @GameTest(maxTicks = 200)
     public void woodAndCopperDoorsUseNativeDurationWithoutClickResets(GameTestHelper test) {
         try (var f = new Fixture(test)) {
@@ -63,7 +63,7 @@ public final class MonsterDoorBreakingGameTest {
     @GameTest(maxTicks = 200)
     public void onlyEligibleDoorsAndBodiesCanStartBreaking(GameTestHelper test) {
         try (var f = new Fixture(test)) {
-            for (var block : List.of(Blocks.IRON_DOOR, Blocks.OAK_TRAPDOOR, Blocks.OAK_FENCE_GATE, Blocks.STONE)) {
+            for (var block : List.of(Blocks.IRON_DOOR, Blocks.OAK_TRAPDOOR, Blocks.OAK_FENCE_GATE, Blocks.OAK_PLANKS)) {
                 f.door(block);
                 test.assertFalse(f.use(), "Iron doors, trapdoors, fence gates and ordinary blocks cannot be broken");
                 f.mining(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, f.lower);
@@ -226,7 +226,7 @@ public final class MonsterDoorBreakingGameTest {
             test.assertTrue(f.client.packets().getLast() instanceof ClientboundBlockUpdatePacket, "Release resynchronizes the door");
             test.assertTrue(f.client.packets().stream().anyMatch(p -> p instanceof ClientboundBlockDestructionPacket progress
                     && progress.getId() == ~f.player.getId() && progress.getProgress() == -1), "Release clears owner progress");
-            f.client.clearPackets(); MonsterDoorBreaking.refreshInput(f.player);
+            f.client.clearPackets(); MonsterMining.refreshInput(f.player);
             test.assertTrue(f.clientMode(GameType.SURVIVAL), "Cosmetic respawn can restore the active input mode");
             f.player.setYRot(180); f.tick(1);
             test.assertValueEqual(speed.getValue(), 2.5, "Looking away restores the original attribute without overwriting its base");
@@ -259,13 +259,13 @@ public final class MonsterDoorBreakingGameTest {
         void emptyHand() { player.getInventory().setSelectedSlot(0); player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY); }
         void faceDoor() { player.setYRot(0); player.setXRot(0); }
         void griefing(boolean value) { level.getGameRules().set(GameRules.MOB_GRIEFING, value, level.getServer()); }
-        void tick(int count) { for (int i = 0; i < count; i++) MonsterDoorBreaking.tick(player); }
+        void tick(int count) { for (int i = 0; i < count; i++) MonsterMining.tick(player); }
         void punch() { player.connection.handlePunch(ServerboundPunchPacket.INSTANCE); }
-        void hold(int count) { for (int i = 0; i < count; i++) { punch(); MonsterDoorBreaking.tick(player); } }
+        void hold(int count) { for (int i = 0; i < count; i++) { punch(); MonsterMining.tick(player); } }
         void mining(ServerboundPlayerActionPacket.Action action, BlockPos pos) {
             player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(action, pos, Direction.NORTH, ++sequence));
         }
-        boolean use() { return MonsterDoorBreaking.start(player, lower); }
+        boolean use() { return MonsterMining.start(player, lower); }
         boolean clientMode(GameType mode) {
             return client.packets().stream().anyMatch(p -> p instanceof ClientboundGameEventPacket game
                     && game.getEvent() == ClientboundGameEventPacket.CHANGE_GAME_MODE && game.getParam() == mode.getId());

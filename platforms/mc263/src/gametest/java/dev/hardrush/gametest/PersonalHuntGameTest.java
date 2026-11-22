@@ -243,6 +243,35 @@ public final class PersonalHuntGameTest {
                 .thenIdle(1)
                 .thenExecute(() -> {
                     test.assertFalse(f.glint(f.compass(f.c)), "A resting compass is dark");
+                    // A seals itself into a short stone tunnel facing east; nothing walkable reaches it any more.
+                    var feet = BlockPos.containing(f.anchor[0]).offset(0, 0, 40);
+                    f.burrowFeet = feet;
+                    for (int x = -7; x <= 7; x++) for (int z = -7; z <= 7; z++) for (int y = -1; y <= 4; y++)
+                        f.levels[0].setBlock(feet.offset(x, y, z), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 2);
+                    for (int x = -3; x <= 0; x++) for (int y = 0; y < 2; y++)
+                        f.levels[0].setBlock(feet.offset(x, y, 0), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+                    f.a.player.teleportTo(f.levels[0], feet.getX() + .5, feet.getY(), feet.getZ() + .5, Set.of(), -90, 0, true);
+                    f.a.client.acknowledge();
+                    f.move(f.c, 0);
+                })
+                .thenWaitUntil(() -> f.await(!dev.hardrush.hunt.HuntRetracks.resting(f.c.player), "the compass rests off before the burrow retrack"))
+                .thenExecute(() -> test.assertTrue(LobbyRuntime.useRetrack(f.c.player, f.compass(f.c)), "The compass starts a retrack to the sealed quarry"))
+                // The search clock is the fixture's; walking landings never come, so let five seconds pass for the burrow.
+                .thenWaitUntil(() -> { f.searchClock.addAndGet(100_000_000L);
+                    // The channel shows on the compass as a cooldown too: wait for the landing itself.
+                    f.await(!LobbyRuntime.channeling(f.c.player) && f.c.player.position().distanceTo(f.a.player.position()) <= 10
+                            && dev.hardrush.hunt.HuntRetracks.resting(f.c.player), "retrack lands in a burrow"); })
+                .thenExecute(() -> {
+                    var pocket = f.c.player.blockPosition();
+                    var level = f.levels[0];
+                    test.assertTrue(f.c.player.level() == level && pocket.equals(f.burrowFeet.east(2)),
+                            "The burrow lies right ahead of the quarry's tunnel: " + pocket);
+                    test.assertTrue(level.getBlockState(pocket).isAir() && level.getBlockState(pocket.above()).isAir(), "The pocket was hollowed on landing");
+                    test.assertTrue(level.getBlockState(f.burrowFeet.east()).is(net.minecraft.world.level.block.Blocks.STONE)
+                            && level.getBlockState(f.burrowFeet.east().above()).is(net.minecraft.world.level.block.Blocks.STONE),
+                            "The wall is left for the monster to dig");
+                    test.assertTrue(dev.hardrush.hunt.HuntBurrows.hidden(f.c.player), "The monster lies hidden in its sealed pocket");
+                    f.move(f.a, 0);
                     f.move(f.c, 1);
                 })
                 .thenIdle(2)
@@ -365,6 +394,7 @@ public final class PersonalHuntGameTest {
         final Peer a, b, c, d;
         final List<Peer> peers;
         final AtomicLong clock = new AtomicLong(System.nanoTime()), searchClock = new AtomicLong(1_000_000_000L);
+        BlockPos burrowFeet;
         final LinkedBlockingQueue<Runnable> held = new LinkedBlockingQueue<>();
         final AtomicReference<RoundSession.Reply> reply = new AtomicReference<>();
         final ServerLevel[] levels = new ServerLevel[3]; final Vec3[] anchor = new Vec3[3];

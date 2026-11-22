@@ -287,6 +287,35 @@ public final class MonsterCompanionGameTest {
         });
     }
 
+    /** Hidden in a sealed burrow, its followers stay put: the only room nearby is the quarry's tunnel. */
+    @GameTest(maxTicks = 200)
+    public void followersWaitWhileTheOwnerHidesInABurrow(GameTestHelper test) {
+        var owner = MonsterRoleGameTest.actor(test);
+        test.runAfterDelay(80, () -> {
+            try {
+                MonsterRoles.select(owner, "zombie");
+                var zombie = summon(test, owner, false, false);
+                ((MonsterMobAccessor) zombie).hardrush$goalSelector().removeAllGoals(ignored -> true);
+                zombie.setNoGravity(true);
+                var cell = owner.blockPosition();
+                for (int y = 0; y < 2; y++) for (var side : net.minecraft.core.Direction.Plane.HORIZONTAL)
+                    owner.level().setBlockAndUpdate(cell.above(y).relative(side), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+                dev.hardrush.hunt.HuntBurrows.entered(owner, owner.position());
+                var far = owner.position().add(-18, 0, 0);
+                zombie.snapTo(far.x, far.y, far.z, 0, 0);
+                MonsterCompanions.regroup(owner);
+                test.assertTrue(zombie.position().distanceTo(far) < 1, "A hidden owner's follower is not brought into the tunnel");
+                owner.level().setBlockAndUpdate(cell.east(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+                owner.level().setBlockAndUpdate(cell.east().above(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+                MonsterCompanions.regroup(owner);
+                test.assertTrue(zombie.distanceToSqr(owner) < 64, "Once the wall is open the follower comes along again");
+                for (int y = 0; y < 2; y++) for (var side : net.minecraft.core.Direction.Plane.HORIZONTAL)
+                    owner.level().setBlockAndUpdate(cell.above(y).relative(side), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+                test.succeed();
+            } finally { clean(owner); }
+        });
+    }
+
     /** A retrack lands the owner far away; every follower comes along before its old chunks can unload. */
     @GameTest(maxTicks = 200)
     public void retrackRegroupsFollowersBesideOwner(GameTestHelper test) {

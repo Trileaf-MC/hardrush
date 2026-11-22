@@ -22,6 +22,8 @@ public final class RoundEngine {
     public static final long MAX_SUCCESS_CELEBRATION_MILLIS = 180_000;
     public static final long MONSTER_COOLDOWN_NANOS = 30_000_000_000L;
     public static final long RETRACK_COOLDOWN_MILLIS = 10_000;
+    /** Bare-handed stone: hardness 1.5 x 100 ticks without the correct tool. */
+    public static final long DIG_MILLIS = 7_500;
 
     /** Wait before hunting after death, disconnect, recall or a first monster life. */
     public static long deployCooldownNanos(RulesConfig rules) {
@@ -39,6 +41,12 @@ public final class RoundEngine {
     public static long retrackCooldownMillis(RulesConfig rules) {
         Double millis = rules.combatValues().get("monster.retrackCooldownMillis");
         return millis == null ? RETRACK_COOLDOWN_MILLIS : Math.round(millis);
+    }
+
+    /** The longest a monster takes to dig one block; rounds stored before the setting keep its default. */
+    public static long digMillis(RulesConfig rules) {
+        Double millis = rules.combatValues().get("monster.digMillis");
+        return millis == null ? DIG_MILLIS : Math.round(millis);
     }
 
     /** Live server milliseconds, shared by every completion path and its player-facing duration. */

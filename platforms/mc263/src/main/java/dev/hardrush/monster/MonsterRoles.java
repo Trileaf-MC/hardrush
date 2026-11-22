@@ -68,14 +68,14 @@ public final class MonsterRoles {
         });
         AttackBlockCallback.EVENT.register((p, l, h, pos, face) -> {
             if (!isMonster(p)) return InteractionResult.PASS;
-            if (p instanceof ServerPlayer owner && MonsterDoorBreaking.acceptsAttack(owner, pos)) return InteractionResult.PASS;
-            if (p instanceof ServerPlayer owner) MonsterDoorBreaking.clear(owner);
+            if (p instanceof ServerPlayer owner && MonsterMining.acceptsAttack(owner, pos)) return InteractionResult.PASS;
+            if (p instanceof ServerPlayer owner) MonsterMining.clear(owner);
             return InteractionResult.FAIL;
         });
         // Every right-click callback first drops the rest of a click a control already answered; see MonsterClicks.
         UseBlockCallback.EVENT.register((p, l, hand, hit) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
-            MonsterDoorBreaking.useBlock(owner, hit.getBlockPos());
+            MonsterMining.useBlock(owner, hit.getBlockPos(), hit.getDirection());
             var step = MonsterClicks.Step.of(hand, false);
             if (MonsterClicks.answered(owner, step)) return InteractionResult.FAIL;
             if (MonsterSoulcatcher.holds(owner, hand)) {
@@ -91,7 +91,7 @@ public final class MonsterRoles {
         });
         UseEntityCallback.EVENT.register((p, l, hand, target, hit) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
-            MonsterDoorBreaking.clear(owner);
+            MonsterMining.clear(owner);
             var step = MonsterClicks.Step.of(hand, false);
             if (MonsterClicks.answered(owner, step)) return InteractionResult.FAIL;
             if (MonsterSoulcatcher.holds(owner, hand)) {
@@ -103,7 +103,7 @@ public final class MonsterRoles {
         });
         UseItemCallback.EVENT.register((p, l, hand) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
-            MonsterDoorBreaking.clear(owner);
+            MonsterMining.clear(owner);
             var step = MonsterClicks.Step.of(hand, true);
             if (MonsterClicks.answered(owner, step)) return InteractionResult.FAIL;
             if (MonsterSoulcatcher.holds(owner, hand)) {
@@ -578,13 +578,13 @@ public final class MonsterRoles {
             if (aiming != role.volleyPose) { role.volleyPose = aiming; MonsterDisguise.refreshMetadata(player); }
             if (!MonsterRoundRuntime.canAct(player)) {
                 role.burstRemaining = 0; role.chargeTick = -1; MonsterNativeWeapons.clear(player);
-                MonsterDoorBreaking.clear(player);
+                MonsterMining.clear(player);
                 MonsterCreeper.cancelInput(player); player.stopUsingItem(); continue;
             }
             if (role.player != player || role.model == null || role.model.level() != player.level()) bind(player, role, false);
             player.setSprinting(false);
             if (player.gameMode.getGameModeForPlayer() != GameType.ADVENTURE) {
-                MonsterDoorBreaking.clear(player);
+                MonsterMining.clear(player);
                 player.setGameMode(GameType.ADVENTURE);
             }
             player.getFoodData().setFoodLevel(6); player.getFoodData().setSaturation(0);
@@ -593,7 +593,7 @@ public final class MonsterRoles {
             if (role.lastBodyTick != server.getTickCount()) {
                 role.lastBodyTick = server.getTickCount();
                 updateEnvironment(player); MonsterNativeWeapons.tick(player);
-                MonsterDoorBreaking.tick(player);
+                MonsterMining.tick(player);
                 if (role.form == MonsterForm.CREEPER) MonsterCreeper.tick(player);
             }
             if (role.chargeTick >= 0 && (!player.isUsingItem() || !player.getItemInHand(role.bowHand).is(Items.BOW))) role.chargeTick = -1;
@@ -616,7 +616,7 @@ public final class MonsterRoles {
     }
     public static void onDisconnect(ServerPlayer player) {
         var role = ROLES.get(player.getUUID()); if (role == null) return;
-        stopActions(player); MonsterCompanions.clearOwner(player);
+        stopActions(player); MonsterMining.forget(player); MonsterCompanions.clearOwner(player);
         role.disconnectedHealth = player.getHealth(); role.disconnectedSource = player;
         role.disconnectedSlot = player.getInventory().getSelectedSlot();
         player.closeContainer(); role.disconnectedInventory = copyInventory(player);
@@ -640,12 +640,12 @@ public final class MonsterRoles {
     }
     private static void stopActions(ServerPlayer player) {
         var role = ROLES.get(player.getUUID()); if (role != null) { role.burstRemaining = 0; role.chargeTick = -1; }
-        MonsterDoorBreaking.clear(player);
+        MonsterMining.clear(player);
         MonsterNativeWeapons.clear(player); MonsterCreeper.clear(player); player.stopUsingItem();
     }
 
     public static boolean attack(ServerPlayer player, Entity target) {
-        MonsterDoorBreaking.clear(player);
+        MonsterMining.clear(player);
         dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "攻击");
         var role = ROLES.get(player.getUUID());
         if (role == null || !MonsterRoundRuntime.canAct(player) || !player.isAlive() || role.form == MonsterForm.CREEPER
@@ -664,7 +664,7 @@ public final class MonsterRoles {
     public static boolean useControl(ServerPlayer player, InteractionHand hand) {
         var role = ROLES.get(player.getUUID());
         if (role == null || !player.isAlive()) return false;
-        MonsterDoorBreaking.clear(player);
+        MonsterMining.clear(player);
         var item = player.getItemInHand(hand);
         if (MonsterItems.matches(player, item, RETURN_SHARD)) return dev.hardrush.lobby.LobbyRuntime.useReturn(player);
         if (MonsterItems.matches(player, item, HuntRetracks.PURPOSE)) return dev.hardrush.lobby.LobbyRuntime.useRetrack(player, item);
@@ -860,7 +860,7 @@ public final class MonsterRoles {
     }
 
     private static void bind(ServerPlayer player, Role role, boolean heal) {
-        MonsterDoorBreaking.clear(player);
+        MonsterMining.clear(player);
         float resumedHealth = role.player == null ? role.disconnectedHealth : Float.NaN;
         role.player = player; role.disconnectedSource = null;
         // Unregistered template: peaceful difficulty must not veto a body that never spawns.
