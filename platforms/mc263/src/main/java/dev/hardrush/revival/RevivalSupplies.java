@@ -62,13 +62,12 @@ public final class RevivalSupplies {
                 spot = top; break search;
             }
         }
-        if (spot == null) { unpack(player); return; }
-        level.setBlock(spot, Blocks.CHEST.defaultBlockState(), 3);
+        if (spot == null || !level.setBlock(spot, Blocks.CHEST.defaultBlockState(), 3)) { unpack(player); return; }
         RandomizableContainer.setBlockEntityLootTable(level, level.getRandom(), spot, BuiltInLootTables.SPAWN_BONUS_CHEST);
         var torch = Blocks.TORCH.defaultBlockState();
         for (var direction : Direction.Plane.HORIZONTAL) {
             var at = spot.relative(direction);
-            // Unlike world generation, never replace anything a player may have built or that stands there.
+            // Unlike world generation, only air or a replaceable plant such as short grass gives way, never a solid or built block.
             if (level.getBlockState(at).canBeReplaced() && level.getFluidState(at).isEmpty() && torch.canSurvive(level, at)
                     && !at.equals(origin) && !at.equals(origin.above())) level.setBlock(at, torch, 3);
         }
@@ -96,7 +95,9 @@ public final class RevivalSupplies {
     /** Into the backpack; whatever does not fit falls at the player's feet. */
     private static void give(ServerPlayer player, ItemStack stack) {
         if (stack.isEmpty()) return;
-        if (!player.getInventory().add(stack) && !stack.isEmpty()) player.spawnAtLocation(player.level(), stack);
+        // A partial fit still answers true and leaves the rest in the stack.
+        player.getInventory().add(stack);
+        if (!stack.isEmpty()) player.spawnAtLocation(player.level(), stack);
     }
 
     /** Whether {@code life}'s supplies hold anything bought at all. */

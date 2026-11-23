@@ -136,6 +136,11 @@ public record RulesConfig(
                 30_000, 90_000, 30_000).withEconomyDefaults();
     }
 
+    /** Longer blessings that still lengthen the altar's blessing before it reaches its five-minute cap. */
+    private static final int LONGER_BLESSING_STEPS = (int) Math.ceil(
+            (double) (dev.hardrush.core.round.WitchRecord.MAX_BLESSING_MILLIS - dev.hardrush.core.round.WitchRecord.BLESSING_MILLIS)
+                    / dev.hardrush.core.round.WitchRecord.BLESSING_STEP_MILLIS);
+
     /** Monster coin economy; each offer's price doubles per purchase within one sortie. */
     private static final Map<String, Double> COIN_DEFAULTS = Map.ofEntries(
             Map.entry("coin.starter", 6.0),
@@ -388,6 +393,11 @@ public record RulesConfig(
             throw new IllegalArgumentException("悬赏倍率必须在 1 与 100 之间: " + key);
         }
         if (key.startsWith("coin.limit.") && value > 8) throw new IllegalArgumentException("单次出场购买上限不能超过 8: " + key);
+        // Revival supplies delivered once per life: a second purchase would be paid for and never handed out.
+        if (java.util.Set.of("coin.limit.bonusChest", "coin.limit.ironBucket", "coin.limit.ironPickaxe", "coin.limit.shield").contains(key)
+                && value > 1) throw new IllegalArgumentException("只交付一次的复生补给限购只能为 1: " + key);
+        if (key.equals("coin.limit.longerBlessing") && value > LONGER_BLESSING_STEPS)
+            throw new IllegalArgumentException("延长庇护的档数不能超过上限能容纳的 " + LONGER_BLESSING_STEPS + " 档: " + key);
         if (key.equals("zombie.summonMaxDistance") && value > 30_000_000) {
             throw new IllegalArgumentException("召唤距离超出有效世界范围");
         }

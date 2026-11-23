@@ -35,15 +35,28 @@ public final class WitchGuide {
     // Clicks only ever answer a guide this class has shown, so registering on first use is early enough.
     static { DialogClicks.register(ACTIONS, WitchGuide::clicked); }
 
-    static boolean pending(RoundSnapshot round, Participant participant) {
-        return !participant.witch().guideSeen() && !SHOWN.contains(List.of(round.roundId(), participant.id()));
+    /**
+     * Whether the guide is still owed. One already shown whose commit was refused (another commit in flight) is
+     * recorded again here instead of being shown twice, so a restart does not repeat it either.
+     */
+    static boolean pending(CampAccess access, RoundSnapshot round, Participant participant) {
+        if (participant.witch().guideSeen()) return false;
+        if (!SHOWN.contains(List.of(round.roundId(), participant.id()))) return true;
+        record(access, round, participant);
+        return false;
     }
 
     /** Shows the first page and records it as seen; closing it unread counts too. */
     static void show(ServerPlayer player, CampAccess access, RoundSnapshot round, Participant participant) {
+        // Earlier rounds' entries are never asked about again.
+        SHOWN.removeIf(entry -> !entry.getFirst().equals(round.roundId()));
         SHOWN.add(List.of(round.roundId(), participant.id()));
-        access.session().requestWitchGuideSeen(round.roundId(), participant.id(), reply -> {});
+        record(access, round, participant);
         page(player, 0);
+    }
+
+    private static void record(CampAccess access, RoundSnapshot round, Participant participant) {
+        access.session().requestWitchGuideSeen(round.roundId(), participant.id(), reply -> {});
     }
 
     private static void clicked(ServerPlayer player, String action) {

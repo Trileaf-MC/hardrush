@@ -399,9 +399,27 @@ class MonsterCoinsTest {
         assertThrows(IllegalArgumentException.class, () -> new WitchRecord(false, 0, Map.of(ShopOffer.BREAD, 1), false));
     }
 
+    @Test void revivalSupplyLimitsCannotSellWhatIsNeverDelivered() {
+        for (var key : List.of("coin.limit.shield", "coin.limit.bonusChest", "coin.limit.ironBucket", "coin.limit.ironPickaxe")) {
+            var values = new java.util.HashMap<>(RULES.combatValues());
+            values.put(key, 2.0);
+            assertThrows(IllegalArgumentException.class, () -> withValues(values), key);
+        }
+        var values = new java.util.HashMap<>(RULES.combatValues());
+        values.put("coin.limit.longerBlessing", 4.0);
+        assertThrows(IllegalArgumentException.class, () -> withValues(values), "A fourth step would pass the cap");
+        values.put("coin.limit.longerBlessing", 3.0);
+        assertDoesNotThrow(() -> withValues(values), "Three steps reach five minutes exactly");
+    }
+
+    private static RulesConfig withValues(Map<String, Double> values) {
+        return new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+                RULES.generationRule(), values, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
+    }
+
     @Test void deployingNeverCarriesRevivalSupplies() {
         var wallet = MonsterWallet.EMPTY.credit(100).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.BREAD, 30).chooseRole(RULES, MonsterRole.ZOMBIE);
-        assertEquals(0, wallet.ordered(ShopOffer.BREAD), "Supplies left from a lost totem are refunded on the next role choice");
+        assertEquals(0, wallet.ordered(ShopOffer.BREAD), "A role choice never keeps goods no sortie can carry");
         assertEquals(100, wallet.coins());
         var kept = MonsterWallet.EMPTY.credit(100).chooseRole(RULES, MonsterRole.ZOMBIE).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.BREAD, 30)
                 .deploy(RULES, MonsterRole.ZOMBIE);
