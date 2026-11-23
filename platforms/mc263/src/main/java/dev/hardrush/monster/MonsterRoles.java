@@ -355,6 +355,8 @@ public final class MonsterRoles {
     }
 
     public static boolean isMonster(Entity entity) { return entity instanceof Player && ROLES.containsKey(entity.getUUID()); }
+    /** The form of {@code playerId}'s deployed body, bound or waiting for a reconnect; null without a role. */
+    public static MonsterForm form(UUID playerId) { var role = ROLES.get(playerId); return role == null ? null : role.form; }
     public static MonsterForm currentForm(ServerPlayer player) { var role = ROLES.get(player.getUUID()); return role == null ? null : role.form; }
     public static String binding(ServerPlayer player) { var role = ROLES.get(player.getUUID()); return role == null ? "" : role.binding; }
     public static boolean isUndead(ServerPlayer player) { var form = currentForm(player); return form != null && form != MonsterForm.CREEPER; }
