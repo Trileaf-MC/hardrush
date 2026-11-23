@@ -254,15 +254,16 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(() -> {
                     f.monster.player = f.monster.current();
                     f.assertLobby(true);
-                    f.test.assertValueEqual(f.monster.participant().wallet().coins(), f.coinsBeforeDefeat + 5,
-                            "A native fall death after recent player damage pays the monster exactly five coins");
+                    f.test.assertValueEqual(f.monster.participant().wallet().coins(), f.coinsBeforeDefeat + 8,
+                            "A native fall death after recent player damage pays the monster exactly eight coins");
                     f.assertWorthReward();
                     f.assertSkillCooldowns();
                     HuntInputFixtures.role(f.monster.player, "creeper");
                 })
                 .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.CREEPER && !f.session.mutationPending(), "Creeper selection keeps both skill deadlines"))
                 .thenExecute(() -> {
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
+                    // A human credited with the defeat stays locked for the deploy wait (docs/plan/击败锁定与怪物平衡.md §1).
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(45));
                     f.monster.hunt(f.target.profile.id());
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(4), "Third formal safe deployment"))
@@ -274,7 +275,7 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(() -> {
                     f.assertLobby(false);
                     f.test.assertValueEqual(f.monster.participant().monsterDeploymentSequence(), 4, "Reconnect preserves outing sequence");
-                    f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Outside reconnect retains its 30-second wait");
+                    f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Outside reconnect retains its deploy wait");
                     f.assertSkillCooldowns();
                     f.assertStored();
                 });
@@ -291,7 +292,7 @@ public final class LobbyRuntimeGameTest {
                     })
                     .thenWaitUntil(() -> f.await(hunter.participant().monsterRole() == MonsterRole.ZOMBIE && !f.session.mutationPending(), "Cycle role selected " + iteration))
                     .thenExecute(() -> {
-                        f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
+                        f.clock.addAndGet(TimeUnit.SECONDS.toNanos(45));
                         hunter.hunt(prey.profile.id());
                     })
                     .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_DEPLOYED
