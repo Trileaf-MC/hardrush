@@ -56,8 +56,8 @@ class MonsterWorthTest {
 
     @Test void projectedCreditMatchesWhatTheEngineCommits() {
         var engine = engine();
-        var entries = List.of(new RoundEngine.DamageCoins(monster, 1, 3, human, MonsterDimension.NETHER, 4_000),
-                new RoundEngine.DamageCoins(monster, 1, 2, human, MonsterDimension.OVERWORLD, 9_000));
+        var entries = List.of(new RoundEngine.DamageCoins(monster, 1, 3, human, 1500, 4_000),
+                new RoundEngine.DamageCoins(monster, 1, 2, human, 1000, 9_000));
         var projected = RoundEngine.creditDamageCoins(engine.view(), round, entries).get(monster);
         accept(engine, engine.proposeMonsterDamageCoins(UUID.randomUUID(), round, entries));
         var committed = engine.committed().participants().get(monster);

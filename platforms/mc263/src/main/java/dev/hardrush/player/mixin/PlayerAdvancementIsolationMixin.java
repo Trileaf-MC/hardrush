@@ -24,5 +24,6 @@ public abstract class PlayerAdvancementIsolationMixin {
     @Inject(method = "award", at = @At("RETURN"))
     private void hardrush$completedProgress(AdvancementHolder holder, String criterion, CallbackInfoReturnable<Boolean> ci) {
         ProgressRuntime.advancementAwarded(player, holder, ci.getReturnValue());
+        dev.hardrush.bounty.BountyRuntime.advancementAwarded(player, holder, ci.getReturnValue());
     }
 }

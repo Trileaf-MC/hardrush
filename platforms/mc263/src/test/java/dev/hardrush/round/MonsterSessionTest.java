@@ -91,8 +91,8 @@ class MonsterSessionTest {
             pump(() -> broke.get() != null);
             assertFalse(broke.get().success(), "No coins yet");
             request(reply -> session.requestMonsterDeploy(round, player, 3, 4, reply));
-            session.recordMonsterDamage(round, player, 3, 5, human, MonsterDimension.OVERWORLD, 4_000);
-            session.recordMonsterDamage(round, player, 3, 5, human, MonsterDimension.OVERWORLD, 3_500);
+            session.recordMonsterDamage(round, player, 3, 5, human, 4_000);
+            session.recordMonsterDamage(round, player, 3, 5, human, 3_500);
             session.tick();
             assertEquals(0, session.snapshot().orElseThrow().participants().get(player).wallet().coins(), "Hits are batched");
             clock.addAndGet(1_000_000_000L);

@@ -55,6 +55,12 @@ public final class HuntBars {
 
     public static String humanTitle(String monsterName) { return "来自 " + monsterName + " 的追猎"; }
 
+    /** The hunting title with the target's bounty stars; {@code stars} 0 shows none (a round without bounties). */
+    public static String targetTitle(TargetState state, String targetName, int stars) {
+        String title = targetTitle(state, targetName);
+        return state == TargetState.HUNTING && stars > 0 ? title + " · " + Bounty.starText(stars) : title;
+    }
+
     public static String targetTitle(TargetState state, String targetName) {
         return switch (state) {
             case HUNTING -> "追猎目标 · " + targetName;
