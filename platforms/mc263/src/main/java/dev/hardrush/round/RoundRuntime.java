@@ -356,6 +356,9 @@ public final class RoundRuntime {
                     dev.hardrush.observe.Observation.tick(server);
                     dev.hardrush.observe.Spyglass.tick(server, session.snapshot().orElse(null));
                 } catch (RuntimeException error) { LOGGER.error("Observation update failed", error); }
+                // Before feedback renders: the compass's own hint shares the action bar.
+                try { dev.hardrush.revival.FallenCompass.tick(server, session.snapshot().orElse(null)); }
+                catch (RuntimeException error) { LOGGER.error("Fallen compass update failed", error); }
                 // The altar's hints feed the same action bar, so it runs before feedback renders.
                 try { session.snapshot().ifPresent(round -> dev.hardrush.lobby.RevivalAltar.tick(server, round, session)); }
                 catch (RuntimeException error) { LOGGER.error("Revival altar update failed", error); }
@@ -407,6 +410,7 @@ public final class RoundRuntime {
                         participant.monsterDeploymentSequence(), CombatRuntime.currentBatch(player.level()).orElse(null), killCredit,
                         false, drop);
                 drop.ifPresent(token -> dev.hardrush.revival.TotemDrops.captured(player, round.roundId(), token, captured));
+                if (captured) dev.hardrush.revival.FallenCompass.died(player, round.roundId(), participant.lifeSequence());
             } else if (participant != null && participant.role() == ParticipantRole.MONSTER_DEPLOYED
                     && RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());

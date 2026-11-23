@@ -31,6 +31,7 @@ public final class HeldItemHints {
             dev.hardrush.monster.MonsterRoles::heldHint,
             CampKit::heldHint,
             dev.hardrush.revival.RevivalTotems::heldHint,
+            dev.hardrush.revival.FallenCompass::heldHint,
             dev.hardrush.observe.Spyglass::heldHint);
     /**
      * The usage last flashed by each viewer's arbiter; absent while the hand holds nothing special. Kept per arbiter,
