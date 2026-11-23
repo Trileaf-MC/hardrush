@@ -899,6 +899,8 @@ public final class PlayerProfiles implements AutoCloseable {
             }
             ((ProfileTagged) player).hardrush$lifeSequence(participant.lifeSequence());
             ((ProfileTagged) player).hardrush$respawnPermitted(false);
+            // The respawn packet of this crossing carries it: the vanilla recovery compass points at the last human death.
+            player.setLastDeathLocation(dev.hardrush.revival.FallenCompass.claim(server, player.getUUID(), round.roundId(), participant.lifeSequence()));
             if (!player.teleportTo(spawnLevel, spawn.x, spawn.y, spawn.z, Set.of(), landing.yaw(), 0, true)) {
                 applyLobbyMode(player);
                 return false;
