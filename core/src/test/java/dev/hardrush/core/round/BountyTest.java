@@ -52,7 +52,7 @@ class BountyTest {
     @Test void oneHunterGoingOutAndBackScoresOncePerInterval() {
         var threat = HumanThreat.NONE;
         for (long at = 0; at < Bounty.HUNTED_REPEAT_NANOS; at += 5_000_000_000L) threat = threat.huntedFromCamp(1, monster, at);
-        assertEquals(1, threat.hunted(), "Ten quick returns and redeploys still count once");
+        assertEquals(1, threat.hunted(), "Quick returns and redeploys within the interval still count once");
         threat = threat.huntedFromCamp(1, monster, Bounty.HUNTED_REPEAT_NANOS);
         assertEquals(2, threat.hunted(), "The same hunter scores again after the interval");
         assertEquals(1, threat.forLife(2).huntedFromCamp(2, monster, Bounty.HUNTED_REPEAT_NANOS + 1).hunted(),
