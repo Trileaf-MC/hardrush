@@ -572,8 +572,9 @@ public final class TestClientsGameTest {
 
         GameTestSequence append(GameTestSequence sequence) {
             return sequence
-                    .thenWaitUntil(() -> test.assertTrue(ClientLevelLoad.loaded(client.player()) && readyToSend(floor),
-                            "The client has loaded its level and the arena chunk is ready to send"))
+                    // An entity in a chunk whose entities are not tracked yet is paired once they are, chunk or not.
+                    .thenWaitUntil(() -> test.assertTrue(ClientLevelLoad.loaded(client.player()) && readyToSend(floor)
+                            && level.isPositionEntityTicking(floor), "The client has loaded its level and the arena is ready"))
                     .thenExecute(() -> {
                         client.player().teleportTo(floor.getX() + 2.5, floor.getY() + 1, floor.getZ() + .5);
                         client.acknowledge();
@@ -584,7 +585,8 @@ public final class TestClientsGameTest {
                         item = new ItemEntity(level, floor.getX() + .5, floor.getY() + 1, floor.getZ() + .5, new ItemStack(Items.DIAMOND));
                         item.setNoGravity(true);
                         item.setDeltaMovement(Vec3.ZERO);
-                        test.assertTrue(level.addFreshEntity(item) && !client.sawEntity(item), "The item joins the level unseen");
+                        test.assertTrue(level.addFreshEntity(item) && level.getChunkSource().chunkMap.hasEntityWithId(item.getId())
+                                && !client.sawEntity(item), "The item joins the level, tracked but unseen");
                         packetsAtDrop = client.packets().size();
                         client.resume(TestClient.Reply.CONFIRM_CHUNK_BATCHES);
                     })
