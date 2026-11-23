@@ -143,6 +143,7 @@ public final class RoundRuntime {
                 // hiding there would leave the bar off the client until the save finishes.
                 public boolean locked() { return session.competitionLocked() && !session.savingFullCheckpoint(); }
             });
+            dev.hardrush.death.DeathNarration.configure(server, session::snapshot);
             // Formal round worlds use ordinary survival rules, including their spawn; only the camp is sealed.
             ProtectionRuntime.configure(server, level -> session.snapshot().isPresent()
                     && (LobbyWorld.isLobby(level) || level == server.overworld()));
@@ -344,6 +345,9 @@ public final class RoundRuntime {
                 } catch (RuntimeException error) { LOGGER.error("Far landing preparation failed", error); }
                 try { dev.hardrush.pact.DuskPactRuntime.tick(server); }
                 catch (RuntimeException error) { session.adapterFailure("黄昏契约状态更新失败", error); }
+                // After the pact, so a shelter ending can wait for the pact's release title.
+                try { dev.hardrush.hunt.LateShelterRuntime.tick(server, session); }
+                catch (RuntimeException error) { LOGGER.error("Late entrant shelter update failed", error); }
                 // Every phase, including rotation and settling, so a round's end clears the list at once.
                 try { dev.hardrush.revival.TotemTab.tick(server); }
                 catch (RuntimeException error) { LOGGER.error("Revival totem TAB update failed", error); }
@@ -491,7 +495,9 @@ public final class RoundRuntime {
             ProgressRuntime.unconfigure(server);
             dev.hardrush.bounty.BountyRuntime.close(server);
             CombatRuntime.unconfigure(server);
+            dev.hardrush.death.DeathNarration.unconfigure(server);
             dev.hardrush.pact.DuskPactRuntime.close(server);
+            dev.hardrush.hunt.LateShelterRuntime.close(server);
             dev.hardrush.lobby.HumanEntry.close(server);
             dev.hardrush.lobby.RevivalAltar.close(server);
             dev.hardrush.notice.StatusBars.close(server);

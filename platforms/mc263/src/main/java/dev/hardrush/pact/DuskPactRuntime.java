@@ -45,6 +45,9 @@ public final class DuskPactRuntime {
         UUID roundId;
         String tab;
         boolean wasProtected;
+        /** Real seconds until the contract lifts while it is shown; when the release title went out. */
+        long secondsLeft = Long.MAX_VALUE;
+        long releasedTick = Long.MIN_VALUE / 2;
         Binding(Access access) { this.access = access; }
     }
     private static final Map<MinecraftServer, Binding> BINDINGS = new IdentityHashMap<>();
@@ -80,6 +83,14 @@ public final class DuskPactRuntime {
         return DuskPact.display(clock.totalTicks(), clock.partialTick(), clock.rate(), server.tickRateManager().tickrate(),
                 clock.isPaused() || !level.getGameRules().get(GameRules.ADVANCE_TIME) || server.tickRateManager().isFrozen(),
                 hardcore);
+    }
+    /**
+     * Whether the release title is about to show or still on screen. Another one-off title (a late entrant's shelter
+     * ending) waits until this is false, so neither replaces the other unread.
+     */
+    public static boolean titleBusy(MinecraftServer server) {
+        var binding = BINDINGS.get(server);
+        return binding != null && (binding.secondsLeft <= 5 || (long) server.getTickCount() - binding.releasedTick < 90);
     }
     /** Countdown line for the native TAB footer while the contract is shown; the bossbar stays hidden until the warning. */
     public static Optional<String> tabLine(MinecraftServer server) {
@@ -170,6 +181,7 @@ public final class DuskPactRuntime {
         boolean protectedNow = protectedNow(binding);
         var display = protectedNow && !access.locked() ? display(binding, server) : null;
         binding.tab = display == null ? null : display.tab();
+        binding.secondsLeft = display == null ? Long.MAX_VALUE : display.seconds();
         boolean barShown = display != null && display.bar();
         var viewers = server.getPlayerList().getPlayers().stream().filter(player -> {
             var participant = round.participants().get(player.getUUID());
@@ -205,6 +217,7 @@ public final class DuskPactRuntime {
             }
         } else if (binding.wasProtected && !protectedNow && challenge(round) && access.overworld() != null && access.data().released()) {
             boolean hardcore = round.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE;
+            binding.releasedTick = server.getTickCount();
             for (var player : viewers) {
                 // Long enough to read the hardcore subtitle about the revival totem a human kill now drops.
                 title(player, 5, hardcore ? 70 : 50, 10, DuskPact.RELEASED, DuskPact.releasedSubtitle(hardcore));
