@@ -50,7 +50,7 @@ class MonsterPauseTest {
         accept(engine, engine.proposeMonsterDeath(UUID.randomUUID(), round, monster, 1, 4));
         var dead = engine.view().participants().get(monster);
         assertFalse(dead.wallet().hasParkedBody(), "Death ends the sortie");
-        assertEquals(RoundEngine.MONSTER_COOLDOWN_NANOS, dead.monsterCooldownNanos());
+        assertEquals(RoundEngine.deployCooldownNanos(RULES), dead.monsterCooldownNanos());
         assertEquals(0, dead.wallet().bought(ShopOffer.ADULT_EGG));
     }
 

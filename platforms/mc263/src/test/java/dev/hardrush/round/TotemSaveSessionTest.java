@@ -161,7 +161,7 @@ class TotemSaveSessionTest {
             var after = session.snapshot().orElseThrow();
             assertEquals(1, after.participants().get(human).revivalCharges());
             assertEquals(0, after.participants().get(rival).revivalCharges(), "The attacker earns nothing by itself");
-            assertEquals(new LooseTotem(human, 1, rival, after.looseTotems().get(token).droppedAtChallengeNanos()),
+            assertEquals(new LooseTotem(human, 1, LooseTotem.Source.HUMAN, Optional.of(rival), after.looseTotems().get(token).droppedAtChallengeNanos()),
                     after.looseTotems().get(token));
         }
     }

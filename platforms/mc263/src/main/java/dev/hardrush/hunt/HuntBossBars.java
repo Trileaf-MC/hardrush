@@ -89,6 +89,20 @@ public final class HuntBossBars {
         return java.util.Optional.of(new Hunted(s.target(), s.targetLife()));
     }
 
+    /** How many deployed monsters this round's current sorties send after each human. */
+    public static Map<UUID, Integer> hunters(MinecraftServer server, RoundSnapshot round) {
+        var counts = new HashMap<UUID, Integer>();
+        var b = BINDINGS.get(server);
+        if (b == null) return counts;
+        b.sorties.forEach((hunter, s) -> {
+            var p = round.participants().get(hunter);
+            if (p != null && s.round().equals(round.roundId()) && p.role() == ParticipantRole.MONSTER_DEPLOYED
+                    && p.lifeSequence() == s.hunterLife() && p.monsterDeploymentSequence() == s.deployment())
+                counts.merge(s.target(), 1, Integer::sum);
+        });
+        return counts;
+    }
+
     /** Direct monster-player damage only; companions keep players and summons indistinguishable. */
     public static void damaged(ServerPlayer victim, CombatOrigin origin, RoundSnapshot round) {
         if (origin.kind() == AttackKind.SUMMON || !origin.roundId().equals(round.roundId())) return;

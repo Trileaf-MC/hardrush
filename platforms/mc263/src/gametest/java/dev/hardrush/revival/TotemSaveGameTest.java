@@ -251,12 +251,18 @@ public final class TotemSaveGameTest {
             test.assertValueEqual(h.committed(c.get("A").id()).revivalCharges(), 1, "A spent one");
             for (var tag : List.of("B", "H", "K", "I", "L", "M")) test.assertValueEqual(h.committed(c.get(tag).id()).revivalCharges(), 0, "Charges: " + tag);
             // A human forcing out a totem earns nothing by itself: what it forced out lies registered at each saved human.
+            // A save without any credit (H's and J's generic hits) releases an unclaimed totem the same way (守恒 1.1).
             var registry = h.session.snapshot().orElseThrow().looseTotems();
-            test.assertValueEqual(registry.size(), 3, "B's, L's and M's totems are registered: " + registry);
+            test.assertValueEqual(registry.size(), 5, "B's, L's, M's, H's and J's totems are registered: " + registry);
+            for (var tag : List.of("H", "J")) {
+                var id = c.get(tag).id();
+                test.assertTrue(registry.values().stream().anyMatch(t -> t.victim().equals(id) && t.victimLife() == 1
+                        && t.source() == LooseTotem.Source.UNCLAIMED && t.killer().isEmpty()), "Unclaimed: " + tag);
+            }
             for (var tag : List.of("B", "L", "M")) {
                 var token = h.drops.get(tag);
-                test.assertValueEqual(registry.get(token), new LooseTotem(c.get(tag).id(), 1, c.get("K").id(),
-                        registry.get(token).droppedAtChallengeNanos()), "Registered for anyone to take: " + tag);
+                test.assertValueEqual(registry.get(token), new LooseTotem(c.get(tag).id(), 1, LooseTotem.Source.HUMAN,
+                        Optional.of(c.get("K").id()), registry.get(token).droppedAtChallengeNanos()), "Registered for others to take: " + tag);
                 test.assertFalse(h.session.totemSaveDropInFlight(token), "No longer in flight: " + tag);
                 test.assertTrue(floorTotems(f, c.get(tag).player()).stream().anyMatch(item -> RevivalTotems.dropToken(item.getItem())
                         .equals(Optional.of(token))), "It still lies in the world: " + tag);
@@ -428,9 +434,11 @@ public final class TotemSaveGameTest {
                 @Override public Optional<RoundSnapshot> view() { return session.view(); }
                 @Override public boolean open() { return session.state() == RoundSession.State.OPEN; }
                 @Override public boolean collects(ServerPlayer player) { return true; }
+                @Override public boolean hunts(ServerPlayer player) { return true; }
                 @Override public void refresh(ServerPlayer player) { RevivalTotems.refresh(player); }
-                @Override public void requestPickup(UUID round, UUID token, UUID player, int life, java.util.function.Consumer<RoundSession.Reply> reply) {
-                    session.requestLooseTotemPickup(round, token, player, life, reply);
+                @Override public void requestPickup(UUID round, UUID token, UUID player, int life, int sortie,
+                        java.util.function.Consumer<RoundSession.Reply> reply) {
+                    session.requestLooseTotemPickup(round, token, player, life, sortie, reply);
                 }
                 @Override public boolean saveInFlight(UUID token) { return session.totemSaveDropInFlight(token); }
             });

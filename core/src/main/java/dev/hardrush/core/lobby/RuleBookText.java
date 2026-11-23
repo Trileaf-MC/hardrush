@@ -33,12 +33,14 @@ public final class RuleBookText {
         } else {
             pages.add("阵亡\n\n极限挑战中阵亡后回到营地，可以到庭院的角色展位选择僵尸、骷髅或苦力怕，化身怪物追猎人类。");
             pages.add("追猎\n\n右键庭院里的目标模型，开始寻找目标附近的出击位置，再次右键取消。落地时目标会听到一声洞穴音。\n\n"
-                    + "出击后右键回响碎片，原地不动 " + seconds(value(rules, "monster.returnChannelMillis", 5_000))
+                    + "出击后右键回响碎片，边走边引导 " + seconds(RoundEngine.returnChannelMillis(rules))
                     + " 秒返回营地，本次物资暂存到下次。");
-            pages.add("追迹罗盘\n\n追迹罗盘的指针指向你的目标，发光时右键，边走边引导 " + seconds(value(rules, "monster.returnChannelMillis", 5_000))
+            pages.add("追迹罗盘\n\n追迹罗盘的指针指向你的目标，发光时右键，边走边引导 " + seconds(RoundEngine.retrackChannelMillis(rules))
                     + " 秒就能循迹到目标附近。\n\n受伤或动手会打断引导；落地后罗盘冷却 " + seconds(RoundEngine.retrackCooldownMillis(rules)) + " 秒。");
+            pages.add("击败\n\n怪物阵亡后马上可以追猎别人，只有击败它的人类在 " + seconds(RoundEngine.deployCooldownNanos(rules) / 1_000_000)
+                    + " 秒内不会被它追猎。苦力怕引爆后，它这次追猎的目标同样如此。\n\n人类用打火石或火焰弹右键苦力怕，可以强行点燃它。");
             pages.add("角色\n\n僵尸自带僵尸刷怪蛋，困难难度下能空手敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
-                    + "骷髅潜行拉满弓触发三连射，陷进细雪会化身流浪者。\n\n苦力怕按住引爆器引爆。");
+                    + "骷髅潜行拉满弓触发三连射，陷进细雪会化身流浪者。\n\n苦力怕按住引爆器（打火石）引爆，也能用它点燃原版苦力怕。");
             pages.add("挖掘与虫穴\n\n僵尸和骷髅空手按住左键，一次挖开 1×2 的石头、泥土、下界岩、末地石等天然方块，最长 "
                     + decimalSeconds(RoundEngine.digMillis(rules)) + " 秒，不掉落。苦力怕挖不动。\n\n"
                     + "出击找不到能走到人类身边的落点时，怪物会藏进人类旁边的石头里，挖开墙破石而出。");
@@ -49,8 +51,9 @@ public final class RuleBookText {
             if (MonsterWorth.enabled(rules)) pages.add("身价\n\n出击时的经验等级就是身价：从 " + (long) value(rules, MonsterWorth.BASE_LEVEL, 10)
                     + " 级起，伤害人类会上涨，最高 " + (long) value(rules, MonsterWorth.MAX_LEVEL, 30) + " 级。\n\n被玩家击杀时掉出经验，满 "
                     + (long) value(rules, MonsterWorth.BOOK_MIN_LEVEL, 15) + " 级再掉一本附魔书。");
-            pages.add("复生图腾\n\n人类被人类击杀或逼出图腾时会掉落 1 个，人类捡起即得；怪物击杀人类或逼出图腾直接获得 1 个。\n\n"
-                    + "图腾不能丢弃或转赠，阵亡时自己的图腾不会掉落。");
+            pages.add("复生图腾\n\n人类每阵亡一次、每用掉一个图腾，都会放出 1 个：怪物击杀或逼出的直接归怪物，其余掉在原地，"
+                    + "人类和出击中的怪物都能捡，但放出它的那条命捡不回来。\n\n"
+                    + "没有被人击杀或逼出时，掉落会公布坐标。图腾不能丢弃，阵亡时自己的图腾不会掉落。");
             pages.add("复生\n\n把复生图腾拿在手上阵亡时原地复生，消耗 1 个。\n\n"
                     + "没拿在手上就阵亡，可到营地北侧的祭坛站上金块 4 秒复生，"
                     + (MonsterCoins.enabled(rules) ? "可先用怪物币在女巫处买复生补给。" : "空手出发。")

@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 12;
+    private static final int SCHEMA = 14;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -61,14 +61,27 @@ public final class RoundSnapshotCodec {
             for (var entry : snapshot.looseTotems().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).toList()) {
                 LooseTotem totem = entry.getValue();
                 writeUuid(out, entry.getKey()); writeUuid(out, totem.victim()); out.writeInt(totem.victimLife());
-                writeUuid(out, totem.killer()); out.writeLong(totem.droppedAtChallengeNanos());
+                writeText(out, totem.source().name());
+                out.writeBoolean(totem.killer().isPresent());
+                if (totem.killer().isPresent()) writeUuid(out, totem.killer().get());
+                out.writeLong(totem.droppedAtChallengeNanos());
             }
             // Only lives that have shown some threat are written, after everything older schemas held.
             var threats = snapshot.participants().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
                     .filter(entry -> !entry.getValue().threat().equals(HumanThreat.NONE)).toList();
             out.writeInt(threats.size());
             for (var entry : threats) { writeUuid(out, entry.getKey()); writeThreat(out, entry.getValue().threat()); }
-            // Schema 12: only players the witch remembers anything of.
+            // Only monsters holding a defeat's lock are written, after the threats.
+            var locked = snapshot.participants().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
+                    .filter(entry -> !entry.getValue().huntLocks().isEmpty()).toList();
+            out.writeInt(locked.size());
+            for (var entry : locked) {
+                writeUuid(out, entry.getKey());
+                var locks = entry.getValue().huntLocks().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).toList();
+                out.writeInt(locks.size());
+                for (var lock : locks) { writeUuid(out, lock.getKey()); out.writeLong(lock.getValue()); }
+            }
+            // Schema 14: only players the witch remembers anything of.
             var witches = snapshot.participants().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
                     .filter(entry -> !entry.getValue().witch().equals(WitchRecord.NONE)).toList();
             out.writeInt(witches.size());
@@ -194,7 +207,12 @@ public final class RoundSnapshotCodec {
                 if (loose < 0 || loose > LooseTotem.MAX_REGISTERED) throw new IOException("Invalid loose totem count");
                 for (int i = 0; i < loose; i++) {
                     UUID token = readUuid(in);
-                    var totem = new LooseTotem(readUuid(in), in.readInt(), readUuid(in), in.readLong());
+                    UUID victim = readUuid(in);
+                    int victimLife = in.readInt();
+                    // Schemas 10–11 only dropped totems at a human's attack, always naming the killer.
+                    LooseTotem.Source source = schema >= 12 ? LooseTotem.Source.valueOf(readText(in, 64)) : LooseTotem.Source.HUMAN;
+                    java.util.Optional<UUID> killer = schema < 12 || in.readBoolean() ? java.util.Optional.of(readUuid(in)) : java.util.Optional.empty();
+                    var totem = new LooseTotem(victim, victimLife, source, killer, in.readLong());
                     if (looseTotems.put(token, totem) != null) throw new IOException("Duplicate loose totem token");
                 }
             }
@@ -210,8 +228,26 @@ public final class RoundSnapshotCodec {
                     players.put(playerId, p.withThreat(readThreat(in)));
                 }
             }
-            // Schemas 1–11 predate the witch's guide and revival supplies: she remembers nobody.
-            if (schema >= 12) {
+            // Schemas 1–12 predate defeat locks: a defeat then benched the monster instead.
+            if (schema >= 13) {
+                int locked = in.readInt();
+                if (locked < 0 || locked > players.size()) throw new IOException("Invalid hunt lock holder count");
+                var seen = new java.util.HashSet<UUID>();
+                for (int i = 0; i < locked; i++) {
+                    UUID playerId = readUuid(in);
+                    Participant p = players.get(playerId);
+                    if (p == null || !seen.add(playerId)) throw new IOException("Hunt locks for an unknown or repeated participant");
+                    int lockCount = in.readInt();
+                    if (lockCount < 1 || lockCount > Participant.MAX_HUNT_LOCKS) throw new IOException("Invalid hunt lock count");
+                    var locks = new LinkedHashMap<UUID, Long>();
+                    for (int j = 0; j < lockCount; j++) {
+                        if (locks.put(readUuid(in), in.readLong()) != null) throw new IOException("Duplicate hunt lock");
+                    }
+                    players.put(playerId, p.withHuntLocks(locks));
+                }
+            }
+            // Schemas 1–13 predate the witch's guide and revival supplies: she remembers nobody.
+            if (schema >= 14) {
                 int witches = in.readInt();
                 if (witches < 0 || witches > players.size()) throw new IOException("Invalid witch record count");
                 var seen = new java.util.HashSet<UUID>();

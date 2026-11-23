@@ -12,6 +12,7 @@ import dev.hardrush.round.RoundSession;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.RoundWorldBundle;
 import dev.hardrush.lobby.LobbyRuntime;
+import dev.hardrush.revival.FallenCompass;
 import dev.hardrush.revival.RevivalTotems;
 import dev.hardrush.locator.PlayerLocator;
 import dev.hardrush.monster.MonsterRoundRuntime;
@@ -134,8 +135,8 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(() -> {
                     f.assertWitchPurchase();
                     f.monster.hunt(f.target.profile.id());
-                    f.test.assertValueEqual(f.monster.participant().role(), ParticipantRole.MONSTER_LOBBY, "Early deploy cannot bypass the first 30 seconds");
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
+                    f.test.assertValueEqual(f.monster.participant().role(), ParticipantRole.MONSTER_LOBBY, "Early deploy cannot bypass the first deploy wait");
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(45));
                     f.monster.hunt(f.target.profile.id());
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(1), "First formal safe deployment"))
@@ -158,10 +159,13 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "Being moved without movement keys keeps the channel");
                     f.monster.keys(true);
                 })
-                .thenWaitUntil(() -> f.await(!LobbyRuntime.channeling(f.monster.player), "Native movement keys cancel return"))
+                .thenIdle(10)
                 .thenExecute(() -> {
+                    f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "Walking keeps the return channel");
+                    LobbyRuntime.interruptChannel(f.monster.player, "受到伤害");
+                    f.test.assertFalse(LobbyRuntime.channeling(f.monster.player), "Being hurt still breaks it");
                     f.monster.useReturn();
-                    f.test.assertFalse(LobbyRuntime.channeling(f.monster.player), "A return cannot start while movement keys are held");
+                    f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "A return starts while movement keys are held");
                     f.monster.keys(false);
                     f.voluntaryReturnBody = f.monster.player;
                     f.monster.player.setHealth(2);
@@ -254,15 +258,16 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(() -> {
                     f.monster.player = f.monster.current();
                     f.assertLobby(true);
-                    f.test.assertValueEqual(f.monster.participant().wallet().coins(), f.coinsBeforeDefeat + 5,
-                            "A native fall death after recent player damage pays the monster exactly five coins");
+                    f.test.assertValueEqual(f.monster.participant().wallet().coins(), f.coinsBeforeDefeat + 8,
+                            "A native fall death after recent player damage pays the monster exactly eight coins");
                     f.assertWorthReward();
                     f.assertSkillCooldowns();
                     HuntInputFixtures.role(f.monster.player, "creeper");
                 })
                 .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.CREEPER && !f.session.mutationPending(), "Creeper selection keeps both skill deadlines"))
                 .thenExecute(() -> {
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
+                    // A human credited with the defeat stays locked for the deploy wait (docs/plan/击败锁定与怪物平衡.md §1).
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(45));
                     f.monster.hunt(f.target.profile.id());
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(4), "Third formal safe deployment"))
@@ -274,10 +279,12 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(() -> {
                     f.assertLobby(false);
                     f.test.assertValueEqual(f.monster.participant().monsterDeploymentSequence(), 4, "Reconnect preserves outing sequence");
-                    f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Outside reconnect retains its 30-second wait");
+                    f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Outside reconnect retains its deploy wait");
                     f.assertSkillCooldowns();
                     f.assertStored();
                 });
+        // Where the previous cycle's prey fell: this cycle's hunter, revived, is pointed back there (遗落之地).
+        final net.minecraft.core.GlobalPos[] fallen = new net.minecraft.core.GlobalPos[1];
         for (int cycle = 0; cycle < 20; cycle++) {
             final int iteration = cycle;
             final var hunter = cycle % 2 == 0 ? f.monster : f.target;
@@ -291,7 +298,7 @@ public final class LobbyRuntimeGameTest {
                     })
                     .thenWaitUntil(() -> f.await(hunter.participant().monsterRole() == MonsterRole.ZOMBIE && !f.session.mutationPending(), "Cycle role selected " + iteration))
                     .thenExecute(() -> {
-                        f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));
+                        f.clock.addAndGet(TimeUnit.SECONDS.toNanos(45));
                         hunter.hunt(prey.profile.id());
                     })
                     .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.MONSTER_DEPLOYED
@@ -319,6 +326,7 @@ public final class LobbyRuntimeGameTest {
                                 + ", sourceRejected=" + dev.hardrush.combat.MonsterCombatRuntime.reject(MonsterRoles.nativeModel(hunter.player), prey.player)
                                 + ", actor=" + MonsterRoles.status(hunter.player));
                         f.test.assertTrue(prey.player.isDeadOrDying(), "Actual native attack creates the lethal event");
+                        fallen[0] = net.minecraft.core.GlobalPos.of(prey.player.level().dimension(), prey.player.blockPosition());
                     })
                     .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RESCUE && hunter.participant().revivalEntitled()
                             && prey.current() != null && prey.current().isAlive() && prey.current().level() == LobbyWorld.open(f.server).holdingLevel()
@@ -423,17 +431,45 @@ public final class LobbyRuntimeGameTest {
                         f.test.assertTrue(hunter.player.getEffect(net.minecraft.world.effect.MobEffects.RESISTANCE) == null,
                                 "No resistance: the blessing must not win human fights");
                         f.test.assertFalse(hunter.participant().revivalEntitled(), "Revival consumes the sole entitlement");
+                        var inventory = hunter.player.getInventory();
+                        var compasses = java.util.stream.IntStream.range(0, inventory.getContainerSize()).filter(i -> FallenCompass.is(inventory.getItem(i))).toArray();
+                        // Besides the 遗落之地 compass, only what the first cycle bought from the witch.
+                        f.test.assertTrue(java.util.stream.IntStream.range(0, inventory.getContainerSize())
+                                        .allMatch(i -> inventory.getItem(i).isEmpty() || FallenCompass.is(inventory.getItem(i))
+                                                || iteration == 0 && (inventory.getItem(i).is(Items.OAK_LOG) || inventory.getItem(i).is(Items.SHIELD))),
+                                "Revival never restores old human gear or role controls");
                         if (iteration == 0) {
                             f.test.assertTrue(hunter.player.getOffhandItem().is(Items.SHIELD), "The bought shield waits in the off hand");
-                            int logs = 0, other = 0;
-                            for (int i = 0; i < hunter.player.getInventory().getContainerSize(); i++) {
-                                var stack = hunter.player.getInventory().getItem(i);
-                                if (stack.is(Items.OAK_LOG)) logs += stack.getCount();
-                                else if (!stack.isEmpty() && !stack.is(Items.SHIELD)) other++;
-                            }
+                            int logs = java.util.stream.IntStream.range(0, inventory.getContainerSize()).filter(i -> inventory.getItem(i).is(Items.OAK_LOG))
+                                    .map(i -> inventory.getItem(i).getCount()).sum();
                             f.test.assertValueEqual(logs, 5, "The bought oak logs are in the backpack");
-                            f.test.assertValueEqual(other, 0, "Revival never restores old human gear or role controls");
-                        } else f.test.assertTrue(hunter.player.getInventory().isEmpty(), "Revival never restores old human gear or role controls");
+                        }
+                        if (iteration > 0) {
+                            var at = fallen[0];
+                            f.test.assertTrue(compasses.length == 1 && FallenCompass.target(inventory.getItem(compasses[0])).equals(java.util.Optional.of(at)),
+                                    "A revived human lands with one 遗落之地 compass pointing at the previous human death: " + at);
+                            f.test.assertValueEqual(hunter.player.getLastDeathLocation(), java.util.Optional.of(at),
+                                    "The vanilla recovery needle reads the same spot, not the monster life's");
+                            if (iteration == 1) {
+                                hunter.player.getInventory().setSelectedSlot(compasses[0]);
+                                var hint = dev.hardrush.lobby.HeldItemHints.of(hunter.player).orElse("");
+                                f.test.assertTrue(hint.contains("主世界") && hint.contains(at.pos().getX() + " " + at.pos().getY() + " " + at.pos().getZ())
+                                        && hint.contains("距离"), "Held, the compass names the dimension, coordinates and distance: " + hint);
+                                hunter.move(net.minecraft.world.phys.Vec3.atBottomCenterOf(at.pos()).add(3, 0, 0));
+                                FallenCompass.tick(f.server, f.round());
+                                f.test.assertFalse(java.util.stream.IntStream.range(0, inventory.getContainerSize()).anyMatch(i -> FallenCompass.is(inventory.getItem(i))),
+                                        "Reaching the spot spends the compass");
+                            } else if (iteration == 2) {
+                                hunter.player.getInventory().setSelectedSlot(compasses[0]);
+                                hunter.player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(
+                                        ServerboundPlayerActionPacket.Action.DROP_ALL_ITEMS, BlockPos.ZERO, Direction.DOWN));
+                                FallenCompass.tick(f.server, f.round());
+                                f.test.assertTrue(java.util.stream.IntStream.range(0, inventory.getContainerSize()).noneMatch(i -> FallenCompass.is(inventory.getItem(i)))
+                                                && hunter.player.level().getEntitiesOfClass(ItemEntity.class, hunter.player.getBoundingBox().inflate(8)).stream()
+                                                        .noneMatch(item -> FallenCompass.is(item.getItem())),
+                                        "A thrown compass vanishes and is never granted again");
+                            }
+                        }
                         f.test.assertValueEqual(hunter.player.getHealth(), 20f, "Human default health is restored");
                         f.test.assertValueEqual(hunter.player.getFoodData().getFoodLevel(), 20, "Human default food is restored");
                         f.test.assertFalse(ProtectionRuntime.protectedEntity(hunter.player), "Revival returns an unprotected human to the natural spawn");
@@ -694,7 +730,7 @@ public final class LobbyRuntimeGameTest {
             if (kind == MonsterRole.SKELETON) test.assertTrue(monster.player.getInventory().getItem(1).isEmpty()
                     && monster.player.getMainHandItem().is(Items.BOW), "The skeleton's volley rides on its bow; no separate control item");
             else test.assertTrue(monster.player.getInventory().getItem(kind == MonsterRole.CREEPER ? 0 : 1).is(
-                    kind == MonsterRole.ZOMBIE ? Items.ZOMBIE_SPAWN_EGG : Items.GUNPOWDER), "Only the selected role's fixed skill control is equipped");
+                    kind == MonsterRole.ZOMBIE ? Items.ZOMBIE_SPAWN_EGG : Items.FLINT_AND_STEEL), "Only the selected role's fixed skill control is equipped");
             test.assertValueEqual(diamonds(), 3, "Outings do not duplicate or pick up the old human inventory");
         }
         void assertFixedControlsStayOnDropPacket() {

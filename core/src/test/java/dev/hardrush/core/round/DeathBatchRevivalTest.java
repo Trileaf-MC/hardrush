@@ -88,7 +88,8 @@ class DeathBatchRevivalTest {
             assertTrue(engine.committed().looseTotems().isEmpty(), "Wait for durable commit");
             apply(engine, transition);
             assertEquals(2, engine.view().participants().get(human).revivalCharges(), kind.toString());
-            assertEquals(new LooseTotem(other, 1, human, engine.view().challengeNanos()), engine.view().looseTotems().get(token));
+            assertEquals(new LooseTotem(other, 1, LooseTotem.Source.HUMAN, Optional.of(human), engine.view().challengeNanos()),
+                    engine.view().looseTotems().get(token));
             assertEquals(ParticipantRole.HUMAN_ACTIVE, engine.view().participants().get(human).role());
             assertEquals(0, engine.view().participants().get(other).revivalCharges());
             assertFalse(engine.view().timingUncertain(), "Ordinary PvP drops are not administrator intervention");
@@ -97,7 +98,7 @@ class DeathBatchRevivalTest {
         }
     }
 
-    @Test void humanExplosionMultikillDropsOnePerOtherVictimAndAWipeLeavesNothing() {
+    @Test void humanExplosionMultikillDropsOnePerVictimAndAWipeLeavesNothing() {
         var survivor = UUID.randomUUID();
         var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true), human(monster, true), human(survivor, true));
         var explosion = origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.TNT);
@@ -107,7 +108,9 @@ class DeathBatchRevivalTest {
         apply(engine, batch(engine, dropping(engine, human, explosion, self), dropping(engine, other, explosion, first),
                 dropping(engine, monster, explosion, second)));
         assertEquals(RoundPhase.RUNNING, engine.view().phase());
-        assertEquals(java.util.Set.of(first, second), engine.view().looseTotems().keySet(), "The bomber's own death drops nothing");
+        assertEquals(java.util.Set.of(self, first, second), engine.view().looseTotems().keySet(), "Every ended life releases one");
+        assertEquals(LooseTotem.Source.UNCLAIMED, engine.view().looseTotems().get(self).source(), "The bomber's own death is a suicide");
+        assertEquals(LooseTotem.Source.HUMAN, engine.view().looseTotems().get(first).source());
         assertEquals(0, engine.view().participants().get(human).revivalCharges(), "The bomber earns nothing either");
         // Without the survivor the same batch ends the round: nothing is registered and no charge exists.
         var wipe = fixture(GameMode.HARDCORE, human(human, true), human(other, true), human(monster, true));
@@ -134,7 +137,7 @@ class DeathBatchRevivalTest {
         assertEquals(ParticipantRole.HUMAN_RESPAWNING, normal.view().participants().get(other).role());
     }
 
-    @Test void humanRewardsRejectUnknownEnvironmentStaleRoundAndMonsterOnlySources() {
+    @Test void unknownEnvironmentStaleRoundAndMonsterOnlySourcesPayNoOneAndDropUnclaimed() {
         var oldRound = origin(human, ParticipantRole.HUMAN_ACTIVE, AttackKind.ARROW);
         oldRound = new CombatOrigin(UUID.randomUUID(), oldRound.originId(), oldRound.actor(), oldRound.kind(),
                 oldRound.directEntityId(), List.of());
@@ -147,9 +150,11 @@ class DeathBatchRevivalTest {
         sources.add(origin(human, ParticipantRole.MONSTER_DEPLOYED, AttackKind.ARROW));
         for (var source : sources) {
             var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true));
-            apply(engine, batch(engine, dropping(engine, other, source, UUID.randomUUID())));
+            var token = UUID.randomUUID();
+            apply(engine, batch(engine, dropping(engine, other, source, token)));
             assertEquals(0, engine.view().participants().get(human).revivalCharges());
-            assertTrue(engine.view().looseTotems().isEmpty(), String.valueOf(source));
+            assertEquals(LooseTotem.Source.UNCLAIMED, engine.view().looseTotems().get(token).source(), String.valueOf(source));
+            assertEquals(Optional.empty(), engine.view().looseTotems().get(token).killer(), String.valueOf(source));
         }
     }
 
@@ -166,7 +171,7 @@ class DeathBatchRevivalTest {
             var engine = fixture(GameMode.HARDCORE, human(human, true), human(other, true));
             var token = UUID.randomUUID();
             apply(engine, batch(engine, creditedDeath(engine, other, null, attacker).withDropToken(token)));
-            assertEquals(human, engine.view().looseTotems().get(token).killer(), attacker.kind().toString());
+            assertEquals(Optional.of(human), engine.view().looseTotems().get(token).killer(), attacker.kind().toString());
             assertEquals(0, engine.view().participants().get(human).revivalCharges(), attacker.kind().toString());
         }
         for (var kind : List.of(AttackKind.MELEE, AttackKind.SUMMON)) {
@@ -207,11 +212,12 @@ class DeathBatchRevivalTest {
         apply(human, batch(human, creditedDeath(human, other, null, origin(this.human, ParticipantRole.HUMAN_ACTIVE, AttackKind.MELEE))
                 .withDropToken(token)));
         assertTrue(human.view().looseTotems().containsKey(token));
-        // The victim's own earlier hit (vanilla: the last player was themself) drops and earns nothing.
+        // The victim's own earlier hit (vanilla: the last player was themself) earns nothing and drops unclaimed.
         var self = fixture(GameMode.HARDCORE, human(this.human, true), human(other, true));
+        var own = UUID.randomUUID();
         apply(self, batch(self, creditedDeath(self, other, null, origin(other, ParticipantRole.HUMAN_ACTIVE, AttackKind.ARROW))
-                .withDropToken(UUID.randomUUID())));
-        assertTrue(self.view().looseTotems().isEmpty());
+                .withDropToken(own)));
+        assertEquals(LooseTotem.Source.UNCLAIMED, self.view().looseTotems().get(own).source());
         assertEquals(0, self.view().participants().get(other).revivalCharges());
         assertEquals(0, self.view().participants().get(this.human).revivalCharges());
     }
@@ -343,7 +349,7 @@ class DeathBatchRevivalTest {
         var rewarded = engine.view().participants().get(monster);
         assertEquals(2, rewarded.revivalCharges());
         assertEquals(ParticipantRole.MONSTER_LOBBY, rewarded.role());
-        assertEquals(30_000_000_000L, rewarded.monsterCooldownNanos());
+        assertEquals(0, rewarded.monsterCooldownNanos(), "Its own blast benches no one; the revival comes first anyway");
         assertTrue(engine.view().participants().get(human).role().isMonster());
         assertTrue(engine.view().participants().get(other).role().isMonster());
         assertThrows(IllegalStateException.class, () -> batch(engine, humanLethal));
