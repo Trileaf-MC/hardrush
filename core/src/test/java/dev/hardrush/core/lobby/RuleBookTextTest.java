@@ -26,7 +26,8 @@ class RuleBookTextTest {
         assertTrue(totem.contains("阵亡时自己的图腾不会掉落"));
         var revival = page(hardcore, "复生");
         assertTrue(revival.contains("拿在手上阵亡时原地复生，消耗 1 个"));
-        assertTrue(revival.contains("营地北侧的祭坛站上金块 4 秒复生，空手出发"));
+        assertTrue(revival.contains("营地北侧的祭坛站上金块 4 秒复生，可先用怪物币在女巫处买复生补给"));
+        assertTrue(revival.contains("持续 90 秒"), "The blessing is 90 seconds before any longer one is bought");
         assertEquals(hardcore.indexOf(totem) + 1, hardcore.indexOf(revival));
         assertFalse(hardcore.stream().anyMatch(page -> page.contains("击杀一名人类获得")), "The old kill reward is gone");
         var normal = pages(GameMode.NORMAL);

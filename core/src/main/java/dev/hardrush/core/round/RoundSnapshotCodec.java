@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 11;
+    private static final int SCHEMA = 12;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -68,6 +68,11 @@ public final class RoundSnapshotCodec {
                     .filter(entry -> !entry.getValue().threat().equals(HumanThreat.NONE)).toList();
             out.writeInt(threats.size());
             for (var entry : threats) { writeUuid(out, entry.getKey()); writeThreat(out, entry.getValue().threat()); }
+            // Schema 12: only players the witch remembers anything of.
+            var witches = snapshot.participants().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
+                    .filter(entry -> !entry.getValue().witch().equals(WitchRecord.NONE)).toList();
+            out.writeInt(witches.size());
+            for (var entry : witches) { writeUuid(out, entry.getKey()); writeWitch(out, entry.getValue().witch()); }
             out.flush();
             if (bytes.size() > MAX_BYTES) throw new IllegalArgumentException("Snapshot exceeds size limit");
             return bytes.toByteArray();
@@ -84,6 +89,27 @@ public final class RoundSnapshotCodec {
         var hunters = threat.huntedAt().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).toList();
         out.writeInt(hunters.size());
         for (var hunter : hunters) { writeUuid(out, hunter.getKey()); out.writeLong(hunter.getValue()); }
+    }
+
+    private static void writeWitch(DataOutputStream out, WitchRecord witch) throws IOException {
+        out.writeBoolean(witch.guideSeen()); out.writeInt(witch.supplyLife()); out.writeBoolean(witch.landed());
+        out.writeInt(witch.supply().size());
+        for (var offer : ShopOffer.values()) {
+            Integer count = witch.supply().get(offer);
+            if (count != null) { writeText(out, offer.id()); out.writeInt(count); }
+        }
+    }
+
+    private static WitchRecord readWitch(DataInputStream in) throws IOException {
+        boolean seen = in.readBoolean(); int life = in.readInt(); boolean landed = in.readBoolean();
+        int count = in.readInt();
+        if (count < 0 || count > ShopOffer.values().length) throw new IOException("Invalid revival supply count");
+        var supply = new java.util.EnumMap<ShopOffer, Integer>(ShopOffer.class);
+        for (int i = 0; i < count; i++) {
+            if (supply.put(ShopOffer.fromId(readText(in, 128)), in.readInt()) != null) throw new IOException("Duplicate revival supply");
+        }
+        try { return new WitchRecord(seen, life, supply, landed); }
+        catch (IllegalArgumentException invalid) { throw new IOException("Invalid witch record", invalid); }
     }
 
     private static HumanThreat readThreat(DataInputStream in) throws IOException {
@@ -182,6 +208,18 @@ public final class RoundSnapshotCodec {
                     Participant p = players.get(playerId);
                     if (p == null || !seen.add(playerId)) throw new IOException("Threat for an unknown or repeated participant");
                     players.put(playerId, p.withThreat(readThreat(in)));
+                }
+            }
+            // Schemas 1–11 predate the witch's guide and revival supplies: she remembers nobody.
+            if (schema >= 12) {
+                int witches = in.readInt();
+                if (witches < 0 || witches > players.size()) throw new IOException("Invalid witch record count");
+                var seen = new java.util.HashSet<UUID>();
+                for (int i = 0; i < witches; i++) {
+                    UUID playerId = readUuid(in);
+                    Participant p = players.get(playerId);
+                    if (p == null || !seen.add(playerId)) throw new IOException("Witch record for an unknown or repeated participant");
+                    players.put(playerId, p.withWitch(readWitch(in)));
                 }
             }
             if (in.available() != 0) throw new IOException("Trailing snapshot data");
