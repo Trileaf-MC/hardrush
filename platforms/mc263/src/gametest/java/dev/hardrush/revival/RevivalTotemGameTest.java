@@ -63,8 +63,14 @@ import net.minecraft.world.phys.Vec3;
 public final class RevivalTotemGameTest {
     private static final AtomicInteger ARENAS = new AtomicInteger();
     private static final String HUMAN_USAGE = "拿在手上阵亡时原地复生，消耗 1 个";
+    /**
+     * The tick budget covers the wait for the far arena to generate and simulate entities: a test server ticks as fast as
+     * it can while idle, so 200 ticks can pass in about two seconds, before the asynchronous worldgen of a fresh chunk at
+     * x = 30000 finishes. The same budget as the totem drop and save fixtures, which wait for their arenas alike.
+     */
+    private static final int MAX_TICKS = 1200;
 
-    @GameTest(maxTicks = 200)
+    @GameTest(maxTicks = MAX_TICKS)
     public void projectionFreezesWhileLockedFollowsTheHolderAndSurvivesDeath(GameTestHelper test) {
         if (HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var f = new Fixture(test);
@@ -82,7 +88,7 @@ public final class RevivalTotemGameTest {
             test.assertFalse(held.has(DataComponents.DEATH_PROTECTION), "Never a native death guard");
             test.assertValueEqual(lore(held, 0), HUMAN_USAGE, "A human reads how to use it in the world");
             test.assertValueEqual(lore(held, 1), "没拿在手上就阵亡，可到营地祭坛复生", "Second human line");
-            test.assertValueEqual(lore(held, 2), "阵亡不掉落 · 不能丢弃或转赠", "Third human line");
+            test.assertValueEqual(lore(held, 2), "阵亡不掉落 · 不能丢弃或放进容器", "Third human line");
             test.assertValueEqual(RevivalTotems.heldHint(f.player, held).map(h -> Notices.format(h).getString()),
                     Optional.of(HUMAN_USAGE), "The held hint is the first description line");
 
@@ -117,7 +123,7 @@ public final class RevivalTotemGameTest {
             test.assertValueEqual(lore(f.player.getOffhandItem(), 0), "站上营地北侧祭坛的金块 4 秒复生", "The description follows the holder");
             test.assertValueEqual(lore(f.player.getOffhandItem(), 1), "每个图腾复生一次，复生后空手出发，其余图腾随身带走",
                     "The camp line says the other totems come along");
-            test.assertValueEqual(lore(f.player.getOffhandItem(), 2), "不能丢弃或转赠 · 本轮结束时清空", "Third camp line");
+            test.assertValueEqual(lore(f.player.getOffhandItem(), 2), "不能丢弃或放进容器 · 本轮结束时清空", "Third camp line");
 
             // Altar revival: a new human life holds the remaining totems with the human description.
             access.set(round, f.player, ParticipantRole.HUMAN_ACTIVE, 2, 4, 0, true);
@@ -162,7 +168,7 @@ public final class RevivalTotemGameTest {
         }).thenIdle(1).thenSucceed();
     }
 
-    @GameTest(maxTicks = 200)
+    @GameTest(maxTicks = MAX_TICKS)
     public void totemNeverLeavesThroughThrowsMenusBundlesOrWorldDisplays(GameTestHelper test) {
         if (HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var f = new Fixture(test);

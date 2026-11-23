@@ -72,7 +72,7 @@ public final class TotemSave {
             var identity = humanCopy(stack);
             if (identity.isEmpty()) continue;
             if (killCredit == null) killCredit = CombatRuntime.peekKillCredit(player.level(), player, source);
-            // A human's direct attack forces out a totem as it would have dropped one at this death (design 1.5).
+            // The save releases a totem exactly as this death would have (守恒 1.1): dropped unless a monster earned it.
             var drop = TotemDrops.prepareSave(player, killCredit);
             var left = access.save(player, identity.get().round(), identity.get().life(), killCredit, drop);
             drop.ifPresent(token -> TotemDrops.captured(player, identity.get().round(), token, left.isPresent()));
