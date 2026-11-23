@@ -47,10 +47,19 @@ class RuleBookTextTest {
         assertNull(page(pages(GameMode.NORMAL), "挖掘与虫穴"));
     }
 
+    @Test void entryPageNamesTheLateShelterOnlyWhenMonstersHuntAndRevivalPageTheBlessing() {
+        var hardcore = page(pages(GameMode.HARDCORE), "开局与加入");
+        assertTrue(hardcore.contains("落地后 5 分钟内怪物无法追猎你，离线不计时。"), hardcore);
+        assertFalse(hardcore.contains("出生保护"));
+        var normal = page(pages(GameMode.NORMAL), "开局与加入");
+        assertFalse(normal.contains("追猎") || normal.contains("出生保护"), normal);
+        assertTrue(page(pages(GameMode.HARDCORE), "复生").contains("图腾之力庇护"));
+    }
+
     @Test void theRewrittenPagesStayWithinTheLongestPageTheBookAlreadyHad() {
         // A written book never scrolls: the pages this plan touched are no longer than any untouched page.
         var hardcore = pages(GameMode.HARDCORE);
-        var touched = List.of(page(hardcore, "黄昏契约"), page(hardcore, "复生图腾"), page(hardcore, "复生"), page(hardcore, "挖掘与虫穴"));
+        var touched = List.of(page(hardcore, "开局与加入"), page(hardcore, "黄昏契约"), page(hardcore, "复生图腾"), page(hardcore, "复生"), page(hardcore, "挖掘与虫穴"));
         int limit = hardcore.stream().filter(page -> !touched.contains(page)).mapToInt(String::length).max().orElseThrow();
         for (var page : touched) assertTrue(page.length() <= limit, page);
     }
