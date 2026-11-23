@@ -41,8 +41,8 @@ class MonsterSessionTest {
             session.monsterDeath(round, player, 3, 5);
             pump(() -> !session.mutationPending());
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
-            assertEquals(30_000_000_000L, session.snapshot().orElseThrow().participants().get(player).monsterCooldownNanos());
-            clock.addAndGet(30_000_000_000L);
+            assertEquals(45_000_000_000L, session.snapshot().orElseThrow().participants().get(player).monsterCooldownNanos());
+            clock.addAndGet(45_000_000_000L);
             request(reply -> session.requestMonsterDeploy(round, player, 3, 5, reply));
             session.monsterDeath(round, player, 3, 5);
             pump(() -> !session.mutationPending());

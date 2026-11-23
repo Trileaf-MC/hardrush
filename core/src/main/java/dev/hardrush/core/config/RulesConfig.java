@@ -130,8 +130,8 @@ public record RulesConfig(
                 Map.entry("creeper.armor", 0.0),
                 Map.entry("creeper.fuseTicks", 30.0),
                 Map.entry("creeper.explosionStrength", 3.0),
-                Map.entry("monster.deployCooldownMillis", 30_000.0),
-                Map.entry("monster.returnChannelMillis", 5_000.0),
+                Map.entry("monster.deployCooldownMillis", 45_000.0),
+                Map.entry("monster.returnChannelMillis", 4_000.0),
                 Map.entry("round.rescueMillis", 60_000.0)),
                 30_000, 90_000, 30_000).withEconomyDefaults();
     }
@@ -139,7 +139,7 @@ public record RulesConfig(
     /** Monster coin economy; each offer's price doubles per purchase within one sortie. */
     private static final Map<String, Double> COIN_DEFAULTS = Map.ofEntries(
             Map.entry("coin.starter", 6.0),
-            Map.entry("coin.killedByHuman", 5.0),
+            Map.entry("coin.killedByHuman", 8.0),
             Map.entry("coin.damageCapPerHuman", 20.0),
             Map.entry("coin.arrowsPerBundle", 4.0),
             Map.entry("coin.potion.swiftnessSeconds", 180.0),
@@ -189,25 +189,43 @@ public record RulesConfig(
             Map.entry("worth.bookMinLevel", 15.0));
 
     /**
-     * A deliberate return pauses the sortie, so hunting again may follow at once; death keeps the deploy cooldown.
-     * The tracking compass rests ten seconds after each landing. A monster digs a block no slower than
+     * A deliberate return pauses the sortie, so hunting again may follow at once; a defeat only locks the human
+     * who won it (docs/plan/击败锁定与怪物平衡.md). The tracking compass channels five seconds and rests ten after each landing. A monster digs a block no slower than
      * bare-handed stone (7.5 seconds), however hard the block.
      * A zombie's soulcatcher holds three creatures before the witch enlarges it. A round whose humans
      * have all left waits three minutes for one of them: long enough to restart a client and rejoin.
      */
     private static final Map<String, Double> SORTIE_DEFAULTS = Map.of("monster.returnCooldownMillis", 0.0,
-            "monster.retrackCooldownMillis", 10_000.0, "monster.digMillis", 7_500.0,
+            "monster.retrackCooldownMillis", 10_000.0, "monster.retrackChannelMillis", 5_000.0, "monster.digMillis", 7_500.0,
             "soulcatcher.capacity", 3.0, "round.reconnectMillis", 180_000.0);
 
-    /** Adds missing coin, worth and sortie values to stored pending rules; values an operator already set are kept. */
+    /**
+     * Retuned defaults: a stored pending value still equal to an earlier default follows the current one, as an
+     * unset value would. Only pending rules are touched; a round keeps the rules it started with.
+     */
+    private static final Map<String, Map.Entry<Double, Double>> RETUNED_DEFAULTS = Map.of(
+            "monster.deployCooldownMillis", Map.entry(30_000.0, 45_000.0),
+            "monster.returnChannelMillis", Map.entry(5_000.0, 4_000.0),
+            "coin.killedByHuman", Map.entry(5.0, 8.0));
+
+    private boolean retuned() {
+        return RETUNED_DEFAULTS.entrySet().stream().anyMatch(entry ->
+                entry.getValue().getKey().equals(combatValues.get(entry.getKey())));
+    }
+
+    /**
+     * Adds missing coin, worth and sortie values to stored pending rules and follows {@link #RETUNED_DEFAULTS};
+     * values an operator already set otherwise are kept.
+     */
     public RulesConfig withEconomyDefaults() {
-        if (COIN_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
+        if (!retuned() && COIN_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && WORTH_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && SORTIE_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && BOUNTY_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && combatValues.keySet().stream().noneMatch(RulesConfig::retiredBountyKey)) return this;
         var values = new TreeMap<>(combatValues);
         values.keySet().removeIf(RulesConfig::retiredBountyKey);
+        RETUNED_DEFAULTS.forEach((key, change) -> values.replace(key, change.getKey(), change.getValue()));
         BOUNTY_DEFAULTS.forEach(values::putIfAbsent);
         COIN_DEFAULTS.forEach(values::putIfAbsent);
         WORTH_DEFAULTS.forEach(values::putIfAbsent);

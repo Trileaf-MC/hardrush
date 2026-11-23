@@ -53,7 +53,7 @@ final class StorageFaultFixture {
             } else {
                 accept(store, engine, engine.proposeDeathBatch(UUID.randomUUID(), ROUND,
                         List.of(death(engine.committed().participants().get(BOB), Optional.empty())), null));
-                clock.millis(30_000);
+                clock.millis(45_000);
                 accept(store, engine, engine.proposeTick(UUID.randomUUID()));
                 var bob = engine.committed().participants().get(BOB);
                 accept(store, engine, engine.proposeMonsterDeploy(UUID.randomUUID(), ROUND, BOB,

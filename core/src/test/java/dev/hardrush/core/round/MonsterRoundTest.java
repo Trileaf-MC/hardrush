@@ -42,10 +42,10 @@ class MonsterRoundTest {
     @Test void firstDeathStartsFullWaitAndMonsterWaitDoesNotResumeHumanTiming() {
         var engine = monster();
         apply(engine, engine.proposeOnline(UUID.randomUUID(), survivor, "Survivor", false));
-        assertEquals(30_000_000_000L, player(engine).monsterCooldownNanos());
+        assertEquals(45_000_000_000L, player(engine).monsterCooldownNanos());
         assertEquals(MonsterRole.ZOMBIE, player(engine).monsterRole());
         assertEquals(MonsterDimension.OVERWORLD, player(engine).monsterDimension());
-        clock.seconds(29);
+        clock.seconds(44);
         assertEquals(1_000_000_000L, player(engine).monsterCooldownNanos());
         assertThrows(IllegalStateException.class, () -> deploy(engine, 0));
         clock.seconds(1);
@@ -61,7 +61,7 @@ class MonsterRoundTest {
         var engine = monster();
         apply(engine, engine.proposeMonsterRole(UUID.randomUUID(), round, player, 1, 0,
                 MonsterRole.SKELETON));
-        clock.seconds(30);
+        clock.seconds(45);
         deploy(engine, 0);
         assertThrows(IllegalStateException.class, () -> engine.proposeMonsterRole(UUID.randomUUID(), round,
                 player, 1, 1, MonsterRole.CREEPER));
@@ -83,7 +83,7 @@ class MonsterRoundTest {
 
     @Test void currentRoundLifeOutingOnlineAndPhaseAllGateEveryMutation() {
         var engine = monster();
-        clock.seconds(30);
+        clock.seconds(45);
         assertThrows(IllegalStateException.class, () -> engine.proposeMonsterDeploy(UUID.randomUUID(), UUID.randomUUID(), player, 1, 0));
         assertThrows(IllegalStateException.class, () -> engine.proposeMonsterDeploy(UUID.randomUUID(), round, player, 2, 0));
         assertThrows(IllegalStateException.class, () -> engine.proposeMonsterDeploy(UUID.randomUUID(), round, player, 1, 3));
@@ -92,7 +92,7 @@ class MonsterRoundTest {
         assertThrows(IllegalStateException.class, () -> engine.proposeMonsterDeath(UUID.randomUUID(), round, player, 1, 0));
         apply(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, player, 1, 1));
         apply(engine, engine.proposeOnline(UUID.randomUUID(), player, "Offline", false));
-        clock.seconds(30);
+        clock.seconds(45);
         assertThrows(IllegalStateException.class, () -> engine.proposeMonsterRole(UUID.randomUUID(), round, player, 1, 1,
                 MonsterRole.CREEPER));
         assertThrows(IllegalStateException.class, () -> deploy(engine, 1));
@@ -103,26 +103,26 @@ class MonsterRoundTest {
 
     @Test void outsideDisconnectReturnsToLobbyAndOfflineWaitFreezesUntilReconnect() {
         var engine = monster();
-        clock.seconds(30);
+        clock.seconds(45);
         deploy(engine, 0);
         apply(engine, engine.proposeOnline(UUID.randomUUID(), player, "Outside", false));
         assertEquals(ParticipantRole.MONSTER_LOBBY, player(engine).role());
         clock.seconds(90);
-        assertEquals(30_000_000_000L, player(engine).monsterCooldownNanos());
+        assertEquals(45_000_000_000L, player(engine).monsterCooldownNanos());
         apply(engine, engine.proposeOnline(UUID.randomUUID(), player, "Returned", true));
         clock.seconds(7);
-        assertEquals(23_000_000_000L, player(engine).monsterCooldownNanos());
+        assertEquals(38_000_000_000L, player(engine).monsterCooldownNanos());
     }
 
-    @Test void cleanRestartPreservesLobbyRemainderAndOutsideReconnectStartsThirtySeconds() {
+    @Test void cleanRestartPreservesLobbyRemainderAndOutsideReconnectStartsTheFullWait() {
         var engine = monster();
         clock.seconds(11);
         apply(engine, engine.proposeCheckpoint(UUID.randomUUID(), true));
         clock.seconds(100_000);
         var restored = RoundEngine.restore(RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(engine.committed())), clock);
-        assertEquals(19_000_000_000L, player(restored).monsterCooldownNanos());
+        assertEquals(34_000_000_000L, player(restored).monsterCooldownNanos());
         apply(restored, restored.proposeOnline(UUID.randomUUID(), player, "Monster", true));
-        clock.seconds(19);
+        clock.seconds(34);
         deploy(restored, 0);
         apply(restored, restored.proposeCheckpoint(UUID.randomUUID(), true));
         clock.seconds(100_000);
@@ -130,12 +130,12 @@ class MonsterRoundTest {
         assertEquals(ParticipantRole.MONSTER_DEPLOYED, player(restored).role());
         apply(restored, restored.proposeOnline(UUID.randomUUID(), player, "Monster", true));
         assertEquals(ParticipantRole.MONSTER_LOBBY, player(restored).role());
-        assertEquals(30_000_000_000L, player(restored).monsterCooldownNanos());
+        assertEquals(45_000_000_000L, player(restored).monsterCooldownNanos());
     }
 
     @Test void failedOrPendingDurableAdmissionCannotExposeOutsideIdentity() {
         var engine = monster();
-        clock.seconds(30);
+        clock.seconds(45);
         var proposal = engine.proposeMonsterDeploy(UUID.randomUUID(), round, player, 1, 0);
         assertEquals(ParticipantRole.MONSTER_LOBBY, player(engine).role());
         assertThrows(IllegalStateException.class, () -> deploy(engine, 0));
@@ -146,7 +146,7 @@ class MonsterRoundTest {
 
     @Test void safetyCancellationRefundsCooldownButCannotCancelTheReplacementOuting() {
         var engine = monster();
-        clock.seconds(30);
+        clock.seconds(45);
         deploy(engine, 0);
         apply(engine, engine.proposeMonsterDeployCancelled(UUID.randomUUID(), round, player, 1, 1));
         assertEquals(ParticipantRole.MONSTER_LOBBY, player(engine).role());

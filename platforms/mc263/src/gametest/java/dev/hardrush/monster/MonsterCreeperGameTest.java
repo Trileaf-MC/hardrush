@@ -48,8 +48,8 @@ public final class MonsterCreeperGameTest {
             try {
                 MonsterRoles.select(f.owner, "creeper");
                 var igniter = f.owner.getInventory().getItem(0);
-                test.assertTrue(igniter.is(Items.GUNPOWDER) && MonsterItems.matches(f.owner, igniter, "igniter"),
-                        "The first slot initially contains body-bound gunpowder");
+                test.assertTrue(igniter.is(Items.FLINT_AND_STEEL) && MonsterItems.matches(f.owner, igniter, "igniter"),
+                        "The first slot initially contains a body-bound flint and steel");
                 test.assertValueEqual(igniter.getHoverName().getString(), "引爆器", "The control is named 引爆器");
                 test.assertValueEqual(igniter.get(DataComponents.USE_EFFECTS).speedMultiplier(), 1f,
                         "Native clients preserve walking speed while using the igniter");
@@ -74,7 +74,7 @@ public final class MonsterCreeperGameTest {
                 MonsterCreeper.tick(f.owner);
                 test.assertValueEqual(MonsterCreeper.swellTicks(f.owner), 8, "Holding again resumes existing progress");
                 f.owner.releaseUsingItem();
-                var fake = new ItemStack(Items.GUNPOWDER);
+                var fake = new ItemStack(Items.FLINT_AND_STEEL);
                 fake.set(DataComponents.CUSTOM_NAME, Component.literal("引爆器"));
                 f.owner.getInventory().setItem(5, fake);
                 test.assertFalse(MonsterCreeper.use(f.owner, InteractionHand.MAIN_HAND), "A matching name cannot forge body ownership");
@@ -100,6 +100,8 @@ public final class MonsterCreeperGameTest {
                 test.assertValueEqual(f.owner.getHealth(), reference.getHealth(), "Native fall damage remains intact");
                 test.assertValueEqual(MonsterCreeper.swellTicks(f.owner), Math.round(reference.getSwelling(1f) * 28),
                         "Fall progress uses native truncation after multiplying distance by 1.5");
+                test.assertTrue(MonsterCreeper.swellTicks(f.owner) > 0 && !MonsterRoles.isIgniting(f.owner),
+                        "A landing's passive swell is not igniting, so it breaks no return or retrack channel");
                 f.owner.setHealth(20); f.owner.damageCooldownTime = 0; f.owner.setInvulnerableTime(0);
                 MonsterCreeper.use(f.owner, InteractionHand.MAIN_HAND);
                 while (MonsterCreeper.swellTicks(f.owner) < 28) MonsterCreeper.tick(f.owner);
@@ -121,6 +123,51 @@ public final class MonsterCreeperGameTest {
                 test.assertFalse(replacement.isPowered(), "Clearing a departed body resets charge for the next body");
                 test.assertValueEqual(MonsterCreeper.swellTicks(f.owner), 0, "A new body starts with an empty fuse");
                 bolt.discard(); reference.discard(); replacement.discard();
+            } finally { f.close(); }
+            test.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = 200)
+    public void humanIgniterLightsAFuseTheCreeperCannotLetGoOf(GameTestHelper test) {
+        var f = new Fixture(test, 2);
+        test.runAfterDelay(80, () -> {
+            try {
+                MonsterRoles.select(f.owner, "creeper");
+                var human = f.players.get(1);
+                test.assertTrue(MonsterCreeper.forceIgnite(f.owner, human), "A human's igniter lights the creeper player");
+                test.assertFalse(MonsterCreeper.forceIgnite(f.owner, human), "A lit fuse is not lit twice");
+                test.assertTrue(MonsterCreeper.forced(f.owner) && MonsterRoles.isIgniting(f.owner), "The lit fuse counts as igniting");
+                test.assertTrue(f.owner.getLastHurtByPlayer() == human, "The igniter is remembered as the last player to hurt it");
+                f.owner.releaseUsingItem();
+                MonsterCreeper.release(f.owner);
+                for (int tick = 0; tick < 10; tick++) MonsterCreeper.tick(f.owner);
+                test.assertValueEqual(MonsterCreeper.swellTicks(f.owner), 10, "Releasing the igniter cannot cancel a lit fuse");
+                for (int tick = 0; tick < 40 && f.owner.isAlive(); tick++) MonsterCreeper.tick(f.owner);
+                test.assertFalse(f.owner.isAlive(), "The lit fuse runs out into the creeper's own blast");
+                test.assertTrue(MonsterCreeper.detonating(f.owner).isEmpty(), "The detonation mark ends with the blast");
+            } finally { f.close(); }
+            test.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = 200)
+    public void creeperIgniterLightsANativeCreeperWithoutWearingOut(GameTestHelper test) {
+        var f = new Fixture(test, 1);
+        test.runAfterDelay(80, () -> {
+            try {
+                MonsterRoles.select(f.owner, "creeper");
+                var target = EntityTypes.CREEPER.create(f.level, EntitySpawnReason.COMMAND);
+                target.setNoAi(true); target.snapTo(f.center.add(2, 0, 0));
+                f.level.addFreshEntity(target);
+                var igniter = f.owner.getInventory().getItem(0);
+                test.assertTrue(MonsterCreeper.igniteNative(f.owner, InteractionHand.MAIN_HAND, target), "The igniter lights a native creeper");
+                test.assertTrue(target.isIgnited(), "The native creeper is ignited the vanilla way");
+                test.assertFalse(MonsterRoles.isIgniting(f.owner), "Lighting another creeper leaves the player's own fuse alone");
+                test.assertValueEqual(f.owner.getInventory().getItem(0), igniter, "The igniter stays in its slot");
+                test.assertValueEqual(igniter.getDamageValue(), 0, "The igniter does not wear out");
+                test.assertFalse(MonsterCreeper.igniteNative(f.owner, InteractionHand.MAIN_HAND, target), "An ignited creeper is not lit again");
+                target.discard();
             } finally { f.close(); }
             test.succeed();
         });

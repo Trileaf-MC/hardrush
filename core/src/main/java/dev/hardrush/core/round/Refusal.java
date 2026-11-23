@@ -22,6 +22,8 @@ public enum Refusal {
     REVIVAL_FIRST,
     NOT_ENOUGH_COINS,
     SKILL_COOLDOWN,
+    /** The chosen human defeated this monster a moment ago; others may be hunted at once. */
+    HUNT_LOCKED,
     /** Any other rule rejection; the caller supplies the wording for its own context. */
     REJECTED;
 
