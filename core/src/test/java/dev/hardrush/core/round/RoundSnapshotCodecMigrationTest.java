@@ -61,7 +61,7 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(3, active.lifeSequence());
         assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(11, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(12, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 
@@ -170,21 +170,42 @@ class RoundSnapshotCodecMigrationTest {
         return java.util.Arrays.copyOf(v10, v10.length - 4);
     }
 
-    @Test void schemaTenRoundTripsTheLooseTotemRegistryInTokenOrder() {
+    private static LooseTotem byKiller(int life, long at) {
+        return new LooseTotem(VICTIM, life, LooseTotem.Source.HUMAN, java.util.Optional.of(KILLER), at);
+    }
+
+    /** One registered HUMAN entry in the current layout: token, victim, life, source text, killer flag, killer, time. */
+    private static final int HUMAN_ENTRY = 16 + 16 + 4 + (4 + "HUMAN".length()) + 1 + 16 + 8;
+
+    @Test void theLooseTotemRegistryRoundTripsInTokenOrderWithItsSourceAndKiller() {
         var high = new UUID(2, 0);
         var low = new UUID(1, 0);
+        var unclaimed = new UUID(3, 0);
         var totems = new java.util.LinkedHashMap<UUID, LooseTotem>();
-        totems.put(high, new LooseTotem(VICTIM, 2, KILLER, 800_000));
-        totems.put(low, new LooseTotem(VICTIM, 1, KILLER, 100));
+        totems.put(high, byKiller(2, 800_000));
+        totems.put(low, byKiller(1, 100));
+        totems.put(unclaimed, new LooseTotem(VICTIM, 3, LooseTotem.Source.UNCLAIMED, java.util.Optional.empty(), 900_000));
         var snapshot = withTotems(totems);
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
-        assertEquals(11, ByteBuffer.wrap(bytes).getInt(4));
+        assertEquals(12, ByteBuffer.wrap(bytes).getInt(4));
         var decoded = RoundSnapshotCodec.decode(bytes);
         assertEquals(snapshot, decoded);
-        assertEquals(List.of(low, high), List.copyOf(decoded.looseTotems().keySet()), "Encoded sorted by token");
+        assertEquals(List.of(low, high, unclaimed), List.copyOf(decoded.looseTotems().keySet()), "Encoded sorted by token");
         var reordered = new java.util.LinkedHashMap<UUID, LooseTotem>();
-        reordered.put(low, totems.get(low)); reordered.put(high, totems.get(high));
+        reordered.put(unclaimed, totems.get(unclaimed)); reordered.put(low, totems.get(low)); reordered.put(high, totems.get(high));
         assertArrayEquals(bytes, RoundSnapshotCodec.encode(withTotems(reordered)), "Deterministic regardless of insertion order");
+    }
+
+    @Test void schemasTenAndElevenReadEveryEntryAsAHumansDropNamingItsKiller() {
+        var token = new UUID(1, 0);
+        byte[] v12 = RoundSnapshotCodec.encode(withTotems(Map.of(token, byKiller(2, 700))));
+        // Drop the source text and the killer flag, which schema 12 added between the life and the killer.
+        int sourceAt = v12.length - 4 - HUMAN_ENTRY + 16 + 16 + 4;
+        byte[] v11 = new byte[v12.length - (4 + "HUMAN".length() + 1)];
+        System.arraycopy(v12, 0, v11, 0, sourceAt);
+        System.arraycopy(v12, sourceAt + 4 + "HUMAN".length() + 1, v11, sourceAt, v12.length - sourceAt - (4 + "HUMAN".length() + 1));
+        ByteBuffer.wrap(v11).putInt(4, 11);
+        assertEquals(withTotems(Map.of(token, byKiller(2, 700))), RoundSnapshotCodec.decode(v11));
     }
 
     @Test void schemaNineAndEarlierReadAnEmptyRegistry() {
@@ -193,7 +214,7 @@ class RoundSnapshotCodecMigrationTest {
         var migrated = RoundSnapshotCodec.decode(v9);
         assertTrue(migrated.looseTotems().isEmpty());
         assertEquals(withTotems(Map.of()), migrated);
-        assertEquals(11, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
+        assertEquals(12, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
         assertTrue(RoundSnapshotCodec.decode(schemaOneFixtureUnchecked()).looseTotems().isEmpty());
     }
 
@@ -218,8 +239,8 @@ class RoundSnapshotCodecMigrationTest {
 
     @Test void corruptRegistryCountsAndDuplicatesAreRejected() {
         var token = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
-        byte[] one = RoundSnapshotCodec.encode(withTotems(Map.of(token, new LooseTotem(VICTIM, 1, KILLER, 5))));
-        int countAt = one.length - (4 + 16 + 16 + 4 + 16 + 8) - 4;
+        byte[] one = RoundSnapshotCodec.encode(withTotems(Map.of(token, byKiller(1, 5))));
+        int countAt = one.length - (4 + HUMAN_ENTRY) - 4;
         assertEquals(1, ByteBuffer.wrap(one).getInt(countAt));
         for (int count : new int[]{-1, LooseTotem.MAX_REGISTERED + 1, 2}) {
             byte[] corrupt = one.clone();
@@ -234,13 +255,13 @@ class RoundSnapshotCodecMigrationTest {
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(duplicate));
         // A negative drop time is not a valid entry either.
         byte[] negative = one.clone();
-        ByteBuffer.wrap(negative).putLong(one.length - 8, -1);
+        ByteBuffer.wrap(negative).putLong(one.length - 4 - 8, -1);
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(negative));
     }
 
     @Test void theRegistryBoundIsEnforcedOnConstructionToo() {
         var totems = new java.util.LinkedHashMap<UUID, LooseTotem>();
-        for (int i = 0; i <= LooseTotem.MAX_REGISTERED; i++) totems.put(new UUID(0, i), new LooseTotem(VICTIM, 1, KILLER, 0));
+        for (int i = 0; i <= LooseTotem.MAX_REGISTERED; i++) totems.put(new UUID(0, i), byKiller(1, 0));
         assertThrows(IllegalArgumentException.class, () -> withTotems(totems));
     }
 

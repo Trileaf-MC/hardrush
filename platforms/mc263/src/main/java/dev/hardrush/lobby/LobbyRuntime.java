@@ -170,9 +170,13 @@ public final class LobbyRuntime {
             @Override public Optional<RoundSnapshot> view() { return session.view(); }
             @Override public boolean open() { return session.state() == RoundSession.State.OPEN; }
             @Override public boolean collects(ServerPlayer player) { return dev.hardrush.revival.RevivalTotems.projectsHuman(player); }
+            @Override public boolean hunts(ServerPlayer player) {
+                return MonsterRoles.isMonster(player) && dev.hardrush.monster.MonsterRoundRuntime.canAct(player);
+            }
             @Override public void refresh(ServerPlayer player) { dev.hardrush.revival.RevivalTotems.refresh(player); }
-            @Override public void requestPickup(UUID round, UUID token, UUID player, int life, java.util.function.Consumer<RoundSession.Reply> reply) {
-                session.requestLooseTotemPickup(round, token, player, life, reply);
+            @Override public void requestPickup(UUID round, UUID token, UUID player, int life, int sortie,
+                    java.util.function.Consumer<RoundSession.Reply> reply) {
+                session.requestLooseTotemPickup(round, token, player, life, sortie, reply);
             }
             @Override public boolean saveInFlight(UUID token) { return session.totemSaveDropInFlight(token); }
         });
@@ -728,8 +732,10 @@ public final class LobbyRuntime {
                 var owner = server.getPlayerList().getPlayer(p.id());
                 if (owner != null) coinFeedback(owner, b.session.committedEventType(), old, p);
             }
-            // A human's pickup tells itself (TotemDrops); a human's other gains are used in the world, a monster's at the altar.
-            if (old != null && p.revivalCharges() > old.revivalCharges() && !"TOTEM_PICKUP".equals(b.session.committedEventType())) {
+            // A human's pickup tells itself (TotemDrops); a human's other gains are used in the world, a monster's at the
+            // altar, a monster's pickup included: it is paid like a kill.
+            boolean humanPickup = p.role() == ParticipantRole.HUMAN_ACTIVE && "TOTEM_PICKUP".equals(b.session.committedEventType());
+            if (old != null && p.revivalCharges() > old.revivalCharges() && !humanPickup) {
                 var owner = server.getPlayerList().getPlayer(p.id());
                 if (owner != null) {
                     boolean recalled = old.role() == ParticipantRole.MONSTER_DEPLOYED && p.role() == ParticipantRole.MONSTER_LOBBY
