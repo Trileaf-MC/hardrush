@@ -74,7 +74,8 @@ import net.minecraft.world.phys.Vec3;
  * The client never sees chunk contents, so unlike the vanilla loading screen it does not wait for the chunk it stands
  * in.
  *
- * <p>Then, at the end of every server tick only, it runs one client tick as {@code Minecraft.tick} does: once it has
+ * <p>Then, at the end of every server tick, it runs one client tick as {@code Minecraft.tick} does (a test's
+ * {@link #move(Vec3, float, float, boolean)} is one more): once it has
  * reported the level loaded it sends its movement the way {@code LocalPlayer.sendChanges} does
  * ({@link Reply#REPORT_POSITION}), and it always ends with {@code ServerboundClientTickEndPacket}. The client keeps its own
  * view of where its player stands: from the teleports it applied, the rotations the server set and the moves a test
@@ -130,12 +131,12 @@ public final class TestClient implements AutoCloseable {
     private ServerGamePacketListenerImpl listener;
     private ServerGamePacketListenerImpl replaced;
     // Written by the connection as packets arrive, consumed by acknowledge().
-    /** Position and rotation packets not yet applied, in the order they arrived. */
+    /** Position, rotation, login and respawn packets the client has not applied yet, in the order they arrived. */
     private final ConcurrentLinkedQueue<Packet<?>> pendingPlacements = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<Long> pendingKeepAlives = new ConcurrentLinkedQueue<>();
     private final List<Teleport> acceptedTeleports = Collections.synchronizedList(new ArrayList<>());
     private final AtomicInteger pendingChunkBatches = new AtomicInteger();
-    // The client's own player, written on the server thread only.
+    // The client's own player: written where the client handles packets and ticks, which is the server thread.
     /** Where the client sees its player; null until a teleport places it after a login or respawn. */
     private Vec3 position;
     private float yRot;
@@ -183,7 +184,7 @@ public final class TestClient implements AutoCloseable {
      * Stops the per-tick connection tick, at any time: the player's own body ({@code ServerPlayer.doTick}: effects, hunger,
      * air, fire, attack and item timers) no longer ticks and nothing checks keep-alives. What the level ticks for every
      * player still runs (game mode, damage cooldown, client-load timeout, container sync), and the client still sends its
-     * replies. {@link #tickConnection()} steps the connection by hand.
+     * replies and its position packets. {@link #tickConnection()} steps the connection by hand.
      */
     public TestClient freeze() { frozen = true; return this; }
 
@@ -345,7 +346,8 @@ public final class TestClient implements AutoCloseable {
 
     /**
      * Where the client sees its player: placed by the teleports it applied and moved by the test through
-     * {@link #move(Vec3, float, float, boolean)}. Null after a login or respawn until a teleport places the player.
+     * {@link #move(Vec3, float, float, boolean)}. Null after a login or respawn until a teleport places the player, and
+     * once the session is over.
      */
     public Vec3 position() { return position; }
 
@@ -391,12 +393,13 @@ public final class TestClient implements AutoCloseable {
         if (!withheld.contains(Reply.ANSWER_KEEP_ALIVE)) answerKeepAlives();
         if (!withheld.contains(Reply.CONFIRM_CHUNK_BATCHES)) confirmChunkBatches();
         if (!withheld.contains(Reply.ACCEPT_TELEPORTS)) acceptTeleport();
-        if (!withheld.contains(Reply.REPORT_LOADED) && levelLoading && levelChunksStarted && pendingPlacements.isEmpty()) reportLoaded();
+        if (!withheld.contains(Reply.REPORT_LOADED) && levelLoading && levelChunksStarted && !teleportsPending()) reportLoaded();
     }
 
     /**
      * Applies, in order, the teleports and rotations the server had sent when this was called, as the vanilla client
-     * does, and accepts each teleport at the destination it applied; {@code false} if nothing was pending. The server
+     * does, and accepts each teleport at the destination it applied (a login or respawn on the way gives the client a new
+     * player first); {@code false} if nothing was pending. The server
      * moves the player only for the latest teleport, but HardRush recognises a level's arrival by the first one after it.
      * A teleport the server sends in answer to these acceptances waits for the next call, as it would wait for the next
      * packet a real client reads.
@@ -408,6 +411,7 @@ public final class TestClient implements AutoCloseable {
             if (packet == null) break;
             if (packet instanceof ClientboundPlayerPositionPacket teleport) accept(teleport);
             else if (packet instanceof ClientboundPlayerRotationPacket rotation) rotate(rotation);
+            else newPlayer();
         }
         return true;
     }
@@ -437,8 +441,7 @@ public final class TestClient implements AutoCloseable {
         if (player.isPassenger()) {
             standWhere(player);
         } else {
-            // Only a relative teleport before any absolute one needs a start; vanilla's new player would be at the origin.
-            if (position == null) standWhere(player);
+            if (position == null) standBefore(packet, player);
             var arrival = PositionMoveRotation.calculateAbsolute(new PositionMoveRotation(position, Vec3.ZERO, yRot, xRot),
                     packet.change(), packet.relatives());
             position = arrival.position();
@@ -476,7 +479,7 @@ public final class TestClient implements AutoCloseable {
      * teleport is accepted; one sent earlier still belongs to the previous level, so the automatic report stays due.
      */
     public void reportLoaded() {
-        if (levelChunksStarted && pendingPlacements.isEmpty()) levelLoading = false;
+        if (levelChunksStarted && !teleportsPending()) levelLoading = false;
         listener.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
     }
 
@@ -497,13 +500,16 @@ public final class TestClient implements AutoCloseable {
      * moves by {@code offset} from where it sees itself, faces {@code yRot}/{@code xRot}, sends that movement as
      * {@code LocalPlayer.sendPosition} does and ends the tick. {@code onGround} is what its physics would report there,
      * for example {@code false} at the start of a jump. The server may refuse the move and teleport the player back,
-     * which the client applies with its next replies.
+     * which the client applies with its next replies. A vanilla client sends nothing before it reports the level loaded;
+     * a move before then is a client sending early, which the server ignores unless HardRush intercepts it first. A
+     * riding client cannot walk.
      */
     public void move(Vec3 offset, float yRot, float xRot, boolean onGround) {
         listener();
         acknowledge();
         if (!live()) throw new IllegalStateException(profile.name() + " does not control its player");
         if (position == null) throw new IllegalStateException(profile.name() + " has not been placed in its level yet");
+        if (listener.player.isPassenger()) throw new IllegalStateException(profile.name() + " rides; its client reports no position of its own");
         position = position.add(offset);
         this.yRot = yRot;
         this.xRot = xRot;
@@ -623,8 +629,31 @@ public final class TestClient implements AutoCloseable {
      * ground and stays in the air.
      */
     private boolean standsOnSomething(ServerPlayer player) {
-        var feet = player.getBoundingBox().move(position.subtract(player.position())).move(0, -1.0E-5, 0);
+        var feet = player.getDimensions(player.getPose()).makeBoundingBox(position).move(0, -1.0E-5, 0);
         return !player.level().noCollision(player, feet);
+    }
+
+    /**
+     * Where a client not yet placed stands when a teleport reaches it: where the server had the player before that
+     * teleport. Only {@code ServerGamePacketListenerImpl.teleport} sends a client its first position after a login,
+     * respawn or attach, and it moves the player before sending, so that is the player's position now less the packet's
+     * relative parts. A respawn that keeps the player's data keeps its rotation this way too, as vanilla's does.
+     */
+    private void standBefore(ClientboundPlayerPositionPacket packet, ServerPlayer player) {
+        var change = packet.change();
+        var relatives = packet.relatives();
+        var offset = change.position();
+        position = new Vec3(
+                player.getX() - (relatives.contains(Relative.X) ? offset.x : 0),
+                player.getY() - (relatives.contains(Relative.Y) ? offset.y : 0),
+                player.getZ() - (relatives.contains(Relative.Z) ? offset.z : 0));
+        yRot = player.getYRot() - (relatives.contains(Relative.Y_ROT) ? change.yRot() : 0);
+        xRot = player.getXRot() - (relatives.contains(Relative.X_ROT) ? change.xRot() : 0);
+    }
+
+    /** Whether a teleport, or the new player it would place, still waits for the client. */
+    private boolean teleportsPending() {
+        return pendingPlacements.stream().anyMatch(packet -> !(packet instanceof ClientboundPlayerRotationPacket));
     }
 
     /** Sees the player where the server has it, for a client that had no position packet to go by. */
@@ -698,8 +727,9 @@ public final class TestClient implements AutoCloseable {
             case ClientboundPlayerRotationPacket rotation -> pendingPlacements.add(rotation);
             case ClientboundChunkBatchFinishedPacket ignored -> pendingChunkBatches.incrementAndGet();
             case ClientboundKeepAlivePacket keepAlive -> pendingKeepAlives.add(keepAlive.getId());
-            case ClientboundLoginPacket ignored -> { levelLoading = true; levelChunksStarted = false; newPlayer(); }
-            case ClientboundRespawnPacket ignored -> { levelLoading = true; levelChunksStarted = false; newPlayer(); }
+            // The client creates its new player when it reads the packet, after what came before it.
+            case ClientboundLoginPacket login -> { levelLoading = true; levelChunksStarted = false; pendingPlacements.add(login); }
+            case ClientboundRespawnPacket respawn -> { levelLoading = true; levelChunksStarted = false; pendingPlacements.add(respawn); }
             case ClientboundGameEventPacket event when event.getEvent() == ClientboundGameEventPacket.LEVEL_CHUNKS_LOAD_START -> levelChunksStarted = true;
             default -> { }
         }
@@ -719,6 +749,8 @@ public final class TestClient implements AutoCloseable {
         listener = null;
         replaced = null;
         mode = null;
+        pendingPlacements.clear();
+        newPlayer();
     }
 
     private void requireOffline() {

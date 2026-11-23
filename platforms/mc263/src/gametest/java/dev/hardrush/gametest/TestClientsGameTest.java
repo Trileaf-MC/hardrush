@@ -198,6 +198,37 @@ public final class TestClientsGameTest {
     }
 
     /**
+     * A relative teleport that reaches a client before anything placed it (here an attached one, as after a respawn)
+     * starts where the server had the player before that teleport, so its offset and turn apply once.
+     */
+    @GameTest(maxTicks = 100)
+    public void relativeTeleportBeforeTheClientIsPlacedAppliesOnce(GameTestHelper test) {
+        var level = test.getLevel();
+        var floor = arena(level);
+        var owner = TestClient.named(level.getServer(), "HROwnerRel");
+        var player = owner.place(level);
+        player.teleportTo(level, floor.getX() + .5, floor.getY() + 1, floor.getZ() + .5, Set.of(), 20, 0, true);
+        owner.acknowledge();
+        var attached = new TestClient(level.getServer(), player.getGameProfile());
+        attached.attach(player);
+        test.assertTrue(attached.position() == null, "The attached client has not placed its player yet");
+        attached.listener().teleport(new PositionMoveRotation(new Vec3(1, 0, 0), Vec3.ZERO, 30, 0),
+                Set.of(Relative.X, Relative.Y, Relative.Z, Relative.Y_ROT, Relative.X_ROT));
+        var server = player.position();
+        float serverYaw = player.getYRot();
+        attached.acknowledge();
+        var accepted = attached.acceptedTeleports().getLast();
+        test.assertTrue(accepted.position().distanceTo(server) < 1.0E-6 && Math.abs(accepted.yRot() - serverYaw) < 1.0E-4,
+                "The client lands where the server moved it, turned once: " + accepted + " vs " + server + " / " + serverYaw);
+        test.assertTrue(player.position().distanceTo(server) < 1.0E-6 && Math.abs(player.getYRot() - serverYaw) < 1.0E-4,
+                "Accepting moves the player no further: " + player.position() + " / " + player.getYRot());
+        attached.close();
+        owner.close();
+        clear(level, floor);
+        test.succeed();
+    }
+
+    /**
      * A test walks the player through its client: one client tick each, which the server takes as a real move. The client
      * sees itself where it walked, and its periodic position packets keep the player there without drawing a correction.
      */
