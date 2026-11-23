@@ -145,10 +145,41 @@ public final class MonsterCreeperGameTest {
                 test.assertValueEqual(MonsterCreeper.swellTicks(f.owner), 10, "Releasing the igniter cannot cancel a lit fuse");
                 for (int tick = 0; tick < 40 && f.owner.isAlive(); tick++) MonsterCreeper.tick(f.owner);
                 test.assertFalse(f.owner.isAlive(), "The lit fuse runs out into the creeper's own blast");
-                test.assertTrue(MonsterCreeper.detonating(f.owner).isEmpty(), "The detonation mark ends with the blast");
+                test.assertTrue(MonsterCreeper.litBy(f.owner).isEmpty(), "The igniter mark ends with the blast");
             } finally { f.close(); }
             test.succeed();
         });
+    }
+
+    @GameTest(maxTicks = 200)
+    public void humanRightClickWithFlintAndSteelLightsTheCreeperPlayer(GameTestHelper test) {
+        var f = new Fixture(test, 2);
+        test.runAfterDelay(80, () -> {
+            try {
+                MonsterRoles.select(f.owner, "creeper");
+                var human = f.players.get(1);
+                human.teleportTo(f.owner.getX() + 2, f.owner.getY(), f.owner.getZ());
+                human.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.STICK));
+                interact(human, f.owner);
+                test.assertFalse(MonsterCreeper.forced(f.owner), "Any other item leaves the creeper alone");
+                var flint = new ItemStack(Items.FLINT_AND_STEEL);
+                human.setItemInHand(InteractionHand.MAIN_HAND, flint);
+                interact(human, f.owner);
+                test.assertTrue(MonsterCreeper.forced(f.owner), "The native interaction packet lights the creeper player");
+                test.assertValueEqual(human.getMainHandItem().getDamageValue(), 1, "The flint and steel wears by one, as on a native creeper");
+                f.owner.releaseUsingItem();
+            } finally { f.close(); }
+            test.succeed();
+        });
+    }
+
+    private static void interact(ServerPlayer player, Entity target) {
+        var bytes = io.netty.buffer.Unpooled.buffer();
+        try {
+            var packet = new net.minecraft.network.protocol.game.ServerboundInteractPacket(target.getId(), InteractionHand.MAIN_HAND, new Vec3(0, 1, 0), false);
+            net.minecraft.network.protocol.game.ServerboundInteractPacket.STREAM_CODEC.encode(bytes, packet);
+            player.connection.handleInteract(net.minecraft.network.protocol.game.ServerboundInteractPacket.STREAM_CODEC.decode(bytes));
+        } finally { bytes.release(); }
     }
 
     @GameTest(maxTicks = 200)

@@ -139,7 +139,7 @@ public final class FullFlowGameTest {
         seq.thenWaitUntil(()->f.await(f.target.participant().online()&&!dev.hardrush.player.PlayerProfiles.isLocked(f.target.player)&&!f.session.mutationPending(),"Human reconnect restores same life"))
                 .thenExecute(()->test.assertValueEqual(f.round().phase(),RoundPhase.RUNNING,"The reconnect ends the rescue"))
                 .thenExecute(()->{
-                    f.monster.move(f.target.player.position().add(1,0,0)); f.target.player.setHealth(1);f.target.player.setInvulnerableTime(0);
+                    f.monster.move(f.target.player.position().add(1,0,0)); f.target.player.removeAllEffects();f.target.player.setAbsorptionAmount(0);f.target.player.setHealth(1);f.target.player.setInvulnerableTime(0);
                     f.monster.player.connection.handleAttack(new ServerboundAttackPacket(f.target.player.getId()));
                 })
                 .thenWaitUntil(()->{

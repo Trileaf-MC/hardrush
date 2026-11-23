@@ -120,6 +120,13 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
     public boolean revivalEntitled() { return revivalCharges > 0; }
 
     /**
+     * Became a human after the challenge clock had started. A join while the clock still stood at zero (humans
+     * still entering, or all of them away) counts as an opening entrant, like those who joined at the start: that
+     * clock only stands still before anyone plays, which is always inside the dusk pact, so nothing is lost.
+     */
+    public boolean lateEntrant() { return joinedAtChallengeNanos > 0; }
+
+    /**
      * Present on the server. {@link #online} additionally means the profile adapter has admitted this
      * body; a life still {@link #entering} is present but not yet playing, so it accrues no time.
      */

@@ -31,6 +31,8 @@ public final class StatusBars {
         OBSERVE,
         /** The dusk pact countdown. */
         PACT,
+        /** A late entrant's first minutes, while monsters cannot choose it (初入荒野); below the pact so its final warning shows. */
+        SHELTER,
         /** Builders only: what their draft still lacks before it can be published. */
         WORKSHOP,
         /** Operators only: a lobby pack being installed, or waiting to be switched to. */

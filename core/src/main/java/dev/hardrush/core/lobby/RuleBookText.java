@@ -2,6 +2,7 @@ package dev.hardrush.core.lobby;
 
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
+import dev.hardrush.core.hunt.LateShelter;
 import dev.hardrush.core.round.MonsterCoins;
 import dev.hardrush.core.round.MonsterWorth;
 import dev.hardrush.core.round.RoundEngine;
@@ -21,7 +22,8 @@ public final class RuleBookText {
         boolean hardcore = rules.mode() == GameMode.HARDCORE;
         var pages = new ArrayList<String>();
         pages.add("HardRush\n\n人类击败末影龙即通关，对末影龙打出最后一击的人类是胜者。\n\n本轮模式：" + (hardcore ? "极限挑战" : "普通模式"));
-        pages.add("开局与加入\n\n开局前走进集结区即准备，走出即取消。\n\n挑战开始后，在集结区站 4 秒可以空手中途加入，落在远离出生点的荒野，没有出生保护。");
+        pages.add("开局与加入\n\n开局前走进集结区即准备，走出即取消。\n\n挑战开始后，在集结区站 4 秒可以空手中途加入，落在远离出生点的荒野。"
+                + (LateShelter.enabled(rules) ? "落地后 " + LateShelter.duration(rules) + "内怪物无法追猎你，离线不计时。" : ""));
         pages.add("离线与救场\n\n人类离线时保留资格。所有人类都离线时等待 " + seconds(RoundEngine.reconnectMillis(rules))
                 + " 秒，期间有人重连、复生或中途加入就继续，否则本轮结束。");
         pages.add("黄昏契约\n\n开局后到第一次日落前，玩家之间不能互相伤害。"
@@ -30,10 +32,11 @@ public final class RuleBookText {
             pages.add("阵亡\n\n普通模式下阵亡后按原版重生。");
         } else {
             pages.add("阵亡\n\n极限挑战中阵亡后回到营地，可以到庭院的角色展位选择僵尸、骷髅或苦力怕，化身怪物追猎人类。");
-            pages.add("追猎\n\n右键庭院里的目标模型，开始寻找目标附近的出击位置，再次右键取消。\n\n出击后右键回响碎片，边走边引导 "
-                    + seconds(RoundEngine.returnChannelMillis(rules))
-                    + " 秒返回营地，本次物资暂存到下次。\n\n追迹罗盘的指针指向你的目标，发光时右键，边走边引导 "
-                    + seconds(RoundEngine.retrackChannelMillis(rules)) + " 秒循迹到目标附近。");
+            pages.add("追猎\n\n右键庭院里的目标模型，开始寻找目标附近的出击位置，再次右键取消。落地时目标会听到一声洞穴音。\n\n"
+                    + "出击后右键回响碎片，边走边引导 " + seconds(RoundEngine.returnChannelMillis(rules))
+                    + " 秒返回营地，本次物资暂存到下次。");
+            pages.add("追迹罗盘\n\n追迹罗盘的指针指向你的目标，发光时右键，边走边引导 " + seconds(RoundEngine.retrackChannelMillis(rules))
+                    + " 秒就能循迹到目标附近。\n\n受伤或动手会打断引导；落地后罗盘冷却 " + seconds(RoundEngine.retrackCooldownMillis(rules)) + " 秒。");
             pages.add("击败\n\n怪物阵亡后马上可以追猎别人，只有击败它的人类在 " + seconds(RoundEngine.deployCooldownNanos(rules) / 1_000_000)
                     + " 秒内不会被它追猎。苦力怕引爆后，它这次追猎的目标同样如此。\n\n人类用打火石或火焰弹右键苦力怕，可以强行点燃它。");
             pages.add("角色\n\n僵尸自带僵尸刷怪蛋，困难难度下能空手敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
@@ -51,7 +54,7 @@ public final class RuleBookText {
             pages.add("复生图腾\n\n人类被人类击杀或逼出图腾时会掉落 1 个，人类捡起即得；怪物击杀人类或逼出图腾直接获得 1 个。\n\n"
                     + "图腾不能丢弃或转赠，阵亡时自己的图腾不会掉落。");
             pages.add("复生\n\n把复生图腾拿在手上阵亡时原地复生，消耗 1 个。\n\n"
-                    + "没拿在手上就阵亡，可到营地北侧的祭坛站上金块 4 秒复生，空手出发，怪物币清空。");
+                    + "没拿在手上就阵亡，可到营地北侧的祭坛站上金块 4 秒复生，空手出发，怪物币清空。落地时获得图腾之力庇护：生命恢复 II、伤害吸收 IV、抗火，持续 2 分钟。");
             pages.add("救场\n\n所有人类阵亡后进入 " + seconds(RoundEngine.rescueMillis(rules))
                     + " 秒救场：有图腾的怪物可以复生，也可以从集结区加入。");
         }
