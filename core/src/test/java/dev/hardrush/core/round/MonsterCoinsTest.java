@@ -314,6 +314,119 @@ class MonsterCoinsTest {
         assertTrue(MonsterCoins.enabled(legacy.forNewRound()));
     }
 
+    /** A human holding a revival totem, killed with {@code coins} in the wallet: a camp monster that may only revive. */
+    private RoundEngine totemHolder(int coins) {
+        var other = new Participant(UUID.randomUUID(), "Other", ParticipantRole.HUMAN_ACTIVE, true, false, 100, 50, 1, false);
+        var engine = engine(humanParticipant().withWallet(MonsterWallet.EMPTY.credit(coins)), other);
+        accept(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, human, 1, 0, 1));
+        accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round, List.of(new RoundDeath(human, 1, 0, Optional.empty())), null));
+        return engine;
+    }
+
+    private void buy(RoundEngine engine, ShopOffer offer, int price) {
+        accept(engine, engine.proposeShopPurchase(UUID.randomUUID(), round, human, 1, 0, offer, price));
+    }
+
+    @Test void aTotemHolderIsSoldRevivalSuppliesAndNothingElse() {
+        var engine = totemHolder(400);
+        assertFalse(engine.committed().participants().get(human).wallet().roleChosen(), "No role is needed for supplies");
+        buy(engine, ShopOffer.BONUS_CHEST, 30);
+        buy(engine, ShopOffer.LONGER_BLESSING, 30);
+        buy(engine, ShopOffer.LONGER_BLESSING, 60);
+        buy(engine, ShopOffer.LONGER_BLESSING, 120);
+        assertThrows(IllegalStateException.class, () -> engine.proposeShopPurchase(UUID.randomUUID(), round, human, 1, 0,
+                ShopOffer.LONGER_BLESSING, 240), "Five minutes is the cap");
+        assertThrows(IllegalStateException.class, () -> engine.proposeShopPurchase(UUID.randomUUID(), round, human, 1, 0,
+                ShopOffer.BONUS_CHEST, 60), "One bonus chest");
+        var sortieGoods = assertThrows(Refusal.Exception.class, () -> engine.proposeShopPurchase(UUID.randomUUID(), round, human, 1, 0,
+                ShopOffer.SWIFTNESS, 10));
+        assertEquals(Refusal.REVIVAL_FIRST, sortieGoods.refusal());
+        assertEquals(400 + 6 - 30 - 30 - 60 - 120, engine.committed().participants().get(human).wallet().coins());
+    }
+
+    @Test void aMonsterWithoutATotemIsNeverSoldRevivalSupplies() {
+        var engine = engine(humanParticipant(), deployedMonster().withWallet(chosen(100)));
+        accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, monster, 1, 3));
+        assertThrows(IllegalStateException.class, () -> engine.proposeShopPurchase(UUID.randomUUID(), round, monster, 1, 3, ShopOffer.BREAD, 30));
+    }
+
+    @Test void revivalCarriesTheSuppliesIntoTheNewLifeUntilTheyLand() {
+        var engine = totemHolder(400);
+        buy(engine, ShopOffer.BREAD, 30);
+        buy(engine, ShopOffer.BREAD, 60);
+        buy(engine, ShopOffer.BONUS_CHEST, 30);
+        buy(engine, ShopOffer.LONGER_BLESSING, 30);
+        accept(engine, engine.proposeAdmissionRevival(UUID.randomUUID(), round, human, 1, 0));
+        var revived = engine.committed().participants().get(human);
+        assertEquals(MonsterWallet.EMPTY, revived.wallet(), "Leftover coins still do not outlive the monster");
+        assertEquals(Map.of(ShopOffer.BREAD, 2, ShopOffer.BONUS_CHEST, 1, ShopOffer.LONGER_BLESSING, 1), revived.witch().supplyOf(2));
+        assertTrue(revived.witch().supplyOf(1).isEmpty());
+        assertTrue(revived.witch().landingPending(2));
+        assertEquals(160_000, revived.witch().blessingMillis(2), "90 s and one 70 s step");
+        assertThrows(IllegalStateException.class, () -> engine.proposeRevivalSupplyLanded(UUID.randomUUID(), round, human, 1));
+        accept(engine, engine.proposeRevivalSupplyLanded(UUID.randomUUID(), round, human, 2));
+        assertFalse(engine.committed().participants().get(human).witch().landingPending(2));
+        assertEquals(160_000, engine.committed().participants().get(human).witch().blessingMillis(2), "Landing keeps the record");
+        assertThrows(IllegalStateException.class, () -> engine.proposeRevivalSupplyLanded(UUID.randomUUID(), round, human, 2),
+                "Delivered once");
+    }
+
+    @Test void aRevivalWithoutSuppliesOwesNothingAtLanding() {
+        var engine = totemHolder(0);
+        accept(engine, engine.proposeAdmissionRevival(UUID.randomUUID(), round, human, 1, 0));
+        var revived = engine.committed().participants().get(human);
+        assertFalse(revived.witch().landingPending(2));
+        assertEquals(90_000, revived.witch().blessingMillis(2));
+        assertThrows(IllegalStateException.class, () -> engine.proposeRevivalSupplyLanded(UUID.randomUUID(), round, human, 2));
+    }
+
+    @Test void theWitchGuideIsSeenOncePerRoundAcrossLives() {
+        var engine = totemHolder(0);
+        accept(engine, engine.proposeWitchGuideSeen(UUID.randomUUID(), round, human));
+        assertThrows(IllegalStateException.class, () -> engine.proposeWitchGuideSeen(UUID.randomUUID(), round, human));
+        assertThrows(IllegalStateException.class, () -> engine.proposeWitchGuideSeen(UUID.randomUUID(), UUID.randomUUID(), human));
+        accept(engine, engine.proposeAdmissionRevival(UUID.randomUUID(), round, human, 1, 0));
+        accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round, List.of(new RoundDeath(human, 2, 0, Optional.empty())), null));
+        assertTrue(engine.committed().participants().get(human).witch().guideSeen(), "A second death does not repeat the guide");
+    }
+
+    @Test void theBlessingGrowsByStepsUpToFiveMinutes() {
+        for (int bought = 0; bought <= 4; bought++) {
+            var record = bought == 0 ? WitchRecord.NONE : WitchRecord.NONE.supplied(3, Map.of(ShopOffer.LONGER_BLESSING, bought));
+            assertEquals(Math.min(300_000, 90_000 + 70_000L * bought), record.blessingMillis(3));
+        }
+        assertThrows(IllegalArgumentException.class, () -> WitchRecord.NONE.supplied(2, Map.of(ShopOffer.SWIFTNESS, 1)));
+        assertThrows(IllegalArgumentException.class, () -> new WitchRecord(false, 0, Map.of(ShopOffer.BREAD, 1), false));
+    }
+
+    @Test void revivalSupplyLimitsCannotSellWhatIsNeverDelivered() {
+        for (var key : List.of("coin.limit.shield", "coin.limit.bonusChest", "coin.limit.ironBucket", "coin.limit.ironPickaxe")) {
+            var values = new java.util.HashMap<>(RULES.combatValues());
+            values.put(key, 2.0);
+            assertThrows(IllegalArgumentException.class, () -> withValues(values), key);
+        }
+        var values = new java.util.HashMap<>(RULES.combatValues());
+        values.put("coin.limit.longerBlessing", 4.0);
+        assertThrows(IllegalArgumentException.class, () -> withValues(values), "A fourth step would pass the cap");
+        values.put("coin.limit.longerBlessing", 3.0);
+        assertDoesNotThrow(() -> withValues(values), "Three steps reach five minutes exactly");
+    }
+
+    private static RulesConfig withValues(Map<String, Double> values) {
+        return new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+                RULES.generationRule(), values, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
+    }
+
+    @Test void deployingNeverCarriesRevivalSupplies() {
+        var wallet = MonsterWallet.EMPTY.credit(100).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.BREAD, 30).chooseRole(RULES, MonsterRole.ZOMBIE);
+        assertEquals(0, wallet.ordered(ShopOffer.BREAD), "A role choice never keeps goods no sortie can carry");
+        assertEquals(100, wallet.coins());
+        var kept = MonsterWallet.EMPTY.credit(100).chooseRole(RULES, MonsterRole.ZOMBIE).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.BREAD, 30)
+                .deploy(RULES, MonsterRole.ZOMBIE);
+        assertEquals(0, kept.carried(ShopOffer.BREAD));
+        assertEquals(1, kept.ordered(ShopOffer.BREAD));
+    }
+
     private Participant humanParticipant() {
         return new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, true, false, 100, 50, 1, false);
     }

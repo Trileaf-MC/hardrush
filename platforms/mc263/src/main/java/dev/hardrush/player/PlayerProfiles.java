@@ -857,7 +857,8 @@ public final class PlayerProfiles implements AutoCloseable {
     }
 
     /**
-     * A consumed entitlement starts an empty human life with ender storage kept. In a bounty round its native
+     * A consumed entitlement starts an empty human life with ender storage kept, holding only the revival supplies
+     * bought from the witch. In a bounty round its native
      * advancements start over too, so each life's threat counts only what that life achieved.
      */
     public boolean revive(ServerPlayer player, RoundSnapshot round, ServerLevel spawnLevel, Vec3 spawn) {
@@ -897,6 +898,8 @@ public final class PlayerProfiles implements AutoCloseable {
             for (var cooldown : Set.copyOf(((PlayerCooldownAccessor) player.getCooldowns()).hardrush$cooldowns().keySet())) {
                 player.getCooldowns().removeCooldown(cooldown);
             }
+            // The witch's carried revival supplies are part of this body, so they enter the resume snapshot below with it.
+            dev.hardrush.revival.RevivalSupplies.fill(player, participant);
             ((ProfileTagged) player).hardrush$lifeSequence(participant.lifeSequence());
             ((ProfileTagged) player).hardrush$respawnPermitted(false);
             // The respawn packet of this crossing carries it: the vanilla recovery compass points at the last human death.

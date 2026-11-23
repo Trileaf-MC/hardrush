@@ -126,6 +126,9 @@ public final class LobbyRuntimeGameTest {
                     HuntInputFixtures.role(f.monster.player, "zombie");
                 })
                 .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.ZOMBIE && !f.session.mutationPending(), "Role choice durably saved"))
+                .thenExecute(f::meetWitch)
+                .thenWaitUntil(() -> f.await(f.monster.participant().witch().guideSeen() && !f.session.mutationPending(),
+                        "The witch's guide is recorded as seen once shown"))
                 .thenExecute(f::buyAdultEggFromWitch)
                 .thenWaitUntil(() -> f.await(f.monster.participant().wallet().ordered(dev.hardrush.core.round.ShopOffer.ADULT_EGG) == 1
                         && !f.session.mutationPending(), "The witch purchase commits durably"))
@@ -347,6 +350,42 @@ public final class LobbyRuntimeGameTest {
                                 "A revival totem cannot be thrown: the charge stays with its owner");
                     });
             if (iteration == 0) CampTransferFixtures.append(sequence, f, hunter, prey);
+            if (iteration == 0) {
+                // A totem holder spends what is left on revival supplies (docs/plan/复生补给与女巫说明.md 2).
+                var steps = new java.util.ArrayList<java.util.function.Consumer<java.util.function.Consumer<dev.hardrush.round.RoundSession.Reply>>>();
+                steps.add(reply -> f.session.requestMonsterCoinPickup(f.round().roundId(), hunter.profile.id(), hunter.participant().lifeSequence(),
+                        hunter.participant().monsterDeploymentSequence(), 200, reply));
+                for (var offer : java.util.List.of(dev.hardrush.core.round.ShopOffer.BONUS_CHEST, dev.hardrush.core.round.ShopOffer.LONGER_BLESSING,
+                        dev.hardrush.core.round.ShopOffer.OAK_LOGS, dev.hardrush.core.round.ShopOffer.SHIELD))
+                    steps.add(reply -> f.session.requestShopPurchase(f.round().roundId(), hunter.profile.id(), hunter.participant().lifeSequence(),
+                            hunter.participant().monsterDeploymentSequence(), offer,
+                            hunter.participant().wallet().nextPrice(f.round().rules(), offer), reply));
+                for (var step : steps) {
+                    var done = new java.util.concurrent.atomic.AtomicReference<dev.hardrush.round.RoundSession.Reply>();
+                    sequence.thenWaitUntil(() -> f.await(!f.session.mutationPending(), "Settled before the next supply step"))
+                            .thenExecute(() -> step.accept(done::set))
+                            .thenWaitUntil(() -> f.await(done.get() != null && !f.session.mutationPending(), "Supply step answered"))
+                            .thenExecute(() -> f.test.assertTrue(done.get().success(), "Supply step succeeds: " + done.get().message()));
+                }
+                sequence.thenExecute(() -> {
+                    var order = hunter.participant().wallet().order();
+                    f.test.assertValueEqual(order.size(), 4, "Four revival supplies wait for the revival: " + order);
+                    var refused = new java.util.concurrent.atomic.AtomicReference<dev.hardrush.round.RoundSession.Reply>();
+                    f.session.requestShopPurchase(f.round().roundId(), hunter.profile.id(), hunter.participant().lifeSequence(),
+                            hunter.participant().monsterDeploymentSequence(), dev.hardrush.core.round.ShopOffer.SWIFTNESS, 10, refused::set);
+                    f.test.assertTrue(refused.get() != null && !refused.get().success(), "A totem holder is sold nothing for a sortie");
+                    // The witch's own screen: a totem holder sees the revival shelf and nothing else.
+                    f.test.assertTrue(hunter == f.monster, "The first cycle's hunter is the fixture monster");
+                    f.clickWitch();
+                    f.test.assertTrue(dev.hardrush.lobby.MonsterShop.isShop(hunter.player), "The guide was already read: the shop opens at once");
+                    var offers = ((net.minecraft.world.inventory.MerchantMenu) hunter.player.containerMenu).getOffers();
+                    var sold = offers.stream().map(offer -> offer.getResult().getItem()).toList();
+                    f.test.assertValueEqual(sold.size(), 7, "Seven revival supplies on the shelf: " + sold);
+                    f.test.assertFalse(sold.contains(Items.ZOMBIE_SPAWN_EGG), "No sortie goods for a totem holder");
+                    f.test.assertTrue(sold.contains(Items.CHEST) && sold.contains(Items.SHIELD), "The shelf holds the bonus chest and the shield");
+                    hunter.player.closeContainer();
+                });
+            }
             sequence.thenExecute(() -> {
                         f.test.assertTrue(hunter.participant().monsterCooldownNanos() > 0, "Revival is tested during the deployment cooldown");
                         if (iteration == 0) {
@@ -377,14 +416,15 @@ public final class LobbyRuntimeGameTest {
                             && f.profiles.isReady(hunter.profile.id(), f.round()) && !f.session.mutationPending()
                             && !dev.hardrush.lobby.RevivalAltar.arriving(f.server, hunter.profile.id()), "Cycle exactly one revival unlocks an empty human " + iteration))
                     .thenExecute(() -> {
-                        // 图腾之力庇护: the vanilla totem's effects for as long as an enchanted golden apple's absorption.
+                        // 图腾之力庇护: 90 s, the first cycle 70 s longer for the longer blessing it bought from the witch.
+                        int blessing = iteration == 0 ? 3_200 : 1_800;
                         for (var expected : java.util.List.of(
                                 java.util.Map.entry(net.minecraft.world.effect.MobEffects.REGENERATION, 1),
                                 java.util.Map.entry(net.minecraft.world.effect.MobEffects.ABSORPTION, 3),
                                 java.util.Map.entry(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE, 0))) {
                             var effect = hunter.player.getEffect(expected.getKey());
                             f.test.assertTrue(effect != null && effect.getAmplifier() == expected.getValue()
-                                    && effect.getDuration() > 2_300 && effect.getDuration() <= 2_400 && effect.isVisible(),
+                                    && effect.getDuration() > blessing - 100 && effect.getDuration() <= blessing && effect.isVisible(),
                                     "An altar revival lands blessed: " + expected.getKey() + " -> " + effect);
                         }
                         f.test.assertValueEqual(hunter.player.getAbsorptionAmount(), 16f, "Absorption IV holds eight golden hearts");
@@ -393,9 +433,17 @@ public final class LobbyRuntimeGameTest {
                         f.test.assertFalse(hunter.participant().revivalEntitled(), "Revival consumes the sole entitlement");
                         var inventory = hunter.player.getInventory();
                         var compasses = java.util.stream.IntStream.range(0, inventory.getContainerSize()).filter(i -> FallenCompass.is(inventory.getItem(i))).toArray();
+                        // Besides the 遗落之地 compass, only what the first cycle bought from the witch.
                         f.test.assertTrue(java.util.stream.IntStream.range(0, inventory.getContainerSize())
-                                        .allMatch(i -> inventory.getItem(i).isEmpty() || FallenCompass.is(inventory.getItem(i))),
+                                        .allMatch(i -> inventory.getItem(i).isEmpty() || FallenCompass.is(inventory.getItem(i))
+                                                || iteration == 0 && (inventory.getItem(i).is(Items.OAK_LOG) || inventory.getItem(i).is(Items.SHIELD))),
                                 "Revival never restores old human gear or role controls");
+                        if (iteration == 0) {
+                            f.test.assertTrue(hunter.player.getOffhandItem().is(Items.SHIELD), "The bought shield waits in the off hand");
+                            int logs = java.util.stream.IntStream.range(0, inventory.getContainerSize()).filter(i -> inventory.getItem(i).is(Items.OAK_LOG))
+                                    .map(i -> inventory.getItem(i).getCount()).sum();
+                            f.test.assertValueEqual(logs, 5, "The bought oak logs are in the backpack");
+                        }
                         if (iteration > 0) {
                             var at = fallen[0];
                             f.test.assertTrue(compasses.length == 1 && FallenCompass.target(inventory.getItem(compasses[0])).equals(java.util.Optional.of(at)),
@@ -434,6 +482,14 @@ public final class LobbyRuntimeGameTest {
                                     "Every new human life preserves the original same-round ender storage");
                         }
                     });
+            if (iteration == 0) sequence.thenWaitUntil(() -> {
+                var at = hunter.player.blockPosition();
+                long chests = BlockPos.betweenClosedStream(at.offset(-3, -3, -3), at.offset(3, 3, 3))
+                        .filter(pos -> hunter.player.level().getBlockState(pos).is(Blocks.CHEST)).count();
+                f.test.assertTrue(chests <= 1, "Never a second bonus chest: " + chests);
+                f.await(chests == 1 && !hunter.participant().witch().landingPending(hunter.participant().lifeSequence()) && !f.session.mutationPending(),
+                        "The bought bonus chest is set down beside the landed human once, and the delivery is recorded");
+            });
         }
         sequence.thenExecute(() -> {
                     try (var store = new SqliteRoundStore(f.server.getWorldPath(LevelResource.ROOT).resolve(dev.hardrush.storage.RoundStoragePaths.DATABASE))) {
@@ -691,17 +747,25 @@ public final class LobbyRuntimeGameTest {
             test.assertValueEqual(after, before, "Raw drop packets never release the fixed-role controls");
             test.assertTrue(monster.player.getInventory().getItem(skillSlot).is(control), "The fixed skill control remains equipped");
         }
+        void clickWitch() {
+            HuntInputFixtures.move(monster.player, LobbyPlanFixtures.model(server, dev.hardrush.core.lobby.plan.LobbyFunction.MERCHANT).add(0, 0, 2));
+            dev.hardrush.lobby.LobbyInteractions.tick(server);
+            var ids = dev.hardrush.lobby.LobbyInteractions.get(server).orElseThrow().roleModels().view(monster.player);
+            HuntInputFixtures.click(monster.player, ids.get(dev.hardrush.core.lobby.plan.LobbyFunction.MERCHANT).getFirst(), net.minecraft.world.InteractionHand.MAIN_HAND);
+        }
+        /** The first right click of the round tells the witch's guide in a native dialog instead of trading. */
+        void meetWitch() {
+            test.assertFalse(monster.participant().witch().guideSeen(), "Nobody has read the guide before the round's first visit");
+            clickWitch();
+            test.assertFalse(dev.hardrush.lobby.MonsterShop.isShop(monster.player), "The first visit shows the guide, not the shop");
+        }
         void buyAdultEggFromWitch() {
             var wallet = monster.participant().wallet();
             test.assertTrue(wallet.coins() == 6 && wallet.roleChosen(), "The first transformation gives the starter coins and the role is chosen");
             dev.hardrush.lobby.CampKit.tick(server);
             test.assertValueEqual(coins(), 6, "The camp projects the coin balance as native emeralds");
-            var lobby = LobbyWorld.open(server);
-            HuntInputFixtures.move(monster.player, LobbyPlanFixtures.model(server, dev.hardrush.core.lobby.plan.LobbyFunction.MERCHANT).add(0, 0, 2));
-            dev.hardrush.lobby.LobbyInteractions.tick(server);
-            var ids = dev.hardrush.lobby.LobbyInteractions.get(server).orElseThrow().roleModels().view(monster.player);
-            HuntInputFixtures.click(monster.player, ids.get(dev.hardrush.core.lobby.plan.LobbyFunction.MERCHANT).getFirst(), net.minecraft.world.InteractionHand.MAIN_HAND);
-            test.assertTrue(dev.hardrush.lobby.MonsterShop.isShop(monster.player), "Right-clicking the witch model opens the native trading screen");
+            clickWitch();
+            test.assertTrue(dev.hardrush.lobby.MonsterShop.isShop(monster.player), "Right-clicking the witch model again opens the native trading screen");
             var menu = monster.player.containerMenu;
             // The isolated camp body may still select an offer; vanilla moves the projected coins into the payment slot.
             monster.player.connection.handleSelectTrade(new net.minecraft.network.protocol.game.ServerboundSelectTradePacket(0));
