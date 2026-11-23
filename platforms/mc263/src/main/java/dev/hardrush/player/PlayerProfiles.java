@@ -856,7 +856,10 @@ public final class PlayerProfiles implements AutoCloseable {
         player.portalProcess = null;
     }
 
-    /** A consumed entitlement starts an empty human life while retaining this round's progress and ender storage. */
+    /**
+     * A consumed entitlement starts an empty human life with ender storage kept. In a bounty round its native
+     * advancements start over too, so each life's threat counts only what that life achieved.
+     */
     public boolean revive(ServerPlayer player, RoundSnapshot round, ServerLevel spawnLevel, Vec3 spawn) {
         return revive(player, round, () -> new dev.hardrush.world.NativeScatter.Arrival(spawnLevel, spawn, 0));
     }
@@ -879,6 +882,8 @@ public final class PlayerProfiles implements AutoCloseable {
             clearMonsterLobbyState(player);
             giveBackHistoryBooks(player, books);
             resetHumanAttributes(player);
+            // Revoked before the resume snapshot is captured, or a reconnect would restore the previous life's progress.
+            if (dev.hardrush.core.round.Bounty.enabled(round.rules())) revokeLifeProgress(player);
             player.setAbsorptionAmount(0);
             ((PlayerProfileResetAccessor) player).hardrush$setFoodData(new FoodData());
             player.getAbilities().apply(new Abilities().pack());
@@ -921,6 +926,18 @@ public final class PlayerProfiles implements AutoCloseable {
                     }));
             return true;
         } catch (RuntimeException error) { fail(entry, error); moveToLobby(player); return false; }
+    }
+
+    /** Display advancements only: recipes stay unlocked, and the round's progress record keeps its union. */
+    private static void revokeLifeProgress(ServerPlayer player) {
+        for (var holder : player.level().getServer().getAdvancements().getAllAdvancements()) {
+            if (holder.value().display().isEmpty()) continue;
+            var completed = new java.util.ArrayList<String>();
+            player.getAdvancements().getOrStartProgress(holder).getCompletedCriteria().forEach(completed::add);
+            completed.forEach(criterion -> player.getAdvancements().revoke(holder, criterion));
+        }
+        player.getAdvancements().setSelectedTab(null);
+        player.getAdvancements().flushDirty(player, true);
     }
 
     private static void resetHumanAttributes(ServerPlayer player) {

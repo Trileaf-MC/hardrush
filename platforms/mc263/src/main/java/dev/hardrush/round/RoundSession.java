@@ -108,8 +108,8 @@ public final class RoundSession implements AutoCloseable {
     private BiConsumer<RoundSnapshot, RoundSnapshot> committedListener = (before, after) -> {};
     private String committedEventType = "";
     // Per-hit monster damage is summed here and committed about once per second, never per hit.
-    private record DamageKey(UUID round, UUID owner, int life, int sortie, UUID victim,
-                             dev.hardrush.core.round.MonsterDimension dimension) {}
+    // The bounty weight is fixed when the hit lands, so a killing blow keeps the stars its victim died with.
+    private record DamageKey(UUID round, UUID owner, int life, int sortie, UUID victim, int bountyPermille) {}
     private final Map<DamageKey, Long> damageCoins = new LinkedHashMap<>();
     // Flushed credit still waiting in the event queue; applying its event moves it into the pending transition.
     private final List<RoundEngine.QueuedDamageCoins> queuedDamage = new java.util.ArrayList<>();
@@ -413,11 +413,13 @@ public final class RoundSession implements AutoCloseable {
     }
 
     /** Actual milli-health a deployed monster's attack took from a human of this round. */
-    public void recordMonsterDamage(UUID roundId, UUID owner, int life, int sortie, UUID victim,
-            dev.hardrush.core.round.MonsterDimension dimension, long damageMilli) {
+    public void recordMonsterDamage(UUID roundId, UUID owner, int life, int sortie, UUID victim, long damageMilli) {
         if (damageMilli <= 0 || engine == null || stopping || state != State.OPEN || competitionLocked()
                 || !engine.committed().roundId().equals(roundId)) return;
-        damageCoins.merge(new DamageKey(roundId, owner, life, sortie, victim, dimension), damageMilli, Math::addExact);
+        var view = engine.view();
+        int weight = dev.hardrush.core.round.Bounty.permille(view.rules(),
+                dev.hardrush.core.round.Bounty.standing(view.rules(), view.participants(), victim).stars());
+        damageCoins.merge(new DamageKey(roundId, owner, life, sortie, victim, weight), damageMilli, Math::addExact);
     }
 
     private void flushDamageCoins(boolean force) {
@@ -435,7 +437,7 @@ public final class RoundSession implements AutoCloseable {
         lastDamageFlushNanos = Math.max(lastDamageFlushNanos, time);
         var byRound = new LinkedHashMap<UUID, List<RoundEngine.DamageCoins>>();
         damageCoins.forEach((key, milli) -> byRound.computeIfAbsent(key.round(), ignored -> new java.util.ArrayList<>())
-                .add(new RoundEngine.DamageCoins(key.owner(), key.life(), key.sortie(), key.victim(), key.dimension(), milli)));
+                .add(new RoundEngine.DamageCoins(key.owner(), key.life(), key.sortie(), key.victim(), key.bountyPermille(), milli)));
         damageCoins.clear();
         byRound.forEach((round, entries) -> {
             var queued = new RoundEngine.QueuedDamageCoins(time, round, entries);
@@ -466,7 +468,7 @@ public final class RoundSession implements AutoCloseable {
         var buffered = new java.util.ArrayList<RoundEngine.DamageCoins>();
         damageCoins.forEach((key, milli) -> {
             if (key.round().equals(roundId) && key.owner().equals(playerId)) buffered.add(
-                    new RoundEngine.DamageCoins(key.owner(), key.life(), key.sortie(), key.victim(), key.dimension(), milli));
+                    new RoundEngine.DamageCoins(key.owner(), key.life(), key.sortie(), key.victim(), key.bountyPermille(), milli));
         });
         // A death batch flushes the buffer on the current clock; a recall or death already pending
         // still settles the same sortie's credit.
@@ -845,7 +847,7 @@ public final class RoundSession implements AutoCloseable {
         engine = RoundEngine.restoreForRecovery(loaded.snapshot(), this::engineTime);
         nextRules = loaded.nextRules();
         endEntrants = loaded.endEntrants();
-        events.clear(); queuedConnections.clear(); queuedDamage.clear(); requestedRespawns.clear(); deathBatches.clear(); capturedDeaths.clear();
+        events.clear(); queuedConnections.clear(); queuedDamage.clear(); queuedMilestones.clear(); requestedRespawns.clear(); deathBatches.clear(); capturedDeaths.clear();
         clearTotemSaves();
         terminalCandidate = null; firstDragonId = null; terminalQueued = false;
         evidenceFailure = null; failureBoundary = null; adminBoundary = null;
@@ -1199,6 +1201,34 @@ public final class RoundSession implements AutoCloseable {
             }
             return e.proposeMonsterDeath(UUID.randomUUID(), roundId, playerId, lifeSequence, deploymentSequence);
         });
+    }
+
+    /**
+     * A human life completed a native advancement. Only scored milestones not yet counted for that life are
+     * queued; anything that changed before the event applies settles as a plain checkpoint.
+     */
+    public void threatMilestone(UUID roundId, UUID playerId, int lifeSequence, String advancement) {
+        var key = playerId + "/" + lifeSequence + "/" + advancement;
+        if (engine == null || stopping || state != State.OPEN || competitionLocked() || queuedMilestones.contains(key)
+                || !engine.committed().roundId().equals(roundId) || !counts(projected(), playerId, lifeSequence, advancement)) return;
+        queuedMilestones.add(key);
+        if (!enqueueAt(clock.nanoTime(), e -> {
+            queuedMilestones.remove(key);
+            return counts(e.committed(), playerId, lifeSequence, advancement)
+                    ? e.proposeThreatMilestone(UUID.randomUUID(), roundId, playerId, lifeSequence, advancement)
+                    : e.proposeCheckpoint(UUID.randomUUID(), false);
+        })) queuedMilestones.remove(key);
+    }
+
+    // Milestones waiting in the event queue, so the periodic reconcile does not queue the same one twice.
+    private final java.util.Set<String> queuedMilestones = new java.util.HashSet<>();
+
+    private static boolean counts(RoundSnapshot round, UUID playerId, int lifeSequence, String advancement) {
+        var player = round.participants().get(playerId);
+        return dev.hardrush.core.round.Bounty.enabled(round.rules()) && dev.hardrush.core.round.Bounty.MILESTONES.containsKey(advancement)
+                && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE)
+                && player != null && player.role() == ParticipantRole.HUMAN_ACTIVE && player.lifeSequence() == lifeSequence
+                && !player.threat().forLife(lifeSequence).milestones().contains(advancement);
     }
 
     private void requestAction(java.util.function.Supplier<RoundTransition> action, Consumer<Reply> reply, String success) {

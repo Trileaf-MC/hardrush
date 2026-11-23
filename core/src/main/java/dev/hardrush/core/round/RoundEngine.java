@@ -364,6 +364,12 @@ public final class RoundEngine {
                         || !death.recentlyHurtByPlayer()) continue;
                 players.put(death.playerId(), credit(before.rules(), players.get(death.playerId()), MonsterCoins.KILLED_BY_HUMAN));
             }
+            if (Bounty.enabled(before.rules())) {
+                for (RoundDeath death : deaths) {
+                    humanKiller(before, players, victims, death).ifPresent(killer -> players.put(killer.id(),
+                            killer.withThreat(killer.threat().killedMonster(killer.lifeSequence()))));
+                }
+            }
         }
         if (completion != null) {
             return proposal(eventId, "DEATH_BATCH", before, RoundPhase.SETTLING,
@@ -488,12 +494,26 @@ public final class RoundEngine {
                 || !request.hunterMatches(before, ParticipantRole.MONSTER_LOBBY, sortie)
                 || !request.targetMatches(before) || sortie < request.initialSortie())
             throw new IllegalStateException("追猎目标、生命或发起身份已改变。");
-        return proposeMonsterDeploy(eventId, request.round(), request.hunter(), request.hunterLife(), sortie);
+        var deployed = deployMonster(before, request.round(), request.hunter(), request.hunterLife(), sortie);
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(deployed.id(), deployed);
+        // Being hunted from the camp is a mark of standing, whatever the outing then achieves.
+        if (Bounty.enabled(before.rules())) {
+            Participant target = players.get(request.target());
+            players.put(target.id(), target.withThreat(target.threat().huntedFromCamp(target.lifeSequence())));
+        }
+        return proposal(eventId, "MONSTER_DEPLOY", before, before.phase(), before.remainingPhaseNanos(), players, before.result(), false);
     }
 
     public RoundTransition proposeMonsterDeploy(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence) {
         RoundSnapshot before = capture();
+        return monsterProposal(eventId, "MONSTER_DEPLOY", before,
+                deployMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence));
+    }
+
+    private static Participant deployMonster(RoundSnapshot before, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
         requireOpenRescue(before);
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_LOBBY);
@@ -502,7 +522,25 @@ public final class RoundEngine {
         var deployed = player.deployMonster();
         if (MonsterCoins.enabled(before.rules()))
             deployed = deployed.withWallet(player.wallet().deploy(before.rules(), player.monsterRole()));
-        return monsterProposal(eventId, "MONSTER_DEPLOY", before, deployed);
+        return deployed;
+    }
+
+    /**
+     * A human life reached a native advancement. Only scored milestones change anything; one already counted
+     * for this life, an earlier life's late report, or a round without bounties leaves the round untouched.
+     */
+    public RoundTransition proposeThreatMilestone(UUID eventId, UUID roundId, UUID playerId, int expectedLifeSequence,
+            String advancement) {
+        RoundSnapshot before = capture();
+        requirePhase(before, RoundPhase.RUNNING, RoundPhase.RESCUE);
+        if (!before.roundId().equals(roundId)) throw new IllegalStateException("Stale milestone round");
+        Participant player = requirePlayer(before, playerId);
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        if (Bounty.enabled(before.rules()) && player.role() == ParticipantRole.HUMAN_ACTIVE
+                && player.lifeSequence() == expectedLifeSequence) {
+            players.put(playerId, player.withThreat(player.threat().reached(expectedLifeSequence, advancement)));
+        }
+        return proposal(eventId, "THREAT_MILESTONE", before, before.phase(), before.remainingPhaseNanos(), players, before.result(), false);
     }
 
     /** The platform may apply the effect only after this cooldown reservation is durably accepted. */
@@ -636,7 +674,8 @@ public final class RoundEngine {
                     || owner.role() != ParticipantRole.MONSTER_DEPLOYED && owner.role() != ParticipantRole.MONSTER_LOBBY
                     || owner.lifeSequence() != entry.ownerLife() || owner.monsterDeploymentSequence() != entry.sortie()
                     || !victim.role().isActiveHuman() && victim.role() != ParticipantRole.MONSTER_LOBBY) continue;
-            int bounty = MonsterCoins.bountyPermille(before.rules(), entry.dimension(), victim.lifeHumanNanos());
+            // The weight was fixed where the hit landed: a killing blow keeps the stars its victim died with.
+            int bounty = Bounty.enabled(before.rules()) ? Math.min(entry.bountyPermille(), Bounty.maxPermille(before.rules())) : 1000;
             players.put(owner.id(), owner.withWallet(owner.wallet().creditDamage(entry.victim(), entry.damageMilli(), bounty, cap)));
         }
         return players;
@@ -674,11 +713,15 @@ public final class RoundEngine {
         }
     }
 
-    /** One buffered damage observation: actual milli-health a sortie took from one human. */
-    public record DamageCoins(UUID owner, int ownerLife, int sortie, UUID victim, MonsterDimension dimension, long damageMilli) {
+    /**
+     * One buffered damage observation: actual milli-health a sortie took from one human, weighted by the
+     * victim's bounty at the moment of the hit.
+     */
+    public record DamageCoins(UUID owner, int ownerLife, int sortie, UUID victim, int bountyPermille, long damageMilli) {
         public DamageCoins {
-            Objects.requireNonNull(owner); Objects.requireNonNull(victim); Objects.requireNonNull(dimension);
+            Objects.requireNonNull(owner); Objects.requireNonNull(victim);
             if (damageMilli <= 0) throw new IllegalArgumentException("Damage credit must be positive");
+            if (bountyPermille < 1000) throw new IllegalArgumentException("Bounty weight below the plain rate");
         }
     }
 
@@ -795,6 +838,23 @@ public final class RoundEngine {
                 || origin.actor().lifeSequence() > owner.lifeSequence()
                 || origin.actor().deploymentSequence() > owner.monsterDeploymentSequence()) return Optional.empty();
         return Optional.of(owner.id());
+    }
+
+    /**
+     * The human credited with killing a deployed monster player in this batch: the vanilla kill credit names a
+     * human of this round who is still that same living life after the batch.
+     */
+    private static Optional<Participant> humanKiller(RoundSnapshot before, Map<UUID, Participant> after,
+            java.util.Set<UUID> victims, RoundDeath death) {
+        if (before.participants().get(death.playerId()).role() != ParticipantRole.MONSTER_DEPLOYED
+                || death.killCredit().isEmpty()) return Optional.empty();
+        var origin = death.killCredit().get();
+        if (!origin.roundId().equals(before.roundId()) || !origin.actor().identity().isActiveHuman()
+                || victims.contains(origin.actor().playerId())) return Optional.empty();
+        Participant killer = after.get(origin.actor().playerId());
+        if (killer == null || killer.role() != ParticipantRole.HUMAN_ACTIVE
+                || killer.lifeSequence() != origin.actor().lifeSequence()) return Optional.empty();
+        return Optional.of(killer);
     }
 
     /** A kill pays a revival, never coins; an owner still out hunting is sent back to the altar. */
