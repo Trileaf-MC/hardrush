@@ -144,7 +144,7 @@ public final class RevivalTotems {
     }
 
     /** What a dropped totem's description says; also the gametest's reference. */
-    static final List<String> DROP_USAGE = List.of("人类捡起即得 · 拿在手上阵亡时原地复生", "出击中的怪物也能捡 · 用掉它的人捡不回来");
+    static final List<String> DROP_USAGE = List.of("人类捡起即得 · 拿在手上阵亡时原地复生", "出击中的怪物也能捡 · 放出它的那条命捡不回来");
     private static final String DROP = "drop";
     private static final String DROP_LEVEL = "level", DROP_X = "x", DROP_Y = "y", DROP_Z = "z";
 

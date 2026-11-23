@@ -157,16 +157,32 @@ public final class TotemDrops {
     }
 
     /**
-     * Where a totem released by {@code victim} lies: at the body, or for a death below the world, where vanilla's
-     * {@code startingToFallPosition} says the fall began, on the nearest standing ground there. Without a recorded
-     * start (a glide or a teleport into the void), at the dimension's arrival point ({@link #arrival}).
+     * Where a totem released by {@code victim} lies: at the body, unless nothing below it would ever stop the totem (a
+     * death below the world, or in mid-air over the void, as when shot or knocked off the End island). Then it lies
+     * where vanilla's {@code startingToFallPosition} says the fall began, on the nearest standing ground there. Without a
+     * recorded start (a glide, a teleport), a death below the world drops at the dimension's arrival point
+     * ({@link #arrival}), one in mid-air at the body, which the void then returns ({@link #returnFromVoid}).
      */
     static Place place(ServerPlayer victim) {
         var level = victim.level();
-        if (victim.getY() >= level.getMinY()) return new Place(level, new Vec3(victim.getX(), victim.getEyeY() - 0.3, victim.getZ()));
+        var body = new Place(level, new Vec3(victim.getX(), victim.getEyeY() - 0.3, victim.getZ()));
+        boolean below = victim.getY() < level.getMinY();
+        if (!below && !overVoid(level, victim.blockPosition())) return body;
         var start = ((dev.hardrush.revival.mixin.TotemFallStartAccessor) victim).hardrush$fallStart();
-        if (start == null || start.y < level.getMinY()) return arrival(level);
+        if (start == null || start.y < level.getMinY()) return below ? arrival(level) : body;
         return new Place(level, ground(level, start).orElse(start));
+    }
+
+    /** Whether nothing solid and no fluid lies in the column from {@code at} down to the world's floor. */
+    private static boolean overVoid(ServerLevel level, net.minecraft.core.BlockPos at) {
+        if (!level.isLoaded(at)) return false;
+        var cursor = at.mutable();
+        for (int y = Math.min(at.getY(), level.getMaxY()); y >= level.getMinY(); y--) {
+            cursor.setY(y);
+            var state = level.getBlockState(cursor);
+            if (!state.getCollisionShape(level, cursor).isEmpty() || !state.getFluidState().isEmpty()) return false;
+        }
+        return true;
     }
 
     /** The standing spot closest to {@code near}, within two blocks across and three down; empty over open air. */
@@ -325,6 +341,13 @@ public final class TotemDrops {
         return Optional.ofNullable(round.participants().get(id)).map(Participant::name).orElse("一名人类");
     }
 
+    /** The void sent a registered drop to the arrival point, far from where it was told to lie: everyone hears again. */
+    static String movedLine(String victim, Place place) {
+        var at = net.minecraft.core.BlockPos.containing(place.at());
+        return Notices.name(victim) + " 留下的复生图腾被送到了 " + dimension(place.level())
+                + " " + Notices.key("(" + at.getX() + ", " + at.getY() + ", " + at.getZ() + ")");
+    }
+
     static String unclaimedLine(String victim, Place place) {
         var at = net.minecraft.core.BlockPos.containing(place.at());
         return Notices.name(victim) + " 留下的复生图腾在 " + dimension(place.level())
@@ -410,19 +433,26 @@ public final class TotemDrops {
     /**
      * {@code Entity.onBelowWorld} of a floor totem: a drop still pending or registered is not destroyed but returned,
      * the first time to where it was dropped, after that (it was dropped over open air) to the dimension's arrival
-     * point, which is standing ground. Anything else falls as vanilla's void decides. True when it was returned.
+     * point, which is normally standing ground (the End platform can be mined away; vanilla rebuilds it when a player
+     * arrives). Reaching the arrival point is told again, with its coordinates, to everyone of the round still playing:
+     * whoever followed the first coordinates would find nothing. Anything else falls as vanilla's void decides. True
+     * when it was returned.
      */
     public static boolean returnFromVoid(ItemEntity item) {
         if (!(item.level() instanceof ServerLevel level)) return false;
         var drops = INSTANCES.get(level.getServer());
         var token = RevivalTotems.dropToken(item.getItem()).orElse(null);
         if (drops == null || token == null) return false;
-        boolean live = drops.pending.containsKey(token)
-                || drops.access.view().filter(r -> r.looseTotems().containsKey(token)).isPresent();
-        if (!live) return false;
+        var round = drops.access.view().orElse(null);
+        var registered = round == null ? null : round.looseTotems().get(token);
+        if (registered == null && !drops.pending.containsKey(token)) return false;
         var first = RevivalTotems.returnedFromVoid(item.getItem()) ? Optional.<Place>empty()
                 : RevivalTotems.dropPlace(level.getServer(), item.getItem());
         var target = first.orElseGet(() -> arrival(level));
+        if (first.isEmpty() && registered != null) {
+            var line = movedLine(name(round, registered.victim()), target);
+            for (var player : audience(level.getServer(), round)) Notices.personal(player, line);
+        }
         RevivalTotems.markReturnedFromVoid(item.getItem());
         item.setDeltaMovement(Vec3.ZERO);
         item.resetFallDistance();
@@ -486,6 +516,8 @@ public final class TotemDrops {
     private void sweep(MinecraftServer server) {
         var r = access.view().orElse(null);
         pending.entrySet().removeIf(entry -> !waiting(r, entry.getKey(), entry.getValue()));
+        // A drop is spawned in the same call that captured its event; one left here was never captured (that call threw).
+        unspawned.keySet().retainAll(pending.keySet());
         for (var level : server.getAllLevels()) {
             for (var item : level.getEntities(EntityTypeTest.forClass(ItemEntity.class), item -> RevivalTotems.is(item.getItem()))) {
                 var token = RevivalTotems.dropToken(item.getItem()).orElse(null);

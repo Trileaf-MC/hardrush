@@ -122,6 +122,22 @@ public final class TotemDropGameTest {
             test.assertTrue(edge.level() == f.level && edge.at().y == f.base.getY()
                     && edge.at().distanceTo(new Vec3(f.base.getX() + 12.5, f.base.getY(), f.base.getZ() + .5)) < 1.5,
                     "Knocked off the edge: back on the edge it fell from, " + edge.at());
+            // In mid-air over the void (shot off the End island): the fall's start too; over standing ground: the body.
+            var open = f.base.offset(20, 0, 0);
+            for (int y = open.getY() + 8; y >= f.level.getMinY(); y--) {
+                f.level.setBlock(new BlockPos(open.getX(), y, open.getZ()), Blocks.AIR.defaultBlockState(), 2);
+            }
+            victim.move(Vec3.atBottomCenterOf(open.above(4)));
+            fallStart(victim.player, new Vec3(f.base.getX() + 13.2, f.base.getY() - .2, f.base.getZ() + .5));
+            var air = TotemDrops.place(victim.player);
+            test.assertTrue(air.level() == f.level && air.at().y == f.base.getY()
+                    && air.at().distanceTo(new Vec3(f.base.getX() + 12.5, f.base.getY(), f.base.getZ() + .5)) < 1.5,
+                    "Dead in mid-air over the void: on the edge it fell from, " + air.at());
+            victim.move(f.base.offset(0, 4, 4));
+            fallStart(victim.player, new Vec3(f.base.getX() + 13.2, f.base.getY() - .2, f.base.getZ() + .5));
+            var aloft = TotemDrops.place(victim.player);
+            test.assertTrue(aloft.at().distanceTo(new Vec3(victim.player.getX(), victim.player.getEyeY() - .3, victim.player.getZ())) < .01,
+                    "Dead in mid-air over standing ground: at the body");
             fallStart(victim.player, null);
             victim.move(f.base.offset(0, 0, 4));
 
@@ -341,10 +357,14 @@ public final class TotemDropGameTest {
             aged.setPos(aged.getX(), f.level.getMinY() - 70, aged.getZ());
             aged.tick();
             test.assertTrue(!aged.isRemoved() && aged.position().distanceTo(dropped) < 1, "Back where it was dropped: " + aged.position());
+            for (var c : f.clients) c.chat().clear();
             aged.setPos(aged.getX(), f.level.getMinY() - 70, aged.getZ());
             aged.tick();
             var spawn = Vec3.atBottomCenterOf(f.level.getRespawnData().pos());
             test.assertTrue(aged.position().distanceTo(spawn) < 1, "Then to the arrival point: " + aged.position());
+            var moved = Notices.format(TotemDrops.movedLine("一名人类", new TotemDrops.Place(f.level, spawn))).getString();
+            test.assertValueEqual(human.chat(), List.of(moved), "Everyone still playing hears where it went");
+            test.assertValueEqual(outsider.chat().size(), 0, "Outsiders do not");
             var unknown = new ItemEntity(f.level, f.base.getX() + .5, f.level.getMinY() - 70, f.base.getZ() + .5,
                     RevivalTotems.held(new Identity(s.roundId, ParticipantRole.HUMAN_ACTIVE, 1, 0), 1, 1));
             f.level.addFreshEntity(unknown);
