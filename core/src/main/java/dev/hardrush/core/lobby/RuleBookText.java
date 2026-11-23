@@ -45,7 +45,7 @@ public final class RuleBookText {
                     + decimalSeconds(RoundEngine.digMillis(rules)) + " 秒，不掉落。苦力怕挖不动。\n\n"
                     + "出击找不到能走到人类身边的落点时，怪物会藏进人类旁边的石头里，挖开墙破石而出。");
             if (MonsterCoins.enabled(rules)) pages.add("怪物币\n\n伤害人类、近期受玩家伤害后阵亡都能获得怪物币，悬赏越高的人类伤害越值钱。\n\n"
-                    + "怪物币可以在女巫处购买出击增强，试炼钥匙可以在宝库开出一次性装备。");
+                    + "怪物币可以在女巫处购买出击增强，试炼钥匙可以在宝库开出一次性装备。拿到复生图腾后，女巫改卖复生补给。");
             if (dev.hardrush.core.round.Bounty.enabled(rules)) pages.add("悬赏\n\n人类越强，悬赏星级越高：推进进度最显著，击杀怪物玩家、被怪物从营地追猎也会加分。星级在存活的人类之间比较，每条命重新计算。\n\n"
                     + "伤害 ★★★★★ 人类的收益是 ★☆☆☆☆ 的 " + multiplier(rules) + " 倍。庭院里头戴不祥旗帜的就是头号悬赏。");
             if (MonsterWorth.enabled(rules)) pages.add("身价\n\n出击时的经验等级就是身价：从 " + (long) value(rules, MonsterWorth.BASE_LEVEL, 10)
@@ -55,7 +55,10 @@ public final class RuleBookText {
                     + "人类和出击中的怪物都能捡，但放出它的那条命捡不回来。\n\n"
                     + "没有被人击杀或逼出时，掉落会公布坐标。图腾不能丢弃，阵亡时自己的图腾不会掉落。");
             pages.add("复生\n\n把复生图腾拿在手上阵亡时原地复生，消耗 1 个。\n\n"
-                    + "没拿在手上就阵亡，可到营地北侧的祭坛站上金块 4 秒复生，空手出发，怪物币清空。落地时获得图腾之力庇护：生命恢复 II、伤害吸收 IV、抗火，持续 2 分钟。");
+                    + "没拿在手上就阵亡，可到营地北侧的祭坛站上金块 4 秒复生，"
+                    + (MonsterCoins.enabled(rules) ? "可先用怪物币在女巫处买复生补给。" : "空手出发。")
+                    + "落地获得图腾之力庇护：生命恢复 II、伤害吸收 IV、抗火，持续 "
+                    + seconds(dev.hardrush.core.round.WitchRecord.BLESSING_MILLIS) + " 秒。");
             pages.add("救场\n\n所有人类阵亡后进入 " + seconds(RoundEngine.rescueMillis(rules))
                     + " 秒救场：有图腾的怪物可以复生，也可以从集结区加入。");
         }

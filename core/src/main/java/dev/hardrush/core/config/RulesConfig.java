@@ -136,6 +136,11 @@ public record RulesConfig(
                 30_000, 90_000, 30_000).withEconomyDefaults();
     }
 
+    /** Longer blessings that still lengthen the altar's blessing before it reaches its five-minute cap. */
+    private static final int LONGER_BLESSING_STEPS = (int) Math.ceil(
+            (double) (dev.hardrush.core.round.WitchRecord.MAX_BLESSING_MILLIS - dev.hardrush.core.round.WitchRecord.BLESSING_MILLIS)
+                    / dev.hardrush.core.round.WitchRecord.BLESSING_STEP_MILLIS);
+
     /** Monster coin economy; each offer's price doubles per purchase within one sortie. */
     private static final Map<String, Double> COIN_DEFAULTS = Map.ofEntries(
             Map.entry("coin.starter", 6.0),
@@ -156,7 +161,15 @@ public record RulesConfig(
             Map.entry("coin.price.trialKey", 15.0), Map.entry("coin.limit.trialKey", 2.0),
             Map.entry("coin.price.ominousKey", 40.0), Map.entry("coin.limit.ominousKey", 1.0),
             Map.entry("coin.price.soulcatcherTier", 30.0), Map.entry("coin.limit.soulcatcherTier", 3.0),
-            Map.entry("coin.price.soulcatcherCapacity", 20.0), Map.entry("coin.limit.soulcatcherCapacity", 3.0));
+            Map.entry("coin.price.soulcatcherCapacity", 20.0), Map.entry("coin.limit.soulcatcherCapacity", 3.0),
+            // Revival supplies (docs/plan/复生补给与女巫说明.md); the doubling ladder applies to repeat purchases.
+            Map.entry("coin.price.bonusChest", 30.0), Map.entry("coin.limit.bonusChest", 1.0),
+            Map.entry("coin.price.longerBlessing", 30.0), Map.entry("coin.limit.longerBlessing", 3.0),
+            Map.entry("coin.price.ironBucket", 15.0), Map.entry("coin.limit.ironBucket", 1.0),
+            Map.entry("coin.price.oakLogs", 10.0), Map.entry("coin.limit.oakLogs", 3.0),
+            Map.entry("coin.price.ironPickaxe", 35.0), Map.entry("coin.limit.ironPickaxe", 1.0),
+            Map.entry("coin.price.shield", 35.0), Map.entry("coin.limit.shield", 1.0),
+            Map.entry("coin.price.bread", 30.0), Map.entry("coin.limit.bread", 3.0));
 
     /**
      * Relative bounty: killing a monster player scores 3, each hunt launched from the camp 1, and milestones
@@ -406,6 +419,11 @@ public record RulesConfig(
             throw new IllegalArgumentException("悬赏倍率必须在 1 与 100 之间: " + key);
         }
         if (key.startsWith("coin.limit.") && value > 8) throw new IllegalArgumentException("单次出场购买上限不能超过 8: " + key);
+        // Revival supplies delivered once per life: a second purchase would be paid for and never handed out.
+        if (java.util.Set.of("coin.limit.bonusChest", "coin.limit.ironBucket", "coin.limit.ironPickaxe", "coin.limit.shield").contains(key)
+                && value > 1) throw new IllegalArgumentException("只交付一次的复生补给限购只能为 1: " + key);
+        if (key.equals("coin.limit.longerBlessing") && value > LONGER_BLESSING_STEPS)
+            throw new IllegalArgumentException("延长庇护的档数不能超过上限能容纳的 " + LONGER_BLESSING_STEPS + " 档: " + key);
         if (key.equals("zombie.summonMaxDistance") && value > 30_000_000) {
             throw new IllegalArgumentException("召唤距离超出有效世界范围");
         }

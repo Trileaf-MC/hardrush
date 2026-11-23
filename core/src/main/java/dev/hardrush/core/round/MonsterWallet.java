@@ -134,10 +134,11 @@ public record MonsterWallet(int coins, boolean roleChosen,
 
     public MonsterWallet buy(RulesConfig rules, MonsterRole role, ShopOffer offer, int expectedPrice) {
         Objects.requireNonNull(role); Objects.requireNonNull(offer);
-        if (!roleChosen) throw new IllegalStateException("请先在展位选择本次要化身的怪物。");
-        if (!offer.sellableTo(role)) throw new IllegalStateException("女巫不向当前角色出售" + offer.title() + "。");
+        // Revival supplies serve the human life to come, whichever monster bought them.
+        if (!offer.revival() && !roleChosen) throw new IllegalStateException("请先在展位选择本次要化身的怪物。");
+        if (!offer.revival() && !offer.sellableTo(role)) throw new IllegalStateException("女巫不向当前角色出售" + offer.title() + "。");
         if (!MonsterCoins.offered(rules, offer)) throw new IllegalStateException("女巫本轮不出售" + offer.title() + "。");
-        if (soldOut(rules, offer)) throw new IllegalStateException(offer.title() + (offer.permanent() ? "已升到顶。" : "本次出场已售罄。"));
+        if (soldOut(rules, offer)) throw new IllegalStateException(offer.title() + (offer.permanent() ? "已升到顶。" : offer.revival() ? "已经买满。" : "本次出场已售罄。"));
         int price = nextPrice(rules, offer);
         if (price != expectedPrice) throw new IllegalStateException("价格已变化，请重新选择交易。");
         if (coins < price) throw new Refusal.Exception(Refusal.NOT_ENOUGH_COINS, "怪物币不足：需要 " + price + "，现有 " + coins + "。");
@@ -151,7 +152,11 @@ public record MonsterWallet(int coins, boolean roleChosen,
         return bought(offer);
     }
 
-    /** A committed role choice; goods the new role cannot use are refunded at the price paid. */
+    /**
+     * A committed role choice; goods the new role cannot use are refunded at the price paid. Revival supplies count as
+     * such goods, but a totem holder cannot choose a role and a totem is only taken away when the round ends, so in
+     * play they are never refunded here: they go with the revival, or expire with the round.
+     */
     public MonsterWallet chooseRole(RulesConfig rules, MonsterRole role) {
         var wallet = refund(rules, offer -> !offer.sellableTo(role));
         return wallet.with(wallet.coins, true, wallet.bought, wallet.order, active, gear, activeGear,

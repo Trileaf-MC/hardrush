@@ -32,8 +32,6 @@ public final class RevivalAltar {
     private static final int STAGES = 4;
     /** Ticks a revived body may stand in the formal world unloaded before its totem pop is dropped. */
     private static final int ARRIVAL_TICKS = 600;
-    /** 图腾之力庇护: the vanilla totem's effects, held as long as an enchanted golden apple's absorption (26.3). */
-    private static final int BLESSING_TICKS = 2400;
     private static final class Arrival {
         final UUID round; final int life; int waited;
         Arrival(UUID round, int life) { this.round = round; this.life = life; }
@@ -53,6 +51,12 @@ public final class RevivalAltar {
      * on a restart, which is rare enough to accept (docs/plan/复生庇护与初入荒野.md 1.2).
      */
     private final Map<UUID, Arrival> arrivals = new HashMap<>();
+    /** Revived lives (round, player, life) blessed in this server run; a restart forgets them, see {@link #deliver}. */
+    private final Set<List<Object>> blessed = new HashSet<>();
+    /** Lives whose landing supplies are being committed right now. */
+    private final Set<List<Object>> delivering = new HashSet<>();
+    /** Lives whose bonus chest was set down in this server run, committed or not. */
+    private final Set<List<Object>> chested = new HashSet<>();
 
     private RevivalAltar(MinecraftServer server) { this.server = server; }
 
@@ -121,7 +125,7 @@ public final class RevivalAltar {
                 if (rite.dwell > 0) fizzle(player);
                 stop(rite); hint(player, LobbyHints.Priority.READY, refusal); continue;
             }
-            advance(rite);
+            advance(rite, round.participants().get(player.getUUID()));
         }
         arrivals.entrySet().removeIf(e -> {
             var arrival = e.getValue();
@@ -134,17 +138,60 @@ public final class RevivalAltar {
             // hasClientLoaded() does not restart on a dimension change; this does (see ClientLevelLoad).
             // Only time spent in the formal world counts: a slow transfer out of camp never skips the arrival.
             if (!landed) return false;
-            if (dev.hardrush.player.ClientLevelLoad.loaded(player)) { arrive(player); return true; }
+            if (dev.hardrush.player.ClientLevelLoad.loaded(player)) { arrive(player, round, life); return true; }
             if (++arrival.waited < ARRIVAL_TICKS) return false;
-            bless(player); // Too late for the animation to be seen; the blessing still belongs to this life.
+            bless(player, round, life); // Too late for the animation to be seen; the blessing still belongs to this life.
             return true;
         });
+        deliver(round, session);
     }
 
-    private void advance(Rite rite) {
+    /**
+     * Landing supplies (bonus chest, longer blessing) of every landed revived life still owed them. Normally that is
+     * the life just blessed; after a restart lost the arrival, it is whoever reconnects owing them, blessed afresh
+     * only when a longer blessing was paid for. The chest is set down before the delivery is committed and remembered
+     * here, so a refused commit is retried without a second chest, and a disconnect, death or stop during the commit
+     * never loses a paid one.
+     *
+     * TODO: [Refactor] The world save and the round store are separate writes and cannot be made atomic. A crash after
+     * the chest is set down but before the delivery is durable sets down a second one after the restart; that is
+     * preferred to losing a chest the player paid for. A later round-owned "pending world edits" journal could make
+     * this exactly-once.
+     */
+    private void deliver(RoundSnapshot round, RoundSession session) {
+        if (session.state() != RoundSession.State.OPEN) return;
+        for (var life : round.participants().values()) {
+            if (life.role() != dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE || !life.witch().landingPending(life.lifeSequence())
+                    || arrivals.containsKey(life.id())) continue;
+            var player = server.getPlayerList().getPlayer(life.id());
+            if (player == null || LobbyWorld.isLobby(player.level()) || PlayerProfiles.isLocked(player)
+                    || !dev.hardrush.player.ClientLevelLoad.loaded(player)) continue;
+            var key = List.<Object>of(round.roundId(), life.id(), life.lifeSequence());
+            if (!blessed.contains(key) && dev.hardrush.revival.RevivalSupplies.count(life, dev.hardrush.core.round.ShopOffer.LONGER_BLESSING) > 0)
+                bless(player, round, life);
+            if (!delivering.add(key)) continue;
+            if (dev.hardrush.revival.RevivalSupplies.count(life, dev.hardrush.core.round.ShopOffer.BONUS_CHEST) > 0 && chested.add(key))
+                dev.hardrush.revival.RevivalSupplies.bonusChest(player);
+            // A refusal (another commit in flight) retries next tick; the chest is already down.
+            session.requestRevivalSupplyLanded(round.roundId(), life.id(), life.lifeSequence(), reply -> delivering.remove(key));
+        }
+    }
+
+    /** "图腾之力庇护", with its length once a longer one was bought. */
+    private static String blessingText(int bought) {
+        return "图腾之力庇护" + (bought > 0 ? " " + MonsterShop.clock(Math.min(dev.hardrush.core.round.WitchRecord.MAX_BLESSING_MILLIS,
+                dev.hardrush.core.round.WitchRecord.BLESSING_MILLIS + dev.hardrush.core.round.WitchRecord.BLESSING_STEP_MILLIS * bought)) : "");
+    }
+
+    private void advance(Rite rite, dev.hardrush.core.round.Participant monster) {
         var player = rite.player;
         if (rite.dwell == 0) {
-            rite.bar = new ServerBossEvent(UUID.randomUUID(), Component.literal("复生仪式 · 空手降落在远方荒野 · 图腾之力庇护"),
+            // Until the revival commits, the supplies are still the monster's paid orders.
+            var order = monster == null ? java.util.Map.<dev.hardrush.core.round.ShopOffer, Integer>of() : monster.wallet().order();
+            boolean supplied = order.keySet().stream().anyMatch(dev.hardrush.core.round.ShopOffer::revival);
+            String text = "复生仪式 · " + (supplied ? "带着女巫的补给" : "空手降落在远方荒野") + " · "
+                    + blessingText(order.getOrDefault(dev.hardrush.core.round.ShopOffer.LONGER_BLESSING, 0));
+            rite.bar = new ServerBossEvent(UUID.randomUUID(), Component.literal(text),
                     BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.PROGRESS);
             dev.hardrush.notice.StatusBars.show(player, dev.hardrush.notice.StatusBars.Slot.PERSONAL, rite.bar);
             play(player, SoundEvents.BEACON_POWER_SELECT, .8f, 1f);
@@ -169,11 +216,12 @@ public final class RevivalAltar {
     }
 
     /** The revived body has loaded into the formal world: the client plays its own totem animation. */
-    private static void arrive(ServerPlayer player) {
+    private void arrive(ServerPlayer player, RoundSnapshot round, dev.hardrush.core.round.Participant life) {
         player.level().broadcastEntityEvent(player, (byte) 35);
-        bless(player);
+        bless(player, round, life);
         var server = player.level().getServer();
-        dev.hardrush.notice.Notices.title(player, "重获新生", "空装 · 图腾之力庇护");
+        dev.hardrush.notice.Notices.title(player, "重获新生", (dev.hardrush.revival.RevivalSupplies.any(life) ? "带着女巫的补给" : "空装") + " · "
+                + blessingText(dev.hardrush.revival.RevivalSupplies.count(life, dev.hardrush.core.round.ShopOffer.LONGER_BLESSING)));
         dev.hardrush.notice.Notices.broadcast(server, dev.hardrush.notice.Notices.name(player.getScoreboardName())
                 + " 在祭坛重获新生，以人类身份重返挑战");
     }
@@ -181,12 +229,15 @@ public final class RevivalAltar {
     /**
      * The altar's stronger totem. Unlike vanilla's pop it never clears effects first: a fresh body has none, and a
      * late blessing must not wash off a tipped arrow that already landed. No resistance: that would also win human
-     * fights during the window, which this is not for.
+     * fights during the window, which this is not for. 90 seconds, longer by what was bought from the witch
+     * (docs/plan/复生补给与女巫说明.md 1, 2.2).
      */
-    private static void bless(ServerPlayer player) {
-        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, BLESSING_TICKS, 1));
-        player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, BLESSING_TICKS, 3));
-        player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, BLESSING_TICKS, 0));
+    private void bless(ServerPlayer player, RoundSnapshot round, dev.hardrush.core.round.Participant life) {
+        blessed.add(List.of(round.roundId(), life.id(), life.lifeSequence()));
+        int ticks = (int) (life.witch().blessingMillis(life.lifeSequence()) / 50);
+        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, ticks, 1));
+        player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, ticks, 3));
+        player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, ticks, 0));
     }
 
     private static void fizzle(ServerPlayer player) {

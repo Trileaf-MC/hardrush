@@ -1110,13 +1110,22 @@ public final class RoundSession implements AutoCloseable {
     public void requestRevival(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             Consumer<Reply> reply) {
         requestAction(() -> engine.proposeAdmissionRevival(UUID.randomUUID(), roundId, playerId,
-                lifeSequence, deploymentSequence), reply, "复生资格已消费，正在空装降落到远离出生点的荒野。");
+                lifeSequence, deploymentSequence), reply, "复生资格已消费，正在降落到远离出生点的荒野。");
     }
 
     public void requestShopPurchase(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             dev.hardrush.core.round.ShopOffer offer, int price, Consumer<Reply> reply) {
         requestAction(() -> engine.proposeShopPurchase(UUID.randomUUID(), roundId, playerId,
                 lifeSequence, deploymentSequence, offer, price), reply, "已购买" + offer.title() + "。");
+    }
+
+    public void requestWitchGuideSeen(UUID roundId, UUID playerId, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeWitchGuideSeen(UUID.randomUUID(), roundId, playerId), reply, "女巫的碎碎念已读。");
+    }
+
+    public void requestRevivalSupplyLanded(UUID roundId, UUID playerId, int lifeSequence, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeRevivalSupplyLanded(UUID.randomUUID(), roundId, playerId, lifeSequence), reply,
+                "复生补给已送达。");
     }
 
     public void requestMonsterCoinDrop(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,

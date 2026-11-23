@@ -21,10 +21,21 @@ public enum ShopOffer {
     OMINOUS_KEY("ominousKey", "不祥试炼钥匙", Kind.KEY, MonsterRole.ZOMBIE, MonsterRole.SKELETON),
     // Each purchase raises the soulcatcher one rarity, in order; the limit is the number of steps.
     SOULCATCHER_TIER("soulcatcherTier", "拘魂袋升阶", Kind.PERMANENT, MonsterRole.ZOMBIE),
-    SOULCATCHER_CAPACITY("soulcatcherCapacity", "拘魂袋扩容", Kind.PERMANENT, MonsterRole.ZOMBIE);
+    SOULCATCHER_CAPACITY("soulcatcherCapacity", "拘魂袋扩容", Kind.PERMANENT, MonsterRole.ZOMBIE),
+    // Revival supplies (docs/plan/复生补给与女巫说明.md): only a monster holding a revival totem is offered them.
+    BONUS_CHEST("bonusChest", "奖励箱", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    LONGER_BLESSING("longerBlessing", "延长庇护", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    IRON_BUCKET("ironBucket", "铁桶", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    OAK_LOGS("oakLogs", "橡木原木 ×5", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    IRON_PICKAXE("ironPickaxe", "铁镐", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    SHIELD("shield", "盾牌", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    BREAD("bread", "面包 ×8", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER);
 
-    /** Carried goods ride the next sortie, keys open a camp vault, permanent upgrades last the whole round. */
-    public enum Kind { CARRIED, KEY, PERMANENT }
+    /**
+     * Carried goods ride the next sortie, keys open a camp vault, permanent upgrades last the whole round, and
+     * revival supplies go with the human life the altar starts.
+     */
+    public enum Kind { CARRIED, KEY, PERMANENT, REVIVAL }
 
     private final String id;
     private final String title;
@@ -41,8 +52,13 @@ public enum ShopOffer {
     public boolean key() { return kind == Kind.KEY; }
     /** Never queued for a sortie: owned until revival or the next round, and never refunded. */
     public boolean permanent() { return kind == Kind.PERMANENT; }
+    /** Bought with a revival totem in hand and delivered to the revived human, never to a sortie. */
+    public boolean revival() { return kind == Kind.REVIVAL; }
+    /** Revival supplies that take effect where the revived body lands rather than in its backpack. */
+    public boolean landing() { return this == BONUS_CHEST || this == LONGER_BLESSING; }
     public Set<MonsterRole> roles() { return roles; }
-    public boolean sellableTo(MonsterRole role) { return roles.contains(role); }
+    /** Whether a sortie as {@code role} carries it; revival supplies never ride a sortie. */
+    public boolean sellableTo(MonsterRole role) { return !revival() && roles.contains(role); }
     public String priceKey() { return "coin.price." + id; }
     public String limitKey() { return "coin.limit." + id; }
 
