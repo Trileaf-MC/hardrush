@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
@@ -81,11 +82,7 @@ public final class TestClientsGameTest {
         }
         test.startSequence()
                 .thenWaitUntil(() -> test.assertTrue(level.isPositionEntityTicking(floor), "The arena is loaded"))
-                // A chunk ticks before it is ready to send (its light may still be pending), and an item that appears
-                // in a chunk a client has not received is never paired with that client afterwards unless the item
-                // or the client changes section, which a stationary fixture never does: throw only once both have it.
-                .thenWaitUntil(() -> test.assertTrue(alice.receivedChunksAround(floor, 0) && bob.receivedChunksAround(floor, 0),
-                        "Both clients have received the arena chunk"))
+                // The clients may not have the arena chunk yet; their next position packet shows them the items then.
                 .thenExecute(() -> { alice.dropSelected(false); bob.dropSelected(false); })
                 .thenWaitUntil(() -> {
                     var diamond = thrown(level, floor, Items.DIAMOND.getDefaultInstance());
@@ -133,6 +130,107 @@ public final class TestClientsGameTest {
         client.close();
         clear(level, floor);
         test.succeed();
+    }
+
+    /**
+     * An entity that appears before the client has its chunk is not paired when the chunk arrives: vanilla looks again
+     * only when the entity changes section or the player moves. The client's position packet, at least once a second even
+     * standing still, is that move.
+     */
+    @GameTest(maxTicks = 200)
+    public void entityAheadOfItsChunkIsSeenWithinASecondOfTheChunk(GameTestHelper test) {
+        var early = new EarlyItem(test, false);
+        early.append(test.startSequence())
+                .thenWaitUntil(() -> test.assertTrue(early.client.sawEntity(early.item), "The item reaches the client once it has the chunk"))
+                .thenExecute(() -> {
+                    long delay = test.getTick() - early.chunkArrived;
+                    test.assertTrue(delay <= 21, "The next position reminder pairs the item within a second of its chunk: " + delay + " ticks");
+                    early.close();
+                })
+                .thenSucceed();
+    }
+
+    /** The same item stays unseen by a client that sends no position packets, which is what the reminder fixes. */
+    @GameTest(maxTicks = 200)
+    public void entityAheadOfItsChunkStaysUnseenWithoutPositionPackets(GameTestHelper test) {
+        var early = new EarlyItem(test, true);
+        early.append(test.startSequence())
+                .thenIdle(40)
+                .thenExecute(() -> {
+                    test.assertFalse(early.client.sawEntity(early.item), "Nothing makes the server look again at the item");
+                    early.close();
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * Two relative teleports in one bundle that no {@code teleport()} sent: the client applies each from where the one
+     * before left it, as vanilla does, whatever the server's own position of the player.
+     */
+    @GameTest(maxTicks = 100)
+    public void bundledRelativeTeleportsEachStartWhereThePreviousLeftTheClient(GameTestHelper test) {
+        var level = test.getLevel();
+        var floor = arena(level);
+        var client = TestClient.named(level.getServer(), "HRBundledStep");
+        var player = client.place(level);
+        player.teleportTo(floor.getX() + .5, floor.getY() + 1, floor.getZ() + .5);
+        client.acknowledge();
+        var start = client.position();
+        test.assertTrue(start.distanceTo(player.position()) < 1.0E-6, "The client stands where the teleport put it: " + start);
+        var step = new PositionMoveRotation(new Vec3(1, 0, 0), Vec3.ZERO, 10, 0);
+        // Ids the server is not waiting for, so it ignores both acknowledgements and leaves the player where it was.
+        client.listener().send(new ClientboundBundlePacket(List.of(
+                ClientboundPlayerPositionPacket.of(9401, step, Relative.ALL),
+                ClientboundPlayerPositionPacket.of(9402, step, Relative.ALL))));
+        client.acknowledge();
+        var accepted = client.acceptedTeleports();
+        accepted = accepted.subList(accepted.size() - 2, accepted.size());
+        test.assertTrue(accepted.get(0).position().distanceTo(start.add(1, 0, 0)) < 1.0E-6
+                && accepted.get(1).position().distanceTo(start.add(2, 0, 0)) < 1.0E-6, "Each step starts from the one before: " + accepted);
+        test.assertTrue(Math.abs(accepted.get(1).yRot() - accepted.get(0).yRot() - 10) < 1.0E-4, "So does each turn: " + accepted);
+        test.assertTrue(client.position().distanceTo(start.add(2, 0, 0)) < 1.0E-6, "The client stands after both steps: " + client.position());
+        client.close();
+        clear(level, floor);
+        test.succeed();
+    }
+
+    /**
+     * A test walks the player through its client: one client tick each, which the server takes as a real move. The client
+     * sees itself where it walked, and its periodic position packets keep the player there without drawing a correction.
+     */
+    @GameTest(maxTicks = 100)
+    public void walkingThroughTheClientMovesThePlayer(GameTestHelper test) {
+        var level = test.getLevel();
+        var floor = arena(level);
+        var client = TestClient.named(level.getServer(), "HRWalker");
+        var player = client.place(level);
+        player.setGameMode(GameType.SURVIVAL);
+        player.teleportTo(floor.getX() + .5, floor.getY() + 1, floor.getZ() + .5);
+        int[] corrections = new int[1];
+        test.startSequence()
+                .thenWaitUntil(() -> test.assertTrue(ClientLevelLoad.loaded(player), "The client reports its level loaded"))
+                .thenExecute(() -> {
+                    client.acknowledge();
+                    corrections[0] = client.packets(ClientboundPlayerPositionPacket.class).size();
+                    var start = client.position();
+                    test.assertTrue(start.distanceTo(player.position()) < 1.0E-6, "The client stands where the teleport put it: " + start);
+                    for (int step = 1; step <= 3; step++) client.move(new Vec3(.2, 0, 0), 90, 10, true);
+                    test.assertTrue(player.position().distanceTo(start.add(.6, 0, 0)) < 1.0E-6
+                            && client.position().distanceTo(player.position()) < 1.0E-6,
+                            "Each step reaches the server: " + start + " -> " + player.position());
+                    test.assertTrue(player.getYRot() == 90 && player.getXRot() == 10 && player.onGround(), "The server takes the rotation and the ground too");
+                })
+                .thenIdle(45)
+                .thenExecute(() -> {
+                    test.assertTrue(client.connected(), "One position per client tick never reads as a second one in the same tick");
+                    test.assertValueEqual(client.packets(ClientboundPlayerPositionPacket.class).size(), corrections[0],
+                            "Neither the walk nor the reminders since draw a corrective teleport");
+                    test.assertTrue(player.onGround() && client.position().distanceTo(player.position()) < 1.0E-6,
+                            "The player still stands where it walked: " + player.position());
+                    client.close();
+                    clear(level, floor);
+                })
+                .thenSucceed();
     }
 
     /** A kick completes: the disconnect packet's send listener closes the connection and the player leaves. */
@@ -443,6 +541,64 @@ public final class TestClientsGameTest {
     private static ItemEntity thrown(ServerLevel level, BlockPos floor, ItemStack kind) {
         return level.getEntitiesOfClass(ItemEntity.class, new AABB(floor).inflate(8), item -> ItemStack.isSameItem(item.getItem(), kind))
                 .stream().findFirst().orElse(null);
+    }
+
+    /**
+     * An item that appears where its watcher already stands, in a chunk the server has queued for the watcher but not
+     * sent. The watcher withholds its chunk batch confirmations from the start, so the server never sends more than its
+     * first batch until the item is there; it waits too until the server has processed the watcher's change of section,
+     * which looks again at every entity for that player.
+     */
+    private static final class EarlyItem {
+        final GameTestHelper test;
+        final ServerLevel level;
+        final BlockPos floor;
+        final TestClient client;
+        ItemEntity item;
+        long chunkArrived = -1;
+
+        EarlyItem(GameTestHelper test, boolean silent) {
+            this.test = test;
+            level = test.getLevel();
+            floor = arena(level);
+            client = TestClient.named(level.getServer(), "HREarly").withhold(TestClient.Reply.CONFIRM_CHUNK_BATCHES);
+            if (silent) client.withhold(TestClient.Reply.REPORT_POSITION);
+            client.place(level);
+        }
+
+        GameTestSequence append(GameTestSequence sequence) {
+            return sequence
+                    .thenWaitUntil(() -> test.assertTrue(ClientLevelLoad.loaded(client.player()) && readyToSend(floor),
+                            "The client has loaded its level and the arena chunk is ready to send"))
+                    .thenExecute(() -> {
+                        client.player().teleportTo(floor.getX() + 2.5, floor.getY() + 1, floor.getZ() + .5);
+                        client.acknowledge();
+                    })
+                    .thenIdle(2)
+                    .thenExecute(() -> {
+                        test.assertFalse(client.receivedChunksAround(floor, 0), "The arena chunk waits behind the unconfirmed batch");
+                        item = new ItemEntity(level, floor.getX() + .5, floor.getY() + 1, floor.getZ() + .5, new ItemStack(Items.DIAMOND));
+                        item.setNoGravity(true);
+                        item.setDeltaMovement(Vec3.ZERO);
+                        test.assertTrue(level.addFreshEntity(item) && !client.sawEntity(item), "The item joins the level unseen");
+                        client.resume(TestClient.Reply.CONFIRM_CHUNK_BATCHES);
+                    })
+                    .thenWaitUntil(() -> {
+                        test.assertTrue(client.receivedChunksAround(floor, 0), "The arena chunk reaches the client");
+                        if (chunkArrived < 0) chunkArrived = test.getTick();
+                    });
+        }
+
+        private boolean readyToSend(BlockPos pos) {
+            var holder = level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(ChunkPos.containing(pos).pack());
+            return holder != null && holder.getChunkToSend() != null;
+        }
+
+        void close() {
+            if (item != null) item.discard();
+            client.close();
+            clear(level, floor);
+        }
     }
 
     /** A watcher {@link #DISTANCE} blocks east of an item drop, in an arena of its own. */

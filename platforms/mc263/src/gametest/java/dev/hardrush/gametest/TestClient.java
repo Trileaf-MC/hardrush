@@ -26,10 +26,13 @@ import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
 import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
 import net.minecraft.network.protocol.game.ClientboundLoginPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerRotationPacket;
 import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 import net.minecraft.network.protocol.game.GameProtocols;
 import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket;
+import net.minecraft.network.protocol.game.ServerboundClientTickEndPacket;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.server.MinecraftServer;
@@ -38,6 +41,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.network.config.PrepareSpawnTask;
 import net.minecraft.server.players.NameAndId;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.entity.Relative;
@@ -56,9 +60,11 @@ import net.minecraft.world.phys.Vec3;
  * needs a player whose body stands still {@linkplain #freeze() freezes} the connection and steps it by hand with
  * {@link #tickConnection()}.
  *
- * <p>At the end of every server tick, and whenever a test calls {@link #acknowledge()}, the client:
+ * <p>At the end of every server tick, and whenever a test calls {@link #acknowledge()}, the client handles what has
+ * arrived:
  * <ul>
- *   <li>accepts every teleport the server sent, in order, at its destination ({@link Reply#ACCEPT_TELEPORTS});</li>
+ *   <li>applies every teleport and rotation the server sent, in order, as the vanilla client does, and accepts each
+ *   teleport at the destination it applied ({@link Reply#ACCEPT_TELEPORTS});</li>
  *   <li>reports once that it has loaded the level, after a login or respawn packet, once the server has started
  *   sending that level's chunks ({@code LEVEL_CHUNKS_LOAD_START}) and every teleport so far is accepted, as the vanilla
  *   loading screen does ({@link Reply#REPORT_LOADED});</li>
@@ -67,7 +73,20 @@ import net.minecraft.world.phys.Vec3;
  * </ul>
  * The client never sees chunk contents, so unlike the vanilla loading screen it does not wait for the chunk it stands
  * in.
- * A client that misses any of these differs from a real one in ways that surface only as flaky timeouts: a position
+ *
+ * <p>Then, at the end of every server tick only, it runs one client tick as {@code Minecraft.tick} does: once it has
+ * reported the level loaded it sends its movement the way {@code LocalPlayer.sendChanges} does
+ * ({@link Reply#REPORT_POSITION}), and it always ends with {@code ServerboundClientTickEndPacket}. The client keeps its own
+ * view of where its player stands: from the teleports it applied, the rotations the server set and the moves a test
+ * makes through {@link #move(Vec3, float, float, boolean)}. It sends a position when that view changed and at least once
+ * every 20 client ticks, which makes the server look again at which entities this player can see, and it reports
+ * whether it stands on something. It does not simulate physics: a player the server leaves in the air stays there, as
+ * if hovering, and the server may kick it for flying when flight is not allowed (dedicated servers only; the headless
+ * GameTest server allows it). Moving a fixture player without a packet ({@code setPos}, {@code snapTo}) does not reach
+ * this view either, so the client's next position packet walks it back, as a real client's would; move players with a
+ * teleport or through this client.
+ *
+ * <p>A client that misses any of these differs from a real one in ways that surface only as flaky timeouts: a position
  * that never settles, or chunks and entities that stop arriving. A test of exactly such an abnormal client
  * {@linkplain #withhold(Reply...) withholds} the reply it is about and sends it by hand when it chooses.
  *
@@ -85,8 +104,8 @@ import net.minecraft.world.phys.Vec3;
  * own step runners.
  */
 public final class TestClient implements AutoCloseable {
-    /** What a vanilla client answers on its own. */
-    public enum Reply { ACCEPT_TELEPORTS, REPORT_LOADED, CONFIRM_CHUNK_BATCHES, ANSWER_KEEP_ALIVE }
+    /** What a vanilla client sends on its own. */
+    public enum Reply { ACCEPT_TELEPORTS, REPORT_LOADED, CONFIRM_CHUNK_BATCHES, ANSWER_KEEP_ALIVE, REPORT_POSITION }
 
     private enum Mode { LOGIN, PLACED, ATTACHED }
 
@@ -110,15 +129,24 @@ public final class TestClient implements AutoCloseable {
     private EmbeddedChannel channel;
     private ServerGamePacketListenerImpl listener;
     private ServerGamePacketListenerImpl replaced;
-    /** The player being placed, before its listener exists. */
-    private ServerPlayer placing;
     // Written by the connection as packets arrive, consumed by acknowledge().
-    private final ConcurrentLinkedQueue<Teleport> pendingTeleports = new ConcurrentLinkedQueue<>();
+    /** Position and rotation packets not yet applied, in the order they arrived. */
+    private final ConcurrentLinkedQueue<Packet<?>> pendingPlacements = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<Long> pendingKeepAlives = new ConcurrentLinkedQueue<>();
     private final List<Teleport> acceptedTeleports = Collections.synchronizedList(new ArrayList<>());
-    /** The newest teleport received; while any is unaccepted, it is where the client stands. */
-    private volatile Teleport lastReceived;
     private final AtomicInteger pendingChunkBatches = new AtomicInteger();
+    // The client's own player, written on the server thread only.
+    /** Where the client sees its player; null until a teleport places it after a login or respawn. */
+    private Vec3 position;
+    private float yRot;
+    private float xRot;
+    private boolean onGround;
+    /** What the client last sent, as {@code LocalPlayer} keeps it; a new player starts from vanilla's zero defaults. */
+    private Vec3 sentPosition;
+    private float sentYRot;
+    private float sentXRot;
+    private boolean sentOnGround;
+    private int positionReminder;
     /** Between a login or respawn packet and the loaded report: the vanilla client's loading screen. */
     private volatile boolean levelLoading;
     private volatile boolean levelChunksStarted;
@@ -206,11 +234,8 @@ public final class TestClient implements AutoCloseable {
         requireOffline();
         if (!player.getUUID().equals(profile.id())) throw new IllegalArgumentException("Player " + player.getUUID() + " is not " + profile.name());
         open(Mode.PLACED);
-        placing = player;
-        try {
-            UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player,
-                    TestClients.cookie(profile, viewDistance)));
-        } finally { placing = null; }
+        UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player,
+                TestClients.cookie(profile, viewDistance)));
         joined(player.connection);
         return player;
     }
@@ -225,7 +250,9 @@ public final class TestClient implements AutoCloseable {
         connection.setupInboundProtocol(GameProtocols.SERVERBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator(server.registryAccess()),
                 attachedListener), attachedListener);
         player.connection = attachedListener;
-        // The player already stands in its level, but this new connection has not reported it loaded.
+        // The player already stands in its level, but this new connection has not reported it loaded. No teleport will
+        // place it either: the client takes the player where it is when it first needs a position, so a fixture can
+        // still set the player up within the step that attached it.
         levelLoading = true;
         levelChunksStarted = true;
         joined(player.connection);
@@ -282,7 +309,11 @@ public final class TestClient implements AutoCloseable {
                     // through this one. Neither side waits for it any more, and no packet says so (see the accessor).
                     var original = replaced;
                     ((AwaitingTeleportAccessor) original).hardrush$awaitingPositionFromClient(null);
-                    LIVE.stream().filter(other -> other != this && other.listener == original).forEach(other -> other.pendingTeleports.clear());
+                    // This client stood in for it, so it sees the player wherever this one left it.
+                    LIVE.stream().filter(other -> other != this && other.listener == original).forEach(other -> {
+                        other.pendingPlacements.clear();
+                        other.standWhere(player);
+                    });
                 }
                 release();
             }
@@ -312,6 +343,12 @@ public final class TestClient implements AutoCloseable {
         synchronized (acceptedTeleports) { return List.copyOf(acceptedTeleports); }
     }
 
+    /**
+     * Where the client sees its player: placed by the teleports it applied and moved by the test through
+     * {@link #move(Vec3, float, float, boolean)}. Null after a login or respawn until a teleport places the player.
+     */
+    public Vec3 position() { return position; }
+
     /** The connection of the current session, for exceptional paths that need it directly. */
     public TestConnection connection() { return connection; }
 
@@ -324,9 +361,9 @@ public final class TestClient implements AutoCloseable {
 
     /**
      * Whether the server has sent this client every chunk within {@code radius} chunks of {@code center}, in the level the
-     * player is in. An entity that appears in a chunk before the client has it stays unseen until the entity changes
-     * section or the player moves: vanilla checks visibility again only then, and a real client, unlike this one, sends a
-     * position packet at least once a second. Wait for this before spawning an entity the client should see.
+     * player is in. An entity that appears in a chunk before the client has it reaches the client only once the server
+     * looks again, when the entity changes section or the player moves: the client's next position packet, within a
+     * second.
      */
     public boolean receivedChunksAround(BlockPos center, int radius) {
         var player = player();
@@ -354,35 +391,61 @@ public final class TestClient implements AutoCloseable {
         if (!withheld.contains(Reply.ANSWER_KEEP_ALIVE)) answerKeepAlives();
         if (!withheld.contains(Reply.CONFIRM_CHUNK_BATCHES)) confirmChunkBatches();
         if (!withheld.contains(Reply.ACCEPT_TELEPORTS)) acceptTeleport();
-        if (!withheld.contains(Reply.REPORT_LOADED) && levelLoading && levelChunksStarted && pendingTeleports.isEmpty()) reportLoaded();
+        if (!withheld.contains(Reply.REPORT_LOADED) && levelLoading && levelChunksStarted && pendingPlacements.isEmpty()) reportLoaded();
     }
 
     /**
-     * Accepts, in order, the teleports the server had sent when this was called, each at the destination the vanilla
-     * client applies; {@code false} if none was unaccepted. The server moves the player only for the latest, but
-     * HardRush recognises a level's arrival by the first one after it. A teleport the server sends in answer to these
-     * acceptances waits for the next call, as it would wait for the next packet a real client reads.
+     * Applies, in order, the teleports and rotations the server had sent when this was called, as the vanilla client
+     * does, and accepts each teleport at the destination it applied; {@code false} if nothing was pending. The server
+     * moves the player only for the latest teleport, but HardRush recognises a level's arrival by the first one after it.
+     * A teleport the server sends in answer to these acceptances waits for the next call, as it would wait for the next
+     * packet a real client reads.
      */
     public boolean acceptTeleport() {
-        if (!live() || pendingTeleports.isEmpty()) return false;
-        for (int count = pendingTeleports.size(); count > 0; count--) {
-            var teleport = pendingTeleports.poll();
-            if (teleport == null) break;
-            accept(teleport);
+        if (!live() || pendingPlacements.isEmpty()) return false;
+        for (int count = pendingPlacements.size(); count > 0; count--) {
+            var packet = pendingPlacements.poll();
+            if (packet == null) break;
+            if (packet instanceof ClientboundPlayerPositionPacket teleport) accept(teleport);
+            else if (packet instanceof ClientboundPlayerRotationPacket rotation) rotate(rotation);
         }
         return true;
     }
 
     /**
      * Accepts one particular teleport id, which no longer waits for the automatic reply. An id the client never received
-     * (a stale or invented one, for tests of the server's checks) goes out at the player's current position.
+     * (a stale or invented one, for tests of the server's checks) goes out where the client stands.
      */
     public void acceptTeleport(int id) {
-        for (var teleport : pendingTeleports) {
-            if (teleport.id() == id && pendingTeleports.remove(teleport)) { accept(teleport); return; }
+        for (var packet : pendingPlacements) {
+            if (packet instanceof ClientboundPlayerPositionPacket teleport && teleport.id() == id && pendingPlacements.remove(packet)) {
+                accept(teleport);
+                return;
+            }
         }
+        if (position == null) standWhere(listener.player);
+        accept(new Teleport(id, position, yRot, xRot));
+    }
+
+    /**
+     * Applies a position packet as {@code ClientPacketListener.handleMovePlayer} does: with
+     * {@link PositionMoveRotation#calculateAbsolute}, absolute components from the packet and relative ones added to
+     * where the client stands (pitch clamped to ±90°). A riding client applies none of it and acknowledges where it is.
+     */
+    private void accept(ClientboundPlayerPositionPacket packet) {
         var player = listener.player;
-        accept(new Teleport(id, player.position(), player.getYRot(), player.getXRot()));
+        if (player.isPassenger()) {
+            standWhere(player);
+        } else {
+            // Only a relative teleport before any absolute one needs a start; vanilla's new player would be at the origin.
+            if (position == null) standWhere(player);
+            var arrival = PositionMoveRotation.calculateAbsolute(new PositionMoveRotation(position, Vec3.ZERO, yRot, xRot),
+                    packet.change(), packet.relatives());
+            position = arrival.position();
+            yRot = arrival.yRot();
+            xRot = arrival.xRot();
+        }
+        accept(new Teleport(packet.id(), position, yRot, xRot));
     }
 
     private void accept(Teleport teleport) {
@@ -398,12 +461,22 @@ public final class TestClient implements AutoCloseable {
                 teleport.yRot(), teleport.xRot()));
     }
 
+    /** As {@code ClientPacketListener.handleRotatePlayer}: turns where the server says and confirms the new rotation. */
+    private void rotate(ClientboundPlayerRotationPacket packet) {
+        var relatives = Relative.rotation(packet.relativeY(), packet.relativeX());
+        var current = new PositionMoveRotation(Vec3.ZERO, Vec3.ZERO, yRot, xRot);
+        var turned = PositionMoveRotation.calculateAbsolute(current, current.withRotation(packet.yRot(), packet.xRot()), relatives);
+        yRot = turned.yRot();
+        xRot = turned.xRot();
+        listener.handleMovePlayer(new ServerboundMovePlayerPacket.Rot(yRot, xRot, false, false));
+    }
+
     /**
      * Sends a loaded report now. It completes the current load only once that level's chunks have started and every
      * teleport is accepted; one sent earlier still belongs to the previous level, so the automatic report stays due.
      */
     public void reportLoaded() {
-        if (levelChunksStarted && pendingTeleports.isEmpty()) levelLoading = false;
+        if (levelChunksStarted && pendingPlacements.isEmpty()) levelLoading = false;
         listener.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
     }
 
@@ -417,6 +490,26 @@ public final class TestClient implements AutoCloseable {
         while (pendingChunkBatches.getAndUpdate(count -> Math.max(0, count - 1)) > 0) {
             listener.handleChunkBatchReceived(new ServerboundChunkBatchReceivedPacket(64));
         }
+    }
+
+    /**
+     * One client tick in which the player walks: the client first handles what has arrived ({@link #acknowledge()}), then
+     * moves by {@code offset} from where it sees itself, faces {@code yRot}/{@code xRot}, sends that movement as
+     * {@code LocalPlayer.sendPosition} does and ends the tick. {@code onGround} is what its physics would report there,
+     * for example {@code false} at the start of a jump. The server may refuse the move and teleport the player back,
+     * which the client applies with its next replies.
+     */
+    public void move(Vec3 offset, float yRot, float xRot, boolean onGround) {
+        listener();
+        acknowledge();
+        if (!live()) throw new IllegalStateException(profile.name() + " does not control its player");
+        if (position == null) throw new IllegalStateException(profile.name() + " has not been placed in its level yet");
+        position = position.add(offset);
+        this.yRot = yRot;
+        this.xRot = xRot;
+        this.onGround = onGround;
+        sendPosition();
+        endClientTick();
     }
 
     /**
@@ -461,7 +554,97 @@ public final class TestClient implements AutoCloseable {
             if (client.server != server) continue;
             if (client.ended()) { client.release(); continue; }
             client.acknowledge();
+            client.clientTick();
         }
+    }
+
+    /**
+     * {@code Minecraft.tick} for this client: {@code LocalPlayer.sendChanges} once the level is loaded, then the tick end
+     * that lets the server take the next tick's position.
+     */
+    private void clientTick() {
+        if (!live()) return;
+        if (!withheld.contains(Reply.REPORT_POSITION) && !levelLoading) sendChanges();
+        endClientTick();
+    }
+
+    private void endClientTick() {
+        if (live()) listener.handleClientTickEnd(ServerboundClientTickEndPacket.INSTANCE);
+    }
+
+    private void sendChanges() {
+        var player = listener.player;
+        if (position == null) {
+            // Only an attached client starts without a teleport placing it.
+            if (mode != Mode.ATTACHED) return;
+            standWhere(player);
+        }
+        if (player.isPassenger()) {
+            // The client seats its player on the vehicle itself and reports only where it looks, every tick. It does not
+            // steer: this client sends no vehicle movement.
+            standWhere(player);
+            onGround = false;
+            listener.handleMovePlayer(new ServerboundMovePlayerPacket.Rot(yRot, xRot, onGround, false));
+            return;
+        }
+        onGround = standsOnSomething(player);
+        sendPosition();
+    }
+
+    /**
+     * {@code LocalPlayer.sendPosition}: the position when it moved or 20 client ticks after the last one, the rotation
+     * when it turned, and otherwise only a change of {@code onGround}. Nothing while the client watches through another
+     * entity's eyes. The client never collides sideways.
+     */
+    private void sendPosition() {
+        var player = listener.player;
+        if (player.getCamera() != player) return;
+        positionReminder++;
+        boolean moved = position.distanceToSqr(sentPosition) > Mth.square(2.0E-4) || positionReminder >= 20;
+        boolean turned = yRot != sentYRot || xRot != sentXRot;
+        if (moved && turned) listener.handleMovePlayer(new ServerboundMovePlayerPacket.PosRot(position, yRot, xRot, onGround, false));
+        else if (moved) listener.handleMovePlayer(new ServerboundMovePlayerPacket.Pos(position, onGround, false));
+        else if (turned) listener.handleMovePlayer(new ServerboundMovePlayerPacket.Rot(yRot, xRot, onGround, false));
+        else if (onGround != sentOnGround) listener.handleMovePlayer(new ServerboundMovePlayerPacket.StatusOnly(onGround, false));
+        if (moved) {
+            sentPosition = position;
+            positionReminder = 0;
+        }
+        if (turned) {
+            sentYRot = yRot;
+            sentXRot = xRot;
+        }
+        sentOnGround = onGround;
+    }
+
+    /**
+     * What the vanilla client's physics would report for a player that has settled where this client sees it: whether a
+     * block or solid entity is right below its feet. The client does not fall, so a player in the air is not on the
+     * ground and stays in the air.
+     */
+    private boolean standsOnSomething(ServerPlayer player) {
+        var feet = player.getBoundingBox().move(position.subtract(player.position())).move(0, -1.0E-5, 0);
+        return !player.level().noCollision(player, feet);
+    }
+
+    /** Sees the player where the server has it, for a client that had no position packet to go by. */
+    private void standWhere(ServerPlayer player) {
+        position = player.position();
+        yRot = player.getYRot();
+        xRot = player.getXRot();
+    }
+
+    /** The client created a new local player: unplaced, and with nothing sent yet (vanilla's zero field defaults). */
+    private void newPlayer() {
+        position = null;
+        yRot = 0;
+        xRot = 0;
+        onGround = false;
+        sentPosition = Vec3.ZERO;
+        sentYRot = 0;
+        sentXRot = 0;
+        sentOnGround = false;
+        positionReminder = 0;
     }
 
     /**
@@ -488,11 +671,11 @@ public final class TestClient implements AutoCloseable {
 
     private void open(Mode mode) {
         this.mode = mode;
-        pendingTeleports.clear();
+        pendingPlacements.clear();
         pendingKeepAlives.clear();
         acceptedTeleports.clear();
-        lastReceived = null;
         pendingChunkBatches.set(0);
+        newPlayer();
         levelLoading = false;
         levelChunksStarted = false;
         teleportedSinceConnectionTick = false;
@@ -508,60 +691,19 @@ public final class TestClient implements AutoCloseable {
 
     private void observe(Packet<?> packet) {
         switch (packet) {
-            case ClientboundPlayerPositionPacket position -> {
-                var teleport = arrival(position);
-                lastReceived = teleport;
+            case ClientboundPlayerPositionPacket teleport -> {
                 teleportedSinceConnectionTick = true;
-                pendingTeleports.add(teleport);
+                pendingPlacements.add(teleport);
             }
+            case ClientboundPlayerRotationPacket rotation -> pendingPlacements.add(rotation);
             case ClientboundChunkBatchFinishedPacket ignored -> pendingChunkBatches.incrementAndGet();
             case ClientboundKeepAlivePacket keepAlive -> pendingKeepAlives.add(keepAlive.getId());
-            case ClientboundLoginPacket ignored -> { levelLoading = true; levelChunksStarted = false; }
-            case ClientboundRespawnPacket ignored -> { levelLoading = true; levelChunksStarted = false; }
+            case ClientboundLoginPacket ignored -> { levelLoading = true; levelChunksStarted = false; newPlayer(); }
+            case ClientboundRespawnPacket ignored -> { levelLoading = true; levelChunksStarted = false; newPlayer(); }
             case ClientboundGameEventPacket event when event.getEvent() == ClientboundGameEventPacket.LEVEL_CHUNKS_LOAD_START -> levelChunksStarted = true;
             default -> { }
         }
     }
-
-    /**
-     * The destination the client applies, computed as the vanilla client does with
-     * {@link PositionMoveRotation#calculateAbsolute}: absolute components from the packet, relative ones added to where
-     * the client stands (pitch clamped to ±90°). While an earlier teleport is unaccepted the client stands at that one's
-     * destination. Otherwise it stands where the server had the player before this teleport: every position packet
-     * comes from {@code ServerGamePacketListenerImpl.teleport}, which moves the player before sending, so that is the
-     * player's position now less the packet's offset. A riding client applies no position packet and acknowledges
-     * where it is.
-     * TODO: [Refactor] tracking the client's own position would also cover position packets that do not come from
-     * {@code teleport()}, which only tests construct, and two relative teleports bundled after both moved the player. It
-     * needs every client-side move to go through this class; today fixtures send move packets to the listener directly.
-     */
-    private Teleport arrival(ClientboundPlayerPositionPacket packet) {
-        var change = packet.change();
-        var relatives = packet.relatives();
-        var player = listener != null ? listener.player : placing;
-        if (player != null && player.isPassenger()) return new Teleport(packet.id(), player.position(), player.getYRot(), player.getXRot());
-        PositionMoveRotation from;
-        var standing = pendingTeleports.isEmpty() ? null : lastReceived;
-        if (standing != null) {
-            from = new PositionMoveRotation(standing.position(), Vec3.ZERO, standing.yRot(), standing.xRot());
-        } else if (relatives.stream().noneMatch(PLACEMENT_FLAGS::contains)) {
-            from = new PositionMoveRotation(Vec3.ZERO, Vec3.ZERO, 0, 0);
-        } else {
-            if (player == null) throw new IllegalStateException("Relative teleport " + packet.id() + " before " + profile.name() + " has a player");
-            var offset = change.position();
-            from = new PositionMoveRotation(new Vec3(
-                    player.getX() - (relatives.contains(Relative.X) ? offset.x : 0),
-                    player.getY() - (relatives.contains(Relative.Y) ? offset.y : 0),
-                    player.getZ() - (relatives.contains(Relative.Z) ? offset.z : 0)), Vec3.ZERO,
-                    player.getYRot() - (relatives.contains(Relative.Y_ROT) ? change.yRot() : 0),
-                    player.getXRot() - (relatives.contains(Relative.X_ROT) ? change.xRot() : 0));
-        }
-        var arrival = PositionMoveRotation.calculateAbsolute(from, change, relatives);
-        return new Teleport(packet.id(), arrival.position(), arrival.yRot(), arrival.xRot());
-    }
-
-    /** The relative flags that change where the player ends up or faces, as opposed to its velocity. */
-    private static final Set<Relative> PLACEMENT_FLAGS = Set.of(Relative.X, Relative.Y, Relative.Z, Relative.Y_ROT, Relative.X_ROT);
 
     /** A session the server closed (a kick) is over as soon as anyone looks, not only at the end of the tick. */
     private void settle() {

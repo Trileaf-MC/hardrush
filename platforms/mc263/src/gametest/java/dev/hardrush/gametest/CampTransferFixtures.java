@@ -31,10 +31,7 @@ final class CampTransferFixtures {
             LobbyRuntimeGameTest.Fixture.Peer donor, LobbyRuntimeGameTest.Fixture.Peer receiver) {
         int[] balances = new int[2];
         ItemEntity[] floor = new ItemEntity[1];
-        // The receiver may have just respawned: its client must hold the chunks the coins land in before they appear.
-        sequence.thenWaitUntil(() -> f.await(receiver.client.receivedChunksAround(donor.current().blockPosition(), 1),
-                "The receiver's client has the chunks around the donor"))
-                .thenExecute(() -> {
+        sequence.thenExecute(() -> {
             CampKit.tick(f.server);
             balances[0] = donor.participant().wallet().coins();
             balances[1] = receiver.participant().wallet().coins();
