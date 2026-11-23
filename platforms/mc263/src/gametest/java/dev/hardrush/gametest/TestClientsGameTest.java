@@ -157,7 +157,10 @@ public final class TestClientsGameTest {
         early.append(test.startSequence())
                 .thenIdle(40)
                 .thenExecute(() -> {
-                    test.assertFalse(early.client.sawEntity(early.item), "Nothing makes the server look again at the item");
+                    test.assertFalse(early.client.sawEntity(early.item), "Nothing makes the server look again at the item: "
+                            + early.client.packets().subList(early.packetsAtDrop, early.client.packets().size()).stream()
+                                    .map(packet -> packet.type().toString()).distinct().toList()
+                            + ", player at " + early.client.player().position() + ", item at " + early.item.position());
                     early.close();
                 })
                 .thenSucceed();
@@ -556,6 +559,7 @@ public final class TestClientsGameTest {
         final TestClient client;
         ItemEntity item;
         long chunkArrived = -1;
+        int packetsAtDrop;
 
         EarlyItem(GameTestHelper test, boolean silent) {
             this.test = test;
@@ -581,6 +585,7 @@ public final class TestClientsGameTest {
                         item.setNoGravity(true);
                         item.setDeltaMovement(Vec3.ZERO);
                         test.assertTrue(level.addFreshEntity(item) && !client.sawEntity(item), "The item joins the level unseen");
+                        packetsAtDrop = client.packets().size();
                         client.resume(TestClient.Reply.CONFIRM_CHUNK_BATCHES);
                     })
                     .thenWaitUntil(() -> {
