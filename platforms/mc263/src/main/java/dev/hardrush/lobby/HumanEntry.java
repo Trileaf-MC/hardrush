@@ -263,7 +263,10 @@ public final class HumanEntry {
                     player.getX(), player.getY(), player.getZ(), .25f, .8f + player.getRandom().nextFloat() * .4f, 0));
         }
         intent.dwell++;
-        intent.joinBar.setName(dev.hardrush.notice.Notices.bar("中途加入 · 世界已运转 " + dev.hardrush.notice.Notices.key(worldDays()) + " · 无出生保护"));
+        var rules = session.snapshot().map(RoundSnapshot::rules).orElse(null);
+        intent.joinBar.setName(dev.hardrush.notice.Notices.bar("中途加入 · 世界已运转 " + dev.hardrush.notice.Notices.key(worldDays())
+                + (rules != null && dev.hardrush.core.hunt.LateShelter.enabled(rules)
+                ? " · 落地后 " + dev.hardrush.notice.Notices.key(dev.hardrush.core.hunt.LateShelter.duration(rules)) + "不被追猎" : "")));
         intent.joinBar.setProgress(Math.max(0, 1 - (float)intent.dwell / MIDROUND_DWELL_TICKS));
         if (intent.dwell % 4 == 0) player.level().sendParticles(net.minecraft.core.particles.ParticleTypes.PORTAL,
                 player.getX(), player.getY() + .8, player.getZ(), 6, .4, .6, .4, .3);
@@ -301,13 +304,6 @@ public final class HumanEntry {
         long ticks = level.dimensionTypeRegistration().value().defaultClock()
                 .map(clock -> level.clockManager().getInstance(clock).totalTicks()).orElse(level.getGameTime());
         return ticks / 24000 + " 天 " + ticks % 24000 / 1000 + " 小时";
-    }
-    /** How long the challenge world has run in game days, for players re-entering it; empty without a world. */
-    public static java.util.Optional<String> challengeWorldAge(MinecraftServer server) {
-        var service = SERVICES.get(server);
-        if (service == null || service.worlds.get() == null) return java.util.Optional.empty();
-        try { return java.util.Optional.of(service.worldDays()); }
-        catch (RuntimeException unavailable) { return java.util.Optional.empty(); }
     }
     /** Leaving the circle cancels readiness; a falling click tells it without chat. */
     private static void cancelled(ServerPlayer player) {

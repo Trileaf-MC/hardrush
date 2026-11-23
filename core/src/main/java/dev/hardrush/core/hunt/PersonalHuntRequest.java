@@ -24,6 +24,7 @@ public record PersonalHuntRequest(UUID round, UUID hunter, int hunterLife, int i
     public boolean targetMatches(RoundSnapshot snapshot) {
         var p = snapshot.participants().get(target);
         return round.equals(snapshot.roundId()) && p != null && p.online()
-                && p.role() == ParticipantRole.HUMAN_ACTIVE && p.lifeSequence() == targetLife;
+                && p.role() == ParticipantRole.HUMAN_ACTIVE && p.lifeSequence() == targetLife
+                && !LateShelter.sheltered(snapshot.rules(), p);
     }
 }
