@@ -206,7 +206,8 @@ public final class HumanEntryGameTest {
                 .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(2)))
                 .thenWaitUntil(() -> f.await(f.round().challengeNanos() > 0 && f.idle(), "The challenge clock has started"))
                 .thenExecute(() -> f.place(f.b, Landing.RESTORE_READY))
-                .thenWaitUntil(() -> f.await(f.round().participants().get(f.b.profile.id()).lifeSequence() == 1
+                .thenWaitUntil(() -> f.await(f.round().participants().get(f.b.profile.id()) != null
+                        && f.round().participants().get(f.b.profile.id()).lifeSequence() == 1
                         && !PlayerProfiles.isLocked(f.b.player) && f.idle(), "Hardcore middle admission"))
                 .thenExecute(() -> {
                     var late = f.round().participants().get(f.b.profile.id());
