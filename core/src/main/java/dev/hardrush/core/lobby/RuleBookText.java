@@ -30,9 +30,11 @@ public final class RuleBookText {
             pages.add("阵亡\n\n普通模式下阵亡后按原版重生。");
         } else {
             pages.add("阵亡\n\n极限挑战中阵亡后回到营地，可以到庭院的角色展位选择僵尸、骷髅或苦力怕，化身怪物追猎人类。");
-            pages.add("追猎\n\n右键庭院里的目标模型寻找出击位置，再次右键取消。落地时目标会听到一声洞穴音。\n\n出击后右键回响碎片，原地不动 "
-                    + seconds(value(rules, "monster.returnChannelMillis", 5_000))
-                    + " 秒返回营地，物资暂存到下次。\n\n追迹罗盘指向你的目标，发光时右键，边走边引导同样时长即可循迹到目标附近。");
+            pages.add("追猎\n\n右键庭院里的目标模型，开始寻找目标附近的出击位置，再次右键取消。落地时目标会听到一声洞穴音。\n\n"
+                    + "出击后右键回响碎片，原地不动 " + seconds(value(rules, "monster.returnChannelMillis", 5_000))
+                    + " 秒返回营地，本次物资暂存到下次。");
+            pages.add("追迹罗盘\n\n追迹罗盘的指针指向你的目标，发光时右键，边走边引导 " + seconds(value(rules, "monster.returnChannelMillis", 5_000))
+                    + " 秒就能循迹到目标附近。\n\n受伤或动手会打断引导；落地后罗盘冷却 " + seconds(RoundEngine.retrackCooldownMillis(rules)) + " 秒。");
             pages.add("角色\n\n僵尸自带僵尸刷怪蛋，困难难度下能空手敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
                     + "骷髅潜行拉满弓触发三连射，陷进细雪会化身流浪者。\n\n苦力怕按住引爆器引爆。");
             pages.add("挖掘与虫穴\n\n僵尸和骷髅空手按住左键，一次挖开 1×2 的石头、泥土、下界岩、末地石等天然方块，最长 "
