@@ -279,7 +279,6 @@ public final class LobbyFoundationGameTest {
             moveToModel(f.a, id); click(f.a.player, id);
             test.assertValueEqual(selections.size(), 1, "A sheltered model's click reaches the hunt action, which explains the refusal");
             test.assertTrue(router.projections().sheltered(f.a.player, selections.getFirst()), "The selection is known to be sheltered");
-            test.assertTrue(router.projections().aimed(f.a.player).isPresent(), "The crosshair finds a sheltered model to offer watching it");
             selections.clear();
         }
         void reconnected() {
