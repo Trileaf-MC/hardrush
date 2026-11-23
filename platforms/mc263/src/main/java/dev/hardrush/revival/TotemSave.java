@@ -78,7 +78,7 @@ public final class TotemSave {
             drop.ifPresent(token -> TotemDrops.captured(player, identity.get().round(), token, left.isPresent()));
             // Cannot save: passed over like any item without DEATH_PROTECTION, so vanilla looks at the other hand.
             if (left.isEmpty()) continue;
-            pop(player, stack, left.getAsInt());
+            pop(player, stack, source, left.getAsInt());
             return true;
         }
         return false;
@@ -90,7 +90,7 @@ public final class TotemSave {
     }
 
     /** The tail of vanilla's {@code checkTotemDeathProtection} once it found an item, in the same order. */
-    private static void pop(ServerPlayer player, ItemStack stack, int left) {
+    private static void pop(ServerPlayer player, ItemStack stack, DamageSource source, int left) {
         var used = stack.copy();
         stack.shrink(1);
         player.awardStat(Stats.ITEM_USED.get(used.getItem()));
@@ -101,5 +101,6 @@ public final class TotemSave {
         player.level().broadcastEntityEvent(player, (byte) 35);
         CombatRuntime.revivedInPlace(player);
         Notices.hint(player, savedTip(left));
+        dev.hardrush.death.DeathNarration.savedInPlace(player, source);
     }
 }
