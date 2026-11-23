@@ -29,7 +29,7 @@ class MonsterCoinTimingSessionTest {
     @Test void pendingDamageBeforeTheDragonIsCreditedOnTheTerminalTimeAndTheWinnerStands() throws Exception {
         try (var session = open(seed())) {
             clock.set(seconds(5));
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 4_000);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 4_000);
             var lethal = dragonKill(seconds(7));
             session.captureDragonDeath(lethal, dragon);
             // The batch closes later than the lethal hit; a flush on this later time used to run first.
@@ -100,7 +100,7 @@ class MonsterCoinTimingSessionTest {
             clock.set(seconds(5));
             session.tick();
             pump(() -> !session.mutationPending());
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 2_500);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 2_500);
             session.onOnline(monster, "Monster", false);
             pump(() -> !session.mutationPending());
             assertEquals(ParticipantRole.MONSTER_LOBBY, session.snapshot().orElseThrow().participants().get(monster).role(),
@@ -118,14 +118,14 @@ class MonsterCoinTimingSessionTest {
             pump(() -> !session.mutationPending());
             clock.addAndGet(seconds(31));
             request(reply -> session.requestMonsterDeploy(round, monster, 1, 3, reply));
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 9_000);
-            session.recordMonsterDamage(round, monster, 1, 4, human, MonsterDimension.OVERWORLD, 1_000);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 9_000);
+            session.recordMonsterDamage(round, monster, 1, 4, human, 1_000);
             clock.addAndGet(seconds(1));
             session.tick();
             pump(() -> !session.mutationPending());
             assertEquals(3, coins(session), "Only the new sortie's damage counts; the old sortie's late entry is refused");
             // A normal stop credits what is still buffered inside the stop boundary.
-            session.recordMonsterDamage(round, monster, 1, 4, human, MonsterDimension.OVERWORLD, 1_500);
+            session.recordMonsterDamage(round, monster, 1, 4, human, 1_500);
         }
         try (var session = open(path)) {
             assertEquals(4, coins(session), "Buffered damage survives a normal stop exactly once");
@@ -170,15 +170,15 @@ class MonsterCoinTimingSessionTest {
         try (var session = open(seed())) {
             assertEquals(OptionalInt.of(10_000), session.monsterWorth(monster), "A fresh sortie is worth the base");
             clock.set(seconds(5));
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 4_000);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 4_000);
             assertEquals(OptionalInt.of(14_000), session.monsterWorth(monster), "A buffered hit counts before any flush");
             clock.set(seconds(6));
             session.tick();
             assertTrue(session.mutationPending(), "The first flush is being written");
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 2_000);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 2_000);
             clock.set(seconds(7));
             session.tick();
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 1_000);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 1_000);
             assertEquals(OptionalInt.of(17_000), session.monsterWorth(monster),
                     "The pending write, the queued flush behind it and the buffer each count once");
             clock.set(seconds(8));
@@ -193,69 +193,48 @@ class MonsterCoinTimingSessionTest {
         }
     }
 
-    @Test void deathWorthUsesTheTenMinuteBountyForBufferedDamageAfterAPendingFlush() throws Exception {
-        // 1 point at x1 is still being written; 4 buffered points after 10 minutes are worth x1.25 = 5.
-        assertDeathWorthAcrossTier(600, false, 16_000, 6);
-    }
-
-    @Test void deathWorthUsesTheTenMinuteBountyForAQueuedFlushBehindAPendingOne() throws Exception {
-        assertDeathWorthAcrossTier(600, true, 16_000, 6);
-    }
-
-    @Test void deathWorthUsesTheThirtyMinuteBountyAcrossThePendingFlush() throws Exception {
-        // 1 point at x1.25 before 30 minutes, then 4 points at x1.5 = 6: levels 10 + 1.25 + 6.
-        assertDeathWorthAcrossTier(1800, true, 17_250, 7);
-    }
-
-    @Test void queuedAndBufferedDamageOnBothSidesOfTheTierKeepTheirOwnEventTimes() throws Exception {
-        try (var session = open(seed())) {
-            clock.set(seconds(598));
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 1_000);
-            session.tick();
-            assertTrue(session.mutationPending(), "The first flush stays unwritten");
-            // Recorded before the tier, flushed at 599 s: still x1.
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 2_000);
-            clock.set(seconds(599));
-            session.tick();
-            // Recorded before the tier but flushed at 601 s: the formal path counts it at x1.25.
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 2_000);
-            clock.set(seconds(601));
-            session.tick();
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 4_000);
-            // 1 + 2 at x1, 2 + 4 at x1.25: weighted 10.5 points.
-            assertEquals(OptionalInt.of(20_500), session.monsterWorth(monster));
-            session.captureDeath(round, monster, 1, 3, null, Optional.empty(), true);
+    @Test void theBountyWeightIsFixedWhenTheHitLandsEvenIfTheVictimThenDies() throws Exception {
+        // Diamonds, the nether and an iron ingot: 11 points, the only online human with any threat.
+        var strong = new HumanThreat(1, 0, 0, Set.of("minecraft:story/mine_diamond", "minecraft:story/enter_the_nether",
+                "minecraft:story/smelt_iron"));
+        try (var session = open(seed(strong))) {
+            clock.set(seconds(5));
+            session.recordMonsterDamage(round, monster, 1, 3, human, 4_000);
+            assertEquals(OptionalInt.of(20_000), session.monsterWorth(monster), "Four points at five stars weigh ten");
+            // The human dies before the buffered hit is written; the blow keeps the stars it landed with.
+            session.captureDeath(round, human, 1, 0, null, Optional.empty(), false);
             settle(session);
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
-            assertEquals(20_500, committedWorth(session), "The formal credit matches the worth read at death");
-            assertEquals(10 + 5, coins(session), "Each flush is paid once, plus the death reward");
+            assertEquals(0, dev.hardrush.core.round.Bounty.threat(session.snapshot().orElseThrow().rules(),
+                    session.snapshot().orElseThrow().participants().get(human)), "The dead life's threat is gone");
+            assertEquals(20_000, committedWorth(session));
+            assertEquals(10, coins(session));
         }
     }
 
-    /**
-     * A flush just before the human's survival tier stays unwritten; later damage after the tier is
-     * queued or buffered when the monster dies. The worth read at death must equal the formal credit.
-     */
-    private void assertDeathWorthAcrossTier(long tierSeconds, boolean queued, int expectedWorth, int expectedCoins) throws Exception {
-        try (var session = open(seed())) {
-            clock.set(seconds(tierSeconds - 1));
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 1_000);
+    @Test void theCapCountsHitsInTheOrderTheyLandedAcrossChangingStars() throws Exception {
+        var strong = new HumanThreat(1, 0, 0, Set.of("minecraft:story/mine_diamond", "minecraft:story/enter_the_nether",
+                "minecraft:story/smelt_iron"));
+        try (var session = open(seed(strong))) {
+            clock.set(seconds(5));
+            // A first flush at this time, so the hits below share one buffer.
+            session.recordMonsterDamage(round, monster, 1, 3, other, 1);
             session.tick();
-            assertTrue(session.mutationPending(), "The pre-tier flush stays unwritten");
-            clock.set(seconds(tierSeconds + 1));
-            session.recordMonsterDamage(round, monster, 1, 3, human, MonsterDimension.OVERWORLD, 4_000);
-            if (queued) session.tick();
-            assertTrue(session.mutationPending(), "The pre-tier write is still pending at death");
-            int worth = session.monsterWorth(monster).orElseThrow();
-            assertEquals(expectedWorth, worth, "The death reward reads the bounty of each flush's own time");
-            assertEquals(expectedWorth >= 15_000, dev.hardrush.core.round.MonsterWorth.bookLevel(
-                    session.snapshot().orElseThrow().rules(), worth) > 0, "The book follows the same worth");
-            session.captureDeath(round, monster, 1, 3, null, Optional.empty(), true);
+            settle(session);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 6_000);           // five stars
+            session.threatMilestone(round, other, 1, "minecraft:story/enter_the_end");
+            settle(session);
+            session.threatMilestone(round, other, 1, "minecraft:story/mine_diamond");
+            settle(session);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 10_000);          // four stars: 11 of 14
+            session.threatMilestone(round, human, 1, "minecraft:story/follow_ender_eye");
+            settle(session);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 6_000);           // five stars again
+            clock.set(seconds(7));
             settle(session);
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
-            assertEquals(expectedWorth, committedWorth(session), "The formal credit matches the worth read at death");
-            assertEquals(expectedCoins + 5, coins(session), "Damage is paid once, plus the death reward");
-            assertTrue(session.monsterWorth(monster).isEmpty(), "The settled body has no worth left to drop again");
+            // The 20-point cap leaves 4 of the last hit: 6 × 2.5 + 10 × 2 + 4 × 2.5.
+            assertEquals(45, coins(session));
         }
     }
 
@@ -281,10 +260,13 @@ class MonsterCoinTimingSessionTest {
                 "minecraft:mob_attack", Optional.empty(), Optional.of(actor.playerId()), 20, true, clock.get());
     }
 
-    private Path seed() throws Exception {
+    private Path seed() throws Exception { return seed(HumanThreat.NONE); }
+
+    private Path seed(HumanThreat humanThreat) throws Exception {
         var path = temporary.toRealPath().resolve("coins.sqlite");
         var players = new LinkedHashMap<UUID, Participant>();
-        players.put(human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false));
+        players.put(human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, 0,
+                MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of(), MonsterWallet.EMPTY, 0, false, humanThreat));
         players.put(other, new Participant(other, "Other", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false));
         players.put(monster, new Participant(monster, "Monster", ParticipantRole.MONSTER_LOBBY, false, false,
                 100, 0, 1, false, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 2));

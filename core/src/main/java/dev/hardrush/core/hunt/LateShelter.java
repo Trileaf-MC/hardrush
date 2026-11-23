@@ -27,9 +27,13 @@ public final class LateShelter {
         return Math.multiplyExact(rules.combatValues().getOrDefault(KEY, (double) DEFAULT_MILLIS).longValue(), 1_000_000L);
     }
 
-    /** Whole minutes for player-facing text, never below one. */
-    public static long minutes(RulesConfig rules) {
-        return Math.max(1, Math.round(durationNanos(rules) / 60_000_000_000.0));
+    /**
+     * Player-facing length, never longer than the real one: whole minutes rounded down, or seconds under a minute.
+     * A promise of shelter the player does not get would be worse than one that understates it.
+     */
+    public static String duration(RulesConfig rules) {
+        long seconds = durationNanos(rules) / 1_000_000_000L;
+        return seconds >= 60 ? seconds / 60 + " 分钟" : Math.max(1, seconds) + " 秒";
     }
 
     /** Human time this life still has to spend before it can be hunted; zero when it is not sheltered at all. */

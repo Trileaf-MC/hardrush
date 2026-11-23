@@ -30,7 +30,7 @@ import net.minecraft.world.BossEvent;
 public final class RevivalAltar {
     public static final int DWELL_TICKS = HumanEntry.MIDROUND_DWELL_TICKS;
     private static final int STAGES = 4;
-    /** Online ticks a revived body may take to load into the formal world before its totem pop is dropped. */
+    /** Ticks a revived body may stand in the formal world unloaded before its totem pop is dropped. */
     private static final int ARRIVAL_TICKS = 600;
     /** 图腾之力庇护: the vanilla totem's effects, held as long as an enchanted golden apple's absorption (26.3). */
     private static final int BLESSING_TICKS = 2400;
@@ -132,8 +132,10 @@ public final class RevivalAltar {
             if (player == null) return false; // Away: the wait resumes on reconnect.
             boolean landed = !LobbyWorld.isLobby(player.level()) && !PlayerProfiles.isLocked(player);
             // hasClientLoaded() does not restart on a dimension change; this does (see ClientLevelLoad).
-            if (landed && dev.hardrush.player.ClientLevelLoad.loaded(player)) { arrive(player); return true; }
-            if (++arrival.waited < ARRIVAL_TICKS || !landed) return false;
+            // Only time spent in the formal world counts: a slow transfer out of camp never skips the arrival.
+            if (!landed) return false;
+            if (dev.hardrush.player.ClientLevelLoad.loaded(player)) { arrive(player); return true; }
+            if (++arrival.waited < ARRIVAL_TICKS) return false;
             bless(player); // Too late for the animation to be seen; the blessing still belongs to this life.
             return true;
         });

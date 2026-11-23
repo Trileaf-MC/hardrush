@@ -21,7 +21,7 @@ class LateShelterTest {
 
     @Test void defaultsToFiveMinutesOfTheFirstLifesOwnHumanTime() {
         assertEquals(5 * MINUTE, LateShelter.durationNanos(hardcore));
-        assertEquals(5, LateShelter.minutes(hardcore));
+        assertEquals("5 分钟", LateShelter.duration(hardcore));
         assertEquals(5 * MINUTE, LateShelter.remainingNanos(hardcore, human(1, 1, 0)));
         assertEquals(2 * MINUTE, LateShelter.remainingNanos(hardcore, human(1, 1, 3 * MINUTE)));
         assertFalse(LateShelter.sheltered(hardcore, human(1, 1, 5 * MINUTE)));
@@ -47,7 +47,11 @@ class LateShelterTest {
         var custom = new RulesConfig(hardcore.schemaVersion(), hardcore.mode(), hardcore.minecraftVersion(), hardcore.difficulty(),
                 hardcore.generationRule(), values, hardcore.startCountdownMillis(), hardcore.successCelebrationMillis(), hardcore.failureDisplayMillis());
         assertEquals(90_000_000_000L, LateShelter.durationNanos(custom));
-        assertEquals(2, LateShelter.minutes(custom));
+        assertEquals("1 分钟", LateShelter.duration(custom), "90 seconds never promise two minutes");
+        values.put(LateShelter.KEY, 45_000.0);
+        var brief = new RulesConfig(hardcore.schemaVersion(), hardcore.mode(), hardcore.minecraftVersion(), hardcore.difficulty(),
+                hardcore.generationRule(), values, hardcore.startCountdownMillis(), hardcore.successCelebrationMillis(), hardcore.failureDisplayMillis());
+        assertEquals("45 秒", LateShelter.duration(brief));
         values.remove(LateShelter.KEY);
         var older = new RulesConfig(hardcore.schemaVersion(), hardcore.mode(), hardcore.minecraftVersion(), hardcore.difficulty(),
                 hardcore.generationRule(), values, hardcore.startCountdownMillis(), hardcore.successCelebrationMillis(), hardcore.failureDisplayMillis());
