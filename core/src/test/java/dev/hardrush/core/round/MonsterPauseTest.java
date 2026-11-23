@@ -23,7 +23,7 @@ class MonsterPauseTest {
         var engine = engine(RULES, MonsterWallet.EMPTY.credit(40).chooseRole(RULES, MonsterRole.ZOMBIE)
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 6));
         accept(engine, engine.proposeMonsterDamageCoins(UUID.randomUUID(), round,
-                List.of(new RoundEngine.DamageCoins(monster, 1, 3, human, MonsterDimension.OVERWORLD, 20_000))));
+                List.of(new RoundEngine.DamageCoins(monster, 1, 3, human, 1000, 20_000))));
         accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, monster, 1, 3, BODY));
 
         var paused = engine.view().participants().get(monster);
@@ -44,7 +44,7 @@ class MonsterPauseTest {
 
         // The cap still counts the damage dealt before the pause.
         accept(engine, engine.proposeMonsterDamageCoins(UUID.randomUUID(), round,
-                List.of(new RoundEngine.DamageCoins(monster, 1, 4, human, MonsterDimension.OVERWORLD, 5_000))));
+                List.of(new RoundEngine.DamageCoins(monster, 1, 4, human, 1000, 5_000))));
         assertEquals(20_000, engine.view().participants().get(monster).wallet().sortieDamage().get(human).countedMilli());
 
         accept(engine, engine.proposeMonsterDeath(UUID.randomUUID(), round, monster, 1, 4));
@@ -66,7 +66,7 @@ class MonsterPauseTest {
     @Test void deployCancellationKeepsThePausedSortie() {
         var engine = engine(RULES, MonsterWallet.EMPTY.chooseRole(RULES, MonsterRole.ZOMBIE));
         accept(engine, engine.proposeMonsterDamageCoins(UUID.randomUUID(), round,
-                List.of(new RoundEngine.DamageCoins(monster, 1, 3, human, MonsterDimension.OVERWORLD, 3_000))));
+                List.of(new RoundEngine.DamageCoins(monster, 1, 3, human, 1000, 3_000))));
         accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, monster, 1, 3, BODY));
         accept(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         accept(engine, engine.proposeMonsterDeployCancelled(UUID.randomUUID(), round, monster, 1, 4));

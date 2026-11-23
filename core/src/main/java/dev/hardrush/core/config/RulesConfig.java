@@ -90,6 +90,19 @@ public record RulesConfig(
                 throw new IllegalArgumentException("身价基础等级不能超过身价上限");
             }
         }
+        if (copy.keySet().stream().anyMatch(key -> key.startsWith("bounty."))) {
+            if (!copy.keySet().containsAll(BOUNTY_DEFAULTS.keySet())) {
+                throw new IllegalArgumentException("悬赏参数必须完整配置: " + BOUNTY_DEFAULTS.keySet());
+            }
+            if (!(copy.get("bounty.star2Ratio") < copy.get("bounty.star3Ratio") && copy.get("bounty.star3Ratio") < copy.get("bounty.star4Ratio"))) {
+                throw new IllegalArgumentException("悬赏星级比例必须逐级递增");
+            }
+            if (!(copy.get("bounty.star2Multiplier") <= copy.get("bounty.star3Multiplier")
+                    && copy.get("bounty.star3Multiplier") <= copy.get("bounty.star4Multiplier")
+                    && copy.get("bounty.star4Multiplier") <= copy.get("bounty.star5Multiplier"))) {
+                throw new IllegalArgumentException("悬赏倍率必须逐级不减");
+            }
+        }
         combatValues = Collections.unmodifiableSortedMap(copy);
         requireDuration(startCountdownMillis, "startCountdownMillis");
         requireDuration(successCelebrationMillis, "successCelebrationMillis");
@@ -128,13 +141,6 @@ public record RulesConfig(
             Map.entry("coin.starter", 6.0),
             Map.entry("coin.killedByHuman", 5.0),
             Map.entry("coin.damageCapPerHuman", 20.0),
-            Map.entry("coin.bounty.netherBonus", 0.5),
-            Map.entry("coin.bounty.endBonus", 1.0),
-            Map.entry("coin.bounty.survivalBonus1", 0.25),
-            Map.entry("coin.bounty.survivalBonus2", 0.5),
-            Map.entry("coin.bounty.max", 2.5),
-            Map.entry("coin.survival.tier1Minutes", 10.0),
-            Map.entry("coin.survival.tier2Minutes", 30.0),
             Map.entry("coin.arrowsPerBundle", 4.0),
             Map.entry("coin.potion.swiftnessSeconds", 180.0),
             Map.entry("coin.potion.fireResistanceSeconds", 180.0),
@@ -151,6 +157,28 @@ public record RulesConfig(
             Map.entry("coin.price.ominousKey", 40.0), Map.entry("coin.limit.ominousKey", 1.0),
             Map.entry("coin.price.soulcatcherTier", 30.0), Map.entry("coin.limit.soulcatcherTier", 3.0),
             Map.entry("coin.price.soulcatcherCapacity", 20.0), Map.entry("coin.limit.soulcatcherCapacity", 3.0));
+
+    /**
+     * Relative bounty: killing a monster player scores 3, each hunt launched from the camp 1, and milestones
+     * dominate. The top online human is read as at least 10; stars step at 20%, 45% and 70% of it, and five
+     * stars (the top) weigh damage at ×2.5.
+     */
+    private static final Map<String, Double> BOUNTY_DEFAULTS = Map.ofEntries(
+            Map.entry("bounty.killPoints", 3.0),
+            Map.entry("bounty.huntedPoints", 1.0),
+            Map.entry("bounty.floor", 10.0),
+            Map.entry("bounty.star2Ratio", 0.2),
+            Map.entry("bounty.star3Ratio", 0.45),
+            Map.entry("bounty.star4Ratio", 0.7),
+            Map.entry("bounty.star2Multiplier", 1.25),
+            Map.entry("bounty.star3Multiplier", 1.5),
+            Map.entry("bounty.star4Multiplier", 2.0),
+            Map.entry("bounty.star5Multiplier", 2.5));
+
+    /** Retired coin bounty keys: rounds saved with them still decode, pending rules drop them. */
+    private static boolean retiredBountyKey(String key) {
+        return key.startsWith("coin.bounty.") || key.startsWith("coin.survival.");
+    }
 
     /** Worth runs from level 10 to 30, one level per damage point; a slain body sprays 10 experience per level and leaves a book from level 15. */
     private static final Map<String, Double> WORTH_DEFAULTS = Map.ofEntries(
@@ -177,8 +205,12 @@ public record RulesConfig(
     public RulesConfig withEconomyDefaults() {
         if (COIN_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && WORTH_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
-                && SORTIE_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)) return this;
+                && SORTIE_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
+                && BOUNTY_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
+                && combatValues.keySet().stream().noneMatch(RulesConfig::retiredBountyKey)) return this;
         var values = new TreeMap<>(combatValues);
+        values.keySet().removeIf(RulesConfig::retiredBountyKey);
+        BOUNTY_DEFAULTS.forEach(values::putIfAbsent);
         COIN_DEFAULTS.forEach(values::putIfAbsent);
         WORTH_DEFAULTS.forEach(values::putIfAbsent);
         SORTIE_DEFAULTS.forEach(values::putIfAbsent);
@@ -330,12 +362,22 @@ public record RulesConfig(
                 throw new IllegalArgumentException("次数或时间必须是可用的正整数: " + key);
             }
         }
-        if (key.startsWith("coin.") && !key.startsWith("coin.bounty.")
+        if (key.startsWith("coin.") && !retiredBountyKey(key)
                 && (value != Math.rint(value) || value > Integer.MAX_VALUE)) {
             throw new IllegalArgumentException("怪物币参数必须是整数: " + key);
         }
         if (key.startsWith("worth.") && (value != Math.rint(value) || value > 1_000_000)) {
             throw new IllegalArgumentException("身价参数必须是不超过 1000000 的整数: " + key);
+        }
+        if ((key.endsWith("Points") || key.equals("bounty.floor")) && key.startsWith("bounty.")
+                && (value != Math.rint(value) || value > 1_000_000)) {
+            throw new IllegalArgumentException("悬赏分值必须是不超过 1000000 的正整数: " + key);
+        }
+        if (key.startsWith("bounty.") && key.endsWith("Ratio") && value >= 1) {
+            throw new IllegalArgumentException("悬赏星级比例必须在 0 与 1 之间: " + key);
+        }
+        if (key.startsWith("bounty.") && key.endsWith("Multiplier") && (value < 1 || value > 100)) {
+            throw new IllegalArgumentException("悬赏倍率必须在 1 与 100 之间: " + key);
         }
         if (key.startsWith("coin.limit.") && value > 8) throw new IllegalArgumentException("单次出场购买上限不能超过 8: " + key);
         if (key.equals("zombie.summonMaxDistance") && value > 30_000_000) {

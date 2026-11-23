@@ -266,7 +266,7 @@ public final class HumanEntry {
         var rules = session.snapshot().map(RoundSnapshot::rules).orElse(null);
         intent.joinBar.setName(dev.hardrush.notice.Notices.bar("中途加入 · 世界已运转 " + dev.hardrush.notice.Notices.key(worldDays())
                 + (rules != null && dev.hardrush.core.hunt.LateShelter.enabled(rules)
-                ? " · 落地后 " + dev.hardrush.notice.Notices.key(dev.hardrush.core.hunt.LateShelter.minutes(rules)) + " 分钟不被追猎" : "")));
+                ? " · 落地后 " + dev.hardrush.notice.Notices.key(dev.hardrush.core.hunt.LateShelter.duration(rules)) + "不被追猎" : "")));
         intent.joinBar.setProgress(Math.max(0, 1 - (float)intent.dwell / MIDROUND_DWELL_TICKS));
         if (intent.dwell % 4 == 0) player.level().sendParticles(net.minecraft.core.particles.ParticleTypes.PORTAL,
                 player.getX(), player.getY() + .8, player.getZ(), 6, .4, .6, .4, .3);

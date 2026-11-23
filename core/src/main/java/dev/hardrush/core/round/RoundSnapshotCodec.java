@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 10;
+    private static final int SCHEMA = 11;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -63,12 +63,44 @@ public final class RoundSnapshotCodec {
                 writeUuid(out, entry.getKey()); writeUuid(out, totem.victim()); out.writeInt(totem.victimLife());
                 writeUuid(out, totem.killer()); out.writeLong(totem.droppedAtChallengeNanos());
             }
+            // Only lives that have shown some threat are written, after everything older schemas held.
+            var threats = snapshot.participants().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
+                    .filter(entry -> !entry.getValue().threat().equals(HumanThreat.NONE)).toList();
+            out.writeInt(threats.size());
+            for (var entry : threats) { writeUuid(out, entry.getKey()); writeThreat(out, entry.getValue().threat()); }
             out.flush();
             if (bytes.size() > MAX_BYTES) throw new IllegalArgumentException("Snapshot exceeds size limit");
             return bytes.toByteArray();
         } catch (IOException impossible) {
             throw new IllegalStateException(impossible);
         }
+    }
+
+    private static void writeThreat(DataOutputStream out, HumanThreat threat) throws IOException {
+        out.writeInt(threat.lifeSequence()); out.writeInt(threat.monsterKills()); out.writeInt(threat.hunted());
+        var milestones = threat.milestones().stream().sorted().toList();
+        out.writeInt(milestones.size());
+        for (String milestone : milestones) writeText(out, milestone);
+        var hunters = threat.huntedAt().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).toList();
+        out.writeInt(hunters.size());
+        for (var hunter : hunters) { writeUuid(out, hunter.getKey()); out.writeLong(hunter.getValue()); }
+    }
+
+    private static HumanThreat readThreat(DataInputStream in) throws IOException {
+        int life = in.readInt(), kills = in.readInt(), hunted = in.readInt(), count = in.readInt();
+        if (count < 0 || count > Bounty.MILESTONES.size()) throw new IOException("Invalid threat milestone count");
+        var milestones = new java.util.HashSet<String>();
+        for (int i = 0; i < count; i++) {
+            if (!milestones.add(readText(in, 256))) throw new IOException("Duplicate threat milestone");
+        }
+        int hunters = in.readInt();
+        if (hunters < 0 || hunters > MAX_PARTICIPANTS) throw new IOException("Invalid threat hunter count");
+        var huntedAt = new java.util.HashMap<UUID, Long>();
+        for (int i = 0; i < hunters; i++) {
+            if (huntedAt.put(readUuid(in), in.readLong()) != null) throw new IOException("Duplicate threat hunter");
+        }
+        try { return new HumanThreat(life, kills, hunted, milestones, huntedAt); }
+        catch (IllegalArgumentException invalid) { throw new IOException("Invalid human threat", invalid); }
     }
 
     public static RoundSnapshot decode(byte[] bytes) {
@@ -138,6 +170,18 @@ public final class RoundSnapshotCodec {
                     UUID token = readUuid(in);
                     var totem = new LooseTotem(readUuid(in), in.readInt(), readUuid(in), in.readLong());
                     if (looseTotems.put(token, totem) != null) throw new IOException("Duplicate loose totem token");
+                }
+            }
+            // Schemas 1–10 predate relative bounties: every life starts with no threat.
+            if (schema >= 11) {
+                int threats = in.readInt();
+                if (threats < 0 || threats > players.size()) throw new IOException("Invalid threat count");
+                var seen = new java.util.HashSet<UUID>();
+                for (int i = 0; i < threats; i++) {
+                    UUID playerId = readUuid(in);
+                    Participant p = players.get(playerId);
+                    if (p == null || !seen.add(playerId)) throw new IOException("Threat for an unknown or repeated participant");
+                    players.put(playerId, p.withThreat(readThreat(in)));
                 }
             }
             if (in.available() != 0) throw new IOException("Trailing snapshot data");

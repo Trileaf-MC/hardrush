@@ -178,6 +178,7 @@ public final class RoundRuntime {
                         || !RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), player.level())) return Optional.empty();
                 return Optional.of(new ProgressRuntime.Context(round.roundId(), round.challengeNanos()));
             }, session::recordProgress);
+            dev.hardrush.bounty.BountyRuntime.configure(server, session);
             CombatRuntime.configure(server, new CombatRuntime.RoundAccess() {
                 @Override public Optional<java.util.UUID> roundOf(net.minecraft.server.level.ServerLevel level) {
                     var round = session.snapshot().orElse(null);
@@ -209,13 +210,8 @@ public final class RoundRuntime {
                     var target = round == null ? null : round.participants().get(victim.getUUID());
                     if (target == null || target.role() != ParticipantRole.HUMAN_ACTIVE || worlds == null || !worlds.ready()) return;
                     dev.hardrush.hunt.HuntBossBars.damaged(victim, origin, round);
-                    // The bounty follows where the human stands when hit, not where the monster spawned.
-                    var dimension = level == worlds.level(Level.NETHER) ? dev.hardrush.core.round.MonsterDimension.NETHER
-                            : level == worlds.level(Level.END) ? dev.hardrush.core.round.MonsterDimension.END
-                            : dev.hardrush.core.round.MonsterDimension.OVERWORLD;
                     session.recordMonsterDamage(origin.roundId(), origin.actor().playerId(), (int) origin.actor().lifeSequence(),
-                            (int) origin.actor().deploymentSequence(), victim.getUUID(), dimension,
-                            Math.round((double) actualDamage * 1000));
+                            (int) origin.actor().deploymentSequence(), victim.getUUID(), Math.round((double) actualDamage * 1000));
                 }
             }, event -> {
                 var worlds = WORLDS.get(server);
@@ -365,6 +361,9 @@ public final class RoundRuntime {
                 session.view().ifPresent(round -> dev.hardrush.lobby.PlayerFeedback.tick(server, round, session));
                 try { session.view().ifPresent(round -> dev.hardrush.hunt.HuntBossBars.tick(server, round, session)); }
                 catch (RuntimeException error) { LOGGER.error("Hunt boss bar update failed", error); }
+                // Before feedback renders next tick: the bounty's notices share the action bar.
+                try { session.view().ifPresent(round -> dev.hardrush.bounty.BountyRuntime.tick(server, round)); }
+                catch (RuntimeException error) { LOGGER.error("Bounty update failed", error); }
             }
         });
         // On the server thread before vanilla saves and removes the body; see PlayerDisconnects.
@@ -493,6 +492,7 @@ public final class RoundRuntime {
             BOOKS.remove(server);
             BOOK_ATTEMPTS.remove(server);
             ProgressRuntime.unconfigure(server);
+            dev.hardrush.bounty.BountyRuntime.close(server);
             CombatRuntime.unconfigure(server);
             dev.hardrush.pact.DuskPactRuntime.close(server);
             dev.hardrush.hunt.LateShelterRuntime.close(server);
