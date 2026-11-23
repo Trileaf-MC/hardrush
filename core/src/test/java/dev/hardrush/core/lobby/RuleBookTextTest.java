@@ -47,11 +47,72 @@ class RuleBookTextTest {
         assertNull(page(pages(GameMode.NORMAL), "挖掘与虫穴"));
     }
 
-    @Test void theRewrittenPagesStayWithinTheLongestPageTheBookAlreadyHad() {
-        // A written book never scrolls: the pages this plan touched are no longer than any untouched page.
-        var hardcore = pages(GameMode.HARDCORE);
-        var touched = List.of(page(hardcore, "黄昏契约"), page(hardcore, "复生图腾"), page(hardcore, "复生"), page(hardcore, "挖掘与虫穴"));
-        int limit = hardcore.stream().filter(page -> !touched.contains(page)).mapToInt(String::length).max().orElseThrow();
-        for (var page : touched) assertTrue(page.length() <= limit, page);
+    @Test void entryPageNamesTheLateShelterOnlyWhenMonstersHuntAndRevivalPageTheBlessing() {
+        var hardcore = page(pages(GameMode.HARDCORE), "开局与加入");
+        assertTrue(hardcore.contains("落地后 5 分钟内怪物无法追猎你，离线不计时。"), hardcore);
+        assertFalse(hardcore.contains("出生保护"));
+        var normal = page(pages(GameMode.NORMAL), "开局与加入");
+        assertFalse(normal.contains("追猎") || normal.contains("出生保护"), normal);
+        assertTrue(page(pages(GameMode.HARDCORE), "复生").contains("图腾之力庇护"));
+    }
+
+    @Test void theHuntPageTellsBothSidesAboutTheLandingOmen() {
+        assertTrue(page(pages(GameMode.HARDCORE), "追猎").contains("落地时目标会听到一声洞穴音"));
+    }
+
+    @Test void theCompassHasItsOwnPageWithTheRoundsChannelAndRest() {
+        var compass = page(pages(GameMode.HARDCORE), "追迹罗盘");
+        assertTrue(compass.contains("边走边引导 5 秒") && compass.contains("冷却 10 秒"), compass);
+        assertNull(page(pages(GameMode.NORMAL), "追迹罗盘"));
+    }
+
+    @Test void everyPageFitsTheFourteenLinesABookShows() {
+        // A written book never scrolls: BookViewScreen shows 14 lines of 114 pixels and clips the rest.
+        for (var mode : GameMode.values())
+            for (var page : pages(mode)) assertTrue(wrappedLines(page) <= 14, wrappedLines(page) + " lines: " + page);
+    }
+
+    @Test void theWrapModelBreaksAtTheLastSpaceLikeTheVanillaSplitter() {
+        // 12 wide glyphs fill a line; a space earlier on the line takes the break, so " 5 " costs this paragraph a line.
+        assertEquals(1, wrappedLines("一二三四五六七八九十一二"));
+        assertEquals(2, wrappedLines("一二三四五六七八九十一二三"));
+        assertEquals(4, wrappedLines("出击后右键回响碎片，原地不动 5 秒返回营地，物资暂存到下次。"));
+    }
+
+    /**
+     * An approximation of the vanilla book layout: CJK glyphs and full-width punctuation advance 9 pixels, ASCII
+     * uses the default font's advances, and an overflowing line breaks after its last space when it has one.
+     * Key placeholders are measured as a typical key name.
+     */
+    private static int wrappedLines(String page) {
+        int lines = 0;
+        for (var paragraph : page.replaceAll("\\{key:[^}]*}", "Shift").split("\n", -1)) {
+            lines++;
+            int width = 0, sinceSpace = -1;
+            for (int i = 0; i < paragraph.length(); i++) {
+                char c = paragraph.charAt(i);
+                int advance = advance(c);
+                if (width + advance > 114) {
+                    lines++;
+                    width = sinceSpace >= 0 ? sinceSpace : 0;
+                    sinceSpace = -1;
+                }
+                width += advance;
+                if (c == ' ') sinceSpace = 0;
+                else if (sinceSpace >= 0) sinceSpace += advance;
+            }
+        }
+        return lines;
+    }
+
+    private static int advance(char c) {
+        if (c >= 128) return 9;
+        return switch (c) {
+            case 'i', '!', '.', ',', ':', ';', '|', '\'' -> 2;
+            case 'l', '`' -> 3;
+            case ' ', 't', 'I', '[', ']', '(', ')', '{', '}', '*', '"' -> 4;
+            case 'f', 'k', '<', '>' -> 5;
+            default -> 6;
+        };
     }
 }

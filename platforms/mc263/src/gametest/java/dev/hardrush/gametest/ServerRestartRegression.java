@@ -424,7 +424,7 @@ public final class ServerRestartRegression implements ModInitializer {
             act("model-directed sortie", () -> {advance(31);hunt(a,b);});
             waitFor("persisted deployed role", () -> idle()&&round().participants().get(a.profile.id()).role()==ParticipantRole.MONSTER_DEPLOYED&&!PlayerProfiles.isLocked(a.player));
             act("native last-human attack", () -> {
-                move(a,b.player.level(),b.player.position().add(1,0,0));b.player.setHealth(1);b.player.setInvulnerableTime(0);
+                move(a,b.player.level(),b.player.position().add(1,0,0));b.player.removeAllEffects();b.player.setAbsorptionAmount(0);b.player.setHealth(1);b.player.setInvulnerableTime(0);
                 pastFirstDusk();
                 MonsterRoleGameTest.emptyHanded(a.player);
                 require(dev.hardrush.monster.MonsterRoles.attack(a.player,b.player),"native monster attack accepted");
