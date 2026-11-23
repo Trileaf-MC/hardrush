@@ -45,6 +45,19 @@ class PersonalHuntRequestTest {
             assertThrows(IllegalStateException.class, () -> engine(p).proposePersonalHunt(UUID.randomUUID(), request(hunter), 7));
         }
     }
+    @Test void aLateEntrantsFirstLifeCannotBeChosenUntilItsShelterEnds() {
+        var late = new Participant(target, "Target", ParticipantRole.HUMAN_ACTIVE, true, false, 0, 1, 4, 0,
+                MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of(), MonsterWallet.EMPTY, 0);
+        var first = new Participant(target, "Target", ParticipantRole.HUMAN_ACTIVE, true, false, 0, 1, 1, 0,
+                MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of(), MonsterWallet.EMPTY, 0);
+        var request = new PersonalHuntRequest(round, hunter, 3, 7, MonsterRole.ZOMBIE, target, 1);
+        assertTrue(request(hunter).targetMatches(snapshot(late)), "A later life of a late entrant has no shelter");
+        assertFalse(request.targetMatches(snapshot(first)));
+        assertThrows(IllegalStateException.class, () -> engine(first).proposePersonalHunt(UUID.randomUUID(), request, 7));
+        var exposed = new Participant(target, "Target", ParticipantRole.HUMAN_ACTIVE, true, false, 300_000_000_000L, 1, 1, 0,
+                MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of(), MonsterWallet.EMPTY, 300_000_000_000L);
+        assertTrue(request.targetMatches(snapshot(exposed)));
+    }
     @Test void roundHunterLifeSortieAndRoleAreFrozen() {
         var s = snapshot(human());
         assertFalse(new PersonalHuntRequest(UUID.randomUUID(), hunter, 3, 7, MonsterRole.ZOMBIE, target, 4).targetMatches(s));

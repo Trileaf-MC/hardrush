@@ -19,7 +19,8 @@ import net.minecraft.world.phys.Vec3;
 
 /** Per-connection, packet-only FULL mannequins. Never added to a world, player list or tracker. */
 public final class LobbyProjections {
-    public enum State { AVAILABLE, AWAY, DEAD, EMPTY, RESTORING, CLOSED }
+    /** {@code SHELTERED}: a late entrant's first minutes (初入荒野); it can be watched but not hunted yet. */
+    public enum State { AVAILABLE, AWAY, DEAD, EMPTY, RESTORING, CLOSED, SHELTERED }
     /** Bounty and optional live location are shown only on a huntable target's name tag. */
     public record Target(GameProfile originalProfile, int life, State state, int bountyPermille, Component location) {
         public Target { Objects.requireNonNull(originalProfile); Objects.requireNonNull(state); if (life < 1) throw new IllegalArgumentException("life"); }
@@ -31,7 +32,8 @@ public final class LobbyProjections {
     private record Model(Mannequin entity, Target target, Selection selection) {}
     private record Page(ServerPlayer owner, ServerGamePacketListenerImpl connection, UUID round,
                         long generation, int page, int pages, List<Target> targets, Map<Integer, Model> models,
-                        BiConsumer<ServerPlayer, Selection> action, BiConsumer<ServerPlayer, Selection> watch) {}
+                        BiConsumer<ServerPlayer, Selection> action, BiConsumer<ServerPlayer, Selection> watch,
+                        Map<Integer, String> clocks) {}
     private final LobbyInteractions router;
     private final Map<UUID, Page> pages = new HashMap<>();
     private long generation;
@@ -78,7 +80,8 @@ public final class LobbyProjections {
             if (target.state == State.AVAILABLE && target.location != null) name.append(" · ").append(target.location);
             if (target.state != State.AVAILABLE) name.append(" · " + switch (target.state) {
                 case AWAY -> "离线"; case DEAD -> "已阵亡";
-                case RESTORING -> "正在复生"; case AVAILABLE, CLOSED, EMPTY -> "暂不可追猎";
+                case RESTORING -> "正在复生"; case SHELTERED -> dev.hardrush.core.hunt.LateShelter.NAME;
+                case AVAILABLE, CLOSED, EMPTY -> "暂不可追猎";
             });
             model.setCustomName(name);
             model.setCustomNameVisible(true);
@@ -86,7 +89,8 @@ public final class LobbyProjections {
             models.put(id, new Model(model, target, selection));
         }
         // Build the entire immutable mapping first. There is no target remap window.
-        var display = new Page(observer, observer.connection, round, next, page, count, targets, Map.copyOf(models), action, watch);
+        var display = new Page(observer, observer.connection, round, next, page, count, targets, Map.copyOf(models), action, watch,
+                new HashMap<>());
         for (var model : models.values()) {
             var entity = model.entity;
             observer.connection.send(new ClientboundAddEntityPacket(entity, 0, entity.blockPosition()));
@@ -113,12 +117,36 @@ public final class LobbyProjections {
         return Optional.of(new View(page.generation, page.page, page.pages,
                 page.models.values().stream().map(Model::selection).sorted(Comparator.comparingInt(Selection::entityId)).toList()));
     }
+    /**
+     * Rewrites a sheltered model's countdown in place. Its state, not its clock, is part of {@link Target}, so a
+     * ticking clock never rebuilds the page (which would respawn every model and void a click in flight).
+     */
+    public void shelterClock(ServerPlayer observer, UUID target, String clock) {
+        router.requireThread();
+        var page = pages.get(observer.getUUID());
+        if (page == null || page.owner != observer || page.connection != observer.connection) return;
+        for (var model : page.models.values()) {
+            if (model.target.state != State.SHELTERED || !model.target.originalProfile.id().equals(target)) continue;
+            if (clock.equals(page.clocks.put(model.entity.getId(), clock))) return;
+            model.entity.setCustomName(Component.literal(model.target.originalProfile.name() + " · "
+                    + dev.hardrush.core.hunt.LateShelter.NAME + " " + clock));
+            var dirty = model.entity.getEntityData().packDirty();
+            if (dirty != null) observer.connection.send(new ClientboundSetEntityDataPacket(model.entity.getId(), dirty));
+            return;
+        }
+    }
+    /** Whether the model under the crosshair is a late entrant's sheltered first life. */
+    public boolean sheltered(ServerPlayer observer, Selection selected) {
+        var page = pages.get(observer.getUUID());
+        var model = page == null ? null : page.models.get(selected.entityId());
+        return model != null && model.target.state == State.SHELTERED;
+    }
     public Optional<Selection> aimed(ServerPlayer observer) {
         router.requireThread();
         var page = pages.get(observer.getUUID());
         if (page == null || page.owner != observer || page.connection != observer.connection) return Optional.empty();
         var eye = observer.getEyePosition(); var end = eye.add(observer.getViewVector(1).scale(5));
-        return page.models.values().stream().filter(m -> m.target.state == State.AVAILABLE)
+        return page.models.values().stream().filter(m -> huntable(m.target.state))
                 .filter(m -> m.entity.getBoundingBox().inflate(.15).clip(eye, end).isPresent())
                 .min(Comparator.comparingDouble(m -> m.entity.position().distanceToSqr(eye))).map(Model::selection);
     }
@@ -132,7 +160,8 @@ public final class LobbyProjections {
         if (result == LobbyInteractions.Result.ACCEPTED && (packet.hand() != InteractionHand.MAIN_HAND
                 || packet.usingSecondaryAction() || hit != null && (!Double.isFinite(hit.lengthSqr()) || hit.lengthSqr() > 9)))
             result = LobbyInteractions.Result.INPUT;
-        if (result == LobbyInteractions.Result.ACCEPTED && model.target.state != State.AVAILABLE) result = LobbyInteractions.Result.UNAVAILABLE;
+        // A sheltered model still reaches the hunt action, which refuses it and says until when.
+        if (result == LobbyInteractions.Result.ACCEPTED && !huntable(model.target.state)) result = LobbyInteractions.Result.UNAVAILABLE;
         if (result == LobbyInteractions.Result.ACCEPTED) page.action.accept(observer, model.selection);
         return result;
     }
@@ -142,10 +171,12 @@ public final class LobbyProjections {
         var model = page.models.get(entityId);
         if (model == null) return LobbyInteractions.Result.UNREGISTERED;
         var result = router.validate(observer, page.round, LobbyContext.DISPLAY, model.entity.position().add(0, 1, 0));
-        if (result == LobbyInteractions.Result.ACCEPTED && model.target.state != State.AVAILABLE) result = LobbyInteractions.Result.UNAVAILABLE;
+        // A sheltered model still reaches the hunt action, which refuses it and says until when.
+        if (result == LobbyInteractions.Result.ACCEPTED && !huntable(model.target.state)) result = LobbyInteractions.Result.UNAVAILABLE;
         if (result == LobbyInteractions.Result.ACCEPTED) page.watch.accept(observer, model.selection);
         return result;
     }
+    private static boolean huntable(State state) { return state == State.AVAILABLE || state == State.SHELTERED; }
     public void remove(ServerPlayer observer) {
         router.requireThread(); var page = pages.get(observer.getUUID());
         if (page == null || page.owner != observer) return;

@@ -1,5 +1,6 @@
 package dev.hardrush.lobby;
 
+import dev.hardrush.core.hunt.LateShelter;
 import dev.hardrush.core.hunt.PersonalHuntRequest;
 import dev.hardrush.core.lobby.plan.Landing;
 import dev.hardrush.core.lobby.plan.LobbyFunction;
@@ -277,6 +278,11 @@ public final class LobbyRuntime {
             Notices.hint(player, "正在出击……"); return;
         }
         if (revivalFirst(player, round, p)) return;
+        var quarry = round.participants().get(targetId);
+        if (quarry != null && quarry.lifeSequence() == targetLife && LateShelter.sheltered(round.rules(), quarry)) {
+            // Not a failed search: no retry penalty, and the target is neither away nor dead.
+            Notices.refuse(player, Notices.key(quarry.name()) + " " + LateShelter.NAME + "，稍后才能追猎"); return;
+        }
         long now = b.searchClock.getAsLong();
         if (p.monsterCooldownNanos() > 0) { Notices.refuse(player, "出击冷却中 · " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"); return; }
         Long retry = b.retryAt.get(p.id());
@@ -303,7 +309,8 @@ public final class LobbyRuntime {
                 && !b.session.competitionLocked();
     }
     private static boolean requestTarget(Binding b, Deployment d) {
-        var r = b.session.snapshot().orElse(null);
+        // The live view, so a shelter ends here exactly when the model and the engine say it does.
+        var r = b.session.view().orElse(null);
         var target = d.player.level().getServer().getPlayerList().getPlayer(d.identity.target());
         return !d.cancelled && r != null && personalOpen(b, r) && d.identity.targetMatches(r)
                 && target != null && target == d.targetPlayer && target.connection == d.targetConnection
@@ -707,7 +714,7 @@ public final class LobbyRuntime {
             var old = before.participants().get(p.id());
             if (old != null && old.role().isMonster() && p.role() == ParticipantRole.HUMAN_ACTIVE) {
                 b.reviving.add(p.id());
-                RevivalAltar.revived(server, p.id());
+                RevivalAltar.revived(server, p.id(), after.roundId(), p.lifeSequence());
                 var revived = server.getPlayerList().getPlayer(p.id());
                 if (revived != null && MonsterRoles.isMonster(revived)) MonsterRoles.clear(revived);
                 b.channels.remove(p.id()); b.retracks.remove(p.id()); b.searches.remove(p.id()); b.resumptions.remove(p.id());
@@ -933,7 +940,8 @@ public final class LobbyRuntime {
             } else {
                 b.deadAt.remove(p.id());
                 state = player == null ? LobbyProjections.State.AWAY
-                        : b.reviving.contains(p.id()) && (!p.online() || !b.profiles.isReady(p.id(), r) || PlayerProfiles.isLocked(player))
+                        : b.reviving.contains(p.id()) && (!p.online() || !b.profiles.isReady(p.id(), r) || PlayerProfiles.isLocked(player)
+                                || RevivalAltar.arriving(server, p.id()))
                         ? LobbyProjections.State.RESTORING
                         : !b.profiles.isReady(p.id(), r) || PlayerProfiles.isLocked(player) ? LobbyProjections.State.CLOSED
                         : !p.online() ? LobbyProjections.State.AWAY
@@ -941,6 +949,8 @@ public final class LobbyRuntime {
                         ? LobbyProjections.State.AVAILABLE : LobbyProjections.State.CLOSED;
                 // The revival title and broadcast come from RevivalAltar when the body lands.
                 if (state == LobbyProjections.State.AVAILABLE) b.reviving.remove(p.id());
+                if (state == LobbyProjections.State.AVAILABLE && LateShelter.sheltered(r.rules(), live(b, p)))
+                    state = LobbyProjections.State.SHELTERED;
             }
             targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state,
                     state == LobbyProjections.State.AVAILABLE ? bounty(b, r, p, player) : 1000,
@@ -961,6 +971,10 @@ public final class LobbyRuntime {
                 projections.show(observer, r.roundId(), targets, page, (actor, selected) -> beginDeployment(actor, b, selected),
                         (actor, selected) -> dev.hardrush.observe.Observation.watch(actor, selected.target()));
                 b.displays.put(observer.getUUID(), new Display(observer, observer.connection, List.copyOf(targets)));
+            }
+            for (var target : targets) if (target.state() == LobbyProjections.State.SHELTERED) {
+                var p = r.participants().get(target.originalProfile().id());
+                projections.shelterClock(observer, p.id(), LateShelter.clock(LateShelter.remainingNanos(r.rules(), live(b, p))));
             }
             if (server.getTickCount() % 5 == 0) {
                 var p = r.participants().get(observer.getUUID());
@@ -1004,7 +1018,9 @@ public final class LobbyRuntime {
                         // The role is already on the idle line; aiming at a model only adds whom and what each click does.
                         projections.aimed(observer).ifPresent(selected -> hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
                                 Notices.key(r.participants().get(selected.target()).name())
-                                        + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒" : " · 右键追猎") + " · 左键观察", now + 300));
+                                        + (projections.sheltered(observer, selected) ? " · " + LateShelter.NAME
+                                        : p.monsterCooldownNanos() > 0 ? " · 冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒" : " · 右键追猎")
+                                        + " · 左键观察", now + 300));
                         dev.hardrush.monster.MonsterParking.describe(p.wallet().parked()).ifPresent(parked -> hints.offer("parked",
                                 dev.hardrush.core.lobby.LobbyHints.Priority.FACILITY, "暂存的出击：" + Notices.key(parked)
                                         + (dev.hardrush.core.round.MonsterWorth.enabled(r.rules()) ? " · 身价 "
@@ -1022,10 +1038,22 @@ public final class LobbyRuntime {
             case OVERWORLD -> Level.OVERWORLD; case NETHER -> Level.NETHER; case END -> Level.END;
         });
     }
+    /** The participant with its live human time; the committed snapshot lags by up to a checkpoint. */
+    private static dev.hardrush.core.round.Participant live(Binding b, dev.hardrush.core.round.Participant p) {
+        return b.session.view().map(view -> view.participants().get(p.id())).orElse(p);
+    }
+    /** "4:32" while a late entrant's first life cannot be hunted yet; empty otherwise. */
+    public static Optional<String> shelterClock(ServerPlayer target) {
+        var b = BINDINGS.get(target.level().getServer());
+        var round = b == null ? null : b.session.view().orElse(null);
+        if (round == null) return Optional.empty();
+        long remaining = LateShelter.remainingNanos(round.rules(), round.participants().get(target.getUUID()));
+        return remaining > 0 ? Optional.of(LateShelter.clock(remaining)) : Optional.empty();
+    }
     /** The same multiplier damage pays, from the human's live life time and current dimension. */
     private static int bounty(Binding b, RoundSnapshot r, dev.hardrush.core.round.Participant p, ServerPlayer player) {
         if (player == null || !dev.hardrush.core.round.MonsterCoins.enabled(r.rules())) return 1000;
-        var live = b.session.view().map(view -> view.participants().get(p.id())).orElse(p);
+        var live = live(b, p);
         var where = dimension(b, player.level());
         var kind = where.equals("lobby") ? MonsterDimension.OVERWORLD : MonsterDimension.valueOf(where.toUpperCase(Locale.ROOT));
         return dev.hardrush.core.round.MonsterCoins.bountyPermille(r.rules(), kind, live.lifeHumanNanos());
@@ -1046,7 +1074,7 @@ public final class LobbyRuntime {
     }
     private static boolean validTarget(Binding b, ServerPlayer player, ServerLevel level) {
         if (player == null || player.level() != level || !player.isAlive() || PlayerProfiles.isLocked(player)
-                || ProtectionRuntime.protectedEntity(player)) return false;
+                || ProtectionRuntime.protectedEntity(player) || RevivalAltar.arriving(level.getServer(), player.getUUID())) return false;
         return b.session.snapshot().map(r -> r.participants().get(player.getUUID()))
                 .filter(p -> p.online() && p.role() == ParticipantRole.HUMAN_ACTIVE).isPresent();
     }
