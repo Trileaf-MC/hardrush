@@ -39,24 +39,34 @@ public final class FallenCompass {
     private static final String KEY = "hardrush_fallen_compass";
     /** Within this many blocks (3D) of the spot the compass has done its job. */
     static final int REACHED = 8;
-    private record Mark(UUID round, int life, GlobalPos at) {}
+    /** {@code claimed}: an altar revival has written it into the crossing; only then is the compass granted. */
+    private record Mark(UUID round, int life, GlobalPos at, boolean claimed) {}
     /** Server → player → the latest human death not yet turned into a compass. */
     private static final Map<MinecraftServer, Map<UUID, Mark>> MARKS = new WeakHashMap<>();
 
     private FallenCompass() {}
 
-    /** A human's captured death in a round world: the spot the next revived life is pointed back to. */
+    /**
+     * A human's captured death in a round world: the spot the next revived life is pointed back to. A fall into the
+     * void leaves nothing to go back for and a spot no one can reach, so it is not remembered.
+     */
     public static void died(ServerPlayer player, UUID round, int life) {
+        var marks = MARKS.computeIfAbsent(player.level().getServer(), s -> new HashMap<>());
+        if (player.getBlockY() < player.level().getMinY()) { marks.remove(player.getUUID()); return; }
         var at = GlobalPos.of(player.level().dimension(), player.blockPosition());
-        MARKS.computeIfAbsent(player.level().getServer(), s -> new HashMap<>()).put(player.getUUID(), new Mark(round, life, at));
+        marks.put(player.getUUID(), new Mark(round, life, at, false));
     }
 
     /**
-     * Server thread, just before a revived body crosses into the round world: the vanilla death location the client
-     * receives with that respawn packet. Empty without a remembered death, so a monster's death never shows there.
+     * Server thread, just before an altar-revived body crosses into the round world: the vanilla death location the
+     * client receives with that respawn packet, and the claim that lets the landed life receive the compass. Empty
+     * without a remembered death, so a monster's death never shows there. A normal-mode native respawn never claims,
+     * so it keeps vanilla's own death location and gets no compass.
      */
-    public static Optional<GlobalPos> target(MinecraftServer server, UUID player, UUID round, int life) {
-        return mark(server, player, round, life).map(Mark::at);
+    public static Optional<GlobalPos> claim(MinecraftServer server, UUID player, UUID round, int life) {
+        var mark = mark(server, player, round, life);
+        mark.ifPresent(m -> MARKS.get(server).put(player, new Mark(m.round, m.life, m.at, true)));
+        return mark.map(Mark::at);
     }
 
     private static Optional<Mark> mark(MinecraftServer server, UUID player, UUID round, int life) {
@@ -82,27 +92,40 @@ public final class FallenCompass {
             for (int i = 0; i < inventory.getContainerSize(); i++) {
                 var stack = inventory.getItem(i);
                 if (!is(stack)) continue;
-                var data = data(stack);
-                boolean owned = human && data.getStringOr("owner", "").equals(player.getUUID().toString())
-                        && data.getStringOr("round", "").equals(round.roundId().toString())
-                        && data.getIntOr("life", -1) == participant.lifeSequence();
-                boolean arrived = owned && near(player, at(data));
+                boolean owned = owns(player, participant, round, stack);
+                boolean arrived = owned && near(player, at(data(stack)));
                 if (owned && !arrived) continue;
                 reached |= arrived;
                 inventory.setItem(i, ItemStack.EMPTY);
                 changed = true;
             }
+            // Only the inventory may hold it (bundles refuse it); a cursor copy goes rather than linger past its life.
+            if (is(player.containerMenu.getCarried()) && !owns(player, participant, round, player.containerMenu.getCarried())) {
+                player.containerMenu.setCarried(ItemStack.EMPTY);
+                changed = true;
+            }
             if (human && PlayerProfiles.verifiedRoundBody(player)) {
                 var mark = mark(server, player.getUUID(), round.roundId(), participant.lifeSequence());
-                if (mark.isPresent()) {
+                if (mark.isPresent() && mark.get().claimed) {
                     marks.remove(player.getUUID());
-                    if (near(player, Optional.of(mark.get().at))) reached = true;
-                    else { inventory.add(stack(player.getUUID(), round.roundId(), participant.lifeSequence(), mark.get().at)); changed = true; }
+                    // Landing within reach of the spot: nothing to find the way to, and nothing to say.
+                    if (!near(player, Optional.of(mark.get().at))) {
+                        inventory.add(stack(player.getUUID(), round.roundId(), participant.lifeSequence(), mark.get().at));
+                        changed = true;
+                    }
                 }
             }
             if (changed) player.inventoryMenu.broadcastChanges();
             if (reached) Notices.hint(player, "回到了遗落之地 · 追溯指针已消散");
         }
+    }
+
+    private static boolean owns(ServerPlayer player, dev.hardrush.core.round.Participant participant, RoundSnapshot round, ItemStack stack) {
+        var data = data(stack);
+        return participant != null && participant.role() == ParticipantRole.HUMAN_ACTIVE
+                && data.getStringOr("owner", "").equals(player.getUUID().toString())
+                && data.getStringOr("round", "").equals(round.roundId().toString())
+                && data.getIntOr("life", -1) == participant.lifeSequence();
     }
 
     /** Death takes the compass with the life: it never becomes a floor stack for someone else's needle. */
@@ -121,7 +144,12 @@ public final class FallenCompass {
         String where = place(player.level().getServer(), spot);
         if (!spot.dimension().equals(player.level().dimension())) return Optional.of(where + " · 不在当前维度");
         double dx = spot.pos().getX() + .5 - player.getX(), dz = spot.pos().getZ() + .5 - player.getZ();
-        return Optional.of(where + " · 距离 " + Notices.key(Math.round(Math.sqrt(dx * dx + dz * dz))) + " 格");
+        String hint = where + " · 距离 " + Notices.key(Math.round(Math.sqrt(dx * dx + dz * dz))) + " 格";
+        // The distance is horizontal like the needle; the spot only counts as reached within REACHED blocks in 3D,
+        // so a deep cave or a cliff top says which way to go.
+        int dy = spot.pos().getY() - player.getBlockY();
+        if (Math.abs(dy) > REACHED) hint += " · " + (dy < 0 ? "下方 " : "上方 ") + Notices.key(Math.abs(dy)) + " 格";
+        return Optional.of(hint);
     }
 
     static ItemStack stack(UUID owner, UUID round, int life, GlobalPos at) {
