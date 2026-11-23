@@ -198,7 +198,9 @@ public final class HuntBossBars {
             var targetPlayer = server.getPlayerList().getPlayer(sortie.target());
             var state = HuntBars.targetState(target, sortie.targetLife(), targetPlayer != null && targetPlayer.level() == monster.level());
             if (!view.view.visible(state, now)) { view.bar.setVisible(false); return; }
-            view.bar.setName(Component.literal(HuntBars.targetTitle(state, target.name())));
+            int stars = dev.hardrush.core.round.Bounty.enabled(round.rules())
+                    ? dev.hardrush.core.round.Bounty.standing(round.rules(), round.participants(), sortie.target()).stars() : 0;
+            view.bar.setName(Component.literal(HuntBars.targetTitle(state, target.name(), stars)));
             view.bar.setColor(state == HuntBars.TargetState.OFFLINE ? BossEvent.BossBarColor.WHITE : BossEvent.BossBarColor.RED);
             if (state == HuntBars.TargetState.KILLED) view.bar.setProgress(0);
             // Offline keeps the last known health frozen.

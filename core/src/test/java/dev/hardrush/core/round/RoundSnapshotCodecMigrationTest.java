@@ -61,7 +61,7 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(3, active.lifeSequence());
         assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(10, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(11, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 
@@ -157,8 +157,15 @@ class RoundSnapshotCodecMigrationTest {
                 900_000, 0, Map.of(VICTIM, victim, KILLER, killer), false, false, null, totems);
     }
 
+    /** The current encoding without its trailing v11 threat count, which threat-free lives write as 0. */
+    private static byte[] withoutThreats(byte[] v11) {
+        assertEquals(0, ByteBuffer.wrap(v11).getInt(v11.length - 4));
+        return java.util.Arrays.copyOf(v11, v11.length - 4);
+    }
+
     /** The current encoding without its trailing v10 loose-totem count, which an empty registry writes as 0. */
-    private static byte[] withoutLooseTotems(byte[] v10) {
+    private static byte[] withoutLooseTotems(byte[] v11) {
+        byte[] v10 = withoutThreats(v11);
         assertEquals(0, ByteBuffer.wrap(v10).getInt(v10.length - 4));
         return java.util.Arrays.copyOf(v10, v10.length - 4);
     }
@@ -171,7 +178,7 @@ class RoundSnapshotCodecMigrationTest {
         totems.put(low, new LooseTotem(VICTIM, 1, KILLER, 100));
         var snapshot = withTotems(totems);
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
-        assertEquals(10, ByteBuffer.wrap(bytes).getInt(4));
+        assertEquals(11, ByteBuffer.wrap(bytes).getInt(4));
         var decoded = RoundSnapshotCodec.decode(bytes);
         assertEquals(snapshot, decoded);
         assertEquals(List.of(low, high), List.copyOf(decoded.looseTotems().keySet()), "Encoded sorted by token");
@@ -186,14 +193,33 @@ class RoundSnapshotCodecMigrationTest {
         var migrated = RoundSnapshotCodec.decode(v9);
         assertTrue(migrated.looseTotems().isEmpty());
         assertEquals(withTotems(Map.of()), migrated);
-        assertEquals(10, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
+        assertEquals(11, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
         assertTrue(RoundSnapshotCodec.decode(schemaOneFixtureUnchecked()).looseTotems().isEmpty());
+    }
+
+    @Test void schemaTenAndEarlierReadNoThreat() {
+        byte[] v10 = withoutThreats(RoundSnapshotCodec.encode(withTotems(Map.of())));
+        ByteBuffer.wrap(v10).putInt(4, 10);
+        assertEquals(withTotems(Map.of()), RoundSnapshotCodec.decode(v10));
+    }
+
+    @Test void threatsForUnknownParticipantsAreRejected() {
+        var killer = new Participant(KILLER, "Killer", ParticipantRole.HUMAN_ACTIVE, true, false, 10, 0, 1, false)
+                .withThreat(new HumanThreat(1, 1, 0, java.util.Set.of()));
+        var snapshot = new RoundSnapshot(ROUND, 1, 1, 3, RulesConfig.defaults(), RoundPhase.RUNNING, PauseReason.NONE,
+                900_000, 0, Map.of(KILLER, killer), false, false, null);
+        byte[] bytes = RoundSnapshotCodec.encode(snapshot);
+        assertEquals(snapshot, RoundSnapshotCodec.decode(bytes));
+        int idAt = bytes.length - (16 + 16);
+        assertEquals(KILLER.getMostSignificantBits(), ByteBuffer.wrap(bytes).getLong(idAt));
+        ByteBuffer.wrap(bytes).putLong(idAt, 99);
+        assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(bytes));
     }
 
     @Test void corruptRegistryCountsAndDuplicatesAreRejected() {
         var token = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
         byte[] one = RoundSnapshotCodec.encode(withTotems(Map.of(token, new LooseTotem(VICTIM, 1, KILLER, 5))));
-        int countAt = one.length - (4 + 16 + 16 + 4 + 16 + 8);
+        int countAt = one.length - (4 + 16 + 16 + 4 + 16 + 8) - 4;
         assertEquals(1, ByteBuffer.wrap(one).getInt(countAt));
         for (int count : new int[]{-1, LooseTotem.MAX_REGISTERED + 1, 2}) {
             byte[] corrupt = one.clone();

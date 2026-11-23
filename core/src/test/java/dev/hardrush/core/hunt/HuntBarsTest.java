@@ -141,6 +141,9 @@ class HuntBarsTest {
     @Test void titles() {
         assertEquals("来自 Steve 的追猎", HuntBars.humanTitle("Steve"));
         assertEquals("追猎目标 · Alex", HuntBars.targetTitle(TargetState.HUNTING, "Alex"));
+        assertEquals("追猎目标 · Alex · ★★★★☆", HuntBars.targetTitle(TargetState.HUNTING, "Alex", 4));
+        assertEquals("Alex 已阵亡", HuntBars.targetTitle(TargetState.KILLED, "Alex", 4));
+        assertEquals("追猎目标 · Alex", HuntBars.targetTitle(TargetState.HUNTING, "Alex", 0));
         assertEquals("Alex 已阵亡", HuntBars.targetTitle(TargetState.KILLED, "Alex"));
         assertEquals("Alex 已离线", HuntBars.targetTitle(TargetState.OFFLINE, "Alex"));
         assertEquals("Alex 去了其他维度", HuntBars.targetTitle(TargetState.OTHER_DIMENSION, "Alex"));

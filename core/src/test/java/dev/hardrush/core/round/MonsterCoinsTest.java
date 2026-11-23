@@ -204,23 +204,6 @@ class MonsterCoinsTest {
         assertEquals(6, engine.committed().participants().get(human).wallet().coins(), "Only the transformation gift applies");
     }
 
-    @Test void bountyAddsDimensionAndSurvivalBonusesUnderTheCap() {
-        long minute = 60_000_000_000L;
-        assertEquals(1000, MonsterCoins.bountyPermille(RULES, MonsterDimension.OVERWORLD, 9 * minute + minute - 1));
-        assertEquals(1250, MonsterCoins.bountyPermille(RULES, MonsterDimension.OVERWORLD, 10 * minute));
-        assertEquals(1500, MonsterCoins.bountyPermille(RULES, MonsterDimension.NETHER, 0));
-        assertEquals(2000, MonsterCoins.bountyPermille(RULES, MonsterDimension.NETHER, 30 * minute));
-        assertEquals(2500, MonsterCoins.bountyPermille(RULES, MonsterDimension.END, 30 * minute));
-        var values = new TreeMap<>(RULES.combatValues());
-        values.put("coin.bounty.max", 1.75);
-        var capped = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
-                RULES.generationRule(), values, RULES.startCountdownMillis(),
-                RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
-        assertEquals(1750, MonsterCoins.bountyPermille(capped, MonsterDimension.END, 30 * minute), "Bonuses add, then cap");
-        assertEquals("1.25", MonsterCoins.multiplier(1250));
-        assertEquals("2", MonsterCoins.multiplier(2000));
-    }
-
     @Test void survivalTimeCountsOnlyTheCurrentOnlineLife() {
         var clock = new long[] {0};
         Map<UUID, Participant> players = new LinkedHashMap<>();
@@ -257,12 +240,12 @@ class MonsterCoinsTest {
     @Test void bufferedDamageSkipsStaleEntriesInsteadOfFailing() {
         var engine = engine(humanParticipant(), deployedMonster());
         accept(engine, engine.proposeMonsterDamageCoins(UUID.randomUUID(), round, List.of(
-                new RoundEngine.DamageCoins(monster, 1, 3, human, MonsterDimension.NETHER, 4_000),
-                new RoundEngine.DamageCoins(monster, 1, 2, human, MonsterDimension.OVERWORLD, 9_000),
-                new RoundEngine.DamageCoins(UUID.randomUUID(), 1, 3, human, MonsterDimension.OVERWORLD, 9_000))));
+                new RoundEngine.DamageCoins(monster, 1, 3, human, 1500, 4_000),
+                new RoundEngine.DamageCoins(monster, 1, 2, human, 1000, 9_000),
+                new RoundEngine.DamageCoins(UUID.randomUUID(), 1, 3, human, 1000, 9_000))));
         assertEquals(6, engine.committed().participants().get(monster).wallet().coins());
         accept(engine, engine.proposeMonsterDamageCoins(UUID.randomUUID(), UUID.randomUUID(), List.of(
-                new RoundEngine.DamageCoins(monster, 1, 3, human, MonsterDimension.OVERWORLD, 9_000))));
+                new RoundEngine.DamageCoins(monster, 1, 3, human, 1000, 9_000))));
         assertEquals(6, engine.committed().participants().get(monster).wallet().coins());
     }
 
