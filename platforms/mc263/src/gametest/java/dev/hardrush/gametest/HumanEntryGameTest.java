@@ -176,6 +176,7 @@ public final class HumanEntryGameTest {
                 .thenWaitUntil(() -> f.await(f.hint(f.b).startsWith("你在出生点"), "The far landing's bearing reaches the action bar"))
                 .thenExecute(() -> {
                     test.assertTrue(f.hint(f.b).endsWith(" 格"), "Bearing names a rounded distance: " + f.hint(f.b));
+                    test.assertFalse(dev.hardrush.hunt.LateShelterRuntime.showing(f.b.player), "A normal round has no monsters to shelter a late entrant from");
                     test.assertTrue(f.round().participants().values().stream().allMatch(p -> p.role() == dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE), "Both are active ordinary humans");
                     f.reply.set(null); f.session.updateNextMode(dev.hardrush.core.config.GameMode.HARDCORE, "fixture", f.reply::set);
                 })
@@ -199,10 +200,20 @@ public final class HumanEntryGameTest {
                     test.assertFalse(dev.hardrush.lobby.RevivalAltar.channeling(f.b.player), "A dormant altar starts no rite");
                 })
                 .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.COUNTDOWN && f.ready(f.a) && f.idle(), "Standing in the circle when it opens prepares automatically"))
-                .thenExecute(() -> f.place(f.b, Landing.RESTORE_READY))
-                .thenWaitUntil(() -> f.await(f.ready(f.a) && f.ready(f.b) && f.idle(), "Two hardcore humans prepared"))
                 .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
-                .thenWaitUntil(() -> f.await(!PlayerProfiles.isLocked(f.a.player) && !PlayerProfiles.isLocked(f.b.player) && f.idle(), "Hardcore natural admissions"))
+                .thenWaitUntil(() -> f.await(!PlayerProfiles.isLocked(f.a.player) && f.round().phase() == RoundPhase.RUNNING && f.idle(), "Hardcore opening admission"))
+                // B joins once the challenge clock has run: a late entrant, sheltered from monsters' choice (初入荒野).
+                .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(2)))
+                .thenWaitUntil(() -> f.await(f.round().challengeNanos() > 0 && f.idle(), "The challenge clock has started"))
+                .thenExecute(() -> f.place(f.b, Landing.RESTORE_READY))
+                .thenWaitUntil(() -> f.await(f.round().participants().get(f.b.profile.id()).lifeSequence() == 1
+                        && !PlayerProfiles.isLocked(f.b.player) && f.idle(), "Hardcore middle admission"))
+                .thenExecute(() -> {
+                    var late = f.round().participants().get(f.b.profile.id());
+                    test.assertTrue(late.lateEntrant() && dev.hardrush.core.hunt.LateShelter.sheltered(f.round().rules(), late), "A hardcore late entrant starts sheltered");
+                    f.b.client.reportLoaded();
+                })
+                .thenWaitUntil(() -> f.await(dev.hardrush.hunt.LateShelterRuntime.showing(f.b.player), "The shelter bar shows once the world has loaded"))
                 .thenExecute(() -> f.a.player.hurtServer(f.a.player.level(), f.a.player.damageSources().genericKill(), Float.MAX_VALUE))
                 .thenWaitUntil(() -> {
                     f.a.player = f.server.getPlayerList().getPlayer(f.a.profile.id());
@@ -233,6 +244,22 @@ public final class HumanEntryGameTest {
                     test.assertFalse(dev.hardrush.lobby.RevivalAltar.channeling(f.a.player), "A monster without totems starts no rite");
                     test.assertTrue(f.hint(f.a).contains("你没有复生图腾"), "The altar tells a totemless monster how to earn one: " + f.hint(f.a));
                     test.assertValueEqual(f.round().participants().get(f.a.profile.id()).role(), dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY, "Standing on the altar without a totem changes nothing");
+                    // The sheltered model refuses the hunt with its reason, without a search or its retry penalty.
+                    HuntInputFixtures.hunt(f.a.client, f.b.profile.id());
+                    test.assertTrue(dev.hardrush.lobby.LobbyRuntime.huntTarget(f.a.player).isEmpty(), "A sheltered life cannot be chosen");
+                    test.assertTrue(f.hint(f.a).contains("初入荒野，稍后才能追猎"), "The refusal says why: " + f.hint(f.a));
+                    test.assertTrue(f.b.client.packets(net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket.class).stream()
+                            .noneMatch(t -> t.text().getString().equals(dev.hardrush.hunt.LateShelterRuntime.ENDED_TITLE)), "No ending title while sheltered");
+                    f.clock.addAndGet(TimeUnit.MINUTES.toNanos(5));
+                })
+                .thenWaitUntil(() -> f.await(!dev.hardrush.hunt.LateShelterRuntime.showing(f.b.player)
+                        && f.b.client.packets(net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket.class).stream()
+                                .anyMatch(t -> t.text().getString().equals(dev.hardrush.hunt.LateShelterRuntime.ENDED_TITLE)),
+                        "Five minutes of its own human time end the shelter with a title"))
+                .thenExecute(() -> {
+                    var projections = LobbyInteractions.get(f.server).orElseThrow().projections();
+                    var selection = HuntInputFixtures.model(f.a.client, f.b.profile.id());
+                    test.assertFalse(projections.sheltered(f.a.player, selection), "The model is huntable again");
                     f.a.disconnect(); f.b.disconnect();
                 }).thenSucceed();
     }

@@ -255,6 +255,32 @@ public final class LobbyFoundationGameTest {
             test.assertTrue(selections.isEmpty(), "Temporarily offline model cannot be selected");
             moveToModel(f.b, bView.entities().getFirst().entityId()); click(f.b.player, bView.entities().getFirst().entityId());
             test.assertValueEqual(selections.size(), 1, "B's own original page remains clickable"); selections.clear();
+            shelteredCountdown();
+        }
+        /** 初入荒野: a ticking countdown rewrites one name tag in place; a click still reaches the hunt, which refuses it. */
+        void shelteredCountdown() {
+            var sheltered = new java.util.ArrayList<>(targets);
+            sheltered.set(0, new LobbyProjections.Target(f.a.profile, 1, LobbyProjections.State.SHELTERED));
+            aView = router.projections().show(f.a.player, router.round(), sheltered, 0, (p,s) -> selections.add(s));
+            int id = aView.entities().getFirst().entityId();
+            long generation = aView.generation();
+            java.util.function.Supplier<java.util.List<String>> names = () -> f.a.client.packets(ClientboundSetEntityDataPacket.class).stream()
+                    .filter(p -> p.id() == id).flatMap(p -> p.packedItems().stream())
+                    .filter(d -> d.value() instanceof java.util.Optional<?> o && o.orElse(null) instanceof net.minecraft.network.chat.Component)
+                    .map(d -> ((net.minecraft.network.chat.Component) ((java.util.Optional<?>) d.value()).orElseThrow()).getString()).toList();
+            test.assertTrue(names.get().getLast().endsWith(" · 初入荒野"), "A sheltered model is named for it: " + names.get());
+            router.projections().shelterClock(f.a.player, f.a.profile.id(), "4:32");
+            router.projections().shelterClock(f.a.player, f.a.profile.id(), "4:32");
+            test.assertValueEqual(names.get().getLast(), f.a.profile.name() + " · 初入荒野 4:32", "The countdown rewrites the name tag");
+            test.assertValueEqual(names.get().stream().filter(n -> n.endsWith("4:32")).count(), 1L, "An unchanged clock sends nothing");
+            router.projections().shelterClock(f.a.player, f.a.profile.id(), "4:31");
+            test.assertValueEqual(router.projections().view(f.a.player).orElseThrow().generation(), generation, "Ticking never rebuilds the page");
+            test.assertValueEqual(router.projections().view(f.a.player).orElseThrow().entities().getFirst().entityId(), id, "The model keeps its entity");
+            moveToModel(f.a, id); click(f.a.player, id);
+            test.assertValueEqual(selections.size(), 1, "A sheltered model's click reaches the hunt action, which explains the refusal");
+            test.assertTrue(router.projections().sheltered(f.a.player, selections.getFirst()), "The selection is known to be sheltered");
+            test.assertTrue(router.projections().aimed(f.a.player).isPresent(), "The crosshair finds a sheltered model to offer watching it");
+            selections.clear();
         }
         void reconnected() {
             test.assertTrue(router.projections().view(f.a.player).isEmpty(), "Replacement connection starts without a page");

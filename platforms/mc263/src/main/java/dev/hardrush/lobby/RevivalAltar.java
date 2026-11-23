@@ -17,6 +17,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.BossEvent;
 
 /**
@@ -28,8 +30,14 @@ import net.minecraft.world.BossEvent;
 public final class RevivalAltar {
     public static final int DWELL_TICKS = HumanEntry.MIDROUND_DWELL_TICKS;
     private static final int STAGES = 4;
-    /** How long a revived body may take to load into the formal world before its totem pop is dropped. */
+    /** Online ticks a revived body may take to load into the formal world before its totem pop is dropped. */
     private static final int ARRIVAL_TICKS = 600;
+    /** 图腾之力庇护: the vanilla totem's effects, held as long as an enchanted golden apple's absorption (26.3). */
+    private static final int BLESSING_TICKS = 2400;
+    private static final class Arrival {
+        final UUID round; final int life; int waited;
+        Arrival(UUID round, int life) { this.round = round; this.life = life; }
+    }
     private static final Map<MinecraftServer, RevivalAltar> SERVICES = new IdentityHashMap<>();
     private static final class Rite {
         final ServerPlayer player;
@@ -40,8 +48,11 @@ public final class RevivalAltar {
     }
     private final MinecraftServer server;
     private final Map<UUID, Rite> rites = new HashMap<>();
-    /** Revived players still loading into the formal world, by server-tick deadline. */
-    private final Map<UUID, Integer> arrivals = new HashMap<>();
+    /**
+     * Revived lives not yet blessed. Kept while the player is away so a reconnect still lands with its blessing; lost
+     * on a restart, which is rare enough to accept (docs/plan/复生庇护与初入荒野.md 1.2).
+     */
+    private final Map<UUID, Arrival> arrivals = new HashMap<>();
 
     private RevivalAltar(MinecraftServer server) { this.server = server; }
 
@@ -63,10 +74,16 @@ public final class RevivalAltar {
         return rite != null && rite.player == player && !rite.spent && rite.dwell > 0;
     }
 
+    /** A revived life that has not been blessed yet; monsters cannot choose it before then. */
+    public static boolean arriving(MinecraftServer server, UUID player) {
+        var s = SERVICES.get(server);
+        return s != null && s.arrivals.containsKey(player);
+    }
+
     /** A committed revival: the altar flares in camp now, the totem pops once the body has loaded. */
-    static void revived(MinecraftServer server, UUID player) {
+    static void revived(MinecraftServer server, UUID player, UUID round, int life) {
         var s = SERVICES.get(server); if (s == null) return;
-        s.arrivals.put(player, server.getTickCount() + ARRIVAL_TICKS);
+        s.arrivals.put(player, new Arrival(round, life));
         var lobby = LobbyWorld.open(server); if (!lobby.ready()) return;
         // The altar the player stood on; the first one if the body has already left it.
         var online = server.getPlayerList().getPlayer(player);
@@ -107,11 +124,17 @@ public final class RevivalAltar {
             advance(rite);
         }
         arrivals.entrySet().removeIf(e -> {
+            var arrival = e.getValue();
+            var life = round.participants().get(e.getKey());
+            if (!round.roundId().equals(arrival.round) || life == null || life.lifeSequence() != arrival.life
+                    || life.role() != dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE) return true;
             var player = server.getPlayerList().getPlayer(e.getKey());
-            if (player == null || server.getTickCount() > e.getValue()) return true;
-            if (LobbyWorld.isLobby(player.level()) || PlayerProfiles.isLocked(player)
-                    || player.connection == null || !player.connection.hasClientLoaded()) return false;
-            arrive(player);
+            if (player == null) return false; // Away: the wait resumes on reconnect.
+            boolean landed = !LobbyWorld.isLobby(player.level()) && !PlayerProfiles.isLocked(player);
+            // hasClientLoaded() does not restart on a dimension change; this does (see ClientLevelLoad).
+            if (landed && dev.hardrush.player.ClientLevelLoad.loaded(player)) { arrive(player); return true; }
+            if (++arrival.waited < ARRIVAL_TICKS || !landed) return false;
+            bless(player); // Too late for the animation to be seen; the blessing still belongs to this life.
             return true;
         });
     }
@@ -119,7 +142,7 @@ public final class RevivalAltar {
     private void advance(Rite rite) {
         var player = rite.player;
         if (rite.dwell == 0) {
-            rite.bar = new ServerBossEvent(UUID.randomUUID(), Component.literal("复生仪式 · 空手降落在远方荒野 · 无出生保护"),
+            rite.bar = new ServerBossEvent(UUID.randomUUID(), Component.literal("复生仪式 · 空手降落在远方荒野 · 图腾之力庇护"),
                     BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.PROGRESS);
             dev.hardrush.notice.StatusBars.show(player, dev.hardrush.notice.StatusBars.Slot.PERSONAL, rite.bar);
             play(player, SoundEvents.BEACON_POWER_SELECT, .8f, 1f);
@@ -146,12 +169,22 @@ public final class RevivalAltar {
     /** The revived body has loaded into the formal world: the client plays its own totem animation. */
     private static void arrive(ServerPlayer player) {
         player.level().broadcastEntityEvent(player, (byte) 35);
+        bless(player);
         var server = player.level().getServer();
-        String age = HumanEntry.challengeWorldAge(server).map(days -> "世界已过去 " + dev.hardrush.notice.Notices.key(days) + "，")
-                .orElse("");
-        dev.hardrush.notice.Notices.title(player, "重获新生", age + "祝你好运");
+        dev.hardrush.notice.Notices.title(player, "重获新生", "空装 · 图腾之力庇护");
         dev.hardrush.notice.Notices.broadcast(server, dev.hardrush.notice.Notices.name(player.getScoreboardName())
                 + " 在祭坛重获新生，以人类身份重返挑战");
+    }
+
+    /**
+     * The altar's stronger totem. Unlike vanilla's pop it never clears effects first: a fresh body has none, and a
+     * late blessing must not wash off a tipped arrow that already landed. No resistance: that would also win human
+     * fights during the window, which this is not for.
+     */
+    private static void bless(ServerPlayer player) {
+        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, BLESSING_TICKS, 1));
+        player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, BLESSING_TICKS, 3));
+        player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, BLESSING_TICKS, 0));
     }
 
     private static void fizzle(ServerPlayer player) {

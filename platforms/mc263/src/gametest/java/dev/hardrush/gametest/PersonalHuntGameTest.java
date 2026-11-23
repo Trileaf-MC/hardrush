@@ -303,7 +303,7 @@ public final class PersonalHuntGameTest {
                     overworld.clockManager().setTotalTicks(daylight, dev.hardrush.core.combat.DuskPact.DUSK_TICKS + 5_000);
                     dev.hardrush.pact.DuskPactRuntime.tick(f.server);
                     f.c.player.teleportTo(f.b.player.level(), f.b.player.getX()+1, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
-                    f.b.player.setHealth(1); f.b.player.setInvulnerableTime(0);
+                    f.b.player.removeAllEffects();f.b.player.setAbsorptionAmount(0);f.b.player.setHealth(1); f.b.player.setInvulnerableTime(0);
                     MonsterRoleGameTest.emptyHanded(f.c.player);
                     test.assertFalse(dev.hardrush.pact.DuskPactRuntime.reject(f.c.player, f.b.player), "The first dusk releases player combat before entitlement checks");
                     test.assertTrue(MonsterRoles.attack(f.c.player, f.b.player) && f.b.player.isDeadOrDying(), "Attack another legal human");
@@ -341,7 +341,7 @@ public final class PersonalHuntGameTest {
                 .thenWaitUntil(() -> f.await(f.deployed(f.a,0), "A hunts restored C"))
                 .thenExecute(() -> {
                     f.a.player.teleportTo(f.c.player.level(),f.c.player.getX()+1,f.c.player.getY(),f.c.player.getZ(),Set.of(),0,0,true);
-                    f.c.player.setHealth(1); f.c.player.setInvulnerableTime(0);
+                    f.c.player.removeAllEffects();f.c.player.setAbsorptionAmount(0);f.c.player.setHealth(1); f.c.player.setInvulnerableTime(0);
                     MonsterRoleGameTest.emptyHanded(f.a.player);
                     test.assertTrue(MonsterRoles.attack(f.a.player,f.c.player) && f.c.player.isDeadOrDying(), "A earns real entitlement by native lethal attack");
                 })
