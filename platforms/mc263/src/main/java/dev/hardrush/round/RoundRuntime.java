@@ -143,6 +143,7 @@ public final class RoundRuntime {
                 // hiding there would leave the bar off the client until the save finishes.
                 public boolean locked() { return session.competitionLocked() && !session.savingFullCheckpoint(); }
             });
+            dev.hardrush.death.DeathNarration.configure(server, session::snapshot);
             // Formal round worlds use ordinary survival rules, including their spawn; only the camp is sealed.
             ProtectionRuntime.configure(server, level -> session.snapshot().isPresent()
                     && (LobbyWorld.isLobby(level) || level == server.overworld()));
@@ -498,6 +499,7 @@ public final class RoundRuntime {
             ProgressRuntime.unconfigure(server);
             dev.hardrush.bounty.BountyRuntime.close(server);
             CombatRuntime.unconfigure(server);
+            dev.hardrush.death.DeathNarration.unconfigure(server);
             dev.hardrush.pact.DuskPactRuntime.close(server);
             dev.hardrush.hunt.LateShelterRuntime.close(server);
             dev.hardrush.lobby.HumanEntry.close(server);
