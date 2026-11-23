@@ -27,7 +27,8 @@ import net.minecraft.world.phys.Vec3;
  * the parts that changed, so live gear and bounty never make the models flicker.
  */
 public final class LobbyProjections {
-    public enum State { AVAILABLE, AWAY, DEAD, EMPTY, RESTORING, CLOSED }
+    /** {@code SHELTERED}: a late entrant's first minutes (初入荒野); it can be watched but not hunted yet. */
+    public enum State { AVAILABLE, AWAY, DEAD, EMPTY, RESTORING, CLOSED, SHELTERED }
     /** Identity of a slot; clicks are judged on this layer only. */
     public record Target(GameProfile originalProfile, int life, State state) {
         public Target { Objects.requireNonNull(originalProfile); Objects.requireNonNull(state); if (life < 1) throw new IllegalArgumentException("life"); }
@@ -48,7 +49,8 @@ public final class LobbyProjections {
     public static String stateText(State state) {
         return switch (state) {
             case AWAY -> "离线"; case DEAD -> "已阵亡";
-            case RESTORING -> "正在复生"; case AVAILABLE, CLOSED, EMPTY -> "暂不可追猎";
+            case RESTORING -> "正在复生"; case SHELTERED -> dev.hardrush.core.hunt.LateShelter.NAME;
+            case AVAILABLE, CLOSED, EMPTY -> "暂不可追猎";
         };
     }
     public record Selection(UUID round, UUID target, int life, long generation, int entityId) {}
@@ -199,12 +201,18 @@ public final class LobbyProjections {
         return Optional.of(new View(page.generation, page.page, page.pages,
                 page.models.values().stream().map(Model::selection).sorted(Comparator.comparingInt(Selection::entityId)).toList()));
     }
+    /** Whether the selected model is a late entrant's sheltered first life. */
+    public boolean sheltered(ServerPlayer observer, Selection selected) {
+        var page = pages.get(observer.getUUID());
+        var model = page == null ? null : page.models.get(selected.entityId());
+        return model != null && model.target.state == State.SHELTERED;
+    }
     public Optional<Selection> aimed(ServerPlayer observer) {
         router.requireThread();
         var page = pages.get(observer.getUUID());
         if (page == null || page.owner != observer || page.connection != observer.connection) return Optional.empty();
         var eye = observer.getEyePosition(); var end = eye.add(observer.getViewVector(1).scale(5));
-        return page.models.values().stream().filter(m -> m.target.state == State.AVAILABLE)
+        return page.models.values().stream().filter(m -> huntable(m.target.state))
                 .filter(m -> m.entity.getBoundingBox().inflate(.15).clip(eye, end).isPresent())
                 .min(Comparator.comparingDouble(m -> m.entity.position().distanceToSqr(eye))).map(Model::selection);
     }
@@ -218,7 +226,8 @@ public final class LobbyProjections {
         if (result == LobbyInteractions.Result.ACCEPTED && (packet.hand() != InteractionHand.MAIN_HAND
                 || packet.usingSecondaryAction() || hit != null && (!Double.isFinite(hit.lengthSqr()) || hit.lengthSqr() > 9)))
             result = LobbyInteractions.Result.INPUT;
-        if (result == LobbyInteractions.Result.ACCEPTED && model.target.state != State.AVAILABLE) result = LobbyInteractions.Result.UNAVAILABLE;
+        // A sheltered model still reaches the hunt action, which refuses it and says why.
+        if (result == LobbyInteractions.Result.ACCEPTED && !huntable(model.target.state)) result = LobbyInteractions.Result.UNAVAILABLE;
         if (result == LobbyInteractions.Result.ACCEPTED) page.action.accept(observer, model.selection);
         return result;
     }
@@ -228,10 +237,12 @@ public final class LobbyProjections {
         var model = page.models.get(entityId);
         if (model == null) return LobbyInteractions.Result.UNREGISTERED;
         var result = router.validate(observer, page.round, LobbyContext.DISPLAY, model.entity.position().add(0, 1, 0));
-        if (result == LobbyInteractions.Result.ACCEPTED && model.target.state != State.AVAILABLE) result = LobbyInteractions.Result.UNAVAILABLE;
+        // A sheltered model still reaches the hunt action, which refuses it and says why.
+        if (result == LobbyInteractions.Result.ACCEPTED && !huntable(model.target.state)) result = LobbyInteractions.Result.UNAVAILABLE;
         if (result == LobbyInteractions.Result.ACCEPTED) page.watch.accept(observer, model.selection);
         return result;
     }
+    private static boolean huntable(State state) { return state == State.AVAILABLE || state == State.SHELTERED; }
     public void remove(ServerPlayer observer) {
         router.requireThread(); var page = pages.get(observer.getUUID());
         if (page == null || page.owner != observer) return;

@@ -2,6 +2,7 @@ package dev.hardrush.core.lobby;
 
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
+import dev.hardrush.core.hunt.LateShelter;
 import dev.hardrush.core.round.MonsterCoins;
 import dev.hardrush.core.round.MonsterWorth;
 import dev.hardrush.core.round.RoundEngine;
@@ -21,7 +22,8 @@ public final class RuleBookText {
         boolean hardcore = rules.mode() == GameMode.HARDCORE;
         var pages = new ArrayList<String>();
         pages.add("HardRush\n\n人类击败末影龙即通关，对末影龙打出最后一击的人类是胜者。\n\n本轮模式：" + (hardcore ? "极限挑战" : "普通模式"));
-        pages.add("开局与加入\n\n开局前走进集结区即准备，走出即取消。\n\n挑战开始后，在集结区站 4 秒可以空手中途加入，落在远离出生点的荒野，没有出生保护。");
+        pages.add("开局与加入\n\n开局前走进集结区即准备，走出即取消。\n\n挑战开始后，在集结区站 4 秒可以空手中途加入，落在远离出生点的荒野。"
+                + (LateShelter.enabled(rules) ? "落地后 " + LateShelter.duration(rules) + "内怪物无法追猎你，离线不计时。" : ""));
         pages.add("离线与救场\n\n人类离线时保留资格。所有人类都离线时等待 " + seconds(RoundEngine.reconnectMillis(rules))
                 + " 秒，期间有人重连、复生或中途加入就继续，否则本轮结束。");
         pages.add("黄昏契约\n\n开局后到第一次日落前，玩家之间不能互相伤害。"
@@ -48,7 +50,7 @@ public final class RuleBookText {
             pages.add("复生图腾\n\n人类被人类击杀或逼出图腾时会掉落 1 个，人类捡起即得；怪物击杀人类或逼出图腾直接获得 1 个。\n\n"
                     + "图腾不能丢弃或转赠，阵亡时自己的图腾不会掉落。");
             pages.add("复生\n\n把复生图腾拿在手上阵亡时原地复生，消耗 1 个。\n\n"
-                    + "没拿在手上就阵亡，可到营地北侧的祭坛站上金块 4 秒复生，空手出发，怪物币清空。");
+                    + "没拿在手上就阵亡，可到营地北侧的祭坛站上金块 4 秒复生，空手出发，怪物币清空。落地时获得图腾之力庇护：生命恢复 II、伤害吸收 IV、抗火，持续 2 分钟。");
             pages.add("救场\n\n所有人类阵亡后进入 " + seconds(RoundEngine.rescueMillis(rules))
                     + " 秒救场：有图腾的怪物可以复生，也可以从集结区加入。");
         }
