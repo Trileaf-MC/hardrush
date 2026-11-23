@@ -41,7 +41,7 @@ class RevivalStoreTest {
             fixture.reopen();
             assertTrue(fixture.engine.committed().looseTotems().containsKey(firstDrop), "The drop registry is durable");
             var pickup = fixture.engine.proposeLooseTotemPickup(UUID.randomUUID(), fixture.round(), firstDrop, ALICE,
-                    fixture.player(ALICE).lifeSequence());
+                    fixture.player(ALICE).lifeSequence(), 0);
             var pickupReplay = write(pickup);
             fixture.commit(pickup);
             assertEquals(1, fixture.player(ALICE).revivalCharges());
@@ -55,7 +55,7 @@ class RevivalStoreTest {
                     List.of(death(fixture.player(newcomer), Optional.of(lethal(fixture.round(),
                             fixture.player(ALICE), newcomer, AttackKind.ARROW))).withDropToken(secondDrop)), null));
             fixture.commit(fixture.engine.proposeLooseTotemPickup(UUID.randomUUID(), fixture.round(), secondDrop, ALICE,
-                    fixture.player(ALICE).lifeSequence()));
+                    fixture.player(ALICE).lifeSequence(), 0));
             fixture.reopen();
             assertEquals(2, fixture.player(ALICE).revivalCharges());
             assertTrue(fixture.engine.committed().looseTotems().isEmpty());

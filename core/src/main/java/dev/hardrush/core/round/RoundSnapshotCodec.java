@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 11;
+    private static final int SCHEMA = 12;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -61,7 +61,10 @@ public final class RoundSnapshotCodec {
             for (var entry : snapshot.looseTotems().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).toList()) {
                 LooseTotem totem = entry.getValue();
                 writeUuid(out, entry.getKey()); writeUuid(out, totem.victim()); out.writeInt(totem.victimLife());
-                writeUuid(out, totem.killer()); out.writeLong(totem.droppedAtChallengeNanos());
+                writeText(out, totem.source().name());
+                out.writeBoolean(totem.killer().isPresent());
+                if (totem.killer().isPresent()) writeUuid(out, totem.killer().get());
+                out.writeLong(totem.droppedAtChallengeNanos());
             }
             // Only lives that have shown some threat are written, after everything older schemas held.
             var threats = snapshot.participants().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
@@ -168,7 +171,12 @@ public final class RoundSnapshotCodec {
                 if (loose < 0 || loose > LooseTotem.MAX_REGISTERED) throw new IOException("Invalid loose totem count");
                 for (int i = 0; i < loose; i++) {
                     UUID token = readUuid(in);
-                    var totem = new LooseTotem(readUuid(in), in.readInt(), readUuid(in), in.readLong());
+                    UUID victim = readUuid(in);
+                    int victimLife = in.readInt();
+                    // Schemas 10–11 only dropped totems at a human's attack, always naming the killer.
+                    LooseTotem.Source source = schema >= 12 ? LooseTotem.Source.valueOf(readText(in, 64)) : LooseTotem.Source.HUMAN;
+                    java.util.Optional<UUID> killer = schema < 12 || in.readBoolean() ? java.util.Optional.of(readUuid(in)) : java.util.Optional.empty();
+                    var totem = new LooseTotem(victim, victimLife, source, killer, in.readLong());
                     if (looseTotems.put(token, totem) != null) throw new IOException("Duplicate loose totem token");
                 }
             }
