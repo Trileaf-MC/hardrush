@@ -218,17 +218,14 @@ public final class LobbyMovementGameTest {
                         }).thenWaitUntil(() -> await(PlayerProfiles.canMoveInLobby(player), "Profile verification opens lobby movement"));
             }
             void assertFrozen() {
-                client.acknowledge();
                 var position = player.position();
-                player.connection.handleMovePlayer(new ServerboundMovePlayerPacket.PosRot(position.add(.4, 0, 0), 40, 0, true, false));
+                client.move(new Vec3(.4, 0, 0), 40, 0, true);
                 test.assertTrue(player.position().distanceToSqr(position) < .000001 && !PlayerProfiles.canMoveInLobby(player), "Pending or failed profiles cannot move");
                 client.acknowledge();
             }
             void move(double x, double y, float yaw, float pitch, boolean ground) {
-                client.acknowledge();
-                var target = player.position().add(x, y, 0);
-                player.connection.handleMovePlayer(new ServerboundMovePlayerPacket.PosRot(target, yaw, pitch, ground, false));
-                player.connection.handleClientTickEnd(ServerboundClientTickEndPacket.INSTANCE);
+                client.move(new Vec3(x, y, 0), yaw, pitch, ground);
+                var target = client.position();
                 test.assertTrue(player.position().distanceToSqr(target) < .000001, "Actual inbound movement reaches the server position: target="
                         + target + ", actual=" + player.position() + ", loaded=" + player.connection.hasClientLoaded()
                         + ", mobile=" + PlayerProfiles.canMoveInLobby(player));
