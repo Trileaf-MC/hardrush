@@ -16,7 +16,8 @@
     "TotemHopperMixin",
     "TotemSaveMixin",
     "TotemFallStartAccessor",
-    "TotemVoidMixin"
+    "TotemVoidMixin",
+    "FallenCompassDropMixin"
   ],
   "injectors": { "defaultRequire": 1 }
 }
