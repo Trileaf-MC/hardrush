@@ -47,10 +47,15 @@ class RuleBookTextTest {
         assertNull(page(pages(GameMode.NORMAL), "挖掘与虫穴"));
     }
 
+    @Test void theHuntPageTellsBothSidesAboutTheLandingOmen() {
+        assertTrue(page(pages(GameMode.HARDCORE), "追猎").contains("落地时目标会听到一声洞穴音"));
+    }
+
     @Test void theRewrittenPagesStayWithinTheLongestPageTheBookAlreadyHad() {
         // A written book never scrolls: the pages this plan touched are no longer than any untouched page.
         var hardcore = pages(GameMode.HARDCORE);
-        var touched = List.of(page(hardcore, "黄昏契约"), page(hardcore, "复生图腾"), page(hardcore, "复生"), page(hardcore, "挖掘与虫穴"));
+        var touched = List.of(page(hardcore, "黄昏契约"), page(hardcore, "复生图腾"), page(hardcore, "复生"), page(hardcore, "挖掘与虫穴"),
+                page(hardcore, "追猎"));
         int limit = hardcore.stream().filter(page -> !touched.contains(page)).mapToInt(String::length).max().orElseThrow();
         for (var page : touched) assertTrue(page.length() <= limit, page);
     }

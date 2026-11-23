@@ -197,9 +197,18 @@ public final class PersonalHuntGameTest {
                     HuntInputFixtures.click(f.c.player, f.oldModel, InteractionHand.MAIN_HAND);
                     test.assertTrue(f.searches().isEmpty(), "Old page before reconnect never selects replacement mapping");
                     f.move(f.a, 0); f.move(f.b, 0); f.b.player.teleportTo(f.levels[0], f.anchor[0].x + 10, f.anchor[0].y, f.anchor[0].z, Set.of(), 0,0,true);
+                    // Past any earlier omen window onto A, so this landing is the one that sounds.
+                    f.searchClock.addAndGet(dev.hardrush.core.hunt.HuntOmens.INTERVAL_MILLIS * 1_000_000L + 1_000_000_000L);
+                    f.omens = f.omenCounts();
                     f.c.hunt(f.a); f.refresh();
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(f.c, 0), "hunt anchor A before attacking B"))
+                .thenExecute(() -> {
+                    var heard = f.omenCounts();
+                    test.assertValueEqual(heard.get(0) - f.omens.get(0), 1L, "A camp landing gives its target one cave omen, bound to the target");
+                    for (int i = 1; i < heard.size(); i++)
+                        test.assertValueEqual(heard.get(i), f.omens.get(i), "Nobody but the target hears the omen, the hunter neither");
+                })
                 .thenWaitUntil(() -> f.await(f.huntBars(f.c).equals(List.of("追猎目标 · HuntA · " + f.stars(f.a))) && f.huntBars(f.a).isEmpty(),
                         "hunter sees the target at once; an 8-24 block deployment never alerts it"))
                 .thenIdle(2)
@@ -218,6 +227,8 @@ public final class PersonalHuntGameTest {
                     LobbyRuntime.interruptChannel(f.c.player, "攻击");
                     test.assertFalse(dev.hardrush.hunt.HuntRetracks.resting(f.c.player), "A broken channel leaves the compass ready");
                     f.c.player.teleportTo(f.a.player.level(), f.a.player.getX()+60, f.a.player.getY(), f.a.player.getZ(), Set.of(),0,0,true);
+                    f.searchClock.addAndGet(dev.hardrush.core.hunt.HuntOmens.INTERVAL_MILLIS * 1_000_000L + 1_000_000_000L);
+                    f.omens = f.omenCounts();
                     test.assertTrue(LobbyRuntime.useRetrack(f.c.player, compass), "A lit compass starts the channel far away too");
                     f.c.input(new Input(true, false, false, false, false, false, false));
                 })
@@ -236,6 +247,7 @@ public final class PersonalHuntGameTest {
                         && dev.hardrush.hunt.HuntRetracks.resting(f.c.player), "retrack lands within a short walk and rests a compass held on the cursor"))
                 .thenExecute(() -> {
                     f.c.input(Input.EMPTY);
+                    test.assertValueEqual(f.omenCounts(), f.omens, "A retrack landing never sounds the omen, even past its window");
                     test.assertValueEqual(dev.hardrush.hunt.HuntRetracks.cooldownTicks(f.server), 200, "The compass rests ten seconds by default");
                     f.c.player.getInventory().setItem(f.compassSlot, f.c.player.containerMenu.getCarried());
                     f.c.player.containerMenu.setCarried(net.minecraft.world.item.ItemStack.EMPTY);
@@ -472,6 +484,14 @@ public final class PersonalHuntGameTest {
         }
         boolean idle() { return !session.mutationPending(); }
         int compassSlot = -1;
+        /** Cave omens each peer's client heard bound to its own body, in {@link #peers} order. */
+        List<Long> omens = List.of();
+        List<Long> omenCounts() {
+            return peers.stream().map(p -> p.client.packets(net.minecraft.network.protocol.game.ClientboundSoundEntityPacket.class).stream()
+                    .filter(sound -> sound.getSound().value() == net.minecraft.sounds.SoundEvents.AMBIENT_CAVE.value()
+                            && sound.getSource() == net.minecraft.sounds.SoundSource.AMBIENT && sound.getId() == p.player.getId())
+                    .count()).toList();
+        }
         boolean glint(net.minecraft.world.item.ItemStack stack) {
             return Boolean.TRUE.equals(stack.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE));
         }

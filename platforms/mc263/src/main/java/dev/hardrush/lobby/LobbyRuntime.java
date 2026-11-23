@@ -73,6 +73,7 @@ public final class LobbyRuntime {
         final PlayerProfiles profiles;
         final Supplier<RoundWorldBundle> worlds;
         java.util.function.LongSupplier searchClock = System::nanoTime;
+        final dev.hardrush.core.hunt.HuntOmens omens = new dev.hardrush.core.hunt.HuntOmens();
         Random searchRandom;
         UUID round;
         final Map<UUID, Deployment> searches = new HashMap<>();
@@ -431,6 +432,8 @@ public final class LobbyRuntime {
                     b.pending.remove(id, d); b.committing.remove(id);
                     dev.hardrush.hunt.HuntBossBars.deployed(d.player, committed, d.identity);
                     HuntRetracks.arrived(d.player, d.targetPlayer, burrowed);
+                    if (b.omens.landed(d.targetPlayer.getUUID(), b.searchClock.getAsLong() / 1_000_000))
+                        dev.hardrush.hunt.HuntOmen.play(d.targetPlayer);
                     sound(d.player, true);
                     String quarry = Notices.key(d.targetPlayer.getScoreboardName());
                     if (burrowed) { burrowed(d.player); return; }
