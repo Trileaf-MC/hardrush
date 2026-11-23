@@ -43,7 +43,7 @@ public final class DeathNarrationGameTest {
 
     @GameTest(maxTicks = 200)
     public void monsterBodiesAndMonsterVictimsAreNamedInVanillaSentences(GameTestHelper test) {
-        var f = new Fixture(test, MonsterRole.SKELETON, 4);
+        var f = new Fixture(test, MonsterRole.SKELETON, 5);
         TestTeardown.atEnd(test, f::close);
         test.runAfterDelay(80, () -> {
             try (var ignored = f.installCombat()) {
@@ -71,12 +71,45 @@ public final class DeathNarrationGameTest {
                 var human = f.players.get(3);
                 test.assertValueEqual(f.owner.getDisplayName().getString(), f.owner.getName().getString(),
                         "Outside a death message a monster keeps its plain name");
-                DeathNarration.savedInPlace(human, f.level.damageSources().mobAttack(model));
+                DeathNarration.savedInPlace(human, f.level.damageSources().mobAttack(model), Optional.empty());
                 test.assertValueEqual(f.chat(3).getLast(), human.getName().getString() + "险些被" + skeleton + "杀死，靠复生图腾挺了过来",
                         "A revival totem's save is told with its would-be killer");
-                DeathNarration.savedInPlace(human, f.level.damageSources().lava());
+                DeathNarration.savedInPlace(human, f.level.damageSources().lava(), Optional.empty());
                 test.assertValueEqual(f.chat(3).getLast(), human.getName().getString() + "险些丧命，靠复生图腾挺了过来",
                         "A save from the world names nobody");
+                DeathNarration.savedInPlace(human, f.level.damageSources().lava(), Optional.of(f.monsterHit()));
+                test.assertValueEqual(f.chat(3).getLast(), human.getName().getString() + "险些被" + skeleton + "杀死，靠复生图腾挺了过来",
+                        "A save from the world after a monster's hit names the credited monster");
+
+                // Vanilla would prefer the earlier human hit (lastHurtByPlayer) over the later monster body.
+                var burned = f.players.get(4);
+                // Each hit outdoes the last, so invulnerability frames take none of them.
+                burned.hurtServer(f.level, f.level.damageSources().playerAttack(human), 1);
+                burned.hurtServer(f.level, f.level.damageSources().mobAttack(model), 2);
+                burned.hurtServer(f.level, f.level.damageSources().lava(), 1000);
+                message = f.death(4);
+                test.assertValueEqual(key(message), "death.attack.lava.player", "Lava after a hit keeps vanilla's escaping wording");
+                test.assertValueEqual(arg(message, 1).getString(), skeleton,
+                        "The sentence names the round's credit, the monster that hit last, as the revival totem does");
+
+                var zombie = EntityTypes.ZOMBIE.create(f.level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+                zombie.entityTags().add("hardrush.summon-owner=" + f.owner.getUUID());
+                DeathNarration.savedInPlace(human, f.level.damageSources().mobAttack(zombie), Optional.empty());
+                var zombieName = EntityTypes.ZOMBIE.getDescription().getString();
+                test.assertValueEqual(f.chat(3).getLast(), human.getName().getString() + "险些被" + f.owner.getName().getString()
+                        + "召唤的" + zombieName + "杀死，靠复生图腾挺了过来", "A hatched companion is its owner's summon");
+                zombie.entityTags().add("hardrush.soul-credit=" + dev.hardrush.core.combat.CombatOriginCodec.encode(f.monsterHit()));
+                DeathNarration.savedInPlace(human, f.level.damageSources().mobAttack(zombie), Optional.empty());
+                test.assertValueEqual(f.chat(3).getLast(), human.getName().getString() + "险些被" + f.owner.getName().getString()
+                        + "收编的" + zombieName + "杀死，靠复生图腾挺了过来", "A bag creature following its releaser was caught, not summoned");
+                zombie.discard();
+
+                var arrow = new net.minecraft.world.entity.projectile.arrow.Arrow(EntityTypes.ARROW, f.level);
+                arrow.entityTags().add("hardrush.shot-owner=" + f.owner.getUUID());
+                arrow.entityTags().add("hardrush.shot-form=stray");
+                test.assertTrue(MonsterRoles.nativeArrowShooter(arrow, null).getType() == EntityTypes.STRAY,
+                        "An arrow outliving its sortie is still credited to the stray that loosed it");
+                arrow.discard();
 
                 f.owner.hurtServer(f.level, f.level.damageSources().playerAttack(human), 1000);
                 message = f.death(0);
@@ -170,6 +203,14 @@ public final class DeathNarrationGameTest {
                         .map(p -> new CombatActor(p.id(), p.role(), p.lifeSequence(), p.monsterDeploymentSequence())); }
             }, event -> {});
             return () -> { evidence.close(); combat.close(); };
+        }
+
+        /** A melee credit of the deployed owner in this round. */
+        dev.hardrush.core.combat.CombatOrigin monsterHit() {
+            var p = participants.get(owner.getUUID());
+            return new dev.hardrush.core.combat.CombatOrigin(round, UUID.randomUUID(),
+                    new CombatActor(p.id(), p.role(), p.lifeSequence(), p.monsterDeploymentSequence()),
+                    dev.hardrush.core.api.DamagePort.AttackKind.MELEE, Optional.empty(), List.of());
         }
 
         /** The death message the native death screen of {@code index} received last. */

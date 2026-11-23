@@ -26,6 +26,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 
 /**
  * Death messages that say who was behind a monster (docs/plan/死亡消息.md). Vanilla still chooses every sentence and
@@ -44,34 +45,54 @@ public final class DeathNarration {
     /** The round as death messages see it. */
     public interface Access { Optional<RoundSnapshot> snapshot(); }
 
+    /** A death message being built: names are rewritten, and {@code victim}'s vanilla kill credit is {@code credited}. */
+    private record Naming(MinecraftServer server, LivingEntity victim, LivingEntity credited) {}
+    /** What a death settled before vanilla decided whether to show it. */
+    private record Dying(Optional<CombatOrigin> credit, Optional<UUID> avenger) {}
+
     private static final Map<MinecraftServer, Access> INSTANCES = new IdentityHashMap<>();
     private static final Map<MinecraftServer, RevengeLedger> LEDGERS = new IdentityHashMap<>();
-    private static final ThreadLocal<MinecraftServer> NAMING = new ThreadLocal<>();
+    private static final ThreadLocal<Naming> NAMING = new ThreadLocal<>();
+    // Main thread only; an entry lives from the head of ServerPlayer.die to its return.
+    private static final Map<ServerPlayer, Dying> DYING = new IdentityHashMap<>();
 
     private DeathNarration() {}
 
     public static void configure(MinecraftServer server, Access access) { INSTANCES.put(server, Objects.requireNonNull(access)); }
     public static void unconfigure(MinecraftServer server) { INSTANCES.remove(server); LEDGERS.remove(server); }
 
+    /**
+     * The head of {@code ServerPlayer.die}: resolves the kill credit and books the revenge ledger whether or not the
+     * {@code showDeathMessages} rule lets vanilla build a message.
+     */
+    public static void dying(ServerPlayer victim, DamageSource source) {
+        var credit = CombatRuntime.peekKillCredit(victim.level(), victim, source);
+        DYING.put(victim, new Dying(credit, settle(victim, credit)));
+    }
+
+    /** The return of {@code ServerPlayer.die}. */
+    public static void died(ServerPlayer victim) { DYING.remove(victim); }
+
     /** {@code ServerPlayer.die}'s death message, built by {@code vanilla} under monster naming. */
     public static Component deathMessage(ServerPlayer victim, DamageSource source, Supplier<Component> vanilla) {
         var server = victim.level().getServer();
-        return naming(server, () -> {
+        var dying = DYING.get(victim);
+        var credit = dying == null ? CombatRuntime.peekKillCredit(victim.level(), victim, source) : dying.credit();
+        return naming(server, victim, credit, () -> {
             // The igniter's own blast is the creeper's end, as vanilla words a creeper that blew up.
             if (MonsterCreeper.detonating(victim)) return Component.translatable("death.attack.explosion", victim.getDisplayName());
-            var avenger = settle(victim, source);
-            if (avenger.isPresent()) return revenge(server, avenger.get(), victim, source);
+            if (dying != null && dying.avenger().isPresent()) return revenge(server, dying.avenger().get(), victim, source);
             return vanilla.get();
         });
     }
 
     /**
-     * A revival totem has just saved {@code player} in place from {@code source}: everybody hears how close it was. The
-     * killer is named as the death message would have named it: the lethal hit's attacker, else the vanilla kill credit.
+     * A revival totem has just saved {@code player} in place from {@code source}, credited to {@code credit}: everybody
+     * hears how close it was. The would-be killer is named as the death message would have named it.
      */
-    public static void savedInPlace(ServerPlayer player, DamageSource source) {
+    public static void savedInPlace(ServerPlayer player, DamageSource source, Optional<CombatOrigin> credit) {
         var server = player.level().getServer();
-        var line = naming(server, () -> {
+        var line = naming(server, player, credit, () -> {
             Entity killer = source.getEntity() != null ? source.getEntity()
                     : source.getDirectEntity() != null ? source.getDirectEntity() : player.getKillCredit();
             if (killer == player) killer = null;
@@ -84,39 +105,52 @@ public final class DeathNarration {
     }
 
     /**
+     * {@code entity.getKillCredit()} while its death message is built, or null for vanilla's own. Vanilla prefers the
+     * last human who hit it over a later monster body, which is no player to vanilla; the round's credit decides
+     * instead, so the sentence names whoever the revival totems and records credit.
+     */
+    public static LivingEntity killCredit(LivingEntity entity) {
+        var naming = NAMING.get();
+        return naming != null && naming.victim == entity ? naming.credited : null;
+    }
+
+    /**
      * The name {@code entity} goes by in a death message being built right now, or null for vanilla's own: a monster
-     * body is "化身{形态}的{玩家}", a companion "{主人}召唤的{生物}", a bag creature "{主人}收编的{生物}".
+     * body is "化身{形态}的{玩家}", a bag creature "{主人}收编的{生物}", a companion "{主人}召唤的{生物}".
      */
     public static Component displayName(Entity entity) {
-        var server = NAMING.get();
-        if (server == null || entity == null) return null;
+        var naming = NAMING.get();
+        if (naming == null || entity == null) return null;
+        var server = naming.server;
         if (entity instanceof ServerPlayer player) {
             var form = MonsterRoles.currentForm(player);
             return form == null ? null : monster(form.type, player.getUUID(), player.getName().getString());
         }
         if (MonsterRoles.isNativeBody(entity)) return monster(entity.getType(), entity.getUUID(), name(server, entity.getUUID()));
-        var summoner = MonsterCompanions.owner(entity);
-        if (summoner != null) return owned(server, summoner, "召唤的", entity);
+        // A bag creature that follows its releaser is a companion too; the bag is what it came from.
         var releaser = MonsterSoulcatcher.releaser(entity);
-        return releaser.map(owner -> owned(server, owner, "收编的", entity)).orElse(null);
+        if (releaser.isPresent()) return owned(server, releaser.get(), "收编的", entity);
+        var summoner = MonsterCompanions.owner(entity);
+        return summoner == null ? null : owned(server, summoner, "召唤的", entity);
     }
 
-    private static <T> T naming(MinecraftServer server, Supplier<T> body) {
+    private static <T> T naming(MinecraftServer server, LivingEntity victim, Optional<CombatOrigin> credit, Supplier<T> body) {
+        // An offline credited player has no entity to name; vanilla's own credit stands in.
+        var credited = credit.map(origin -> (LivingEntity) server.getPlayerList().getPlayer(origin.actor().playerId())).orElse(null);
         var outer = NAMING.get();
-        NAMING.set(server);
+        NAMING.set(new Naming(server, victim, credited));
         try { return body.get(); }
         finally { if (outer == null) NAMING.remove(); else NAMING.set(outer); }
     }
 
     /** Books {@code victim}'s competitive human death in the {@link RevengeLedger}; the avenger, if this death settles a debt. */
-    private static Optional<UUID> settle(ServerPlayer victim, DamageSource source) {
+    private static Optional<UUID> settle(ServerPlayer victim, Optional<CombatOrigin> credit) {
         var server = victim.level().getServer();
         var access = INSTANCES.get(server);
         var round = access == null ? null : access.snapshot().orElse(null);
         if (round == null || CelebrationRuntime.successful(round) || !RoundWorldBundle.owns(victim.level())) return Optional.empty();
         var participant = round.participants().get(victim.getUUID());
         if (participant == null || participant.role() != ParticipantRole.HUMAN_ACTIVE) return Optional.empty();
-        Optional<CombatOrigin> credit = CombatRuntime.peekKillCredit(victim.level(), victim, source);
         return LEDGERS.computeIfAbsent(server, ignored -> new RevengeLedger()).humanDied(round.roundId(), victim.getUUID(), credit);
     }
 
