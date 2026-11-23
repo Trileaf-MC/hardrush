@@ -16,10 +16,30 @@ import java.util.UUID;
  *
  * <p>{@code dropToken} names the revival totem the adapter dropped at this death because
  * {@link TotemDrop#qualifies} held when it died; the engine registers it only if that still holds on commit.
+ *
+ * <p>{@code detonation} is present when a deployed creeper's body was spent in its own blast; it decides whom the
+ * defeat locks instead of the kill credit alone (docs/plan/击败锁定与怪物平衡.md §1).
  */
 public record RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence,
                          Optional<CombatEvent> cause, Optional<CombatOrigin> killCredit,
-                         boolean recentlyHurtByPlayer, Optional<UUID> dropToken) {
+                         boolean recentlyHurtByPlayer, Optional<UUID> dropToken, Optional<Detonation> detonation) {
+    /**
+     * A creeper player's blast that killed its own body.
+     *
+     * @param quarry the human this sortie was deployed onto, when the adapter still knew it
+     * @param forced a human set the fuse with a native igniter; the kill credit then names that human
+     */
+    public record Detonation(Optional<UUID> quarry, boolean forced) {
+        public Detonation { Objects.requireNonNull(quarry); }
+    }
+
+    /** A death that was not a creeper's own blast. */
+    public RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence,
+                      Optional<CombatEvent> cause, Optional<CombatOrigin> killCredit,
+                      boolean recentlyHurtByPlayer, Optional<UUID> dropToken) {
+        this(playerId, lifeSequence, deploymentSequence, cause, killCredit, recentlyHurtByPlayer, dropToken, Optional.empty());
+    }
+
     /** A death that dropped no revival totem. */
     public RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence,
                       Optional<CombatEvent> cause, Optional<CombatOrigin> killCredit, boolean recentlyHurtByPlayer) {
@@ -40,7 +60,7 @@ public record RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence
 
     public RoundDeath {
         Objects.requireNonNull(playerId); Objects.requireNonNull(cause); Objects.requireNonNull(killCredit);
-        Objects.requireNonNull(dropToken);
+        Objects.requireNonNull(dropToken); Objects.requireNonNull(detonation);
         if (lifeSequence < 1 || deploymentSequence < 0) throw new IllegalArgumentException("Invalid death identity");
         cause.ifPresent(event -> {
             if (!event.lethal() || !event.victimId().equals(playerId)) {
@@ -51,11 +71,11 @@ public record RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence
 
     public RoundDeath withDropToken(UUID token) {
         return new RoundDeath(playerId, lifeSequence, deploymentSequence, cause, killCredit, recentlyHurtByPlayer,
-                Optional.of(token));
+                Optional.of(token), detonation);
     }
 
     public RoundDeath withCause(CombatEvent event) {
         return new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.of(event), killCredit, recentlyHurtByPlayer,
-                dropToken);
+                dropToken, detonation);
     }
 }

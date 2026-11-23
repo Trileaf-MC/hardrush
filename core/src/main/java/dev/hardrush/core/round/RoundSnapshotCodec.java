@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 11;
+    private static final int SCHEMA = 12;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -68,6 +68,16 @@ public final class RoundSnapshotCodec {
                     .filter(entry -> !entry.getValue().threat().equals(HumanThreat.NONE)).toList();
             out.writeInt(threats.size());
             for (var entry : threats) { writeUuid(out, entry.getKey()); writeThreat(out, entry.getValue().threat()); }
+            // Only monsters holding a defeat's lock are written, after the threats.
+            var locked = snapshot.participants().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
+                    .filter(entry -> !entry.getValue().huntLocks().isEmpty()).toList();
+            out.writeInt(locked.size());
+            for (var entry : locked) {
+                writeUuid(out, entry.getKey());
+                var locks = entry.getValue().huntLocks().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).toList();
+                out.writeInt(locks.size());
+                for (var lock : locks) { writeUuid(out, lock.getKey()); out.writeLong(lock.getValue()); }
+            }
             out.flush();
             if (bytes.size() > MAX_BYTES) throw new IllegalArgumentException("Snapshot exceeds size limit");
             return bytes.toByteArray();
@@ -182,6 +192,24 @@ public final class RoundSnapshotCodec {
                     Participant p = players.get(playerId);
                     if (p == null || !seen.add(playerId)) throw new IOException("Threat for an unknown or repeated participant");
                     players.put(playerId, p.withThreat(readThreat(in)));
+                }
+            }
+            // Schemas 1–11 predate defeat locks: a defeat then benched the monster instead.
+            if (schema >= 12) {
+                int locked = in.readInt();
+                if (locked < 0 || locked > players.size()) throw new IOException("Invalid hunt lock holder count");
+                var seen = new java.util.HashSet<UUID>();
+                for (int i = 0; i < locked; i++) {
+                    UUID playerId = readUuid(in);
+                    Participant p = players.get(playerId);
+                    if (p == null || !seen.add(playerId)) throw new IOException("Hunt locks for an unknown or repeated participant");
+                    int lockCount = in.readInt();
+                    if (lockCount < 1 || lockCount > Participant.MAX_HUNT_LOCKS) throw new IOException("Invalid hunt lock count");
+                    var locks = new LinkedHashMap<UUID, Long>();
+                    for (int j = 0; j < lockCount; j++) {
+                        if (locks.put(readUuid(in), in.readLong()) != null) throw new IOException("Duplicate hunt lock");
+                    }
+                    players.put(playerId, p.withHuntLocks(locks));
                 }
             }
             if (in.available() != 0) throw new IOException("Trailing snapshot data");

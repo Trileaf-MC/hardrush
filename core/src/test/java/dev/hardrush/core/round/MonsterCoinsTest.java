@@ -182,7 +182,7 @@ class MonsterCoinsTest {
             accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
                     List.of(new RoundDeath(monster, 1, 3, cause, true)), null));
             var victim = engine.committed().participants().get(monster);
-            assertEquals(5, victim.wallet().coins(), "Native player memory alone qualifies the deployed monster");
+            assertEquals(8, victim.wallet().coins(), "Native player memory alone qualifies the deployed monster");
             assertEquals(ParticipantRole.MONSTER_LOBBY, victim.role());
         }
     }

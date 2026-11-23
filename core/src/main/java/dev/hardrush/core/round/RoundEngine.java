@@ -22,10 +22,11 @@ public final class RoundEngine {
     public static final long MAX_SUCCESS_CELEBRATION_MILLIS = 180_000;
     public static final long MONSTER_COOLDOWN_NANOS = 30_000_000_000L;
     public static final long RETRACK_COOLDOWN_MILLIS = 10_000;
+    public static final long RETURN_CHANNEL_MILLIS = 4_000;
     /** Bare-handed stone: hardness 1.5 x 100 ticks without the correct tool. */
     public static final long DIG_MILLIS = 7_500;
 
-    /** Wait before hunting after death, disconnect, recall or a first monster life. */
+    /** Wait before hunting after a disconnect, a recall or a first monster life; also how long a defeat locks a human. */
     public static long deployCooldownNanos(RulesConfig rules) {
         Double millis = rules.combatValues().get("monster.deployCooldownMillis");
         return millis == null ? MONSTER_COOLDOWN_NANOS : Math.multiplyExact(Math.round(millis), 1_000_000L);
@@ -41,6 +42,18 @@ public final class RoundEngine {
     public static long retrackCooldownMillis(RulesConfig rules) {
         Double millis = rules.combatValues().get("monster.retrackCooldownMillis");
         return millis == null ? RETRACK_COOLDOWN_MILLIS : Math.round(millis);
+    }
+
+    /** The deliberate return's channel; walking does not break it. */
+    public static long returnChannelMillis(RulesConfig rules) {
+        Double millis = rules.combatValues().get("monster.returnChannelMillis");
+        return millis == null ? RETURN_CHANNEL_MILLIS : Math.round(millis);
+    }
+
+    /** The tracking compass's channel; rounds stored before the setting share the return's. */
+    public static long retrackChannelMillis(RulesConfig rules) {
+        Double millis = rules.combatValues().get("monster.retrackChannelMillis");
+        return millis == null ? returnChannelMillis(rules) : Math.round(millis);
     }
 
     /** The longest a monster takes to dig one block; rounds stored before the setting keep its default. */
@@ -309,6 +322,7 @@ public final class RoundEngine {
         }
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         var victims = new java.util.HashSet<UUID>();
+        var defeats = new java.util.ArrayList<RoundDeath>();
         UUID damageBatch = null;
         for (RoundDeath death : deaths) {
             if (!victims.add(death.playerId())) throw new IllegalArgumentException("Duplicate batch victim");
@@ -340,7 +354,9 @@ public final class RoundEngine {
                                 player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
                                 becameMonster(before.rules(), player.wallet())));
             } else {
-                players.put(player.id(), endSortie(player, deployCooldownNanos(before.rules())));
+                // A defeat no longer benches the monster: only the humans it locks get their respite (applied below).
+                players.put(player.id(), endSortie(player, 0));
+                defeats.add(death);
             }
         }
         // Qualify against identity at lethal collection, before applying this batch's human deaths. The
@@ -363,6 +379,12 @@ public final class RoundEngine {
                 if (before.participants().get(death.playerId()).role() != ParticipantRole.MONSTER_DEPLOYED
                         || !death.recentlyHurtByPlayer()) continue;
                 players.put(death.playerId(), credit(before.rules(), players.get(death.playerId()), MonsterCoins.KILLED_BY_HUMAN));
+            }
+            for (RoundDeath death : defeats) {
+                for (UUID human : lockedBy(before, players, victims, death)) {
+                    players.put(death.playerId(), players.get(death.playerId())
+                            .withHuntLock(human, deployCooldownNanos(before.rules())));
+                }
             }
             if (Bounty.enabled(before.rules())) {
                 for (RoundDeath death : deaths) {
@@ -494,6 +516,8 @@ public final class RoundEngine {
                 || !request.hunterMatches(before, ParticipantRole.MONSTER_LOBBY, sortie)
                 || !request.targetMatches(before) || sortie < request.initialSortie())
             throw new IllegalStateException("追猎目标、生命或发起身份已改变。");
+        if (before.participants().get(request.hunter()).huntLockNanos(request.target()) > 0)
+            throw new Refusal.Exception(Refusal.HUNT_LOCKED, "这名人类刚击败了该怪物，锁定尚未结束。");
         var deployed = deployMonster(before, request.round(), request.hunter(), request.hunterLife(), sortie);
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         players.put(deployed.id(), deployed);
@@ -858,6 +882,23 @@ public final class RoundEngine {
         return Optional.of(killer);
     }
 
+    /**
+     * The humans a deployed monster's defeat locks (docs/plan/击败锁定与怪物平衡.md §1): its own blast locks the
+     * sortie's quarry, and the igniter too when a human forced the fuse; any other death locks the human credited
+     * with the kill. A death nobody is credited with locks no one.
+     */
+    static java.util.Set<UUID> lockedBy(RoundSnapshot before, Map<UUID, Participant> after,
+            java.util.Set<UUID> victims, RoundDeath death) {
+        var locked = new java.util.LinkedHashSet<UUID>();
+        var detonation = death.detonation();
+        detonation.flatMap(RoundDeath.Detonation::quarry).ifPresent(locked::add);
+        if (detonation.isEmpty() || detonation.get().forced()) {
+            humanKiller(before, after, victims, death).ifPresent(killer -> locked.add(killer.id()));
+        }
+        locked.remove(death.playerId());
+        return locked;
+    }
+
     /** A kill pays a revival, never coins; an owner still out hunting is sent back to the altar. */
     private static void rewardMonsterKill(RulesConfig rules, Map<UUID, Participant> players, UUID owner) {
         Participant rewarded = players.get(owner);
@@ -1148,6 +1189,8 @@ public final class RoundEngine {
         if (!base.cleanShutdown() && (base.phase() == RoundPhase.RUNNING || base.phase() == RoundPhase.RESCUE)) {
             players.replaceAll((id, p) -> p.online() && p.role() == ParticipantRole.MONSTER_LOBBY
                     ? p.elapseMonsterCooldown(elapsed) : p);
+            // A defeat's lock runs while the monster is connected, whether it waits in the camp or hunts others.
+            players.replaceAll((id, p) -> p.online() && p.role().isMonster() ? p.elapseHuntLocks(elapsed) : p);
         }
         long remaining = base.remainingPhaseNanos();
         if (!base.cleanShutdown() && (base.phase() == RoundPhase.COUNTDOWN && readyOnline(players) > 0

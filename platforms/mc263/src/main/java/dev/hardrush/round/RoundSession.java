@@ -323,7 +323,15 @@ public final class RoundSession implements AutoCloseable {
      */
     public boolean captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId,
             Optional<CombatOrigin> killCredit, boolean recentlyHurtByPlayer, Optional<UUID> dropToken) {
-        Objects.requireNonNull(killCredit); Objects.requireNonNull(dropToken);
+        return captureDeath(roundId, playerId, lifeSequence, deploymentSequence, batchId, killCredit, recentlyHurtByPlayer,
+                dropToken, Optional.empty());
+    }
+
+    /** As above; {@code detonation} is present when a deployed creeper died in its own blast ({@link RoundDeath#detonation}). */
+    public boolean captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId,
+            Optional<CombatOrigin> killCredit, boolean recentlyHurtByPlayer, Optional<UUID> dropToken,
+            Optional<RoundDeath.Detonation> detonation) {
+        Objects.requireNonNull(killCredit); Objects.requireNonNull(dropToken); Objects.requireNonNull(detonation);
         if (engine == null || stopping || state != State.OPEN || !roundId.equals(engine.committed().roundId())
                 || engine.committed().result() != null || terminalQueued) return false;
         var participant = engine.committed().participants().get(playerId);
@@ -335,7 +343,7 @@ public final class RoundSession implements AutoCloseable {
         capturedDeaths.put(playerId, identity);
         UUID batch = batchId == null ? UUID.randomUUID() : batchId;
         var death = new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.empty(), killCredit, recentlyHurtByPlayer,
-                dropToken);
+                dropToken, detonation);
         boolean taken = deathBatches.computeIfAbsent(batch, ignored -> new LinkedHashMap<>()).putIfAbsent(playerId, death) == null;
         if (batchId == null) finishDamageBatch(roundId, batch);
         return taken;

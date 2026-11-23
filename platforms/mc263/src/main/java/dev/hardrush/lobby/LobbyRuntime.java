@@ -67,7 +67,8 @@ public final class LobbyRuntime {
     private record Refund(Deployment deployment, boolean resume) {}
     private record Display(ServerPlayer player, net.minecraft.server.network.ServerGamePacketListenerImpl connection,
                            List<LobbyProjections.Target> targets) {}
-    private enum Arrival { HUMAN_DIED, MONSTER_DIED }
+    /** A death told once the body lands in camp; {@code wary} names the humans a monster's defeat locked. */
+    private record Arrival(boolean human, List<String> wary) {}
     private static final class Binding {
         final RoundSession session;
         final PlayerProfiles profiles;
@@ -85,6 +86,8 @@ public final class LobbyRuntime {
         /** Display copies of each human's worn gear, read every {@link #GEAR_TICKS} ticks. */
         final Map<UUID, Map<net.minecraft.world.entity.EquipmentSlot, net.minecraft.world.item.ItemStack>> gear = new HashMap<>();
         final Map<UUID, Boolean> cooling = new HashMap<>();
+        /** The humans each camp monster's defeats locked when last shown, to tell it when one is free again. */
+        final Map<UUID, java.util.Set<UUID>> locked = new HashMap<>();
         final Set<UUID> reviving = new HashSet<>();
         final Map<UUID, Channel> channels = new HashMap<>();
         final Map<UUID, Retrack> retracks = new HashMap<>();
@@ -281,6 +284,11 @@ public final class LobbyRuntime {
         if (revivalFirst(player, round, p)) return;
         long now = b.searchClock.getAsLong();
         if (p.monsterCooldownNanos() > 0) { Notices.refuse(player, "出击冷却中 · " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"); return; }
+        long locked = b.session.view().map(live -> live.participants().get(p.id())).map(live -> live.huntLockNanos(targetId)).orElse(0L);
+        if (locked > 0) {
+            Notices.refuse(player, Notices.key(targetName(round, targetId)) + " 刚击败了你 · " + Notices.key(seconds(locked)) + " 秒后才能再追猎");
+            return;
+        }
         Long retry = b.retryAt.get(p.id());
         if (retry != null && now - retry < 0) { Notices.refuse(player, Notices.key(seconds(retry - now)) + " 秒后才能再次追猎"); return; }
         var identity = new PersonalHuntRequest(round.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
@@ -354,14 +362,14 @@ public final class LobbyRuntime {
         }
         for (var entry : List.copyOf(b.channels.entrySet())) {
             var ch = entry.getValue(); var p = round.participants().get(entry.getKey());
-            if (current(ch.player, b) && !ch.retrack && ChannelEffects.moving(ch.player)) { interruptChannel(ch.player, "移动"); continue; }
+            // Both channels allow walking (docs/plan/击败锁定与怪物平衡.md §3); only acting or being hurt breaks them.
             if (current(ch.player, b) && ch.player.level() != ch.level) { interruptChannel(ch.player, "切换维度"); continue; }
+            if (current(ch.player, b) && MonsterRoles.isIgniting(ch.player)) { interruptChannel(ch.player, ignitionReason(ch.player)); continue; }
             if (!current(ch.player, b) || p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED
-                    || p.lifeSequence() != ch.life || p.monsterDeploymentSequence() != ch.sortie
-                    || MonsterRoles.isIgniting(ch.player)) {
+                    || p.lifeSequence() != ch.life || p.monsterDeploymentSequence() != ch.sortie) {
                 interruptChannel(ch.player, "比赛状态变化"); continue;
             }
-            long duration = channelNanos(round);
+            long duration = channelNanos(round, ch.retrack);
             long elapsed = System.nanoTime() - ch.started;
             ChannelEffects.tick(ch.player, ch.retrack, elapsed, duration);
             hint(ch.player, "return", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS,
@@ -532,12 +540,11 @@ public final class LobbyRuntime {
         }
         // Holding the item, or right-clicking again, neither restarts nor repeats a running channel.
         if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) return;
-        if (ChannelEffects.moving(player)) { Notices.hint(player, "站稳后才能返回营地"); sound(player, false); return; }
         var round = b.session.view().orElseThrow();
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), false));
         // The progress hint shows the countdown; the echo shard's held hint and description already state the rule.
-        ChannelEffects.start(player, false, channelNanos(round));
+        ChannelEffects.start(player, false, channelNanos(round, false));
     }
     private static String returned(RoundSnapshot round, boolean parked) {
         long wait = seconds(RoundEngine.returnCooldownNanos(round.rules()));
@@ -551,12 +558,16 @@ public final class LobbyRuntime {
     private static String quarryName(ServerPlayer hunter) {
         return HuntRetracks.quarry(hunter).map(target -> Notices.key(target.getScoreboardName())).orElse("目标");
     }
-    private static long channelNanos(RoundSnapshot round) {
-        return round.rules().combatValues().get("monster.returnChannelMillis").longValue() * 1_000_000L;
+    private static long channelNanos(RoundSnapshot round, boolean retrack) {
+        return (retrack ? RoundEngine.retrackChannelMillis(round.rules()) : RoundEngine.returnChannelMillis(round.rules())) * 1_000_000L;
+    }
+    /** A creeper's own press on its igniter is a skill; a human's igniter forced the fuse. */
+    private static String ignitionReason(ServerPlayer player) {
+        return dev.hardrush.monster.MonsterCreeper.forced(player) ? "被点燃" : "施放技能";
     }
     private static final String CELEBRATION_RETRACK = "庆祝期间不能循迹";
 
-    /** Right-click on the bound tracking compass: a five-second channel, walking allowed, then the quarry's trail again. */
+    /** Right-click on the bound tracking compass: a channel, walking allowed, then the quarry's trail again. */
     public static boolean useRetrack(ServerPlayer player, net.minecraft.world.item.ItemStack compass) {
         if (dev.hardrush.celebration.CelebrationRuntime.arena(player)) { Notices.hint(player, CELEBRATION_RETRACK); return false; }
         var b = BINDINGS.get(player.level().getServer());
@@ -575,7 +586,7 @@ public final class LobbyRuntime {
         }
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), true));
-        ChannelEffects.start(player, true, channelNanos(r));
+        ChannelEffects.start(player, true, channelNanos(r, true));
         return true;
     }
     /** The quarry a retrack may set out for: alive, online, unprotected and in the challenge world, any dimension. */
@@ -611,9 +622,9 @@ public final class LobbyRuntime {
         var target = r.targetPlayer;
         var targetIdentity = round.participants().get(target.getUUID());
         if (current(r.player, b) && r.player.level() != r.origLevel) { interruptChannel(r.player, "切换维度"); return; }
+        if (current(r.player, b) && MonsterRoles.isIgniting(r.player)) { interruptChannel(r.player, ignitionReason(r.player)); return; }
         if (!current(r.player, b) || p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED || !r.player.isAlive()
-                || p.lifeSequence() != r.life || p.monsterDeploymentSequence() != r.sortie
-                || MonsterRoles.isIgniting(r.player)) { interruptChannel(r.player, "比赛状态变化"); return; }
+                || p.lifeSequence() != r.life || p.monsterDeploymentSequence() != r.sortie) { interruptChannel(r.player, "比赛状态变化"); return; }
         if (target.level().getServer().getPlayerList().getPlayer(target.getUUID()) != target || targetIdentity == null
                 || targetIdentity.lifeSequence() != r.targetLife || !validTarget(b, target, (ServerLevel) target.level())
                 || dimension(b, (ServerLevel) target.level()).equals("lobby")) {
@@ -653,7 +664,7 @@ public final class LobbyRuntime {
     }
     /**
      * Breaks a return or retrack channel, or the retrack's search that follows it.
-     * @param reason one of the plain words players see: 移动、切换维度、受到伤害、攻击、互动、使用物品、施放技能、敲门、挖掘、比赛状态变化
+     * @param reason one of the plain words players see: 切换维度、受到伤害、攻击、互动、使用物品、施放技能、被点燃、敲门、挖掘、比赛状态变化
      */
     public static void interruptChannel(ServerPlayer player, String reason) {
         var b = BINDINGS.get(player.level().getServer());
@@ -731,9 +742,13 @@ public final class LobbyRuntime {
                 }
             }
             // Both deaths are told after the respawn lands in camp; a death screen would hide them.
-            if (old != null && old.role() == ParticipantRole.HUMAN_ACTIVE && p.role() == ParticipantRole.MONSTER_LOBBY) b.arrivals.put(p.id(), Arrival.HUMAN_DIED);
+            if (old != null && old.role() == ParticipantRole.HUMAN_ACTIVE && p.role() == ParticipantRole.MONSTER_LOBBY)
+                b.arrivals.put(p.id(), new Arrival(true, List.of()));
+            // Deaths commit as a batch; the single monster death event only remains for older callers.
+            var event = b.session.committedEventType();
             if (old != null && old.role() == ParticipantRole.MONSTER_DEPLOYED && p.role() == ParticipantRole.MONSTER_LOBBY
-                    && "MONSTER_DEATH".equals(b.session.committedEventType())) b.arrivals.put(p.id(), Arrival.MONSTER_DIED);
+                    && ("DEATH_BATCH".equals(event) || "MONSTER_DEATH".equals(event)))
+                b.arrivals.put(p.id(), new Arrival(false, defeated(server, after, old, p)));
             if (p.role() != ParticipantRole.MONSTER_LOBBY || old == null || old.role() != ParticipantRole.MONSTER_DEPLOYED) continue;
             var player = server.getPlayerList().getPlayer(p.id());
             if (player == null || !b.profiles.manages(player)) continue;
@@ -813,8 +828,24 @@ public final class LobbyRuntime {
         var round = b.session.snapshot().orElse(null); if (round == null) return;
         if (!round.roundId().equals(b.round)) {
             b.round = round.roundId(); b.searchRandom = new Random(round.seed() ^ 0x4841524452555348L);
-            b.slots.clear(); b.deadAt.clear(); b.displays.clear(); b.cooling.clear(); b.abandoning.clear(); b.reviving.clear();
+            b.slots.clear(); b.deadAt.clear(); b.displays.clear(); b.cooling.clear(); b.locked.clear(); b.abandoning.clear(); b.reviving.clear();
         }
+    }
+    /**
+     * The humans a monster's defeat just locked (docs/plan/击败锁定与怪物平衡.md §1), each told at once that it will
+     * leave them alone for a while; their names are returned for the monster's own arrival line.
+     */
+    private static List<String> defeated(MinecraftServer server, RoundSnapshot after, Participant before, Participant monster) {
+        var names = new ArrayList<String>();
+        monster.huntLocks().forEach((human, remaining) -> {
+            if (remaining <= before.huntLockNanos(human)) return;
+            var quarry = after.participants().get(human);
+            if (quarry == null) return;
+            names.add(quarry.name());
+            var body = server.getPlayerList().getPlayer(human);
+            if (body != null) Notices.hint(body, "你击退了 " + Notices.key(monster.name()) + " · 一段时间内它无法再找你");
+        });
+        return names;
     }
     /** A death is told once the respawned body stands in camp, so the death screen cannot swallow it. */
     private static void tellArrivals(MinecraftServer server, Binding b) {
@@ -823,8 +854,10 @@ public final class LobbyRuntime {
             if (player == null) return true;
             if (!player.isAlive() || !dev.hardrush.world.LobbyWorld.isLobby(player.level()) || PlayerProfiles.isLocked(player)
                     || player.connection == null || !player.connection.hasClientLoaded()) return false;
-            if (entry.getValue() == Arrival.HUMAN_DIED) Notices.title(player, "你阵亡了", "已回到营地 · 可以在展位化身怪物出击");
-            else Notices.hint(player, "你在出击中倒下，回到了庭院");
+            if (entry.getValue().human()) Notices.title(player, "你阵亡了", "已回到营地 · 可以在展位化身怪物出击");
+            else if (entry.getValue().wary().isEmpty()) Notices.hint(player, "你在出击中倒下，回到了庭院 · 可以马上再出击");
+            else Notices.hint(player, "你在出击中倒下 · " + String.join("、", entry.getValue().wary().stream().map(Notices::key).toList())
+                    + " 暂时会提防你，可以先去追猎别人");
             return true;
         });
     }
@@ -947,23 +980,30 @@ public final class LobbyRuntime {
             targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state));
         }
         var looks = looks(server, b, r, targets);
+        // Defeat locks count down in live server time; the committed round only moves at commits.
+        var live = b.session.view().orElse(r);
+        var hunters = hunters(server, b, r);
+        b.locked.keySet().removeIf(id -> live.participants().get(id) == null || !live.participants().get(id).role().isMonster());
         for (var observer : server.getPlayerList().getPlayers()) {
             if (!contextAvailable(observer, b, LobbyContext.DISPLAY)) { b.displays.remove(observer.getUUID()); continue; }
             var old = b.displays.get(observer.getUUID()); var view = projections.view(observer);
             var identity = r.participants().get(observer.getUUID());
+            var lived = live.participants().get(observer.getUUID());
             if (identity != null && identity.role() == ParticipantRole.MONSTER_LOBBY) {
                 boolean cooling = identity.monsterCooldownNanos() > 0;
                 if (Boolean.TRUE.equals(b.cooling.put(identity.id(), cooling)) && !cooling) {
                     Notices.hint(observer, "可以再次出击了"); sound(observer, true);
                 }
             }
+            if (lived != null && lived.role() == ParticipantRole.MONSTER_LOBBY) freedFromLocks(observer, b, live, lived);
+            var seen = seenBy(lived, looks, hunters);
             // Only who stands where rebuilds the page; names, stars, glow and gear change on the standing models.
             if (old == null || old.player != observer || old.connection != observer.connection || !old.targets.equals(targets) || view.isEmpty()) {
                 int page = view.map(LobbyProjections.View::page).orElse(0);
-                projections.show(observer, r.roundId(), targets, looks, page, (actor, selected) -> beginDeployment(actor, b, selected),
+                projections.show(observer, r.roundId(), targets, seen, page, (actor, selected) -> beginDeployment(actor, b, selected),
                         (actor, selected) -> dev.hardrush.observe.Observation.watch(actor, selected.target()));
                 b.displays.put(observer.getUUID(), new Display(observer, observer.connection, List.copyOf(targets)));
-            } else projections.decorate(observer, looks);
+            } else projections.decorate(observer, seen);
             if (server.getTickCount() % 5 == 0) {
                 var p = r.participants().get(observer.getUUID());
                 if (p != null && p.role().isExcluded()) projections.aimed(observer).ifPresent(selected -> LobbyInteractions.get(server).orElseThrow()
@@ -996,17 +1036,28 @@ public final class LobbyRuntime {
                     } else if (attempt != null || b.committing.contains(p.id()) || b.resumptions.containsKey(p.id()))
                         hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "正在出击……", now + 300);
                     else if (!dev.hardrush.core.round.MonsterCoins.enabled(r.rules()) || !p.revivalEntitled()) {
+                        var available = targets.stream().filter(target -> target.state() == LobbyProjections.State.AVAILABLE)
+                                .map(target -> target.originalProfile().id()).toList();
+                        // Every human it may see has just beaten it: the soonest one free is the wait.
+                        var freest = lived == null || available.isEmpty() ? Optional.<UUID>empty()
+                                : available.stream().allMatch(id -> lived.huntLockNanos(id) > 0)
+                                ? available.stream().min(java.util.Comparator.comparingLong(lived::huntLockNanos)) : Optional.<UUID>empty();
                         if (inCamp(observer)) {
-                            String guidance = targets.stream().anyMatch(target -> target.state() == LobbyProjections.State.AVAILABLE)
-                                    ? Notices.key(kindName(p.monsterRole())) + (p.monsterCooldownNanos() > 0
+                            String guidance = available.isEmpty() ? "暂无可追猎的人类"
+                                    : Notices.key(kindName(p.monsterRole())) + (p.monsterCooldownNanos() > 0
                                     ? " · 出击冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"
-                                    : " · 右键目标模型追猎") : "暂无可追猎的人类";
+                                    : freest.map(id -> " · 人类都在提防你 · " + Notices.key(seconds(lived.huntLockNanos(id))) + " 秒后可追猎 "
+                                            + Notices.key(live.participants().get(id).name())).orElse(" · 右键目标模型追猎"));
                             hints.offer("hunt-guide", dev.hardrush.core.lobby.LobbyHints.Priority.GUIDANCE, guidance, now + 300);
                         }
                         // The role is already on the idle line; aiming at a model only adds whom and what each click does.
-                        projections.aimed(observer).ifPresent(selected -> hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
-                                Notices.key(r.participants().get(selected.target()).name())
-                                        + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒" : " · 右键追猎") + " · 左键观察", now + 300));
+                        projections.aimed(observer).ifPresent(selected -> {
+                            long locked = lived == null ? 0 : lived.huntLockNanos(selected.target());
+                            hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
+                                    Notices.key(r.participants().get(selected.target()).name())
+                                            + (p.monsterCooldownNanos() > 0 ? " · 冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"
+                                            : locked > 0 ? " · 提防你 " + Notices.key(seconds(locked)) + " 秒" : " · 右键追猎") + " · 左键观察", now + 300);
+                        });
                         dev.hardrush.monster.MonsterParking.describe(p.wallet().parked()).ifPresent(parked -> hints.offer("parked",
                                 dev.hardrush.core.lobby.LobbyHints.Priority.FACILITY, "暂存的出击：" + Notices.key(parked)
                                         + (dev.hardrush.core.round.MonsterWorth.enabled(r.rules()) ? " · 身价 "
@@ -1059,6 +1110,45 @@ public final class LobbyRuntime {
         }
         b.gear.keySet().retainAll(looks.keySet());
         return looks;
+    }
+
+    /** How many monsters are after each human: out on a sortie for them, or waiting in the camp to set out. */
+    private static Map<UUID, Integer> hunters(MinecraftServer server, Binding b, RoundSnapshot r) {
+        var counts = new HashMap<>(dev.hardrush.hunt.HuntBossBars.hunters(server, r));
+        for (var search : b.searches.values()) counts.merge(search.identity.target(), 1, Integer::sum);
+        return counts;
+    }
+
+    /**
+     * What one camp monster sees on the target models (docs/plan/击败锁定与怪物平衡.md §1, §6): how many monsters are
+     * after each human, and who is still wary of it after beating it. Anyone else sees the shared looks.
+     */
+    private static Map<UUID, LobbyProjections.Look> seenBy(Participant monster, Map<UUID, LobbyProjections.Look> looks,
+                                                           Map<UUID, Integer> hunters) {
+        if (monster == null || monster.role() != ParticipantRole.MONSTER_LOBBY) return looks;
+        var seen = new HashMap<UUID, LobbyProjections.Look>();
+        looks.forEach((id, look) -> {
+            int hunting = hunters.getOrDefault(id, 0);
+            long locked = monster.huntLockNanos(id);
+            if (hunting == 0 && locked == 0) { seen.put(id, look); return; }
+            var name = look.name().copy();
+            if (hunting > 0) name.append(Component.literal(" · " + hunting + " 只怪物在追").withStyle(net.minecraft.ChatFormatting.GRAY));
+            if (locked > 0) name.append(Component.literal(" · 提防你 " + seconds(locked) + " 秒").withStyle(net.minecraft.ChatFormatting.RED));
+            seen.put(id, new LobbyProjections.Look(name, look.glowing() && locked == 0, look.gear()));
+        });
+        return seen;
+    }
+
+    /** Tells a camp monster once a human who beat it may be hunted again. */
+    private static void freedFromLocks(ServerPlayer observer, Binding b, RoundSnapshot live, Participant monster) {
+        var now = java.util.Set.copyOf(monster.huntLocks().keySet());
+        var before = b.locked.put(monster.id(), now);
+        if (before == null) return;
+        for (var human : before) {
+            var quarry = live.participants().get(human);
+            if (now.contains(human) || quarry == null || quarry.role() != ParticipantRole.HUMAN_ACTIVE) continue;
+            Notices.hint(observer, "可以再次追猎 " + Notices.key(quarry.name()) + " 了"); sound(observer, true);
+        }
     }
 
     private static net.minecraft.ChatFormatting starColor(int stars) {
