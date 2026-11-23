@@ -26,11 +26,11 @@ public record RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence
     /**
      * A creeper player's blast that killed its own body.
      *
-     * @param quarry the human this sortie was deployed onto, when the adapter still knew it
-     * @param forced a human set the fuse with a native igniter; the kill credit then names that human
+     * @param quarry  the human this sortie was deployed onto, when the adapter still knew it
+     * @param igniter the human who lit the fuse with a native igniter, when one did; locked whoever the kill credit names
      */
-    public record Detonation(Optional<UUID> quarry, boolean forced) {
-        public Detonation { Objects.requireNonNull(quarry); }
+    public record Detonation(Optional<UUID> quarry, Optional<UUID> igniter) {
+        public Detonation { Objects.requireNonNull(quarry); Objects.requireNonNull(igniter); }
     }
 
     /** A death that was not a creeper's own blast. */

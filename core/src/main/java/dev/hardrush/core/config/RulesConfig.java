@@ -194,38 +194,48 @@ public record RulesConfig(
      * bare-handed stone (7.5 seconds), however hard the block.
      * A zombie's soulcatcher holds three creatures before the witch enlarges it. A round whose humans
      * have all left waits three minutes for one of them: long enough to restart a client and rejoin.
+     * A mid-round entrant's first life cannot be chosen as a hunt target for five minutes of its own human time.
      */
     private static final Map<String, Double> SORTIE_DEFAULTS = Map.of("monster.returnCooldownMillis", 0.0,
             "monster.retrackCooldownMillis", 10_000.0, "monster.retrackChannelMillis", 5_000.0, "monster.digMillis", 7_500.0,
-            "soulcatcher.capacity", 3.0, "round.reconnectMillis", 180_000.0);
+            "soulcatcher.capacity", 3.0, "round.reconnectMillis", 180_000.0,
+            "entry.lateShelterMillis", 300_000.0);
 
     /**
-     * Retuned defaults: a stored pending value still equal to an earlier default follows the current one, as an
-     * unset value would. Only pending rules are touched; a round keeps the rules it started with.
+     * Revision of the defaults that stored pending rules have been migrated to; rules stored before revisions were
+     * recorded read as revision 1. A migration runs once, when pending rules are first read under a newer revision:
+     * after that the revision is stored with them, so an operator may set any value again, an earlier default included.
      */
+    public static final String DEFAULTS_REVISION_KEY = "defaults.revision";
+    private static final int DEFAULTS_REVISION = 2;
+
+    /** Revision 2 (docs/plan/击败锁定与怪物平衡.md): a value still on its revision-1 default moves to the new one. */
     private static final Map<String, Map.Entry<Double, Double>> RETUNED_DEFAULTS = Map.of(
             "monster.deployCooldownMillis", Map.entry(30_000.0, 45_000.0),
             "monster.returnChannelMillis", Map.entry(5_000.0, 4_000.0),
             "coin.killedByHuman", Map.entry(5.0, 8.0));
 
-    private boolean retuned() {
-        return RETUNED_DEFAULTS.entrySet().stream().anyMatch(entry ->
-                entry.getValue().getKey().equals(combatValues.get(entry.getKey())));
+    private int defaultsRevision() {
+        return combatValues.getOrDefault(DEFAULTS_REVISION_KEY, 1.0).intValue();
     }
 
     /**
-     * Adds missing coin, worth and sortie values to stored pending rules and follows {@link #RETUNED_DEFAULTS};
-     * values an operator already set otherwise are kept.
+     * Adds missing coin, worth and sortie values to stored pending rules and migrates them to the current
+     * {@link #DEFAULTS_REVISION} once; values an operator already set are otherwise kept.
      */
     public RulesConfig withEconomyDefaults() {
-        if (!retuned() && COIN_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
+        boolean current = defaultsRevision() >= DEFAULTS_REVISION;
+        if (current && COIN_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && WORTH_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && SORTIE_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && BOUNTY_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && combatValues.keySet().stream().noneMatch(RulesConfig::retiredBountyKey)) return this;
         var values = new TreeMap<>(combatValues);
         values.keySet().removeIf(RulesConfig::retiredBountyKey);
-        RETUNED_DEFAULTS.forEach((key, change) -> values.replace(key, change.getKey(), change.getValue()));
+        if (!current) {
+            RETUNED_DEFAULTS.forEach((key, change) -> values.replace(key, change.getKey(), change.getValue()));
+            values.put(DEFAULTS_REVISION_KEY, (double) DEFAULTS_REVISION);
+        }
         BOUNTY_DEFAULTS.forEach(values::putIfAbsent);
         COIN_DEFAULTS.forEach(values::putIfAbsent);
         WORTH_DEFAULTS.forEach(values::putIfAbsent);

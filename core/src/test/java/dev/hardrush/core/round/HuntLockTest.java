@@ -62,15 +62,16 @@ class HuntLockTest {
     @Test void aCreepersOwnBlastLocksOnlyItsQuarryEvenWhenAHumanHitItFirst() {
         var engine = deployed();
         accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
-                List.of(death(Optional.of(sword(killer)), Optional.of(new RoundDeath.Detonation(Optional.of(quarry), false)))), null));
+                List.of(death(Optional.of(sword(killer)), Optional.of(new RoundDeath.Detonation(Optional.of(quarry), Optional.empty())))), null));
         assertEquals(Map.of(quarry, LOCK), engine.committed().participants().get(monster).huntLocks());
     }
 
     @Test void aForcedBlastLocksTheQuarryAndTheIgniter() {
         var engine = deployed();
         accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
-                List.of(death(Optional.of(sword(killer)), Optional.of(new RoundDeath.Detonation(Optional.of(quarry), true)))), null));
-        assertEquals(Map.of(quarry, LOCK, killer, LOCK), engine.committed().participants().get(monster).huntLocks());
+                List.of(death(Optional.empty(), Optional.of(new RoundDeath.Detonation(Optional.of(quarry), Optional.of(killer))))), null));
+        assertEquals(Map.of(quarry, LOCK, killer, LOCK), engine.committed().participants().get(monster).huntLocks(),
+                "The igniter is locked even when no kill credit names it");
     }
 
     @Test void aDeathNobodyIsCreditedWithLocksNoOne() {
@@ -111,6 +112,7 @@ class HuntLockTest {
         values.put("monster.returnChannelMillis", 5_000.0);
         values.put("coin.killedByHuman", 5.0);
         values.remove("monster.retrackChannelMillis");
+        values.remove(RulesConfig.DEFAULTS_REVISION_KEY); // stored before defaults carried a revision
         var stored = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
         assertEquals(30_000L, RoundEngine.deployCooldownNanos(stored) / 1_000_000, "A started round keeps its rules");
@@ -120,6 +122,15 @@ class HuntLockTest {
         assertEquals(4_000.0, pending.combatValues().get("monster.returnChannelMillis"));
         assertEquals(5_000.0, pending.combatValues().get("monster.retrackChannelMillis"));
         assertEquals(8.0, pending.combatValues().get("coin.killedByHuman"));
+        // Once migrated, the revision is stored: an operator may choose the earlier default again and keep it.
+        var chosen = new java.util.TreeMap<>(pending.combatValues());
+        chosen.put("monster.deployCooldownMillis", 30_000.0);
+        chosen.put("coin.killedByHuman", 5.0);
+        var operator = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+                RULES.generationRule(), chosen, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
+        var reopened = RulesConfig.decode(operator.forNewRound().encode()).forNewRound().forNewRound();
+        assertEquals(30_000.0, reopened.combatValues().get("monster.deployCooldownMillis"), "A chosen earlier default survives restarts");
+        assertEquals(5.0, reopened.combatValues().get("coin.killedByHuman"));
         values.put("monster.deployCooldownMillis", 60_000.0);
         var tuned = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());

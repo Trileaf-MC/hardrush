@@ -884,17 +884,17 @@ public final class RoundEngine {
 
     /**
      * The humans a deployed monster's defeat locks (docs/plan/击败锁定与怪物平衡.md §1): its own blast locks the
-     * sortie's quarry, and the igniter too when a human forced the fuse; any other death locks the human credited
-     * with the kill. A death nobody is credited with locks no one.
+     * sortie's quarry, and the human who lit the fuse when one did; any other death locks the human credited with
+     * the kill. A death nobody is credited with locks no one. Only living humans of this round are locked.
      */
     static java.util.Set<UUID> lockedBy(RoundSnapshot before, Map<UUID, Participant> after,
             java.util.Set<UUID> victims, RoundDeath death) {
         var locked = new java.util.LinkedHashSet<UUID>();
-        var detonation = death.detonation();
-        detonation.flatMap(RoundDeath.Detonation::quarry).ifPresent(locked::add);
-        if (detonation.isEmpty() || detonation.get().forced()) {
-            humanKiller(before, after, victims, death).ifPresent(killer -> locked.add(killer.id()));
-        }
+        death.detonation().ifPresentOrElse(blast -> {
+            blast.quarry().ifPresent(locked::add);
+            blast.igniter().filter(igniter -> !victims.contains(igniter)
+                    && after.get(igniter) != null && after.get(igniter).role() == ParticipantRole.HUMAN_ACTIVE).ifPresent(locked::add);
+        }, () -> humanKiller(before, after, victims, death).ifPresent(killer -> locked.add(killer.id())));
         locked.remove(death.playerId());
         return locked;
     }

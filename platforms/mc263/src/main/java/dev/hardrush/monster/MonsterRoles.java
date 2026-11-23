@@ -52,6 +52,8 @@ public final class MonsterRoles {
     private static final Map<UUID, Long> BURST_READY = new HashMap<>();
     private static final String SHOT_OWNER = "hardrush.shot-owner=";
     private static final String SHOT_BINDING = "hardrush.shot-binding=";
+    /** The form that loosed an arrow, so a hit landing after the sortie still names the stray or skeleton it came from. */
+    private static final String SHOT_FORM = "hardrush.shot-form=";
     private static final String NATIVE_BODY = "hardrush.native-body";
     // Player forms take about five seconds; ordinary mobs and companions keep vanilla timing.
     private static final int ENVIRONMENT_EXPOSURE_TICKS = 50;
@@ -378,6 +380,8 @@ public final class MonsterRoles {
     }
 
     public static boolean isMonster(Entity entity) { return entity instanceof Player && ROLES.containsKey(entity.getUUID()); }
+    /** The form of {@code playerId}'s deployed body, bound or waiting for a reconnect; null without a role. */
+    public static MonsterForm form(UUID playerId) { var role = ROLES.get(playerId); return role == null ? null : role.form; }
     public static MonsterForm currentForm(ServerPlayer player) { var role = ROLES.get(player.getUUID()); return role == null ? null : role.form; }
     public static String binding(ServerPlayer player) { var role = ROLES.get(player.getUUID()); return role == null ? "" : role.binding; }
     public static boolean isUndead(ServerPlayer player) { var form = currentForm(player); return form != null && form != MonsterForm.CREEPER; }
@@ -812,6 +816,7 @@ public final class MonsterRoles {
         if (MonsterItems.matches(player, ammunition, "shop_arrow")) ammunition.shrink(1);
         arrow.setOwner(player); MonsterCombatRuntime.stampSource(arrow, player);
         arrow.entityTags().add(SHOT_OWNER + player.getUUID()); arrow.entityTags().add(SHOT_BINDING + role.binding);
+        arrow.entityTags().add(SHOT_FORM + role.form.id());
         arrow.pickup = AbstractArrow.Pickup.DISALLOWED; arrow.setCritArrow(false);
         Vec3 aim = player.getLookAngle();
         Projectile.spawnProjectileUsingShoot(arrow, player.level(), weapon, aim.x, aim.y, aim.z, 1.6f, 14 - player.level().getDifficulty().getId() * 4);
@@ -857,10 +862,18 @@ public final class MonsterRoles {
         if (role != null && role.form.skeleton() && role.model != null && role.model.level() == level
                 && arrow.entityTags().contains(SHOT_BINDING + role.binding)
                 && MonsterCombatRuntime.source(arrow).equals(MonsterCombatRuntime.source(role.model))) return role.model;
-        Mob source = EntityTypes.SKELETON.create(level, new EntitySpawnRequest(EntitySpawnReason.COMMAND, true));
+        Mob source = shotForm(arrow).type.create(level, new EntitySpawnRequest(EntitySpawnReason.COMMAND, true));
         source.entityTags().add(NATIVE_BODY); source.setUUID(owner);
         if (vanilla != null) source.setId(vanilla.getId());
         return source;
+    }
+    /** The skeleton-line form that loosed {@code arrow}; arrows from before the tag existed read as a skeleton. */
+    private static MonsterForm shotForm(AbstractArrow arrow) {
+        for (String tag : arrow.entityTags()) if (tag.startsWith(SHOT_FORM)) {
+            var form = tag.substring(SHOT_FORM.length());
+            if (form.equals(MonsterForm.STRAY.id())) return MonsterForm.STRAY;
+        }
+        return MonsterForm.SKELETON;
     }
     private static UUID taggedOwner(Entity entity, String prefix) {
         if (entity == null) return null;

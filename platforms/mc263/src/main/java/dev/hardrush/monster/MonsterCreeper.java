@@ -36,8 +36,8 @@ import net.minecraft.world.level.gameevent.GameEvent;
  */
 public final class MonsterCreeper {
     private static final Map<UUID, State> STATES = new HashMap<>();
-    /** Bodies being killed by their own blast right now, and whether a human forced that fuse. */
-    private static final Map<UUID, Boolean> DETONATING = new HashMap<>();
+    /** Bodies being killed by their own blast right now whose fuse a human lit, and who lit it. */
+    private static final Map<UUID, UUID> LIT_BY = new HashMap<>();
     private static final RulesConfig DEFAULTS = RulesConfig.defaults();
     static final String IGNITER = "igniter";
     private static final String IGNITER_USAGE = "按住右键引爆 · 中途松开取消";
@@ -140,11 +140,9 @@ public final class MonsterCreeper {
         return state != null && state.igniter != null;
     }
 
-    /**
-     * While this body is being killed by its own blast: whether a human forced the fuse. Empty for any other death.
-     */
-    public static Optional<Boolean> detonating(ServerPlayer player) {
-        return Optional.ofNullable(DETONATING.get(player.getUUID()));
+    /** While this body is being killed by its own blast ({@link #detonating}): the human who lit its fuse, if one did. */
+    public static Optional<UUID> litBy(ServerPlayer player) {
+        return Optional.ofNullable(LIT_BY.get(player.getUUID()));
     }
 
     /** Rebuilding a model in another dimension preserves the same deployed body's charge and swell. */
@@ -262,7 +260,8 @@ public final class MonsterCreeper {
         Creeper model = state.model;
         model.snapTo(player.position());
         float strength = (float)value(player, "creeper.explosionStrength") * (state.charged ? 2f : 1f);
-        boolean forced = state.igniter != null;
+        UUID igniter = state.igniter;
+        boolean forced = igniter != null;
         // The real powered Creeper remains the native damage source, so 26.3's
         // killedEntity/charged_creeper loot table enforces its one-head budget.
         try (var batch = CombatRuntime.explosion(player.level(), model)) {
@@ -271,12 +270,12 @@ public final class MonsterCreeper {
             state.swell = 0;
             state.igniter = null;
             release(player);
-            DETONATING.put(player.getUUID(), forced);
+            if (forced) LIT_BY.put(player.getUUID(), igniter);
             // A forced fuse credits its human through the remembered hit; the blast's own origin would name the creeper.
             try (var credit = forced ? CombatRuntime.rememberedCredit(player.level()) : CombatRuntime.Scope.NONE) {
                 player.hurtServer(player.level(), player.damageSources().genericKill(), Float.MAX_VALUE);
             } finally {
-                DETONATING.remove(player.getUUID());
+                LIT_BY.remove(player.getUUID());
             }
         }
     }
@@ -300,6 +299,12 @@ public final class MonsterCreeper {
                 .map(parent -> parent.child(UUID.randomUUID(), AttackKind.CREEPER, Optional.of(cloud.getUUID())));
         ((CombatOriginHolder)cloud).hardrush$sealCombatOrigin(origin);
         player.level().addFreshEntity(cloud);
+    }
+
+    /** Inside {@link #explode}: the body's own detonation is killing it. */
+    public static boolean detonating(ServerPlayer player) {
+        State state = STATES.get(player.getUUID());
+        return state != null && state.exploding;
     }
 
     static int swellTicks(ServerPlayer player) {

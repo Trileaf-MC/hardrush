@@ -112,7 +112,7 @@ public final class FarLandings {
         var s = SERVICES.get(player.level().getServer());
         if (s == null || !s.captions.containsKey(player.getUUID()) || !RoundWorldBundle.owns(player.level())
                 || dev.hardrush.player.PlayerProfiles.isLocked(player)
-                || player.connection == null || !player.connection.hasClientLoaded()) return Optional.empty();
+                || !dev.hardrush.player.ClientLevelLoad.loaded(player)) return Optional.empty();
         return Optional.of(s.captions.remove(player.getUUID()).text());
     }
 
