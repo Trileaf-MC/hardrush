@@ -500,7 +500,8 @@ public final class RoundEngine {
         // Being hunted from the camp is a mark of standing, whatever the outing then achieves.
         if (Bounty.enabled(before.rules())) {
             Participant target = players.get(request.target());
-            players.put(target.id(), target.withThreat(target.threat().huntedFromCamp(target.lifeSequence())));
+            players.put(target.id(), target.withThreat(target.threat().huntedFromCamp(target.lifeSequence(),
+                    request.hunter(), before.challengeNanos())));
         }
         return proposal(eventId, "MONSTER_DEPLOY", before, before.phase(), before.remainingPhaseNanos(), players, before.result(), false);
     }

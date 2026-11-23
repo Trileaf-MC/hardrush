@@ -1068,18 +1068,38 @@ public final class LobbyRuntime {
         };
     }
 
-    /** One of each worn stack with its durability removed, so wear alone never changes what the model shows. */
+    /**
+     * What the camp may see of a human's worn gear: a fresh stack of the same item carrying only how it looks.
+     * Everything else (a lodestone compass's target, a book's pages, a bundle's contents, durability) stays with the
+     * human, and wear alone never changes what the model shows.
+     */
     private static Map<net.minecraft.world.entity.EquipmentSlot, net.minecraft.world.item.ItemStack> displayGear(ServerPlayer player) {
         var gear = new java.util.EnumMap<net.minecraft.world.entity.EquipmentSlot, net.minecraft.world.item.ItemStack>(
                 net.minecraft.world.entity.EquipmentSlot.class);
         for (var slot : LobbyProjections.Look.SLOTS) {
             var worn = player.getItemBySlot(slot);
-            if (worn.isEmpty()) continue;
-            var shown = worn.copyWithCount(1);
-            shown.remove(net.minecraft.core.component.DataComponents.DAMAGE);
-            gear.put(slot, shown);
+            if (!worn.isEmpty()) gear.put(slot, displayCopy(worn));
         }
         return gear;
+    }
+
+    static net.minecraft.world.item.ItemStack displayCopy(net.minecraft.world.item.ItemStack worn) {
+        var shown = new net.minecraft.world.item.ItemStack(worn.getItem());
+        for (var type : java.util.List.<net.minecraft.core.component.DataComponentType<?>>of(
+                net.minecraft.core.component.DataComponents.ITEM_MODEL, net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA,
+                net.minecraft.core.component.DataComponents.EQUIPPABLE, net.minecraft.core.component.DataComponents.DYED_COLOR,
+                net.minecraft.core.component.DataComponents.TRIM, net.minecraft.core.component.DataComponents.PROFILE,
+                net.minecraft.core.component.DataComponents.BANNER_PATTERNS, net.minecraft.core.component.DataComponents.BASE_COLOR))
+            copyComponent(worn, shown, type);
+        // The glint says "enchanted" without telling which enchantments.
+        if (worn.hasFoil()) shown.set(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+        return shown;
+    }
+
+    private static <T> void copyComponent(net.minecraft.world.item.ItemStack from, net.minecraft.world.item.ItemStack to,
+                                          net.minecraft.core.component.DataComponentType<T> type) {
+        T value = from.get(type);
+        if (value != null) to.set(type, value);
     }
 
     private static Component targetLocation(Binding b, ServerPlayer player) {

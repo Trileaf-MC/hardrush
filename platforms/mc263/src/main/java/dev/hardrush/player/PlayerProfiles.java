@@ -928,10 +928,13 @@ public final class PlayerProfiles implements AutoCloseable {
         } catch (RuntimeException error) { fail(entry, error); moveToLobby(player); return false; }
     }
 
-    /** Display advancements only: recipes stay unlocked, and the round's progress record keeps its union. */
+    /**
+     * Vanilla display advancements only: recipes stay unlocked, a data pack's own quests keep their progress and
+     * never pay their rewards twice, and the round's progress record keeps its union.
+     */
     private static void revokeLifeProgress(ServerPlayer player) {
         for (var holder : player.level().getServer().getAdvancements().getAllAdvancements()) {
-            if (holder.value().display().isEmpty()) continue;
+            if (holder.value().display().isEmpty() || !holder.id().getNamespace().equals("minecraft")) continue;
             var completed = new java.util.ArrayList<String>();
             player.getAdvancements().getOrStartProgress(holder).getCompletedCriteria().forEach(completed::add);
             completed.forEach(criterion -> player.getAdvancements().revoke(holder, criterion));
