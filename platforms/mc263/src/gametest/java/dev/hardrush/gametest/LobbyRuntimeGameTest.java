@@ -12,6 +12,7 @@ import dev.hardrush.round.RoundSession;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.world.RoundWorldBundle;
 import dev.hardrush.lobby.LobbyRuntime;
+import dev.hardrush.revival.FallenCompass;
 import dev.hardrush.revival.RevivalTotems;
 import dev.hardrush.locator.PlayerLocator;
 import dev.hardrush.monster.MonsterRoundRuntime;
@@ -275,6 +276,8 @@ public final class LobbyRuntimeGameTest {
                     f.assertSkillCooldowns();
                     f.assertStored();
                 });
+        // Where the previous cycle's prey fell: this cycle's hunter, revived, is pointed back there (遗落之地).
+        final net.minecraft.core.GlobalPos[] fallen = new net.minecraft.core.GlobalPos[1];
         for (int cycle = 0; cycle < 20; cycle++) {
             final int iteration = cycle;
             final var hunter = cycle % 2 == 0 ? f.monster : f.target;
@@ -316,6 +319,7 @@ public final class LobbyRuntimeGameTest {
                                 + ", sourceRejected=" + dev.hardrush.combat.MonsterCombatRuntime.reject(MonsterRoles.nativeModel(hunter.player), prey.player)
                                 + ", actor=" + MonsterRoles.status(hunter.player));
                         f.test.assertTrue(prey.player.isDeadOrDying(), "Actual native attack creates the lethal event");
+                        fallen[0] = net.minecraft.core.GlobalPos.of(prey.player.level().dimension(), prey.player.blockPosition());
                     })
                     .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RESCUE && hunter.participant().revivalEntitled()
                             && prey.current() != null && prey.current().isAlive() && prey.current().level() == LobbyWorld.open(f.server).holdingLevel()
@@ -383,7 +387,37 @@ public final class LobbyRuntimeGameTest {
                         f.test.assertTrue(hunter.player.getEffect(net.minecraft.world.effect.MobEffects.RESISTANCE) == null,
                                 "No resistance: the blessing must not win human fights");
                         f.test.assertFalse(hunter.participant().revivalEntitled(), "Revival consumes the sole entitlement");
-                        f.test.assertTrue(hunter.player.getInventory().isEmpty(), "Revival never restores old human gear or role controls");
+                        var inventory = hunter.player.getInventory();
+                        var compasses = java.util.stream.IntStream.range(0, inventory.getContainerSize()).filter(i -> FallenCompass.is(inventory.getItem(i))).toArray();
+                        f.test.assertTrue(java.util.stream.IntStream.range(0, inventory.getContainerSize())
+                                        .allMatch(i -> inventory.getItem(i).isEmpty() || FallenCompass.is(inventory.getItem(i))),
+                                "Revival never restores old human gear or role controls");
+                        if (iteration > 0) {
+                            var at = fallen[0];
+                            f.test.assertTrue(compasses.length == 1 && FallenCompass.target(inventory.getItem(compasses[0])).equals(java.util.Optional.of(at)),
+                                    "A revived human lands with one 遗落之地 compass pointing at the previous human death: " + at);
+                            f.test.assertValueEqual(hunter.player.getLastDeathLocation(), java.util.Optional.of(at),
+                                    "The vanilla recovery needle reads the same spot, not the monster life's");
+                            if (iteration == 1) {
+                                hunter.player.getInventory().setSelectedSlot(compasses[0]);
+                                var hint = dev.hardrush.lobby.HeldItemHints.of(hunter.player).orElse("");
+                                f.test.assertTrue(hint.contains("主世界") && hint.contains(at.pos().getX() + " " + at.pos().getY() + " " + at.pos().getZ())
+                                        && hint.contains("距离"), "Held, the compass names the dimension, coordinates and distance: " + hint);
+                                hunter.move(net.minecraft.world.phys.Vec3.atBottomCenterOf(at.pos()).add(3, 0, 0));
+                                FallenCompass.tick(f.server, f.round());
+                                f.test.assertFalse(java.util.stream.IntStream.range(0, inventory.getContainerSize()).anyMatch(i -> FallenCompass.is(inventory.getItem(i))),
+                                        "Reaching the spot spends the compass");
+                            } else if (iteration == 2) {
+                                hunter.player.getInventory().setSelectedSlot(compasses[0]);
+                                hunter.player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(
+                                        ServerboundPlayerActionPacket.Action.DROP_ALL_ITEMS, BlockPos.ZERO, Direction.DOWN));
+                                FallenCompass.tick(f.server, f.round());
+                                f.test.assertTrue(java.util.stream.IntStream.range(0, inventory.getContainerSize()).noneMatch(i -> FallenCompass.is(inventory.getItem(i)))
+                                                && hunter.player.level().getEntitiesOfClass(ItemEntity.class, hunter.player.getBoundingBox().inflate(8)).stream()
+                                                        .noneMatch(item -> FallenCompass.is(item.getItem())),
+                                        "A thrown compass vanishes and is never granted again");
+                            }
+                        }
                         f.test.assertValueEqual(hunter.player.getHealth(), 20f, "Human default health is restored");
                         f.test.assertValueEqual(hunter.player.getFoodData().getFoodLevel(), 20, "Human default food is restored");
                         f.test.assertFalse(ProtectionRuntime.protectedEntity(hunter.player), "Revival returns an unprotected human to the natural spawn");
