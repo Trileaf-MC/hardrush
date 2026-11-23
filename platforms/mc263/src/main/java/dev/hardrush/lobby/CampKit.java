@@ -146,6 +146,12 @@ public final class CampKit {
             var stack = MonsterShop.goods(offer, rules);
             stack.setCount(Math.min(stack.getMaxStackSize(), stack.getCount() * entry.getValue()));
             String key = "order:" + offer.id();
+            if (offer.revival()) {
+                wants.add(new Want(key, tagged(stack, key, offer.landing() ? "落地时生效"
+                        : offer == dev.hardrush.core.round.ShopOffer.SHIELD ? "复生时放进副手" : "复生时放进背包",
+                        List.of("已购 ×" + Notices.key(entry.getValue()) + " · 复生后可用")), null));
+                continue;
+            }
             wants.add(new Want(key, offer.key() ? tagged(stack, key, "手持右键庭院的宝库，开出一件装备", List.of())
                     : tagged(stack, key, sellable(offer.roles(), p.monsterRole()) ? "下次出击时自动带上"
                             : "以 " + Notices.key(roles(offer.roles())) + " 出击时才会带上",

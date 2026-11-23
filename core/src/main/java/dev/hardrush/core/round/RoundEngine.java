@@ -288,7 +288,7 @@ public final class RoundEngine {
         players.put(playerId, new Participant(player.id(), player.name(), ParticipantRole.HUMAN_ACTIVE, player.online(), false,
                 player.humanNanos(), player.joinedAtChallengeNanos(), Math.addExact(player.lifeSequence(), 1), false,
                 player.monsterRole(), player.monsterDimension(), player.monsterCooldownNanos(),
-                player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis()).awaitingAdmission());
+                player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis()).withWitch(player.witch()).awaitingAdmission());
         return proposal(eventId, "NORMAL_RESPAWN", before, before.phase(), 0, players, before.result(), false);
     }
 
@@ -338,7 +338,7 @@ public final class RoundEngine {
                                 player.lifeSequence(), player.revivalCharges(), MonsterRole.ZOMBIE,
                                 MonsterDimension.OVERWORLD, deployCooldownNanos(before.rules()),
                                 player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
-                                becameMonster(before.rules(), player.wallet())));
+                                becameMonster(before.rules(), player.wallet())).withWitch(player.witch()));
             } else {
                 players.put(player.id(), endSortie(player, deployCooldownNanos(before.rules())));
             }
@@ -729,9 +729,40 @@ public final class RoundEngine {
     public RoundTransition proposeShopPurchase(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence, ShopOffer offer, int expectedPrice) {
         RoundSnapshot before = capture();
-        Participant player = requireCampMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+        if (!MonsterCoins.enabled(before.rules())) throw new IllegalStateException("本轮没有开放怪物币商店。");
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence,
+                expectedDeploymentSequence, ParticipantRole.MONSTER_LOBBY);
+        requireOpenRescue(before);
+        // A totem in hand leaves only the way back to the race: the witch then sells revival supplies, and only them.
+        if (player.revivalEntitled() != offer.revival()) {
+            if (player.revivalEntitled()) throw new Refusal.Exception(Refusal.REVIVAL_FIRST, REVIVAL_FIRST);
+            throw new IllegalStateException("复生补给只卖给持有复生图腾的怪物。");
+        }
         return monsterProposal(eventId, "SHOP_PURCHASE_" + offer.name(), before, player.withWallet(
                 player.wallet().buy(before.rules(), player.monsterRole(), offer, expectedPrice)));
+    }
+
+    /** The witch's guide was shown to this player; it is shown once per round, across lives. */
+    public RoundTransition proposeWitchGuideSeen(UUID eventId, UUID roundId, UUID playerId) {
+        RoundSnapshot before = capture();
+        if (!before.roundId().equals(roundId)) throw new IllegalStateException("Stale witch guide round");
+        Participant player = requirePlayer(before, playerId);
+        if (player.witch().guideSeen()) throw new IllegalStateException("女巫的碎碎念本轮已经看过。");
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.withWitch(player.witch().withGuideSeen()));
+        return proposal(eventId, "WITCH_GUIDE_SEEN", before, before.phase(), before.remainingPhaseNanos(), players, before.result(), false);
+    }
+
+    /** The revived life {@code life} has received its landing supplies: the bonus chest and any longer blessing. */
+    public RoundTransition proposeRevivalSupplyLanded(UUID eventId, UUID roundId, UUID playerId, int life) {
+        RoundSnapshot before = capture();
+        if (!before.roundId().equals(roundId)) throw new IllegalStateException("Stale revival supply round");
+        Participant player = requirePlayer(before, playerId);
+        if (player.lifeSequence() != life || player.role() != ParticipantRole.HUMAN_ACTIVE || !player.witch().landingPending(life))
+            throw new IllegalStateException("复生补给已交付或已不属于当前生命。");
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.withWitch(player.witch().withLanded()));
+        return proposal(eventId, "REVIVAL_SUPPLY_LANDED", before, before.phase(), before.remainingPhaseNanos(), players, before.result(), false);
     }
 
     public RoundTransition proposeMonsterCoinDrop(UUID eventId, UUID roundId, UUID playerId,

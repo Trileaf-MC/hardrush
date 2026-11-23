@@ -66,13 +66,22 @@ public final class MonsterShop {
             case OMINOUS_KEY -> new ItemStack(Items.OMINOUS_TRIAL_KEY);
             case SOULCATCHER_TIER -> new ItemStack(Items.DYED_BUNDLE.pick(SOULCATCHER_COLORS[Math.min(owned + 1, 3)]));
             case SOULCATCHER_CAPACITY -> new ItemStack(Items.BUNDLE);
+            case BONUS_CHEST -> new ItemStack(Items.CHEST);
+            case LONGER_BLESSING -> new ItemStack(Items.ENCHANTED_GOLDEN_APPLE);
+            case IRON_BUCKET -> new ItemStack(Items.BUCKET);
+            case OAK_LOGS -> new ItemStack(Items.OAK_LOG, 5);
+            case IRON_PICKAXE -> new ItemStack(Items.IRON_PICKAXE);
+            case SHIELD -> new ItemStack(Items.SHIELD);
+            case BREAD -> new ItemStack(Items.BREAD, 8);
         };
         stack.set(DataComponents.CUSTOM_NAME, Component.literal(offer.title())
                 .withStyle(Style.EMPTY.withItalic(false).withColor(offer.key() ? ChatFormatting.AQUA
-                        : offer.permanent() ? ChatFormatting.LIGHT_PURPLE : ChatFormatting.YELLOW)));
+                        : offer.permanent() ? ChatFormatting.LIGHT_PURPLE : offer.revival() ? ChatFormatting.GREEN : ChatFormatting.YELLOW)));
         var lore = new ArrayList<Component>();
         lore.add(Component.literal(description(offer, owned)).withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GRAY)));
         if (offer.permanent()) lore.add(Component.literal("本轮以僵尸出击时一直有效 · 复生后清空")
+                .withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.DARK_GRAY)));
+        if (offer.revival()) lore.add(Component.literal("复生后可用")
                 .withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.DARK_GRAY)));
         stack.set(DataComponents.LORE, new ItemLore(lore));
         return stack;
@@ -99,25 +108,56 @@ public final class MonsterShop {
             case OMINOUS_KEY -> "在庭院的不祥宝库开出一件装备，奖池更好";
             case SOULCATCHER_TIER -> SOULCATCHER_STEPS[Math.min(owned, SOULCATCHER_STEPS.length - 1)];
             case SOULCATCHER_CAPACITY -> "拘魂袋多装 1 只生物";
+            case BONUS_CHEST -> "落地时在身旁放一个原版奖励箱：工具、食物和木头";
+            case LONGER_BLESSING -> "图腾之力庇护 " + clock(dev.hardrush.core.round.WitchRecord.BLESSING_MILLIS
+                    + dev.hardrush.core.round.WitchRecord.BLESSING_STEP_MILLIS * owned) + " → " + clock(Math.min(
+                    dev.hardrush.core.round.WitchRecord.MAX_BLESSING_MILLIS, dev.hardrush.core.round.WitchRecord.BLESSING_MILLIS
+                    + dev.hardrush.core.round.WitchRecord.BLESSING_STEP_MILLIS * (owned + 1)));
+            case IRON_BUCKET, OAK_LOGS, IRON_PICKAXE, BREAD -> "复生时放进背包";
+            case SHIELD -> "复生时放进副手";
         };
     }
 
+    /** "1:30", "5:00". */
+    static String clock(long millis) {
+        long seconds = millis / 1000;
+        return seconds / 60 + ":" + String.format("%02d", seconds % 60);
+    }
+
+    /** A right click on the witch: her guide the first time this round, her shop afterwards. */
     public static void open(ServerPlayer player) {
         var access = INSTANCES.get(player.level().getServer());
         var r = access == null ? null : access.committed().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
-        if (p == null || !MonsterCoins.enabled(r.rules()) || !access.eligible(player)) {
-            dev.hardrush.notice.Notices.hint(player, "女巫：我只和庭院里待命的怪物做生意"); sound(player, SoundEvents.WITCH_AMBIENT); return;
-        }
-        if (LobbyRuntime.revivalFirst(player, r, p)) return;
-        if (!p.wallet().roleChosen()) {
+        if (!trading(player, access, r, p)) return;
+        if (WitchGuide.pending(r, p)) { sound(player, SoundEvents.WITCH_AMBIENT); WitchGuide.show(player, access, r, p); return; }
+        openShop(player);
+    }
+
+    /**
+     * The shop itself, also opened by the guide's last page. A monster holding a revival totem can only go back to the
+     * race, so it is offered the revival supplies and nothing else.
+     */
+    static void openShop(ServerPlayer player) {
+        var access = INSTANCES.get(player.level().getServer());
+        var r = access == null ? null : access.committed().orElse(null);
+        var p = r == null ? null : r.participants().get(player.getUUID());
+        if (!trading(player, access, r, p)) return;
+        boolean revival = p.revivalEntitled();
+        if (!revival && !p.wallet().roleChosen()) {
             dev.hardrush.notice.Notices.hint(player, "女巫：先去展位选个角色，再来找我"); sound(player, SoundEvents.WITCH_AMBIENT); return;
         }
-        var trader = new Trader(player, p.monsterRole());
+        var trader = new Trader(player, p.monsterRole(), revival);
         trader.rebuild(r.rules(), p);
         var id = player.openMenu(new SimpleMenuProvider((containerId, inventory, ignored) ->
-                new ShopMenu(containerId, inventory, trader), Component.literal("女巫商人")));
+                new ShopMenu(containerId, inventory, trader), Component.literal(revival ? "女巫商人 · 复生补给" : "女巫商人")));
         if (id.isPresent()) player.sendMerchantOffers(id.getAsInt(), trader.offers, 1, 0, false, false);
+    }
+
+    private static boolean trading(ServerPlayer player, CampAccess access, dev.hardrush.core.round.RoundSnapshot r, Participant p) {
+        if (p != null && MonsterCoins.enabled(r.rules()) && access.eligible(player)) return true;
+        dev.hardrush.notice.Notices.hint(player, "女巫：我只和庭院里待命的怪物做生意"); sound(player, SoundEvents.WITCH_AMBIENT);
+        return false;
     }
 
     private static void purchase(ServerPlayer player, ShopMenu menu, ShopOffer offer, int price) {
@@ -157,16 +197,18 @@ public final class MonsterShop {
     static final class Trader implements Merchant {
         private final ServerPlayer player;
         private final MonsterRole role;
+        /** The revival shelf: what a monster holding a totem is offered instead of sortie goods. */
+        private final boolean revival;
         private MerchantOffers offers = new MerchantOffers();
         private final Map<MerchantOffer, ShopOffer> mapping = new IdentityHashMap<>();
 
-        Trader(ServerPlayer player, MonsterRole role) { this.player = player; this.role = role; }
+        Trader(ServerPlayer player, MonsterRole role, boolean revival) { this.player = player; this.role = role; this.revival = revival; }
 
         void rebuild(dev.hardrush.core.config.RulesConfig rules, Participant buyer) {
             var built = new MerchantOffers();
             mapping.clear();
             for (var offer : ShopOffer.values()) {
-                if (!offer.sellableTo(role) || !MonsterCoins.offered(rules, offer)) continue;
+                if (offer.revival() != revival || !revival && !offer.sellableTo(role) || !MonsterCoins.offered(rules, offer)) continue;
                 int bought = buyer.wallet().bought(offer), limit = MonsterCoins.limit(rules, offer);
                 int base = MonsterCoins.price(rules, offer, 0);
                 int price = MonsterCoins.price(rules, offer, Math.min(bought, limit - 1));
@@ -240,7 +282,8 @@ public final class MonsterShop {
             var access = INSTANCES.get(server.level().getServer());
             var r = access == null ? null : access.committed().orElse(null);
             var p = r == null ? null : r.participants().get(server.getUUID());
-            if (p == null || !access.eligible(server) || p.monsterRole() != trader.role || !p.wallet().roleChosen()) return false;
+            if (p == null || !access.eligible(server) || p.revivalEntitled() != trader.revival) return false;
+            if (!trader.revival && (p.monsterRole() != trader.role || !p.wallet().roleChosen())) return false;
             // Near any merchant: a model, or a clicked block or entity bound as one.
             var lobby = LobbyWorld.open(server.level().getServer());
             if (!lobby.ready() || !LobbyWorld.isLobby(server.level())) return false;

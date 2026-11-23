@@ -156,7 +156,15 @@ public record RulesConfig(
             Map.entry("coin.price.trialKey", 15.0), Map.entry("coin.limit.trialKey", 2.0),
             Map.entry("coin.price.ominousKey", 40.0), Map.entry("coin.limit.ominousKey", 1.0),
             Map.entry("coin.price.soulcatcherTier", 30.0), Map.entry("coin.limit.soulcatcherTier", 3.0),
-            Map.entry("coin.price.soulcatcherCapacity", 20.0), Map.entry("coin.limit.soulcatcherCapacity", 3.0));
+            Map.entry("coin.price.soulcatcherCapacity", 20.0), Map.entry("coin.limit.soulcatcherCapacity", 3.0),
+            // Revival supplies (docs/plan/复生补给与女巫说明.md); the doubling ladder applies to repeat purchases.
+            Map.entry("coin.price.bonusChest", 30.0), Map.entry("coin.limit.bonusChest", 1.0),
+            Map.entry("coin.price.longerBlessing", 30.0), Map.entry("coin.limit.longerBlessing", 3.0),
+            Map.entry("coin.price.ironBucket", 15.0), Map.entry("coin.limit.ironBucket", 1.0),
+            Map.entry("coin.price.oakLogs", 10.0), Map.entry("coin.limit.oakLogs", 3.0),
+            Map.entry("coin.price.ironPickaxe", 35.0), Map.entry("coin.limit.ironPickaxe", 1.0),
+            Map.entry("coin.price.shield", 35.0), Map.entry("coin.limit.shield", 1.0),
+            Map.entry("coin.price.bread", 30.0), Map.entry("coin.limit.bread", 3.0));
 
     /**
      * Relative bounty: killing a monster player scores 3, each hunt launched from the camp 1, and milestones
