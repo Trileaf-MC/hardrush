@@ -47,6 +47,15 @@ class RuleBookTextTest {
         assertNull(page(pages(GameMode.NORMAL), "挖掘与虫穴"));
     }
 
+    @Test void entryPageNamesTheLateShelterOnlyWhenMonstersHuntAndRevivalPageTheBlessing() {
+        var hardcore = page(pages(GameMode.HARDCORE), "开局与加入");
+        assertTrue(hardcore.contains("落地后 5 分钟内怪物无法追猎你，离线不计时。"), hardcore);
+        assertFalse(hardcore.contains("出生保护"));
+        var normal = page(pages(GameMode.NORMAL), "开局与加入");
+        assertFalse(normal.contains("追猎") || normal.contains("出生保护"), normal);
+        assertTrue(page(pages(GameMode.HARDCORE), "复生").contains("图腾之力庇护"));
+    }
+
     @Test void theHuntPageTellsBothSidesAboutTheLandingOmen() {
         assertTrue(page(pages(GameMode.HARDCORE), "追猎").contains("落地时目标会听到一声洞穴音"));
     }

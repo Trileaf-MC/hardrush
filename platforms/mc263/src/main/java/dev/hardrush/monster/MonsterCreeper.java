@@ -222,6 +222,12 @@ public final class MonsterCreeper {
         player.level().addFreshEntity(cloud);
     }
 
+    /** Inside {@link #explode}: the body's own detonation is killing it. */
+    public static boolean detonating(ServerPlayer player) {
+        State state = STATES.get(player.getUUID());
+        return state != null && state.exploding;
+    }
+
     static int swellTicks(ServerPlayer player) {
         State state = STATES.get(player.getUUID());
         return state == null ? 0 : state.swell;

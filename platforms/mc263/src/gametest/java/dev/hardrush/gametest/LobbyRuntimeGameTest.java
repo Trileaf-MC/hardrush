@@ -296,6 +296,8 @@ public final class LobbyRuntimeGameTest {
                     .thenExecute(() -> {
                         if (iteration == 0) f.allowCombat();
                         hunter.move(prey.player.position().add(1, 0, 0));
+                        // A revived prey still carries the altar's blessing; this cycle tests the lethal path, not it.
+                        prey.player.removeAllEffects(); prey.player.setAbsorptionAmount(0);
                         prey.player.setHealth(1);
                         prey.player.setInvulnerableTime(0);
                         MonsterRoleGameTest.emptyHanded(hunter.player);
@@ -364,8 +366,22 @@ public final class LobbyRuntimeGameTest {
                     })
                     .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RUNNING && hunter.participant().role() == ParticipantRole.HUMAN_ACTIVE
                             && hunter.participant().online() && !PlayerProfiles.isLocked(hunter.player)
-                            && f.profiles.isReady(hunter.profile.id(), f.round()) && !f.session.mutationPending(), "Cycle exactly one revival unlocks an empty human " + iteration))
+                            && f.profiles.isReady(hunter.profile.id(), f.round()) && !f.session.mutationPending()
+                            && !dev.hardrush.lobby.RevivalAltar.arriving(f.server, hunter.profile.id()), "Cycle exactly one revival unlocks an empty human " + iteration))
                     .thenExecute(() -> {
+                        // 图腾之力庇护: the vanilla totem's effects for as long as an enchanted golden apple's absorption.
+                        for (var expected : java.util.List.of(
+                                java.util.Map.entry(net.minecraft.world.effect.MobEffects.REGENERATION, 1),
+                                java.util.Map.entry(net.minecraft.world.effect.MobEffects.ABSORPTION, 3),
+                                java.util.Map.entry(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE, 0))) {
+                            var effect = hunter.player.getEffect(expected.getKey());
+                            f.test.assertTrue(effect != null && effect.getAmplifier() == expected.getValue()
+                                    && effect.getDuration() > 2_300 && effect.getDuration() <= 2_400 && effect.isVisible(),
+                                    "An altar revival lands blessed: " + expected.getKey() + " -> " + effect);
+                        }
+                        f.test.assertValueEqual(hunter.player.getAbsorptionAmount(), 16f, "Absorption IV holds eight golden hearts");
+                        f.test.assertTrue(hunter.player.getEffect(net.minecraft.world.effect.MobEffects.RESISTANCE) == null,
+                                "No resistance: the blessing must not win human fights");
                         f.test.assertFalse(hunter.participant().revivalEntitled(), "Revival consumes the sole entitlement");
                         f.test.assertTrue(hunter.player.getInventory().isEmpty(), "Revival never restores old human gear or role controls");
                         f.test.assertValueEqual(hunter.player.getHealth(), 20f, "Human default health is restored");

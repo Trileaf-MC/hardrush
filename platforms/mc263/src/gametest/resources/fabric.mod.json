@@ -56,6 +56,7 @@
       "dev.hardrush.monster.MonsterGachaGameTest",
       "dev.hardrush.monster.MonsterNativeWeaponsGameTest",
       "dev.hardrush.monster.MonsterCreeperGameTest",
+      "dev.hardrush.death.DeathNarrationGameTest",
       "dev.hardrush.monster.MonsterMiningGameTest",
       "dev.hardrush.monster.MonsterDiggingGameTest",
       "dev.hardrush.gametest.HuntBurrowGameTest",
