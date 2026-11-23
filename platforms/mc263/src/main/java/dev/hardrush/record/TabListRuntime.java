@@ -27,6 +27,7 @@ public final class TabListRuntime {
         String pact = dev.hardrush.pact.DuskPactRuntime.tabLine(server).map(line -> "\n" + line).orElse("");
         for (var player : server.getPlayerList().getPlayers()) {
             var footer = Component.literal(text.footer() + pact);
+            dev.hardrush.bounty.BountyRuntime.tabLine(player, round).ifPresent(line -> footer.append("\n" + line));
             if (ParticipationControl.canWithdraw(player)) footer.append("\n").append(ParticipationControl.shortcutHint());
             int audience = dev.hardrush.observe.Observation.audience(player);
             if (audience > 0) footer.append("\n正在被 " + audience + " 名玩家观看");

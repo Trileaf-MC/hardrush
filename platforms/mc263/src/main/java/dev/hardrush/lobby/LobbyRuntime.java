@@ -82,6 +82,8 @@ public final class LobbyRuntime {
         final LinkedHashMap<UUID, GameProfile> slots = new LinkedHashMap<>();
         final Map<UUID, Integer> deadAt = new HashMap<>();
         final Map<UUID, Display> displays = new HashMap<>();
+        /** Display copies of each human's worn gear, read every {@link #GEAR_TICKS} ticks. */
+        final Map<UUID, Map<net.minecraft.world.entity.EquipmentSlot, net.minecraft.world.item.ItemStack>> gear = new HashMap<>();
         final Map<UUID, Boolean> cooling = new HashMap<>();
         final Set<UUID> reviving = new HashSet<>();
         final Map<UUID, Channel> channels = new HashMap<>();
@@ -942,10 +944,9 @@ public final class LobbyRuntime {
                 // The revival title and broadcast come from RevivalAltar when the body lands.
                 if (state == LobbyProjections.State.AVAILABLE) b.reviving.remove(p.id());
             }
-            targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state,
-                    state == LobbyProjections.State.AVAILABLE ? bounty(b, r, p, player) : 1000,
-                    state == LobbyProjections.State.AVAILABLE ? targetLocation(b, player) : null));
+            targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state));
         }
+        var looks = looks(server, b, r, targets);
         for (var observer : server.getPlayerList().getPlayers()) {
             if (!contextAvailable(observer, b, LobbyContext.DISPLAY)) { b.displays.remove(observer.getUUID()); continue; }
             var old = b.displays.get(observer.getUUID()); var view = projections.view(observer);
@@ -956,12 +957,13 @@ public final class LobbyRuntime {
                     Notices.hint(observer, "可以再次出击了"); sound(observer, true);
                 }
             }
+            // Only who stands where rebuilds the page; names, stars, glow and gear change on the standing models.
             if (old == null || old.player != observer || old.connection != observer.connection || !old.targets.equals(targets) || view.isEmpty()) {
                 int page = view.map(LobbyProjections.View::page).orElse(0);
-                projections.show(observer, r.roundId(), targets, page, (actor, selected) -> beginDeployment(actor, b, selected),
+                projections.show(observer, r.roundId(), targets, looks, page, (actor, selected) -> beginDeployment(actor, b, selected),
                         (actor, selected) -> dev.hardrush.observe.Observation.watch(actor, selected.target()));
                 b.displays.put(observer.getUUID(), new Display(observer, observer.connection, List.copyOf(targets)));
-            }
+            } else projections.decorate(observer, looks);
             if (server.getTickCount() % 5 == 0) {
                 var p = r.participants().get(observer.getUUID());
                 if (p != null && p.role().isExcluded()) projections.aimed(observer).ifPresent(selected -> LobbyInteractions.get(server).orElseThrow()
@@ -1022,14 +1024,84 @@ public final class LobbyRuntime {
             case OVERWORLD -> Level.OVERWORLD; case NETHER -> Level.NETHER; case END -> Level.END;
         });
     }
-    /** The same multiplier damage pays, from the human's live life time and current dimension. */
-    private static int bounty(Binding b, RoundSnapshot r, dev.hardrush.core.round.Participant p, ServerPlayer player) {
-        if (player == null || !dev.hardrush.core.round.MonsterCoins.enabled(r.rules())) return 1000;
-        var live = b.session.view().map(view -> view.participants().get(p.id())).orElse(p);
-        var where = dimension(b, player.level());
-        var kind = where.equals("lobby") ? MonsterDimension.OVERWORLD : MonsterDimension.valueOf(where.toUpperCase(Locale.ROOT));
-        return dev.hardrush.core.round.MonsterCoins.bountyPermille(r.rules(), kind, live.lifeHumanNanos());
+    private static final int GEAR_TICKS = 10;
+
+    /**
+     * What each huntable model shows: name, bounty stars and whereabouts, the human's worn gear, and for the top
+     * bounty a glow and the ominous banner of a raid captain in place of its helmet.
+     */
+    private static Map<UUID, LobbyProjections.Look> looks(MinecraftServer server, Binding b, RoundSnapshot r,
+                                                         List<LobbyProjections.Target> targets) {
+        var standings = dev.hardrush.core.round.Bounty.standings(r.rules(), b.session.view().map(RoundSnapshot::participants).orElse(r.participants()));
+        boolean refreshGear = server.getTickCount() % GEAR_TICKS == 0;
+        var looks = new HashMap<UUID, LobbyProjections.Look>();
+        for (var target : targets) {
+            if (target.state() != LobbyProjections.State.AVAILABLE) continue;
+            var id = target.originalProfile().id();
+            var player = server.getPlayerList().getPlayer(id);
+            if (player == null) continue;
+            if (refreshGear || !b.gear.containsKey(id)) b.gear.put(id, displayGear(player));
+            var gear = new java.util.EnumMap<net.minecraft.world.entity.EquipmentSlot, net.minecraft.world.item.ItemStack>(
+                    net.minecraft.world.entity.EquipmentSlot.class);
+            gear.putAll(b.gear.get(id));
+            var standing = standings.get(id);
+            var name = Component.empty();
+            if (standing != null && standing.leader()) {
+                name.append(Component.literal("头号悬赏 ").withStyle(net.minecraft.ChatFormatting.GOLD, net.minecraft.ChatFormatting.BOLD));
+                name.append(Component.literal(target.originalProfile().name()).withStyle(net.minecraft.ChatFormatting.GOLD));
+                gear.put(net.minecraft.world.entity.EquipmentSlot.HEAD, net.minecraft.world.entity.raid.Raid.getOminousBannerInstance(
+                        player.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BANNER_PATTERN)));
+            } else name.append(target.originalProfile().name());
+            if (standing != null) name.append(Component.literal(" · ")).append(Component.literal(
+                    dev.hardrush.core.round.Bounty.starText(standing.stars())).withStyle(starColor(standing.stars())));
+            name.append(" · ").append(targetLocation(b, player));
+            looks.put(id, new LobbyProjections.Look(name, standing != null && standing.leader(), gear));
+        }
+        b.gear.keySet().retainAll(looks.keySet());
+        return looks;
     }
+
+    private static net.minecraft.ChatFormatting starColor(int stars) {
+        return switch (stars) {
+            case 5 -> net.minecraft.ChatFormatting.RED; case 4 -> net.minecraft.ChatFormatting.GOLD;
+            case 3 -> net.minecraft.ChatFormatting.YELLOW; default -> net.minecraft.ChatFormatting.WHITE;
+        };
+    }
+
+    /**
+     * What the camp may see of a human's worn gear: a fresh stack of the same item carrying only how it looks.
+     * Everything else (a lodestone compass's target, a book's pages, a bundle's contents, durability) stays with the
+     * human, and wear alone never changes what the model shows.
+     */
+    private static Map<net.minecraft.world.entity.EquipmentSlot, net.minecraft.world.item.ItemStack> displayGear(ServerPlayer player) {
+        var gear = new java.util.EnumMap<net.minecraft.world.entity.EquipmentSlot, net.minecraft.world.item.ItemStack>(
+                net.minecraft.world.entity.EquipmentSlot.class);
+        for (var slot : LobbyProjections.Look.SLOTS) {
+            var worn = player.getItemBySlot(slot);
+            if (!worn.isEmpty()) gear.put(slot, displayCopy(worn));
+        }
+        return gear;
+    }
+
+    static net.minecraft.world.item.ItemStack displayCopy(net.minecraft.world.item.ItemStack worn) {
+        var shown = new net.minecraft.world.item.ItemStack(worn.getItem());
+        for (var type : java.util.List.<net.minecraft.core.component.DataComponentType<?>>of(
+                net.minecraft.core.component.DataComponents.ITEM_MODEL, net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA,
+                net.minecraft.core.component.DataComponents.EQUIPPABLE, net.minecraft.core.component.DataComponents.DYED_COLOR,
+                net.minecraft.core.component.DataComponents.TRIM, net.minecraft.core.component.DataComponents.PROFILE,
+                net.minecraft.core.component.DataComponents.BANNER_PATTERNS, net.minecraft.core.component.DataComponents.BASE_COLOR))
+            copyComponent(worn, shown, type);
+        // The glint says "enchanted" without telling which enchantments.
+        if (worn.hasFoil()) shown.set(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+        return shown;
+    }
+
+    private static <T> void copyComponent(net.minecraft.world.item.ItemStack from, net.minecraft.world.item.ItemStack to,
+                                          net.minecraft.core.component.DataComponentType<T> type) {
+        T value = from.get(type);
+        if (value != null) to.set(type, value);
+    }
+
     private static Component targetLocation(Binding b, ServerPlayer player) {
         String dimensionName = switch (dimension(b, player.level())) {
             case "overworld" -> "主世界"; case "nether" -> "下界"; case "end" -> "末地";
