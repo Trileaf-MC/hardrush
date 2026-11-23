@@ -63,8 +63,14 @@ import net.minecraft.world.phys.Vec3;
 public final class RevivalTotemGameTest {
     private static final AtomicInteger ARENAS = new AtomicInteger();
     private static final String HUMAN_USAGE = "拿在手上阵亡时原地复生，消耗 1 个";
+    /**
+     * The tick budget covers the wait for the far arena to generate and simulate entities: a test server ticks as fast as
+     * it can while idle, so 200 ticks can pass in about two seconds, before the asynchronous worldgen of a fresh chunk at
+     * x = 30000 finishes. The same budget as the totem drop and save fixtures, which wait for their arenas alike.
+     */
+    private static final int MAX_TICKS = 1200;
 
-    @GameTest(maxTicks = 200)
+    @GameTest(maxTicks = MAX_TICKS)
     public void projectionFreezesWhileLockedFollowsTheHolderAndSurvivesDeath(GameTestHelper test) {
         if (HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var f = new Fixture(test);
@@ -162,7 +168,7 @@ public final class RevivalTotemGameTest {
         }).thenIdle(1).thenSucceed();
     }
 
-    @GameTest(maxTicks = 200)
+    @GameTest(maxTicks = MAX_TICKS)
     public void totemNeverLeavesThroughThrowsMenusBundlesOrWorldDisplays(GameTestHelper test) {
         if (HardRushProperties.competitionEnabled()) { test.succeed(); return; }
         var f = new Fixture(test);
