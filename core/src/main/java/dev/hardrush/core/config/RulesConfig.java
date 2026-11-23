@@ -158,8 +158,8 @@ public record RulesConfig(
             Map.entry("coin.price.slownessArrows", 8.0), Map.entry("coin.limit.slownessArrows", 2.0),
             Map.entry("coin.price.poisonArrows", 10.0), Map.entry("coin.limit.poisonArrows", 2.0),
             Map.entry("coin.price.charged", 40.0), Map.entry("coin.limit.charged", 1.0),
-            Map.entry("coin.price.trialKey", 15.0), Map.entry("coin.limit.trialKey", 2.0),
-            Map.entry("coin.price.ominousKey", 40.0), Map.entry("coin.limit.ominousKey", 1.0),
+            Map.entry("coin.price.trialKey", 5.0), Map.entry("coin.limit.trialKey", 2.0),
+            Map.entry("coin.price.ominousKey", 12.0), Map.entry("coin.limit.ominousKey", 1.0),
             Map.entry("coin.price.soulcatcherTier", 30.0), Map.entry("coin.limit.soulcatcherTier", 3.0),
             Map.entry("coin.price.soulcatcherCapacity", 20.0), Map.entry("coin.limit.soulcatcherCapacity", 3.0),
             // Revival supplies (docs/plan/复生补给与女巫说明.md); the doubling ladder applies to repeat purchases.
@@ -220,13 +220,20 @@ public record RulesConfig(
      * after that the revision is stored with them, so an operator may set any value again, an earlier default included.
      */
     public static final String DEFAULTS_REVISION_KEY = "defaults.revision";
-    private static final int DEFAULTS_REVISION = 2;
 
-    /** Revision 2 (docs/plan/击败锁定与怪物平衡.md): a value still on its revision-1 default moves to the new one. */
-    private static final Map<String, Map.Entry<Double, Double>> RETUNED_DEFAULTS = Map.of(
-            "monster.deployCooldownMillis", Map.entry(30_000.0, 45_000.0),
-            "monster.returnChannelMillis", Map.entry(5_000.0, 4_000.0),
-            "coin.killedByHuman", Map.entry(5.0, 8.0));
+    /**
+     * Each revision's retuned defaults, from revision 2 on: a value still on the previous default moves to the new
+     * one. Rules stored at an older revision replay every later step in order, each step at most once.
+     */
+    private static final java.util.List<Map<String, Map.Entry<Double, Double>>> RETUNED_DEFAULTS = java.util.List.of(
+            // Revision 2 (docs/plan/击败锁定与怪物平衡.md).
+            Map.of("monster.deployCooldownMillis", Map.entry(30_000.0, 45_000.0),
+                    "monster.returnChannelMillis", Map.entry(5_000.0, 4_000.0),
+                    "coin.killedByHuman", Map.entry(5.0, 8.0)),
+            // Revision 3: one random piece of gear priced against a spawn egg, not above it.
+            Map.of("coin.price.trialKey", Map.entry(15.0, 5.0),
+                    "coin.price.ominousKey", Map.entry(40.0, 12.0)));
+    private static final int DEFAULTS_REVISION = 1 + RETUNED_DEFAULTS.size();
 
     private int defaultsRevision() {
         return combatValues.getOrDefault(DEFAULTS_REVISION_KEY, 1.0).intValue();
@@ -246,7 +253,9 @@ public record RulesConfig(
         var values = new TreeMap<>(combatValues);
         values.keySet().removeIf(RulesConfig::retiredBountyKey);
         if (!current) {
-            RETUNED_DEFAULTS.forEach((key, change) -> values.replace(key, change.getKey(), change.getValue()));
+            for (int revision = Math.max(defaultsRevision(), 1) + 1; revision <= DEFAULTS_REVISION; revision++) {
+                RETUNED_DEFAULTS.get(revision - 2).forEach((key, change) -> values.replace(key, change.getKey(), change.getValue()));
+            }
             values.put(DEFAULTS_REVISION_KEY, (double) DEFAULTS_REVISION);
         }
         BOUNTY_DEFAULTS.forEach(values::putIfAbsent);
