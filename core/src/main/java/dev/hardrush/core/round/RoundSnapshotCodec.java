@@ -81,6 +81,9 @@ public final class RoundSnapshotCodec {
         var milestones = threat.milestones().stream().sorted().toList();
         out.writeInt(milestones.size());
         for (String milestone : milestones) writeText(out, milestone);
+        var hunters = threat.huntedAt().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).toList();
+        out.writeInt(hunters.size());
+        for (var hunter : hunters) { writeUuid(out, hunter.getKey()); out.writeLong(hunter.getValue()); }
     }
 
     private static HumanThreat readThreat(DataInputStream in) throws IOException {
@@ -90,7 +93,13 @@ public final class RoundSnapshotCodec {
         for (int i = 0; i < count; i++) {
             if (!milestones.add(readText(in, 256))) throw new IOException("Duplicate threat milestone");
         }
-        try { return new HumanThreat(life, kills, hunted, milestones); }
+        int hunters = in.readInt();
+        if (hunters < 0 || hunters > MAX_PARTICIPANTS) throw new IOException("Invalid threat hunter count");
+        var huntedAt = new java.util.HashMap<UUID, Long>();
+        for (int i = 0; i < hunters; i++) {
+            if (huntedAt.put(readUuid(in), in.readLong()) != null) throw new IOException("Duplicate threat hunter");
+        }
+        try { return new HumanThreat(life, kills, hunted, milestones, huntedAt); }
         catch (IllegalArgumentException invalid) { throw new IOException("Invalid human threat", invalid); }
     }
 

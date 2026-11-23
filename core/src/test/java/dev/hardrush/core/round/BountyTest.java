@@ -45,8 +45,18 @@ class BountyTest {
                 .reached(1, "minecraft:story/mine_diamond").reached(1, "minecraft:husbandry/root");
         assertEquals(Set.of("minecraft:story/mine_stone", "minecraft:story/mine_diamond"), threat.milestones());
         assertEquals(5, Bounty.threat(RULES, human(strong, true, threat)));
-        var fought = threat.killedMonster(1).huntedFromCamp(1).huntedFromCamp(1);
-        assertEquals(5 + 3 + 2, Bounty.threat(RULES, human(strong, true, fought)), "Kill 3, each hunt 1");
+        var fought = threat.killedMonster(1).huntedFromCamp(1, monster, 0).huntedFromCamp(1, weak, 0);
+        assertEquals(5 + 3 + 2, Bounty.threat(RULES, human(strong, true, fought)), "Kill 3, each hunter's hunt 1");
+    }
+
+    @Test void oneHunterGoingOutAndBackScoresOncePerInterval() {
+        var threat = HumanThreat.NONE;
+        for (long at = 0; at < Bounty.HUNTED_REPEAT_NANOS; at += 5_000_000_000L) threat = threat.huntedFromCamp(1, monster, at);
+        assertEquals(1, threat.hunted(), "Ten quick returns and redeploys still count once");
+        threat = threat.huntedFromCamp(1, monster, Bounty.HUNTED_REPEAT_NANOS);
+        assertEquals(2, threat.hunted(), "The same hunter scores again after the interval");
+        assertEquals(1, threat.forLife(2).huntedFromCamp(2, monster, Bounty.HUNTED_REPEAT_NANOS + 1).hunted(),
+                "A new life starts its own count");
     }
 
     @Test void anotherLifesRecordReadsAsEmpty() {
@@ -149,7 +159,7 @@ class BountyTest {
         var request = new PersonalHuntRequest(round, monster, 1, 2, MonsterRole.ZOMBIE, strong, 1);
         accept(engine, engine.proposePersonalHunt(UUID.randomUUID(), request, 2));
         var target = engine.committed().participants().get(strong);
-        assertEquals(new HumanThreat(1, 0, 1, Set.of()), target.threat());
+        assertEquals(new HumanThreat(1, 0, 1, Set.of(), Map.of(monster, engine.committed().challengeNanos())), target.threat());
         assertEquals(ParticipantRole.MONSTER_DEPLOYED, engine.committed().participants().get(monster).role());
     }
 
@@ -194,7 +204,8 @@ class BountyTest {
     }
 
     @Test void snapshotsRoundTripTheThreat() {
-        var threat = new HumanThreat(1, 2, 5, Set.of("minecraft:story/mine_diamond", "minecraft:story/enter_the_nether"));
+        var threat = new HumanThreat(1, 2, 5, Set.of("minecraft:story/mine_diamond", "minecraft:story/enter_the_nether"),
+                Map.of(monster, 42L, weak, 7L));
         var snapshot = new RoundSnapshot(round, 1, 2, 3, RULES, RoundPhase.RUNNING, PauseReason.NONE, 0, 0,
                 Map.of(strong, human(strong, true, threat)), false, false, null);
         assertEquals(snapshot, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(snapshot)));

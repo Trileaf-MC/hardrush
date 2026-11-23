@@ -212,6 +212,32 @@ class MonsterCoinTimingSessionTest {
         }
     }
 
+    @Test void theCapCountsHitsInTheOrderTheyLandedAcrossChangingStars() throws Exception {
+        var strong = new HumanThreat(1, 0, 0, Set.of("minecraft:story/mine_diamond", "minecraft:story/enter_the_nether",
+                "minecraft:story/smelt_iron"));
+        try (var session = open(seed(strong))) {
+            clock.set(seconds(5));
+            // A first flush at this time, so the hits below share one buffer.
+            session.recordMonsterDamage(round, monster, 1, 3, other, 1);
+            session.tick();
+            settle(session);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 6_000);           // five stars
+            session.threatMilestone(round, other, 1, "minecraft:story/enter_the_end");
+            settle(session);
+            session.threatMilestone(round, other, 1, "minecraft:story/mine_diamond");
+            settle(session);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 10_000);          // four stars: 11 of 14
+            session.threatMilestone(round, human, 1, "minecraft:story/follow_ender_eye");
+            settle(session);
+            session.recordMonsterDamage(round, monster, 1, 3, human, 6_000);           // five stars again
+            clock.set(seconds(7));
+            settle(session);
+            assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
+            // The 20-point cap leaves 4 of the last hit: 6 × 2.5 + 10 × 2 + 4 × 2.5.
+            assertEquals(45, coins(session));
+        }
+    }
+
     private int committedWorth(RoundSession session) {
         var round = session.snapshot().orElseThrow();
         return dev.hardrush.core.round.MonsterWorth.milliLevels(round.rules(), round.participants().get(monster).wallet());

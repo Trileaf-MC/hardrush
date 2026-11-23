@@ -109,8 +109,13 @@ public final class RoundSession implements AutoCloseable {
     private String committedEventType = "";
     // Per-hit monster damage is summed here and committed about once per second, never per hit.
     // The bounty weight is fixed when the hit lands, so a killing blow keeps the stars its victim died with.
-    private record DamageKey(UUID round, UUID owner, int life, int sortie, UUID victim, int bountyPermille) {}
+    // Hits are kept in order: the per-human cap counts the earliest damage first, so only consecutive hits on the
+    // same victim at the same weight are summed; a hit at another weight opens a new run.
+    private record DamageKey(UUID round, UUID owner, int life, int sortie, UUID victim, int bountyPermille, long run) {}
+    private record DamageRun(UUID round, UUID owner, int life, int sortie, UUID victim) {}
     private final Map<DamageKey, Long> damageCoins = new LinkedHashMap<>();
+    private final Map<DamageRun, DamageKey> openRuns = new java.util.HashMap<>();
+    private long nextRun;
     // Flushed credit still waiting in the event queue; applying its event moves it into the pending transition.
     private final List<RoundEngine.QueuedDamageCoins> queuedDamage = new java.util.ArrayList<>();
     private long lastDamageFlushNanos;
@@ -419,7 +424,12 @@ public final class RoundSession implements AutoCloseable {
         var view = engine.view();
         int weight = dev.hardrush.core.round.Bounty.permille(view.rules(),
                 dev.hardrush.core.round.Bounty.standing(view.rules(), view.participants(), victim).stars());
-        damageCoins.merge(new DamageKey(roundId, owner, life, sortie, victim, weight), damageMilli, Math::addExact);
+        var run = new DamageRun(roundId, owner, life, sortie, victim);
+        var open = openRuns.get(run);
+        var key = open != null && open.bountyPermille() == weight ? open
+                : new DamageKey(roundId, owner, life, sortie, victim, weight, nextRun++);
+        openRuns.put(run, key);
+        damageCoins.merge(key, damageMilli, Math::addExact);
     }
 
     private void flushDamageCoins(boolean force) {
@@ -438,7 +448,7 @@ public final class RoundSession implements AutoCloseable {
         var byRound = new LinkedHashMap<UUID, List<RoundEngine.DamageCoins>>();
         damageCoins.forEach((key, milli) -> byRound.computeIfAbsent(key.round(), ignored -> new java.util.ArrayList<>())
                 .add(new RoundEngine.DamageCoins(key.owner(), key.life(), key.sortie(), key.victim(), key.bountyPermille(), milli)));
-        damageCoins.clear();
+        damageCoins.clear(); openRuns.clear();
         byRound.forEach((round, entries) -> {
             var queued = new RoundEngine.QueuedDamageCoins(time, round, entries);
             queuedDamage.add(queued);

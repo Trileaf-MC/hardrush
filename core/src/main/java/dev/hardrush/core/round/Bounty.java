@@ -22,6 +22,8 @@ public final class Bounty {
     public static final String STAR4_MULTIPLIER = "bounty.star4Multiplier";
     public static final String STAR5_MULTIPLIER = "bounty.star5Multiplier";
     public static final int MAX_STARS = 5;
+    /** One hunter's repeated hunts of the same life count once per three minutes of challenge time. */
+    public static final long HUNTED_REPEAT_NANOS = 180_000_000_000L;
 
     /**
      * Native advancements that mark real speedrun progress, weighted by how far along the run they put a

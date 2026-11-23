@@ -200,7 +200,7 @@ public final class PersonalHuntGameTest {
                     f.c.hunt(f.a); f.refresh();
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(f.c, 0), "hunt anchor A before attacking B"))
-                .thenWaitUntil(() -> f.await(f.huntBars(f.c).equals(List.of("追猎目标 · HuntA")) && f.huntBars(f.a).isEmpty(),
+                .thenWaitUntil(() -> f.await(f.huntBars(f.c).equals(List.of("追猎目标 · HuntA · " + f.stars(f.a))) && f.huntBars(f.a).isEmpty(),
                         "hunter sees the target at once; an 8-24 block deployment never alerts it"))
                 .thenIdle(2)
                 .thenExecute(() -> {
@@ -396,6 +396,7 @@ public final class PersonalHuntGameTest {
         final AtomicLong clock = new AtomicLong(System.nanoTime()), searchClock = new AtomicLong(1_000_000_000L);
         BlockPos burrowFeet;
         final LinkedBlockingQueue<Runnable> held = new LinkedBlockingQueue<>();
+        final LinkedBlockingQueue<Runnable> ready = new LinkedBlockingQueue<>();
         final AtomicReference<RoundSession.Reply> reply = new AtomicReference<>();
         final ServerLevel[] levels = new ServerLevel[3]; final Vec3[] anchor = new Vec3[3];
         RoundSession session; PlayerProfiles profiles; RoundWorldBundle worlds;
@@ -410,7 +411,12 @@ public final class PersonalHuntGameTest {
         void bind() {
             session = service("SESSIONS",RoundSession.class); profiles=service("PROFILES",PlayerProfiles.class);
             set(session,"clock", (MonotonicClock)clock::get);
-            set(session,"callbacks", (java.util.concurrent.Executor)held::add);
+            // Only the sortie's own write is held for the commit races; a milestone or checkpoint written meanwhile
+            // (entering the Nether scores one) must still settle, or the hunt is refused as busy.
+            set(session,"callbacks", (java.util.concurrent.Executor)task -> {
+                var writing=(dev.hardrush.core.round.RoundTransition)field(session,"pendingTransition");
+                (hold && writing!=null && writing.eventType().equals("MONSTER_DEPLOY") ? held : ready).add(task);
+            });
             @SuppressWarnings("unchecked") var listener=(java.util.function.BiConsumer<RoundSnapshot,RoundSnapshot>)field(session,"committedListener");
             session.onCommitted((before,after) -> {
                 listener.accept(before,after);
@@ -430,7 +436,9 @@ public final class PersonalHuntGameTest {
         }
         void tick() {
             clock.accumulateAndGet(System.nanoTime(), Math::max);
-            if(!hold) { Runnable task; while((task=held.poll())!=null) task.run(); }
+            Runnable task;
+            while((task=ready.poll())!=null) task.run();
+            if(!hold) while((task=held.poll())!=null) task.run();
             for(var p:peers) p.client.acknowledge();
         }
         void await(boolean ok,String text) {
@@ -530,6 +538,11 @@ public final class PersonalHuntGameTest {
                                 && profile.partialProfile().equals(p.player.getGameProfile())),"Full original authenticated profile reaches mannequin");
             }
             test.assertTrue(ProtectionRuntime.protectedEntity(c.player),"Model inputs execute with production protection");
+        }
+        /** The target's current bounty stars as the hunt bar shows them. */
+        String stars(Peer target) {
+            var round=session.view().orElseThrow();
+            return dev.hardrush.core.round.Bounty.starText(dev.hardrush.core.round.Bounty.standing(round.rules(), round.participants(), target.id()).stars());
         }
         void assertAway() {
             int id=model(c,a);

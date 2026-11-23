@@ -84,18 +84,25 @@ public final class BountyRuntime {
         }
         if (!Bounty.enabled(round.rules()) || round.phase() != RoundPhase.RUNNING && round.phase() != RoundPhase.RESCUE) return;
         // A milestone event lost to a crash or a refused write is found again on the player's own progress.
-        if (server.getTickCount() % RECONCILE_TICKS == 0) reconcile(server);
+        if (server.getTickCount() % RECONCILE_TICKS == 0) reconcile(server, binding, round);
         var standings = Bounty.standings(round.rules(), round.participants());
         long now = System.nanoTime() / 1_000_000;
         tellHumans(server, round, binding, standings, now);
         tellCamp(server, round, binding, standings, now);
     }
 
-    private static void reconcile(MinecraftServer server) {
+    /** Only milestones this life has completed but not yet scored are reported, against the tick's own snapshot. */
+    private static void reconcile(MinecraftServer server, Binding binding, RoundSnapshot round) {
         for (var player : server.getPlayerList().getPlayers()) {
+            var participant = round.participants().get(player.getUUID());
+            if (participant == null || !participant.online() || participant.role() != ParticipantRole.HUMAN_ACTIVE
+                    || PlayerProfiles.isLocked(player) || !player.isAlive()) continue;
+            var counted = participant.threat().forLife(participant.lifeSequence()).milestones();
             var progress = ((PlayerAdvancementProfileAccessor) player.getAdvancements()).hardrush$progress();
             progress.forEach((holder, done) -> {
-                if (done.isDone() && Bounty.MILESTONES.containsKey(holder.id().toString())) report(player, holder.id().toString());
+                String id = holder.id().toString();
+                if (done.isDone() && Bounty.MILESTONES.containsKey(id) && !counted.contains(id))
+                    binding.session.threatMilestone(round.roundId(), player.getUUID(), participant.lifeSequence(), id);
             });
         }
     }
@@ -120,9 +127,12 @@ public final class BountyRuntime {
             String reason = threat.monsterKills() > seen.kills ? "击杀了怪物 · " : threat.milestones().size() > seen.milestones ? "取得新进度 · " : "";
             if (listening) {
                 if (standing.leader() && !seen.leader) {
+                    // Becoming the top bounty again within the interval (a rival dropping in and out) stays quiet.
+                    if (worthRepeating(seen, LEADER_NOTICE, now)) {
                     Notices.hint(player, "你成为了" + Notices.key("头号悬赏") + "，怪物会优先盯上你");
                     player.connection.send(new ClientboundSoundPacket(net.minecraft.core.Holder.direct(SoundEvents.APPLY_EFFECT_BAD_OMEN), SoundSource.PLAYERS,
                             player.getX(), player.getY(), player.getZ(), 1, 1, player.getRandom().nextLong()));
+                    }
                 } else if (!standing.leader() && seen.leader) {
                     Notices.hint(player, "你不再是头号悬赏");
                 } else if (standing.stars() > seen.stars && tierWorthTelling(seen, standing.stars(), now)) {
@@ -138,9 +148,16 @@ public final class BountyRuntime {
     private static boolean tierWorthTelling(Seen seen, int stars, long now) {
         if (stars < 2) return false;
         if (stars <= 3 && !seen.lowTiersTold.add(stars)) return false;
-        Long last = seen.toldAt.get(stars);
+        return worthRepeating(seen, stars, now);
+    }
+
+    /** The top-bounty notice shares the tier notices' bookkeeping under its own key. */
+    private static final int LEADER_NOTICE = 0;
+
+    private static boolean worthRepeating(Seen seen, int notice, long now) {
+        Long last = seen.toldAt.get(notice);
         if (last != null && now - last < TIER_NOTICE_MILLIS) return false;
-        seen.toldAt.put(stars, now);
+        seen.toldAt.put(notice, now);
         return true;
     }
 
