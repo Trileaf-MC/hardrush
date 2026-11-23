@@ -205,9 +205,12 @@ public final class PersonalHuntGameTest {
                 .thenWaitUntil(() -> f.await(f.deployed(f.c, 0), "hunt anchor A before attacking B"))
                 .thenExecute(() -> {
                     var heard = f.omenCounts();
-                    test.assertValueEqual(heard.get(0) - f.omens.get(0), 1L, "A camp landing gives its target one cave omen, bound to the target");
+                    test.assertValueEqual(heard.get(0) - f.omens.get(0), 1L, "A camp landing gives its target one cave omen");
+                    var omen = f.omenPackets(f.a).getLast();
+                    test.assertTrue(omen.getId() == f.a.player.getId() && omen.getSource() == net.minecraft.sounds.SoundSource.AMBIENT,
+                            "The omen is the ambient cave sound bound to the target's own body");
                     for (int i = 1; i < heard.size(); i++)
-                        test.assertValueEqual(heard.get(i), f.omens.get(i), "Nobody but the target hears the omen, the hunter neither");
+                        test.assertValueEqual(heard.get(i), f.omens.get(i), "No other connection receives the omen, the hunter's neither");
                 })
                 .thenWaitUntil(() -> f.await(f.huntBars(f.c).equals(List.of("追猎目标 · HuntA · " + f.stars(f.a))) && f.huntBars(f.a).isEmpty(),
                         "hunter sees the target at once; an 8-24 block deployment never alerts it"))
@@ -484,13 +487,12 @@ public final class PersonalHuntGameTest {
         }
         boolean idle() { return !session.mutationPending(); }
         int compassSlot = -1;
-        /** Cave omens each peer's client heard bound to its own body, in {@link #peers} order. */
+        /** Every cave omen packet each peer's connection received, whoever it is bound to, in {@link #peers} order. */
         List<Long> omens = List.of();
-        List<Long> omenCounts() {
-            return peers.stream().map(p -> p.client.packets(net.minecraft.network.protocol.game.ClientboundSoundEntityPacket.class).stream()
-                    .filter(sound -> sound.getSound().value() == net.minecraft.sounds.SoundEvents.AMBIENT_CAVE.value()
-                            && sound.getSource() == net.minecraft.sounds.SoundSource.AMBIENT && sound.getId() == p.player.getId())
-                    .count()).toList();
+        List<Long> omenCounts() { return peers.stream().map(p -> (long) omenPackets(p).size()).toList(); }
+        List<net.minecraft.network.protocol.game.ClientboundSoundEntityPacket> omenPackets(Peer p) {
+            return p.client.packets(net.minecraft.network.protocol.game.ClientboundSoundEntityPacket.class).stream()
+                    .filter(sound -> sound.getSound().value() == net.minecraft.sounds.SoundEvents.AMBIENT_CAVE.value()).toList();
         }
         boolean glint(net.minecraft.world.item.ItemStack stack) {
             return Boolean.TRUE.equals(stack.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE));
