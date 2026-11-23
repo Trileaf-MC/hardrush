@@ -416,9 +416,15 @@ public final class RoundRuntime {
                     && RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());
                 if (profiles != null) profiles.holdDeath(player);
+                // A creeper spent in its own blast locks the human it was sent after (docs/plan/击败锁定与怪物平衡.md §1).
+                var detonation = dev.hardrush.monster.MonsterCreeper.detonating(player)
+                        ? Optional.of(new dev.hardrush.core.round.RoundDeath.Detonation(
+                                dev.hardrush.hunt.HuntBossBars.hunted(player, round).map(dev.hardrush.hunt.HuntBossBars.Hunted::target),
+                                dev.hardrush.monster.MonsterCreeper.litBy(player)))
+                        : Optional.<dev.hardrush.core.round.RoundDeath.Detonation>empty();
                 session.captureDeath(round.roundId(), player.getUUID(), participant.lifeSequence(), participant.monsterDeploymentSequence(),
                         CombatRuntime.currentBatch(player.level()).orElse(null), killCredit,
-                        dev.hardrush.monster.MonsterRoles.recentlyHurtByOtherPlayer(player));
+                        dev.hardrush.monster.MonsterRoles.recentlyHurtByOtherPlayer(player), Optional.empty(), detonation);
             }
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {

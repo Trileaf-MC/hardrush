@@ -2,6 +2,7 @@ package dev.hardrush.monster;
 
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.MonsterSkill;
+import dev.hardrush.core.round.RoundEngine;
 import dev.hardrush.disguise.MonsterDisguise;
 import dev.hardrush.monster.mixin.MonsterEntityAccessor;
 import dev.hardrush.monster.mixin.MonsterLivingAccessor;
@@ -91,6 +92,20 @@ public final class MonsterRoles {
             // Beyond its own controls, a native monster opens no container and operates no block.
             return InteractionResult.FAIL;
         });
+        // A human's native creeper igniter lights a creeper player as it would a native creeper (Creeper.mobInteract).
+        UseEntityCallback.EVENT.register((p, l, hand, target, hit) -> {
+            if (!(p instanceof ServerPlayer human) || isMonster(human) || !(target instanceof ServerPlayer creeper)
+                    || currentForm(creeper) != MonsterForm.CREEPER) return InteractionResult.PASS;
+            var stack = human.getItemInHand(hand);
+            if (!stack.is(net.minecraft.tags.ItemTags.CREEPER_IGNITERS) || !mayIgnite(human, creeper)
+                    || !MonsterCreeper.forceIgnite(creeper, human)) return InteractionResult.PASS;
+            creeper.level().playSound(human, creeper.getX(), creeper.getY(), creeper.getZ(),
+                    stack.is(Items.FIRE_CHARGE) ? net.minecraft.sounds.SoundEvents.FIRECHARGE_USE : net.minecraft.sounds.SoundEvents.FLINTANDSTEEL_USE,
+                    net.minecraft.sounds.SoundSource.HOSTILE, 1f, creeper.getRandom().nextFloat() * .4f + .8f);
+            if (!stack.isDamageableItem()) stack.shrink(1); else stack.hurtAndBreak(1, human, hand.asEquipmentSlot());
+            dev.hardrush.notice.Notices.hint(creeper, "你被 " + dev.hardrush.notice.Notices.key(human.getScoreboardName()) + " 点燃了！");
+            return InteractionResult.SUCCESS;
+        });
         UseEntityCallback.EVENT.register((p, l, hand, target, hit) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
             MonsterMining.clear(owner);
@@ -98,6 +113,12 @@ public final class MonsterRoles {
             if (MonsterClicks.answered(owner, step)) return InteractionResult.FAIL;
             if (MonsterSoulcatcher.holds(owner, hand)) {
                 MonsterClicks.answer(owner, step); MonsterSoulcatcher.capture(owner, hand, target); return InteractionResult.CONSUME;
+            }
+            // The creeper player's igniter lights a native creeper instead of its own fuse.
+            if (target instanceof net.minecraft.world.entity.monster.Creeper nativeCreeper
+                    && MonsterItems.matches(owner, owner.getItemInHand(hand), MonsterCreeper.IGNITER)) {
+                MonsterClicks.answer(owner, step);
+                return MonsterCreeper.igniteNative(owner, hand, nativeCreeper) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
             }
             if (channelControl(owner, hand)) MonsterClicks.answer(owner, step);
             if (useControl(owner, hand)) return InteractionResult.CONSUME;
@@ -210,6 +231,7 @@ public final class MonsterRoles {
                     .copyWithCount(entry.getValue().getCount())
                     : purpose.equals(RETURN_SHARD) ? returnShard(player, role)
                     : purpose.equals(HuntRetracks.PURPOSE) ? trackingCompass(player, role)
+                    : purpose.equals(MonsterCreeper.IGNITER) ? MonsterCreeper.createIgniter(player)
                     : MonsterItems.bind(player, entry.getValue(), purpose);
             int slot = entry.getKey();
             if (slot >= 0 && slot < inventory.getContainerSize() && inventory.getItem(slot).isEmpty()) inventory.setItem(slot, stack);
@@ -259,12 +281,13 @@ public final class MonsterRoles {
         return inventory.add(MonsterCompanions.egg(player, baby, role.form == MonsterForm.DROWNED));
     }
 
-    private static long channelSeconds(Role role) { return Math.max(1, (role.millis("monster.returnChannelMillis") + 999) / 1000); }
+    private static long returnChannelSeconds(Role role) { return Math.max(1, (RoundEngine.returnChannelMillis(role.rules) + 999) / 1000); }
+    private static long retrackChannelSeconds(Role role) { return Math.max(1, (RoundEngine.retrackChannelMillis(role.rules) + 999) / 1000); }
     private static long retrackCooldownSeconds(Role role) { return Math.max(1, (role.millis("monster.retrackCooldownMillis") + 999) / 1000); }
 
     private static ItemStack returnShard(ServerPlayer player, Role role) {
         return MonsterItems.bind(player, ItemText.lore(ItemText.name(new ItemStack(Items.ECHO_SHARD), "返回营地"),
-                returnUsage(role), "移动、攻击、使用物品或受伤会打断，被水流推动不算",
+                returnUsage(role), "受伤或动手会打断，走路不打断",
                 "本次的物资、增益和身价会暂存，下次以同一角色出击时带上 · 溺尸、流浪者形态不保留"), RETURN_SHARD);
     }
     /** A plain compass: {@link HuntRetracks} points its needle at the quarry the way vanilla points one at the world spawn. */
@@ -673,7 +696,7 @@ public final class MonsterRoles {
         if (MonsterItems.matches(player, item, RETURN_SHARD)) return dev.hardrush.lobby.LobbyRuntime.useReturn(player);
         if (MonsterItems.matches(player, item, HuntRetracks.PURPOSE)) return dev.hardrush.lobby.LobbyRuntime.useRetrack(player, item);
         if (!MonsterRoundRuntime.canAct(player)) return false;
-        dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "使用物品");
+        dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, channelBreak(player, hand, "使用物品"));
         if (isEgg(player, item)) return MonsterCompanions.use(player, hand);
         if (role.form == MonsterForm.CREEPER) return MonsterCreeper.use(player, hand);
         if (role.form.skeleton() && item.is(Items.BOW)) {
@@ -804,7 +827,23 @@ public final class MonsterRoles {
     /** Retained as a rejected historical prototype entry point, never a second egg supply. */
     @Deprecated public static boolean summon(ServerPlayer player) { return false; }
     public static boolean ignite(ServerPlayer player) { return MonsterCreeper.use(player, InteractionHand.MAIN_HAND); }
-    public static boolean isIgniting(ServerPlayer player) { return MonsterCreeper.isSwelling(player); }
+    /** Igniting on purpose or burning a lit fuse; the passive swell a landing adds is not igniting. */
+    public static boolean isIgniting(ServerPlayer player) { return MonsterCreeper.isIgniting(player); }
+    /** Whether {@code human} may light {@code creeper} now: the same round, the pact and protection rules as a hit. */
+    private static boolean mayIgnite(ServerPlayer human, ServerPlayer creeper) {
+        return creeper.level() == human.level() && creeper.level() instanceof net.minecraft.server.level.ServerLevel level
+                && !dev.hardrush.protection.ProtectionRuntime.protectedEntity(human)
+                && !dev.hardrush.pact.DuskPactRuntime.reject(human, creeper)
+                && dev.hardrush.lobby.LobbyRuntime.targetAllowed(human.getUUID(), level, creeper);
+    }
+    /**
+     * The word a monster sees when one of its clicks breaks a return or retrack channel: lighting its igniter or
+     * hatching an egg is a skill; anything else is {@code fallback}.
+     */
+    public static String channelBreak(ServerPlayer player, InteractionHand hand, String fallback) {
+        var stack = player.getItemInHand(hand);
+        return MonsterItems.matches(player, stack, MonsterCreeper.IGNITER) || isEgg(player, stack) ? "施放技能" : fallback;
+    }
     static void nativeCreeperBlast(Creeper creeper, UUID owner, Vec3 position, float strength) {
         var level = (ServerLevel) creeper.level();
         var calculator = new ExplosionDamageCalculator() {
@@ -933,9 +972,9 @@ public final class MonsterRoles {
         return Optional.empty();
     }
     private static String retrackUsage(Role role) {
-        return "发光时右键，引导 " + Notices.key(channelSeconds(role)) + " 秒循迹到目标附近，可以边走边引导";
+        return "发光时右键，引导 " + Notices.key(retrackChannelSeconds(role)) + " 秒循迹到目标附近，可以边走边引导";
     }
-    private static String returnUsage(Role role) { return "右键后原地不动 " + Notices.key(channelSeconds(role)) + " 秒，回到庭院"; }
+    private static String returnUsage(Role role) { return "右键后引导 " + Notices.key(returnChannelSeconds(role)) + " 秒回到庭院，可以边走边引导"; }
     private static List<ItemStack> copyInventory(ServerPlayer player) {
         var result = new ArrayList<ItemStack>();
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) result.add(player.getInventory().getItem(i).copy());

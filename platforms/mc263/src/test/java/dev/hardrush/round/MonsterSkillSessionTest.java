@@ -59,7 +59,7 @@ class MonsterSkillSessionTest {
             var saved = session.snapshot().orElseThrow().participants().get(player);
             assertEquals(ParticipantRole.MONSTER_LOBBY, saved.role());
             assertEquals(45_000, saved.monsterSkillRemainingMillis(MonsterSkill.SKELETON_BURST, NOW + 45_000));
-            clock.addAndGet(30_000_000_000L);
+            clock.addAndGet(45_000_000_000L);
             request(reply -> session.requestMonsterDeploy(round, player, 3, 5, reply));
             reject(reply -> session.requestMonsterSkill(round, player, 3, 6, MonsterSkill.SKELETON_BURST, NOW + 45_000, reply));
             request(reply -> session.requestMonsterSkill(round, player, 3, 6, MonsterSkill.SKELETON_BURST, NOW + 90_000, reply));

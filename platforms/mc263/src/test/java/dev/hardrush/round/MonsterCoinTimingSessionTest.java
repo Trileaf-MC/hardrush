@@ -116,7 +116,7 @@ class MonsterCoinTimingSessionTest {
 
             session.onOnline(monster, "Monster", true);
             pump(() -> !session.mutationPending());
-            clock.addAndGet(seconds(31));
+            clock.addAndGet(seconds(46));
             request(reply -> session.requestMonsterDeploy(round, monster, 1, 3, reply));
             session.recordMonsterDamage(round, monster, 1, 3, human, 9_000);
             session.recordMonsterDamage(round, monster, 1, 4, human, 1_000);
@@ -145,15 +145,15 @@ class MonsterCoinTimingSessionTest {
             session.finishDamageBatch(round, batch);
             settle(session);
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
-            assertEquals(5, coins(session), "Later evidence must preserve the native memory captured at death");
+            assertEquals(8, coins(session), "Later evidence must preserve the native memory captured at death");
             session.captureDeath(round, monster, 1, 3, UUID.randomUUID(), Optional.empty(), true);
             session.finishDamageBatch(round, batch);
             settle(session);
-            assertEquals(5, coins(session), "Repeated callbacks cannot award the death twice");
+            assertEquals(8, coins(session), "Repeated callbacks cannot award the death twice");
         }
         try (var store = new SqliteRoundStore(path)) {
             var saved = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload()).participants().get(monster);
-            assertEquals(5, saved.wallet().coins(), "The environmental death reward is durable");
+            assertEquals(8, saved.wallet().coins(), "The environmental death reward is durable");
         }
     }
 
@@ -162,7 +162,7 @@ class MonsterCoinTimingSessionTest {
             session.captureDeath(round, monster, 1, 3, null, Optional.empty(), true);
             settle(session);
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
-            assertEquals(5, coins(session));
+            assertEquals(8, coins(session));
         }
     }
 

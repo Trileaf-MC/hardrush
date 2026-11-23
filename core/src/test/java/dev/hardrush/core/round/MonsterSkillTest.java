@@ -80,7 +80,7 @@ class MonsterSkillTest {
         var reopened = RoundEngine.restore(RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(stored)), clock);
         assertTrue(current(reopened).monsterSkillReadyAtMillis().isEmpty());
         apply(reopened, reopened.proposeOnline(UUID.randomUUID(), player, "Skill", true));
-        clock.seconds(30);
+        clock.seconds(45);
         apply(reopened, reopened.proposeMonsterDeploy(UUID.randomUUID(), round, player, 3, 5));
         apply(reopened, skill(reopened, MonsterSkill.SKELETON_BURST, NOW));
         assertEquals(NOW + 90_000, current(reopened).monsterSkillReadyAtMillis().get(MonsterSkill.SKELETON_BURST));
@@ -110,7 +110,7 @@ class MonsterSkillTest {
         apply(engine, skill(engine, MonsterSkill.SKELETON_BURST, NOW));
         apply(engine, engine.proposeMonsterDeath(UUID.randomUUID(), round, player, 3, 5));
         apply(engine, engine.proposeMonsterRole(UUID.randomUUID(), round, player, 3, 5, MonsterRole.ZOMBIE));
-        clock.seconds(30);
+        clock.seconds(45);
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, player, 3, 5));
         assertThrows(IllegalStateException.class, () -> skill(engine, MonsterSkill.SKELETON_BURST, NOW + 30_000));
         assertThrows(IllegalStateException.class, () -> skill(engine, MonsterSkill.ZOMBIE_SUMMON, NOW + 30_000));
@@ -178,7 +178,7 @@ class MonsterSkillTest {
         assertEquals(0, current(reopened).monsterSkillRemainingMillis(MonsterSkill.SKELETON_BURST, NOW + 90_000));
         apply(reopened, reopened.proposeOnline(UUID.randomUUID(), player, "Skill", true));
         assertEquals(NOW + 90_000, current(reopened).monsterSkillReadyAtMillis().get(MonsterSkill.SKELETON_BURST));
-        clock.seconds(30);
+        clock.seconds(45);
         apply(reopened, reopened.proposeMonsterDeploy(UUID.randomUUID(), round, player, 3, 5));
         apply(reopened, skill(reopened, MonsterSkill.SKELETON_BURST, NOW + 500_000));
     }

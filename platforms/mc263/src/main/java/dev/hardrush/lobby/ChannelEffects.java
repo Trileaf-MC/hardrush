@@ -26,12 +26,6 @@ final class ChannelEffects {
 
     private ChannelEffects() {}
 
-    /** Only the player's own movement keys break a return channel; water, bubble columns and pushes do not. */
-    static boolean moving(ServerPlayer player) {
-        var input = player.getLastClientInput();
-        return input.forward() || input.backward() || input.left() || input.right() || input.jump();
-    }
-
     static void start(ServerPlayer player, boolean retrack, long durationNanos) {
         STAGE.put(player.getUUID(), 0);
         int ticks = (int) Math.max(1, Math.min(Integer.MAX_VALUE, durationNanos / 50_000_000L));

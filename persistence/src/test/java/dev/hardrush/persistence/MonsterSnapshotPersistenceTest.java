@@ -48,7 +48,7 @@ class MonsterSnapshotPersistenceTest {
             persist(store, engine, reconnect);
             Participant monster = engine.committed().participants().get(id);
             assertEquals(ParticipantRole.MONSTER_LOBBY, monster.role());
-            assertEquals(30_000_000_000L, monster.monsterCooldownNanos());
+            assertEquals(45_000_000_000L, monster.monsterCooldownNanos());
             assertEquals(MonsterRole.SKELETON, monster.monsterRole());
             assertEquals(MonsterDimension.END, monster.monsterDimension());
             // Only a monster without a pending revival may hunt; the flag itself survives the reopen.

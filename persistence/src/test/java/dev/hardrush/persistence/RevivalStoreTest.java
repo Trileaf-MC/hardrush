@@ -101,7 +101,7 @@ class RevivalStoreTest {
             Map<UUID, Long> firstEnd = new java.util.HashMap<>();
             UUID human = ALICE, monster = BOB;
             for (int cycle = 0; cycle < 20; cycle++) {
-                fixture.clock.millis(30_000);
+                fixture.clock.millis(45_000);
                 fixture.commit(fixture.engine.proposeTick(UUID.randomUUID()));
                 Participant attacker = fixture.player(monster);
                 if (attacker.monsterRole() != MonsterRole.SKELETON) {
@@ -167,7 +167,7 @@ class RevivalStoreTest {
                 UUID previousHuman = human; human = monster; monster = previousHuman;
             }
 
-            assertEquals(620_000, fixture.engine.committed().challengeMillis());
+            assertEquals(920_000, fixture.engine.committed().challengeMillis());
             assertRecord(fixture, ALICE, 10, 10, firstEnd.get(ALICE));
             assertRecord(fixture, BOB, 11, 10, firstEnd.get(BOB));
             assertEquals(2, fixture.store.endEntrantCount(fixture.round()));
@@ -193,7 +193,7 @@ class RevivalStoreTest {
                     List.of(death(fixture.player(BOB), Optional.empty())), null));
             UUID newcomer = UUID.randomUUID();
             fixture.commit(fixture.engine.proposeJoin(UUID.randomUUID(), newcomer, "Newcomer"));
-            fixture.clock.millis(30_000);
+            fixture.clock.millis(45_000);
             fixture.commit(fixture.engine.proposeTick(UUID.randomUUID()));
             var bob = fixture.player(BOB);
             fixture.commit(fixture.engine.proposeMonsterDeploy(UUID.randomUUID(), fixture.round(), BOB,
@@ -230,7 +230,7 @@ class RevivalStoreTest {
         assertEquals(id.equals(ALICE) ? "Alice" : "Bob", record.playerName());
         assertEquals(deaths, record.deathCount());
         assertEquals(revivals, record.revivalCount());
-        assertEquals(310_000_000_000L, record.humanNanos());
+        assertEquals(460_000_000_000L, record.humanNanos());
         assertEquals(2, record.advancementCount());
         assertEquals(firstEnd, record.firstEndNanos());
         assertEquals(Set.of(SET), record.advancementSetFingerprints());
