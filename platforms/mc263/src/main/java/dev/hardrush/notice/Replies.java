@@ -25,6 +25,7 @@ public final class Replies {
             case REVIVAL_FIRST -> REVIVAL_FIRST;
             case NOT_ENOUGH_COINS -> "怪物币不够";
             case SKILL_COOLDOWN -> "技能冷却中";
+            case HUNT_LOCKED -> "这名人类刚击败了你，暂时不能追猎他";
             case REJECTED -> rejected;
         };
     }

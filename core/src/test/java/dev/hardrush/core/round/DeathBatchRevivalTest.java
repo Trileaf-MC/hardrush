@@ -349,7 +349,7 @@ class DeathBatchRevivalTest {
         var rewarded = engine.view().participants().get(monster);
         assertEquals(2, rewarded.revivalCharges());
         assertEquals(ParticipantRole.MONSTER_LOBBY, rewarded.role());
-        assertEquals(30_000_000_000L, rewarded.monsterCooldownNanos());
+        assertEquals(0, rewarded.monsterCooldownNanos(), "Its own blast benches no one; the revival comes first anyway");
         assertTrue(engine.view().participants().get(human).role().isMonster());
         assertTrue(engine.view().participants().get(other).role().isMonster());
         assertThrows(IllegalStateException.class, () -> batch(engine, humanLethal));

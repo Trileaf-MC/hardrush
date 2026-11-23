@@ -37,7 +37,10 @@ public final class CombatRuntime {
         default void playerDamaged(ServerLevel level, net.minecraft.server.level.ServerPlayer victim,
                 CombatOrigin origin, float actualDamage) {}
     }
-    public interface Scope extends AutoCloseable { @Override void close(); }
+    public interface Scope extends AutoCloseable {
+        Scope NONE = () -> {};
+        @Override void close();
+    }
     private record Binding(RoundAccess rounds, Consumer<CombatEvent> events) {}
     private record Cause(ServerLevel level, UUID roundId, Optional<CombatOrigin> origin, UUID batchId) {}
     private static final Map<MinecraftServer, Binding> BINDINGS = new IdentityHashMap<>();
@@ -146,6 +149,25 @@ public final class CombatRuntime {
         if (crystal instanceof CombatOriginHolder holder && !holder.hardrush$combatOriginSealed()) {
             holder.hardrush$sealCombatOrigin(child(resolve(level, source), AttackKind.END_CRYSTAL, crystal.getUUID()));
         }
+    }
+    /**
+     * Remembers {@code attacker} as the last human to hurt {@code victim}, as a native hit would, without dealing
+     * damage: a human lighting a creeper player's fuse. Nothing is remembered outside a round or when the attacker
+     * may not attack right now.
+     */
+    public static void creditHit(ServerLevel level, ServerPlayer victim, ServerPlayer attacker) {
+        var memory = CREDITS.get(level.getServer());
+        if (memory == null || !victim.isAlive()) return;
+        created(level, attacker, AttackKind.MELEE, Optional.empty())
+                .ifPresent(credit -> memory.hurt(victim.getUUID(), credit, level.getServer().getTickCount()));
+    }
+    /**
+     * Inside the current batch, a hit with no provenance of its own, so a death in it is credited to whoever hurt the
+     * victim last ({@link #creditHit}), not to the enclosing cause.
+     */
+    public static Scope rememberedCredit(ServerLevel level) {
+        var parent = current(level);
+        return push(level, Optional.empty(), parent == null ? null : parent.batchId);
     }
     public static Scope explosion(ServerLevel level, Entity direct) {
         var parent = current(level);

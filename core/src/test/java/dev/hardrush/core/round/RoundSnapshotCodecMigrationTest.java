@@ -61,7 +61,7 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(3, active.lifeSequence());
         assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(12, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(13, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 
@@ -157,8 +157,15 @@ class RoundSnapshotCodecMigrationTest {
                 900_000, 0, Map.of(VICTIM, victim, KILLER, killer), false, false, null, totems);
     }
 
-    /** The current encoding without its trailing v11 threat count, which threat-free lives write as 0. */
-    private static byte[] withoutThreats(byte[] v11) {
+    /** The current encoding without its trailing v13 hunt-lock count, which lock-free monsters write as 0. */
+    private static byte[] withoutHuntLocks(byte[] v13) {
+        assertEquals(0, ByteBuffer.wrap(v13).getInt(v13.length - 4));
+        return java.util.Arrays.copyOf(v13, v13.length - 4);
+    }
+
+    /** The current encoding without its trailing v12 lock and v11 threat counts, which empty tables write as 0. */
+    private static byte[] withoutThreats(byte[] v12) {
+        byte[] v11 = withoutHuntLocks(v12);
         assertEquals(0, ByteBuffer.wrap(v11).getInt(v11.length - 4));
         return java.util.Arrays.copyOf(v11, v11.length - 4);
     }
@@ -187,7 +194,7 @@ class RoundSnapshotCodecMigrationTest {
         totems.put(unclaimed, new LooseTotem(VICTIM, 3, LooseTotem.Source.UNCLAIMED, java.util.Optional.empty(), 900_000));
         var snapshot = withTotems(totems);
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
-        assertEquals(12, ByteBuffer.wrap(bytes).getInt(4));
+        assertEquals(13, ByteBuffer.wrap(bytes).getInt(4));
         var decoded = RoundSnapshotCodec.decode(bytes);
         assertEquals(snapshot, decoded);
         assertEquals(List.of(low, high, unclaimed), List.copyOf(decoded.looseTotems().keySet()), "Encoded sorted by token");
@@ -198,7 +205,7 @@ class RoundSnapshotCodecMigrationTest {
 
     @Test void schemasTenAndElevenReadEveryEntryAsAHumansDropNamingItsKiller() {
         var token = new UUID(1, 0);
-        byte[] v12 = RoundSnapshotCodec.encode(withTotems(Map.of(token, byKiller(2, 700))));
+        byte[] v12 = withoutHuntLocks(RoundSnapshotCodec.encode(withTotems(Map.of(token, byKiller(2, 700)))));
         // Drop the source text and the killer flag, which schema 12 added between the life and the killer.
         int sourceAt = v12.length - 4 - HUMAN_ENTRY + 16 + 16 + 4;
         byte[] v11 = new byte[v12.length - (4 + "HUMAN".length() + 1)];
@@ -214,7 +221,7 @@ class RoundSnapshotCodecMigrationTest {
         var migrated = RoundSnapshotCodec.decode(v9);
         assertTrue(migrated.looseTotems().isEmpty());
         assertEquals(withTotems(Map.of()), migrated);
-        assertEquals(12, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
+        assertEquals(13, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
         assertTrue(RoundSnapshotCodec.decode(schemaOneFixtureUnchecked()).looseTotems().isEmpty());
     }
 
@@ -224,6 +231,39 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(withTotems(Map.of()), RoundSnapshotCodec.decode(v10));
     }
 
+    @Test void schemaTwelveAndEarlierReadNoHuntLock() {
+        byte[] v12 = withoutHuntLocks(RoundSnapshotCodec.encode(withTotems(Map.of())));
+        ByteBuffer.wrap(v12).putInt(4, 12);
+        assertEquals(withTotems(Map.of()), RoundSnapshotCodec.decode(v12));
+    }
+
+    @Test void huntLocksRoundTripDeterministicallyAndRejectCorruption() {
+        var first = new java.util.LinkedHashMap<UUID, Long>();
+        first.put(new UUID(9, 0), 5_000L); first.put(KILLER, 45_000_000_000L);
+        var reordered = new java.util.LinkedHashMap<UUID, Long>();
+        reordered.put(KILLER, 45_000_000_000L); reordered.put(new UUID(9, 0), 5_000L);
+        var plain = withTotems(Map.of());
+        var locked = withLocks(plain, first);
+        byte[] bytes = RoundSnapshotCodec.encode(locked);
+        assertEquals(locked, RoundSnapshotCodec.decode(bytes));
+        assertArrayEquals(bytes, RoundSnapshotCodec.encode(withLocks(plain, reordered)), "Deterministic regardless of insertion order");
+        // The last lock's remaining time must stay positive.
+        byte[] spent = bytes.clone();
+        ByteBuffer.wrap(spent).putLong(spent.length - 8, 0);
+        assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(spent));
+        // A holder with no lock is never written.
+        byte[] empty = bytes.clone();
+        ByteBuffer.wrap(empty).putInt(bytes.length - 2 * (16 + 8) - 4, 0);
+        assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(empty));
+    }
+
+    private static RoundSnapshot withLocks(RoundSnapshot base, Map<UUID, Long> locks) {
+        var players = new java.util.LinkedHashMap<>(base.participants());
+        players.put(VICTIM, players.get(VICTIM).withHuntLocks(locks));
+        return new RoundSnapshot(ROUND, 1, 1, 3, base.rules(), base.phase(), base.pauseReason(), base.challengeNanos(), 0,
+                players, false, false, null, base.looseTotems());
+    }
+
     @Test void threatsForUnknownParticipantsAreRejected() {
         var killer = new Participant(KILLER, "Killer", ParticipantRole.HUMAN_ACTIVE, true, false, 10, 0, 1, false)
                 .withThreat(new HumanThreat(1, 1, 0, java.util.Set.of()));
@@ -231,7 +271,7 @@ class RoundSnapshotCodecMigrationTest {
                 900_000, 0, Map.of(KILLER, killer), false, false, null);
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
         assertEquals(snapshot, RoundSnapshotCodec.decode(bytes));
-        int idAt = bytes.length - (16 + 16);
+        int idAt = bytes.length - 4 - (16 + 16);
         assertEquals(KILLER.getMostSignificantBits(), ByteBuffer.wrap(bytes).getLong(idAt));
         ByteBuffer.wrap(bytes).putLong(idAt, 99);
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(bytes));
@@ -240,7 +280,7 @@ class RoundSnapshotCodecMigrationTest {
     @Test void corruptRegistryCountsAndDuplicatesAreRejected() {
         var token = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
         byte[] one = RoundSnapshotCodec.encode(withTotems(Map.of(token, byKiller(1, 5))));
-        int countAt = one.length - (4 + HUMAN_ENTRY) - 4;
+        int countAt = one.length - (4 + 4 + HUMAN_ENTRY) - 4;
         assertEquals(1, ByteBuffer.wrap(one).getInt(countAt));
         for (int count : new int[]{-1, LooseTotem.MAX_REGISTERED + 1, 2}) {
             byte[] corrupt = one.clone();
