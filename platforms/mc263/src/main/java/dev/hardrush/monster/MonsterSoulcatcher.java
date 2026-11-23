@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
@@ -342,6 +343,9 @@ public final class MonsterSoulcatcher {
         for (String tag : entity.entityTags()) if (tag.startsWith(RELEASE)) return tag.substring(RELEASE.length());
         return null;
     }
+
+    /** Who released this creature from a bag (or fired it, for a projectile it launched), if anyone with a formal identity. */
+    public static Optional<UUID> releaser(Entity entity) { return release(entity).map(origin -> origin.actor().playerId()); }
 
     private static Optional<CombatOrigin> release(Entity entity) {
         var value = entity == null ? null : releaseTag(entity);
