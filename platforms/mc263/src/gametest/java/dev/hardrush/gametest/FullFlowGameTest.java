@@ -193,7 +193,9 @@ public final class FullFlowGameTest {
                         && !dev.hardrush.player.PlayerProfiles.isLocked(f.monster.player)&&!f.session.mutationPending(),"Altar restores challenge and one empty life during cooldown"))
                 .thenExecute(()->{
                     test.assertValueEqual(f.monster.participant().lifeSequence(),2,"Exactly one qualification was consumed");
-                    test.assertTrue(f.monster.player.getInventory().isEmpty(),"Control and return items removed from human inventory");
+                    var inv=f.monster.player.getInventory();
+                    test.assertTrue(java.util.stream.IntStream.range(0,inv.getContainerSize()).allMatch(i->inv.getItem(i).isEmpty()||dev.hardrush.revival.FallenCompass.is(inv.getItem(i))),"Control and return items removed from human inventory; only the 遗落之地 compass remains");
+                    test.assertValueEqual((int)java.util.stream.IntStream.range(0,inv.getContainerSize()).filter(i->dev.hardrush.revival.FallenCompass.is(inv.getItem(i))).count(),1,"The altar revival after a human death lands with exactly one 遗落之地 compass");
                     f.target.player=f.target.current();f.monster.move(f.anchor);
                     HuntInputFixtures.role(f.target.player,"creeper");
                 })

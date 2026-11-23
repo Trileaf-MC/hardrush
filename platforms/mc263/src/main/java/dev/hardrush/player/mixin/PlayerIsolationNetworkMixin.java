@@ -188,20 +188,20 @@ public abstract class PlayerIsolationNetworkMixin {
     private void hardrush$interactReturn(ServerboundInteractPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread()
                 && !dev.hardrush.monster.MonsterRoles.keepsChannel(player, packet.hand(), false))
-            dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "互动");
+            dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, dev.hardrush.monster.MonsterRoles.channelBreak(player, packet.hand(), "互动"));
     }
 
     @Inject(method = "handleUseItem", at = @At("HEAD"))
     private void hardrush$returnItem(ServerboundUseItemPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread()
                 && !dev.hardrush.monster.MonsterRoles.keepsChannel(player, packet.hand(), true))
-            dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "使用物品");
+            dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, dev.hardrush.monster.MonsterRoles.channelBreak(player, packet.hand(), "使用物品"));
     }
     @Inject(method = "handleUseItemOn", at = @At("HEAD"))
     private void hardrush$returnBlockItem(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
         if (player.level().getServer().isSameThread()
                 && !dev.hardrush.monster.MonsterRoles.keepsChannel(player, packet.hand(), false))
-            dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "使用物品");
+            dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, dev.hardrush.monster.MonsterRoles.channelBreak(player, packet.hand(), "使用物品"));
     }
 
     // Celebration allows movement and closing a menu, while sealing all new competitive actions.

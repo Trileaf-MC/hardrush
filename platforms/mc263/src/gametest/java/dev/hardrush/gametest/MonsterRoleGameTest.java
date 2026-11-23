@@ -328,7 +328,7 @@ public final class MonsterRoleGameTest {
                         test.assertTrue(pig.getHealth()<pigHealth,"Native animals receive the native blast damage");
                         test.assertTrue(creeper.level().getBlockState(floor).is(Blocks.SMOOTH_STONE),"Blocks are preserved");
                         var loot=creeper.level().getEntitiesOfClass(ItemEntity.class,creeper.getBoundingBox().inflate(5));
-                        test.assertTrue(loot.stream().noneMatch(item -> item.getItem().is(Items.GUNPOWDER)),"Bound role controls do not drop as loot");
+                        test.assertTrue(loot.stream().noneMatch(item -> item.getItem().is(Items.FLINT_AND_STEEL)),"Bound role controls do not drop as loot");
                     } finally { pig.discard(); remove(creeper); remove(human); }
                 }).thenSucceed();
         });

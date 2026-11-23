@@ -323,7 +323,15 @@ public final class RoundSession implements AutoCloseable {
      */
     public boolean captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId,
             Optional<CombatOrigin> killCredit, boolean recentlyHurtByPlayer, Optional<UUID> dropToken) {
-        Objects.requireNonNull(killCredit); Objects.requireNonNull(dropToken);
+        return captureDeath(roundId, playerId, lifeSequence, deploymentSequence, batchId, killCredit, recentlyHurtByPlayer,
+                dropToken, Optional.empty());
+    }
+
+    /** As above; {@code detonation} is present when a deployed creeper died in its own blast ({@link RoundDeath#detonation}). */
+    public boolean captureDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, UUID batchId,
+            Optional<CombatOrigin> killCredit, boolean recentlyHurtByPlayer, Optional<UUID> dropToken,
+            Optional<RoundDeath.Detonation> detonation) {
+        Objects.requireNonNull(killCredit); Objects.requireNonNull(dropToken); Objects.requireNonNull(detonation);
         if (engine == null || stopping || state != State.OPEN || !roundId.equals(engine.committed().roundId())
                 || engine.committed().result() != null || terminalQueued) return false;
         var participant = engine.committed().participants().get(playerId);
@@ -335,7 +343,7 @@ public final class RoundSession implements AutoCloseable {
         capturedDeaths.put(playerId, identity);
         UUID batch = batchId == null ? UUID.randomUUID() : batchId;
         var death = new RoundDeath(playerId, lifeSequence, deploymentSequence, Optional.empty(), killCredit, recentlyHurtByPlayer,
-                dropToken);
+                dropToken, detonation);
         boolean taken = deathBatches.computeIfAbsent(batch, ignored -> new LinkedHashMap<>()).putIfAbsent(playerId, death) == null;
         if (batchId == null) finishDamageBatch(roundId, batch);
         return taken;
@@ -351,7 +359,7 @@ public final class RoundSession implements AutoCloseable {
      * the competition is not locked, the player is the committed active human of {@code lifeSequence} and still has a
      * committed charge beyond the saves already in flight. The save then counts as in flight
      * ({@link #pendingTotemSaves}) until its event's commit callback, whether it commits, voids or fails.
-     * {@code dropToken} names the revival totem the adapter drops at the save when a human forced it out
+     * {@code dropToken} names the revival totem the adapter drops at the save unless a monster earned it
      * ({@code RoundEngine.proposeTotemSave}); it is {@linkplain #totemSaveDropInFlight in flight} for as long.
      */
     public boolean captureTotemSave(UUID roundId, UUID playerId, int lifeSequence, Optional<CombatOrigin> killCredit,
@@ -1132,9 +1140,14 @@ public final class RoundSession implements AutoCloseable {
                 lifeSequence, deploymentSequence, count), reply, "怪物币已拾取。");
     }
 
-    /** A human takes the registered floor totem {@code token}; refused (busy, frozen, taken, expired) like any action. */
-    public void requestLooseTotemPickup(UUID roundId, UUID token, UUID playerId, int lifeSequence, Consumer<Reply> reply) {
-        requestAction(() -> engine.proposeLooseTotemPickup(UUID.randomUUID(), roundId, token, playerId, lifeSequence),
+    /**
+     * A human, or a monster out on sortie {@code deploymentSequence}, takes the registered floor totem {@code token};
+     * refused (busy, frozen, taken, its own) like any action.
+     */
+    public void requestLooseTotemPickup(UUID roundId, UUID token, UUID playerId, int lifeSequence, int deploymentSequence,
+            Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeLooseTotemPickup(UUID.randomUUID(), roundId, token, playerId, lifeSequence,
+                deploymentSequence),
                 reply, "复生图腾已拾取。");
     }
 

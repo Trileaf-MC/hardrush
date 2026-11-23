@@ -29,9 +29,15 @@ import net.minecraft.world.item.component.Consumable;
 import net.minecraft.world.item.component.UseEffects;
 import net.minecraft.world.level.gameevent.GameEvent;
 
-/** Player input drives the native 26.3 swell curve; the body owns charge and explosion provenance. */
+/**
+ * Player input drives the native 26.3 swell curve; the body owns charge and explosion provenance. The igniter is a
+ * flint and steel, the native way to light a creeper: a human's flint and steel or fire charge lights a creeper player
+ * the same way, and the creeper player's own lights a native creeper (docs/plan/击败锁定与怪物平衡.md §5).
+ */
 public final class MonsterCreeper {
     private static final Map<UUID, State> STATES = new HashMap<>();
+    /** Bodies being killed by their own blast right now whose fuse a human lit, and who lit it. */
+    private static final Map<UUID, UUID> LIT_BY = new HashMap<>();
     private static final RulesConfig DEFAULTS = RulesConfig.defaults();
     static final String IGNITER = "igniter";
     private static final String IGNITER_USAGE = "按住右键引爆 · 中途松开取消";
@@ -39,10 +45,11 @@ public final class MonsterCreeper {
     private MonsterCreeper() {}
 
     public static ItemStack createIgniter(ServerPlayer player) {
-        var stack = dev.hardrush.notice.ItemText.lore(dev.hardrush.notice.ItemText.name(new ItemStack(Items.GUNPOWDER), "引爆器"),
-                IGNITER_USAGE);
+        var stack = dev.hardrush.notice.ItemText.lore(dev.hardrush.notice.ItemText.name(new ItemStack(Items.FLINT_AND_STEEL), "引爆器"),
+                IGNITER_USAGE, "也能点燃原版苦力怕");
         // Native clients must enter item-use mode and send RELEASE_USE_ITEM. A consumable
-        // without food, effects, animation or slowdown is only the input transport.
+        // without food, effects, animation or slowdown is only the input transport. In adventure mode a native
+        // client never uses a flint and steel on the block it aims at, so it goes on to use the item.
         stack.set(DataComponents.CONSUMABLE,
                 new Consumable(3600f, ItemUseAnimation.NONE, Holder.direct(SoundEvents.EMPTY), false, List.of()));
         stack.set(DataComponents.USE_EFFECTS, new UseEffects(false, false, 1f));
@@ -52,7 +59,7 @@ public final class MonsterCreeper {
 
     /** The igniter's usage, also the first line of its description. */
     public static java.util.Optional<String> heldHint(ServerPlayer player, ItemStack stack) {
-        return stack.is(Items.GUNPOWDER) && MonsterItems.matches(player, stack, IGNITER)
+        return stack.is(Items.FLINT_AND_STEEL) && MonsterItems.matches(player, stack, IGNITER)
                 ? java.util.Optional.of(IGNITER_USAGE) : java.util.Optional.empty();
     }
 
@@ -68,14 +75,74 @@ public final class MonsterCreeper {
     public static void release(ServerPlayer player) {
         player.stopUsingItem();
         State state = STATES.get(player.getUUID());
-        if (state != null) setDirection(player, state, -1);
+        // A fuse a human lit cannot be let go of.
+        if (state != null && state.igniter == null) setDirection(player, state, -1);
     }
 
-    /** A paused body loses active input but retains its lightning charge. */
+    /** A paused body loses active input, and any fuse, but retains its lightning charge. */
     public static void cancelInput(ServerPlayer player) {
-        release(player);
         State state = STATES.get(player.getUUID());
+        if (state != null) state.igniter = null;
+        release(player);
         if (state != null) state.swell = 0;
+    }
+
+    /**
+     * A human's native creeper igniter (flint and steel, fire charge) lit this creeper player, as {@code Creeper.mobInteract}
+     * lights a native creeper: the fuse cannot be cancelled and runs the creeper's own length. The igniter is
+     * remembered as the last player to hurt the body, so the blast that kills it is that human's kill.
+     *
+     * @return whether the fuse was lit; an unavailable, exploding or already lit body is left alone
+     */
+    public static boolean forceIgnite(ServerPlayer creeper, ServerPlayer igniter) {
+        if (!available(creeper)) return false;
+        State state = state(creeper);
+        if (state.exploding || state.igniter != null) return false;
+        state.igniter = igniter.getUUID();
+        creeper.setLastHurtByPlayer(igniter, (int) dev.hardrush.core.combat.KillCreditMemory.WINDOW_TICKS);
+        CombatRuntime.creditHit((net.minecraft.server.level.ServerLevel) creeper.level(), creeper, igniter);
+        dev.hardrush.lobby.LobbyRuntime.interruptChannel(creeper, "被点燃");
+        prime(creeper, state);
+        setDirection(creeper, state, 1);
+        return true;
+    }
+
+    /**
+     * The creeper player's own igniter on a native creeper: lit as {@code Creeper.mobInteract} would, without wearing the
+     * igniter. The creeper's blast is this monster's, like a companion's (an already attributed creeper keeps its own).
+     */
+    public static boolean igniteNative(ServerPlayer player, InteractionHand hand, Creeper target) {
+        if (!available(player) || !MonsterItems.matches(player, player.getItemInHand(hand), IGNITER)
+                || target.isIgnited() || !target.isAlive()) return false;
+        var model = MonsterRoles.nativeModel(player);
+        if (target instanceof CombatOriginHolder holder && !holder.hardrush$combatOriginSealed()) {
+            Optional<dev.hardrush.core.combat.CombatOrigin> origin = CombatRuntime.originOf(model);
+            try { origin = origin.map(parent -> parent.child(UUID.randomUUID(), AttackKind.SUMMON, Optional.of(target.getUUID()))); }
+            catch (IllegalArgumentException exhaustedChain) { origin = Optional.empty(); }
+            holder.hardrush$sealCombatOrigin(origin);
+            if (target instanceof MonsterSourceHolder source) MonsterCombatRuntime.source(model).ifPresent(source::hardrush$stampMonsterSource);
+        }
+        target.level().playSound(player, target.getX(), target.getY(), target.getZ(), SoundEvents.FLINTANDSTEEL_USE,
+                target.getSoundSource(), 1f, target.getRandom().nextFloat() * .4f + .8f);
+        target.ignite();
+        return true;
+    }
+
+    /** Whether the creeper is igniting on purpose or burning a lit fuse; a landing's passive swell is neither. */
+    public static boolean isIgniting(ServerPlayer player) {
+        State state = STATES.get(player.getUUID());
+        return state != null && (state.direction > 0 || state.igniter != null);
+    }
+
+    /** Whether a human lit this creeper's fuse. */
+    public static boolean forced(ServerPlayer player) {
+        State state = STATES.get(player.getUUID());
+        return state != null && state.igniter != null;
+    }
+
+    /** While this body is being killed by its own blast ({@link #detonating}): the human who lit its fuse, if one did. */
+    public static Optional<UUID> litBy(ServerPlayer player) {
+        return Optional.ofNullable(LIT_BY.get(player.getUUID()));
     }
 
     /** Rebuilding a model in another dimension preserves the same deployed body's charge and swell. */
@@ -111,15 +178,18 @@ public final class MonsterCreeper {
         boolean held = player.isUsingItem()
                 && MonsterItems.matches(player, player.getUseItem(), IGNITER)
                 && MonsterItems.matches(player, player.getItemInHand(player.getUsedItemHand()), IGNITER);
-        int direction = held ? 1 : -1;
+        int direction = held || state.igniter != null ? 1 : -1;
         setDirection(player, state, direction);
-        if (direction > 0 && state.swell == 0) {
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.CREEPER_PRIMED, SoundSource.HOSTILE, 1f, .5f);
-            player.gameEvent(GameEvent.PRIME_FUSE);
-        }
+        if (direction > 0 && state.swell == 0) prime(player, state);
         state.swell = Math.max(0, state.swell + direction);
         if (state.swell >= fuse(player)) explode(player, state);
+    }
+
+    private static void prime(ServerPlayer player, State state) {
+        if (state.swell != 0) return;
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.CREEPER_PRIMED, SoundSource.HOSTILE, 1f, .5f);
+        player.gameEvent(GameEvent.PRIME_FUSE);
     }
 
     /** Called after ordinary fall damage, matching Creeper.causeFallDamage's order and cap. */
@@ -190,14 +260,23 @@ public final class MonsterCreeper {
         Creeper model = state.model;
         model.snapTo(player.position());
         float strength = (float)value(player, "creeper.explosionStrength") * (state.charged ? 2f : 1f);
+        UUID igniter = state.igniter;
+        boolean forced = igniter != null;
         // The real powered Creeper remains the native damage source, so 26.3's
         // killedEntity/charged_creeper loot table enforces its one-head budget.
         try (var batch = CombatRuntime.explosion(player.level(), model)) {
             MonsterRoles.nativeCreeperBlast(model, player.getUUID(), player.position(), strength);
             spawnCloud(player, model);
             state.swell = 0;
+            state.igniter = null;
             release(player);
-            player.hurtServer(player.level(), player.damageSources().genericKill(), Float.MAX_VALUE);
+            if (forced) LIT_BY.put(player.getUUID(), igniter);
+            // A forced fuse credits its human through the remembered hit; the blast's own origin would name the creeper.
+            try (var credit = forced ? CombatRuntime.rememberedCredit(player.level()) : CombatRuntime.Scope.NONE) {
+                player.hurtServer(player.level(), player.damageSources().genericKill(), Float.MAX_VALUE);
+            } finally {
+                LIT_BY.remove(player.getUUID());
+            }
         }
     }
 
@@ -239,5 +318,7 @@ public final class MonsterCreeper {
         int direction = -1;
         boolean charged;
         boolean exploding;
+        /** The human who lit this fuse; the creeper cannot let go of it. */
+        UUID igniter;
     }
 }

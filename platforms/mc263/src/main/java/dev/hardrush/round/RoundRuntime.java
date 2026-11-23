@@ -356,6 +356,9 @@ public final class RoundRuntime {
                     dev.hardrush.observe.Observation.tick(server);
                     dev.hardrush.observe.Spyglass.tick(server, session.snapshot().orElse(null));
                 } catch (RuntimeException error) { LOGGER.error("Observation update failed", error); }
+                // Before feedback renders: the compass's own hint shares the action bar.
+                try { dev.hardrush.revival.FallenCompass.tick(server, session.snapshot().orElse(null)); }
+                catch (RuntimeException error) { LOGGER.error("Fallen compass update failed", error); }
                 // The altar's hints feed the same action bar, so it runs before feedback renders.
                 try { session.snapshot().ifPresent(round -> dev.hardrush.lobby.RevivalAltar.tick(server, round, session)); }
                 catch (RuntimeException error) { LOGGER.error("Revival altar update failed", error); }
@@ -401,19 +404,27 @@ public final class RoundRuntime {
                     && RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());
                 if (profiles != null) profiles.holdDeath(player);
-                // A human killed by a human drops a revival totem at the body, judged now as the engine will on commit.
+                // Every ended human life releases a revival totem; one no monster earned drops at the body, judged now as
+                // the engine will on commit.
                 var drop = dev.hardrush.revival.TotemDrops.prepare(player, round, killCredit);
                 boolean captured = session.captureDeath(round.roundId(), player.getUUID(), participant.lifeSequence(),
                         participant.monsterDeploymentSequence(), CombatRuntime.currentBatch(player.level()).orElse(null), killCredit,
                         false, drop);
                 drop.ifPresent(token -> dev.hardrush.revival.TotemDrops.captured(player, round.roundId(), token, captured));
+                if (captured) dev.hardrush.revival.FallenCompass.died(player, round.roundId(), participant.lifeSequence());
             } else if (participant != null && participant.role() == ParticipantRole.MONSTER_DEPLOYED
                     && RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());
                 if (profiles != null) profiles.holdDeath(player);
+                // A creeper spent in its own blast locks the human it was sent after (docs/plan/击败锁定与怪物平衡.md §1).
+                var detonation = dev.hardrush.monster.MonsterCreeper.detonating(player)
+                        ? Optional.of(new dev.hardrush.core.round.RoundDeath.Detonation(
+                                dev.hardrush.hunt.HuntBossBars.hunted(player, round).map(dev.hardrush.hunt.HuntBossBars.Hunted::target),
+                                dev.hardrush.monster.MonsterCreeper.litBy(player)))
+                        : Optional.<dev.hardrush.core.round.RoundDeath.Detonation>empty();
                 session.captureDeath(round.roundId(), player.getUUID(), participant.lifeSequence(), participant.monsterDeploymentSequence(),
                         CombatRuntime.currentBatch(player.level()).orElse(null), killCredit,
-                        dev.hardrush.monster.MonsterRoles.recentlyHurtByOtherPlayer(player));
+                        dev.hardrush.monster.MonsterRoles.recentlyHurtByOtherPlayer(player), Optional.empty(), detonation);
             }
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
