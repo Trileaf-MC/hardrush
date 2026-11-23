@@ -130,7 +130,7 @@ public final class MonsterShop {
         var r = access == null ? null : access.committed().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
         if (!trading(player, access, r, p)) return;
-        if (WitchGuide.pending(r, p)) { sound(player, SoundEvents.WITCH_AMBIENT); WitchGuide.show(player, access, r, p); return; }
+        if (WitchGuide.pending(access, r, p)) { sound(player, SoundEvents.WITCH_AMBIENT); WitchGuide.show(player, access, r, p); return; }
         openShop(player);
     }
 
@@ -143,6 +143,8 @@ public final class MonsterShop {
         var r = access == null ? null : access.committed().orElse(null);
         var p = r == null ? null : r.participants().get(player.getUUID());
         if (!trading(player, access, r, p)) return;
+        // The guide's button can be sent from anywhere; only a player standing at the witch is served.
+        if (!nearMerchant(player)) return;
         boolean revival = p.revivalEntitled();
         if (!revival && !p.wallet().roleChosen()) {
             dev.hardrush.notice.Notices.hint(player, "女巫：先去展位选个角色，再来找我"); sound(player, SoundEvents.WITCH_AMBIENT); return;
@@ -152,6 +154,17 @@ public final class MonsterShop {
         var id = player.openMenu(new SimpleMenuProvider((containerId, inventory, ignored) ->
                 new ShopMenu(containerId, inventory, trader), Component.literal(revival ? "女巫商人 · 复生补给" : "女巫商人")));
         if (id.isPresent()) player.sendMerchantOffers(id.getAsInt(), trader.offers, 1, 0, false, false);
+    }
+
+    /** Near any merchant: a model, or a clicked block or entity bound as one. */
+    private static boolean nearMerchant(ServerPlayer player) {
+        var lobby = LobbyWorld.open(player.level().getServer());
+        if (!lobby.ready() || !LobbyWorld.isLobby(player.level())) return false;
+        var plan = lobby.plan();
+        var merchants = new java.util.ArrayList<dev.hardrush.core.lobby.plan.Point>();
+        plan.models(LobbyFunction.MERCHANT).forEach(m -> merchants.add(m.point()));
+        plan.triggers(LobbyFunction.MERCHANT).forEach(t -> merchants.add(t.anchor()));
+        return merchants.stream().anyMatch(m -> player.position().distanceToSqr(LobbyWorld.position(m)) <= REACH * REACH);
     }
 
     private static boolean trading(ServerPlayer player, CampAccess access, dev.hardrush.core.round.RoundSnapshot r, Participant p) {
@@ -284,14 +297,7 @@ public final class MonsterShop {
             var p = r == null ? null : r.participants().get(server.getUUID());
             if (p == null || !access.eligible(server) || p.revivalEntitled() != trader.revival) return false;
             if (!trader.revival && (p.monsterRole() != trader.role || !p.wallet().roleChosen())) return false;
-            // Near any merchant: a model, or a clicked block or entity bound as one.
-            var lobby = LobbyWorld.open(server.level().getServer());
-            if (!lobby.ready() || !LobbyWorld.isLobby(server.level())) return false;
-            var plan = lobby.plan();
-            var merchants = new java.util.ArrayList<dev.hardrush.core.lobby.plan.Point>();
-            plan.models(LobbyFunction.MERCHANT).forEach(m -> merchants.add(m.point()));
-            plan.triggers(LobbyFunction.MERCHANT).forEach(t -> merchants.add(t.anchor()));
-            return merchants.stream().anyMatch(m -> server.position().distanceToSqr(LobbyWorld.position(m)) <= REACH * REACH);
+            return nearMerchant(server);
         }
 
         /** Projected coins never return through the native payment hand-back. */

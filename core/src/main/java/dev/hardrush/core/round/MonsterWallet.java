@@ -153,8 +153,9 @@ public record MonsterWallet(int coins, boolean roleChosen,
     }
 
     /**
-     * A committed role choice; goods the new role cannot use are refunded at the price paid. Revival supplies left
-     * over from a totem that was lost (a rescue that ended) are such goods too: no sortie ever carries them.
+     * A committed role choice; goods the new role cannot use are refunded at the price paid. Revival supplies count as
+     * such goods, but a totem holder cannot choose a role and a totem is only taken away when the round ends, so in
+     * play they are never refunded here: they go with the revival, or expire with the round.
      */
     public MonsterWallet chooseRole(RulesConfig rules, MonsterRole role) {
         var wallet = refund(rules, offer -> !offer.sellableTo(role));

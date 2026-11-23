@@ -366,6 +366,16 @@ public final class LobbyRuntimeGameTest {
                     f.session.requestShopPurchase(f.round().roundId(), hunter.profile.id(), hunter.participant().lifeSequence(),
                             hunter.participant().monsterDeploymentSequence(), dev.hardrush.core.round.ShopOffer.SWIFTNESS, 10, refused::set);
                     f.test.assertTrue(refused.get() != null && !refused.get().success(), "A totem holder is sold nothing for a sortie");
+                    // The witch's own screen: a totem holder sees the revival shelf and nothing else.
+                    f.test.assertTrue(hunter == f.monster, "The first cycle's hunter is the fixture monster");
+                    f.clickWitch();
+                    f.test.assertTrue(dev.hardrush.lobby.MonsterShop.isShop(hunter.player), "The guide was already read: the shop opens at once");
+                    var offers = ((net.minecraft.world.inventory.MerchantMenu) hunter.player.containerMenu).getOffers();
+                    var sold = offers.stream().map(offer -> offer.getResult().getItem()).toList();
+                    f.test.assertValueEqual(sold.size(), 7, "Seven revival supplies on the shelf: " + sold);
+                    f.test.assertFalse(sold.contains(Items.ZOMBIE_SPAWN_EGG), "No sortie goods for a totem holder");
+                    f.test.assertTrue(sold.contains(Items.CHEST) && sold.contains(Items.SHIELD), "The shelf holds the bonus chest and the shield");
+                    hunter.player.closeContainer();
                 });
             }
             sequence.thenExecute(() -> {
@@ -438,9 +448,10 @@ public final class LobbyRuntimeGameTest {
                     });
             if (iteration == 0) sequence.thenWaitUntil(() -> {
                 var at = hunter.player.blockPosition();
-                boolean chest = BlockPos.betweenClosedStream(at.offset(-2, -3, -2), at.offset(2, 3, 2))
-                        .anyMatch(pos -> hunter.player.level().getBlockState(pos).is(Blocks.CHEST));
-                f.await(chest && !hunter.participant().witch().landingPending(hunter.participant().lifeSequence()) && !f.session.mutationPending(),
+                long chests = BlockPos.betweenClosedStream(at.offset(-3, -3, -3), at.offset(3, 3, 3))
+                        .filter(pos -> hunter.player.level().getBlockState(pos).is(Blocks.CHEST)).count();
+                f.test.assertTrue(chests <= 1, "Never a second bonus chest: " + chests);
+                f.await(chests == 1 && !hunter.participant().witch().landingPending(hunter.participant().lifeSequence()) && !f.session.mutationPending(),
                         "The bought bonus chest is set down beside the landed human once, and the delivery is recorded");
             });
         }
@@ -700,7 +711,7 @@ public final class LobbyRuntimeGameTest {
             test.assertValueEqual(after, before, "Raw drop packets never release the fixed-role controls");
             test.assertTrue(monster.player.getInventory().getItem(skillSlot).is(control), "The fixed skill control remains equipped");
         }
-        private void clickWitch() {
+        void clickWitch() {
             HuntInputFixtures.move(monster.player, LobbyPlanFixtures.model(server, dev.hardrush.core.lobby.plan.LobbyFunction.MERCHANT).add(0, 0, 2));
             dev.hardrush.lobby.LobbyInteractions.tick(server);
             var ids = dev.hardrush.lobby.LobbyInteractions.get(server).orElseThrow().roleModels().view(monster.player);

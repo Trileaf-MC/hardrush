@@ -55,6 +55,8 @@ public final class RevivalAltar {
     private final Set<List<Object>> blessed = new HashSet<>();
     /** Lives whose landing supplies are being committed right now. */
     private final Set<List<Object>> delivering = new HashSet<>();
+    /** Lives whose bonus chest was set down in this server run, committed or not. */
+    private final Set<List<Object>> chested = new HashSet<>();
 
     private RevivalAltar(MinecraftServer server) { this.server = server; }
 
@@ -147,8 +149,14 @@ public final class RevivalAltar {
     /**
      * Landing supplies (bonus chest, longer blessing) of every landed revived life still owed them. Normally that is
      * the life just blessed; after a restart lost the arrival, it is whoever reconnects owing them, blessed afresh
-     * only when a longer blessing was paid for. The chest is set down once the delivery is committed, so a refused
-     * or repeated commit never leaves two chests.
+     * only when a longer blessing was paid for. The chest is set down before the delivery is committed and remembered
+     * here, so a refused commit is retried without a second chest, and a disconnect, death or stop during the commit
+     * never loses a paid one.
+     *
+     * TODO: [Refactor] The world save and the round store are separate writes and cannot be made atomic. A crash after
+     * the chest is set down but before the delivery is durable sets down a second one after the restart; that is
+     * preferred to losing a chest the player paid for. A later round-owned "pending world edits" journal could make
+     * this exactly-once.
      */
     private void deliver(RoundSnapshot round, RoundSession session) {
         if (session.state() != RoundSession.State.OPEN) return;
@@ -162,12 +170,10 @@ public final class RevivalAltar {
             if (!blessed.contains(key) && dev.hardrush.revival.RevivalSupplies.count(life, dev.hardrush.core.round.ShopOffer.LONGER_BLESSING) > 0)
                 bless(player, round, life);
             if (!delivering.add(key)) continue;
-            boolean chest = dev.hardrush.revival.RevivalSupplies.count(life, dev.hardrush.core.round.ShopOffer.BONUS_CHEST) > 0;
-            session.requestRevivalSupplyLanded(round.roundId(), life.id(), life.lifeSequence(), reply -> {
-                delivering.remove(key);
-                if (reply.success() && chest && server.getPlayerList().getPlayer(life.id()) == player && !player.isRemoved())
-                    dev.hardrush.revival.RevivalSupplies.bonusChest(player);
-            });
+            if (dev.hardrush.revival.RevivalSupplies.count(life, dev.hardrush.core.round.ShopOffer.BONUS_CHEST) > 0 && chested.add(key))
+                dev.hardrush.revival.RevivalSupplies.bonusChest(player);
+            // A refusal (another commit in flight) retries next tick; the chest is already down.
+            session.requestRevivalSupplyLanded(round.roundId(), life.id(), life.lifeSequence(), reply -> delivering.remove(key));
         }
     }
 
