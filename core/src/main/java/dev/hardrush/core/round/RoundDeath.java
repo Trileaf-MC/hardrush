@@ -15,7 +15,7 @@ import java.util.UUID;
  * burn after a player's hit is therefore still that player's kill.
  *
  * <p>{@code dropToken} names the revival totem the adapter dropped at this death because
- * {@link TotemDrop#qualifies} held when it died; the engine registers it only if that still holds on commit.
+ * {@link TotemDrop#release} dropped it in the world when it died; the engine registers it only if that still holds on commit.
  *
  * <p>{@code detonation} is present when a deployed creeper's body was spent in its own blast; it decides whom the
  * defeat locks instead of the kill credit alone (docs/plan/击败锁定与怪物平衡.md §1).

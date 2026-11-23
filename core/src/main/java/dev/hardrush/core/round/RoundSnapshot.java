@@ -51,10 +51,9 @@ public record RoundSnapshot(UUID roundId, long sequence, long seed, long version
         }
     }
 
-    /** The registered loose totem behind {@code token}, unless it has already expired at this snapshot's challenge time. */
-    public java.util.Optional<LooseTotem> liveLooseTotem(UUID token) {
-        LooseTotem totem = looseTotems.get(token);
-        return totem == null || totem.expiredAt(challengeNanos) ? java.util.Optional.empty() : java.util.Optional.of(totem);
+    /** The registered loose totem behind {@code token}; registrations never expire within a round. */
+    public java.util.Optional<LooseTotem> looseTotem(UUID token) {
+        return java.util.Optional.ofNullable(looseTotems.get(token));
     }
 
     public long challengeMillis() { return challengeNanos / 1_000_000; }

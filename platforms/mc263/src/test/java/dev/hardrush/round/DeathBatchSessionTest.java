@@ -75,14 +75,14 @@ class DeathBatchSessionTest {
             assertEquals(0, committed.participants().get(hunter).revivalCharges(), "The killer earns nothing by itself");
 
             var taken = new AtomicReference<RoundSession.Reply>();
-            session.requestLooseTotemPickup(round, token, hunter, 1, taken::set);
+            session.requestLooseTotemPickup(round, token, hunter, 1, 0, taken::set);
             pump(() -> taken.get() != null);
             assertTrue(taken.get().success(), taken.get().message());
             committed = session.snapshot().orElseThrow();
             assertEquals(1, committed.participants().get(hunter).revivalCharges());
             assertTrue(committed.looseTotems().isEmpty(), "A taken totem leaves the registry");
             var again = new AtomicReference<RoundSession.Reply>();
-            session.requestLooseTotemPickup(round, token, hunter, 1, again::set);
+            session.requestLooseTotemPickup(round, token, hunter, 1, 0, again::set);
             pump(() -> again.get() != null);
             assertFalse(again.get().success(), "The same token cannot be taken twice");
             assertEquals(1, session.snapshot().orElseThrow().participants().get(hunter).revivalCharges());

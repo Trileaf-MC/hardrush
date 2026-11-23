@@ -13,9 +13,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * 26.3 {@code ItemEntity.playerTouch}: no floor revival totem (a drop, or a projected copy that slipped out) is ever
  * picked up natively; a drop is taken through {@link TotemDrops#touch} instead. Other mixins cancel at the same HEAD
- * (a frozen competition, a protected player, a monster); whichever runs first, the result is the same, since
- * {@link TotemDrops#touch} only lets a human whose projection is in PROJECT state take a drop, which already excludes
- * a locked competition, a lobby body and a monster.
+ * (a frozen competition, a protected player, a monster that may not act); whichever runs first, the result is the
+ * same, since {@link TotemDrops#touch} only lets a human whose projection is in PROJECT state, or a monster out hunting
+ * that may act, take a drop, which already excludes a locked competition, a lobby body and a monster that may not act.
  */
 @Mixin(ItemEntity.class)
 public abstract class TotemPickupMixin {
