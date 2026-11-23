@@ -47,7 +47,7 @@ public final class DuskPactRuntime {
         boolean wasProtected;
         /** Real seconds until the contract lifts while it is shown; when the release title went out. */
         long secondsLeft = Long.MAX_VALUE;
-        int releasedTick = Integer.MIN_VALUE;
+        long releasedTick = Long.MIN_VALUE / 2;
         Binding(Access access) { this.access = access; }
     }
     private static final Map<MinecraftServer, Binding> BINDINGS = new IdentityHashMap<>();
@@ -90,7 +90,7 @@ public final class DuskPactRuntime {
      */
     public static boolean titleBusy(MinecraftServer server) {
         var binding = BINDINGS.get(server);
-        return binding != null && (binding.secondsLeft <= 5 || server.getTickCount() - binding.releasedTick < 90);
+        return binding != null && (binding.secondsLeft <= 5 || (long) server.getTickCount() - binding.releasedTick < 90);
     }
     /** Countdown line for the native TAB footer while the contract is shown; the bossbar stays hidden until the warning. */
     public static Optional<String> tabLine(MinecraftServer server) {
