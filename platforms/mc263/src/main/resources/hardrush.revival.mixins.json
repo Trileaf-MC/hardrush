@@ -14,7 +14,9 @@
     "TotemAllayMixin",
     "TotemPickupMixin",
     "TotemHopperMixin",
-    "TotemSaveMixin"
+    "TotemSaveMixin",
+    "TotemFallStartAccessor",
+    "TotemVoidMixin"
   ],
   "injectors": { "defaultRequire": 1 }
 }
