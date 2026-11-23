@@ -15,7 +15,7 @@ import java.util.UUID;
  * burn after a player's hit is therefore still that player's kill.
  *
  * <p>{@code dropToken} names the revival totem the adapter dropped at this death because
- * {@link TotemDrop#qualifies} held when it died; the engine registers it only if that still holds on commit.
+ * {@link TotemDrop#release} dropped it in the world when it died; the engine registers it only if that still holds on commit.
  */
 public record RoundDeath(UUID playerId, int lifeSequence, int deploymentSequence,
                          Optional<CombatEvent> cause, Optional<CombatOrigin> killCredit,

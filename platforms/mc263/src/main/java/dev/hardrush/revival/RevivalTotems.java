@@ -94,14 +94,14 @@ public final class RevivalTotems {
     public static void refuse(ServerPlayer player, ItemStack stack) {
         if (!is(stack)) return;
         Notices.refuse(player, holder(stack) == Holder.CAMP_MONSTER
-                ? "复生图腾不能丢弃 · 站上营地北侧祭坛的金块复生" : "复生图腾不能丢弃或转赠");
+                ? "复生图腾不能丢弃 · 站上营地北侧祭坛的金块复生" : "复生图腾不能丢弃");
     }
 
     /** The stack {@code identity} holds; its count is the balance capped at {@link #MAX_STACK}. */
     static ItemStack held(Identity identity, int charges, int count) {
         var lore = new ArrayList<>(identity.holder() == Holder.HUMAN
-                ? List.of(HUMAN_USAGE, "没拿在手上就阵亡，可到营地祭坛复生", "阵亡不掉落 · 不能丢弃或转赠")
-                : List.of(MONSTER_USAGE, "每个图腾复生一次，复生后空手出发，其余图腾随身带走", "不能丢弃或转赠 · 本轮结束时清空"));
+                ? List.of(HUMAN_USAGE, "没拿在手上就阵亡，可到营地祭坛复生", "阵亡不掉落 · 不能丢弃或放进容器")
+                : List.of(MONSTER_USAGE, "每个图腾复生一次，复生后空手出发，其余图腾随身带走", "不能丢弃或放进容器 · 本轮结束时清空"));
         // Beyond a full stack the item count no longer shows every charge.
         if (charges > MAX_STACK) lore.add(1, "共 " + Notices.key(charges) + " 个");
         var stack = new ItemStack(Items.TOTEM_OF_UNDYING, count);
@@ -124,16 +124,19 @@ public final class RevivalTotems {
     }
 
     /**
-     * The floor stack a human's death by a human leaves (design 2.3): the held item's look, its own description, and the
+     * The floor stack a released totem leaves (掉落 2.3, 守恒 1.3): the held item's look, its own description, and the
      * drop token plus round instead of a holder identity, so it never passes for a projected copy. {@link #is} still
      * holds, so every keeping rule applies to it; were it ever to reach an inventory, the projection would replace it.
+     * It also remembers where it was dropped, so the void returns it there instead of destroying it.
      */
-    static ItemStack dropped(UUID token, UUID round) {
+    static ItemStack dropped(UUID token, UUID round, TotemDrops.Place place) {
         var stack = held(new Identity(round, ParticipantRole.HUMAN_ACTIVE, 0, 0), 1, 1);
-        ItemText.lore(stack, List.of(DROP_USAGE));
+        ItemText.lore(stack, DROP_USAGE);
         var data = new CompoundTag();
         data.putString(DROP, token.toString());
         data.putString("round", round.toString());
+        data.putString(DROP_LEVEL, place.level().dimension().identifier().toString());
+        data.putDouble(DROP_X, place.at().x); data.putDouble(DROP_Y, place.at().y); data.putDouble(DROP_Z, place.at().z);
         var tag = new CompoundTag();
         tag.put(KEY, data);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
@@ -141,8 +144,20 @@ public final class RevivalTotems {
     }
 
     /** What a dropped totem's description says; also the gametest's reference. */
-    static final String DROP_USAGE = "人类捡起即得 · 拿在手上阵亡时原地复生";
+    static final List<String> DROP_USAGE = List.of("人类捡起即得 · 拿在手上阵亡时原地复生", "出击中的怪物也能捡 · 用掉它的人捡不回来");
     private static final String DROP = "drop";
+    private static final String DROP_LEVEL = "level", DROP_X = "x", DROP_Y = "y", DROP_Z = "z";
+
+    /** Where a floor totem was dropped; empty for anything else, or a drop from before places were stamped. */
+    static Optional<TotemDrops.Place> dropPlace(MinecraftServer server, ItemStack stack) {
+        if (dropToken(stack).isEmpty()) return Optional.empty();
+        var data = stack.get(DataComponents.CUSTOM_DATA).copyTag().getCompoundOrEmpty(KEY);
+        var id = net.minecraft.resources.Identifier.tryParse(data.getStringOr(DROP_LEVEL, ""));
+        if (id == null || data.getDouble(DROP_Y).isEmpty()) return Optional.empty();
+        var level = server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, id));
+        return level == null ? Optional.empty() : Optional.of(new TotemDrops.Place(level,
+                new net.minecraft.world.phys.Vec3(data.getDoubleOr(DROP_X, 0), data.getDoubleOr(DROP_Y, 0), data.getDoubleOr(DROP_Z, 0))));
+    }
 
     /** The drop token of a floor totem; empty for a projected copy (or anything else). */
     public static Optional<UUID> dropToken(ItemStack stack) {
@@ -150,6 +165,23 @@ public final class RevivalTotems {
         var value = stack.get(DataComponents.CUSTOM_DATA).copyTag().getCompoundOrEmpty(KEY).getStringOr(DROP, "");
         try { return value.isEmpty() ? Optional.empty() : Optional.of(UUID.fromString(value)); }
         catch (IllegalArgumentException unreadable) { return Optional.empty(); }
+    }
+
+    private static final String RETURNED = "returned";
+
+    /** Whether the void already returned this floor totem once ({@link TotemDrops#returnFromVoid}). */
+    static boolean returnedFromVoid(ItemStack stack) {
+        return dropToken(stack).isPresent()
+                && stack.get(DataComponents.CUSTOM_DATA).copyTag().getCompoundOrEmpty(KEY).getBooleanOr(RETURNED, false);
+    }
+
+    static void markReturnedFromVoid(ItemStack stack) {
+        if (dropToken(stack).isEmpty()) return;
+        var tag = stack.get(DataComponents.CUSTOM_DATA).copyTag();
+        var data = tag.getCompoundOrEmpty(KEY);
+        data.putBoolean(RETURNED, true);
+        tag.put(KEY, data);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
     /** The identity a copy was projected for; empty for a copy from before identities were stamped. */
@@ -194,7 +226,7 @@ public final class RevivalTotems {
 
     /**
      * Whether the player's inventory shows an active human's committed balance right now ({@link State#PROJECT} for a
-     * human): the one test of who may take a dropped totem ({@link TotemDrops}), so pickup and holding agree.
+     * human): the one test of which human may take a dropped totem ({@link TotemDrops}), so pickup and holding agree.
      */
     public static boolean projectsHuman(ServerPlayer player) {
         var totems = INSTANCES.get(player.level().getServer());

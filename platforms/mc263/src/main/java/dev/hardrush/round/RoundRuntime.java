@@ -400,7 +400,8 @@ public final class RoundRuntime {
                     && RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());
                 if (profiles != null) profiles.holdDeath(player);
-                // A human killed by a human drops a revival totem at the body, judged now as the engine will on commit.
+                // Every ended human life releases a revival totem; one no monster earned drops at the body, judged now as
+                // the engine will on commit.
                 var drop = dev.hardrush.revival.TotemDrops.prepare(player, round, killCredit);
                 boolean captured = session.captureDeath(round.roundId(), player.getUUID(), participant.lifeSequence(),
                         participant.monsterDeploymentSequence(), CombatRuntime.currentBatch(player.level()).orElse(null), killCredit,

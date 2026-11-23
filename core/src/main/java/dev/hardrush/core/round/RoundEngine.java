@@ -343,20 +343,15 @@ public final class RoundEngine {
                 players.put(player.id(), endSortie(player, deployCooldownNanos(before.rules())));
             }
         }
-        // Qualify against identity at lethal collection, before applying this batch's human deaths. The
-        // credit is the vanilla kill credit, so a fall or burn shortly after a player's hit still counts.
-        // A human killed by a human drops a totem for anyone to take; the killer earns nothing by itself.
-        // A monster's kill adds one charge per qualifying victim. A settling batch keeps no registration.
+        // Judge against identity at lethal collection, before applying this batch's human deaths. The credit is
+        // the vanilla kill credit, so a fall or burn shortly after a player's hit still counts. Every ended human
+        // life releases one totem: a qualifying monster gains it, anything else drops it where the human fell (a
+        // human's kill, or unclaimed). A settling batch keeps no registration.
         var looseTotems = new LinkedHashMap<>(before.looseTotems());
         if (before.rules().mode() == GameMode.HARDCORE) {
             for (RoundDeath death : deaths) {
-                if (TotemDrop.qualifies(before, death)) {
-                    death.dropToken().ifPresent(token -> looseTotems.putIfAbsent(token, new LooseTotem(death.playerId(),
-                            death.lifeSequence(), death.killCredit().orElseThrow().actor().playerId(), before.challengeNanos())));
-                    continue;
-                }
-                monsterKiller(before, death.playerId(), death.killCredit())
-                        .ifPresent(owner -> rewardMonsterKill(before.rules(), players, owner));
+                TotemDrop.release(before, death).ifPresent(release ->
+                        release(before, players, looseTotems, release, death.playerId(), death.lifeSequence(), death.dropToken()));
             }
             // Use vanilla's player-damage memory captured at death, including subsequent environmental damage.
             for (RoundDeath death : deaths) {
@@ -384,11 +379,26 @@ public final class RoundEngine {
     }
 
     /**
-     * A human of this round takes a registered loose totem: the token leaves the registry and the taker gains
-     * one charge (a balance already at {@link Integer#MAX_VALUE} stays there; the totem is still taken).
+     * Applies one released totem (docs/plan/复生图腾守恒.md 1.1): a monster's is paid as a kill; a dropped one registers
+     * the adapter's {@code dropToken}, the totem it spawned in the world. Without a token nothing lies there to take.
+     */
+    private static void release(RoundSnapshot before, Map<UUID, Participant> players, Map<UUID, LooseTotem> looseTotems,
+            TotemDrop.Release release, UUID victim, int life, Optional<UUID> dropToken) {
+        switch (release) {
+            case TotemDrop.Release.ToMonster monster -> rewardMonsterKill(before.rules(), players, monster.owner());
+            case TotemDrop.Release.Dropped dropped -> dropToken.ifPresent(token -> looseTotems.putIfAbsent(token,
+                    new LooseTotem(victim, life, dropped.source(), dropped.killer(), before.challengeNanos())));
+        }
+    }
+
+    /**
+     * A player of this round takes a registered loose totem (docs/plan/复生图腾守恒.md 1.4): an online active human of
+     * this life, or an online monster out on this sortie, but never the very human life that released it. The token
+     * leaves the registry; a human gains one charge, a monster is paid exactly as for a kill (one charge, and in a coin
+     * round the sortie ends so it revives first). A balance already at {@link Integer#MAX_VALUE} stays there.
      */
     public RoundTransition proposeLooseTotemPickup(UUID eventId, UUID roundId, UUID token, UUID playerId,
-            int expectedLifeSequence) {
+            int expectedLifeSequence, int expectedDeploymentSequence) {
         Objects.requireNonNull(token);
         RoundSnapshot before = capture();
         if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("仅极限模式有复生图腾掉落。");
@@ -396,11 +406,17 @@ public final class RoundEngine {
         requireOpenRescue(before);
         if (!before.roundId().equals(roundId)) throw new IllegalStateException("轮次已改变，请重新拾取。");
         Participant player = requirePlayer(before, playerId);
-        requireLife(player, ParticipantRole.HUMAN_ACTIVE, expectedLifeSequence);
+        boolean monster = player.role() == ParticipantRole.MONSTER_DEPLOYED;
+        requireLife(player, monster ? ParticipantRole.MONSTER_DEPLOYED : ParticipantRole.HUMAN_ACTIVE, expectedLifeSequence);
+        if (monster && player.monsterDeploymentSequence() != expectedDeploymentSequence) {
+            throw new IllegalStateException("这次出击已经结束。");
+        }
         if (!player.online()) throw new IllegalStateException("离线玩家不能拾取复生图腾。");
-        if (before.liveLooseTotem(token).isEmpty()) throw new IllegalStateException("这个复生图腾已被拾取或已消失。");
+        LooseTotem totem = before.looseTotem(token).orElseThrow(() -> new IllegalStateException("这个复生图腾已被拾取或已消失。"));
+        if (totem.ownedBy(player)) throw new IllegalStateException("用掉复生图腾的这条命不能把它捡回来。");
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
-        if (player.revivalCharges() < Integer.MAX_VALUE) players.put(playerId, player.addRevivalCharges(1));
+        if (monster) rewardMonsterKill(before.rules(), players, playerId);
+        else if (player.revivalCharges() < Integer.MAX_VALUE) players.put(playerId, player.addRevivalCharges(1));
         var looseTotems = new LinkedHashMap<>(before.looseTotems());
         looseTotems.remove(token);
         return proposal(eventId, "TOTEM_PICKUP", before, before.phase(), before.remainingPhaseNanos(), players,
@@ -411,10 +427,10 @@ public final class RoundEngine {
      * A revival totem already saved this human in the world; the ledger follows. Total by design: the event
      * sits in the adapter's critical queue, so any stale or unqualified state (another round or phase, a
      * changed life, no charge left) commits {@code TOTEM_SAVE_VOID}, which changes no participant, instead of
-     * failing. A valid save spends one charge without ending the life. {@code killCredit} is resolved like a
-     * death's: a monster it credits is paid exactly as for killing this human; a hit that would have dropped a totem
-     * at this human's death ({@link TotemDrop#qualifies}) registers {@code dropToken}, the totem the adapter dropped
-     * at the save, for anyone to take. Nothing else is registered, so a void save leaves no takeable drop.
+     * failing. A valid save spends one charge without ending the life and releases one totem as the same hit's death
+     * would ({@link TotemDrop#release}): a monster it credits is paid exactly as for killing this human; otherwise
+     * {@code dropToken}, the totem the adapter dropped at the save, is registered for others to take, whether a human
+     * forced it out or the environment did. Nothing is registered by a void save, so it leaves no takeable drop.
      */
     public RoundTransition proposeTotemSave(UUID eventId, UUID roundId, UUID playerId, int expectedLifeSequence,
             Optional<CombatOrigin> killCredit, Optional<UUID> dropToken) {
@@ -432,12 +448,9 @@ public final class RoundEngine {
         }
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         players.put(playerId, player.spendRevivalCharge());
-        monsterKiller(before, playerId, killCredit).ifPresent(owner -> rewardMonsterKill(before.rules(), players, owner));
         var looseTotems = new LinkedHashMap<>(before.looseTotems());
-        if (TotemDrop.qualifies(before, playerId, killCredit)) {
-            dropToken.ifPresent(token -> looseTotems.putIfAbsent(token, new LooseTotem(playerId, expectedLifeSequence,
-                    killCredit.orElseThrow().actor().playerId(), before.challengeNanos())));
-        }
+        TotemDrop.release(before, playerId, killCredit).ifPresent(release ->
+                release(before, players, looseTotems, release, playerId, expectedLifeSequence, dropToken));
         return proposal(eventId, "TOTEM_SAVE", before, before.phase(), before.remainingPhaseNanos(), players,
                 before.result(), false, before.timingUncertain(), looseTotems);
     }
@@ -818,30 +831,6 @@ public final class RoundEngine {
     }
 
     /**
-     * The player monster credited with killing {@code victimId}, a hardcore human of {@code before}, by
-     * {@code killCredit}: a direct monster attack launched by this round's monster, from no later life or
-     * sortie than its current one. A dying human and a revival totem forced out of one qualify alike, as they do
-     * for a human's attack in {@link TotemDrop#qualifies}.
-     */
-    static Optional<UUID> monsterKiller(RoundSnapshot before, UUID victimId, Optional<CombatOrigin> killCredit) {
-        if (before.rules().mode() != GameMode.HARDCORE || killCredit.isEmpty()) return Optional.empty();
-        Participant victim = before.participants().get(victimId);
-        var origin = killCredit.get();
-        if (victim == null || !victim.role().isActiveHuman() || !origin.roundId().equals(before.roundId())
-                || origin.actor().identity().isActiveHuman()) return Optional.empty();
-        Participant owner = before.participants().get(origin.actor().playerId());
-        if (owner == null || owner.id().equals(victimId)) return Optional.empty();
-        boolean directMonsterAttack = switch (origin.kind()) {
-            case MELEE, ARROW, CREEPER, SUMMON -> true;
-            default -> false;
-        };
-        if (!directMonsterAttack || !owner.role().isMonster()
-                || origin.actor().lifeSequence() > owner.lifeSequence()
-                || origin.actor().deploymentSequence() > owner.monsterDeploymentSequence()) return Optional.empty();
-        return Optional.of(owner.id());
-    }
-
-    /**
      * The human credited with killing a deployed monster player in this batch: the vanilla kill credit names a
      * human of this round who is still that same living life after the batch.
      */
@@ -1106,22 +1095,21 @@ public final class RoundEngine {
         RoundSnapshot after = new RoundSnapshot(before.roundId(), before.sequence(), before.seed(),
                 Math.addExact(before.version(), 1), before.rules(), phase, clean ? PauseReason.SERVER_STOPPED : pause(phase, players),
                 before.challengeNanos(), remaining, players, clean, before.timingUncertain() || uncertain, result,
-                retainedLooseTotems(phase, result, before.challengeNanos(), looseTotems));
+                retainedLooseTotems(phase, result, looseTotems));
         pending = new RoundTransition(id, type, before, after, captured);
         return pending;
     }
 
     /**
      * The loose-totem registry a transition leaves, applied to every transition alike: a settled round keeps
-     * none, an entry expires after {@link LooseTotem#LIFETIME_NANOS} of challenge time, and beyond
+     * none; otherwise every entry stays (a registered totem never expires), and beyond
      * {@link LooseTotem#MAX_REGISTERED} the earliest drops (then the lowest tokens) give way. It never fails.
      */
-    private static Map<UUID, LooseTotem> retainedLooseTotems(RoundPhase phase, RoundResult result, long challengeNanos,
+    private static Map<UUID, LooseTotem> retainedLooseTotems(RoundPhase phase, RoundResult result,
                                                              Map<UUID, LooseTotem> looseTotems) {
         boolean terminal = phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING || phase == RoundPhase.ROTATING;
         if (terminal || result != null || looseTotems.isEmpty()) return Map.of();
         var retained = new LinkedHashMap<UUID, LooseTotem>(looseTotems);
-        retained.values().removeIf(totem -> totem.expiredAt(challengeNanos));
         if (retained.size() > LooseTotem.MAX_REGISTERED) {
             retained.entrySet().stream()
                     .sorted(Comparator.comparingLong((Map.Entry<UUID, LooseTotem> e) -> e.getValue().droppedAtChallengeNanos())

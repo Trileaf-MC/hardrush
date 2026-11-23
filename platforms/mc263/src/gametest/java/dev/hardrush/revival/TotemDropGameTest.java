@@ -94,18 +94,35 @@ public final class TotemDropGameTest {
                     "Everyone online receives the packet-only gold team: " + c.name());
             test.assertTrue(f.server.getScoreboard().getPlayerTeam(TotemDrops.TEAM) == null, "The server scoreboard is never written");
 
-            // Deaths that drop nothing: a monster's kill, a suicide, no credit, normal mode, the void.
+            // Deaths that drop nothing in the world: a monster's kill (it is paid), normal mode.
             var round = s.snapshot();
             var monsterKill = Optional.of(new CombatOrigin(s.roundId, UUID.randomUUID(),
                     new CombatActor(deployed.id(), ParticipantRole.MONSTER_DEPLOYED, 1, 1), AttackKind.CREEPER, Optional.empty(), List.of()));
             test.assertTrue(TotemDrops.prepare(victim.player, round, monsterKill).isEmpty(), "A monster's kill drops nothing");
-            test.assertTrue(TotemDrops.prepare(victim.player, round, s.melee(victim.id())).isEmpty(), "A suicide drops nothing");
-            test.assertTrue(TotemDrops.prepare(victim.player, round, Optional.empty()).isEmpty(), "A death without credit drops nothing");
             s.rules = RulesConfig.defaults().withMode(GameMode.NORMAL);
             test.assertTrue(TotemDrops.prepare(victim.player, s.snapshot(), s.melee(killer.id())).isEmpty(), "Normal mode drops nothing");
             s.rules = RulesConfig.defaults();
+            // A suicide and a death without credit release an unclaimed totem (守恒 1.1).
+            for (var credit : List.of(s.melee(victim.id()), Optional.<CombatOrigin>empty())) {
+                var token = TotemDrops.prepare(victim.player, s.snapshot(), credit);
+                test.assertTrue(token.isPresent(), "Every ended human life releases one: " + credit);
+                TotemDrops.captured(victim.player, s.roundId, token.get(), false);
+            }
+            // Below the world: where the fall began, on the nearest standing ground; with no recorded fall, the arrival point.
             victim.move(new Vec3(f.base.getX() + .5, f.level.getMinY() - 10, f.base.getZ() + 4.5));
-            test.assertTrue(TotemDrops.prepare(victim.player, s.snapshot(), s.melee(killer.id())).isEmpty(), "A death in the void drops nothing");
+            fallStart(victim.player, null);
+            var voidToken = TotemDrops.prepare(victim.player, s.snapshot(), s.melee(killer.id()));
+            test.assertTrue(voidToken.isPresent(), "A death in the void drops too");
+            TotemDrops.captured(victim.player, s.roundId, voidToken.get(), false);
+            var arrival = TotemDrops.place(victim.player);
+            test.assertTrue(arrival.level() == f.level.getServer().getLevel(f.level.getRespawnData().dimension())
+                    && arrival.at().equals(Vec3.atBottomCenterOf(f.level.getRespawnData().pos())), "No recorded fall: the arrival point");
+            fallStart(victim.player, new Vec3(f.base.getX() + 13.2, f.base.getY() - .2, f.base.getZ() + .5));
+            var edge = TotemDrops.place(victim.player);
+            test.assertTrue(edge.level() == f.level && edge.at().y == f.base.getY()
+                    && edge.at().distanceTo(new Vec3(f.base.getX() + 12.5, f.base.getY(), f.base.getZ() + .5)) < 1.5,
+                    "Knocked off the edge: back on the edge it fell from, " + edge.at());
+            fallStart(victim.player, null);
             victim.move(f.base.offset(0, 0, 4));
 
             // A death the session did not capture drops nothing either.
@@ -124,7 +141,8 @@ public final class TotemDropGameTest {
             test.assertValueEqual(stack.getHoverName().getString(), "复生图腾", "The held item's gold name");
             test.assertFalse(stack.has(DataComponents.DEATH_PROTECTION), "Never a native death guard");
             test.assertTrue(Boolean.TRUE.equals(stack.get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE)), "The held item's glint");
-            test.assertValueEqual(stack.get(DataComponents.LORE).lines().get(0).getString(), RevivalTotems.DROP_USAGE, "Its own description");
+            test.assertValueEqual(stack.get(DataComponents.LORE).lines().stream().map(Component::getString).toList(), RevivalTotems.DROP_USAGE,
+                    "Its own description");
             test.assertTrue(RevivalTotems.identity(stack).isEmpty() && RevivalTotems.dropToken(stack).equals(Optional.of(vetoed)),
                     "Known by its token, never mistaken for a projected copy");
             test.assertTrue(stack.get(DataComponents.DAMAGE_RESISTANT).isResistantTo(f.level.damageSources().lava()), "Fireproof");
@@ -176,7 +194,7 @@ public final class TotemDropGameTest {
         }).thenIdle(1).thenExecute(() -> {
             // A camp monster cannot take it; a human whose inventory is full and holds no totem cannot either.
             refs.first.playerTouch(camp.player);
-            test.assertValueEqual(s.requests, 0, "A monster player cannot take it");
+            test.assertValueEqual(s.requests, 0, "A camp monster cannot take it");
             var inventory = human.player.getInventory();
             for (int i = 0; i < inventory.getNonEquipmentItems().size(); i++) inventory.setItem(i, new ItemStack(Items.COBBLESTONE, 64));
             s.put(human.id(), human.name(), ParticipantRole.HUMAN_ACTIVE, 1, 3, 0, true);
@@ -204,6 +222,15 @@ public final class TotemDropGameTest {
             int told = human.bars.size();
             refs.first.playerTouch(human.player);
             test.assertValueEqual(s.requests, 2, "A taken token is never asked for again");
+
+            // A monster out hunting takes the other one: paid like a kill, no room needed, told by the round runtime.
+            refs.other.playerTouch(deployed.player);
+            test.assertValueEqual(s.requests, 3, "A hunting monster asks to take it");
+            test.assertTrue(refs.other.isRemoved() && f.drops(refs.otherToken).isEmpty(), "Taken by the monster");
+            test.assertValueEqual(s.players.get(deployed.id()).revivalCharges(), 1, "The monster gains one charge");
+            test.assertValueEqual(deployed.bars.size(), 1, "No human pickup line for a monster (only the earlier announcement)");
+            refs.other = f.registered(s, Vec3.atBottomCenterOf(f.base.offset(5, 0, 5)));
+            f.registered.removeLast();
 
             // Hoppers, hopper minecarts, zombies and allays leave it; a lava pool and an explosion do not destroy it.
             var hopperAt = f.base.offset(8, 0, 8);
@@ -302,30 +329,37 @@ public final class TotemDropGameTest {
             test.assertValueEqual(entering.bars, late.bars, "A player still entering is told too");
             test.assertTrue(human.bars.size() == humanBars && camp.bars.size() == campBars, "Everyone else was already told this round");
 
-            // However many ticks a drop lives through, only its registration removes it: at five minutes of race time.
+            // However many ticks and however much race time a drop lives through, it stays while registered (守恒 1.3).
             var aged = f.registered(s, Vec3.atBottomCenterOf(f.base.offset(6, 0, -6)));
-            var agedToken = RevivalTotems.dropToken(aged.getItem()).orElseThrow();
             for (int i = 0; i < 13_000; i++) aged.tick();
+            s.challenge += 3L * 3_600 * 1_000_000_000L;
             TotemDrops.patrol(f.server);
-            test.assertTrue(!aged.isRemoved() && aged.getAge() == UNLIMITED_LIFETIME, "Thirteen thousand ticks do not despawn it");
-            var agedEntry = s.registry.get(agedToken);
-            s.registry.put(agedToken, new LooseTotem(agedEntry.victim(), agedEntry.victimLife(), agedEntry.killer(),
-                    s.challenge - LooseTotem.LIFETIME_NANOS + 1));
-            TotemDrops.patrol(f.server);
-            test.assertFalse(aged.isRemoved(), "Kept until its registration expires");
-            s.challenge += 1;
-            TotemDrops.patrol(f.server);
-            test.assertTrue(aged.isRemoved(), "Removed once its registration expires");
+            test.assertTrue(!aged.isRemoved() && aged.getAge() == UNLIMITED_LIFETIME, "Thirteen thousand ticks and three hours keep it");
 
-            // The patrol: an expired registration, a token-less copy and a pending drop of a failed session go.
-            var expired = f.registered(s, Vec3.atBottomCenterOf(f.base.offset(4, 0, -4)));
+            // The void returns a live drop: first to where it was dropped, then (it fell again) to the arrival point.
+            var dropped = aged.position();
+            aged.setPos(aged.getX(), f.level.getMinY() - 70, aged.getZ());
+            aged.tick();
+            test.assertTrue(!aged.isRemoved() && aged.position().distanceTo(dropped) < 1, "Back where it was dropped: " + aged.position());
+            aged.setPos(aged.getX(), f.level.getMinY() - 70, aged.getZ());
+            aged.tick();
+            var spawn = Vec3.atBottomCenterOf(f.level.getRespawnData().pos());
+            test.assertTrue(aged.position().distanceTo(spawn) < 1, "Then to the arrival point: " + aged.position());
+            var unknown = new ItemEntity(f.level, f.base.getX() + .5, f.level.getMinY() - 70, f.base.getZ() + .5,
+                    RevivalTotems.held(new Identity(s.roundId, ParticipantRole.HUMAN_ACTIVE, 1, 0), 1, 1));
+            f.level.addFreshEntity(unknown);
+            unknown.tick();
+            test.assertTrue(unknown.isRemoved(), "A copy without a live token falls out of the world as vanilla's void decides");
+            aged.discard();
+
+            // The patrol: a registration that is gone, a token-less copy and a pending drop of a failed session go.
+            var forgotten = f.registered(s, Vec3.atBottomCenterOf(f.base.offset(4, 0, -4)));
             var stray = new ItemEntity(f.level, f.base.getX() + 2.5, f.base.getY(), f.base.getZ() - 4.5,
                     RevivalTotems.held(new Identity(s.roundId, ParticipantRole.HUMAN_ACTIVE, 1, 0), 1, 1));
             f.level.addFreshEntity(stray);
-            s.registry.put(RevivalTotems.dropToken(expired.getItem()).orElseThrow(),
-                    new LooseTotem(second.id(), 1, killer.id(), s.challenge - LooseTotem.LIFETIME_NANOS));
+            s.registry.remove(RevivalTotems.dropToken(forgotten.getItem()).orElseThrow());
             TotemDrops.patrol(f.server);
-            test.assertTrue(expired.isRemoved() && stray.isRemoved(), "Expired and token-less floor totems are removed");
+            test.assertTrue(forgotten.isRemoved() && stray.isRemoved(), "Unregistered and token-less floor totems are removed");
             test.assertFalse(refs.other.isRemoved(), "A live registration stays");
             killer.move(f.base.offset(-3, 0, 4));
             s.put(killer.id(), killer.name(), ParticipantRole.HUMAN_ACTIVE, 1, 0, 0, true);
@@ -342,8 +376,11 @@ public final class TotemDropGameTest {
             // its save is in flight whatever commits in between, removed when its save commits without registering it,
             // announced on its own line, once a round, when registered.
             s.put(second.id(), second.name(), ParticipantRole.HUMAN_ACTIVE, 3, 1, 0, true);
-            test.assertTrue(TotemDrops.prepareSave(second.player, s.melee(second.id())).isEmpty(), "One's own hit forces out nothing to drop");
-            test.assertTrue(TotemDrops.prepareSave(second.player, Optional.empty()).isEmpty(), "A hit without credit drops nothing");
+            for (var credit : List.of(s.melee(second.id()), Optional.<CombatOrigin>empty())) {
+                var saveToken = TotemDrops.prepareSave(second.player, credit);
+                test.assertTrue(saveToken.isPresent(), "One's own hit or the environment forces out an unclaimed totem: " + credit);
+                TotemDrops.captured(second.player, s.roundId, saveToken.get(), false);
+            }
             var refusedSave = TotemDrops.prepareSave(second.player, s.melee(killer.id())).orElseThrow();
             TotemDrops.captured(second.player, s.roundId, refusedSave, false);
             test.assertTrue(f.drops(refusedSave).isEmpty(), "A save the session refused drops nothing");
@@ -369,6 +406,41 @@ public final class TotemDropGameTest {
             test.assertValueEqual(entering.bars.getLast(), forced, "A player still entering is told too");
             test.assertTrue(killer.bars.stream().noneMatch(forced::equals) && second.bars.stream().noneMatch(forced::equals),
                     "The attacker and the saved human are not told");
+            // The saved life never takes its own totem back (守恒 1.4); it is told once, and anyone else may take it.
+            s.challenge += TotemDrops.PICKUP_DELAY_NANOS;
+            var forcedItem = only(test, f.drops(forcedToken), "The forced-out drop");
+            int askedOwn = s.requests;
+            forcedItem.playerTouch(second.player);
+            forcedItem.playerTouch(second.player);
+            test.assertValueEqual(s.requests, askedOwn, "The saved human never asks for its own totem");
+            test.assertValueEqual(second.bars.stream().filter(Notices.format(TotemDrops.OWN_TIP).getString()::equals).count(), 1L,
+                    "Told once that it cannot take it back");
+            test.assertFalse(forcedItem.isRemoved(), "It still lies there for others");
+
+            // An unclaimed drop tells everyone still playing where it lies, every time, the victim included.
+            s.put(late.id(), late.name(), ParticipantRole.HUMAN_ACTIVE, 1, 0, 0, true);
+            for (var c : f.clients) c.chat().clear();
+            var accident = TotemDrops.prepare(late.player, s.snapshot(), Optional.empty()).orElseThrow();
+            var where = TotemDrops.place(late.player);
+            TotemDrops.captured(late.player, s.roundId, accident, true);
+            s.commit(() -> {
+                s.put(late.id(), late.name(), ParticipantRole.MONSTER_LOBBY, 1, 0, 0, true);
+                s.registry.put(accident, new LooseTotem(late.id(), 1, LooseTotem.Source.UNCLAIMED, Optional.empty(), s.challenge));
+            });
+            String coordinates = Notices.format(TotemDrops.unclaimedLine(late.name(), where)).getString();
+            test.assertTrue(coordinates.contains("主世界") && coordinates.contains("(" + BlockPos.containing(where.at()).getX() + ", "),
+                    "The line names the dimension and the block: " + coordinates);
+            for (var c : List.of(human, camp, deployed, killer, late, entering, second))
+                test.assertValueEqual(c.chat(), List.of(coordinates), "Told in chat: " + c.name());
+            for (var c : List.of(withdrawn, outsider)) test.assertValueEqual(c.chat().size(), 0, "Not told: " + c.name());
+            s.put(late.id(), late.name(), ParticipantRole.HUMAN_ACTIVE, 2, 0, 0, true);
+            var again = TotemDrops.prepare(late.player, s.snapshot(), Optional.empty()).orElseThrow();
+            TotemDrops.captured(late.player, s.roundId, again, true);
+            s.commit(() -> {
+                s.put(late.id(), late.name(), ParticipantRole.MONSTER_LOBBY, 2, 0, 0, true);
+                s.registry.put(again, new LooseTotem(late.id(), 2, LooseTotem.Source.UNCLAIMED, Optional.empty(), s.challenge));
+            });
+            test.assertValueEqual(human.chat().size(), 2, "Every unclaimed drop is told, not once a round");
 
             // A new round: the empty registry clears the last round's drops, and the team is sent afresh.
             for (var c : f.clients) c.teams.clear();
@@ -381,6 +453,15 @@ public final class TotemDropGameTest {
                     && human.team(p -> p.getTeamAction() == ClientboundSetPlayerTeamPacket.Action.ADD && p.getPlayers().isEmpty()),
                     "The team is rebuilt empty for the new round");
         }).thenIdle(1).thenSucceed();
+    }
+
+    /** Sets vanilla's private {@code startingToFallPosition}, which only a real fall would record. */
+    private static void fallStart(ServerPlayer player, Vec3 at) {
+        try {
+            var field = ServerPlayer.class.getDeclaredField("startingToFallPosition");
+            field.setAccessible(true);
+            field.set(player, at);
+        } catch (ReflectiveOperationException e) { throw new IllegalStateException(e); }
     }
 
     private static ItemEntity only(GameTestHelper test, List<ItemEntity> items, String what) {
@@ -423,7 +504,9 @@ public final class TotemDropGameTest {
                     MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, sortie, Map.of(), MonsterWallet.EMPTY, 0, false));
         }
 
-        void register(UUID token, UUID victim, int life, UUID killer) { registry.put(token, new LooseTotem(victim, life, killer, challenge)); }
+        void register(UUID token, UUID victim, int life, UUID killer) {
+            registry.put(token, new LooseTotem(victim, life, LooseTotem.Source.HUMAN, Optional.of(killer), challenge));
+        }
 
         Optional<CombatOrigin> melee(UUID attacker) {
             var p = players.get(attacker);
@@ -459,15 +542,23 @@ public final class TotemDropGameTest {
         }
         @Override public void refresh(ServerPlayer player) {
             var p = players.get(player.getUUID());
+            // A monster out hunting holds no copies; its balance shows once it is back in camp.
+            if (p.role() == ParticipantRole.MONSTER_DEPLOYED) return;
             RevivalTotems.project(player, new Decision(State.PROJECT, Identity.of(roundId, p), p.revivalCharges()));
         }
         @Override public boolean saveInFlight(UUID token) { return inFlight.contains(token); }
-        @Override public void requestPickup(UUID round, UUID token, UUID player, int life, Consumer<RoundSession.Reply> reply) {
+        @Override public boolean hunts(ServerPlayer player) {
+            var p = players.get(player.getUUID());
+            return p != null && p.role() == ParticipantRole.MONSTER_DEPLOYED;
+        }
+        @Override public void requestPickup(UUID round, UUID token, UUID player, int life, int sortie, Consumer<RoundSession.Reply> reply) {
             requests++;
             Runnable apply = () -> {
                 var p = players.get(player);
-                if (!round.equals(roundId) || !registry.containsKey(token) || p == null || p.role() != ParticipantRole.HUMAN_ACTIVE
-                        || p.lifeSequence() != life) { reply.accept(new RoundSession.Reply(false, "refused")); return; }
+                boolean taker = p != null && (p.role() == ParticipantRole.HUMAN_ACTIVE
+                        || p.role() == ParticipantRole.MONSTER_DEPLOYED && p.monsterDeploymentSequence() == sortie);
+                if (!round.equals(roundId) || !registry.containsKey(token) || !taker || p.lifeSequence() != life
+                        || registry.get(token).ownedBy(p)) { reply.accept(new RoundSession.Reply(false, "refused")); return; }
                 commit(() -> {
                     registry.remove(token);
                     put(player, p.name(), p.role(), p.lifeSequence(), p.revivalCharges() + 1, p.monsterDeploymentSequence(), p.online());
@@ -480,7 +571,7 @@ public final class TotemDropGameTest {
     }
 
     private record Client(ServerPlayer player, GameProfile profile, Recorder connection, EmbeddedChannel channel,
-                          List<String> bars, List<ClientboundSetPlayerTeamPacket> teams) {
+                          List<String> bars, List<String> chat, List<ClientboundSetPlayerTeamPacket> teams) {
         UUID id() { return profile.id(); }
         String name() { return profile.name(); }
         boolean team(java.util.function.Predicate<ClientboundSetPlayerTeamPacket> test) {
@@ -515,8 +606,9 @@ public final class TotemDropGameTest {
         Client client(String tag) {
             var profile = new GameProfile(UUID.randomUUID(), "HRDrop" + tag + arena);
             var bars = new ArrayList<String>();
+            var chat = new ArrayList<String>();
             var teams = new ArrayList<ClientboundSetPlayerTeamPacket>();
-            var connection = new Recorder(bars, teams);
+            var connection = new Recorder(bars, chat, teams);
             var player = new ServerPlayer(server, level, profile, TestClients.information());
             var channel = new EmbeddedChannel(connection);
             dev.hardrush.gametest.UnmanagedProfileFixtures.run(() -> server.getPlayerList().placeNewPlayer(connection, player,
@@ -524,8 +616,8 @@ public final class TotemDropGameTest {
             player.teleportTo(base.getX() - 10 + clients.size() * 2 + .5, base.getY(), base.getZ() - 11 + .5);
             player.setGameMode(GameType.SURVIVAL);
             player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-            bars.clear(); teams.clear();
-            var client = new Client(player, profile, connection, channel, bars, teams);
+            bars.clear(); chat.clear(); teams.clear();
+            var client = new Client(player, profile, connection, channel, bars, chat, teams);
             clients.add(client);
             return client;
         }
@@ -543,7 +635,7 @@ public final class TotemDropGameTest {
         ItemEntity registered(Script s, Vec3 at) {
             var token = UUID.randomUUID();
             s.register(token, UUID.randomUUID(), 1, UUID.randomUUID());
-            var item = TotemDrops.spawn(level, at, token, s.roundId);
+            var item = TotemDrops.spawn(new TotemDrops.Place(level, at), token, s.roundId);
             item.setDeltaMovement(Vec3.ZERO);
             registered.add(item);
             return item;
@@ -571,16 +663,19 @@ public final class TotemDropGameTest {
         }
     }
 
-    /** Keeps the action-bar lines and glow-team packets a fixture player receives. */
+    /** Keeps the action-bar lines, chat lines and glow-team packets a fixture player receives. */
     private static final class Recorder extends Connection {
         final List<String> bars;
+        final List<String> chat;
         final List<ClientboundSetPlayerTeamPacket> teams;
-        Recorder(List<String> bars, List<ClientboundSetPlayerTeamPacket> teams) {
+        Recorder(List<String> bars, List<String> chat, List<ClientboundSetPlayerTeamPacket> teams) {
             super(PacketFlow.SERVERBOUND);
-            this.bars = bars; this.teams = teams;
+            this.bars = bars; this.chat = chat; this.teams = teams;
         }
         private void record(Packet<?> packet) {
             if (packet instanceof ClientboundSetActionBarTextPacket bar) bars.add(bar.text().getString());
+            if (packet instanceof net.minecraft.network.protocol.game.ClientboundSystemChatPacket line && !line.overlay())
+                chat.add(line.content().getString());
             if (packet instanceof ClientboundSetPlayerTeamPacket team && TotemDrops.TEAM.equals(team.getName())) teams.add(team);
         }
         @Override public void send(Packet<?> packet) { record(packet); }
