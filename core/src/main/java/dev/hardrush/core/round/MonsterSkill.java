@@ -21,8 +21,13 @@ public enum MonsterSkill {
     public MonsterRole role() { return role; }
     public boolean retired() { return this == ZOMBIE_SUMMON; }
 
-    public long cooldownMillis(RulesConfig rules) {
+    /**
+     * The rest after one use. A skeleton's volley rests by its sortie's tier (docs/plan/悬赏分档与追猎强度.md §5.3);
+     * rounds saved with a single configured cooldown, and outings with no tier, keep that value.
+     */
+    public long cooldownMillis(RulesConfig rules, int sortieTier) {
         Double value = Objects.requireNonNull(rules).combatValues().get(cooldownKey);
+        if (this == SKELETON_BURST && (sortieTier > 0 || value == null)) return HuntPressure.volleyCooldownMillis(sortieTier);
         if (value == null) throw new IllegalStateException("本轮规则缺少技能冷却参数：" + cooldownKey);
         return value.longValue();
     }
