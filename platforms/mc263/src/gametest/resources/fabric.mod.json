@@ -53,6 +53,7 @@
       "dev.hardrush.gametest.MonsterAiIdentityGameTest",
       "dev.hardrush.gametest.DuskPactGameTest",
       "dev.hardrush.monster.MonsterSpawnEquipmentGameTest",
+      "dev.hardrush.revival.RevivalSuppliesGameTest",
       "dev.hardrush.monster.MonsterGachaGameTest",
       "dev.hardrush.monster.MonsterNativeWeaponsGameTest",
       "dev.hardrush.monster.MonsterCreeperGameTest",
