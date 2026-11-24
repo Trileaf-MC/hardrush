@@ -715,11 +715,13 @@ public final class LobbyRuntimeGameTest {
             else {
                 // Eggs by the sortie's tier, no baby egg of its own (docs/plan/悬赏分档与追猎强度.md §5.2).
                 int tier = monster.participant().sortie().tier();
+                var kit = monster.participant().wallet();
                 var adult = monster.player.getInventory().getItem(2);
-                test.assertTrue(monster.player.getInventory().getItem(1).isEmpty(), "A zombie sortie brings no baby egg of its own");
-                int expected = dev.hardrush.core.round.HuntPressure.starterAdultEggs(tier);
+                test.assertTrue(kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG) > 0 || monster.player.getInventory().getItem(1).isEmpty(),
+                        "A zombie sortie brings no baby egg of its own");
+                int expected = dev.hardrush.core.round.HuntPressure.starterAdultEggs(tier) + kit.carried(dev.hardrush.core.round.ShopOffer.ADULT_EGG);
                 test.assertTrue(expected == 0 ? adult.isEmpty() : adult.is(Items.ZOMBIE_SPAWN_EGG) && adult.getCount() == expected,
-                        "A tier-" + tier + " zombie brings " + expected + " adult eggs: " + adult);
+                        "A tier-" + tier + " zombie brings its tier's and its bought adult eggs, " + expected + ": " + adult);
             }
             test.assertValueEqual(diamonds(), 3, "Outings do not duplicate or pick up the old human inventory");
         }
