@@ -375,12 +375,17 @@ public final class RoundEngine {
             for (RoundDeath death : deaths) {
                 if (before.participants().get(death.playerId()).role() != ParticipantRole.MONSTER_DEPLOYED
                         || !death.recentlyHurtByPlayer()) continue;
-                players.put(death.playerId(), credit(before.rules(), players.get(death.playerId()), MonsterCoins.KILLED_BY_HUMAN));
+                // A stronger human's kill pays more; a kill nobody is credited with pays the plainest.
+                int killerStars = humanKiller(before, players, victims, death)
+                        .map(killer -> Bounty.standing(before.rules(), before.participants(), killer.id()).stars()).orElse(1);
+                players.put(death.playerId(), creditCoins(before.rules(), players.get(death.playerId()),
+                        MonsterCoins.killedByHuman(before.rules(), killerStars)));
             }
+            var standings = Bounty.standings(before.rules(), before.participants());
             for (RoundDeath death : defeats) {
                 for (UUID human : lockedBy(before, players, victims, death)) {
-                    players.put(death.playerId(), players.get(death.playerId())
-                            .withHuntLock(human, deployCooldownNanos(before.rules())));
+                    int stars = standings.getOrDefault(human, Bounty.Standing.NONE).stars();
+                    players.put(death.playerId(), players.get(death.playerId()).withHuntLock(human, HuntPressure.lockNanos(stars)));
                 }
             }
             if (Bounty.enabled(before.rules())) {
@@ -409,7 +414,12 @@ public final class RoundEngine {
     private static void release(RoundSnapshot before, Map<UUID, Participant> players, Map<UUID, LooseTotem> looseTotems,
             TotemDrop.Release release, UUID victim, int life, Optional<UUID> dropToken) {
         switch (release) {
-            case TotemDrop.Release.ToMonster monster -> rewardMonsterKill(before.rules(), players, monster.owner());
+            case TotemDrop.Release.ToMonster monster -> {
+                // A human's head is worth its stars, paid before the kill sends the monster home to revive.
+                int stars = Bounty.standing(before.rules(), before.participants(), victim).stars();
+                players.put(monster.owner(), creditCoins(before.rules(), players.get(monster.owner()), MonsterCoins.headBounty(before.rules(), stars)));
+                rewardMonsterKill(before.rules(), players, monster.owner());
+            }
             case TotemDrop.Release.Dropped dropped -> dropToken.ifPresent(token -> looseTotems.putIfAbsent(token,
                     new LooseTotem(victim, life, dropped.source(), dropped.killer(), before.challengeNanos())));
         }
@@ -532,17 +542,27 @@ public final class RoundEngine {
                 || !request.targetMatches(before) || sortie < request.initialSortie())
             throw new IllegalStateException("追猎目标、生命或发起身份已改变。");
         if (before.participants().get(request.hunter()).huntLockNanos(request.target()) > 0)
-            throw new Refusal.Exception(Refusal.HUNT_LOCKED, "这名人类刚击败了该怪物，锁定尚未结束。");
-        var deployed = deployMonster(before, request.round(), request.hunter(), request.hunterLife(), sortie);
+            throw new Refusal.Exception(Refusal.HUNT_LOCKED, "这只怪物在追猎这名人类时阵亡，锁定尚未结束。");
+        if (huntersOn(before, request.target()) >= HuntPressure.concurrentHunters(
+                Bounty.standing(before.rules(), before.participants(), request.target()).stars()))
+            throw new Refusal.Exception(Refusal.HUNT_FULL, "追猎这名人类的怪物已满。");
+        Participant hunter = before.participants().get(request.hunter());
+        int stars = Bounty.standing(before.rules(), before.participants(), request.target()).stars();
+        // Resuming a paused sortie never climbs: its body already holds the kit of the tier it was issued for.
+        int tier = hunter.wallet().hasParkedBody() && hunter.sortie().tier() > 0
+                ? HuntPressure.resumedTier(hunter.sortie().tier(), stars) : stars;
+        var deployed = deployMonster(before, request.round(), request.hunter(), request.hunterLife(), sortie)
+                .withSortie(Sortie.onto(request.target(), tier));
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         players.put(deployed.id(), deployed);
-        // Being hunted from the camp is a mark of standing, whatever the outing then achieves.
-        if (Bounty.enabled(before.rules())) {
-            Participant target = players.get(request.target());
-            players.put(target.id(), target.withThreat(target.threat().huntedFromCamp(target.lifeSequence(),
-                    request.hunter(), before.challengeNanos())));
-        }
         return proposal(eventId, "MONSTER_DEPLOY", before, before.phase(), before.remainingPhaseNanos(), players, before.result(), false);
+    }
+
+    /** Monsters already out on {@code human}, sent there from the camp. */
+    public static int huntersOn(RoundSnapshot snapshot, UUID human) {
+        Objects.requireNonNull(human);
+        return (int) snapshot.participants().values().stream()
+                .filter(p -> p.role() == ParticipantRole.MONSTER_DEPLOYED && p.quarry().filter(human::equals).isPresent()).count();
     }
 
     public RoundTransition proposeMonsterDeploy(UUID eventId, UUID roundId, UUID playerId,
@@ -602,7 +622,7 @@ public final class RoundEngine {
         var preceding = skillReservations.get(key);
         long readyAt;
         try {
-            readyAt = Math.addExact(nowEpochMillis, skill.cooldownMillis(before.rules()));
+            readyAt = Math.addExact(nowEpochMillis, skill.cooldownMillis(before.rules(), player.sortie().tier()));
             if (preceding != null) readyAt = Math.max(readyAt, Math.addExact(preceding.consumedReadyAt(), 1));
         } catch (ArithmeticException overflow) {
             throw new IllegalArgumentException("Skill cooldown deadline overflow", overflow);
@@ -652,7 +672,7 @@ public final class RoundEngine {
                 ParticipantRole.MONSTER_DEPLOYED);
         long cooldown = returnCooldownNanos(before.rules());
         var returned = parkedBody.isEmpty() ? endSortie(player, cooldown)
-                : player.monsterLobby(cooldown).withWallet(player.wallet().park(parkedBody));
+                : player.monsterLobby(cooldown).withWallet(player.wallet().park(parkedBody)).withSortie(player.sortie());
         return monsterProposal(eventId, "MONSTER_RETURN", before, returned);
     }
 
@@ -884,8 +904,8 @@ public final class RoundEngine {
         return MonsterCoins.enabled(rules) ? player.withWallet(player.wallet().chooseRole(rules, player.monsterRole())) : player;
     }
 
-    private static Participant credit(RulesConfig rules, Participant player, String reward) {
-        return MonsterCoins.enabled(rules) ? player.withWallet(player.wallet().credit(MonsterCoins.amount(rules, reward))) : player;
+    private static Participant creditCoins(RulesConfig rules, Participant player, int coins) {
+        return MonsterCoins.enabled(rules) && coins > 0 ? player.withWallet(player.wallet().credit(coins)) : player;
     }
 
     /**
@@ -906,19 +926,21 @@ public final class RoundEngine {
     }
 
     /**
-     * The humans a deployed monster's defeat locks (docs/plan/击败锁定与怪物平衡.md §1): its own blast locks the
-     * sortie's quarry, and the human who lit the fuse when one did; any other death locks the human credited with
-     * the kill. A death nobody is credited with locks no one. Only living humans of this round are locked.
+     * The humans a deployed monster's fall locks (docs/plan/悬赏分档与追猎强度.md §4): whatever killed it, the human it
+     * was sent onto from the camp; besides, the human credited with the kill, or the one who lit a creeper's fuse.
+     * A deliberate return never comes here. Only humans still living after the batch are locked.
      */
     static java.util.Set<UUID> lockedBy(RoundSnapshot before, Map<UUID, Participant> after,
             java.util.Set<UUID> victims, RoundDeath death) {
         var locked = new java.util.LinkedHashSet<UUID>();
+        before.participants().get(death.playerId()).quarry().ifPresent(locked::add);
         death.detonation().ifPresentOrElse(blast -> {
             blast.quarry().ifPresent(locked::add);
-            blast.igniter().filter(igniter -> !victims.contains(igniter)
-                    && after.get(igniter) != null && after.get(igniter).role() == ParticipantRole.HUMAN_ACTIVE).ifPresent(locked::add);
+            blast.igniter().ifPresent(locked::add);
         }, () -> humanKiller(before, after, victims, death).ifPresent(killer -> locked.add(killer.id())));
         locked.remove(death.playerId());
+        locked.removeIf(human -> victims.contains(human) || after.get(human) == null
+                || after.get(human).role() != ParticipantRole.HUMAN_ACTIVE);
         return locked;
     }
 

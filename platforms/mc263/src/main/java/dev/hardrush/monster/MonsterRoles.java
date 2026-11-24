@@ -192,17 +192,18 @@ public final class MonsterRoles {
             var slot = MonsterGacha.equipmentSlot(piece.slot());
             if (bought.containsKey(slot)) spares.add(stack); else bought.put(slot, stack);
         }
+        // The quarry's stars decide what this sortie brings of its own (docs/plan/悬赏分档与追猎强度.md §5).
+        int tier = MonsterRoundRuntime.sortieTier(player);
         if (form != MonsterForm.CREEPER) {
-            for (var entry : MonsterSpawnEquipment.generate(player, role.model, form.skeleton()).entrySet())
-                if (!entry.getValue().isEmpty() && !bought.containsKey(entry.getKey()))
-                    player.setItemSlot(entry.getKey(), MonsterItems.bind(player, entry.getValue(), "gear"));
+            wearSpawnEquipment(player, role, form, tier, bought.keySet());
             bought.forEach((slot, stack) -> player.setItemSlot(slot, MonsterItems.bind(player, stack, "gear")));
         }
         if (form.zombie()) {
-            player.getInventory().setItem(1, MonsterCompanions.egg(player, true, false)
-                    .copyWithCount(1 + kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG)));
-            player.getInventory().setItem(2, MonsterCompanions.egg(player, false, false)
-                    .copyWithCount(1 + kit.carried(dev.hardrush.core.round.ShopOffer.ADULT_EGG)));
+            // Baby eggs only come from the witch; adult eggs by tier, bought ones on top.
+            int baby = kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG);
+            int adult = dev.hardrush.core.round.HuntPressure.starterAdultEggs(tier) + kit.carried(dev.hardrush.core.round.ShopOffer.ADULT_EGG);
+            if (baby > 0) player.getInventory().setItem(1, MonsterCompanions.egg(player, true, false).copyWithCount(baby));
+            if (adult > 0) player.getInventory().setItem(2, MonsterCompanions.egg(player, false, false).copyWithCount(adult));
             if (MonsterSoulcatcher.enabled(player)) player.getInventory().setItem(3, MonsterSoulcatcher.bag(player));
         } else if (form == MonsterForm.CREEPER) player.getInventory().setItem(0, MonsterCreeper.createIgniter(player));
         // A skeleton's volley lives on its own sortie bow; MonsterBowDisplay explains it on that bow itself.
@@ -221,14 +222,25 @@ public final class MonsterRoles {
      */
     private static void resume(ServerPlayer player, Role role, MonsterParking.Body body, dev.hardrush.core.round.MonsterWallet kit) {
         var inventory = player.getInventory();
+        int tier = MonsterRoundRuntime.sortieTier(player);
+        // Resumed onto a weaker human: what the sortie brought of its own beyond this tier goes back (§5.1).
+        boolean lowered = body.tier() > tier;
+        int surplusEggs = lowered ? surplusStarterEggs(body, kit, tier) : 0;
         var leftovers = new ArrayList<ItemStack>();
         for (var entry : body.items().entrySet()) {
             var purpose = MonsterItems.purpose(entry.getValue());
             boolean egg = purpose.equals(MonsterCompanions.BABY_EGG) || purpose.equals(MonsterCompanions.ADULT_EGG);
             // A body always resumes in its base form, so a drowned's eggs come back as zombie eggs.
             // The fixed controls are issued afresh, so their item and description follow the current rules.
+            if (lowered && purpose.equals(SPAWN_GEAR)) continue;
+            int count = entry.getValue().getCount();
+            if (surplusEggs > 0 && purpose.equals(MonsterCompanions.ADULT_EGG)) {
+                int taken = Math.min(count, surplusEggs);
+                surplusEggs -= taken; count -= taken;
+                if (count == 0) continue;
+            }
             var stack = egg ? MonsterCompanions.egg(player, purpose.equals(MonsterCompanions.BABY_EGG), role.form == MonsterForm.DROWNED)
-                    .copyWithCount(entry.getValue().getCount())
+                    .copyWithCount(count)
                     : purpose.equals(RETURN_SHARD) ? returnShard(player, role)
                     : purpose.equals(HuntRetracks.PURPOSE) ? trackingCompass(player, role)
                     : purpose.equals(MonsterCreeper.IGNITER) ? MonsterCreeper.createIgniter(player)
@@ -238,6 +250,11 @@ public final class MonsterRoles {
             else leftovers.add(stack);
         }
         for (var stack : leftovers) inventory.add(stack);
+        if (lowered && role.form != MonsterForm.CREEPER) {
+            var worn = new java.util.HashSet<EquipmentSlot>();
+            for (var slot : EquipmentSlot.VALUES) if (!player.getItemBySlot(slot).isEmpty()) worn.add(slot);
+            wearSpawnEquipment(player, role, role.form, tier, worn);
+        }
         if (role.form.zombie()) refreshSoulcatcher(player);
         if (body.selected() >= 0 && body.selected() < 9) inventory.setSelectedSlot(body.selected());
         if (body.charged()) MonsterCreeper.charge(player);
@@ -254,6 +271,26 @@ public final class MonsterRoles {
         }
         applyPurchases(player, kit, role.form, spares);
         repairLoadout(player);
+    }
+
+    /** Spawn equipment rolled for {@code tier}, worn where nothing in {@code taken} already is. */
+    private static void wearSpawnEquipment(ServerPlayer player, Role role, MonsterForm form, int tier, java.util.Set<EquipmentSlot> taken) {
+        for (var entry : MonsterSpawnEquipment.generate(player, role.model, form.skeleton(), tier).entrySet())
+            if (!entry.getValue().isEmpty() && !taken.contains(entry.getKey()))
+                player.setItemSlot(entry.getKey(), MonsterItems.bind(player, entry.getValue(), SPAWN_GEAR));
+    }
+
+    /**
+     * Adult eggs the paused body still holds of its own beyond {@code tier}'s allowance. Eggs are alike, so the ones
+     * bought before the pause are taken to be spent last, in the monster's favour.
+     */
+    private static int surplusStarterEggs(MonsterParking.Body body, dev.hardrush.core.round.MonsterWallet kit, int tier) {
+        int held = body.items().values().stream().filter(stack -> MonsterItems.purpose(stack).equals(MonsterCompanions.ADULT_EGG))
+                .mapToInt(ItemStack::getCount).sum();
+        int boughtBeforePause = Math.max(0, kit.bought(dev.hardrush.core.round.ShopOffer.ADULT_EGG)
+                - kit.carried(dev.hardrush.core.round.ShopOffer.ADULT_EGG));
+        int ownLeft = Math.max(0, held - boughtBeforePause);
+        return Math.max(0, ownLeft - dev.hardrush.core.round.HuntPressure.starterAdultEggs(tier));
     }
 
     /** The parked bag takes this deployment's tier and capacity; a body parked before the soulcatcher receives one. */
@@ -429,7 +466,8 @@ public final class MonsterRoles {
         for (var slot : EquipmentSlot.VALUES) {
             if (slot.getType() != EquipmentSlot.Type.HUMANOID_ARMOR && slot.getType() != EquipmentSlot.Type.HAND) continue;
             var stack = player.getItemBySlot(slot);
-            if (stack.isEmpty() || !MonsterItems.matches(player, stack, "gear") && !MonsterItems.matches(player, stack, SEA_TRIDENT)
+            if (stack.isEmpty() || !MonsterItems.matches(player, stack, "gear") && !MonsterItems.matches(player, stack, SPAWN_GEAR)
+                    && !MonsterItems.matches(player, stack, SEA_TRIDENT)
                     || EnchantmentHelper.has(stack, EnchantmentEffectComponents.PREVENT_EQUIPMENT_DROP)) continue;
             float chance = SPAWNED_EQUIPMENT_DROP_CHANCE;
             if (source.getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker)
@@ -531,6 +569,8 @@ public final class MonsterRoles {
     }
     /** Purpose of the trident a zombie receives when it rises from the sea as a drowned; never parked. */
     public static final String SEA_TRIDENT = "sea_trident";
+    /** Armour and weapons a sortie spawned with by its tier, unlike vault gear, which coins bought. */
+    public static final String SPAWN_GEAR = "spawn_gear";
     /** Purpose of the echo shard that channels the return to camp. */
     public static final String RETURN_SHARD = "return";
     private static final String RETRACK_NEEDLE = "指针指向你的追猎目标 · 目标在其他维度时乱转";
@@ -599,7 +639,7 @@ public final class MonsterRoles {
             if (player == null || !player.isAlive()) continue;
             MonsterWorthRewards.showWorth(player);
             if (role.form.skeleton()) MonsterBowDisplay.update(player, role.form, burstCooldownRemaining(player),
-                    role.millis("skeleton.burstCooldownMillis"));
+                    volleyCooldownMillis(player, role));
             else MonsterBowDisplay.clear(player);
             boolean aiming = volleying(player);
             if (aiming != role.volleyPose) { role.volleyPose = aiming; MonsterDisguise.refreshMetadata(player); }
@@ -793,8 +833,13 @@ public final class MonsterRoles {
         if (formal.isPresent()) return formal.orElseThrow();
         long now = System.nanoTime();
         if (now < BURST_READY.getOrDefault(player.getUUID(), 0L)) return false;
-        BURST_READY.put(player.getUUID(), now + role.millis("skeleton.burstCooldownMillis") * 1_000_000L);
+        BURST_READY.put(player.getUUID(), now + volleyCooldownMillis(player, role) * 1_000_000L);
         startBurst(player, role, hand); return true;
+    }
+    /** The volley's rest for this sortie's tier (docs/plan/悬赏分档与追猎强度.md §5.3). */
+    static long volleyCooldownMillis(ServerPlayer player, Role role) {
+        // The same tier the engine reserves the cooldown with, so the bow's display never disagrees with the round.
+        return MonsterSkill.SKELETON_BURST.cooldownMillis(role.rules, MonsterRoundRuntime.committedTier(player));
     }
     private static void startBurst(ServerPlayer player, Role role, InteractionHand hand) {
         player.stopUsingItem(); role.chargeTick = -1; role.bowHand = hand;

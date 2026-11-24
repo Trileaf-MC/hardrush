@@ -11,6 +11,25 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.levelgen.LegacyRandomSource;
 
 public final class MonsterSpawnEquipmentGameTest {
+    /** docs/plan/悬赏分档与追猎强度.md §5.4: five stars always wear a whole set of chainmail, iron or diamond. */
+    @GameTest
+    public void fiveStarSortiesWearAWholeSetOfAtLeastChainmail(GameTestHelper test) {
+        var random = new LegacyRandomSource(74);
+        int ironOrBetter = 0, rolls = 400;
+        for (int i = 0; i < rolls; i++) {
+            var gear = MonsterSpawnEquipment.generate(random, false, dev.hardrush.core.round.HuntPressure.armor(5), (stack, rng, cost) -> {});
+            for (var slot : List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET))
+                test.assertFalse(gear.get(slot).isEmpty(), "A five-star sortie wears every piece");
+            var chest = gear.get(EquipmentSlot.CHEST);
+            test.assertTrue(chest.is(Items.CHAINMAIL_CHESTPLATE) || chest.is(Items.IRON_CHESTPLATE) || chest.is(Items.DIAMOND_CHESTPLATE),
+                    "Never weaker than chainmail: " + chest);
+            if (!chest.is(Items.CHAINMAIL_CHESTPLATE)) ironOrBetter++;
+        }
+        test.assertTrue(ironOrBetter > rolls * 0.8 && ironOrBetter < rolls, "About nine in ten are iron or diamond: " + ironOrBetter);
+        test.succeed();
+    }
+
+
     @GameTest
     public void spawnChancesUseStrictNativeThresholds(GameTestHelper test) {
         var empty = new ScriptedRandom(List.of(0.15F, 0.05F), List.of());

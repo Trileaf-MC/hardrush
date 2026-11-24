@@ -90,12 +90,18 @@ public record RulesConfig(
                 throw new IllegalArgumentException("身价基础等级不能超过身价上限");
             }
         }
-        if (copy.keySet().stream().anyMatch(key -> key.startsWith("bounty."))) {
-            if (!copy.keySet().containsAll(BOUNTY_DEFAULTS.keySet())) {
-                throw new IllegalArgumentException("悬赏参数必须完整配置: " + BOUNTY_DEFAULTS.keySet());
+        if (copy.keySet().stream().anyMatch(key -> key.startsWith("bounty.") && !retiredKey(key))) {
+            if (!copy.keySet().containsAll(BOUNTY_CORE_KEYS)) {
+                throw new IllegalArgumentException("悬赏参数必须完整配置: " + BOUNTY_CORE_KEYS);
             }
-            if (!(copy.get("bounty.star2Ratio") < copy.get("bounty.star3Ratio") && copy.get("bounty.star3Ratio") < copy.get("bounty.star4Ratio"))) {
-                throw new IllegalArgumentException("悬赏星级比例必须逐级递增");
+            var thresholds = java.util.List.of("bounty.star2Threat", "bounty.star3Threat", "bounty.star4Threat", "bounty.star5Threat");
+            long present = thresholds.stream().filter(copy::containsKey).count();
+            // Rounds saved before absolute stars carry none and read the current defaults.
+            if (present != 0 && present != thresholds.size()) throw new IllegalArgumentException("悬赏星级阈值必须完整配置: " + thresholds);
+            if (present != 0 && !(copy.get("bounty.star2Threat") < copy.get("bounty.star3Threat")
+                    && copy.get("bounty.star3Threat") < copy.get("bounty.star4Threat")
+                    && copy.get("bounty.star4Threat") < copy.get("bounty.star5Threat"))) {
+                throw new IllegalArgumentException("悬赏星级阈值必须逐级递增");
             }
             if (!(copy.get("bounty.star2Multiplier") <= copy.get("bounty.star3Multiplier")
                     && copy.get("bounty.star3Multiplier") <= copy.get("bounty.star4Multiplier")
@@ -123,8 +129,7 @@ public record RulesConfig(
                 Map.entry("skeleton.armor", 0.0),
                 Map.entry("skeleton.bowChargeTicks", 20.0),
                 Map.entry("skeleton.burstCount", 3.0),
-                Map.entry("skeleton.burstIntervalMillis", 300.0),
-                Map.entry("skeleton.burstCooldownMillis", 20_000.0),
+                Map.entry("skeleton.burstIntervalMillis", 200.0),
                 Map.entry("creeper.maxHealth", 20.0),
                 Map.entry("creeper.movementAttribute", 0.25),
                 Map.entry("creeper.armor", 0.0),
@@ -144,7 +149,14 @@ public record RulesConfig(
     /** Monster coin economy; each offer's price doubles per purchase within one sortie. */
     private static final Map<String, Double> COIN_DEFAULTS = Map.ofEntries(
             Map.entry("coin.starter", 6.0),
-            Map.entry("coin.killedByHuman", 8.0),
+            // Coins for a monster a human killed, by the killer's stars; bought back as sortie upgrades.
+            Map.entry("coin.killedByHuman.star1", 8.0), Map.entry("coin.killedByHuman.star2", 10.0),
+            Map.entry("coin.killedByHuman.star3", 13.0), Map.entry("coin.killedByHuman.star4", 16.0),
+            Map.entry("coin.killedByHuman.star5", 20.0),
+            // A human's head, by its stars, for the monster that killed it or forced its totem. That monster
+            // holds a revival totem next, so the witch only sells it revival supplies: priced against those.
+            Map.entry("coin.headBounty.star2", 40.0), Map.entry("coin.headBounty.star3", 80.0),
+            Map.entry("coin.headBounty.star4", 150.0), Map.entry("coin.headBounty.star5", 250.0),
             Map.entry("coin.damageCapPerHuman", 20.0),
             Map.entry("coin.arrowsPerBundle", 4.0),
             Map.entry("coin.potion.swiftnessSeconds", 180.0),
@@ -169,28 +181,36 @@ public record RulesConfig(
             Map.entry("coin.price.oakLogs", 10.0), Map.entry("coin.limit.oakLogs", 3.0),
             Map.entry("coin.price.ironPickaxe", 35.0), Map.entry("coin.limit.ironPickaxe", 1.0),
             Map.entry("coin.price.shield", 35.0), Map.entry("coin.limit.shield", 1.0),
+            Map.entry("coin.price.bell", 45.0), Map.entry("coin.limit.bell", 1.0),
             Map.entry("coin.price.bread", 30.0), Map.entry("coin.limit.bread", 3.0));
 
     /**
-     * Relative bounty: killing a monster player scores 3, each hunt launched from the camp 1, and milestones
-     * dominate. The top online human is read as at least 10; stars step at 20%, 45% and 70% of it, and five
-     * stars (the top) weigh damage at ×2.5.
+     * Absolute bounty (docs/plan/悬赏分档与追猎强度.md): killing a monster player scores 2, milestones dominate.
+     * Stars step at fixed threats that follow the speedrun's stages, and five stars weigh damage at ×2.5.
      */
     private static final Map<String, Double> BOUNTY_DEFAULTS = Map.ofEntries(
-            Map.entry("bounty.killPoints", 3.0),
-            Map.entry("bounty.huntedPoints", 1.0),
-            Map.entry("bounty.floor", 10.0),
-            Map.entry("bounty.star2Ratio", 0.2),
-            Map.entry("bounty.star3Ratio", 0.45),
-            Map.entry("bounty.star4Ratio", 0.7),
+            Map.entry("bounty.killPoints", 2.0),
+            Map.entry("bounty.star2Threat", 8.0),
+            Map.entry("bounty.star3Threat", 17.0),
+            Map.entry("bounty.star4Threat", 30.0),
+            Map.entry("bounty.star5Threat", 43.0),
             Map.entry("bounty.star2Multiplier", 1.25),
             Map.entry("bounty.star3Multiplier", 1.5),
             Map.entry("bounty.star4Multiplier", 2.0),
             Map.entry("bounty.star5Multiplier", 2.5));
+    /** Keys every round with bounties carries, before and after absolute stars. */
+    private static final Set<String> BOUNTY_CORE_KEYS = Set.of("bounty.killPoints", "bounty.star2Multiplier",
+            "bounty.star3Multiplier", "bounty.star4Multiplier", "bounty.star5Multiplier");
 
-    /** Retired coin bounty keys: rounds saved with them still decode, pending rules drop them. */
-    private static boolean retiredBountyKey(String key) {
-        return key.startsWith("coin.bounty.") || key.startsWith("coin.survival.");
+    /**
+     * Retired keys: rounds saved with them still decode, pending rules drop them. Coin bounty and survival keys
+     * predate relative bounties; the floor, ratios and hunted points predate absolute stars; the flat coins for a
+     * slain monster and the single volley cooldown predate stars deciding them.
+     */
+    private static boolean retiredKey(String key) {
+        return key.startsWith("coin.bounty.") || key.startsWith("coin.survival.") || key.equals("bounty.floor")
+                || key.startsWith("bounty.") && key.endsWith("Ratio") || key.equals("bounty.huntedPoints")
+                || key.equals("coin.killedByHuman") || key.equals("skeleton.burstCooldownMillis");
     }
 
     /** Worth runs from level 10 to 30, one level per damage point; a slain body sprays 10 experience per level and leaves a book from level 15. */
@@ -232,7 +252,10 @@ public record RulesConfig(
                     "coin.killedByHuman", Map.entry(5.0, 8.0)),
             // Revision 3: one random piece of gear priced against a spawn egg, not above it.
             Map.of("coin.price.trialKey", Map.entry(15.0, 5.0),
-                    "coin.price.ominousKey", Map.entry(40.0, 12.0)));
+                    "coin.price.ominousKey", Map.entry(40.0, 12.0)),
+            // Revision 4 (docs/plan/悬赏分档与追猎强度.md): kills score well below milestones; a tighter volley.
+            Map.of("bounty.killPoints", Map.entry(3.0, 2.0),
+                    "skeleton.burstIntervalMillis", Map.entry(300.0, 200.0)));
     private static final int DEFAULTS_REVISION = 1 + RETUNED_DEFAULTS.size();
 
     private int defaultsRevision() {
@@ -249,9 +272,9 @@ public record RulesConfig(
                 && WORTH_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && SORTIE_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && BOUNTY_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
-                && combatValues.keySet().stream().noneMatch(RulesConfig::retiredBountyKey)) return this;
+                && combatValues.keySet().stream().noneMatch(RulesConfig::retiredKey)) return this;
         var values = new TreeMap<>(combatValues);
-        values.keySet().removeIf(RulesConfig::retiredBountyKey);
+        values.keySet().removeIf(RulesConfig::retiredKey);
         if (!current) {
             for (int revision = Math.max(defaultsRevision(), 1) + 1; revision <= DEFAULTS_REVISION; revision++) {
                 RETUNED_DEFAULTS.get(revision - 2).forEach((key, change) -> values.replace(key, change.getKey(), change.getValue()));
@@ -410,14 +433,14 @@ public record RulesConfig(
                 throw new IllegalArgumentException("次数或时间必须是可用的正整数: " + key);
             }
         }
-        if (key.startsWith("coin.") && !retiredBountyKey(key)
+        if (key.startsWith("coin.") && !retiredKey(key)
                 && (value != Math.rint(value) || value > Integer.MAX_VALUE)) {
             throw new IllegalArgumentException("怪物币参数必须是整数: " + key);
         }
         if (key.startsWith("worth.") && (value != Math.rint(value) || value > 1_000_000)) {
             throw new IllegalArgumentException("身价参数必须是不超过 1000000 的整数: " + key);
         }
-        if ((key.endsWith("Points") || key.equals("bounty.floor")) && key.startsWith("bounty.")
+        if ((key.endsWith("Points") || key.endsWith("Threat") || key.equals("bounty.floor")) && key.startsWith("bounty.")
                 && (value != Math.rint(value) || value > 1_000_000)) {
             throw new IllegalArgumentException("悬赏分值必须是不超过 1000000 的正整数: " + key);
         }

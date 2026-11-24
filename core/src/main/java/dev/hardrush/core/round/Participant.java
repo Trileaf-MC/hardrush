@@ -1,6 +1,7 @@
 package dev.hardrush.core.round;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.UUID;
@@ -12,9 +13,13 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
                           long monsterCooldownNanos, int monsterDeploymentSequence,
                           Map<MonsterSkill, Long> monsterSkillReadyAtMillis, MonsterWallet wallet,
                           long lifeHumanNanos, boolean entering, HumanThreat threat, Map<UUID, Long> huntLocks,
-                          WitchRecord witch, boolean shelterWaived) {
+                          WitchRecord witch, Sortie sortie, boolean shelterWaived) {
     public Participant {
-        Objects.requireNonNull(threat); Objects.requireNonNull(witch);
+        Objects.requireNonNull(threat); Objects.requireNonNull(witch); Objects.requireNonNull(sortie);
+        Objects.requireNonNull(wallet); Objects.requireNonNull(role);
+        // Only a monster out hunting knows its quarry; only a paused sortie's body keeps the tier in the camp.
+        if (role == ParticipantRole.MONSTER_LOBBY) sortie = wallet.hasParkedBody() ? sortie.paused() : Sortie.NONE;
+        else if (role != ParticipantRole.MONSTER_DEPLOYED) sortie = Sortie.NONE;
         huntLocks = Map.copyOf(Objects.requireNonNull(huntLocks));
         if (huntLocks.size() > MAX_HUNT_LOCKS || huntLocks.values().stream().anyMatch(remaining -> remaining <= 0)) {
             throw new IllegalArgumentException("Invalid hunt locks");
@@ -42,10 +47,21 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
         if (ready && role != ParticipantRole.LOBBY) throw new IllegalArgumentException("Only lobby players can be ready");
     }
 
-    /** Bounded like the snapshot's participant table: one lock per human at most. */
-    public static final int MAX_HUNT_LOCKS = 10_000;
-
     /** A participant whose 初入荒野 an administrator has not ended. */
+    public Participant(UUID id, String name, ParticipantRole role, boolean online, boolean ready,
+                       long humanNanos, long joinedAtChallengeNanos, int lifeSequence,
+                       int revivalCharges,
+                       MonsterRole monsterRole, MonsterDimension monsterDimension,
+                       long monsterCooldownNanos, int monsterDeploymentSequence,
+                       Map<MonsterSkill, Long> monsterSkillReadyAtMillis, MonsterWallet wallet,
+                       long lifeHumanNanos, boolean entering, HumanThreat threat, Map<UUID, Long> huntLocks,
+                       WitchRecord witch, Sortie sortie) {
+        this(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos, lifeSequence, revivalCharges,
+                monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence,
+                monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, false);
+    }
+
+    /** A participant out on no personal hunt. */
     public Participant(UUID id, String name, ParticipantRole role, boolean online, boolean ready,
                        long humanNanos, long joinedAtChallengeNanos, int lifeSequence,
                        int revivalCharges,
@@ -56,8 +72,11 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
                        WitchRecord witch) {
         this(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos, lifeSequence, revivalCharges,
                 monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence,
-                monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, false);
+                monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, Sortie.NONE);
     }
+
+    /** Bounded like the snapshot's participant table: one lock per human at most. */
+    public static final int MAX_HUNT_LOCKS = 10_000;
 
     /** A participant the camp witch remembers nothing of. */
     public Participant(UUID id, String name, ParticipantRole role, boolean online, boolean ready,
@@ -164,19 +183,19 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
     Participant awaitingAdmission() {
         return new Participant(id, name, role, false, ready, humanNanos, joinedAtChallengeNanos, lifeSequence,
                 revivalCharges, monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence,
-                monsterSkillReadyAtMillis, wallet, lifeHumanNanos, connected(), threat, huntLocks, witch, shelterWaived);
+                monsterSkillReadyAtMillis, wallet, lifeHumanNanos, connected(), threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     Participant withThreat(HumanThreat value) {
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos, lifeSequence,
                 revivalCharges, monsterRole, monsterDimension, monsterCooldownNanos,
-                monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, value, huntLocks, witch, shelterWaived);
+                monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, value, huntLocks, witch, sortie, shelterWaived);
     }
 
     Participant withWallet(MonsterWallet value) {
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos, lifeSequence,
                 revivalCharges, monsterRole, monsterDimension, monsterCooldownNanos,
-                monsterDeploymentSequence, monsterSkillReadyAtMillis, value, lifeHumanNanos, entering, threat, huntLocks, witch, shelterWaived);
+                monsterDeploymentSequence, monsterSkillReadyAtMillis, value, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     /** Preserve participation history; this generation grants no further life or monster actions. */
@@ -208,39 +227,40 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
     public Participant withSession(String newName, boolean connected) {
         return new Participant(id, newName, role, connected, ready, humanNanos,
                 joinedAtChallengeNanos, lifeSequence, revivalCharges,
-                monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, false, threat, huntLocks, witch, shelterWaived);
+                monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, false, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     public Participant withReady(boolean value) {
         return new Participant(id, name, role, online, value, humanNanos,
                 joinedAtChallengeNanos, lifeSequence, revivalCharges,
-                monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, shelterWaived);
+                monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     public Participant withRole(ParticipantRole value) {
         return new Participant(id, name, value, online, false, humanNanos,
                 joinedAtChallengeNanos, lifeSequence, revivalCharges,
-                monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, shelterWaived);
+                monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch,
+                sortie);
     }
 
     Participant accrue(long elapsed) {
         return new Participant(id, name, role, online, ready, Math.addExact(humanNanos, elapsed),
                 joinedAtChallengeNanos, lifeSequence, revivalCharges,
                 monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet,
-                Math.addExact(lifeHumanNanos, elapsed), entering, threat, huntLocks, witch, shelterWaived);
+                Math.addExact(lifeHumanNanos, elapsed), entering, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     Participant start(long joinedAt) {
         // Survival time is per life: the opening start and a mid-round join begin from zero.
         return new Participant(id, name, ParticipantRole.HUMAN_ACTIVE, online, false, humanNanos,
                 joinedAt, Math.max(1, lifeSequence), revivalCharges,
-                monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, 0, false, threat, huntLocks, witch, false);
+                monsterRole, monsterDimension, monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, 0, false, threat, huntLocks, witch, Sortie.NONE, false);
     }
 
     Participant selectMonster(MonsterRole selection, MonsterDimension dimension) {
         return new Participant(id, name, role, online, false, humanNanos, joinedAtChallengeNanos,
                 lifeSequence, revivalCharges, selection, dimension,
-                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, shelterWaived);
+                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     /** PERSONAL_TARGET never changes the historical dimension preference. */
@@ -249,13 +269,13 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
     Participant monsterLobby(long cooldown) {
         return new Participant(id, name, ParticipantRole.MONSTER_LOBBY, online, false, humanNanos,
                 joinedAtChallengeNanos, lifeSequence, revivalCharges,
-                monsterRole, monsterDimension, cooldown, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, false, threat, huntLocks, witch, shelterWaived);
+                monsterRole, monsterDimension, cooldown, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, false, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     Participant withRevivalEntitlement(boolean entitled) {
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
                 lifeSequence, entitled ? Math.max(1, revivalCharges) : 0, monsterRole, monsterDimension,
-                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, shelterWaived);
+                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     Participant addRevivalCharges(int count) {
@@ -264,7 +284,7 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
         }
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
                 lifeSequence, revivalCharges + count, monsterRole, monsterDimension,
-                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, shelterWaived);
+                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     /** An administrator takes back {@code count} charges; the balance never goes below zero. */
@@ -274,7 +294,7 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
         }
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
                 lifeSequence, revivalCharges - count, monsterRole, monsterDimension,
-                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, shelterWaived);
+                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     /** An administrator sets the remaining deployment cooldown. */
@@ -282,14 +302,14 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
         if (nanos < 0) throw new IllegalArgumentException("冷却时间不能为负数。");
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
                 lifeSequence, revivalCharges, monsterRole, monsterDimension,
-                nanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, shelterWaived);
+                nanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     /** An administrator ended this life's 初入荒野; only a first life is ever sheltered, so it never needs resetting. */
     Participant waiveShelter() {
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
                 lifeSequence, revivalCharges, monsterRole, monsterDimension,
-                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, true);
+                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, true);
     }
 
     /** One charge spent where the human stands (a revival totem saved this life); the life itself goes on. */
@@ -297,7 +317,7 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
         if (revivalCharges == 0) throw new IllegalStateException("No revival charge to spend");
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
                 lifeSequence, revivalCharges - 1, monsterRole, monsterDimension,
-                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, shelterWaived);
+                monsterCooldownNanos, monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     Participant revive(boolean admissionPending) {
@@ -317,13 +337,13 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
     Participant deployMonster() {
         return new Participant(id, name, ParticipantRole.MONSTER_DEPLOYED, online, false, humanNanos,
                 joinedAtChallengeNanos, lifeSequence, revivalCharges,
-                monsterRole, monsterDimension, 0, Math.addExact(monsterDeploymentSequence, 1), monsterSkillReadyAtMillis, wallet, lifeHumanNanos, false, threat, huntLocks, witch, shelterWaived);
+                monsterRole, monsterDimension, 0, Math.addExact(monsterDeploymentSequence, 1), monsterSkillReadyAtMillis, wallet, lifeHumanNanos, false, threat, huntLocks, witch, Sortie.NONE, shelterWaived);
     }
 
     Participant elapseMonsterCooldown(long elapsed) {
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
                 lifeSequence, revivalCharges, monsterRole, monsterDimension,
-                Math.max(0, monsterCooldownNanos - Math.min(monsterCooldownNanos, elapsed)), monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, shelterWaived);
+                Math.max(0, monsterCooldownNanos - Math.min(monsterCooldownNanos, elapsed)), monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, shelterWaived);
     }
 
     /** Remaining nanoseconds before this monster may hunt {@code human} again; zero when it may. */
@@ -348,16 +368,25 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
         return withHuntLocks(locks);
     }
 
+    Participant withSortie(Sortie value) {
+        return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos, lifeSequence,
+                revivalCharges, monsterRole, monsterDimension, monsterCooldownNanos,
+                monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, value, shelterWaived);
+    }
+
+    /** The human this deployed monster was sent onto from the camp; empty for any other outing. */
+    public Optional<UUID> quarry() { return sortie.quarry(); }
+
     Participant withWitch(WitchRecord value) {
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos, lifeSequence,
                 revivalCharges, monsterRole, monsterDimension, monsterCooldownNanos,
-                monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, value, shelterWaived);
+                monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, huntLocks, value, sortie, shelterWaived);
     }
 
     Participant withHuntLocks(Map<UUID, Long> locks) {
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
                 lifeSequence, revivalCharges, monsterRole, monsterDimension, monsterCooldownNanos,
-                monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, locks, witch, shelterWaived);
+                monsterDeploymentSequence, monsterSkillReadyAtMillis, wallet, lifeHumanNanos, entering, threat, locks, witch, sortie, shelterWaived);
     }
 
     /** Wall-clock deadline: disconnect, role changes, death and server downtime do not reset it. */
@@ -374,6 +403,6 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
         else cooldowns.put(skill, readyAtEpochMillis);
         return new Participant(id, name, role, online, ready, humanNanos, joinedAtChallengeNanos,
                 lifeSequence, revivalCharges, monsterRole, monsterDimension,
-                monsterCooldownNanos, monsterDeploymentSequence, cooldowns, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, shelterWaived);
+                monsterCooldownNanos, monsterDeploymentSequence, cooldowns, wallet, lifeHumanNanos, entering, threat, huntLocks, witch, sortie, shelterWaived);
     }
 }

@@ -26,7 +26,7 @@ class BountyTest {
     private final UUID monster = UUID.randomUUID();
 
     private static HumanThreat milestones(int life, String... ids) {
-        return new HumanThreat(life, 0, 0, Set.of(ids));
+        return new HumanThreat(life, 0, Set.of(ids));
     }
 
     private static Participant human(UUID id, boolean online, HumanThreat threat) {
@@ -45,18 +45,7 @@ class BountyTest {
                 .reached(1, "minecraft:story/mine_diamond").reached(1, "minecraft:husbandry/root");
         assertEquals(Set.of("minecraft:story/mine_stone", "minecraft:story/mine_diamond"), threat.milestones());
         assertEquals(5, Bounty.threat(RULES, human(strong, true, threat)));
-        var fought = threat.killedMonster(1).huntedFromCamp(1, monster, 0).huntedFromCamp(1, weak, 0);
-        assertEquals(5 + 3 + 2, Bounty.threat(RULES, human(strong, true, fought)), "Kill 3, each hunter's hunt 1");
-    }
-
-    @Test void oneHunterGoingOutAndBackScoresOncePerInterval() {
-        var threat = HumanThreat.NONE;
-        for (long at = 0; at < Bounty.HUNTED_REPEAT_NANOS; at += 5_000_000_000L) threat = threat.huntedFromCamp(1, monster, at);
-        assertEquals(1, threat.hunted(), "Quick returns and redeploys within the interval still count once");
-        threat = threat.huntedFromCamp(1, monster, Bounty.HUNTED_REPEAT_NANOS);
-        assertEquals(2, threat.hunted(), "The same hunter scores again after the interval");
-        assertEquals(1, threat.forLife(2).huntedFromCamp(2, monster, Bounty.HUNTED_REPEAT_NANOS + 1).hunted(),
-                "A new life starts its own count");
+        assertEquals(5 + 2, Bounty.threat(RULES, human(strong, true, threat.killedMonster(1))), "A kill scores 2, well below milestones");
     }
 
     @Test void anotherLifesRecordReadsAsEmpty() {
@@ -67,44 +56,40 @@ class BountyTest {
         assertEquals(Set.of("minecraft:story/mine_stone"), old.reached(2, "minecraft:story/mine_stone").milestones());
     }
 
-    @Test void starsAreRelativeToTheStrongestOnlineHuman() {
-        // 30 points: diamonds, nether, iron, shiny gear, blaze rod and more.
-        var top = milestones(1, "minecraft:story/enter_the_nether", "minecraft:story/shiny_gear",
-                "minecraft:nether/obtain_blaze_rod", "minecraft:story/mine_diamond", "minecraft:nether/find_fortress",
-                "minecraft:story/enchant_item", "minecraft:story/smelt_iron");
-        assertEquals(30, Bounty.threat(RULES, human(strong, true, top)));
-        var third = UUID.randomUUID();
-        var standings = Bounty.standings(RULES, players(human(strong, true, top),
-                human(weak, true, milestones(1, "minecraft:story/mine_stone")),
-                human(third, true, milestones(1, "minecraft:story/mine_diamond", "minecraft:story/enter_the_nether",
-                        "minecraft:story/smelt_iron", "minecraft:story/obtain_armor", "minecraft:story/iron_tools"))))
-        ;
-        assertEquals(new Bounty.Standing(30, 5, true), standings.get(strong));
+    @Test void starsFollowFixedThresholdsWhateverTheOthersReached() {
+        assertEquals(List.of(1, 2, 2, 3, 3, 4, 4, 5), List.of(Bounty.stars(RULES, 7), Bounty.stars(RULES, 8),
+                Bounty.stars(RULES, 16), Bounty.stars(RULES, 17), Bounty.stars(RULES, 29), Bounty.stars(RULES, 30),
+                Bounty.stars(RULES, 42), Bounty.stars(RULES, 43)));
+        // 12 points: the iron age, alone at the top, is still only two stars.
+        var iron = milestones(1, "minecraft:story/mine_stone", "minecraft:story/upgrade_tools", "minecraft:story/smelt_iron",
+                "minecraft:story/obtain_armor", "minecraft:story/iron_tools", "minecraft:story/lava_bucket", "minecraft:story/form_obsidian");
+        var standings = Bounty.standings(RULES, players(human(strong, true, iron), human(weak, true, HumanThreat.NONE)));
+        assertEquals(new Bounty.Standing(12, 2, false), standings.get(strong), "Below three stars nobody is the top bounty");
         assertEquals(1, standings.get(weak).stars());
-        assertEquals(3, standings.get(third).stars(), "15 of 30 is past 45%");
-        assertFalse(standings.get(third).leader());
     }
 
-    @Test void theFloorKeepsAnOpeningLeadLowAndNamesNoLeader() {
-        var standings = Bounty.standings(RULES, players(human(strong, true, milestones(1, "minecraft:story/mine_stone",
-                "minecraft:story/upgrade_tools")), human(weak, true, HumanThreat.NONE)));
-        assertEquals(2, standings.get(strong).stars(), "2 of the floor 10 is 20%");
-        assertFalse(standings.get(strong).leader());
-        assertEquals(1, standings.get(weak).stars());
+    @Test void theTopBountyIsTheHighestOnlineThreatOfAtLeastThreeStars() {
+        // 19: diamonds, the nether, iron, armour, lava and obsidian; 21 with a kill on top.
+        var nether = milestones(1, "minecraft:story/mine_diamond", "minecraft:story/enter_the_nether",
+                "minecraft:story/smelt_iron", "minecraft:story/obtain_armor", "minecraft:story/iron_tools",
+                "minecraft:story/lava_bucket", "minecraft:story/form_obsidian");
+        var standings = Bounty.standings(RULES, players(human(strong, true, nether.killedMonster(1)), human(weak, true, nether)));
+        assertEquals(new Bounty.Standing(21, 3, true), standings.get(strong));
+        assertEquals(new Bounty.Standing(19, 3, false), standings.get(weak));
     }
 
     @Test void offlineHumansKeepTheirThreatButDoNotSetTheTop() {
         var end = milestones(1, "minecraft:story/enter_the_end", "minecraft:story/follow_ender_eye");
-        var standings = Bounty.standings(RULES, players(human(strong, false, end),
-                human(weak, true, milestones(1, "minecraft:story/enter_the_nether", "minecraft:story/mine_diamond",
-                        "minecraft:story/smelt_iron"))));
-        assertEquals(new Bounty.Standing(11, 5, true), standings.get(weak), "The online leader is not pushed down");
-        assertEquals(18, standings.get(strong).threat());
-        assertFalse(standings.get(strong).leader(), "An absent human cannot be the top bounty");
+        var nether = milestones(1, "minecraft:story/enter_the_nether", "minecraft:story/mine_diamond",
+                "minecraft:story/smelt_iron", "minecraft:story/obtain_armor", "minecraft:story/iron_tools",
+                "minecraft:story/lava_bucket", "minecraft:story/form_obsidian");
+        var standings = Bounty.standings(RULES, players(human(strong, false, end), human(weak, true, nether)));
+        assertEquals(new Bounty.Standing(19, 3, true), standings.get(weak), "The online leader is not pushed down");
+        assertEquals(new Bounty.Standing(18, 3, false), standings.get(strong), "An absent human cannot be the top bounty");
     }
 
     @Test void tiedLeadersShareTheTopBounty() {
-        var threat = milestones(1, "minecraft:story/enter_the_end");
+        var threat = milestones(1, "minecraft:story/enter_the_end", "minecraft:story/follow_ender_eye");
         var standings = Bounty.standings(RULES, players(human(strong, true, threat), human(weak, true, threat)));
         assertTrue(standings.get(strong).leader());
         assertTrue(standings.get(weak).leader());
@@ -131,15 +116,32 @@ class BountyTest {
 
     @Test void bountyConfigurationMustBeCompleteAndOrdered() {
         var values = new TreeMap<>(RULES.combatValues());
-        values.put("bounty.star3Ratio", 0.1);
+        values.put("bounty.star3Threat", 8.0);
         assertThrows(IllegalArgumentException.class, () -> new RulesConfig(RULES.schemaVersion(), RULES.mode(),
                 RULES.minecraftVersion(), RULES.difficulty(), RULES.generationRule(), values,
                 RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis()));
         var partial = new TreeMap<>(RULES.combatValues());
-        partial.remove("bounty.floor");
+        partial.remove("bounty.star4Threat");
         assertThrows(IllegalArgumentException.class, () -> new RulesConfig(RULES.schemaVersion(), RULES.mode(),
                 RULES.minecraftVersion(), RULES.difficulty(), RULES.generationRule(), partial,
                 RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis()));
+    }
+
+    @Test void roundsSavedWithRelativeBountiesStillDecodeAndReadTheDefaultThresholds() {
+        var values = new TreeMap<>(RULES.combatValues());
+        values.keySet().removeIf(key -> key.endsWith("Threat"));
+        values.put("bounty.floor", 10.0); values.put("bounty.huntedPoints", 1.0); values.put("bounty.killPoints", 3.0);
+        values.put("bounty.star2Ratio", 0.2); values.put("bounty.star3Ratio", 0.45); values.put("bounty.star4Ratio", 0.7);
+        values.put(RulesConfig.DEFAULTS_REVISION_KEY, 3.0);
+        var saved = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+                RULES.generationRule(), values, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
+        assertTrue(Bounty.enabled(saved));
+        assertEquals(5, Bounty.stars(saved, 43));
+        var migrated = saved.withEconomyDefaults();
+        assertTrue(migrated.combatValues().keySet().stream().noneMatch(key -> key.endsWith("Ratio") || key.equals("bounty.floor")
+                || key.equals("bounty.huntedPoints")));
+        assertEquals(2.0, migrated.combatValues().get("bounty.killPoints"), "The old default of 3 moves to 2");
+        assertEquals(43.0, migrated.combatValues().get("bounty.star5Threat"));
     }
 
     @Test void pendingRulesDropRetiredCoinBountyKeys() {
@@ -154,13 +156,14 @@ class BountyTest {
         assertTrue(Bounty.enabled(upgraded));
     }
 
-    @Test void huntingFromTheCampMarksTheTarget() {
+    @Test void huntingFromTheCampScoresNothing() {
         var engine = engine(human(strong, true, HumanThreat.NONE), camp());
         var request = new PersonalHuntRequest(round, monster, 1, 2, MonsterRole.ZOMBIE, strong, 1);
         accept(engine, engine.proposePersonalHunt(UUID.randomUUID(), request, 2));
-        var target = engine.committed().participants().get(strong);
-        assertEquals(new HumanThreat(1, 0, 1, Set.of(), Map.of(monster, engine.committed().challengeNanos())), target.threat());
-        assertEquals(ParticipantRole.MONSTER_DEPLOYED, engine.committed().participants().get(monster).role());
+        assertEquals(HumanThreat.NONE, engine.committed().participants().get(strong).threat());
+        var hunter = engine.committed().participants().get(monster);
+        assertEquals(ParticipantRole.MONSTER_DEPLOYED, hunter.role());
+        assertEquals(Optional.of(strong), hunter.quarry(), "The outing remembers whom it was sent onto");
     }
 
     @Test void killingADeployedMonsterPlayerScoresTheHumanKiller() {
@@ -171,7 +174,7 @@ class BountyTest {
         accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
                 List.of(new RoundDeath(monster, 1, 3, Optional.of(lethal(monster, sword)), true)), null));
         assertEquals(1, engine.committed().participants().get(strong).threat().monsterKills());
-        assertEquals(3, Bounty.threat(RULES, engine.committed().participants().get(strong)));
+        assertEquals(2, Bounty.threat(RULES, engine.committed().participants().get(strong)));
     }
 
     @Test void aKillerFromAnEarlierLifeScoresNothing() {
@@ -204,8 +207,7 @@ class BountyTest {
     }
 
     @Test void snapshotsRoundTripTheThreat() {
-        var threat = new HumanThreat(1, 2, 5, Set.of("minecraft:story/mine_diamond", "minecraft:story/enter_the_nether"),
-                Map.of(monster, 42L, weak, 7L));
+        var threat = new HumanThreat(1, 2, Set.of("minecraft:story/mine_diamond", "minecraft:story/enter_the_nether"));
         var snapshot = new RoundSnapshot(round, 1, 2, 3, RULES, RoundPhase.RUNNING, PauseReason.NONE, 0, 0,
                 Map.of(strong, human(strong, true, threat)), false, false, null);
         assertEquals(snapshot, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(snapshot)));

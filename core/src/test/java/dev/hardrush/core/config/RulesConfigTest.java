@@ -27,7 +27,8 @@ class RulesConfigTest {
         assertEquals(20, rules.combatValues().get("skeleton.maxHealth"));
         assertEquals(30, rules.combatValues().get("creeper.fuseTicks"));
         assertTrue(rules.combatValues().keySet().stream().noneMatch(key -> key.startsWith("zombie.summon")));
-        assertEquals(20_000, rules.combatValues().get("skeleton.burstCooldownMillis"));
+        assertNull(rules.combatValues().get("skeleton.burstCooldownMillis"), "The volley rests by its sortie's tier");
+        assertEquals(200, rules.combatValues().get("skeleton.burstIntervalMillis"));
     }
 
     @Test void retiredSummonRuleKeysStillDecodeAndRoundTripFromHistoricalSnapshots() throws IOException {

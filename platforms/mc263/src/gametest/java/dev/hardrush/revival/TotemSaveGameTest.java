@@ -160,7 +160,9 @@ public final class TotemSaveGameTest {
             test.assertTrue(a.getAbsorptionAmount() > 0, "The monster's hit meets absorption too");
             a.hurtServer(level, sources.mobAttack(refs.zombie), 1000);
             saved(test, h, c.get("A"), 1);
-            test.assertValueEqual(h.coins, List.of(shielded), "The monster's hit counts the health and absorption before the pop");
+            // Coins count what the hit brought before armour (docs/plan/悬赏分档与追猎强度.md §6.1), not what the body had.
+            test.assertTrue(shielded < 1000, "The hit brought far more than the body had");
+            test.assertValueEqual(h.coins, List.of(1000f), "The monster's hit counts its damage before armour, however much the body had");
             test.assertValueEqual(a.getStats().getValue(Stats.ITEM_USED.get(Items.TOTEM_OF_UNDYING)), 1, "The use is counted like vanilla");
             test.assertTrue(a.getActiveEffects().stream().noneMatch(e -> e.is(MobEffects.SLOWNESS)), "Every earlier effect cleared");
 
