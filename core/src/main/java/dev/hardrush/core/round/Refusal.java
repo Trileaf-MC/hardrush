@@ -24,6 +24,8 @@ public enum Refusal {
     SKILL_COOLDOWN,
     /** The chosen human defeated this monster a moment ago; others may be hunted at once. */
     HUNT_LOCKED,
+    /** As many monsters as the human's stars allow are already out on it; a slot frees when one of them ends. */
+    HUNT_FULL,
     /** Any other rule rejection; the caller supplies the wording for its own context. */
     REJECTED;
 

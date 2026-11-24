@@ -25,15 +25,21 @@ class PersonalHuntRequestTest {
         if (human.online()) assertTrue(e.accept(e.proposeOnline(UUID.randomUUID(), target, human.name(), true)));
         return e;
     }
-    @Test void exactLifeIsReservedDurablyAndTwoHuntersCanSelectSameHuman() {
+    @Test void exactLifeIsReservedDurablyAndAOneStarHumanTakesOneHunterAtATime() {
         var e = engine(human());
         var first = e.proposePersonalHunt(UUID.randomUUID(), request(hunter), 7);
         assertEquals(ParticipantRole.MONSTER_LOBBY, e.committed().participants().get(hunter).role());
         assertTrue(e.accept(first));
-        assertTrue(e.accept(e.proposePersonalHunt(UUID.randomUUID(), request(second), 7)));
         assertEquals(8, e.committed().participants().get(hunter).monsterDeploymentSequence());
-        assertEquals(8, e.committed().participants().get(second).monsterDeploymentSequence());
         assertEquals(MonsterDimension.END, e.committed().participants().get(hunter).monsterDimension());
+        assertEquals(1, RoundEngine.huntersOn(e.committed(), target));
+        var full = assertThrows(Refusal.Exception.class, () -> e.proposePersonalHunt(UUID.randomUUID(), request(second), 7));
+        assertEquals(Refusal.HUNT_FULL, full.refusal());
+        // The first hunter's return frees the slot at once.
+        assertTrue(e.accept(e.proposeMonsterReturn(UUID.randomUUID(), round, hunter, 3, 8)));
+        assertEquals(0, RoundEngine.huntersOn(e.committed(), target));
+        assertTrue(e.accept(e.proposePersonalHunt(UUID.randomUUID(), request(second), 7)));
+        assertEquals(8, e.committed().participants().get(second).monsterDeploymentSequence());
     }
     @Test void replacementLifeOfSameUuidCannotInheritOldRequest() {
         var newer = new Participant(target, "Renamed", ParticipantRole.HUMAN_ACTIVE, true, false, 0, 0, 5, false);

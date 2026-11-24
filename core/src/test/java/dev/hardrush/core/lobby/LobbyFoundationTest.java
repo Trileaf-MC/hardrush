@@ -55,7 +55,8 @@ class LobbyFoundationTest {
         assertEquals(RulesConfig.HuntRule.PERSONAL_TARGET, next.huntRule());
         assertNotEquals(legacy.fingerprint(), next.fingerprint());
         // Every stored value is kept, except one still on a since-retuned default; missing monster coin values are added.
-        var retuned = java.util.Set.of("monster.deployCooldownMillis", "monster.returnChannelMillis", "coin.killedByHuman");
+        var retuned = java.util.Set.of("monster.deployCooldownMillis", "monster.returnChannelMillis", "coin.killedByHuman",
+                "skeleton.burstCooldownMillis", "skeleton.burstIntervalMillis");
         legacy.combatValues().forEach((key, value) -> { if (!retuned.contains(key)) assertEquals(value, next.combatValues().get(key)); });
         assertEquals(45_000.0, next.combatValues().get("monster.deployCooldownMillis"));
         assertEquals(6.0, next.combatValues().get("coin.starter"));

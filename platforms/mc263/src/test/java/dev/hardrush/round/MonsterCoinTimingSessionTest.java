@@ -194,9 +194,10 @@ class MonsterCoinTimingSessionTest {
     }
 
     @Test void theBountyWeightIsFixedWhenTheHitLandsEvenIfTheVictimThenDies() throws Exception {
-        // Diamonds, the nether and an iron ingot: 11 points, the only online human with any threat.
-        var strong = new HumanThreat(1, 0, 0, Set.of("minecraft:story/mine_diamond", "minecraft:story/enter_the_nether",
-                "minecraft:story/smelt_iron"));
+        // 43 points: on its way through the End, five stars.
+        var strong = new HumanThreat(1, 0, Set.of("minecraft:story/enter_the_end", "minecraft:story/follow_ender_eye",
+                "minecraft:story/shiny_gear", "minecraft:nether/obtain_blaze_rod", "minecraft:story/enter_the_nether",
+                "minecraft:story/mine_diamond", "minecraft:nether/find_fortress"));
         try (var session = open(seed(strong))) {
             clock.set(seconds(5));
             session.recordMonsterDamage(round, monster, 1, 3, human, 4_000);
@@ -213,28 +214,28 @@ class MonsterCoinTimingSessionTest {
     }
 
     @Test void theCapCountsHitsInTheOrderTheyLandedAcrossChangingStars() throws Exception {
-        var strong = new HumanThreat(1, 0, 0, Set.of("minecraft:story/mine_diamond", "minecraft:story/enter_the_nether",
-                "minecraft:story/smelt_iron"));
+        // 31 points: blaze rods and diamond gear, four stars.
+        var strong = new HumanThreat(1, 0, Set.of("minecraft:story/enter_the_nether", "minecraft:story/mine_diamond",
+                "minecraft:nether/find_fortress", "minecraft:nether/obtain_blaze_rod", "minecraft:story/shiny_gear",
+                "minecraft:story/smelt_iron", "minecraft:story/obtain_armor", "minecraft:story/iron_tools"));
         try (var session = open(seed(strong))) {
             clock.set(seconds(5));
             // A first flush at this time, so the hits below share one buffer.
             session.recordMonsterDamage(round, monster, 1, 3, other, 1);
             session.tick();
             settle(session);
-            session.recordMonsterDamage(round, monster, 1, 3, human, 6_000);           // five stars
-            session.threatMilestone(round, other, 1, "minecraft:story/enter_the_end");
+            session.recordMonsterDamage(round, monster, 1, 3, human, 6_000);           // four stars
+            session.threatMilestone(round, human, 1, "minecraft:story/enter_the_end");
             settle(session);
-            session.threatMilestone(round, other, 1, "minecraft:story/mine_diamond");
-            settle(session);
-            session.recordMonsterDamage(round, monster, 1, 3, human, 10_000);          // four stars: 11 of 14
+            session.recordMonsterDamage(round, monster, 1, 3, human, 10_000);          // still four: 41 points
             session.threatMilestone(round, human, 1, "minecraft:story/follow_ender_eye");
             settle(session);
-            session.recordMonsterDamage(round, monster, 1, 3, human, 6_000);           // five stars again
+            session.recordMonsterDamage(round, monster, 1, 3, human, 6_000);           // five stars: 49 points
             clock.set(seconds(7));
             settle(session);
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
-            // The 20-point cap leaves 4 of the last hit: 6 × 2.5 + 10 × 2 + 4 × 2.5.
-            assertEquals(45, coins(session));
+            // The 20-point cap leaves 4 of the last hit: 6 × 2 + 10 × 2 + 4 × 2.5.
+            assertEquals(42, coins(session));
         }
     }
 
