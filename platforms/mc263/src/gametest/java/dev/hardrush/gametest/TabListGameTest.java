@@ -86,10 +86,16 @@ public final class TabListGameTest {
         var packet = capture.packets(ClientboundTabListPacket.class).getLast();
         test.assertTrue(packet.header().getContents() instanceof PlainTextContents && packet.footer().getContents() instanceof PlainTextContents,
                 "TAB uses literal plain-text Components, never interpreted names or translated command content");
-        test.assertTrue(packet.header().getSiblings().isEmpty() && packet.footer().getSiblings().isEmpty(), "The TAB text has no embedded interactive Components");
+        test.assertTrue(packet.header().getSiblings().isEmpty() && !interactive(packet.footer()),
+                "The TAB text has no embedded interactive Components");
         return packet;
     }
-    private static void onlyTabPackets(GameTestHelper test, TestClient capture) {
+    /** Footer lines (bounty, withdrawal shortcut) are appended as siblings; none may click or hover. */
+    private static boolean interactive(net.minecraft.network.chat.Component component) {
+        if (component.getStyle().getClickEvent() != null || component.getStyle().getHoverEvent() != null) return true;
+        return component.getSiblings().stream().anyMatch(TabListGameTest::interactive);
+    }
+        private static void onlyTabPackets(GameTestHelper test, TestClient capture) {
         test.assertTrue(capture.packets().stream().noneMatch(packet -> packet instanceof ClientboundPlayerInfoUpdatePacket
                         || packet instanceof ClientboundPlayerInfoRemovePacket), "TAB never removes or replaces native online-player list entries");
         test.assertTrue(capture.packets().stream().allMatch(ClientboundTabListPacket.class::isInstance), "The TAB adapter sends only native header/footer packets");
