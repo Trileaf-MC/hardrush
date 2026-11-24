@@ -971,7 +971,7 @@ public final class PlayerProfiles implements AutoCloseable {
             var leftovers = new java.util.ArrayList<ItemStack>();
             boolean restored = restoreBelongings(player, round.roundId(), participant.lifeSequence(), leftovers);
             // The witch's carried revival supplies are part of this body, so they enter the resume snapshot below with it.
-            dev.hardrush.revival.RevivalSupplies.fill(player, participant);
+            dev.hardrush.revival.RevivalSupplies.fill(player, participant, leftovers);
             ((ProfileTagged) player).hardrush$lifeSequence(participant.lifeSequence());
             ((ProfileTagged) player).hardrush$respawnPermitted(false);
             // The respawn packet of this crossing carries it: the vanilla recovery compass points at the last human death.
@@ -981,8 +981,6 @@ public final class PlayerProfiles implements AutoCloseable {
                 return false;
             }
             player.setGameMode(GameType.SURVIVAL);
-            // A full body (history books took some slots) leaves the rest at its feet in the wild, never in camp.
-            for (var stack : leftovers) player.spawnAtLocation(player.level(), stack);
             entry.monsterLobbyInitialized = false;
             entry.deathHeld = false;
             entry.awaitingRespawn = false;
@@ -999,6 +997,10 @@ public final class PlayerProfiles implements AutoCloseable {
                     .whenComplete((ignored, error) -> callbacks.execute(() -> {
                         if (!current(entry, generation(round))) return;
                         if (error != null) { fail(entry, error); moveToLobby(player); return; }
+                        // What found no room in the revived body lands at its feet in the wild, never in camp, and only now
+                        // that the kept belongings are forgotten: a failed write keeps them for a retry, which would
+                        // otherwise hand these out a second time.
+                        for (var stack : leftovers) player.spawnAtLocation(player.level(), stack);
                         entry.resume = snapshot;
                         entry.diskSafe = true;
                         entry.ready = true;

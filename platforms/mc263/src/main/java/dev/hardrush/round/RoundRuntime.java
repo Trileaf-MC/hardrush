@@ -434,8 +434,10 @@ public final class RoundRuntime {
                         participant.monsterDeploymentSequence(), CombatRuntime.currentBatch(player.level()).orElse(null), killCredit,
                         false, drop);
                 drop.ifPresent(token -> dev.hardrush.revival.TotemDrops.captured(player, round.roundId(), token, captured));
-                // Nothing lies where a life that kept its belongings fell, so there is nothing to point back at.
-                if (captured && !KEPT.remove(player)) dev.hardrush.revival.FallenCompass.died(player, round.roundId(), participant.lifeSequence());
+                // Nothing lies where a life that kept its belongings fell, so there is nothing to point back at. The mark is
+                // taken whatever the capture says, so a later death of the same body never reads it.
+                boolean kept = KEPT.remove(player);
+                if (captured && !kept) dev.hardrush.revival.FallenCompass.died(player, round.roundId(), participant.lifeSequence());
             } else if (participant != null && participant.role() == ParticipantRole.MONSTER_DEPLOYED
                     && RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());
