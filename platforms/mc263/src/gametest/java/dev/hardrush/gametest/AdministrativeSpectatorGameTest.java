@@ -5,6 +5,7 @@ import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.round.RoundSession;
 import dev.hardrush.player.PlayerProfiles;
+import dev.hardrush.player.SealedCommands;
 import dev.hardrush.world.LobbyWorld;
 import dev.hardrush.world.RoundWorldBundle;
 import java.util.Optional;
@@ -13,10 +14,15 @@ import java.util.concurrent.TimeUnit;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.protocol.game.ClientboundDisguisedChatPacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerChatPacket;
+import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.level.GameType;
@@ -37,6 +43,25 @@ public final class AdministrativeSpectatorGameTest {
                 .thenExecute(() -> { f.bind(); f.callbacks(); });
         f.a.login(sequence); f.b.login(sequence);
         sequence.thenWaitUntil(() -> f.await(f.idle(), "Both non-participant profiles ready"))
+                .thenExecute(() -> {
+                    // Sealed lobby bodies still talk: /tell (and its aliases) passes the isolation gate.
+                    test.assertTrue(PlayerProfiles.sealed(f.b.player), "The lobby body is sealed");
+                    test.assertTrue(SealedCommands.refusal(f.b.player, "w CampHumanA hi").isEmpty()
+                            && SealedCommands.refusal(f.b.player, "me waves").isEmpty()
+                            && SealedCommands.refusal(f.b.player, "trigger anything").isPresent(), "Only conversation commands open");
+                    f.a.client.clearPackets();
+                    packet(f.b.player, "tell CampHumanA whisper-through-the-gate");
+                })
+                .thenWaitUntil(() -> f.await(whispered(f.a.client, "whisper-through-the-gate"), "A sealed lobby body whispers through the real command packet"))
+                .thenExecute(() -> {
+                    f.b.client.clearPackets();
+                    packet(f.b.player, "trigger anything");
+                })
+                // A refused command is answered with the shared rejection sound and an action-bar reason, never silence.
+                .thenWaitUntil(() -> f.await(f.b.client.packets(ClientboundSoundPacket.class).stream()
+                                .anyMatch(sound -> sound.getSound().value() == SoundEvents.NOTE_BLOCK_BASS.value())
+                        && f.b.client.packets(ClientboundSetActionBarTextPacket.class).stream()
+                                .anyMatch(bar -> bar.text().getString().contains("聊天")), "A refused command explains itself"))
                 .thenExecute(() -> {
                     packet(f.b.player, "gamemode spectator");
                     test.assertFalse(PlayerProfiles.administrativeCommandAllowed(f.b.player, "tp @s CampHumanA"), "Non-OP commands stay sealed");
@@ -143,6 +168,11 @@ public final class AdministrativeSpectatorGameTest {
     private static void assertObserver(GameTestHelper test, ServerPlayer player) {
         test.assertTrue(PlayerProfiles.isAdministrativeSpectator(player) && !PlayerProfiles.simulationFrozen(player), "Authorized spectator can move");
         test.assertTrue(PlayerProfiles.isLocked(player) && !PlayerProfiles.verifiedLobbyBody(player), "Movement leaves admission, items and lobby interactions sealed");
+    }
+    /** A signed sender arrives as player chat; this fixture has no chat session, so vanilla disguises it instead. */
+    private static boolean whispered(TestClient client, String text) {
+        return client.packets(ClientboundPlayerChatPacket.class).stream().anyMatch(chat -> chat.body().content().equals(text))
+                || client.packets(ClientboundDisguisedChatPacket.class).stream().anyMatch(chat -> chat.message().getString().equals(text));
     }
     private static void packet(ServerPlayer player, String command) {
         player.connection.handleChatCommand(new ServerboundChatCommandPacket(command));

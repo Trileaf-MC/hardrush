@@ -46,6 +46,7 @@ public final class RevivalSupplies {
                 }
                 case IRON_BUCKET -> give(player, new ItemStack(Items.BUCKET, count), leftovers);
                 case IRON_PICKAXE -> give(player, new ItemStack(Items.IRON_PICKAXE, count), leftovers);
+                case BELL -> give(player, new ItemStack(Items.BELL, count), leftovers);
                 case OAK_LOGS -> give(player, new ItemStack(Items.OAK_LOG, 5 * count), leftovers);
                 case BREAD -> give(player, new ItemStack(Items.BREAD, 8 * count), leftovers);
                 default -> {} // Landing supplies wait for the landing.

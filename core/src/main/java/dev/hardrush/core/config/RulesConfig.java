@@ -181,6 +181,7 @@ public record RulesConfig(
             Map.entry("coin.price.oakLogs", 10.0), Map.entry("coin.limit.oakLogs", 3.0),
             Map.entry("coin.price.ironPickaxe", 35.0), Map.entry("coin.limit.ironPickaxe", 1.0),
             Map.entry("coin.price.shield", 35.0), Map.entry("coin.limit.shield", 1.0),
+            Map.entry("coin.price.bell", 45.0), Map.entry("coin.limit.bell", 1.0),
             Map.entry("coin.price.bread", 30.0), Map.entry("coin.limit.bread", 3.0));
 
     /**
