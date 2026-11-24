@@ -277,9 +277,11 @@ public abstract class PlayerIsolationNetworkMixin {
     }
 
     private boolean hardrush$refuseCommand(String command) {
-        if (!PlayerProfiles.sealed(player) || PlayerProfiles.sealedCommandAllowed(player, command)) return false;
+        if (!PlayerProfiles.sealed(player)) return false;
+        var refusal = dev.hardrush.player.SealedCommands.refusal(player, command);
+        if (refusal.isEmpty()) return false;
         // A silently swallowed command reads as a broken server; say why it did nothing.
-        dev.hardrush.notice.Notices.refuse(player, "现在只能用 **聊天** 类命令");
+        dev.hardrush.notice.Notices.refuse(player, refusal.get());
         return true;
     }
 }

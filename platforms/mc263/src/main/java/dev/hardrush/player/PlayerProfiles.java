@@ -361,21 +361,6 @@ public final class PlayerProfiles implements AutoCloseable {
         applyLobbyMode(player);
     }
 
-    /**
-     * Vanilla commands that only talk or read. They never touch the body, inventory or world, so a sealed body (lobby,
-     * held death, pending participation) keeps the same social reach as plain chat. Aliases are listed separately
-     * because the gate sees the typed root word, not the redirect target. Vanilla still checks each one's permission.
-     */
-    private static final Set<String> CONVERSATION_COMMANDS =
-            Set.of("tell", "msg", "w", "me", "teammsg", "tm", "say", "list", "help");
-
-    /** The commands the isolation gate lets a sealed body run; every other command is refused before parsing. */
-    public static boolean sealedCommandAllowed(ServerPlayer player, String command) {
-        var root = command.strip().split("\\s+", 2)[0];
-        return root.equals("hardrush") || CONVERSATION_COMMANDS.contains(root)
-                || administrativeCommandAllowed(player, command);
-    }
-
     public static boolean administrativeCommandAllowed(ServerPlayer player, String command) {
         if (!Commands.hasPermission(Commands.LEVEL_GAMEMASTERS).test(player.createCommandSourceStack())
                 || dev.hardrush.storage.FullCheckpointRuntime.saving(player.level().getServer())) return false;
