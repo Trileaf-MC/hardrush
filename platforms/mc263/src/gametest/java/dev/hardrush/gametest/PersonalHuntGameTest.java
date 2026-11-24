@@ -90,9 +90,11 @@ public final class PersonalHuntGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.lobby(f.c) && f.lobby(f.d), "both defeated back in camp"))
                 .thenExecute(() -> {
-                    f.c.player = f.c.current(); f.d.player = f.d.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31));
+                    // Each fell on its sortie: a one-star quarry stays wary of it for 120 seconds (docs/plan/悬赏分档与追猎强度.md §4).
+                    f.c.player = f.c.current(); f.d.player = f.d.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121));
                 })
-                .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterCooldownNanos() == 0 && f.d.participant().monsterCooldownNanos() == 0, "second cooldown"))
+                .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterCooldownNanos() == 0 && f.d.participant().monsterCooldownNanos() == 0
+                        && f.c.participant().huntLocks().isEmpty() && f.d.participant().huntLocks().isEmpty(), "second cooldown"))
                 .thenExecute(() -> {
                     // C left-clicks A's courtyard model and rides A's camera from the camp into the End.
                     var camp = f.c.player.position();
@@ -116,13 +118,18 @@ public final class PersonalHuntGameTest {
                 .thenExecute(() -> test.assertFalse(f.searches().containsKey(f.c.id()), "Jump held under a second never hunts"))
                 .thenWaitUntil(() -> f.await(f.searches().containsKey(f.c.id()) || f.pending().containsKey(f.c.id()) || f.deployed(f.c, 2),
                         "holding jump for a second hunts the watched human"))
-                .thenWaitUntil(() -> f.await(f.deployed(f.c, 2) && f.deployed(f.d, 2) && !Observation.observing(f.c.player)
-                        && f.c.player.getCamera() == f.c.player, "both select same End human without quota; C lands straight from the camera"))
+                // A one-star human takes one hunter at a time (§3): D clicked first and holds the slot, C waits in line.
+                .thenWaitUntil(() -> f.await(f.deployed(f.d, 2) && f.searches().containsKey(f.c.id())
+                        && (int) f.field(f.searches().get(f.c.id()), "queued") == 1, "D holds A's only slot and C queues behind it"))
+                .thenExecute(() -> test.assertTrue(Observation.observing(f.c.player), "A queued hunter keeps watching"))
+                .thenExecute(() -> f.kill(f.d))
+                .thenWaitUntil(() -> f.await(f.deployed(f.c, 2) && !Observation.observing(f.c.player)
+                        && f.c.player.getCamera() == f.c.player, "D's fall frees the slot; C lands straight from the camera"))
                 .thenExecute(() -> f.c.input(new Input(false, false, false, false, false, false, false)))
-                .thenExecute(() -> { f.kill(f.c); f.kill(f.d); })
+                .thenExecute(() -> f.kill(f.c))
                 .thenWaitUntil(() -> f.await(f.lobby(f.c) && f.lobby(f.d), "budget case camp"))
                 .thenExecute(() -> {
-                    f.c.player = f.c.current(); f.d.player = f.d.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31));
+                    f.c.player = f.c.current(); f.d.player = f.d.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121));
                     f.useSearchClock(); f.moveVoid(f.a, 1);
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterCooldownNanos() == 0, "budget cooldown"))
