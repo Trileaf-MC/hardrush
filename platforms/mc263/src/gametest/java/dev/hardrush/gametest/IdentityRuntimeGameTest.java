@@ -220,7 +220,10 @@ public final class IdentityRuntimeGameTest {
             test.assertTrue(player.connection.player == player,
                     "The native connection must bind the replacement monster, not the removed dead human: listed="
                             + identity(player) + ",listener=" + identity(player.connection.player) + ",dead=" + identity(dead));
-            test.assertTrue(player.getInventory().isEmpty(), "Native respawn and reconnect cannot duplicate the dropped human inventory");
+            // The camp kit may already show the monster's coins; anything else would be the dropped human inventory.
+            test.assertTrue(java.util.stream.IntStream.range(0, player.getInventory().getContainerSize())
+                    .mapToObj(player.getInventory()::getItem).allMatch(stack -> stack.isEmpty() || dev.hardrush.lobby.CampKit.is(stack)),
+                    "Native respawn and reconnect cannot duplicate the dropped human inventory");
             test.assertValueEqual(player.getEnderChestInventory().getItem(0).getCount(), 6, "This round's ender storage survives death and native reconnect");
             var advancement = server.getAdvancements().get(Identifier.parse("minecraft:story/mine_stone"));
             test.assertTrue(player.getAdvancements().getOrStartProgress(advancement).isDone(), "This round's native completed advancement survives");

@@ -104,7 +104,11 @@ public final class ParticipationExitGameTest {
                     test.assertTrue(f.a.player.containerMenu == menu, "Repeated shortcut cannot replace an open menu");
                     test.assertTrue(f.a.player.getMainHandItem().is(Items.IRON_SWORD) && f.a.player.getOffhandItem().is(Items.SHIELD), "Shortcut preserves both held items");
                     f.a.player.connection.handleContainerClose(new ServerboundContainerClosePacket(menu.containerId));
-                    test.assertTrue(role(f, f.a.profile.id()) == ParticipantRole.HUMAN_ACTIVE && f.idle(), "Closing shortcut confirmation does not withdraw");
+                    test.assertTrue(role(f, f.a.profile.id()) == ParticipantRole.HUMAN_ACTIVE, "Closing shortcut confirmation does not withdraw");
+                })
+                // A hardcore round may still be committing unrelated state (bounty, totems); the exit waits its turn.
+                .thenWaitUntil(() -> f.await(role(f, f.a.profile.id()) == ParticipantRole.HUMAN_ACTIVE && f.idle(), "Session idle with the human still active"))
+                .thenExecute(() -> {
                     shortcut(f.a.player, true); f.click(f.a, (short)2);
                     test.assertTrue(f.session.participationExitReserved(f.a.profile.id()), "Pending exit seals input before SQLite callback");
                     f.a.assertFrozen();

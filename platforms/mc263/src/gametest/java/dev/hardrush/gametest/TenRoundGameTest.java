@@ -390,6 +390,8 @@ public final class TenRoundGameTest {
                             test.assertValueEqual(first.player.getEnderChestInventory().getItem(0).getCount(), 3, "Same-round ender inventory is preserved");
                         });
             }
+            // The test clock jumps; let the opening progress settle first so the End entry is stamped after the jump.
+            sequence.thenWaitUntil(() -> await(!session.mutationPending() && progressPending() == 0, "Opening progress persisted " + number));
             sequence.thenExecute(() -> {
                 advance(number);
                 move(first, levels[2], new Vec3(.5, 128, .5));
