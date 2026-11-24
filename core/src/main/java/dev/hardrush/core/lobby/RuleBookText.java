@@ -2,6 +2,7 @@ package dev.hardrush.core.lobby;
 
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
+import dev.hardrush.core.hunt.BellAlarm;
 import dev.hardrush.core.hunt.LateShelter;
 import dev.hardrush.core.round.MonsterCoins;
 import dev.hardrush.core.round.MonsterWorth;
@@ -39,6 +40,9 @@ public final class RuleBookText {
                     + " 秒就能循迹到目标附近。\n\n受伤或动手会打断引导；落地后罗盘冷却 " + seconds(RoundEngine.retrackCooldownMillis(rules)) + " 秒。");
             pages.add("击败\n\n怪物阵亡后马上可以追猎别人，只有击败它的人类在 " + seconds(RoundEngine.deployCooldownNanos(rules) / 1_000_000)
                     + " 秒内不会被它追猎。苦力怕引爆后，它这次追猎的目标同样如此。\n\n人类用打火石或火焰弹右键苦力怕，可以强行点燃它。");
+            pages.add("钟声\n\n敲钟时，若 " + BellAlarm.RESONATE_RADIUS + " 格内有怪物玩家，钟会嗡嗡共鸣，随后 "
+                    + BellAlarm.REVEAL_RADIUS + " 格内的怪物玩家发光 " + BellAlarm.GLOW_SECONDS + " 秒，随从不发光。女巫、掠夺者等原版袭击者也会引起共鸣。\n\n"
+                    + "让怪物显形后，这口钟 " + BellAlarm.restSeconds() + " 秒内只响不共鸣。");
             pages.add("角色\n\n僵尸自带僵尸刷怪蛋，困难难度下能空手敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
                     + "骷髅潜行拉满弓触发三连射，陷进细雪会化身流浪者。\n\n苦力怕按住引爆器（打火石）引爆，也能用它点燃原版苦力怕。");
             pages.add("挖掘与虫穴\n\n僵尸和骷髅空手按住左键，一次挖开 1×2 的石头、泥土、下界岩、末地石等天然方块，最长 "
