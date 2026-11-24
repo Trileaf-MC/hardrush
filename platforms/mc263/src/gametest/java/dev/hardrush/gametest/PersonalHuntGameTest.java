@@ -63,7 +63,7 @@ public final class PersonalHuntGameTest {
                     f.c.player = f.c.current(); f.d.player = f.d.current();
                     f.refresh(); f.assertModels();
                     f.c.hunt(f.a); test.assertTrue(f.searches().isEmpty(), "Cooldown click cannot reserve automatic departure");
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31));
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(46));
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterCooldownNanos() == 0, "cooldown elapsed without automatic request"))
                 .thenExecute(() -> {
