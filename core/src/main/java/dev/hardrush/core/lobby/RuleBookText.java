@@ -3,6 +3,7 @@ package dev.hardrush.core.lobby;
 import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.hunt.LateShelter;
+import dev.hardrush.core.round.HuntPressure;
 import dev.hardrush.core.round.MonsterCoins;
 import dev.hardrush.core.round.MonsterWorth;
 import dev.hardrush.core.round.RoundEngine;
@@ -31,23 +32,26 @@ public final class RuleBookText {
         if (!hardcore) {
             pages.add("阵亡\n\n普通模式下阵亡后按原版重生。");
         } else {
-            pages.add("阵亡\n\n极限挑战中阵亡后回到营地，可以到庭院的角色展位选择僵尸、骷髅或苦力怕，化身怪物追猎人类。");
+            pages.add("阵亡\n\n极限挑战中阵亡后回到营地，可以到庭院的角色展位选择僵尸、骷髅或苦力怕，化身怪物追猎人类。\n\n"
+                    + "被怪物玩家杀死时，身上的东西和经验都不掉落，从祭坛复生时原样带回。");
             pages.add("追猎\n\n右键庭院里的目标模型，开始寻找目标附近的出击位置，再次右键取消。落地时目标会听到一声洞穴音。\n\n"
                     + "出击后右键回响碎片，边走边引导 " + seconds(RoundEngine.returnChannelMillis(rules))
                     + " 秒返回营地，本次物资暂存到下次。");
             pages.add("追迹罗盘\n\n追迹罗盘的指针指向你的目标，发光时右键，边走边引导 " + seconds(RoundEngine.retrackChannelMillis(rules))
                     + " 秒就能循迹到目标附近。\n\n受伤或动手会打断引导；落地后罗盘冷却 " + seconds(RoundEngine.retrackCooldownMillis(rules)) + " 秒。");
-            pages.add("击败\n\n怪物阵亡后马上可以追猎别人，只有击败它的人类在 " + seconds(RoundEngine.deployCooldownNanos(rules) / 1_000_000)
-                    + " 秒内不会被它追猎。苦力怕引爆后，它这次追猎的目标同样如此。\n\n人类用打火石或火焰弹右键苦力怕，可以强行点燃它。");
-            pages.add("角色\n\n僵尸自带僵尸刷怪蛋，困难难度下能空手敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
+            pages.add("提防与满员\n\n怪物出击中倒下后，这次追的人类和击杀它的人类会提防它一阵：一星 " + seconds(HuntPressure.lockMillis(1))
+                    + " 秒，五星 " + seconds(HuntPressure.lockMillis(5)) + " 秒。返回营地不算。\n\n"
+                    + "人类有几颗星，最多就有几只怪物同时追他，满员时排队。\n\n人类用打火石或火焰弹右键苦力怕，可以强行点燃它。");
+            pages.add("角色\n\n僵尸追二星以上的人类时自带刷怪蛋，困难难度下能空手敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
                     + "骷髅潜行拉满弓触发三连射，陷进细雪会化身流浪者。\n\n苦力怕按住引爆器（打火石）引爆，也能用它点燃原版苦力怕。");
             pages.add("挖掘与虫穴\n\n僵尸和骷髅空手按住左键，一次挖开 1×2 的石头、泥土、下界岩、末地石等天然方块，最长 "
                     + decimalSeconds(RoundEngine.digMillis(rules)) + " 秒，不掉落。苦力怕挖不动。\n\n"
                     + "出击找不到能走到人类身边的落点时，怪物会藏进人类旁边的石头里，挖开墙破石而出。");
-            if (MonsterCoins.enabled(rules)) pages.add("怪物币\n\n伤害人类、近期受玩家伤害后阵亡都能获得怪物币，悬赏越高的人类伤害越值钱。\n\n"
+            if (MonsterCoins.enabled(rules)) pages.add("怪物币\n\n伤害人类、被人类击杀都能获得怪物币；击杀二星以上的人类，或逼他用掉图腾，还有一笔赏金。\n\n"
                     + "怪物币可以在女巫处购买出击增强，试炼钥匙可以在宝库开出一次性装备。拿到复生图腾后，女巫改卖复生补给。");
-            if (dev.hardrush.core.round.Bounty.enabled(rules)) pages.add("悬赏\n\n人类越强，悬赏星级越高：推进进度最显著，击杀怪物玩家、被怪物从营地追猎也会加分。星级在存活的人类之间比较，每条命重新计算。\n\n"
-                    + "伤害 ★★★★★ 人类的收益是 ★☆☆☆☆ 的 " + multiplier(rules) + " 倍。庭院里头戴不祥旗帜的就是头号悬赏。");
+            if (dev.hardrush.core.round.Bounty.enabled(rules)) pages.add("悬赏\n\n速通推进得越远，悬赏星级越高，击杀怪物玩家也会加一点；每条命重新计算。\n\n"
+                    + "星级越高，能同时追他的怪物越多，怪物出击带得越好、三连射冷却越短，打他也越赚：★★★★★ 是 ★☆☆☆☆ 的 " + multiplier(rules)
+                    + " 倍。头戴不祥旗帜的是头号悬赏。");
             if (MonsterWorth.enabled(rules)) pages.add("身价\n\n出击时的经验等级就是身价：从 " + (long) value(rules, MonsterWorth.BASE_LEVEL, 10)
                     + " 级起，伤害人类会上涨，最高 " + (long) value(rules, MonsterWorth.MAX_LEVEL, 30) + " 级。\n\n被玩家击杀时掉出经验，满 "
                     + (long) value(rules, MonsterWorth.BOOK_MIN_LEVEL, 15) + " 级再掉一本附魔书。");
