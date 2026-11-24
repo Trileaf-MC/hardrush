@@ -838,7 +838,8 @@ public final class MonsterRoles {
     }
     /** The volley's rest for this sortie's tier (docs/plan/悬赏分档与追猎强度.md §5.3). */
     static long volleyCooldownMillis(ServerPlayer player, Role role) {
-        return MonsterSkill.SKELETON_BURST.cooldownMillis(role.rules, MonsterRoundRuntime.sortieTier(player));
+        // The same tier the engine reserves the cooldown with, so the bow's display never disagrees with the round.
+        return MonsterSkill.SKELETON_BURST.cooldownMillis(role.rules, MonsterRoundRuntime.committedTier(player));
     }
     private static void startBurst(ServerPlayer player, Role role, InteractionHand hand) {
         player.stopUsingItem(); role.chargeTick = -1; role.bowHand = hand;

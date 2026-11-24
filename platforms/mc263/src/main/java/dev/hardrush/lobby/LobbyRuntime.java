@@ -62,9 +62,11 @@ public final class LobbyRuntime {
         boolean cancelled, seaTipShown;
         /** 0 while it holds one of the quarry's hunt slots; otherwise its place in that quarry's queue. */
         int queued;
+        /** When the 60-second search window counts from: the click, or later when a long queue left too little of it. */
+        long searchFrom;
         Deployment(ServerPlayer player, ServerPlayer target, PersonalHuntRequest identity, long started) {
             this.player = player; targetPlayer = target; connection = player.connection; targetConnection = target == null ? null : target.connection;
-            this.identity = identity; this.started = started; sortie = identity.initialSortie();
+            this.identity = identity; this.started = started; searchFrom = started; sortie = identity.initialSortie();
         }
     }
     private record Refund(Deployment deployment, boolean resume) {}
@@ -415,10 +417,18 @@ public final class LobbyRuntime {
             // Watching the quarry from its camera keeps the hunt; the body returns to the courtyard it left.
             if (!inCamp(d.player) && !dev.hardrush.observe.Observation.observing(d.player)) { cancelSearch(b, d, "你离开了庭院，追猎取消"); continue; }
             // A full quarry keeps the rest waiting in click order; the wait counts toward the same 60 seconds.
+            boolean wasQueued = d.queued > 0;
             d.queued = queuePlace(b, round, d);
             if (d.queued > 0) {
                 if (b.searchClock.getAsLong() - d.started >= SafeDeployment.DEPLOY_WAIT_NANOS)
                     searchFailed(b, d, Notices.key(d.targetPlayer.getScoreboardName()) + " 一直满员，追猎取消 · 可以换个人");
+                continue;
+            }
+            if (wasQueued) {
+                // Its turn came: the queue counted toward the 60 seconds, but at least a short search remains.
+                long now = b.searchClock.getAsLong();
+                d.searchFrom = Math.max(d.started, now - SafeDeployment.DEPLOY_WAIT_NANOS + MIN_SEARCH_AFTER_QUEUE_NANOS);
+                restartSearch(b, d);
                 continue;
             }
             var target = d.targetPlayer;
@@ -550,22 +560,27 @@ public final class LobbyRuntime {
             Notices.hint(d.player, message); sound(d.player, false);
         }
     }
-    /** Same target life only; dimension changes and compensation share the original start and 60-second wait. */
+    /**
+     * Same target life only; dimension changes and compensation share one 60-second wait, counted from the click, or
+     * from a little later when a queue left too little of it ({@code searchFrom}).
+     */
     private static void restartSearch(Binding b, Deployment d) {
         b.searches.remove(d.identity.hunter(), d);
         d.search = null;
         if (!requestHunter(b, d, ParticipantRole.MONSTER_LOBBY, d.sortie) || !requestTarget(b, d)) {
             searchFailed(b, d, Notices.key(d.targetPlayer.getScoreboardName()) + " 已离线或阵亡，追猎取消"); return;
         }
-        if (b.searchClock.getAsLong() - d.started >= SafeDeployment.DEPLOY_WAIT_NANOS) {
+        if (b.searchClock.getAsLong() - d.searchFrom >= SafeDeployment.DEPLOY_WAIT_NANOS) {
             searchFailed(b, d, NO_DEPLOYMENT); return;
         }
         d.level = d.targetPlayer.level();
         d.search = new SafeDeployment.Search(d.level, d.player, d.identity.kind(), SafeDeployment.Quarry.of(d.targetPlayer),
-                humans(b, d.level), b.searchRandom, b.searchClock, d.started, SafeDeployment.DEPLOY_WAIT_NANOS);
+                humans(b, d.level), b.searchRandom, b.searchClock, d.searchFrom, SafeDeployment.DEPLOY_WAIT_NANOS);
         b.searches.put(d.identity.hunter(), d);
     }
     private static final String CELEBRATION_RETURN = "庆祝期间不能返回营地";
+    /** A queued hunter whose turn comes late still gets this long to find a landing. */
+    private static final long MIN_SEARCH_AFTER_QUEUE_NANOS = 15_000_000_000L;
     private static final String NO_DEPLOYMENT = "暂时没找到合适的出击位置 · " + Notices.key(3) + " 秒后可重试";
 
     public static boolean useReturn(ServerPlayer player) {
