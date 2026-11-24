@@ -358,7 +358,10 @@ public final class PersonalHuntGameTest {
                 .thenExecute(() -> { f.move(f.c,0); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121)); f.searchClock.addAndGet(3_000_000_000L); f.a.role("zombie"); })
                 .thenWaitUntil(() -> f.await(f.idle() && f.a.participant().monsterCooldownNanos()==0, "A monster setup"))
                 .thenExecute(() -> f.a.hunt(f.c))
-                .thenWaitUntil(() -> f.await(f.deployed(f.a,0), "A hunts restored C"))
+                .thenWaitUntil(() -> f.await(f.deployed(f.a,0), "A hunts restored C: " + dev.hardrush.lobby.LobbyInteractions.get(f.server).orElseThrow()
+                        .hints(f.a.player).current(System.nanoTime() / 1_000_000).orElse("") + ", A=" + f.a.participant() + ", C stars="
+                        + dev.hardrush.core.round.Bounty.standing(f.round().rules(), f.round().participants(), f.c.id()).stars()
+                        + ", hunters on C=" + dev.hardrush.core.round.RoundEngine.huntersOn(f.round(), f.c.id())))
                 .thenExecute(() -> {
                     f.a.player.teleportTo(f.c.player.level(),f.c.player.getX()+1,f.c.player.getY(),f.c.player.getZ(),Set.of(),0,0,true);
                     f.c.player.removeAllEffects();f.c.player.setAbsorptionAmount(0);f.c.player.setHealth(1); f.c.player.setInvulnerableTime(0);
