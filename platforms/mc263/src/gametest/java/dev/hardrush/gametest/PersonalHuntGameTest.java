@@ -118,15 +118,13 @@ public final class PersonalHuntGameTest {
                 .thenExecute(() -> test.assertFalse(f.searches().containsKey(f.c.id()), "Jump held under a second never hunts"))
                 .thenWaitUntil(() -> f.await(f.searches().containsKey(f.c.id()) || f.pending().containsKey(f.c.id()) || f.deployed(f.c, 2),
                         "holding jump for a second hunts the watched human"))
-                // A one-star human takes one hunter at a time (§3): D clicked first and holds the slot, C waits in line.
-                .thenWaitUntil(() -> f.await(f.deployed(f.d, 2) && f.searches().containsKey(f.c.id())
-                        && (int) f.field(f.searches().get(f.c.id()), "queued") == 1, "D holds A's only slot and C queues behind it"))
-                .thenExecute(() -> test.assertTrue(Observation.observing(f.c.player), "A queued hunter keeps watching"))
-                .thenExecute(() -> f.kill(f.d))
-                .thenWaitUntil(() -> f.await(f.deployed(f.c, 2) && !Observation.observing(f.c.player)
-                        && f.c.player.getCamera() == f.c.player, "D's fall frees the slot; C lands straight from the camera"))
+                // Entering the End scored A ten points: two stars, so two monsters may hunt it at once (docs/plan/悬赏分档与追猎强度.md §3).
+                .thenWaitUntil(() -> f.await(f.deployed(f.c, 2) && f.deployed(f.d, 2) && !Observation.observing(f.c.player)
+                        && f.c.player.getCamera() == f.c.player, "both select the same two-star End human; C lands straight from the camera"))
+                .thenExecute(() -> test.assertValueEqual(dev.hardrush.core.round.Bounty.standing(f.round().rules(), f.round().participants(), f.a.id()).stars(), 2,
+                        "A two-star human takes two hunters"))
                 .thenExecute(() -> f.c.input(new Input(false, false, false, false, false, false, false)))
-                .thenExecute(() -> f.kill(f.c))
+                .thenExecute(() -> { f.kill(f.c); f.kill(f.d); })
                 .thenWaitUntil(() -> f.await(f.lobby(f.c) && f.lobby(f.d), "budget case camp"))
                 .thenExecute(() -> {
                     f.c.player = f.c.current(); f.d.player = f.d.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121));

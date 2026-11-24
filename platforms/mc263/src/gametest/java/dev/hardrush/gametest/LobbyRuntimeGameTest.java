@@ -142,7 +142,9 @@ public final class LobbyRuntimeGameTest {
                 .thenWaitUntil(() -> f.await(f.deployed(1), "First formal safe deployment"))
                 .thenExecute(() -> {
                     f.assertDeployment(1);
-                    f.test.assertValueEqual(f.monster.player.getInventory().getItem(2).getCount(), 2, "The bought adult egg joins the role egg");
+                    f.test.assertValueEqual(f.monster.player.getInventory().getItem(2).getCount(),
+                            dev.hardrush.core.round.HuntPressure.starterAdultEggs(f.monster.participant().sortie().tier()) + 1,
+                            "The bought adult egg joins the eggs the tier brings");
                     f.assertFixedControlsStayOnDropPacket();
                     f.equipWorldSword();
                     f.test.assertFalse(MonsterRoles.summon(f.monster.player), "Historical summon action remains retired");
