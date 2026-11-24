@@ -33,9 +33,12 @@ public final class CombatRuntime {
         default boolean competitionFrozen(ServerLevel level) { return false; }
         /** Runs synchronously after the outermost scope for this batch has completed. */
         default void batchClosed(UUID roundId, UUID batchId) {}
-        /** Actual health plus absorption a player lost to one hit; the round decides any coin credit. */
+        /**
+         * One monster hit a player took: {@code incomingDamage} is what it brought before armour, enchantments and
+         * absorption, after a shield's block; the round decides any coin credit from it.
+         */
         default void playerDamaged(ServerLevel level, net.minecraft.server.level.ServerPlayer victim,
-                CombatOrigin origin, float actualDamage) {}
+                CombatOrigin origin, float incomingDamage) {}
     }
     public interface Scope extends AutoCloseable {
         Scope NONE = () -> {};
@@ -245,20 +248,33 @@ public final class CombatRuntime {
      * Every hit a player actually took. A survived hit with a kill credit is remembered for the vanilla
      * kill-credit window; monster attacks of the same direct kinds that earn revival credit pay coins.
      */
-    public static void playerDamaged(ServerLevel level, ServerPlayer victim, DamageSource source, float actualDamage) {
-        if (actualDamage <= 0) return;
+    /** Damage each player's current hit brought before armour; written by {@code CombatPlayerHurtMixin}. */
+    private static final java.util.Map<ServerPlayer, Float> INCOMING = new java.util.WeakHashMap<>();
+
+    public static void incomingDamage(net.minecraft.world.entity.player.Player player, float damage) {
+        if (player instanceof ServerPlayer server && damage > 0 && Float.isFinite(damage)) INCOMING.merge(server, damage, Float::sum);
+    }
+
+    /** What the hit in progress brought so far, cleared. */
+    public static float takeIncomingDamage(ServerPlayer player) {
+        Float value = INCOMING.remove(player);
+        return value == null ? 0 : value;
+    }
+
+    public static void playerDamaged(ServerLevel level, ServerPlayer victim, DamageSource source, float actualDamage, float incomingDamage) {
+        if (actualDamage <= 0 && incomingDamage <= 0) return;
         var binding = BINDINGS.get(level.getServer()); var round = round(level);
         if (binding == null || round.isEmpty()) return;
         var cause = current(level);
         var origin = cause == null ? Optional.<CombatOrigin>empty() : cause.origin;
         var memory = CREDITS.get(level.getServer());
-        if (memory != null && victim.isAlive()) {
+        if (memory != null && victim.isAlive() && actualDamage > 0) {
             killCredit(source, origin).ifPresent(credit -> memory.hurt(victim.getUUID(), credit, level.getServer().getTickCount()));
         }
         if (origin.isEmpty() || !origin.get().roundId().equals(round.get())
                 || origin.get().actor().identity() != dev.hardrush.core.round.ParticipantRole.MONSTER_DEPLOYED) return;
         switch (origin.get().kind()) {
-            case MELEE, ARROW, CREEPER, SUMMON -> binding.rounds.playerDamaged(level, victim, origin.get(), actualDamage);
+            case MELEE, ARROW, CREEPER, SUMMON -> { if (incomingDamage > 0) binding.rounds.playerDamaged(level, victim, origin.get(), incomingDamage); }
             default -> {}
         }
     }
