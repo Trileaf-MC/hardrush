@@ -210,6 +210,7 @@ public final class MonsterRoleGameTest {
     public void consumedEggsRemainConsumedWhenTheSameBodyReconnects(GameTestHelper test) {
         var owner=actor(test);
         MonsterRoles.select(owner,"zombie");
+        withEggs(owner);
         var children=new java.util.ArrayList<Zombie>();
         test.runAfterDelay(10,()->{
         cleanArena(owner);
@@ -597,6 +598,15 @@ public final class MonsterRoleGameTest {
      * Random birth gear may put a spear in a zombie's hand (a bow for skeletons), whose native inputs have their
      * own suites and refuse plain melee; a melee test holds an empty hotbar slot instead.
      */
+    /**
+     * A role outside a formal sortie reads as one star and brings no eggs of its own (docs/plan/悬赏分档与追猎强度.md §5.2):
+     * tests of egg mechanics hand it one baby egg in slot 1 and one adult egg in slot 2, the way a zombie used to start.
+     */
+    public static void withEggs(ServerPlayer player) {
+        player.getInventory().setItem(1, dev.hardrush.monster.MonsterCompanions.egg(player, true, false));
+        player.getInventory().setItem(2, dev.hardrush.monster.MonsterCompanions.egg(player, false, false));
+    }
+
     public static void emptyHanded(ServerPlayer player) {
         player.getInventory().setItem(8,ItemStack.EMPTY);
         player.getInventory().setSelectedSlot(8);

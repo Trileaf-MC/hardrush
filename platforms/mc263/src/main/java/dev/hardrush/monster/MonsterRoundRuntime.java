@@ -39,6 +39,22 @@ public final class MonsterRoundRuntime {
         return p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED || !dev.hardrush.core.round.MonsterCoins.enabled(r.rules())
                 ? dev.hardrush.core.round.MonsterWallet.EMPTY : p.wallet();
     }
+    /**
+     * The tier this deployment's kit and skills are issued for (docs/plan/悬赏分档与追猎强度.md §5): the stars of the
+     * human it was sent onto, lowered when it resumed a pause onto a weaker one. An outing with no personal hunt reads 1.
+     */
+    public static int sortieTier(ServerPlayer player) { return dev.hardrush.core.round.HuntPressure.tier(committedTier(player)); }
+
+    /**
+     * The committed tier as the round stores it: 0 for an outing with no personal hunt, as in rounds saved before tiers.
+     * Skill cooldowns read this one, exactly as the engine's reservation does.
+     */
+    public static int committedTier(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        var r = b == null ? null : b.session.snapshot().orElse(null);
+        var p = r == null ? null : r.participants().get(player.getUUID());
+        return p == null || p.role() != ParticipantRole.MONSTER_DEPLOYED ? 0 : p.sortie().tier();
+    }
     /** The parked body this deployment resumes, or empty when the sortie starts afresh. */
     public static String parkedBody(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());

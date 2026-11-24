@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 14;
+    private static final int SCHEMA = 15;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -86,6 +86,17 @@ public final class RoundSnapshotCodec {
                     .filter(entry -> !entry.getValue().witch().equals(WitchRecord.NONE)).toList();
             out.writeInt(witches.size());
             for (var entry : witches) { writeUuid(out, entry.getKey()); writeWitch(out, entry.getValue().witch()); }
+            // Schema 15: each monster's personal hunt, whom it is out on and its tier, or a paused one's tier.
+            var hunts = snapshot.participants().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey())
+                    .filter(entry -> !entry.getValue().sortie().equals(Sortie.NONE)).toList();
+            out.writeInt(hunts.size());
+            for (var entry : hunts) {
+                writeUuid(out, entry.getKey());
+                var sortie = entry.getValue().sortie();
+                out.writeInt(sortie.tier());
+                out.writeBoolean(sortie.quarry().isPresent());
+                if (sortie.quarry().isPresent()) writeUuid(out, sortie.quarry().get());
+            }
             out.flush();
             if (bytes.size() > MAX_BYTES) throw new IllegalArgumentException("Snapshot exceeds size limit");
             return bytes.toByteArray();
@@ -95,13 +106,10 @@ public final class RoundSnapshotCodec {
     }
 
     private static void writeThreat(DataOutputStream out, HumanThreat threat) throws IOException {
-        out.writeInt(threat.lifeSequence()); out.writeInt(threat.monsterKills()); out.writeInt(threat.hunted());
+        out.writeInt(threat.lifeSequence()); out.writeInt(threat.monsterKills());
         var milestones = threat.milestones().stream().sorted().toList();
         out.writeInt(milestones.size());
         for (String milestone : milestones) writeText(out, milestone);
-        var hunters = threat.huntedAt().entrySet().stream().sorted(java.util.Map.Entry.comparingByKey()).toList();
-        out.writeInt(hunters.size());
-        for (var hunter : hunters) { writeUuid(out, hunter.getKey()); out.writeLong(hunter.getValue()); }
     }
 
     private static void writeWitch(DataOutputStream out, WitchRecord witch) throws IOException {
@@ -125,20 +133,22 @@ public final class RoundSnapshotCodec {
         catch (IllegalArgumentException invalid) { throw new IOException("Invalid witch record", invalid); }
     }
 
-    private static HumanThreat readThreat(DataInputStream in) throws IOException {
-        int life = in.readInt(), kills = in.readInt(), hunted = in.readInt(), count = in.readInt();
+    private static HumanThreat readThreat(DataInputStream in, int schema) throws IOException {
+        int life = in.readInt(), kills = in.readInt();
+        // Schemas 11–14 also counted hunts launched at the life, and when each hunter last counted.
+        if (schema < 15) in.readInt();
+        int count = in.readInt();
         if (count < 0 || count > Bounty.MILESTONES.size()) throw new IOException("Invalid threat milestone count");
         var milestones = new java.util.HashSet<String>();
         for (int i = 0; i < count; i++) {
             if (!milestones.add(readText(in, 256))) throw new IOException("Duplicate threat milestone");
         }
-        int hunters = in.readInt();
-        if (hunters < 0 || hunters > MAX_PARTICIPANTS) throw new IOException("Invalid threat hunter count");
-        var huntedAt = new java.util.HashMap<UUID, Long>();
-        for (int i = 0; i < hunters; i++) {
-            if (huntedAt.put(readUuid(in), in.readLong()) != null) throw new IOException("Duplicate threat hunter");
+        if (schema < 15) {
+            int hunters = in.readInt();
+            if (hunters < 0 || hunters > MAX_PARTICIPANTS) throw new IOException("Invalid threat hunter count");
+            for (int i = 0; i < hunters; i++) { readUuid(in); in.readLong(); }
         }
-        try { return new HumanThreat(life, kills, hunted, milestones, huntedAt); }
+        try { return new HumanThreat(life, kills, milestones); }
         catch (IllegalArgumentException invalid) { throw new IOException("Invalid human threat", invalid); }
     }
 
@@ -225,7 +235,7 @@ public final class RoundSnapshotCodec {
                     UUID playerId = readUuid(in);
                     Participant p = players.get(playerId);
                     if (p == null || !seen.add(playerId)) throw new IOException("Threat for an unknown or repeated participant");
-                    players.put(playerId, p.withThreat(readThreat(in)));
+                    players.put(playerId, p.withThreat(readThreat(in, schema)));
                 }
             }
             // Schemas 1–12 predate defeat locks: a defeat then benched the monster instead.
@@ -256,6 +266,26 @@ public final class RoundSnapshotCodec {
                     Participant p = players.get(playerId);
                     if (p == null || !seen.add(playerId)) throw new IOException("Witch record for an unknown or repeated participant");
                     players.put(playerId, p.withWitch(readWitch(in)));
+                }
+            }
+            // Schemas 1–14 did not record personal hunts: an outing out then locks nobody when it falls, has no tier,
+            // and its volley keeps the round's single configured cooldown.
+            if (schema >= 15) {
+                int hunts = in.readInt();
+                if (hunts < 0 || hunts > players.size()) throw new IOException("Invalid sortie count");
+                var seen = new java.util.HashSet<UUID>();
+                for (int i = 0; i < hunts; i++) {
+                    UUID playerId = readUuid(in);
+                    Participant p = players.get(playerId);
+                    if (p == null || !seen.add(playerId)) throw new IOException("Sortie for an unknown or repeated participant");
+                    int tier = in.readInt();
+                    var quarry = in.readBoolean() ? java.util.Optional.of(readUuid(in)) : java.util.Optional.<UUID>empty();
+                    Sortie sortie;
+                    try { sortie = new Sortie(quarry, tier); }
+                    catch (IllegalArgumentException invalid) { throw new IOException("Invalid sortie", invalid); }
+                    var restored = p.withSortie(sortie);
+                    if (!restored.sortie().equals(sortie)) throw new IOException("Sortie the participant cannot hold");
+                    players.put(playerId, restored);
                 }
             }
             if (in.available() != 0) throw new IOException("Trailing snapshot data");
