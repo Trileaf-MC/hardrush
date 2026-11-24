@@ -44,7 +44,7 @@ class DemoTests(unittest.TestCase):
             for path in self.bundle.rglob('*') if path.is_file()}))
 
     def prepare(self):
-        return demo.prepare(self.bundle, 'hardcore', 25587)
+        return demo.prepare(self.bundle, 25587)
 
     def accept_existing_eula(self):
         source = self.root / '.local/server/eula.txt'
@@ -100,7 +100,7 @@ class DemoTests(unittest.TestCase):
         run = self.prepare()
         command = demo.launch_command(run)
         self.assertIn('-Dhardrush.competition.enabled=true', command)
-        self.assertIn('-Dhardrush.round.initialMode=hardcore', command)
+        self.assertFalse(any(arg.startswith('-Dhardrush.round.initialMode=') for arg in command))
         self.assertEqual(command[-3:], ['-jar', 'fabric-server.jar', 'nogui'])
         self.assertEqual(demo.instance(run.name), run)
 
@@ -143,9 +143,8 @@ class DemoTests(unittest.TestCase):
 
     def test_explicit_lan_binding_keeps_online_authentication(self):
         self.accept_existing_eula()
-        run = demo.prepare(self.bundle, 'normal', 25588, '0.0.0.0')
-        command = demo.launch_command(run)
-        self.assertIn('-Dhardrush.round.initialMode=normal', command)
+        run = demo.prepare(self.bundle, 25588, '0.0.0.0')
+        demo.launch_command(run)
         self.assertIn('online-mode=true', (run / 'server.properties').read_text())
 
 

@@ -2,7 +2,6 @@ package dev.hardrush.core.round;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -16,7 +15,7 @@ import org.junit.jupiter.api.Test;
 class RoundSnapshotCodecMigrationTest {
     private static final UUID ROUND = UUID.fromString("10000000-0000-0000-0000-000000000001");
     private static final UUID ACTIVE = UUID.fromString("00000000-0000-0000-0000-000000000001");
-    private static final UUID RESPAWNING = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID DEAD = UUID.fromString("00000000-0000-0000-0000-000000000002");
     private static final UUID LOBBY = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
     @Test void oldSuccessTimersKeepElapsedTimeAndAreMigratedOnlyOnce() {
@@ -60,6 +59,7 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(25, active.joinedAtChallengeNanos());
         assertEquals(3, active.lifeSequence());
         assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
+        assertEquals(RulesConfig.defaults(), migrated.rules());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
         assertEquals(14, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
@@ -342,13 +342,14 @@ class RoundSnapshotCodecMigrationTest {
         var out = new DataOutputStream(bytes);
         out.writeInt(0x48525331); out.writeInt(1);
         uuid(out, ROUND); out.writeLong(4); out.writeLong(123); out.writeLong(7);
-        text(out, RulesConfig.defaults().withMode(GameMode.NORMAL).encode());
+        // Rules stored while a normal mode existed still name it; the retired key is dropped on decode.
+        text(out, RulesConfig.defaults().encode() + "mode=NORMAL\n");
         text(out, "RUNNING"); text(out, "NO_ONLINE_HUMANS");
         out.writeLong(123_456); out.writeLong(0); out.writeBoolean(true); out.writeBoolean(false);
         out.writeInt(3);
         List<Participant> players = List.of(
                 new Participant(ACTIVE, "Active", ParticipantRole.HUMAN_ACTIVE, false, false, 98_765, 25, 3, false),
-                new Participant(RESPAWNING, "Dead", ParticipantRole.HUMAN_RESPAWNING, false, false, 1, 0, 1, false),
+                new Participant(DEAD, "Dead", ParticipantRole.MONSTER_LOBBY, false, false, 1, 0, 1, false),
                 new Participant(LOBBY, "Lobby", ParticipantRole.LOBBY, false, false, 0, -1, 0, false));
         for (Participant p : players) {
             uuid(out, p.id()); text(out, p.name()); text(out, p.role().name());

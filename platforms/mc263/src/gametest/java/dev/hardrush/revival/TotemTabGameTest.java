@@ -2,7 +2,6 @@ package dev.hardrush.revival;
 
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.HardRushProperties;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import dev.hardrush.gametest.TestClients;
@@ -137,7 +136,7 @@ public final class TotemTabGameTest {
 
             // Normal mode gives the list slot back at once: our objective goes, the server's own is shown again.
             clear(clients);
-            s.rules = RulesConfig.defaults().withMode(GameMode.NORMAL);
+            s.rules = RulesConfig.defaults();
             TotemTab.tick(server);
             for (var c : clients) {
                 test.assertTrue(c.removed() && c.adds() == 0 && c.scores().findAny().isEmpty(), "Normal mode removes ours: " + c.name());

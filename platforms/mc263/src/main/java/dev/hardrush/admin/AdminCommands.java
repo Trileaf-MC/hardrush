@@ -6,7 +6,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import dev.hardrush.core.admin.*;
 import dev.hardrush.core.book.SafeBookText;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.record.*;
 import dev.hardrush.core.round.RoundResult;
 import dev.hardrush.core.round.RoundSnapshot;
@@ -64,12 +63,6 @@ public final class AdminCommands {
                 .executes(c -> current(c.getSource(), AdminAction.CLOSE_RECOVERY, "管理员放弃故障轮并开始新轮"))
                 .then(Commands.argument("reason", StringArgumentType.greedyString())
                     .executes(c -> current(c.getSource(), AdminAction.CLOSE_RECOVERY, StringArgumentType.getString(c, "reason")))))
-            .then(Commands.literal("next-mode").requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
-                .then(Commands.argument("mode", StringArgumentType.word())
-                    .suggests((c, b) -> b.suggest("normal").suggest("hardcore").buildFuture())
-                    .then(Commands.argument("reason", StringArgumentType.greedyString())
-                        .executes(c -> nextMode(c.getSource(), StringArgumentType.getString(c, "mode"),
-                            StringArgumentType.getString(c, "reason"))))))
             .then(Commands.literal("correct").requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
                 .then(Commands.argument("round", StringArgumentType.word())
                     .then(Commands.argument("millis", LongArgumentType.longArg(0, Long.MAX_VALUE / 1_000_000))
@@ -133,30 +126,15 @@ public final class AdminCommands {
         return 1;
     }
 
-    public int nextMode(CommandSourceStack source, String value, String reason) {
-        if (!permitted(source, AdminAction.SET_RULES)) return failure(source, "当前权限不足，管理操作未受理。");
-        try { AdminText.reason(reason); }
-        catch (IllegalArgumentException error) { return failure(source, error.getMessage()); }
-        var session = session(source);
-        if (session == null || session.snapshot().isEmpty()) return 0;
-        GameMode mode;
-        if (value.equals("normal")) mode = GameMode.NORMAL;
-        else if (value.equals("hardcore")) mode = GameMode.HARDCORE;
-        else return failure(source, "模式只接受 normal 或 hardcore。");
-        session.updateNextMode(mode, actor(source).identity(), reason, r -> reply(source, r));
-        return 1;
-    }
-
     private int grantRevival(CommandSourceStack source, String input, int count, String reason) {
         if (!permitted(source, AdminAction.GRANT_REVIVAL)) return failure(source, "当前权限不足，不能发放复生次数。");
         var session = session(source);
         if (session == null || session.snapshot().isEmpty()) return 0;
         var round = session.snapshot().orElseThrow();
         if (session.state() != RoundSession.State.OPEN || session.competitionLocked()
-                || round.rules().mode() != GameMode.HARDCORE
                 || round.phase() != dev.hardrush.core.round.RoundPhase.RUNNING
                     && round.phase() != dev.hardrush.core.round.RoundPhase.RESCUE) {
-            return failure(source, "仅可在正常开放的极限挑战或救场期间发放复生次数。");
+            return failure(source, "仅可在正常开放的挑战或救场期间发放复生次数。");
         }
         var matches = round.participants().values().stream()
                 .filter(p -> p.id().toString().equalsIgnoreCase(input) || p.name().equalsIgnoreCase(input)).toList();

@@ -140,7 +140,7 @@ def verify_bundle(bundle):
         raise RuntimeError('Demo 含清单外模组。')
 
 
-def prepare(bundle, mode, port, bind='127.0.0.1'):
+def prepare(bundle, port, bind='127.0.0.1'):
     verify_bundle(bundle)
     run = BASE / 'instances' / str(uuid.uuid4())
     run.mkdir(parents=True)
@@ -162,7 +162,7 @@ def prepare(bundle, mode, port, bind='127.0.0.1'):
         'max-players=20', 'spawn-protection=0', 'view-distance=6', 'simulation-distance=4',
         'pause-when-empty-seconds=0', 'motd=HardRush 26.3 local MVP demo', '',
     )))
-    write_json(run / 'demo.json', dict(schema=1, bundle=bundle.name, initialMode=mode, port=port, bind=bind))
+    write_json(run / 'demo.json', dict(schema=2, bundle=bundle.name, port=port, bind=bind))
     print(f'Demo 实例：{run}\n启动：python3 scripts/demo.py run {run.name}\n监听：{bind}:{port}', flush=True)
     return run
 
@@ -179,8 +179,9 @@ def instance(identifier):
 
 def launch_command(run):
     config = json.loads((run / 'demo.json').read_text())
-    if config.get('schema') != 1 or config.get('initialMode') not in ('normal', 'hardcore'):
-        raise RuntimeError('无效的 Demo 配置。')
+    # Schema 1 instances chose a round mode that no longer exists; prepare a new one.
+    if config.get('schema') != 2:
+        raise RuntimeError('无效或过期的 Demo 配置；请重新 prepare。')
     bind = str(ipaddress.ip_address(config['bind']))
     bundle = BASE / 'bundles' / str(uuid.UUID(config['bundle']))
     verify_bundle(bundle)
@@ -199,7 +200,7 @@ def launch_command(run):
     if 'eula=true' not in [line.strip() for line in (run / 'eula.txt').read_text().splitlines()]:
         raise RuntimeError(f'请阅读 EULA 并在 {run / "eula.txt"} 中自行确认。')
     return [java(), '-Xms512M', '-Xmx2G', '--enable-native-access=ALL-UNNAMED',
-            '-Dhardrush.competition.enabled=true', '-Dhardrush.round.initialMode=' + config['initialMode'],
+            '-Dhardrush.competition.enabled=true',
             '-jar', 'fabric-server.jar', 'nogui']
 
 
@@ -275,13 +276,12 @@ def main():
     actions = parser.add_subparsers(dest='action', required=True)
     actions.add_parser('build', help='构建并审计生产 JAR，下载锁定的 Fabric 启动器')
     setup = actions.add_parser('prepare', help='构建并创建新 Demo；从不覆盖已有存档')
-    setup.add_argument('--mode', choices=('normal', 'hardcore'), default='hardcore')
     setup.add_argument('--port', type=int, default=25587, choices=range(1024, 65536), metavar='PORT')
     setup.add_argument('--bind', type=lambda value: str(ipaddress.ip_address(value)), default='127.0.0.1',
                        help='默认仅本机；局域网双人演示可显式指定 0.0.0.0')
     start = actions.add_parser('run', help='前台启动已有实例；控制台 stop 正常保存')
     start.add_argument('instance')
-    smoke = actions.add_parser('smoke', help='从生产 JAR 验证两种模式的准备、停服与重开，无客户端')
+    smoke = actions.add_parser('smoke', help='从生产 JAR 验证准备、停服与重开，无客户端')
     smoke.add_argument('--timeout', type=int, default=240)
     args = parser.parse_args()
     if args.action == 'run':
@@ -292,22 +292,17 @@ def main():
     java()
     bundle = build()
     if args.action == 'prepare':
-        prepare(bundle, args.mode, args.port, args.bind)
+        prepare(bundle, args.port, args.bind)
     elif args.action == 'smoke':
-        results = []
-        for mode in ('normal', 'hardcore'):
-            run = prepare(bundle, mode, 0)
-            first = smoke_session(run, 1, args.timeout)
-            second = smoke_session(run, 2, args.timeout)
-            round_ids = [re.search(r'（([0-9a-f-]{36})）', item['statusLine'])[1] for item in (first, second)]
-            if first['pid'] == second['pid'] or round_ids[0] != round_ids[1]:
-                raise RuntimeError('新进程重开未保留同一轮次。')
-            expected_mode = '普通' if mode == 'normal' else '极限'
-            if any(f'本轮模式 {expected_mode}' not in item['statusLine'] for item in (first, second)):
-                raise RuntimeError('实例模式与实际持久轮次不符。')
-            results.append(dict(mode=mode, instance=run.name, roundId=round_ids[0], sessions=[first, second]))
+        run = prepare(bundle, 0)
+        first = smoke_session(run, 1, args.timeout)
+        second = smoke_session(run, 2, args.timeout)
+        round_ids = [re.search(r'（([0-9a-f-]{36})）', item['statusLine'])[1] for item in (first, second)]
+        if first['pid'] == second['pid'] or round_ids[0] != round_ids[1]:
+            raise RuntimeError('新进程重开未保留同一轮次。')
+        results = [dict(instance=run.name, roundId=round_ids[0], sessions=[first, second])]
         write_json(bundle / 'smoke-result.json', dict(status='PASS', results=results))
-        print(f'两种模式、4 个独立服务端 JVM 验证通过：{bundle / "smoke-result.json"}', flush=True)
+        print(f'2 个独立服务端 JVM 验证通过：{bundle / "smoke-result.json"}', flush=True)
 
 
 if __name__ == '__main__':

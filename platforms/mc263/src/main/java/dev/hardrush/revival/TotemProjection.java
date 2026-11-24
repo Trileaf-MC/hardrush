@@ -1,6 +1,5 @@
 package dev.hardrush.revival;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.Participant;
 import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.RoundPhase;
@@ -17,7 +16,7 @@ import java.util.UUID;
  *   <li>{@link State#FREEZE}: still the same committed life of the same identity, only briefly not eligible
  *       (competition locked, profile not verified or unlocked, offline, awaiting admission, recovery). Copies
  *       projected for this identity stay exactly where they are; copies of any other identity are removed;</li>
- *   <li>{@link State#CLEAR}: not a participant of this hardcore round any more, or the identity really changed
+ *   <li>{@link State#CLEAR}: not a participant of this round any more, or the identity really changed
  *       (death, leaving the round, disqualification, round change, end of the round, becoming a spectator).</li>
  * </ul>
  *
@@ -60,7 +59,7 @@ final class TotemProjection {
     static Decision decide(RoundSnapshot round, UUID player, boolean spectator, boolean locked, boolean bodyReady,
                            int pendingSaves) {
         var participant = round == null ? null : round.participants().get(player);
-        if (participant == null || round.rules().mode() != GameMode.HARDCORE || spectator) return Decision.CLEAR;
+        if (participant == null || spectator) return Decision.CLEAR;
         var role = participant.role();
         if (role != ParticipantRole.HUMAN_ACTIVE && role != ParticipantRole.MONSTER_LOBBY) return Decision.CLEAR;
         boolean live = round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE;

@@ -2,7 +2,6 @@ package dev.hardrush.gametest;
 
 import dev.hardrush.HardRushProperties;
 import com.mojang.authlib.GameProfile;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.Participant;
 import dev.hardrush.core.round.ParticipantRole;
@@ -67,11 +66,11 @@ public final class PlayerProfileGameTest {
         fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var profiles = new PlayerProfiles(server, root, test::getLevel, () -> position);
-        var initial = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        var initial = round(UUID.randomUUID(), 1, player);
         var celebrating = new RoundSnapshot(initial.roundId(), initial.sequence(), initial.seed(), initial.version(), initial.rules(),
                 RoundPhase.CELEBRATING, PauseReason.SETTLED, 123, 90_000_000_000L, initial.participants(), false, false,
                 new dev.hardrush.core.round.RoundResult(dev.hardrush.core.round.RoundResult.Kind.COMPLETED, player.getUUID(), "verified fixture"));
-        var next = round(UUID.randomUUID(), 2, player, GameMode.NORMAL);
+        var next = round(UUID.randomUUID(), 2, player);
         profiles.onLogin(player); profiles.tick(initial);
         test.startSequence()
                 .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player.getUUID(), initial), "Source profile verified"))
@@ -150,7 +149,7 @@ public final class PlayerProfileGameTest {
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
         fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
-        var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        var round = round(UUID.randomUUID(), 1, player);
         var generation = new ProfileJournal.Generation(round.roundId(), round.sequence());
         String suspension = UUID.randomUUID().toString();
         player.getInventory().setItem(0, new ItemStack(Items.EMERALD, 11));
@@ -206,7 +205,7 @@ public final class PlayerProfileGameTest {
         var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(1, 2, 1)));
         fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
-        var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        var round = round(UUID.randomUUID(), 1, player);
         player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 13));
         var generation = new ProfileJournal.Generation(round.roundId(), round.sequence());
         var seed = java.util.concurrent.CompletableFuture.runAsync(() -> {
@@ -307,7 +306,7 @@ public final class PlayerProfileGameTest {
         var profiles = new PlayerProfiles(server, root, test::getLevel, () -> position, heldCallbacks::add);
         try {
             profiles.onLogin(player);
-            profiles.tick(round(UUID.randomUUID(), 1, player, GameMode.NORMAL));
+            profiles.tick(round(UUID.randomUUID(), 1, player));
             // Explicitly hold callbacks: a completed future may otherwise run whenComplete inline on this thread.
             test.assertTrue(profiles.failure(player.getUUID()).isEmpty(), "Main-thread failure callback has not run before shutdown starts");
             boolean refused = false;
@@ -334,7 +333,7 @@ public final class PlayerProfileGameTest {
         fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var profiles = new PlayerProfiles(server, root, test::getLevel, () -> lobby);
-        var initial = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        var initial = round(UUID.randomUUID(), 1, player);
         var celebrating = new RoundSnapshot(initial.roundId(), initial.sequence(), initial.seed(), initial.version(), initial.rules(),
                 RoundPhase.CELEBRATING, PauseReason.SETTLED, 123_000_000_000L, 500_000_000_000L,
                 initial.participants(), false, false, new dev.hardrush.core.round.RoundResult(
@@ -393,8 +392,8 @@ public final class PlayerProfileGameTest {
         fixtureStanding(test, spawnPosition);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var profiles = new PlayerProfiles(server, root, test::getLevel, () -> lobbyPosition);
-        var first = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
-        var fourth = round(UUID.randomUUID(), 4, player, GameMode.NORMAL);
+        var first = round(UUID.randomUUID(), 1, player);
+        var fourth = round(UUID.randomUUID(), 4, player);
         var progress = server.getAdvancements().get(Identifier.parse("minecraft:story/mine_stone"));
         var criterion = progress.value().criteria().keySet().iterator().next();
         player.getInventory().setItem(0, new ItemStack(Items.EMERALD, 7));
@@ -515,7 +514,7 @@ public final class PlayerProfileGameTest {
         fixtureStanding(test, position);
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
         var service = new PlayerProfiles[]{new PlayerProfiles(server, root, test::getLevel, () -> position)};
-        var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        var round = round(UUID.randomUUID(), 1, player);
         var oldVanilla = new net.minecraft.nbt.CompoundTag[1];
         service[0].onLogin(player);
         service[0].tick(round);
@@ -559,7 +558,7 @@ public final class PlayerProfileGameTest {
         fixtureStanding(test, position);
         var profiles = new PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT)
                 .resolve("hardrush/profile-tests/" + UUID.randomUUID()), test::getLevel, () -> position);
-        var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        var round = round(UUID.randomUUID(), 1, player);
         var port = new dev.hardrush.book.WrittenBookPort(server, (scope, id) -> true,
                 new dev.hardrush.book.BookInventorySaver(server, () -> java.util.Optional.of(profiles)));
         var automatic = new dev.hardrush.core.api.OperationTag(round.roundId(), UUID.randomUUID(), 1);
@@ -610,7 +609,7 @@ public final class PlayerProfileGameTest {
     @GameTest(maxTicks = 1000)
     public void campBookSurvivesMonsterAndExclusionRebuilds(GameTestHelper test) {
         if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
-        var fixture = new BookFixture(test, GameMode.HARDCORE);
+        var fixture = new BookFixture(test);
         var player = fixture.player;
         var profiles = fixture.profiles;
         var monster = life(fixture.round, ParticipantRole.MONSTER_LOBBY, 1, true);
@@ -647,7 +646,7 @@ public final class PlayerProfileGameTest {
     @GameTest(maxTicks = 1000)
     public void failedCampBookWriteStaysRetryable(GameTestHelper test) {
         if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
-        var fixture = new BookFixture(test, GameMode.NORMAL);
+        var fixture = new BookFixture(test);
         var player = fixture.player;
         var suspension = fixture.root.resolve(player.getUUID().toString()).resolve("suspended-" + fixture.round.roundId() + ".bin");
         var saved = new byte[1][];
@@ -686,7 +685,7 @@ public final class PlayerProfileGameTest {
     @GameTest(maxTicks = 1000)
     public void campBookLeavesRoomForCraftingTableInput(GameTestHelper test) {
         if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
-        var fixture = new BookFixture(test, GameMode.NORMAL);
+        var fixture = new BookFixture(test);
         var player = fixture.player;
         var profiles = fixture.profiles;
         test.startSequence()
@@ -720,7 +719,7 @@ public final class PlayerProfileGameTest {
     @GameTest(maxTicks = 1000)
     public void resumedCampBodyShowsSealedBookAfterStaleVanillaFile(GameTestHelper test) {
         if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
-        var fixture = new BookFixture(test, GameMode.NORMAL);
+        var fixture = new BookFixture(test);
         var player = fixture.player;
         test.startSequence()
                 .thenWaitUntil(() -> test.assertTrue(fixture.profiles.isReady(player.getUUID(), fixture.round), "Fresh camp body verified"))
@@ -762,14 +761,14 @@ public final class PlayerProfileGameTest {
         PlayerProfiles profiles;
         dev.hardrush.book.WrittenBookPort port;
 
-        BookFixture(GameTestHelper test, GameMode mode) {
+        BookFixture(GameTestHelper test) {
             this.test = test;
             var server = test.getLevel().getServer();
             player = test.makeMockServerPlayerInLevel();
             position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
             fixtureStanding(test, position);
             root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
-            round = round(UUID.randomUUID(), 1, player, mode);
+            round = round(UUID.randomUUID(), 1, player);
             automatic = new dev.hardrush.core.api.OperationTag(round.roundId(), UUID.randomUUID(), 1);
             open();
             profiles.onLogin(player);
@@ -816,145 +815,12 @@ public final class PlayerProfileGameTest {
         return count;
     }
 
-    @GameTest(maxTicks = 1000)
-    public void normalRespawnWaitsForCommittedLifeAndKeepsVanillaDestination(GameTestHelper test) {
-        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
-        var server = test.getLevel().getServer();
-        var player = new ServerPlayer[]{test.makeMockServerPlayerInLevel()};
-        var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
-        fixtureStanding(test, position);
-        var profiles = new PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT)
-                .resolve("hardrush/profile-tests/" + UUID.randomUUID()), test::getLevel, () -> position);
-        var initial = round(UUID.randomUUID(), 1, player[0], GameMode.NORMAL);
-        var destination = new Vec3[1];
-        profiles.onLogin(player[0]);
-        profiles.tick(initial);
-        test.startSequence()
-                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player[0].getUUID(), initial), "Initial archive verified"))
-                .thenExecute(() -> {
-                    test.assertTrue(profiles.admit(player[0], initial, test.getLevel(), position, level -> level == test.getLevel()), "Initial human admitted");
-                    player[0].getEnderChestInventory().setItem(0, new ItemStack(Items.EMERALD, 6));
-                    test.setBlock(2, 1, 2, net.minecraft.world.level.block.Blocks.STONE);
-                    player[0].setRespawnPosition(new ServerPlayer.RespawnConfig(LevelData.RespawnData.of(
-                            test.getLevel().dimension(), test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)), 0, 0), true), false);
-                    var previous = player[0];
-                    player[0] = server.getPlayerList().respawn(previous, false, net.minecraft.world.entity.Entity.RemovalReason.KILLED);
-                    destination[0] = player[0].position();
-                    profiles.onRespawn(previous, player[0], life(initial, ParticipantRole.HUMAN_RESPAWNING, 1, false));
-                    test.assertTrue(PlayerProfiles.isLocked(player[0]), "Native respawn remains isolated before replacement life commits");
-                })
-                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player[0].getUUID(), initial), "Native newborn suspension is durable"))
-                .thenExecute(() -> {
-                    test.assertTrue(!profiles.confirmRespawn(player[0], life(initial, ParticipantRole.HUMAN_RESPAWNING, 1, false)), "Uncommitted respawn role cannot unlock");
-                    test.assertTrue(!profiles.confirmRespawn(player[0], life(initial, ParticipantRole.HUMAN_ACTIVE, 1, false)), "An old life callback cannot unlock the replacement");
-                    test.assertTrue(profiles.confirmRespawn(player[0], life(initial, ParticipantRole.HUMAN_ACTIVE, 2, false)), "Committed replacement life unlocks before online time is recorded");
-                    test.assertTrue(!PlayerProfiles.isLocked(player[0]), "Replacement unlocks only after durable identity");
-                    test.assertTrue(player[0].position().distanceTo(destination[0]) < .001, "Confirmation leaves the vanilla bed/anchor destination intact");
-                    test.assertTrue(player[0].getEnderChestInventory().getItem(0).is(Items.EMERALD)
-                            && player[0].getEnderChestInventory().getItem(0).getCount() == 6, "Ordinary death keeps this round's ender storage");
-                    try { profiles.close(); } catch (Exception error) { throw new IllegalStateException(error); }
-                    server.getPlayerList().remove(player[0]);
-                }).thenSucceed();
-    }
-
     private static RoundSnapshot life(RoundSnapshot original, ParticipantRole role, int life, boolean online) {
         var source = original.participants().values().iterator().next();
         var participant = new Participant(source.id(), source.name(), role, online, false, 0, 0, life, false);
         return new RoundSnapshot(original.roundId(), original.sequence(), original.seed(), original.version(), original.rules(),
                 original.phase(), online ? PauseReason.NONE : PauseReason.NO_ONLINE_HUMANS, 0, 0,
                 Map.of(participant.id(), participant), false, false, null);
-    }
-
-    @GameTest(maxTicks = 1000)
-    public void deadHumanReconnectAllowsOnlyNativeRespawnThenWaitsForNewLife(GameTestHelper test) {
-        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
-        var server = test.getLevel().getServer();
-        var player = new ServerPlayer[]{test.makeMockServerPlayerInLevel()};
-        var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
-        fixtureStanding(test, position);
-        var profiles = new PlayerProfiles(server, server.getWorldPath(LevelResource.ROOT)
-                .resolve("hardrush/profile-tests/" + UUID.randomUUID()), test::getLevel, () -> position);
-        var initial = round(UUID.randomUUID(), 1, player[0], GameMode.NORMAL);
-        var dead = life(initial, ParticipantRole.HUMAN_RESPAWNING, 1, false);
-        profiles.onLogin(player[0]);
-        profiles.tick(initial);
-        test.startSequence()
-                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player[0].getUUID(), initial), "Initial profile verified"))
-                .thenExecute(() -> {
-                    test.assertTrue(profiles.admit(player[0], initial, test.getLevel(), position, level -> level == test.getLevel()), "Initial committed human admitted");
-                    player[0].getEnderChestInventory().setItem(0, new ItemStack(Items.EMERALD, 4));
-                    test.setBlock(2, 1, 2, net.minecraft.world.level.block.Blocks.STONE);
-                    player[0].setRespawnPosition(new ServerPlayer.RespawnConfig(LevelData.RespawnData.of(
-                            test.getLevel().dimension(), test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)), 0, 0), true), false);
-                    player[0].setHealth(0);
-                    player[0].die(player[0].damageSources().genericKill());
-                    profiles.onDisconnect(player[0]);
-                    profiles.onLogin(player[0]);
-                    profiles.tick(dead);
-                })
-                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player[0].getUUID(), dead), "Reconnected dead profile verified"))
-                .thenExecute(() -> {
-                    test.assertTrue(!PlayerProfiles.isRespawnAllowed(player[0]), "A login cannot respawn before committed dead identity is checked");
-                    test.assertTrue(profiles.permitRespawn(player[0], dead, level -> level == test.getLevel()), "Committed dead human regains this round's respawn context");
-                    test.assertTrue(PlayerProfiles.isLocked(player[0]) && PlayerProfiles.isRespawnAllowed(player[0]), "Only respawn is permitted; gameplay remains locked");
-                    var previous = player[0];
-                    previous.connection.handleClientCommand(new net.minecraft.network.protocol.game.ServerboundClientCommandPacket(
-                            net.minecraft.network.protocol.game.ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
-                    player[0] = previous.connection.player;
-                    test.assertTrue(player[0] != previous, "The permitted packet follows vanilla's actual replacement path");
-                    profiles.onRespawn(previous, player[0], dead);
-                })
-                .thenWaitUntil(() -> test.assertTrue(profiles.isReady(player[0].getUUID(), dead), "Reconnected player's replacement snapshot is durable"))
-                .thenExecute(() -> {
-                    test.assertTrue(PlayerProfiles.isLocked(player[0]) && !PlayerProfiles.isRespawnAllowed(player[0]), "Newborn cannot request a second respawn while its identity commits");
-                    test.assertTrue(profiles.confirmRespawn(player[0], life(initial, ParticipantRole.HUMAN_ACTIVE, 2, false)), "Committed next life unlocks the native replacement");
-                    test.assertTrue(player[0].getEnderChestInventory().getItem(0).is(Items.EMERALD)
-                            && ((ProfileTagged) player[0]).hardrush$lifeSequence() == 2, "Same-round storage and authoritative life survive the death-screen reconnect");
-                    try { profiles.close(); } catch (Exception error) { throw new IllegalStateException(error); }
-                    server.getPlayerList().remove(player[0]);
-                }).thenSucceed();
-    }
-
-    @GameTest(maxTicks = 1000)
-    public void persistedNativeNewbornFinishesExistingLifeWithoutRespawningAgain(GameTestHelper test) {
-        if (!HardRushProperties.competitionEnabled()) { test.succeed(); return; }
-        var server = test.getLevel().getServer();
-        var player = new ServerPlayer[]{test.makeMockServerPlayerInLevel()};
-        var position = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2)));
-        fixtureStanding(test, position);
-        var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
-        var profiles = new PlayerProfiles[]{new PlayerProfiles(server, root, test::getLevel, () -> position)};
-        var initial = round(UUID.randomUUID(), 1, player[0], GameMode.NORMAL);
-        var dead = life(initial, ParticipantRole.HUMAN_RESPAWNING, 1, false);
-        var bornPosition = new Vec3[1];
-        profiles[0].onLogin(player[0]);
-        profiles[0].tick(initial);
-        test.startSequence()
-                .thenWaitUntil(() -> test.assertTrue(profiles[0].isReady(player[0].getUUID(), initial), "Initial profile verified"))
-                .thenExecute(() -> {
-                    test.assertTrue(profiles[0].admit(player[0], initial, test.getLevel(), position, level -> level == test.getLevel()), "Initial human admitted");
-                    var previous = player[0];
-                    player[0] = server.getPlayerList().respawn(previous, false, net.minecraft.world.entity.Entity.RemovalReason.KILLED);
-                    bornPosition[0] = player[0].position();
-                    profiles[0].onRespawn(previous, player[0], dead);
-                })
-                .thenWaitUntil(() -> test.assertTrue(profiles[0].isReady(player[0].getUUID(), dead), "Native newborn stamped and persisted"))
-                .thenExecute(() -> {
-                    try { profiles[0].close(); } catch (Exception error) { throw new IllegalStateException(error); }
-                    profiles[0] = new PlayerProfiles(server, root, test::getLevel, () -> position);
-                    profiles[0].onLogin(player[0]);
-                    profiles[0].tick(dead);
-                })
-                .thenWaitUntil(() -> test.assertTrue(profiles[0].isReady(player[0].getUUID(), dead), "Saved newborn reopened against the older durable dead role"))
-                .thenExecute(() -> {
-                    test.assertTrue(profiles[0].permitRespawn(player[0], dead, level -> level == test.getLevel()), "Stamped newborn can resume its pending identity commit");
-                    test.assertTrue(profiles[0].respawnCommitPending(player[0], dead) && !PlayerProfiles.isRespawnAllowed(player[0]), "Existing life needs one durable commit rather than a second native respawn");
-                    test.assertTrue(profiles[0].confirmRespawn(player[0], life(initial, ParticipantRole.HUMAN_ACTIVE, 2, false)), "Existing second life is confirmed");
-                    test.assertValueEqual(((ProfileTagged) player[0]).hardrush$lifeSequence(), 2, "Restart does not allocate a third life");
-                    test.assertTrue(player[0].position().distanceTo(bornPosition[0]) < .01, "Existing vanilla newborn position survives recovery");
-                    try { profiles[0].close(); } catch (Exception error) { throw new IllegalStateException(error); }
-                    server.getPlayerList().remove(player[0]);
-                }).thenSucceed();
     }
 
     @GameTest(maxTicks = 1000)
@@ -965,7 +831,7 @@ public final class PlayerProfileGameTest {
         var profile = new GameProfile(identity, "profile-pending-world");
         var player = new ServerPlayer(server, test.getLevel(), profile, TestClients.information());
         var root = server.getWorldPath(LevelResource.ROOT).resolve("hardrush/profile-tests/" + UUID.randomUUID());
-        var round = round(UUID.randomUUID(), 1, player, GameMode.NORMAL);
+        var round = round(UUID.randomUUID(), 1, player);
         var generation = new ProfileJournal.Generation(round.roundId(), 1);
         var suspensionId = UUID.randomUUID().toString();
         var savedPosition = Vec3.atBottomCenterOf(test.absolutePos(new net.minecraft.core.BlockPos(4, 3, 4)));
@@ -1031,10 +897,10 @@ public final class PlayerProfileGameTest {
                 }).thenSucceed();
     }
 
-    private static RoundSnapshot round(UUID roundId, long sequence, ServerPlayer player, GameMode mode) {
+    private static RoundSnapshot round(UUID roundId, long sequence, ServerPlayer player) {
         var participant = new Participant(player.getUUID(), player.getScoreboardName(), ParticipantRole.HUMAN_ACTIVE,
                 true, false, 0, 0, 1, false);
-        return new RoundSnapshot(roundId, sequence, 17, 1, RulesConfig.defaults().withMode(mode), RoundPhase.RUNNING,
+        return new RoundSnapshot(roundId, sequence, 17, 1, RulesConfig.defaults(), RoundPhase.RUNNING,
                 PauseReason.NONE, 0, 0, Map.of(player.getUUID(), participant), false, false, null);
     }
 }

@@ -2,7 +2,6 @@ package dev.hardrush.core.round;
 
 import dev.hardrush.core.admin.AdminText;
 import dev.hardrush.core.api.MonotonicClock;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.combat.CombatOrigin;
@@ -291,20 +290,6 @@ public final class RoundEngine {
         return proposal(eventId, ready ? "READY" : "UNREADY", before, phase, remaining, players, before.result(), false);
     }
 
-    public RoundTransition proposeAdmissionRespawn(UUID eventId, UUID playerId, int expectedLifeSequence) {
-        RoundSnapshot before = capture();
-        requirePhase(before, RoundPhase.RUNNING);
-        if (before.rules().mode() != GameMode.NORMAL) throw new IllegalStateException("Normal identity event requires NORMAL mode");
-        Participant player = requirePlayer(before, playerId);
-        requireLife(player, ParticipantRole.HUMAN_RESPAWNING, expectedLifeSequence);
-        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
-        players.put(playerId, new Participant(player.id(), player.name(), ParticipantRole.HUMAN_ACTIVE, player.online(), false,
-                player.humanNanos(), player.joinedAtChallengeNanos(), Math.addExact(player.lifeSequence(), 1), false,
-                player.monsterRole(), player.monsterDimension(), player.monsterCooldownNanos(),
-                player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis()).withWitch(player.witch()).awaitingAdmission());
-        return proposal(eventId, "NORMAL_RESPAWN", before, before.phase(), 0, players, before.result(), false);
-    }
-
     /**
      * Atomically commits all actual deaths, their revival rewards and the resulting phase.
      * completion is supplied only by the adapter's verified first-dragon arbiter for this batch.
@@ -345,14 +330,12 @@ public final class RoundEngine {
                 damageBatch = cause.batchId();
             }
             if (player.role().isActiveHuman()) {
-                players.put(player.id(), before.rules().mode() == GameMode.NORMAL
-                        ? player.withRole(ParticipantRole.HUMAN_RESPAWNING)
-                        : new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
-                                player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
-                                player.lifeSequence(), player.revivalCharges(), MonsterRole.ZOMBIE,
-                                MonsterDimension.OVERWORLD, deployCooldownNanos(before.rules()),
-                                player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
-                                becameMonster(before.rules(), player.wallet())).withWitch(player.witch()));
+                players.put(player.id(), new Participant(player.id(), player.name(), ParticipantRole.MONSTER_LOBBY,
+                        player.online(), false, player.humanNanos(), player.joinedAtChallengeNanos(),
+                        player.lifeSequence(), player.revivalCharges(), MonsterRole.ZOMBIE,
+                        MonsterDimension.OVERWORLD, deployCooldownNanos(before.rules()),
+                        player.monsterDeploymentSequence(), player.monsterSkillReadyAtMillis(),
+                        becameMonster(before.rules(), player.wallet())).withWitch(player.witch()));
             } else {
                 // A defeat no longer benches the monster: only the humans it locks get their respite (applied below).
                 players.put(player.id(), endSortie(player, 0));
@@ -364,35 +347,33 @@ public final class RoundEngine {
         // life releases one totem: a qualifying monster gains it, anything else drops it where the human fell (a
         // human's kill, or unclaimed). A settling batch keeps no registration.
         var looseTotems = new LinkedHashMap<>(before.looseTotems());
-        if (before.rules().mode() == GameMode.HARDCORE) {
+        for (RoundDeath death : deaths) {
+            TotemDrop.release(before, death).ifPresent(release ->
+                    release(before, players, looseTotems, release, death.playerId(), death.lifeSequence(), death.dropToken()));
+        }
+        // Use vanilla's player-damage memory captured at death, including subsequent environmental damage.
+        for (RoundDeath death : deaths) {
+            if (before.participants().get(death.playerId()).role() != ParticipantRole.MONSTER_DEPLOYED
+                    || !death.recentlyHurtByPlayer()) continue;
+            players.put(death.playerId(), credit(before.rules(), players.get(death.playerId()), MonsterCoins.KILLED_BY_HUMAN));
+        }
+        for (RoundDeath death : defeats) {
+            for (UUID human : lockedBy(before, players, victims, death)) {
+                players.put(death.playerId(), players.get(death.playerId())
+                        .withHuntLock(human, deployCooldownNanos(before.rules())));
+            }
+        }
+        if (Bounty.enabled(before.rules())) {
             for (RoundDeath death : deaths) {
-                TotemDrop.release(before, death).ifPresent(release ->
-                        release(before, players, looseTotems, release, death.playerId(), death.lifeSequence(), death.dropToken()));
-            }
-            // Use vanilla's player-damage memory captured at death, including subsequent environmental damage.
-            for (RoundDeath death : deaths) {
-                if (before.participants().get(death.playerId()).role() != ParticipantRole.MONSTER_DEPLOYED
-                        || !death.recentlyHurtByPlayer()) continue;
-                players.put(death.playerId(), credit(before.rules(), players.get(death.playerId()), MonsterCoins.KILLED_BY_HUMAN));
-            }
-            for (RoundDeath death : defeats) {
-                for (UUID human : lockedBy(before, players, victims, death)) {
-                    players.put(death.playerId(), players.get(death.playerId())
-                            .withHuntLock(human, deployCooldownNanos(before.rules())));
-                }
-            }
-            if (Bounty.enabled(before.rules())) {
-                for (RoundDeath death : deaths) {
-                    humanKiller(before, players, victims, death).ifPresent(killer -> players.put(killer.id(),
-                            killer.withThreat(killer.threat().killedMonster(killer.lifeSequence()))));
-                }
+                humanKiller(before, players, victims, death).ifPresent(killer -> players.put(killer.id(),
+                        killer.withThreat(killer.threat().killedMonster(killer.lifeSequence()))));
             }
         }
         if (completion != null) {
             return proposal(eventId, "DEATH_BATCH", before, RoundPhase.SETTLING,
                     millisToNanos(successCelebrationMillis(before.rules())), withoutEntitlements(players), completion, false);
         }
-        if (before.rules().mode() == GameMode.HARDCORE && !hasHuman(players)) {
+        if (!hasHuman(players)) {
             return lastHumanGone(eventId, "DEATH_BATCH", before, players, "ALL_HUMANS_DEAD", false, looseTotems);
         }
         // With humans left the phase follows from who is still connected; see live().
@@ -423,7 +404,6 @@ public final class RoundEngine {
             int expectedLifeSequence, int expectedDeploymentSequence) {
         Objects.requireNonNull(token);
         RoundSnapshot before = capture();
-        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("仅极限模式有复生图腾掉落。");
         requirePhase(before, RoundPhase.RUNNING, RoundPhase.RESCUE);
         requireOpenRescue(before);
         if (!before.roundId().equals(roundId)) throw new IllegalStateException("轮次已改变，请重新拾取。");
@@ -462,7 +442,7 @@ public final class RoundEngine {
         Participant player = before.participants().get(playerId);
         boolean open = before.phase() == RoundPhase.RUNNING
                 || before.phase() == RoundPhase.RESCUE && before.remainingPhaseNanos() > 0;
-        if (before.rules().mode() != GameMode.HARDCORE || !before.roundId().equals(roundId) || !open
+        if (!before.roundId().equals(roundId) || !open
                 || player == null || player.role() != ParticipantRole.HUMAN_ACTIVE
                 || player.lifeSequence() != expectedLifeSequence || player.revivalCharges() == 0) {
             return proposal(eventId, "TOTEM_SAVE_VOID", before, before.phase(), before.remainingPhaseNanos(),
@@ -491,7 +471,6 @@ public final class RoundEngine {
     private RoundTransition revival(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence, boolean admissionPending) {
         RoundSnapshot before = capture();
-        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("Revival requires HARDCORE mode");
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence,
                 expectedDeploymentSequence, ParticipantRole.MONSTER_LOBBY);
         requireOpenRescue(before);
@@ -1007,7 +986,6 @@ public final class RoundEngine {
         requirePhase(before, RoundPhase.RUNNING, RoundPhase.RESCUE);
         requireOpenRescue(before);
         if (!before.roundId().equals(roundId)) throw new IllegalStateException("轮次已改变，请重新申请。");
-        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("仅极限模式支持发放复生次数。");
         Participant player = requirePlayer(before, playerId);
         if ((!player.role().isMonster() && !player.role().isActiveHuman())
                 || player.lifeSequence() == 0 || player.joinedAtChallengeNanos() < 0) {
@@ -1277,22 +1255,18 @@ public final class RoundEngine {
     }
 
     private static boolean hasHuman(Map<UUID, Participant> players) {
-        return players.values().stream().anyMatch(RoundEngine::human);
+        return players.values().stream().anyMatch(p -> p.role().isActiveHuman());
     }
 
-    /** A human present on the server: playing, entering, or on the native respawn screen. */
+    /** A human present on the server, playing or entering. */
     private static boolean hasConnectedHuman(Map<UUID, Participant> players) {
-        return players.values().stream().anyMatch(p -> p.connected() && human(p));
+        return players.values().stream().anyMatch(p -> p.connected() && p.role().isActiveHuman());
     }
 
     /** A player still competing in this round is present; spectators and lobby-only entries do not count. */
     private static boolean competitorConnected(Map<UUID, Participant> players) {
-        return players.values().stream().anyMatch(p -> p.connected() && (human(p) || p.role().isMonster()
+        return players.values().stream().anyMatch(p -> p.connected() && (p.role().isActiveHuman() || p.role().isMonster()
                 || p.role() == ParticipantRole.TRANSITION_PENDING));
-    }
-
-    private static boolean human(Participant p) {
-        return p.role().isActiveHuman() || p.role() == ParticipantRole.HUMAN_RESPAWNING;
     }
 
     /** How long a rescue waits for a revival or a mid-round join after the last human died. */

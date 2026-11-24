@@ -46,7 +46,7 @@ final class TerminalSessionTest {
             pump(callbacks, () -> session.snapshot().orElseThrow().result() != null && !session.mutationPending());
             assertEquals(TimeUnit.SECONDS.toNanos(7), session.view().orElseThrow().challengeNanos());
             assertEquals(player, session.snapshot().orElseThrow().result().winner());
-            assertEquals(ParticipantRole.HUMAN_RESPAWNING, session.snapshot().orElseThrow().participants().get(player).role());
+            assertEquals(ParticipantRole.MONSTER_LOBBY, session.snapshot().orElseThrow().participants().get(player).role());
             session.captureDragonDeath(lethal(original.roundId(), clock.get()), dragon);
             assertFalse(session.mutationPending(), "Repeated lethal callbacks cannot overwrite terminal result");
             session.tick();
@@ -220,14 +220,14 @@ final class TerminalSessionTest {
             assertFalse(saved.cleanShutdown(), "Platform failure must not create a clean recovery marker");
             assertEquals(TimeUnit.SECONDS.toNanos(3), saved.challengeNanos());
             assertEquals(player, saved.result().winner());
-            assertEquals(ParticipantRole.HUMAN_RESPAWNING, saved.participants().get(player).role());
+            assertEquals(ParticipantRole.MONSTER_LOBBY, saved.participants().get(player).role());
             assertTrue(store.terminal(original.roundId()).isPresent(), "Accepted lethal evidence still drains atomically");
         }
     }
 
     private RoundSnapshot seed(Path database, RoundPhase phase, RoundResult result, long remaining) throws Exception {
-        var defaults = RulesConfig.defaults().withMode(GameMode.NORMAL);
-        var rules = new RulesConfig(defaults.schemaVersion(), defaults.mode(), defaults.minecraftVersion(),
+        var defaults = RulesConfig.defaults();
+        var rules = new RulesConfig(defaults.schemaVersion(), defaults.minecraftVersion(),
                 defaults.difficulty(), defaults.generationRule(), defaults.combatValues(),
                 1, 2_000, 1_000);
         var snapshot = new RoundSnapshot(UUID.randomUUID(), 1, 42, 0, rules, phase, PauseReason.SERVER_STOPPED,

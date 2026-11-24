@@ -1,6 +1,5 @@
 package dev.hardrush.lobby;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.MonsterCoins;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.round.RoundSession;
@@ -158,7 +157,7 @@ public final class CampTransfers {
         if (!Objects.equals(current, round)) { round = current; loose.clear(); }
         if (server.getTickCount() % 20 != 0) return;
         loose.values().removeIf(entry -> entry.entity.isRemoved() && !entry.claimed);
-        boolean open = r != null && r.rules().mode() == GameMode.HARDCORE
+        boolean open = r != null
                 && (r.phase() == RoundPhase.RUNNING || r.phase() == RoundPhase.RESCUE);
         if (!open) loose.values().removeIf(entry -> !entry.claimed);
         // Floor revival totems are TotemDrops' business; only coin stacks are swept here.

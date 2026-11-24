@@ -1,6 +1,5 @@
 package dev.hardrush.core.round;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 
 /**
@@ -19,7 +18,7 @@ public final class MonsterWorth {
 
     /** Rounds saved before worth existed keep playing without it. */
     public static boolean enabled(RulesConfig rules) {
-        return rules.mode() == GameMode.HARDCORE && rules.combatValues().containsKey(BASE_LEVEL);
+        return rules.combatValues().containsKey(BASE_LEVEL);
     }
 
     /** Base level plus levels for each bounty-weighted damage point of this sortie, in milli-levels, capped. */

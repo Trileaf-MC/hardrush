@@ -24,8 +24,7 @@ public final class HistoryQueries {
         return (page - 1) * PAGE_SIZE;
     }
     public static String line(RoundHistory row) {
-        return "第 " + row.sequence() + " 轮 · " + (row.rules().mode() == dev.hardrush.core.config.GameMode.NORMAL ? "普通" : "极限")
-                + " · " + switch(row.result().kind()) { case COMPLETED -> "通关"; case FAILED -> "失败"; case ABORTED -> "中止"; }
+        return "第 " + row.sequence() + " 轮 · " + switch(row.result().kind()) { case COMPLETED -> "通关"; case FAILED -> "失败"; case ABORTED -> "中止"; }
                 + " · " + RoundTab.duration(row.challengeMillis()) + "（" + row.challengeMillis() + " ms）· "
                 + (row.leaderboardEligible() ? "正常榜" : "保留／待核验");
     }

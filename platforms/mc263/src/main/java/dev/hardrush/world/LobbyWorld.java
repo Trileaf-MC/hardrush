@@ -263,10 +263,10 @@ public final class LobbyWorld {
         return cause.getMessage() == null ? cause.toString() : cause.getMessage();
     }
 
-    /** What every status text slot reads; the stage and mode lines change with the round. */
-    public void statusLabel(String stage, String mode) {
+    /** What every status text slot reads; the stage line changes with the round. */
+    public void statusLabel(String stage) {
         if (!ready) return;
-        var lines = List.of("HardRush 营地", stage, mode, "前方：集结区");
+        var lines = List.of("HardRush 营地", stage, "前方：集结区");
         texts.set(LobbyFunction.STATUS, new LobbyTexts.Content(lines, String.join("\n", lines)));
         texts.apply(level, plan, server.getTickCount());
     }

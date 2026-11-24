@@ -2,7 +2,6 @@ package dev.hardrush.gametest;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.Participant;
 import dev.hardrush.core.round.ParticipantRole;
@@ -54,10 +53,10 @@ public final class AdminCommandGameTest {
             parses(test, dispatcher, reader, command, true);
         }
         for (String command : new String[]{"hardrush admin start 测试原因", "hardrush admin abort 测试原因",
-                "hardrush admin retry-world 测试原因", "hardrush admin next-mode normal 测试原因",
+                "hardrush admin retry-world 测试原因",
                 "hardrush admin recheck-storage 测试原因",
                 "hardrush admin grant-revival Tester 3 测试补偿",
-                "hardrush retry-world 测试原因", "hardrush config next-mode normal 测试原因"}) {
+                "hardrush retry-world 测试原因"}) {
             parses(test, dispatcher, player, command, false);
             parses(test, dispatcher, reader, command, false);
             parses(test, dispatcher, admin, command, true);
@@ -110,7 +109,7 @@ public final class AdminCommandGameTest {
     }
 
     @GameTest(maxTicks = 200)
-    public void rulesAndHistoryExecuteDirectlyWithPermissionsAndDurableResults(GameTestHelper test) throws Exception {
+    public void historyCommandsExecuteDirectlyWithPermissionsAndDurableResults(GameTestHelper test) throws Exception {
         var server = test.getLevel().getServer();
         Path database = Files.createTempDirectory("hardrush-admin-command-test-").toRealPath().resolve("rounds.sqlite");
         UUID historyId = seedHistoricalFixture(database);
@@ -122,22 +121,8 @@ public final class AdminCommandGameTest {
             dispatcher.register(commands.attach(Commands.literal("hardrush")));
             var source = server.createCommandSourceStack().withSource(output);
             var reader = permission(source, 2); var admin = permission(source, 3); var owner = permission(source, 4);
-            var oldRules = session.nextRules().orElseThrow();
-            GameMode target = oldRules.mode() == GameMode.NORMAL ? GameMode.HARDCORE : GameMode.NORMAL;
-            String targetName = target == GameMode.NORMAL ? "normal" : "hardcore";
-            parses(test, dispatcher, reader, "hardrush admin next-mode " + targetName + " 越权", false);
-            test.assertValueEqual(commands.nextMode(reader, targetName, "越权"), 0, "Alias handler also checks current permission");
-            test.assertValueEqual(commands.nextMode(admin, targetName, " "), 0, "Blank reason remains invalid without tickets");
-            test.assertValueEqual(session.nextRules().orElseThrow(), oldRules, "Denied requests preserve next rules");
-            test.assertFalse(session.mutationPending(), "Denied requests start no SQLite mutation");
-            execute(dispatcher, admin, "hardrush admin next-mode " + targetName + " 直接修改下轮");
-            test.assertValueEqual(session.nextRules().orElseThrow(), oldRules, "Rules publish only after SQLite acknowledgement");
-            execute(dispatcher, admin, "hardrush admin next-mode " + targetName + " 提交中重复请求");
-            test.assertTrue(output.last().contains("上一项状态仍在提交"), "Concurrent rule command cannot duplicate pending write");
-            pumpUntil(test, callbacks, () -> !session.mutationPending() && session.nextRules().orElseThrow().mode() == target);
-            var rulesAudits = query(test, callbacks, session.audits(null, 20, 0));
-            test.assertValueEqual(rulesAudits.size(), 1, "One direct rule command commits one audit");
-            test.assertValueEqual(rulesAudits.getFirst().action(), "NEXT_RULES", "Actual execution persists its action");
+            // Every round is hardcore: no command changes the next round's mode any more.
+            parses(test, dispatcher, owner, "hardrush admin next-mode normal 测试原因", false);
             long oldEdition = query(test, callbacks, session.history(historyId)).orElseThrow().edition();
             parses(test, dispatcher, admin, "hardrush admin correct " + historyId + " 5000 none 越权", false);
             int beforeCorrection = output.messages.size();
@@ -155,9 +140,9 @@ public final class AdminCommandGameTest {
             test.assertTrue(output.last().contains("不符合原始证据"), "Direct validation still refuses untrusted original evidence");
             test.assertValueEqual(query(test, callbacks, session.history(historyId)).orElseThrow().edition(), oldEdition + 1,
                     "Rejected validation leaves the book edition unchanged");
-            test.assertValueEqual(query(test, callbacks, session.audits(null, 20, 0)).size(), 2,
-                    "Only the successful rule and correction writes are audited");
-            test.assertFalse(output.hasTicketAfter(0), "Rule, correction and validation commands never request confirmation");
+            test.assertValueEqual(query(test, callbacks, session.audits(null, 20, 0)).size(), 1,
+                    "Only the successful correction write is audited");
+            test.assertFalse(output.hasTicketAfter(0), "Correction and validation commands never request confirmation");
         }
         test.succeed();
     }
@@ -167,7 +152,7 @@ public final class AdminCommandGameTest {
         var server = test.getLevel().getServer();
         Path database = Files.createTempDirectory("hardrush-start-abort-command-").toRealPath().resolve("rounds.sqlite");
         UUID player = UUID.randomUUID();
-        var rules = RulesConfig.defaults().withMode(GameMode.NORMAL);
+        var rules = RulesConfig.defaults();
         var initial = new RoundSnapshot(UUID.randomUUID(), 1, 123, 0, rules, RoundPhase.WAITING, PauseReason.NOT_RUNNING,
                 0, 0, Map.of(player, new Participant(player, "Human", ParticipantRole.LOBBY, true, true, 0, -1, 0, false)), true, false, null);
         try (var store = new SqliteRoundStore(database)) {
@@ -235,7 +220,7 @@ public final class AdminCommandGameTest {
         var server = test.getLevel().getServer();
         Path database = Files.createTempDirectory("hardrush-admin-revival-").toRealPath().resolve("rounds.sqlite");
         UUID roundId = UUID.randomUUID(), target = UUID.randomUUID(), human = UUID.randomUUID();
-        var rules = RulesConfig.defaults().withMode(GameMode.HARDCORE);
+        var rules = RulesConfig.defaults();
         var initial = new RoundSnapshot(roundId, 1, 123, 0, rules, RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
                 0, 0, Map.of(target, new Participant(target, "Monster", ParticipantRole.MONSTER_LOBBY, false, false, 0, 0, 1, false),
                         human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 0, 0, 1, false)),
@@ -332,7 +317,7 @@ public final class AdminCommandGameTest {
     /** Synthetic historical completion only; this fixture neither simulates dragon causality nor enters a world. */
     private static UUID seedHistoricalFixture(Path database) throws Exception {
         UUID history = UUID.randomUUID(), player = UUID.randomUUID();
-        var rules = RulesConfig.defaults().withMode(GameMode.NORMAL);
+        var rules = RulesConfig.defaults();
         var participant = new Participant(player, "Historical Player", ParticipantRole.HUMAN_ACTIVE,
                 false, false, 9_000_000_000L, 0, 1, false);
         var running = new RoundSnapshot(history, 1, 123, 0, rules, RoundPhase.RUNNING, PauseReason.NO_ONLINE_HUMANS,

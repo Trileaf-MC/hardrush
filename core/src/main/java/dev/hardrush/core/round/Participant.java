@@ -35,7 +35,7 @@ public record Participant(UUID id, String name, ParticipantRole role, boolean on
                 || revivalCharges < 0 || monsterCooldownNanos < 0 || monsterDeploymentSequence < 0) {
             throw new IllegalArgumentException("Invalid participant counters");
         }
-        if ((role == ParticipantRole.HUMAN_ACTIVE || role == ParticipantRole.HUMAN_RESPAWNING)
+        if (role == ParticipantRole.HUMAN_ACTIVE
                 && (joinedAtChallengeNanos < 0 || lifeSequence == 0)) {
             throw new IllegalArgumentException("Human identity requires an admitted life");
         }

@@ -35,7 +35,6 @@ test-server.cmd                      # Windows（参数相同）
 | `--reset all` | 实例恢复为全新状态，只保留已下载的原版服务端和依赖库，不会重新下载 |
 | `--instance NAME` | 使用另一个独立实例，默认 `default` |
 | `--port` / `--seed` / `--memory` | 端口（默认 25565）、新存档种子（默认 `3leaves`）、最大内存（默认 2G） |
-| `--mode normal\|hardcore` | 新一轮的初始模式，默认 `hardcore` |
 | `--offline` / `--online` | 关闭／开启正版验证 |
 | `--no-competition` | 关闭比赛运行时 |
 | `--no-build` | 不重新构建，直接启动 |

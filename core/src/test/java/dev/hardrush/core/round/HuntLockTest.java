@@ -113,7 +113,7 @@ class HuntLockTest {
         values.put("coin.killedByHuman", 5.0);
         values.remove("monster.retrackChannelMillis");
         values.remove(RulesConfig.DEFAULTS_REVISION_KEY); // stored before defaults carried a revision
-        var stored = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+        var stored = new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
         assertEquals(30_000L, RoundEngine.deployCooldownNanos(stored) / 1_000_000, "A started round keeps its rules");
         assertEquals(5_000L, RoundEngine.retrackChannelMillis(stored), "Without its own setting the compass shares the return's");
@@ -126,13 +126,13 @@ class HuntLockTest {
         var chosen = new java.util.TreeMap<>(pending.combatValues());
         chosen.put("monster.deployCooldownMillis", 30_000.0);
         chosen.put("coin.killedByHuman", 5.0);
-        var operator = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+        var operator = new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), chosen, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
         var reopened = RulesConfig.decode(operator.forNewRound().encode()).forNewRound().forNewRound();
         assertEquals(30_000.0, reopened.combatValues().get("monster.deployCooldownMillis"), "A chosen earlier default survives restarts");
         assertEquals(5.0, reopened.combatValues().get("coin.killedByHuman"));
         values.put("monster.deployCooldownMillis", 60_000.0);
-        var tuned = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+        var tuned = new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
         assertEquals(60_000.0, tuned.forNewRound().combatValues().get("monster.deployCooldownMillis"), "An operator's own value is kept");
     }

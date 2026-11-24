@@ -7,7 +7,6 @@ import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.combat.CombatOrigin;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,14 +43,14 @@ class LooseTotemTest {
                 70, 20, 1, charges, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 3, Map.of());
     }
 
-    private RoundEngine fixture(GameMode mode, Participant... participants) {
-        return fixture(mode, Map.of(), participants);
+    private RoundEngine fixture(Participant... participants) {
+        return fixture(Map.of(), participants);
     }
 
-    private RoundEngine fixture(GameMode mode, Map<UUID, LooseTotem> totems, Participant... participants) {
+    private RoundEngine fixture(Map<UUID, LooseTotem> totems, Participant... participants) {
         Map<UUID, Participant> players = new LinkedHashMap<>();
         for (var p : participants) players.put(p.id(), p);
-        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults().withMode(mode),
+        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults(),
                 RoundPhase.RUNNING, PauseReason.SERVER_STOPPED, 100, 0, players, true, false, null, totems);
         var engine = RoundEngine.restore(stored, clock);
         for (var p : participants) if (p.online()) apply(engine, engine.proposeOnline(UUID.randomUUID(), p.id(), p.name(), true));
@@ -85,7 +84,7 @@ class LooseTotemTest {
 
     /** {@code killer} kills {@code victim}; the bystander keeps the round going. */
     private RoundEngine dropped(UUID token) {
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim), human(bystander));
+        var engine = fixture(human(killer), human(victim), human(bystander));
         apply(engine, batch(engine, death(engine, victim, humanHit(killer), token)));
         assertTrue(engine.view().looseTotems().containsKey(token));
         return engine;
@@ -110,7 +109,7 @@ class LooseTotemTest {
     // ---- Registration (plan 1.1) ----
 
     @Test void aHumanKillRegistersTheDropAtItsChallengeTimeAndPaysTheKillerNothing() {
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim));
+        var engine = fixture(human(killer), human(victim));
         var token = UUID.randomUUID();
         clock.seconds(7);
         var death = death(engine, victim, humanHit(killer), token);
@@ -124,7 +123,7 @@ class LooseTotemTest {
     }
 
     @Test void aMonsterKillStillPaysOneChargeRecallsTheHunterAndDropsNothing() {
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim), monster(0));
+        var engine = fixture(human(killer), human(victim), monster(0));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         var death = death(engine, victim, monsterHit(), UUID.randomUUID());
         assertEquals(Optional.of(new TotemDrop.Release.ToMonster(monster)), TotemDrop.release(engine.view(), death));
@@ -136,7 +135,7 @@ class LooseTotemTest {
 
     @Test void mutualKillsAndAKillerWhoAlreadyDiedStillDrop() {
         // Both humans die in one batch, each credited to the other.
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim), human(bystander));
+        var engine = fixture(human(killer), human(victim), human(bystander));
         var a = UUID.randomUUID();
         var b = UUID.randomUUID();
         apply(engine, batch(engine, death(engine, victim, humanHit(killer), a), death(engine, killer, humanHit(victim), b)));
@@ -144,7 +143,7 @@ class LooseTotemTest {
         assertEquals(Optional.of(killer), engine.view().looseTotems().get(a).killer());
         assertEquals(Optional.of(victim), engine.view().looseTotems().get(b).killer());
         // The archer died earlier; their arrow, launched as a human, lands afterwards.
-        var late = fixture(GameMode.HARDCORE, human(killer), human(victim), human(bystander));
+        var late = fixture(human(killer), human(victim), human(bystander));
         var arrow = origin(killer, ParticipantRole.HUMAN_ACTIVE, 1, 0, AttackKind.ARROW);
         apply(late, batch(late, death(late, killer, null, null)));
         assertEquals(ParticipantRole.MONSTER_LOBBY, player(late, killer).role());
@@ -156,7 +155,7 @@ class LooseTotemTest {
 
     @Test void anAccidentOrASuicideDropsAnUnclaimedTotemWithoutAKiller() {
         for (var credit : java.util.Arrays.asList(null, humanHit(victim))) {
-            var engine = fixture(GameMode.HARDCORE, human(killer), human(victim));
+            var engine = fixture(human(killer), human(victim));
             var token = UUID.randomUUID();
             var death = death(engine, victim, credit, token);
             assertEquals(UNCLAIMED, TotemDrop.release(engine.view(), death), String.valueOf(credit));
@@ -168,14 +167,8 @@ class LooseTotemTest {
         }
     }
 
-    @Test void normalRoundsAndDeathsWithoutATokenRegisterNothing() {
-        var normal = fixture(GameMode.NORMAL, human(killer), human(victim));
-        var normalDeath = death(normal, victim, humanHit(killer), UUID.randomUUID());
-        assertEquals(Optional.empty(), TotemDrop.release(normal.view(), normalDeath));
-        apply(normal, batch(normal, normalDeath));
-        assertTrue(normal.view().looseTotems().isEmpty());
-
-        var untokened = fixture(GameMode.HARDCORE, human(killer), human(victim));
+    @Test void deathsWithoutATokenRegisterNothing() {
+        var untokened = fixture(human(killer), human(victim));
         var plain = death(untokened, victim, humanHit(killer), null);
         assertTrue(TotemDrop.release(untokened.view(), plain).isPresent(), "Released, but the platform dropped nothing");
         apply(untokened, batch(untokened, plain));
@@ -184,7 +177,7 @@ class LooseTotemTest {
     }
 
     @Test void aStaleRoundOriginAnOutsiderOrAnIndirectAttackDropsUnclaimed() {
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim));
+        var engine = fixture(human(killer), human(victim));
         var view = engine.view();
         var stale = humanHit(killer);
         stale = new CombatOrigin(UUID.randomUUID(), stale.originId(), stale.actor(), stale.kind(), stale.directEntityId(), List.of());
@@ -197,13 +190,13 @@ class LooseTotemTest {
             assertEquals(UNCLAIMED, TotemDrop.release(view, death), String.valueOf(credit));
         }
         // A monster's body is not a human life: nothing is released.
-        var hunting = fixture(GameMode.HARDCORE, human(killer), monster(0));
+        var hunting = fixture(human(killer), monster(0));
         apply(hunting, hunting.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         assertEquals(Optional.empty(), TotemDrop.release(hunting.view(), death(hunting, monster, humanHit(killer), UUID.randomUUID())));
     }
 
     @Test void aMonsterThatLeftTheRoundEarnsNothingAndTheTotemDropsUnclaimed() {
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim), monster(0));
+        var engine = fixture(human(killer), human(victim), monster(0));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         var hit = monsterHit();
         apply(engine, engine.proposeParticipationExit(UUID.randomUUID(), round, monster, ParticipantRole.MONSTER_DEPLOYED, 1, 4,
@@ -215,7 +208,7 @@ class LooseTotemTest {
     }
 
     @Test void aCompletionOrAFailingBatchLeavesNoRegistration() {
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim));
+        var engine = fixture(human(killer), human(victim));
         var token = UUID.randomUUID();
         var completed = new RoundResult(RoundResult.Kind.COMPLETED, killer, "dragon");
         apply(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
@@ -223,7 +216,7 @@ class LooseTotemTest {
         assertEquals(RoundPhase.SETTLING, engine.view().phase());
         assertTrue(engine.view().looseTotems().isEmpty());
 
-        var failing = fixture(GameMode.HARDCORE, human(killer), human(victim));
+        var failing = fixture(human(killer), human(victim));
         apply(failing, batch(failing, death(failing, victim, humanHit(killer), UUID.randomUUID()),
                 death(failing, killer, humanHit(victim), UUID.randomUUID())));
         assertEquals(RoundPhase.SETTLING, failing.view().phase());
@@ -257,7 +250,7 @@ class LooseTotemTest {
         for (int i = 0; i < LooseTotem.MAX_REGISTERED; i++) {
             totems.put(new UUID(1, i), byHuman(i < 2 ? 50 : 60));
         }
-        var engine = fixture(GameMode.HARDCORE, totems, human(killer), human(victim), human(bystander));
+        var engine = fixture(totems, human(killer), human(victim), human(bystander));
         var first = UUID.randomUUID();
         var second = UUID.randomUUID();
         apply(engine, batch(engine, death(engine, victim, humanHit(killer), first)));
@@ -315,7 +308,7 @@ class LooseTotemTest {
 
     @Test void pickupRejectsStaleLivesRoundsMonstersOfflineHumansUnknownTokensAndPendingWrites() {
         var token = UUID.randomUUID();
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim), human(bystander), monster(0));
+        var engine = fixture(human(killer), human(victim), human(bystander), monster(0));
         apply(engine, batch(engine, death(engine, victim, humanHit(killer), token)));
         assertThrows(IllegalStateException.class, () -> engine.proposeLooseTotemPickup(UUID.randomUUID(), round, token, killer, 2, 0));
         assertThrows(IllegalStateException.class,
@@ -341,17 +334,15 @@ class LooseTotemTest {
 
     @Test void pickupAtTheChargeLimitStillTakesTheTotem() {
         var token = UUID.randomUUID();
-        var engine = fixture(GameMode.HARDCORE, human(killer).addRevivalCharges(Integer.MAX_VALUE), human(victim), human(bystander));
+        var engine = fixture(human(killer).addRevivalCharges(Integer.MAX_VALUE), human(victim), human(bystander));
         apply(engine, batch(engine, death(engine, victim, humanHit(bystander), token)));
         apply(engine, engine.proposeLooseTotemPickup(UUID.randomUUID(), round, token, killer, 1, 0));
         assertEquals(Integer.MAX_VALUE, player(engine, killer).revivalCharges());
         assertTrue(engine.view().looseTotems().isEmpty());
     }
 
-    @Test void pickupIsClosedInNormalRoundsAndAfterTheRoundSettled() {
+    @Test void pickupIsClosedAfterTheRoundSettled() {
         var token = UUID.randomUUID();
-        var normal = fixture(GameMode.NORMAL, Map.of(token, byHuman(100)), human(killer), human(victim));
-        assertThrows(IllegalStateException.class, () -> normal.proposeLooseTotemPickup(UUID.randomUUID(), round, token, killer, 1, 0));
         var settled = dropped(token);
         apply(settled, settled.proposeFinish(UUID.randomUUID(), new RoundResult(RoundResult.Kind.FAILED, null, "test")));
         assertThrows(IllegalStateException.class, () -> settled.proposeLooseTotemPickup(UUID.randomUUID(), round, token, killer, 1, 0));
@@ -359,7 +350,7 @@ class LooseTotemTest {
 
     @Test void aHuntingMonsterTakesTheTotemAndIsPaidAndRecalledLikeAKill() {
         var token = UUID.randomUUID();
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim), human(bystander), monster(0));
+        var engine = fixture(human(killer), human(victim), human(bystander), monster(0));
         apply(engine, batch(engine, death(engine, victim, humanHit(killer), token)));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         assertThrows(IllegalStateException.class,
@@ -372,7 +363,7 @@ class LooseTotemTest {
 
     @Test void anOfflineHuntingMonsterCannotTakeIt() {
         var token = UUID.randomUUID();
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim), human(bystander), monster(0));
+        var engine = fixture(human(killer), human(victim), human(bystander), monster(0));
         apply(engine, batch(engine, death(engine, victim, humanHit(killer), token)));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         var sortie = player(engine, monster).monsterDeploymentSequence();
@@ -384,7 +375,7 @@ class LooseTotemTest {
     // ---- In-place save (掉落 1.5, 守恒 1.1 and 1.4) ----
 
     @Test void aSaveSpendsOneChargeAndKeepsTheLife() {
-        var engine = fixture(GameMode.HARDCORE, human(killer).addRevivalCharges(2), human(victim));
+        var engine = fixture(human(killer).addRevivalCharges(2), human(victim));
         var save = engine.proposeTotemSave(UUID.randomUUID(), round, killer, 1, Optional.empty(), Optional.empty());
         assertEquals("TOTEM_SAVE", save.eventType());
         apply(engine, save);
@@ -397,7 +388,7 @@ class LooseTotemTest {
     }
 
     @Test void aMonsterForcingOutATotemIsPaidAndRecalledLikeAKill() {
-        var engine = fixture(GameMode.HARDCORE, human(killer).addRevivalCharges(1), human(victim), monster(0));
+        var engine = fixture(human(killer).addRevivalCharges(1), human(victim), monster(0));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         assertEquals(Optional.of(monster), TotemDrop.monsterKiller(engine.view(), killer, Optional.of(monsterHit())));
         apply(engine, engine.proposeTotemSave(UUID.randomUUID(), round, killer, 1, Optional.of(monsterHit()), Optional.of(UUID.randomUUID())));
@@ -409,7 +400,7 @@ class LooseTotemTest {
     }
 
     @Test void aSaveForcedOutByAnUnqualifiedMonsterAttackPaysNoOne() {
-        var engine = fixture(GameMode.HARDCORE, human(killer).addRevivalCharges(1), human(victim), monster(0));
+        var engine = fixture(human(killer).addRevivalCharges(1), human(victim), monster(0));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         // A later sortie than the monster ever had, and a non-monster attack kind.
         for (var credit : List.of(origin(monster, ParticipantRole.MONSTER_DEPLOYED, 1, 9, AttackKind.MELEE),
@@ -424,7 +415,7 @@ class LooseTotemTest {
 
     @Test void aHumanForcingOutATotemDropsOneAtTheSavedHumanForAnyoneToTake() {
         var token = UUID.randomUUID();
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim).addRevivalCharges(2), human(bystander));
+        var engine = fixture(human(killer), human(victim).addRevivalCharges(2), human(bystander));
         clock.seconds(7);
         long at = engine.view().challengeNanos();
         apply(engine, engine.proposeTotemSave(UUID.randomUUID(), round, victim, 1, Optional.of(humanHit(killer)), Optional.of(token)));
@@ -444,7 +435,7 @@ class LooseTotemTest {
 
     @Test void onceTheSavedLifeEndsItsOwnerMayTakeTheTotem() {
         var token = UUID.randomUUID();
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim).addRevivalCharges(1), human(bystander));
+        var engine = fixture(human(killer), human(victim).addRevivalCharges(1), human(bystander));
         apply(engine, engine.proposeTotemSave(UUID.randomUUID(), round, victim, 1, Optional.empty(), Optional.of(token)));
         assertEquals(LooseTotem.Source.UNCLAIMED, engine.view().looseTotems().get(token).source(), "The environment forced it out");
         apply(engine, batch(engine, death(engine, victim, null, UUID.randomUUID())));
@@ -456,7 +447,7 @@ class LooseTotemTest {
     }
 
     @Test void aForcedOutTotemDropsUnderTheSameRulesAsADeath() {
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim).addRevivalCharges(12));
+        var engine = fixture(human(killer), human(victim).addRevivalCharges(12));
         // Every direct human attack kind qualifies, whoever the attacker is now.
         for (var kind : List.of(AttackKind.MELEE, AttackKind.ARROW, AttackKind.BED, AttackKind.RESPAWN_ANCHOR,
                 AttackKind.TNT, AttackKind.END_CRYSTAL)) {
@@ -485,13 +476,13 @@ class LooseTotemTest {
         }
         assertEquals(0, player(engine, victim).revivalCharges());
         // The adapter dropped nothing at the save: nothing to register either.
-        var none = fixture(GameMode.HARDCORE, human(killer), human(victim).addRevivalCharges(1));
+        var none = fixture(human(killer), human(victim).addRevivalCharges(1));
         apply(none, none.proposeTotemSave(UUID.randomUUID(), round, victim, 1, Optional.of(humanHit(killer)), Optional.empty()));
         assertTrue(none.view().looseTotems().isEmpty());
     }
 
     @Test void aVoidSaveRegistersNoDrop() {
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim));
+        var engine = fixture(human(killer), human(victim));
         var save = engine.proposeTotemSave(UUID.randomUUID(), round, victim, 1, Optional.of(humanHit(killer)), Optional.of(UUID.randomUUID()));
         assertEquals("TOTEM_SAVE_VOID", save.eventType(), "No charge to spend");
         apply(engine, save);
@@ -499,8 +490,8 @@ class LooseTotemTest {
     }
 
     @Test void staleOrUnqualifiedSavesCommitAVoidThatChangesNoParticipantAndNeverThrow() {
-        // No charge, a changed life, another round, a missing player, a monster, a normal round.
-        var engine = fixture(GameMode.HARDCORE, human(killer), human(victim).addRevivalCharges(1), monster(0));
+        // No charge, a changed life, another round, a missing player, a monster.
+        var engine = fixture(human(killer), human(victim).addRevivalCharges(1), monster(0));
         apply(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         var credit = Optional.of(monsterHit());
         assertVoid(engine, round, killer, 1, credit);
@@ -508,8 +499,6 @@ class LooseTotemTest {
         assertVoid(engine, UUID.randomUUID(), victim, 1, credit);
         assertVoid(engine, round, UUID.randomUUID(), 1, credit);
         assertVoid(engine, round, monster, 1, credit);
-        var normal = fixture(GameMode.NORMAL, human(killer).addRevivalCharges(1), human(victim));
-        assertVoid(normal, round, killer, 1, Optional.empty());
         // The saved human died after the save was captured.
         apply(engine, batch(engine, death(engine, victim, monsterHit(), null)));
         assertVoid(engine, round, victim, 1, credit);
@@ -517,7 +506,7 @@ class LooseTotemTest {
     }
 
     @Test void savesOutsideAnOpenRaceCommitAVoid() {
-        var settled = fixture(GameMode.HARDCORE, human(killer).addRevivalCharges(1), human(victim));
+        var settled = fixture(human(killer).addRevivalCharges(1), human(victim));
         apply(settled, settled.proposeFinish(UUID.randomUUID(), new RoundResult(RoundResult.Kind.FAILED, null, "test")));
         assertVoid(settled, round, killer, 1, Optional.empty());
         clock.seconds(3_600);
@@ -525,18 +514,18 @@ class LooseTotemTest {
         assertEquals(RoundPhase.ROTATING, settled.view().phase());
         assertVoid(settled, round, killer, 1, Optional.empty());
 
-        var recovery = fixture(GameMode.HARDCORE, human(killer).addRevivalCharges(1), human(victim));
+        var recovery = fixture(human(killer).addRevivalCharges(1), human(victim));
         assertTrue(recovery.reject(recovery.proposeCheckpoint(UUID.randomUUID(), false), "injected"));
         assertEquals(RoundPhase.RECOVERY_REQUIRED, recovery.view().phase());
         assertVoid(recovery, round, killer, 1, Optional.empty());
 
-        var waiting = RoundEngine.create(round, 1, 1, RulesConfig.defaults().withMode(GameMode.HARDCORE), clock);
+        var waiting = RoundEngine.create(round, 1, 1, RulesConfig.defaults(), clock);
         assertVoid(waiting, round, killer, 1, Optional.empty());
 
     }
 
     @Test void anExpiredRescueVoidsTheSave() {
-        var engine = fixture(GameMode.HARDCORE, human(victim), human(killer), monster(1));
+        var engine = fixture(human(victim), human(killer), monster(1));
         // Both humans go offline: the round waits for a reconnect on a deadline.
         apply(engine, engine.proposeOnline(UUID.randomUUID(), victim, "Human", false));
         apply(engine, engine.proposeOnline(UUID.randomUUID(), killer, "Human", false));

@@ -1,6 +1,5 @@
 package dev.hardrush.core.hunt;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.Participant;
 import dev.hardrush.core.round.ParticipantRole;
@@ -18,9 +17,9 @@ public final class LateShelter {
 
     private LateShelter() {}
 
-    /** Only the courtyard's personal hunt lets a monster choose its target, and only hardcore rounds have monsters. */
+    /** Only the courtyard's personal hunt lets a monster choose its target. */
     public static boolean enabled(RulesConfig rules) {
-        return rules.mode() == GameMode.HARDCORE && rules.huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET;
+        return rules.huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET;
     }
 
     public static long durationNanos(RulesConfig rules) {

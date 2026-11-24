@@ -1,7 +1,6 @@
 package dev.hardrush.gametest;
 
 import dev.hardrush.HardRushProperties;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.round.RoundSession;
@@ -64,29 +63,11 @@ public final class RoundLifecycleGameTest {
                     }
                     test.assertTrue(RoundRuntime.snapshot(server).orElseThrow().participants().isEmpty(),
                             "Rejected commands do not fabricate participants");
-                    var pendingRules = RoundRuntime.nextRules(server).orElseThrow();
-                    test.assertValueEqual(dispatch(adminSource, "hardrush config next-mode normal 大厅生命周期测试设为普通"),
-                            1, "Legacy config entry directly submits the rule write");
-                    test.assertValueEqual(RoundRuntime.nextRules(server).orElseThrow(), pendingRules,
-                            "Direct config waits for SQLite before publishing rules");
-                    test.assertTrue(RoundRuntime.mutationPending(server), "Direct config immediately starts the durable rule write");
-                })
-                .thenWaitUntil(() -> test.assertTrue(
-                        RoundRuntime.nextRules(server).orElseThrow().mode() == GameMode.NORMAL
-                                && !RoundRuntime.mutationPending(server), "Normal next mode durably committed"))
-                .thenExecute(() -> {
+                    test.assertTrue(server.getCommands().getDispatcher().parse("hardrush config next-mode normal 大厅生命周期测试", adminSource)
+                            .getReader().canRead(), "Every round is hardcore: no next-mode command is left to parse");
                     test.assertValueEqual(RoundRuntime.snapshot(server).orElseThrow().rules().fingerprint(),
-                            fingerprint[0], "Mode command preserves the current round's frozen rules");
-                    var pendingRules = RoundRuntime.nextRules(server).orElseThrow();
-                    test.assertValueEqual(dispatch(adminSource, "hardrush config next-mode hardcore 大厅生命周期测试恢复极限"),
-                            1, "Legacy config restore directly submits the rule write");
-                    test.assertValueEqual(RoundRuntime.nextRules(server).orElseThrow(), pendingRules,
-                            "Direct restore waits for SQLite before publishing rules");
-                    test.assertTrue(RoundRuntime.mutationPending(server), "Direct restore immediately starts the durable rule write");
+                            fingerprint[0], "Commands preserve the current round's frozen rules");
                 })
-                .thenWaitUntil(() -> test.assertTrue(
-                        RoundRuntime.nextRules(server).orElseThrow().mode() == GameMode.HARDCORE
-                                && !RoundRuntime.mutationPending(server), "Test next mode restored durably to hardcore"))
                 .thenExecute(() -> {
                     var round = RoundRuntime.snapshot(server).orElseThrow();
                     test.assertValueEqual(round.roundId(), identity[0], "Commands preserve round identity");

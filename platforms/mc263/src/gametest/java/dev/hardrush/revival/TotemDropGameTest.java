@@ -5,7 +5,6 @@ import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.api.DamagePort.AttackKind;
 import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.combat.CombatOrigin;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import dev.hardrush.gametest.TestClients;
@@ -99,7 +98,7 @@ public final class TotemDropGameTest {
             var monsterKill = Optional.of(new CombatOrigin(s.roundId, UUID.randomUUID(),
                     new CombatActor(deployed.id(), ParticipantRole.MONSTER_DEPLOYED, 1, 1), AttackKind.CREEPER, Optional.empty(), List.of()));
             test.assertTrue(TotemDrops.prepare(victim.player, round, monsterKill).isEmpty(), "A monster's kill drops nothing");
-            s.rules = RulesConfig.defaults().withMode(GameMode.NORMAL);
+            s.rules = RulesConfig.defaults();
             test.assertTrue(TotemDrops.prepare(victim.player, s.snapshot(), s.melee(killer.id())).isEmpty(), "Normal mode drops nothing");
             s.rules = RulesConfig.defaults();
             // A suicide and a death without credit release an unclaimed totem (守恒 1.1).

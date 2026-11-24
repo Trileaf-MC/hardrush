@@ -41,7 +41,7 @@ public final class RecoveryGameTest {
                 f.task = f.sql("CREATE TRIGGER fault_refuse_audit BEFORE INSERT ON admin_audits BEGIN SELECT RAISE(ABORT,'Injected recovery storage failure'); END");
             })
             .thenWaitUntil(() -> f.awaitIo())
-            .thenExecute(() -> f.session.updateNextMode(f.old.rules().mode(), "fixture", "注入真实SQLite写入故障", f.reply::set))
+            .thenExecute(() -> f.session.adminAbort("fixture", "注入真实SQLite写入故障", f.reply::set))
             .thenWaitUntil(() -> f.awaitReply(false))
             .thenExecute(() -> {
                 test.assertValueEqual(f.session.state(), RoundSession.State.FAILED, "Write failure freezes the real runtime");

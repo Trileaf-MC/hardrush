@@ -2,7 +2,6 @@ package dev.hardrush.core.round;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.record.RoundResultText;
 import dev.hardrush.core.record.RoundTab;
@@ -31,10 +30,10 @@ class HumansOfflineRescueTest {
                 MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of());
     }
     /** A cleanly restored round: everyone starts offline and the online ones then connect. */
-    private RoundEngine engine(GameMode mode, Participant... participants) {
+    private RoundEngine engine(Participant... participants) {
         var players = new LinkedHashMap<UUID, Participant>();
         for (var p : participants) players.put(p.id(), p);
-        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults().withMode(mode), RoundPhase.RUNNING,
+        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults(), RoundPhase.RUNNING,
                 PauseReason.SERVER_STOPPED, 0, 0, players, true, false, null);
         var e = RoundEngine.restore(stored, clock::get);
         for (var p : participants) if (p.online()) apply(e, online(e, p.id(), true));
@@ -47,7 +46,7 @@ class HumansOfflineRescueTest {
     private void seconds(long value) { clock.addAndGet(value * SECOND); }
 
     @Test void lastHumanLeavingStartsARescueThatExpiresIntoANewRound() {
-        var e = engine(GameMode.HARDCORE, human(a, true), monster(true, false));
+        var e = engine(human(a, true), monster(true, false));
         apply(e, online(e, a, false));
         assertEquals(RoundPhase.RESCUE, e.view().phase());
         assertTrue(e.view().awaitingReconnect());
@@ -70,7 +69,7 @@ class HumansOfflineRescueTest {
     }
 
     @Test void reconnectBeforeTheDeadlineResumesTheRaceButNotAfterIt() {
-        var e = engine(GameMode.NORMAL, human(a, true), human(b, false));
+        var e = engine(human(a, true), human(b, false));
         apply(e, online(e, a, false));
         assertEquals(RoundPhase.RESCUE, e.view().phase());
         seconds(179);
@@ -88,25 +87,25 @@ class HumansOfflineRescueTest {
     }
 
     @Test void revivalAndMidRoundJoinAlsoEndTheWait() {
-        var revived = engine(GameMode.HARDCORE, human(a, true), monster(true, true));
+        var revived = engine(human(a, true), monster(true, true));
         apply(revived, online(revived, a, false));
         apply(revived, revived.proposeRevival(UUID.randomUUID(), round, m, 1, 0));
         assertEquals(RoundPhase.RUNNING, revived.view().phase());
 
-        var joined = engine(GameMode.HARDCORE, human(a, true));
+        var joined = engine(human(a, true));
         apply(joined, online(joined, a, false));
         apply(joined, joined.proposeJoin(UUID.randomUUID(), b, "Late"));
         assertEquals(RoundPhase.RUNNING, joined.view().phase());
     }
 
     @Test void lastConnectedHumanDyingOrWithdrawingWaitsForTheOfflineOnes() {
-        var died = engine(GameMode.HARDCORE, human(a, true), human(b, false));
+        var died = engine(human(a, true), human(b, false));
         var lethal = new RoundDeath(a, 1, 0, Optional.empty());
         apply(died, died.proposeDeathBatch(UUID.randomUUID(), round, List.of(lethal), null));
         assertEquals(RoundPhase.RESCUE, died.view().phase());
         assertTrue(died.view().awaitingReconnect());
 
-        var withdrew = engine(GameMode.NORMAL, human(a, true), human(b, false));
+        var withdrew = engine(human(a, true), human(b, false));
         apply(withdrew, withdrew.proposeParticipationExit(UUID.randomUUID(), round, a, ParticipantRole.HUMAN_ACTIVE, 1, 0,
                 ParticipantRole.WITHDRAWN));
         assertEquals(RoundPhase.RESCUE, withdrew.view().phase());
@@ -116,17 +115,8 @@ class HumansOfflineRescueTest {
         assertEquals("NO_ELIGIBLE_PARTICIPANTS", withdrew.view().result().reason());
     }
 
-    @Test void humanOnTheRespawnScreenStillKeepsTheRaceRunning() {
-        var e = engine(GameMode.NORMAL, human(a, true), human(b, true));
-        apply(e, e.proposeDeathBatch(UUID.randomUUID(), round,
-                List.of(new RoundDeath(a, 1, 0, Optional.empty())), null));
-        assertEquals(ParticipantRole.HUMAN_RESPAWNING, e.view().participants().get(a).role());
-        apply(e, online(e, b, false));
-        assertEquals(RoundPhase.RUNNING, e.view().phase());
-    }
-
     @Test void restoredRoundStaysPausedUntilSomebodyReturnsAndThenWaitsForItsHumans() {
-        var e = engine(GameMode.HARDCORE, human(a, false), monster(false, false));
+        var e = engine(human(a, false), monster(false, false));
         seconds(600);
         apply(e, e.proposeTick(UUID.randomUUID()));
         assertEquals(RoundPhase.RUNNING, e.view().phase(), "An empty server after a restart ends nothing");
@@ -140,7 +130,7 @@ class HumansOfflineRescueTest {
         apply(e, e.proposeTick(UUID.randomUUID()));
         assertEquals("HUMANS_OFFLINE", e.view().result().reason());
 
-        var returned = engine(GameMode.HARDCORE, human(a, false), monster(true, false));
+        var returned = engine(human(a, false), monster(true, false));
         assertEquals(RoundPhase.RESCUE, returned.view().phase());
         seconds(170);
         apply(returned, online(returned, a, true));
@@ -152,7 +142,7 @@ class HumansOfflineRescueTest {
         var players = new LinkedHashMap<UUID, Participant>();
         players.put(a, human(a, false));
         players.put(m, monster(false, false));
-        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults().withMode(GameMode.HARDCORE), RoundPhase.RESCUE,
+        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults(), RoundPhase.RESCUE,
                 PauseReason.SERVER_STOPPED, 0, 5 * SECOND, players, true, false, null);
         var e = RoundEngine.restore(stored, clock::get);
         apply(e, e.proposeCheckpoint(UUID.randomUUID(), false));
@@ -165,7 +155,7 @@ class HumansOfflineRescueTest {
     private RoundEngine restoredWait(long remainingSeconds, Participant... participants) {
         var players = new LinkedHashMap<UUID, Participant>();
         for (var p : participants) players.put(p.id(), p);
-        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults().withMode(GameMode.HARDCORE), RoundPhase.RESCUE,
+        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults(), RoundPhase.RESCUE,
                 PauseReason.SERVER_STOPPED, 0, remainingSeconds * SECOND, players, true, false, null);
         return RoundEngine.restore(stored, clock::get);
     }
@@ -187,7 +177,7 @@ class HumansOfflineRescueTest {
     @Test void onlyCompetitorsReturningStartTheWaitAfterARestart() {
         var spectator = new Participant(b, "Spectator", ParticipantRole.WITHDRAWN, false, false, 0, 0, 1, false);
         var lobbyOnly = new Participant(UUID.randomUUID(), "Lobby", ParticipantRole.LOBBY, false, false, 0, -1, 0, false);
-        var e = engine(GameMode.HARDCORE, human(a, false), monster(false, false), spectator, lobbyOnly);
+        var e = engine(human(a, false), monster(false, false), spectator, lobbyOnly);
         apply(e, online(e, b, true));
         apply(e, online(e, lobbyOnly.id(), true));
         seconds(600);
@@ -201,7 +191,7 @@ class HumansOfflineRescueTest {
     }
 
     @Test void waitTurningIntoATotemRescueNeverRunsLongerThanARescue() {
-        var e = engine(GameMode.HARDCORE, human(a, true), monster(true, true));
+        var e = engine(human(a, true), monster(true, true));
         apply(e, online(e, a, false));
         seconds(10);
         apply(e, e.proposeParticipationExit(UUID.randomUUID(), round, a, ParticipantRole.HUMAN_ACTIVE, 1, 0, ParticipantRole.DISQUALIFIED));
@@ -209,7 +199,7 @@ class HumansOfflineRescueTest {
         assertFalse(e.view().awaitingReconnect());
         assertEquals(60_000, e.view().remainingPhaseMillis(), "Capped at the rescue length");
 
-        var late = engine(GameMode.HARDCORE, human(a, true), monster(true, true));
+        var late = engine(human(a, true), monster(true, true));
         apply(late, online(late, a, false));
         seconds(150);
         apply(late, late.proposeParticipationExit(UUID.randomUUID(), round, a, ParticipantRole.HUMAN_ACTIVE, 1, 0, ParticipantRole.WITHDRAWN));
@@ -217,7 +207,7 @@ class HumansOfflineRescueTest {
     }
 
     @Test void lifeThatLeavesWhileStillEnteringStartsTheWaitToo() {
-        var revived = engine(GameMode.HARDCORE, human(a, true), monster(true, true));
+        var revived = engine(human(a, true), monster(true, true));
         apply(revived, online(revived, a, false));
         seconds(100);
         apply(revived, revived.proposeAdmissionRevival(UUID.randomUUID(), round, m, 1, 0));
@@ -230,7 +220,7 @@ class HumansOfflineRescueTest {
         assertEquals(RoundPhase.RESCUE, revived.view().phase());
         assertEquals(180_000, revived.view().remainingPhaseMillis());
 
-        var joined = engine(GameMode.HARDCORE, human(a, true));
+        var joined = engine(human(a, true));
         apply(joined, online(joined, a, false));
         apply(joined, joined.proposeAdmissionJoin(UUID.randomUUID(), b, "Late"));
         assertEquals(RoundPhase.RUNNING, joined.view().phase());
@@ -242,7 +232,7 @@ class HumansOfflineRescueTest {
     }
 
     @Test void soleStarterLeavingBeforeAdmissionDoesNotStrandTheRound() {
-        var e = RoundEngine.create(round, 1, 123, RulesConfig.defaults().withMode(GameMode.HARDCORE), clock::get);
+        var e = RoundEngine.create(round, 1, 123, RulesConfig.defaults(), clock::get);
         apply(e, e.proposeWorldReady(UUID.randomUUID()));
         apply(e, e.proposeJoin(UUID.randomUUID(), a, "Solo"));
         apply(e, e.proposeReady(UUID.randomUUID(), a, true));
@@ -254,7 +244,7 @@ class HumansOfflineRescueTest {
     }
 
     @Test void tabCountsOnlyConnectedMonstersAsOnline() {
-        var e = engine(GameMode.HARDCORE, human(a, true), monster(true, false));
+        var e = engine(human(a, true), monster(true, false));
         assertTrue(RoundTab.from(e.view(), 0, null).footer().contains("人类 1 · 怪物 1\n"));
         apply(e, online(e, m, false));
         assertTrue(RoundTab.from(e.view(), 0, null).footer().contains("人类 1 · 怪物 0（离线 1）"));

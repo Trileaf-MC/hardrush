@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.hardrush.core.api.BookPort;
 import dev.hardrush.core.api.OperationResult;
 import dev.hardrush.core.api.OperationTag;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.record.BookClaim;
 import dev.hardrush.core.record.LeaderboardEntry;
@@ -173,7 +172,8 @@ class HistoryBookTest {
         assertEquals(HistoryBookService.Status.NO_HISTORY,
                 fake.service.automatic(fake.player, 1, fake.fingerprint, fake.scope).toCompletableFuture().join().status());
         assertTrue(fake.claims.isEmpty());
-        var other = new RoundHistory(UUID.randomUUID(), 2, 1, RulesConfig.defaults(), fake.latest.result(), 1,
+        var other = new RoundHistory(UUID.randomUUID(), 2, 1,
+                RulesConfig.defaults().withDifficulty(dev.hardrush.core.config.Difficulty.NORMAL), fake.latest.result(), 1,
                 false, true, 1, Set.of());
         assertThrows(IllegalArgumentException.class, () -> HistoryBookComposer.compose(fake.latest, fake.fingerprint,
                 1, 0, List.of(), List.of(new LeaderboardEntry(1, other, "name"))));
@@ -201,7 +201,7 @@ class HistoryBookTest {
         Fake() {
             for (int i = 0; i < 41; i++) roster.add(new ParticipantRecord(UUID.randomUUID(), "player" + i, 0,
                     123_000_000_000L, 2, 0, 7, i % 2 == 0 ? 5_000_000_000L : null, ParticipantRole.HUMAN_ACTIVE, Set.of()));
-            var rules = RulesConfig.defaults().withMode(GameMode.NORMAL);
+            var rules = RulesConfig.defaults();
             fingerprint = rules.fingerprint();
             latest = new RoundHistory(UUID.randomUUID(), 2, 1, rules,
                     new RoundResult(RoundResult.Kind.COMPLETED, roster.get(40).playerId(), "first dragon"),

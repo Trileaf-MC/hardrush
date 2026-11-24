@@ -3,7 +3,6 @@ package dev.hardrush.core.round;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.hardrush.core.api.MonotonicClock;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.List;
 import java.util.Optional;
@@ -21,7 +20,7 @@ class ParticipantIdentityTest {
     private final Clock clock = new Clock();
 
     @Test void hardcoreDeathCommitsOneMonsterIdentityWithoutLosingTheHumanLifeHistory() {
-        RoundEngine engine = running(GameMode.HARDCORE);
+        RoundEngine engine = running();
         accept(engine, engine.proposeJoin(UUID.randomUUID(), LATE, "Survivor"));
         clock.millis(3_500);
         RoundTransition death = death(engine, 1);
@@ -37,12 +36,11 @@ class ParticipantIdentityTest {
         assertFalse(monster.revivalEntitled());
         assertEquals(RoundPhase.RUNNING, engine.view().phase());
         assertThrows(IllegalStateException.class, () -> death(engine, 1));
-        assertThrows(IllegalStateException.class, () -> engine.proposeAdmissionRespawn(UUID.randomUUID(), PLAYER, 1));
         assertFalse(engine.pending());
     }
 
     @Test void cleanRestartRenameReconnectAndRepeatedJoinCannotRestoreADeadHardcoreHuman() {
-        RoundEngine engine = running(GameMode.HARDCORE);
+        RoundEngine engine = running();
         accept(engine, engine.proposeJoin(UUID.randomUUID(), LATE, "Survivor"));
         clock.millis(2_000);
         accept(engine, death(engine, 1));
@@ -63,18 +61,8 @@ class ParticipantIdentityTest {
         assertEquals(2, restored.view().participants().size());
     }
 
-    @Test void normalRespawnStartsANewLifeAndStaleLifeCannotDieAgain() {
-        RoundEngine engine = running(GameMode.NORMAL);
-        accept(engine, death(engine, 1));
-        accept(engine, engine.proposeAdmissionRespawn(UUID.randomUUID(), PLAYER, 1));
-        Participant respawned = engine.view().participants().get(PLAYER);
-        assertEquals(2, respawned.lifeSequence());
-        assertFalse(respawned.online());
-        assertThrows(IllegalStateException.class, () -> death(engine, 1));
-    }
-
     @Test void humansAccumulateTimeAndLateJoinStartsFromItsJoinTime() {
-        RoundEngine engine = running(GameMode.HARDCORE);
+        RoundEngine engine = running();
         clock.millis(4_000);
         accept(engine, engine.proposeJoin(UUID.randomUUID(), LATE, "Late"));
         clock.millis(2_000);
@@ -88,17 +76,17 @@ class ParticipantIdentityTest {
     }
 
     @Test void staleLifeOrWrongRoleNeverCreatesADeathProposal() {
-        RoundEngine normal = running(GameMode.NORMAL);
-        accept(normal, death(normal, 1));
-        assertThrows(IllegalStateException.class, () -> death(normal, 1));
-        assertFalse(normal.pending());
-        RoundEngine hardcore = running(GameMode.HARDCORE);
+        RoundEngine dead = running();
+        accept(dead, death(dead, 1));
+        assertThrows(IllegalStateException.class, () -> death(dead, 1));
+        assertFalse(dead.pending());
+        RoundEngine hardcore = running();
         assertThrows(IllegalStateException.class, () -> death(hardcore, 2));
         assertFalse(hardcore.pending());
     }
 
     @Test void failedDeathWriteRetainsTheCommittedHumanAndRequiresRecovery() {
-        RoundEngine engine = running(GameMode.HARDCORE);
+        RoundEngine engine = running();
         RoundTransition death = death(engine, 1);
         assertTrue(engine.reject(death, "injected disk failure"));
         assertEquals(ParticipantRole.HUMAN_ACTIVE, engine.committed().participants().get(PLAYER).role());
@@ -107,8 +95,8 @@ class ParticipantIdentityTest {
         assertFalse(engine.accept(death));
     }
 
-    private RoundEngine running(GameMode mode) {
-        RoundEngine engine = RoundEngine.create(UUID.randomUUID(), 1, 123, RulesConfig.defaults().withMode(mode), clock);
+    private RoundEngine running() {
+        RoundEngine engine = RoundEngine.create(UUID.randomUUID(), 1, 123, RulesConfig.defaults(), clock);
         accept(engine, engine.proposeWorldReady(UUID.randomUUID()));
         accept(engine, engine.proposeJoin(UUID.randomUUID(), PLAYER, "Alice"));
         accept(engine, engine.proposeReady(UUID.randomUUID(), PLAYER, true));

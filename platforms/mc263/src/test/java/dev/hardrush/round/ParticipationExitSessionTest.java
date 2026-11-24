@@ -2,7 +2,6 @@ package dev.hardrush.round;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import dev.hardrush.persistence.SnapshotWrite;
@@ -24,7 +23,7 @@ class ParticipationExitSessionTest {
     private Path seed() throws Exception {
         directory = directory.toRealPath();
         var path = directory.resolve("rounds.sqlite");
-        var rules = RulesConfig.defaults().withMode(GameMode.NORMAL);
+        var rules = RulesConfig.defaults();
         var round = new RoundSnapshot(UUID.randomUUID(), 1, 123, 0, rules, RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
                 0, 0, Map.of(a, new Participant(a, "Alice", ParticipantRole.HUMAN_ACTIVE, false, false, 12, 0, 1, false),
                     b, new Participant(b, "Bob", ParticipantRole.HUMAN_ACTIVE, false, false, 34, 0, 1, false)), true, false, null);

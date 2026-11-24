@@ -3,7 +3,6 @@ package dev.hardrush.persistence;
 import dev.hardrush.core.api.DamagePort.AttackKind;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.combat.*;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import java.nio.charset.StandardCharsets;
@@ -28,7 +27,7 @@ final class StorageFaultFixture {
 
     static void prepare(Path database, Scenario scenario) throws Exception {
         var clock = new Clock();
-        var engine = RoundEngine.create(ROUND, 1, 123, RulesConfig.defaults().withMode(GameMode.HARDCORE), clock);
+        var engine = RoundEngine.create(ROUND, 1, 123, RulesConfig.defaults(), clock);
         try (var store = new SqliteRoundStore(database)) {
             require(store.commit(new SnapshotWrite(ROUND, -1, 0, RoundSnapshotCodec.encode(engine.committed()),
                     id("created"), "ROUND_CREATED")) == CommitResult.APPLIED, "initial snapshot");

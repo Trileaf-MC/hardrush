@@ -90,7 +90,7 @@ final class RecordsSessionTest {
         }
         try (var store = new SqliteRoundStore(database)) {
             assertEquals(10, store.history(20, 0).size());
-            assertEquals(10, store.leaderboard(RulesConfig.defaults().withMode(GameMode.NORMAL).fingerprint(), 10).size());
+            assertEquals(10, store.leaderboard(RulesConfig.defaults().fingerprint(), 10).size());
             for (int i = 0; i < rounds.size(); i++) {
                 assertEquals(1, store.endEntrantCount(rounds.get(i)));
                 assertEquals((i + 1) % 2 == 0, store.ensureAutomaticBookClaim(player, rounds.get(i), 1, 1).delivered());
@@ -116,7 +116,7 @@ final class RecordsSessionTest {
 
     private Path seed(String name) throws Exception {
         Path database = directory.toRealPath().resolve(name);
-        var rules = RulesConfig.defaults().withMode(GameMode.NORMAL);
+        var rules = RulesConfig.defaults();
         try (var store = new SqliteRoundStore(database)) {
             store.savePendingRules(rules.encode().getBytes(StandardCharsets.UTF_8), UUID.randomUUID(), "fixture");
         }

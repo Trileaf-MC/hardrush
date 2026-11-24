@@ -60,7 +60,6 @@ public final class HistoryBookComposer {
                 winner = SafeBookText.literal(record.playerName(), 64);
             }
             paragraphs.add("上一轮结果：" + dev.hardrush.core.record.LibraryText.outcome(history.result())
-                    + "\n模式：" + dev.hardrush.core.record.LibraryText.mode(history.rules().mode())
                     + "\n用时：" + duration(history.challengeMillis()) + "\n胜者：" + winner
                     + (completed ? "\n成绩：" + (history.leaderboardEligible() ? "有效" : "有待管理员核实") : "")
                     + "\n" + RoundResultText.reason(history.result()));

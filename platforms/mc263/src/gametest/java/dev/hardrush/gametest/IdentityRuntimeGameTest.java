@@ -3,7 +3,6 @@ package dev.hardrush.gametest;
 import dev.hardrush.HardRushProperties;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.MonotonicClock;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.*;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.world.LobbyWorld;
@@ -124,7 +123,6 @@ public final class IdentityRuntimeGameTest {
             session = service("SESSIONS", RoundSession.class);
             profiles = service("PROFILES", PlayerProfiles.class);
             test.assertValueEqual(round().sequence(), 1L, "Dedicated storage starts at its first round");
-            test.assertValueEqual(round().rules().mode(), GameMode.HARDCORE, "The actual initial rules are hardcore");
             clock = new AtomicLong(System.nanoTime());
             try {
                 var field = RoundSession.class.getDeclaredField("clock"); field.setAccessible(true);

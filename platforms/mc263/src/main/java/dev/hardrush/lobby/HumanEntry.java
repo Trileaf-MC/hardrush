@@ -115,7 +115,7 @@ public final class HumanEntry {
                 case CELEBRATING -> RoundResultText.stageLabel(round.result(), "通关庆祝中");
                 case ROTATING -> "正在准备新一轮";
                 case RECOVERY_REQUIRED -> "比赛已暂停";
-            }, round.rules().mode() == dev.hardrush.core.config.GameMode.NORMAL ? "普通模式" : "极限挑战"); lastLabel = label;
+            }); lastLabel = label;
         }
         var view = session.view().orElse(round);
         boolean counting = round.phase() == RoundPhase.COUNTDOWN;

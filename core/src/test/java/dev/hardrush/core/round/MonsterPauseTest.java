@@ -116,7 +116,7 @@ class MonsterPauseTest {
     }
 
     private static RulesConfig rules(Map<String, Double> values) {
-        return new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+        return new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(),
                 RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
     }

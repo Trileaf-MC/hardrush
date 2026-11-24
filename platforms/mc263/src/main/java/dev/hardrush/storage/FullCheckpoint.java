@@ -323,7 +323,7 @@ public final class FullCheckpoint {
     /** Non-playable identities must survive rollback, including roles supplied by other identity adapters. */
     private static boolean retainIdentity(ParticipantRole role) {
         return role != ParticipantRole.LOBBY && role != ParticipantRole.HUMAN_ACTIVE
-                && role != ParticipantRole.HUMAN_RESPAWNING && !role.isMonster();
+                && !role.isMonster();
     }
 
     private Image verify(UUID id) throws Exception {

@@ -6,7 +6,6 @@ import dev.hardrush.core.api.DamagePort.AttackKind;
 import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.combat.CombatOrigin;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.hunt.PersonalHuntRequest;
 import java.util.LinkedHashMap;
@@ -121,24 +120,21 @@ class BountyTest {
     @Test void roundsWithoutBountyKeysKeepThePlainRate() {
         var values = new TreeMap<>(RULES.combatValues());
         values.keySet().removeIf(key -> key.startsWith("bounty."));
-        var legacy = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+        var legacy = new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
         assertFalse(Bounty.enabled(legacy));
         assertEquals(1000, Bounty.permille(legacy, 5));
         assertTrue(Bounty.standings(legacy, players(human(strong, true, milestones(1, "minecraft:story/enter_the_end")))).isEmpty());
-        assertFalse(Bounty.enabled(RULES.withMode(GameMode.NORMAL)), "Normal mode has no monster economy");
     }
 
     @Test void bountyConfigurationMustBeCompleteAndOrdered() {
         var values = new TreeMap<>(RULES.combatValues());
         values.put("bounty.star3Ratio", 0.1);
-        assertThrows(IllegalArgumentException.class, () -> new RulesConfig(RULES.schemaVersion(), RULES.mode(),
-                RULES.minecraftVersion(), RULES.difficulty(), RULES.generationRule(), values,
+        assertThrows(IllegalArgumentException.class, () -> new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(), RULES.generationRule(), values,
                 RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis()));
         var partial = new TreeMap<>(RULES.combatValues());
         partial.remove("bounty.floor");
-        assertThrows(IllegalArgumentException.class, () -> new RulesConfig(RULES.schemaVersion(), RULES.mode(),
-                RULES.minecraftVersion(), RULES.difficulty(), RULES.generationRule(), partial,
+        assertThrows(IllegalArgumentException.class, () -> new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(), RULES.generationRule(), partial,
                 RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis()));
     }
 
@@ -147,7 +143,7 @@ class BountyTest {
         values.keySet().removeIf(key -> key.startsWith("bounty."));
         values.put("coin.bounty.netherBonus", 0.5);
         values.put("coin.survival.tier1Minutes", 10.0);
-        var stored = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+        var stored = new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
         var upgraded = stored.withEconomyDefaults();
         assertTrue(upgraded.combatValues().keySet().stream().noneMatch(key -> key.startsWith("coin.bounty.") || key.startsWith("coin.survival.")));

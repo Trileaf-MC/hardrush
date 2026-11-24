@@ -26,7 +26,6 @@ import java.util.TreeMap;
  */
 public record RulesConfig(
         int schemaVersion,
-        GameMode mode,
         String minecraftVersion,
         Difficulty difficulty,
         String generationRule,
@@ -36,16 +35,17 @@ public record RulesConfig(
         long failureDisplayMillis) {
     public static final int CURRENT_SCHEMA_VERSION = 2;
     private static final Set<String> SUPPORTED_VERSIONS = Set.of("26.1.2", "26.2", "26.3");
-    private static final Set<String> FIXED_KEYS = Set.of("schemaVersion", "mode", "minecraftVersion",
+    private static final Set<String> FIXED_KEYS = Set.of("schemaVersion", "minecraftVersion",
             "difficulty", "generationRule", "startCountdownMillis",
             "successCelebrationMillis", "failureDisplayMillis");
+    /** Rules stored while a normal mode still existed carry {@code mode}; every round is hardcore now, so it is dropped. */
+    private static final String RETIRED_MODE_KEY = "mode";
     private static final int MAX_CONFIG_LENGTH = 131_072;
 
     public RulesConfig {
         if (schemaVersion < 1 || schemaVersion > CURRENT_SCHEMA_VERSION) {
             throw new IllegalArgumentException("不支持的规则配置版本: " + schemaVersion);
         }
-        Objects.requireNonNull(mode, "mode");
         Objects.requireNonNull(difficulty, "difficulty");
         minecraftVersion = requireText(minecraftVersion, "minecraftVersion");
         if (!SUPPORTED_VERSIONS.contains(minecraftVersion)) {
@@ -111,7 +111,7 @@ public record RulesConfig(
 
     /** New rounds use the current native roles; retired summon keys remain valid when reading older rounds. */
     public static RulesConfig defaults() {
-        return new RulesConfig(CURRENT_SCHEMA_VERSION, GameMode.HARDCORE, "26.3", Difficulty.HARD,
+        return new RulesConfig(CURRENT_SCHEMA_VERSION, "26.3", Difficulty.HARD,
                 "normal", Map.ofEntries(
                 Map.entry("zombie.maxHealth", 20.0),
                 Map.entry("zombie.movementAttribute", 0.23),
@@ -262,7 +262,7 @@ public record RulesConfig(
         COIN_DEFAULTS.forEach(values::putIfAbsent);
         WORTH_DEFAULTS.forEach(values::putIfAbsent);
         SORTIE_DEFAULTS.forEach(values::putIfAbsent);
-        return new RulesConfig(schemaVersion, mode, minecraftVersion, difficulty, generationRule, values,
+        return new RulesConfig(schemaVersion, minecraftVersion, difficulty, generationRule, values,
                 startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
 
@@ -280,17 +280,12 @@ public record RulesConfig(
 
     public RulesConfig withHuntRule(HuntRule rule) {
         return new RulesConfig(Objects.requireNonNull(rule) == HuntRule.LEGACY_VOTE ? 1 : 2,
-                mode, minecraftVersion, difficulty, generationRule, combatValues,
+                minecraftVersion, difficulty, generationRule, combatValues,
                 startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
 
     public RulesConfig withDifficulty(Difficulty nextDifficulty) {
-        return new RulesConfig(schemaVersion, mode, minecraftVersion, Objects.requireNonNull(nextDifficulty), generationRule,
-                combatValues, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
-    }
-
-    public RulesConfig withMode(GameMode nextMode) {
-        return new RulesConfig(schemaVersion, nextMode, minecraftVersion, difficulty, generationRule,
+        return new RulesConfig(schemaVersion, minecraftVersion, Objects.requireNonNull(nextDifficulty), generationRule,
                 combatValues, startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
     }
 
@@ -298,7 +293,6 @@ public record RulesConfig(
     public String encode() {
         var values = new TreeMap<String, String>();
         values.put("schemaVersion", Integer.toString(schemaVersion));
-        values.put("mode", mode.name());
         values.put("minecraftVersion", minecraftVersion);
         values.put("difficulty", difficulty.name());
         values.put("generationRule", generationRule);
@@ -329,7 +323,7 @@ public record RulesConfig(
         for (String key : values.stringPropertyNames()) {
             if (key.startsWith("combat.")) {
                 combat.put(key.substring("combat.".length()), parseDouble(values.getProperty(key), key));
-            } else if (!FIXED_KEYS.contains(key)) {
+            } else if (!FIXED_KEYS.contains(key) && !key.equals(RETIRED_MODE_KEY)) {
                 throw new IllegalArgumentException("未知规则配置字段: " + key);
             }
         }
@@ -338,7 +332,7 @@ public record RulesConfig(
         }
         try {
             return new RulesConfig(Integer.parseInt(values.getProperty("schemaVersion")),
-                    GameMode.valueOf(values.getProperty("mode")), values.getProperty("minecraftVersion"),
+                    values.getProperty("minecraftVersion"),
                     Difficulty.valueOf(values.getProperty("difficulty")), values.getProperty("generationRule"),
                     combat, Long.parseLong(values.getProperty("startCountdownMillis")),
                     Long.parseLong(values.getProperty("successCelebrationMillis")),

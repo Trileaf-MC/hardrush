@@ -115,7 +115,7 @@ public final class LobbyRoleModels {
             case MERCHANT -> "女巫商人";
             default -> throw new IllegalStateException("Not a model function");
         };
-        String what = !open ? "极限挑战时开放" : model.function == LobbyFunction.MERCHANT ? "右键交易" : "右键选择角色";
+        String what = !open ? "挑战进行中开放" : model.function == LobbyFunction.MERCHANT ? "右键交易" : "右键选择角色";
         model.entity.setCustomName(Component.literal(who + " · " + what));
     }
 

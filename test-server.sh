@@ -12,7 +12,6 @@ usage() {
   --reset all        实例恢复为全新状态，只保留已下载的原版服务端，不重新下载
   --port PORT        服务端端口，默认 25565
   --seed SEED        新存档种子，默认 3leaves（配合 --reset world/all 使用）
-  --mode MODE        新一轮初始模式 normal | hardcore，默认 hardcore
   --memory SIZE      最大内存，如 2G、4096M，默认 2G
   --offline/--online 关闭／开启正版验证，默认开启
   --no-competition   关闭比赛运行时（--competition 重新开启），默认开启
@@ -30,14 +29,13 @@ props=()
 while [ $# -gt 0 ]; do
     case "$1" in
         -h|--help) usage; exit 0 ;;
-        --instance|--reset|--port|--seed|--mode|--memory|--mc)
+        --instance|--reset|--port|--seed|--memory|--mc)
             [ $# -ge 2 ] || { echo "$1 需要一个值" >&2; exit 2; }
             case "$1" in
                 --instance) instance=$2; props+=("-PtestServerInstance=$2") ;;
                 --reset) props+=("-PtestServerReset=$2") ;;
                 --port) props+=("-PtestServerPort=$2") ;;
                 --seed) props+=("-PtestServerSeed=$2") ;;
-                --mode) props+=("-PtestServerMode=$2") ;;
                 --memory) props+=("-PtestServerMemory=$2") ;;
                 --mc) mc=$2 ;;
             esac

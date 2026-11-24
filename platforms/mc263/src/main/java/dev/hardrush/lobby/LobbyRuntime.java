@@ -131,7 +131,6 @@ public final class LobbyRuntime {
                 var r = session.snapshot().orElse(null);
                 var p = r == null ? null : r.participants().get(player.getUUID());
                 return p != null && p.online() && p.role() == ParticipantRole.MONSTER_LOBBY
-                        && r.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE
                         && (r.phase() == RoundPhase.RUNNING || r.phase() == RoundPhase.RESCUE)
                         && !session.competitionLocked() && current(player, binding)
                         && PlayerProfiles.verifiedLobbyBody(player) && player.isAlive();
@@ -318,8 +317,7 @@ public final class LobbyRuntime {
         return r != null && personalOpen(b, r);
     }
     private static boolean personalOpen(Binding b, RoundSnapshot r) {
-        return r.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE
-                && r.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET
+        return r.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET
                 && (r.phase() == RoundPhase.RUNNING || r.phase() == RoundPhase.RESCUE)
                 && !b.session.competitionLocked();
     }
@@ -911,7 +909,7 @@ public final class LobbyRuntime {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);
         if (r == null || !contextAvailable(player, b, LobbyContext.DISPLAY) || !personalOpen(b, r)) {
-            Notices.refuse(player, "庭院只在极限挑战或救场期间开放"); return;
+            Notices.refuse(player, "庭院只在挑战进行中或救场期间开放"); return;
         }
         if (function == LobbyFunction.MERCHANT) { MonsterShop.open(player); return; }
         if (function == LobbyFunction.PAGE_PREV || function == LobbyFunction.PAGE_NEXT) {
@@ -1264,7 +1262,6 @@ public final class LobbyRuntime {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);
         if (r == null || b.session.state() != RoundSession.State.OPEN || r.phase() == RoundPhase.RECOVERY_REQUIRED) return "比赛已暂停，祭坛关闭";
-        if (r.rules().mode() == dev.hardrush.core.config.GameMode.NORMAL) return "普通模式不开放祭坛，阵亡后原版重生";
         var p = r.participants().get(player.getUUID());
         if (p != null && p.role() == ParticipantRole.WITHDRAWN) return "你已退出本轮，下一轮再来";
         if (p != null && p.role() == ParticipantRole.DISQUALIFIED) return "你已被取消本轮资格，下一轮再来";

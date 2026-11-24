@@ -28,7 +28,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -195,17 +194,9 @@ public final class ServerRestartRegression implements ModInitializer {
             act("second human remains inside circle", () -> require(LobbyWorld.open(server).inAssembly(b.player, true), "second human inside"));
             waitFor("both ready identities committed", () -> idle() && round().participants().get(b.profile.id()).ready());
             act("finish default countdown", () -> advance(24));
-            waitFor("native ordinary admission", () -> round().phase() == RoundPhase.RUNNING && idle()
+            waitFor("native admission", () -> round().phase() == RoundPhase.RUNNING && idle()
                     && !PlayerProfiles.isLocked(a.player) && !PlayerProfiles.isLocked(b.player));
             if (target == RoundPhase.RESCUE) { writeRescue(); return; }
-            act("ordinary native death", () -> a.player.hurtServer(a.player.level(), a.player.damageSources().genericKill(), Float.MAX_VALUE));
-            waitFor("durable death", () -> idle() && round().participants().get(a.profile.id()).role() == ParticipantRole.HUMAN_RESPAWNING);
-            act("native respawn packet", () -> {
-                a.client.listener().handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
-                a.player = a.client.player(); a.client.acknowledge(); a.client.clearPackets();
-            });
-            waitFor("second native life admitted", () -> idle() && round().participants().get(a.profile.id()).lifeSequence() == 2
-                    && !PlayerProfiles.isLocked(a.player));
             act("write actual player state", () -> { state(a, 0); state(b, 1); advance(13); });
             waitFor("native progress persisted", () -> idle() && (int) get(session, "progressPending") == 0);
             if (target == RoundPhase.RUNNING) { act("stop active humans in separate native dimensions", this::stop); return; }
@@ -218,7 +209,7 @@ public final class ServerRestartRegression implements ModInitializer {
                 worlds.level(Level.END).getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL, new ChunkPos(0, 0), 3);
             });
             waitFor("actual first dragon spawned", () -> fight.dragonUUID() != null && worlds.level(Level.END).getEntity(fight.dragonUUID()) instanceof EnderDragon);
-            act("ordinary player lethal attack", () -> {
+            act("human player lethal attack", () -> {
                 var dragon = (EnderDragon) worlds.level(Level.END).getEntity(fight.dragonUUID());
                 dragon.snapTo(.5, 68, .5, 0, 0); dragon.setOldPosAndRot(); dragon.setNoAi(true);
                 dragon.getPhaseManager().setPhase(EnderDragonPhase.SITTING_SCANNING); dragon.setHealth(.1f);
@@ -457,7 +448,7 @@ public final class ServerRestartRegression implements ModInitializer {
             waitFor("same-round profile admission", () -> idle() && !PlayerProfiles.isLocked(a.player) && !PlayerProfiles.isLocked(b.player));
             act("check original human profiles", () -> {
                 checkState(a, 0); checkState(b, 1);
-                require(round().participants().get(a.profile.id()).lifeSequence() == 2, "ordinary second life persists");
+                require(round().participants().get(a.profile.id()).lifeSequence() == 1, "the saved first life persists");
                 require(round().challengeNanos() == expected.challengeNanos(), "no stop/drain/downtime counted");
                 require(round().phase() == RoundPhase.RUNNING, "same live round resumes");
                 advance(5);
@@ -622,8 +613,8 @@ public final class ServerRestartRegression implements ModInitializer {
                         require(records.size() == 2, "exactly two actual admitted participant records");
                         for (var record : records) {
                             boolean first = record.playerId().equals(a.profile.id());
-                            require(record.advancementCount() >= 1 && record.deathCount() == (first ? 1 : 0)
-                                    && record.revivalCount() == (first ? 1 : 0), "native progress and ordinary death/respawn records persist");
+                            require(record.advancementCount() >= 1 && record.deathCount() == 0
+                                    && record.revivalCount() == 0, "native progress persists without a fabricated death or revival");
                             if (!first || target != RoundPhase.RUNNING) require(record.firstEndNanos() != null, "native first End entry persists");
                         }
                         if (target != RoundPhase.RUNNING) {

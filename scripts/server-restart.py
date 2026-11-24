@@ -236,8 +236,7 @@ def run_operation(spec, directory, phase, operation, timeout):
     if result_path.exists():
         raise RuntimeError(f'Refusing stale fixture result: {result_path}')
     prefixes = tuple(f'-Dhardrush.test.restart.{name}=' for name in RESTART_PROPERTIES)
-    jvm_args = [arg for arg in spec['jvmArgs'] if not arg.startswith(prefixes) and not arg.startswith('-Dhardrush.round.initialMode=')]
-    jvm_args.append('-Dhardrush.round.initialMode=' + ('hardcore' if phase == 'RESCUE' else 'normal'))
+    jvm_args = [arg for arg in spec['jvmArgs'] if not arg.startswith(prefixes)]
     jvm_args.extend((f'-Dhardrush.test.restart.phase={phase}',
                      f'-Dhardrush.test.restart.operation={operation}',
                      f'-Dhardrush.test.restart.directory={directory}'))

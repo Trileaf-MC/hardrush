@@ -1,6 +1,5 @@
 package dev.hardrush.lobby;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.lobby.LobbyHints;
 import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.round.RoundPhase;
@@ -101,7 +100,7 @@ public final class RevivalAltar {
 
     private void run(RoundSnapshot round, RoundSession session) {
         var lobby = LobbyWorld.open(server);
-        lobby.altarLit(round.rules().mode() == GameMode.HARDCORE && session.state() == RoundSession.State.OPEN
+        lobby.altarLit(session.state() == RoundSession.State.OPEN
                 && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE));
         rites.entrySet().removeIf(e -> {
             boolean stale = server.getPlayerList().getPlayer(e.getKey()) != e.getValue().player;

@@ -78,9 +78,9 @@ final class SqliteRecordIndex {
             if (before.isPresent()) {
                 ParticipantRecord previous = before.orElseThrow();
                 if (previous.finalRole() == ParticipantRole.HUMAN_ACTIVE
-                        && isDeadHuman(participant.role())) deaths = Math.addExact(deaths, 1);
+                        && participant.role().isMonster()) deaths = Math.addExact(deaths, 1);
                 if (participant.lifeSequence() > previousLife) revivals = Math.addExact(revivals, participant.lifeSequence() - previousLife);
-            } else if (isDeadHuman(participant.role())) deaths = Math.addExact(deaths, 1);
+            } else if (participant.role().isMonster()) deaths = Math.addExact(deaths, 1);
             var record = new ParticipantRecord(participant.id(), before.map(ParticipantRecord::playerName).orElse(participant.name()),
                     before.map(ParticipantRecord::joinedAtChallengeNanos).orElse(participant.joinedAtChallengeNanos()),
                     participant.humanNanos(), deaths, revivals, before.map(ParticipantRecord::advancementCount).orElse(0),
@@ -103,8 +103,26 @@ final class SqliteRecordIndex {
         }
     }
 
-    private static boolean isDeadHuman(ParticipantRole role) {
-        return role == ParticipantRole.HUMAN_RESPAWNING || role.isMonster();
+    /**
+     * Schema 6: rules no longer carry a game mode (every round is hardcore), so a stored rules fingerprint is recomputed
+     * from each history row's own snapshot, which a read checks it against. Rounds once played in the retired normal
+     * mode share the leaderboard of otherwise identical rules from here on.
+     */
+    void retagRulesFingerprints() throws SQLException {
+        var fingerprints = new java.util.LinkedHashMap<String, String>();
+        try (var statement = connection.createStatement();
+             var rows = statement.executeQuery("SELECT round_id,payload FROM history_rounds")) {
+            while (rows.next()) {
+                try { fingerprints.put(rows.getString(1), RoundSnapshotCodec.decode(rows.getBytes(2)).rules().fingerprint()); }
+                catch (IllegalArgumentException invalid) { throw new SQLException("Invalid history snapshot", invalid); }
+            }
+        }
+        try (var update = connection.prepareStatement("UPDATE history_rounds SET rules_fingerprint=? WHERE round_id=?")) {
+            for (var entry : fingerprints.entrySet()) {
+                update.setString(1, entry.getValue()); update.setString(2, entry.getKey()); update.executeUpdate();
+            }
+        }
+        try (var sql = connection.createStatement()) { sql.execute("PRAGMA user_version=6"); }
     }
 
     CommitResult progress(ProgressWrite write, SnapshotData stored) throws SQLException {

@@ -2,7 +2,7 @@ package dev.hardrush.core.round;
 
 /** Server identity, independent of presentation or Minecraft game mode. */
 public enum ParticipantRole {
-    LOBBY, HUMAN_ACTIVE, HUMAN_RESPAWNING, MONSTER_LOBBY, MONSTER_DEPLOYED, TRANSITION_PENDING,
+    LOBBY, HUMAN_ACTIVE, MONSTER_LOBBY, MONSTER_DEPLOYED, TRANSITION_PENDING,
     WITHDRAWN, DISQUALIFIED;
 
     public boolean isActiveHuman() { return this == HUMAN_ACTIVE; }

@@ -111,29 +111,7 @@ public final class HumanEntryGameTest {
                     test.assertTrue(f.a.player.level() == worlds.level(net.minecraft.world.level.Level.OVERWORLD), "Natural round overworld admission");
                     test.assertTrue(Math.abs(f.a.player.getBlockX() - worlds.spawn().getX()) <= 10 && Math.abs(f.a.player.getBlockZ() - worlds.spawn().getZ()) <= 10
                             && dev.hardrush.world.RoundWorldBundle.safeStanding(f.a.player.level(), f.a.player.blockPosition()), "An opening life lands in vanilla's respawn square");
-                    f.a.player.setRespawnPosition(new ServerPlayer.RespawnConfig(net.minecraft.world.level.storage.LevelData.RespawnData.of(f.a.player.level().dimension(), worlds.spawn(), 0, 0), true), false);
-                    f.a.player.getEnderChestInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));
-                    f.a.player.hurtServer(f.a.player.level(), f.a.player.damageSources().genericKill(), Float.MAX_VALUE);
-                })
-                .thenWaitUntil(() -> f.await(f.round().participants().get(f.a.profile.id()).role() == dev.hardrush.core.round.ParticipantRole.HUMAN_RESPAWNING && f.idle(), "Ordinary death persists"))
-                .thenExecute(() -> { f.a.player.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN)); f.a.player = f.a.player.connection.player; f.a.acknowledge(); })
-                .thenWaitUntil(() -> f.await(!PlayerProfiles.isLocked(f.a.player) && f.round().participants().get(f.a.profile.id()).lifeSequence() == 2 && f.idle(), "Native respawn commits exactly one next life"))
-                .thenExecute(() -> {
-                    test.assertValueEqual(f.a.player.getEnderChestInventory().getItem(0).getCount(), 3, "Ordinary death preserves ender storage");
-                    test.assertTrue(f.a.player.getRespawnConfig() != null, "Ordinary death preserves respawn binding");
                 });
-        f.nativeRespawn(sequence, f::bed, 3, () -> {
-            test.assertTrue(f.a.player.level() == f.bindingLevel && f.a.player.position().distanceTo(Vec3.atBottomCenterOf(f.binding)) < 4, "Valid native bed wins over natural spawn");
-        });
-        f.nativeRespawn(sequence, f::anchor, 4, () -> {
-            test.assertTrue(f.a.player.level() == f.bindingLevel && f.a.player.position().distanceTo(Vec3.atBottomCenterOf(f.binding)) < 4, "Valid Nether anchor preserves dimension");
-            test.assertValueEqual(f.bindingLevel.getBlockState(f.binding).getValue(net.minecraft.world.level.block.RespawnAnchorBlock.CHARGE), 3, "Vanilla consumes one anchor charge");
-        });
-        f.nativeRespawn(sequence, () -> f.bindingLevel.setBlockAndUpdate(f.binding, Blocks.AIR.defaultBlockState()), 5, () -> {
-            var worlds = (dev.hardrush.world.RoundWorldBundle) f.service("WORLDS");
-            test.assertTrue(f.a.player.level() == worlds.level(net.minecraft.world.level.Level.OVERWORLD)
-                    && f.a.player.position().distanceTo(Vec3.atBottomCenterOf(worlds.spawn())) < 4, "Invalid anchor falls back to this round's natural spawn");
-        });
         sequence.thenExecute(() -> {
                     f.a.player.getInventory().setItem(4, new ItemStack(Items.GOLD_INGOT, 7));
                     f.savedPosition = f.a.player.position(); f.savedLevel = f.a.player.level(); f.a.disconnect();
@@ -142,7 +120,7 @@ public final class HumanEntryGameTest {
         sequence.thenExecute(() -> {
                     test.assertTrue(f.a.player.level() == f.savedLevel && f.a.player.position().distanceTo(f.savedPosition) < .1, "Living reconnect restores saved native location");
                     test.assertValueEqual(f.a.player.getInventory().getItem(4).getCount(), 7, "Living reconnect preserves inventory");
-                    test.assertValueEqual(f.round().participants().get(f.a.profile.id()).lifeSequence(), 5, "Reconnect never creates another life");
+                    test.assertValueEqual(f.round().participants().get(f.a.profile.id()).lifeSequence(), 1, "Reconnect never creates another life");
                     f.place(f.b, Landing.RESTORE_READY);
                 })
                 .thenIdle(40)
@@ -176,12 +154,9 @@ public final class HumanEntryGameTest {
                 .thenWaitUntil(() -> f.await(f.hint(f.b).startsWith("你在出生点"), "The far landing's bearing reaches the action bar"))
                 .thenExecute(() -> {
                     test.assertTrue(f.hint(f.b).endsWith(" 格"), "Bearing names a rounded distance: " + f.hint(f.b));
-                    test.assertFalse(dev.hardrush.hunt.LateShelterRuntime.showing(f.b.player), "A normal round has no monsters to shelter a late entrant from");
-                    test.assertTrue(f.round().participants().values().stream().allMatch(p -> p.role() == dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE), "Both are active ordinary humans");
-                    f.reply.set(null); f.session.updateNextMode(dev.hardrush.core.config.GameMode.HARDCORE, "fixture", f.reply::set);
+                    test.assertTrue(f.round().participants().values().stream().allMatch(p -> p.role() == dev.hardrush.core.round.ParticipantRole.HUMAN_ACTIVE), "Both are active humans");
                 })
-                .thenWaitUntil(() -> f.await(f.reply.get() != null && f.reply.get().success() && f.idle(), "Next mode persisted for isolated hardcore refusal test"))
-                .thenExecute(() -> { f.reply.set(null); f.session.adminAbort("fixture", "结束普通模式入场测试，验证极限死者拒绝", f.reply::set); })
+                .thenExecute(() -> { f.reply.set(null); f.session.adminAbort("fixture", "结束第一轮入场测试，验证阵亡者拒绝", f.reply::set); })
                 .thenWaitUntil(() -> f.await(f.round().sequence() == 2 && f.round().phase() == RoundPhase.PREPARING
                         && PlayerProfiles.canMoveInLobby(f.a.player) && PlayerProfiles.canMoveInLobby(f.b.player), "Hardcore round preparing with both back in camp"))
                 .thenExecute(() -> {
@@ -337,38 +312,6 @@ public final class HumanEntryGameTest {
             catch (ReflectiveOperationException error) { throw new IllegalStateException(error); }
         }
         void drain() { if (!hold) { Runnable task; while ((task = held.poll()) != null) task.run(); } }
-        BlockPos binding;
-        net.minecraft.server.level.ServerLevel bindingLevel;
-        // Controlled bed/anchor terrain exists only in this test artifact, never in camp production.
-        void clearRespawnArea(net.minecraft.server.level.ServerLevel level, BlockPos pos) {
-            level.getChunk(pos);
-            for (int x=-3;x<=3;x++) for (int z=-3;z<=3;z++) {
-                level.setBlockAndUpdate(pos.offset(x,-1,z), Blocks.OBSIDIAN.defaultBlockState());
-                for(int y=0;y<3;y++) level.setBlockAndUpdate(pos.offset(x,y,z), Blocks.AIR.defaultBlockState());
-            }
-        }
-        void bed() {
-            var worlds = (dev.hardrush.world.RoundWorldBundle) service("WORLDS");
-            bindingLevel = worlds.level(net.minecraft.world.level.Level.OVERWORLD); binding = worlds.spawn().offset(8,10,0);
-            clearRespawnArea(bindingLevel, binding);
-            var bed = Blocks.BED.pick(net.minecraft.world.item.DyeColor.RED).defaultBlockState().setValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING, Direction.EAST);
-            bindingLevel.setBlock(binding.west(), bed.setValue(net.minecraft.world.level.block.AbstractBedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.FOOT), 2);
-            bindingLevel.setBlock(binding, bed.setValue(net.minecraft.world.level.block.AbstractBedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.HEAD), 2);
-            a.player.setRespawnPosition(new ServerPlayer.RespawnConfig(net.minecraft.world.level.storage.LevelData.RespawnData.of(bindingLevel.dimension(), binding, 0, 0), false), false);
-        }
-        void anchor() {
-            var worlds = (dev.hardrush.world.RoundWorldBundle) service("WORLDS");
-            bindingLevel = worlds.level(net.minecraft.world.level.Level.NETHER); binding = new BlockPos(0,60,0); clearRespawnArea(bindingLevel,binding);
-            bindingLevel.setBlockAndUpdate(binding, Blocks.RESPAWN_ANCHOR.defaultBlockState().setValue(net.minecraft.world.level.block.RespawnAnchorBlock.CHARGE, 4));
-            a.player.setRespawnPosition(new ServerPlayer.RespawnConfig(net.minecraft.world.level.storage.LevelData.RespawnData.of(bindingLevel.dimension(), binding, 0, 0), false), false);
-        }
-        void nativeRespawn(GameTestSequence sequence, Runnable setup, int life, Runnable assertion) {
-            sequence.thenExecute(() -> { setup.run(); a.player.hurtServer(a.player.level(), a.player.damageSources().genericKill(), Float.MAX_VALUE); })
-                    .thenWaitUntil(() -> await(idle() && round().participants().get(a.profile.id()).role() == dev.hardrush.core.round.ParticipantRole.HUMAN_RESPAWNING, "Native death for life " + life))
-                    .thenExecute(() -> { a.player.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN)); a.player = a.player.connection.player; a.acknowledge(); })
-                    .thenWaitUntil(() -> await(idle() && !PlayerProfiles.isLocked(a.player) && round().participants().get(a.profile.id()).lifeSequence() == life, "Native respawn life " + life))
-                    .thenExecute(assertion);
-        }
         void profileReady(Peer peer, boolean ready) {
             // Controlled per-UUID pending adapter, not a simulated disk failure.
             try {

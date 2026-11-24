@@ -41,16 +41,16 @@ class ProgressHistoryStoreTest {
         }
     }
 
-    @Test void admissionNameAndTimeAreFrozenAndNormalDeathRespawnAreCountedOnce() throws Exception {
+    @Test void admissionNameAndTimeAreFrozenAndDeathRevivalAreCountedOnce() throws Exception {
         try (var store = new SqliteRoundStore(database())) {
-            UUID round = UUID.randomUUID(); create(store, round, 1, RulesConfig.defaults().withMode(GameMode.NORMAL), false);
+            UUID round = UUID.randomUUID(); create(store, round, 1, RulesConfig.defaults(), false);
             var before = RoundSnapshotCodec.decode(store.load(round).orElseThrow().payload());
-            var deadPlayer = new Participant(player,"Renamed",ParticipantRole.HUMAN_RESPAWNING,true,false,300,0,1,false);
+            var deadPlayer = new Participant(player,"Renamed",ParticipantRole.MONSTER_LOBBY,true,false,300,0,1,false);
             var dead = snapshot(before,1,RoundPhase.RUNNING,Map.of(player,deadPlayer),null,false,300);
             var write = new SnapshotWrite(round,0,1,RoundSnapshotCodec.encode(dead),UUID.randomUUID(),"DEATH_BATCH");
             assertEquals(CommitResult.APPLIED,store.commit(write)); assertEquals(CommitResult.DUPLICATE,store.commit(write));
-            var respawned = new Participant(player,"RenamedAgain",ParticipantRole.HUMAN_ACTIVE,true,false,300,0,2,false);
-            store.commit(new SnapshotWrite(round,1,2,RoundSnapshotCodec.encode(snapshot(dead,2,RoundPhase.RUNNING,Map.of(player,respawned),null,false,300)),UUID.randomUUID(),"NORMAL_RESPAWN"));
+            var revived = new Participant(player,"RenamedAgain",ParticipantRole.HUMAN_ACTIVE,true,false,300,0,2,false);
+            store.commit(new SnapshotWrite(round,1,2,RoundSnapshotCodec.encode(snapshot(dead,2,RoundPhase.RUNNING,Map.of(player,revived),null,false,300)),UUID.randomUUID(),"REVIVAL"));
             var record = store.participantRecord(round,player).orElseThrow();
             assertEquals("Alice",record.playerName()); assertEquals(0,record.joinedAtChallengeNanos());
             assertEquals(1,record.deathCount()); assertEquals(1,record.revivalCount()); assertEquals(300,record.humanNanos());
@@ -86,7 +86,7 @@ class ProgressHistoryStoreTest {
             create(store,a,1,rules,false); finish(store,a,10_000_001,true);
             create(store,b,2,rules,false); finish(store,b,10_999_999,true);
             create(store,c,3,rules,false); finish(store,c,11_000_000,true);
-            var changed=new RulesConfig(rules.schemaVersion(),rules.mode(),rules.minecraftVersion(),rules.difficulty(),rules.generationRule(),rules.combatValues(),rules.startCountdownMillis()+1_000,rules.successCelebrationMillis(),rules.failureDisplayMillis());
+            var changed=new RulesConfig(rules.schemaVersion(),rules.minecraftVersion(),rules.difficulty(),rules.generationRule(),rules.combatValues(),rules.startCountdownMillis()+1_000,rules.successCelebrationMillis(),rules.failureDisplayMillis());
             create(store,other,4,changed,false);finish(store,other,1_000_000,true);
             var board=store.leaderboard(rules.fingerprint(),10);
             assertEquals(List.of(1,1,3),board.stream().map(LeaderboardEntry::rank).toList());
@@ -235,7 +235,7 @@ class ProgressHistoryStoreTest {
                 for (int changedField=0;changedField<3;changedField++) {
                     var changed=new RoundSnapshot(round,changedField==0?base.sequence()+100:base.sequence(),
                             changedField==1?base.seed()+1:base.seed(),base.version()+1,
-                            changedField==2?base.rules().withMode(GameMode.NORMAL):base.rules(),base.phase(),base.pauseReason(),
+                            changedField==2?base.rules().withDifficulty(dev.hardrush.core.config.Difficulty.NORMAL):base.rules(),base.phase(),base.pauseReason(),
                             base.challengeNanos(),base.remainingPhaseNanos(),base.participants(),false,false,base.result());
                     assertThrows(IllegalArgumentException.class,()->store.commit(new SnapshotWrite(round,base.version(),base.version()+1,
                             RoundSnapshotCodec.encode(changed),UUID.randomUUID(),"CHECKPOINT")));

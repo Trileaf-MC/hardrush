@@ -6,7 +6,6 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.api.OperationTag;
 import dev.hardrush.core.api.ReplayPort;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.core.round.RoundEngine;
@@ -308,14 +307,6 @@ public final class RoundRuntime {
                         }
                         continue;
                     }
-                    if (participant != null && participant.role() == ParticipantRole.HUMAN_RESPAWNING
-                            && worlds != null && worlds.ready()) {
-                        profiles.permitRespawn(player, round,
-                                level -> RoundWorldBundle.sameRound(activeWorlds.level(Level.OVERWORLD), level));
-                        if (profiles.respawnCommitPending(player, round)) {
-                            session.normalRespawn(player.getUUID(), participant.lifeSequence());
-                        }
-                    }
                     if (participant != null && participant.role() == ParticipantRole.HUMAN_ACTIVE
                             && worlds != null && worlds.ready() && PlayerProfiles.isLocked(player)) {
                         if (!profiles.admit(player, round, arrival(server, worlds, round, participant),
@@ -442,8 +433,7 @@ public final class RoundRuntime {
                 if (profiles != null) profiles.onMonsterRespawn(oldPlayer, newPlayer, round);
             } else if (participant != null && RoundWorldBundle.owns(newPlayer.level())) {
                 var profiles = PROFILES.get(newPlayer.level().getServer());
-                if (profiles != null) profiles.onRespawn(oldPlayer, newPlayer, round);
-                session.normalRespawn(newPlayer.getUUID(), participant.lifeSequence());
+                if (profiles != null) profiles.onUnexpectedRespawn(newPlayer);
             }
         });
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
@@ -535,16 +525,7 @@ public final class RoundRuntime {
                                 .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
                                 .then(Commands.argument("reason", StringArgumentType.greedyString())
                                         .executes(context -> ADMIN.current(context.getSource(), AdminAction.RETRY,
-                                                StringArgumentType.getString(context, "reason")))))
-                        .then(Commands.literal("config")
-                                .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
-                                .then(Commands.literal("next-mode")
-                                        .then(Commands.argument("mode", StringArgumentType.word())
-                                                .suggests((context, builder) -> builder.suggest("normal").suggest("hardcore").buildFuture())
-                                                .then(Commands.argument("reason", StringArgumentType.greedyString())
-                                                        .executes(context -> ADMIN.nextMode(context.getSource(),
-                                                                StringArgumentType.getString(context, "mode"),
-                                                                StringArgumentType.getString(context, "reason")))))))));
+                                                StringArgumentType.getString(context, "reason")))))));
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(ADMIN.attach(Commands.literal("hardrush"))));
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(
@@ -697,20 +678,12 @@ public final class RoundRuntime {
                 LATE_ENTRANTS.get(server).put(participant.id(), after.roundId());
             var player = server.getPlayerList().getPlayer(participant.id());
             if (player == null || !profiles.isReady(participant.id(), after)) continue;
-            if (participant.role() == ParticipantRole.HUMAN_RESPAWNING) {
-                // Durable death admission and native respawn permission share the callback;
-                // an immediate respawn packet must not race the next END_SERVER_TICK.
-                profiles.permitRespawn(player, after,
-                        level -> RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), level));
-            }
             if (participant.role() == ParticipantRole.HUMAN_ACTIVE && PlayerProfiles.isLocked(player)
                     && (previous == null || previous.role() == ParticipantRole.MONSTER_LOBBY || previous.role() == ParticipantRole.LOBBY
-                        || previous.role() == ParticipantRole.HUMAN_RESPAWNING || !previous.online())) {
+                        || !previous.online())) {
                 boolean revived = previous != null && previous.role() == ParticipantRole.MONSTER_LOBBY;
                 boolean admitted = revived
                         ? profiles.revive(player, after, () -> dev.hardrush.world.FarLandings.take(server, worlds, player.getUUID()))
-                        : previous != null && previous.role() == ParticipantRole.HUMAN_RESPAWNING
-                        ? profiles.confirmRespawn(player, after)
                         : profiles.admit(player, after, arrival(server, worlds, after, participant),
                             level -> RoundWorldBundle.sameRound(worlds.level(Level.OVERWORLD), level));
                 if (!admitted) {
@@ -986,6 +959,6 @@ public final class RoundRuntime {
 
     private static RoundSession.Reply disabled() {
         return new RoundSession.Reply(false,
-                "比赛模式默认关闭；服务端启动参数 -Dhardrush.competition.enabled=true 可启用独立世界／档案与普通模式开发入口。");
+                "比赛模式默认关闭；服务端启动参数 -Dhardrush.competition.enabled=true 可启用独立世界与玩家档案。");
     }
 }

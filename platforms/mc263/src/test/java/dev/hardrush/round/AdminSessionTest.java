@@ -27,7 +27,7 @@ final class AdminSessionTest {
 
     @Test void startRequiresAdaptersNormalModeAndReadyOnlineHumanThenAwaitsProfileAdmission() throws Exception {
         var path = directory.resolve("start.sqlite");
-        var initial = seed(path, RoundPhase.WAITING, GameMode.NORMAL);
+        var initial = seed(path, RoundPhase.WAITING);
         var tasks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
         try (var session = opened(path, clock, tasks, false)) {
             var reply = new AtomicReference<RoundSession.Reply>();
@@ -60,7 +60,7 @@ final class AdminSessionTest {
 
     @Test void invalidMetadataDoesNotLeaveAnInvisiblePendingCoreTransition() throws Exception {
         var path = directory.resolve("invalid.sqlite");
-        seed(path, RoundPhase.WAITING, GameMode.NORMAL);
+        seed(path, RoundPhase.WAITING);
         var tasks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
         try (var session = opened(path, clock, tasks, true)) {
             session.onOnline(player, "Human", true); pump(tasks, () -> !session.mutationPending());
@@ -76,7 +76,7 @@ final class AdminSessionTest {
     }
 
     @Test void abortLocksImmediatelyAndStopsAtAcceptanceDespiteIoDelayThenSafelyRotates() throws Exception {
-        var path = directory.resolve("abort.sqlite"); var initial = seed(path, RoundPhase.RUNNING, GameMode.NORMAL);
+        var path = directory.resolve("abort.sqlite"); var initial = seed(path, RoundPhase.RUNNING);
         var tasks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
         try (var session = opened(path, clock, tasks, true)) {
             session.onOnline(player, "Human", true); pump(tasks, () -> !session.mutationPending());
@@ -109,7 +109,7 @@ final class AdminSessionTest {
     }
 
     @Test void newRoundsCopyServerDifficultyWhileTheCurrentRoundKeepsItsSnapshot() throws Exception {
-        var path = directory.resolve("difficulty.sqlite"); var initial = seed(path, RoundPhase.RUNNING, GameMode.NORMAL);
+        var path = directory.resolve("difficulty.sqlite"); var initial = seed(path, RoundPhase.RUNNING);
         var tasks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
         var server = new AtomicReference<dev.hardrush.core.config.Difficulty>(dev.hardrush.core.config.Difficulty.EASY);
         try (var session = new RoundSession(path, clock::get, tasks::add, (message, error) -> {}, false, "", server::get)) {
@@ -125,7 +125,7 @@ final class AdminSessionTest {
             var next = session.snapshot().orElseThrow();
             assertEquals(2, next.sequence());
             assertEquals(dev.hardrush.core.config.Difficulty.NORMAL, next.rules().difficulty(), "Rotation copies the server difficulty");
-            assertEquals(GameMode.NORMAL, next.rules().mode(), "Only difficulty is taken from the server");
+            assertEquals(initial.rules().combatValues(), next.rules().combatValues(), "Only difficulty is taken from the server");
         }
         var fresh = directory.resolve("difficulty-fresh.sqlite");
         try (var session = new RoundSession(fresh, clock::get, tasks::add, (message, error) -> {}, false, "",
@@ -141,7 +141,7 @@ final class AdminSessionTest {
     }
 
     @Test void stopDrainsAdminAbortWithoutCallbacksAndDoesNotAcceptLaterOnlineEvents() throws Exception {
-        var path = directory.resolve("admin-stop.sqlite"); var initial = seed(path, RoundPhase.RUNNING, GameMode.NORMAL);
+        var path = directory.resolve("admin-stop.sqlite"); var initial = seed(path, RoundPhase.RUNNING);
         var tasks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
         var session = opened(path, clock, tasks, true);
         session.onOnline(player, "Human", true); pump(tasks, () -> !session.mutationPending());
@@ -157,7 +157,7 @@ final class AdminSessionTest {
     }
 
     @Test void stopBoundaryRejectsNewConnectionEventsAndFailedViewDoesNotKeepTiming() throws Exception {
-        var path = directory.resolve("stop-boundary.sqlite"); seed(path, RoundPhase.RUNNING, GameMode.NORMAL);
+        var path = directory.resolve("stop-boundary.sqlite"); seed(path, RoundPhase.RUNNING);
         var tasks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
         var session = opened(path, clock, tasks, true);
         session.onOnline(player, "Human", true); pump(tasks, () -> !session.mutationPending());
@@ -169,7 +169,7 @@ final class AdminSessionTest {
             var saved = RoundSnapshotCodec.decode(store.latest().orElseThrow().payload());
             assertTrue(saved.cleanShutdown()); assertEquals(TimeUnit.SECONDS.toNanos(3), saved.challengeNanos());
         }
-        var failedPath = directory.resolve("failed-view.sqlite"); seed(failedPath, RoundPhase.RUNNING, GameMode.NORMAL);
+        var failedPath = directory.resolve("failed-view.sqlite"); seed(failedPath, RoundPhase.RUNNING);
         clock.set(0);
         try (var failed = opened(failedPath, clock, tasks, true)) {
             failed.onOnline(player, "Human", true); pump(tasks, () -> !failed.mutationPending());
@@ -199,7 +199,7 @@ final class AdminSessionTest {
 
     @Test void revivalGrantCommitsCountsAndAuditTogetherAndPreservesBalanceOnReopen() throws Exception {
         var path = directory.resolve("grant-revival.sqlite");
-        var initial = seed(path, RoundPhase.RUNNING, GameMode.HARDCORE);
+        var initial = seed(path, RoundPhase.RUNNING);
         var tasks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
         try (var session = opened(path, clock, tasks, true)) {
             var reply = new AtomicReference<RoundSession.Reply>();
@@ -231,7 +231,7 @@ final class AdminSessionTest {
 
     @Test void failedRevivalGrantAuditRollsBackBalanceAndNeverReportsSuccess() throws Exception {
         var path = directory.resolve("grant-revival-failed.sqlite");
-        var initial = seed(path, RoundPhase.RUNNING, GameMode.HARDCORE);
+        var initial = seed(path, RoundPhase.RUNNING);
         var tasks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
         try (var session = opened(path, clock, tasks, true);
                 var raw = DriverManager.getConnection("jdbc:sqlite:" + path); var sql = raw.createStatement()) {
@@ -249,9 +249,9 @@ final class AdminSessionTest {
         }
     }
 
-    private RoundSnapshot seed(Path path, RoundPhase phase, GameMode mode) throws Exception {
+    private RoundSnapshot seed(Path path, RoundPhase phase) throws Exception {
         var role = phase == RoundPhase.RUNNING ? ParticipantRole.HUMAN_ACTIVE : ParticipantRole.LOBBY;
-        var round = new RoundSnapshot(UUID.randomUUID(), 1, 12345, 0, RulesConfig.defaults().withMode(mode), phase,
+        var round = new RoundSnapshot(UUID.randomUUID(), 1, 12345, 0, RulesConfig.defaults(), phase,
                 phase == RoundPhase.RUNNING ? PauseReason.SERVER_STOPPED : PauseReason.NOT_RUNNING, 0, 0,
                 Map.of(player, new Participant(player, "Human", role, true, phase != RoundPhase.RUNNING, 0,
                         phase == RoundPhase.RUNNING ? 0 : -1, phase == RoundPhase.RUNNING ? 1 : 0, false)), true, false, null);

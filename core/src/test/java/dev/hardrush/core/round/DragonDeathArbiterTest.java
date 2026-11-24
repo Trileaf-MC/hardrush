@@ -6,7 +6,6 @@ import dev.hardrush.core.api.DamagePort.AttackKind;
 import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.combat.CombatOrigin;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +18,7 @@ class DragonDeathArbiterTest {
 
     @Test void humanFinalHitWinsUsingCreationIdentityAfterSameBatchDeathAndDisconnect() {
         var death = event(round, player, ParticipantRole.HUMAN_ACTIVE, 1);
-        for (var currentRole : List.of(ParticipantRole.HUMAN_ACTIVE, ParticipantRole.HUMAN_RESPAWNING,
+        for (var currentRole : List.of(ParticipantRole.HUMAN_ACTIVE,
                 ParticipantRole.MONSTER_LOBBY, ParticipantRole.MONSTER_DEPLOYED)) {
             var result = DragonDeathArbiter.adjudicate(snapshot(currentRole, 1, false, null), death, dragon);
             assertEquals(RoundResult.Kind.COMPLETED, result.kind());
@@ -27,7 +26,7 @@ class DragonDeathArbiterTest {
         }
     }
 
-    @Test void humanArrowFromEarlierLifeRemainsHumanAfterRespawn() {
+    @Test void humanArrowFromEarlierLifeRemainsHumanAfterRevival() {
         assertEquals(player, DragonDeathArbiter.adjudicate(snapshot(ParticipantRole.HUMAN_ACTIVE, 2, true, null),
                 event(round, player, ParticipantRole.HUMAN_ACTIVE, 1), dragon).winner());
     }
@@ -79,7 +78,7 @@ class DragonDeathArbiterTest {
     }
 
     private RoundSnapshot snapshot(ParticipantRole role, int life, boolean online, RoundResult result) {
-        return new RoundSnapshot(round, 1, 123, 1, RulesConfig.defaults().withMode(GameMode.NORMAL),
+        return new RoundSnapshot(round, 1, 123, 1, RulesConfig.defaults(),
                 result == null ? RoundPhase.RUNNING : RoundPhase.SETTLING,
                 result == null ? PauseReason.NONE : PauseReason.SETTLED, 100, 0,
                 Map.of(player, new Participant(player, "Alice", role, online, false, 100, 0, life, false)),

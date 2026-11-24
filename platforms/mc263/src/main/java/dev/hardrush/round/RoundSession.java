@@ -1,9 +1,7 @@
 package dev.hardrush.round;
 
-import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.config.Difficulty;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.Refusal;
 import dev.hardrush.core.round.RoundEngine;
@@ -88,7 +86,6 @@ public final class RoundSession implements AutoCloseable {
     private final ExecutorService io;
     private final CompletableFuture<Loaded> opening;
     private final Map<UUID, String> online = new LinkedHashMap<>();
-    private final Map<UUID, Integer> requestedRespawns = new LinkedHashMap<>();
     // The newest connection report each player still has waiting in {@link #events}; see onOnline.
     private final Map<UUID, ConnectionReport> queuedConnections = new LinkedHashMap<>();
     // Assigned and used only by the single IO worker.
@@ -123,7 +120,6 @@ public final class RoundSession implements AutoCloseable {
     private long lastCheckpointNanos;
     private RoundTransition pendingTransition;
     private CompletableFuture<CommitResult> pendingWrite;
-    private CompletableFuture<CommitResult> pendingRulesWrite;
     private int evidencePending;
     private volatile Throwable evidenceFailure;
     private CombatEvent terminalCandidate;
@@ -208,13 +204,6 @@ public final class RoundSession implements AutoCloseable {
         RulesConfig rules = pending.isPresent()
                 ? RulesConfig.decode(new String(pending.get(), StandardCharsets.UTF_8)).forNewRound()
                 : RulesConfig.defaults();
-        if (pending.isEmpty()) {
-            String initialMode = HardRushProperties.initialMode();
-            if (!initialMode.equals("normal") && !initialMode.equals("hardcore")) {
-                throw new IllegalArgumentException("首次开发模式只接受 normal 或 hardcore");
-            }
-            if (initialMode.equals("normal")) rules = rules.withMode(GameMode.NORMAL);
-        }
         requireVersion(rules);
         if (pending.isEmpty() || !java.util.Arrays.equals(pending.get(), encodedRules(rules))) {
             requireCommitted(store.savePendingRules(encodedRules(rules), UUID.randomUUID(), "server-bootstrap"));
@@ -272,7 +261,7 @@ public final class RoundSession implements AutoCloseable {
         return engine == null ? Optional.empty() : Optional.of(engine.committed());
     }
     public Optional<RulesConfig> nextRules() { return Optional.ofNullable(nextRules); }
-    public boolean mutationPending() { return pendingWrite != null || pendingRulesWrite != null || pendingRotationWrite != null || pendingAdminWrite != null || pendingRecoveryWrite != null; }
+    public boolean mutationPending() { return pendingWrite != null || pendingRotationWrite != null || pendingAdminWrite != null || pendingRecoveryWrite != null; }
     /** Monster damage credit is buffered or queued and has not reached the committed round yet. */
     public boolean damageCreditPending() { return !damageCoins.isEmpty() || !queuedDamage.isEmpty(); }
     public Optional<RoundSnapshot> view() { return engine == null ? Optional.empty() : Optional.of(engine.view()); }
@@ -552,7 +541,6 @@ public final class RoundSession implements AutoCloseable {
         capturedDeaths.clear();
         clearTotemSaves();
         adminBoundary = null;
-        requestedRespawns.clear();
         endEntrants = 0;
         adaptersReady = false;
         unsupportedPhase = false;
@@ -865,7 +853,7 @@ public final class RoundSession implements AutoCloseable {
         engine = RoundEngine.restoreForRecovery(loaded.snapshot(), this::engineTime);
         nextRules = loaded.nextRules();
         endEntrants = loaded.endEntrants();
-        events.clear(); queuedConnections.clear(); queuedDamage.clear(); queuedMilestones.clear(); requestedRespawns.clear(); deathBatches.clear(); capturedDeaths.clear();
+        events.clear(); queuedConnections.clear(); queuedDamage.clear(); queuedMilestones.clear(); deathBatches.clear(); capturedDeaths.clear();
         clearTotemSaves();
         terminalCandidate = null; firstDragonId = null; terminalQueued = false;
         evidenceFailure = null; failureBoundary = null; adminBoundary = null;
@@ -1024,7 +1012,6 @@ public final class RoundSession implements AutoCloseable {
         if (state == State.CLOSED) return "比赛模式已停止。";
         var round = engine.committed();
         return "轮次 " + round.sequence() + "（" + round.roundId() + "），阶段 " + round.phase()
-                + "，本轮模式 " + modeName(round.rules().mode()) + "，下轮模式 " + modeName(nextRules.mode())
                 + "，已持久化版本 " + round.version() + "，规则 " + round.rules().fingerprint()
                 + "。" + (mutationPending() ? "正在提交状态。" : "")
                 + (startupRecoveryMessage().isEmpty() ? "" : startupRecoveryMessage() + "。")
@@ -1331,13 +1318,6 @@ public final class RoundSession implements AutoCloseable {
         return pendingTransition != null ? pendingTransition.after() : engine.committed();
     }
 
-    public void normalRespawn(UUID playerId, int lifeSequence) {
-        if (stopping || state != State.OPEN || !adaptersReady || competitionLocked()
-                || Objects.equals(requestedRespawns.get(playerId), lifeSequence)) return;
-        requestedRespawns.put(playerId, lifeSequence);
-        enqueue(e -> e.proposeAdmissionRespawn(UUID.randomUUID(), playerId, lifeSequence));
-    }
-
     private long engineTime() {
         if (eventTime != Long.MIN_VALUE) return eventTime;
         if (adminBoundary != null) return adminBoundary;
@@ -1366,37 +1346,6 @@ public final class RoundSession implements AutoCloseable {
         try { submit(event.action().apply(engine)); }
         catch (RuntimeException error) { fail("关键事件应用失败", error); }
         finally { eventTime = Long.MIN_VALUE; }
-    }
-
-    /** Never reports the next mode as changed before SQLite accepts it. */
-    public void updateNextMode(GameMode mode, String actor, Consumer<Reply> reply) {
-        updateNextMode(mode, actor, "管理命令设置下一轮模式", reply);
-    }
-
-    public void updateNextMode(GameMode mode, String actor, String reason, Consumer<Reply> reply) {
-        Objects.requireNonNull(mode); Objects.requireNonNull(actor); Objects.requireNonNull(reply);
-        if (fullCheckpointSaving) { reply.accept(new Reply(false, "正在保存完整对局，请稍候。")); return; }
-        if (state != State.OPEN || stopping) { reply.accept(new Reply(false, status())); return; }
-        if (mutationPending()) { reply.accept(new Reply(false, "上一项状态仍在提交，请稍后重试。")); return; }
-        var proposed = nextRules.withMode(mode);
-        var eventId = UUID.randomUUID();
-        var audit = new AdminAudit(eventId, engine.committed().roundId(), actor, "NEXT_RULES", reason,
-                nextRules.encode(), proposed.encode(), System.currentTimeMillis());
-        var write = supplyIo(() -> store.savePendingRulesAdmin(encodedRules(proposed), eventId, audit));
-        pendingRulesWrite = write;
-        write.whenComplete((result, error) -> callbacks.execute(() -> {
-            if (stopping || pendingRulesWrite != write) return;
-            pendingRulesWrite = null;
-            if (state == State.FAILED) { reply.accept(new Reply(false, problem)); return; }
-            if (error != null || result == CommitResult.STALE) {
-                fail("下轮规则提交失败", error != null ? error : new IllegalStateException("状态版本已过期"));
-                reply.accept(new Reply(false, "下轮模式未应用：" + problem));
-                return;
-            }
-            nextRules = proposed;
-            reply.accept(new Reply(true, "下轮模式已持久化为" + modeName(mode)
-                    + "；本轮规则快照保持原值。规则指纹：" + proposed.fingerprint()));
-        }));
     }
 
     public void celebrationComplete(UUID roundId) {
@@ -1543,10 +1492,6 @@ public final class RoundSession implements AutoCloseable {
                 pendingWrite = null;
                 pendingTransition = null;
             }
-            if (pendingRulesWrite != null) {
-                requireCommitted(pendingRulesWrite.get());
-                pendingRulesWrite = null;
-            }
             if (pendingAdminWrite != null) {
                 try { pendingAdminWrite.get(); }
                 catch (java.util.concurrent.ExecutionException failedRequest) {
@@ -1655,7 +1600,6 @@ public final class RoundSession implements AutoCloseable {
     private static void requireVersion(RulesConfig rules) {
         if (!"26.3".equals(rules.minecraftVersion())) throw new IllegalArgumentException("此适配器仅支持 Minecraft 26.3");
     }
-    private static String modeName(GameMode mode) { return mode == GameMode.HARDCORE ? "极限" : "普通"; }
     private record Loaded(RoundSnapshot snapshot, RulesConfig nextRules, boolean fresh, long endEntrants) {}
     private record QueuedEvent(long time, Function<RoundEngine, RoundTransition> action) {}
 

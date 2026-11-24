@@ -254,15 +254,14 @@ public abstract class PlayerIsolationNetworkMixin {
     }
 
     @Inject(method = "handleClientCommand", at = @At("HEAD"), cancellable = true)
-    private void hardrush$allowOnlyCommittedRespawn(ServerboundClientCommandPacket packet, CallbackInfo ci) {
+    private void hardrush$holdClientCommand(ServerboundClientCommandPacket packet, CallbackInfo ci) {
         if (!player.level().getServer().isSameThread()) return;
         // The celebration coordinator replaces dead bodies itself, as spectators beside the dragon pool.
         if (packet.getAction() == ServerboundClientCommandPacket.Action.PERFORM_RESPAWN && CelebrationRuntime.ownsRespawn(player)) {
             ci.cancel(); return;
         }
-        if (!PlayerProfiles.sealed(player)) return;
-        if (packet.getAction() != ServerboundClientCommandPacket.Action.PERFORM_RESPAWN
-                || !PlayerProfiles.isRespawnAllowed(player)) ci.cancel();
+        // A sealed body never respawns at the client's request: a dead human's replacement is placed by the server.
+        if (PlayerProfiles.sealed(player)) ci.cancel();
     }
 
     @Inject(method = "performUnsignedChatCommand", at = @At("HEAD"), cancellable = true)

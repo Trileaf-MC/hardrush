@@ -1,6 +1,5 @@
 package dev.hardrush.core.round;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 
 /** Monster coin economy values, read from the round's immutable rules snapshot. */
@@ -19,7 +18,7 @@ public final class MonsterCoins {
 
     /** Rounds saved before the economy existed keep playing without it. */
     public static boolean enabled(RulesConfig rules) {
-        return rules.mode() == GameMode.HARDCORE && rules.combatValues().containsKey(STARTER);
+        return rules.combatValues().containsKey(STARTER);
     }
 
     public static int amount(RulesConfig rules, String key) {

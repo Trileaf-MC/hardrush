@@ -226,6 +226,23 @@ class AdminHistoryStoreTest {
         try (var store = new SqliteRoundStore(db)) { assertEquals(1, store.roundHistory(round).orElseThrow().edition()); }
     }
 
+    @Test void schemaSixRetagsHistoryFingerprintsOfRulesThatStillCarriedAGameMode() throws Exception {
+        Path db = database();
+        try (var store = new SqliteRoundStore(db); var raw = DriverManager.getConnection("jdbc:sqlite:" + db); var sql = raw.createStatement()) {
+            create(store); finish(store, true, false);
+            // A fingerprint stored while rules still encoded their mode no longer matches the decoded snapshot.
+            sql.execute("UPDATE history_rounds SET rules_fingerprint='fingerprint-with-mode'");
+            assertThrows(SQLException.class, () -> store.roundHistory(round));
+            sql.execute("PRAGMA user_version=5");
+        }
+        try (var store = new SqliteRoundStore(db); var raw = DriverManager.getConnection("jdbc:sqlite:" + db); var sql = raw.createStatement()) {
+            String fingerprint = RulesConfig.defaults().fingerprint();
+            assertEquals(fingerprint, store.roundHistory(round).orElseThrow().rulesFingerprint());
+            assertEquals(round, store.leaderboard(fingerprint, 10).getFirst().round().roundId());
+            try (var rows = sql.executeQuery("PRAGMA user_version")) { assertTrue(rows.next()); assertEquals(6, rows.getInt(1)); }
+        }
+    }
+
     @Test void revisedHistoryTamperingOrMissingRevisionOrCorruptedEvidenceFailsVerification() throws Exception {
         Path db = database();
         try (var store = new SqliteRoundStore(db); var raw = DriverManager.getConnection("jdbc:sqlite:" + db); var sql = raw.createStatement()) {

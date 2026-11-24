@@ -46,11 +46,13 @@ class LobbyFoundationTest {
         assertTrue(hints.current(100).isEmpty());
     }
     @Test void legacyGoldenBytesAndFingerprintSurviveCodecAndMigration() throws Exception {
-        String encoded = new String(getClass().getResourceAsStream("/legacy-vote-rules.properties").readAllBytes(), StandardCharsets.UTF_8);
+        var encoded = new String(getClass().getResourceAsStream("/legacy-vote-rules.properties").readAllBytes(), StandardCharsets.UTF_8);
         var legacy = RulesConfig.decode(encoded);
         assertEquals(RulesConfig.HuntRule.LEGACY_VOTE, legacy.huntRule());
+        // The retired mode key is the only stored field a decode drops; every round is hardcore now.
+        encoded = encoded.replace("mode=HARDCORE\n", "");
         assertEquals(encoded, legacy.encode());
-        assertEquals("d7eda77f0c2f5621be197e1e6cece7ebc7d6921c3181ec1536055e63c50b6dad", legacy.fingerprint());
+        assertEquals("7e7780e843d4fe0baa415a9376658e4d1049fb39d58bde439c4fa2d8ac4d236c", legacy.fingerprint());
         var next = legacy.forNewRound();
         assertEquals(RulesConfig.HuntRule.PERSONAL_TARGET, next.huntRule());
         assertNotEquals(legacy.fingerprint(), next.fingerprint());

@@ -44,10 +44,16 @@ final class RoundWorldManifest {
         return new RoundWorldManifest(roundId, seed, rules, generators, spawn);
     }
 
+    /** Rules compare by value, so a manifest written before a retired field (the game mode) was dropped still matches. */
     void requireSnapshot(RoundSnapshot snapshot) throws IOException {
-        if (!roundId.equals(snapshot.roundId()) || seed != snapshot.seed() || !rules.equals(snapshot.rules().encode())) {
+        if (!roundId.equals(snapshot.roundId()) || seed != snapshot.seed() || !sameRules(snapshot.rules())) {
             throw new IOException("本轮清单 ID、种子或规则与已持久化快照不符；拒绝覆盖");
         }
+    }
+
+    private boolean sameRules(dev.hardrush.core.config.RulesConfig expected) {
+        try { return dev.hardrush.core.config.RulesConfig.decode(rules).equals(expected); }
+        catch (IllegalArgumentException invalid) { return false; }
     }
 
     static RoundWorldManifest read(Path root, Path path) throws IOException {

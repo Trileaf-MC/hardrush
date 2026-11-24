@@ -1,6 +1,5 @@
 package dev.hardrush.core.lobby;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.hunt.LateShelter;
 import dev.hardrush.core.round.MonsterCoins;
@@ -19,49 +18,43 @@ public final class RuleBookText {
     private RuleBookText() {}
 
     public static List<String> pages(RulesConfig rules) {
-        boolean hardcore = rules.mode() == GameMode.HARDCORE;
         var pages = new ArrayList<String>();
-        pages.add("HardRush\n\n人类击败末影龙即通关，对末影龙打出最后一击的人类是胜者。\n\n本轮模式：" + (hardcore ? "极限挑战" : "普通模式"));
+        pages.add("HardRush\n\n人类击败末影龙即通关，对末影龙打出最后一击的人类是胜者。");
         pages.add("开局与加入\n\n开局前走进集结区即准备，走出即取消。\n\n挑战开始后，在集结区站 4 秒可以空手中途加入，落在远离出生点的荒野。"
                 + (LateShelter.enabled(rules) ? "落地后 " + LateShelter.duration(rules) + "内怪物无法追猎你，离线不计时。" : ""));
         pages.add("离线与救场\n\n人类离线时保留资格。所有人类都离线时等待 " + seconds(RoundEngine.reconnectMillis(rules))
                 + " 秒，期间有人重连、复生或中途加入就继续，否则本轮结束。");
-        pages.add("黄昏契约\n\n开局后到第一次日落前，玩家之间不能互相伤害。"
-                + (hardcore ? "\n\n日落后，人类被人类击杀时会掉落 1 个复生图腾。" : ""));
-        if (!hardcore) {
-            pages.add("阵亡\n\n普通模式下阵亡后按原版重生。");
-        } else {
-            pages.add("阵亡\n\n极限挑战中阵亡后回到营地，可以到庭院的角色展位选择僵尸、骷髅或苦力怕，化身怪物追猎人类。");
-            pages.add("追猎\n\n右键庭院里的目标模型，开始寻找目标附近的出击位置，再次右键取消。落地时目标会听到一声洞穴音。\n\n"
-                    + "出击后右键回响碎片，边走边引导 " + seconds(RoundEngine.returnChannelMillis(rules))
-                    + " 秒返回营地，本次物资暂存到下次。");
-            pages.add("追迹罗盘\n\n追迹罗盘的指针指向你的目标，发光时右键，边走边引导 " + seconds(RoundEngine.retrackChannelMillis(rules))
-                    + " 秒就能循迹到目标附近。\n\n受伤或动手会打断引导；落地后罗盘冷却 " + seconds(RoundEngine.retrackCooldownMillis(rules)) + " 秒。");
-            pages.add("击败\n\n怪物阵亡后马上可以追猎别人，只有击败它的人类在 " + seconds(RoundEngine.deployCooldownNanos(rules) / 1_000_000)
-                    + " 秒内不会被它追猎。苦力怕引爆后，它这次追猎的目标同样如此。\n\n人类用打火石或火焰弹右键苦力怕，可以强行点燃它。");
-            pages.add("角色\n\n僵尸自带僵尸刷怪蛋，困难难度下能空手敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
-                    + "骷髅潜行拉满弓触发三连射，陷进细雪会化身流浪者。\n\n苦力怕按住引爆器（打火石）引爆，也能用它点燃原版苦力怕。");
-            pages.add("挖掘与虫穴\n\n僵尸和骷髅空手按住左键，一次挖开 1×2 的石头、泥土、下界岩、末地石等天然方块，最长 "
-                    + decimalSeconds(RoundEngine.digMillis(rules)) + " 秒，不掉落。苦力怕挖不动。\n\n"
-                    + "出击找不到能走到人类身边的落点时，怪物会藏进人类旁边的石头里，挖开墙破石而出。");
-            if (MonsterCoins.enabled(rules)) pages.add("怪物币\n\n伤害人类、近期受玩家伤害后阵亡都能获得怪物币，悬赏越高的人类伤害越值钱。\n\n"
-                    + "怪物币可以在女巫处购买出击增强，试炼钥匙可以在宝库开出一次性装备。拿到复生图腾后，女巫改卖复生补给。");
-            if (dev.hardrush.core.round.Bounty.enabled(rules)) pages.add("悬赏\n\n人类越强，悬赏星级越高：推进进度最显著，击杀怪物玩家、被怪物从营地追猎也会加分。星级在存活的人类之间比较，每条命重新计算。\n\n"
-                    + "伤害 ★★★★★ 人类的收益是 ★☆☆☆☆ 的 " + multiplier(rules) + " 倍。庭院里头戴不祥旗帜的就是头号悬赏。");
-            if (MonsterWorth.enabled(rules)) pages.add("身价\n\n出击时的经验等级就是身价：从 " + (long) value(rules, MonsterWorth.BASE_LEVEL, 10)
-                    + " 级起，伤害人类会上涨，最高 " + (long) value(rules, MonsterWorth.MAX_LEVEL, 30) + " 级。\n\n被玩家击杀时掉出经验，满 "
-                    + (long) value(rules, MonsterWorth.BOOK_MIN_LEVEL, 15) + " 级再掉一本附魔书。");
-            pages.add("复生图腾\n\n人类每阵亡一次、每用掉一个图腾，都会放出 1 个：怪物击杀或逼出的直接归怪物，其余掉在原地，"
-                    + "人类和出击中的怪物都能捡，但放出它的那条命捡不回来。\n\n"
-                    + "没有被人击杀或逼出时，掉落会公布坐标。图腾不能丢弃，阵亡时自己的图腾不会掉落。");
-            pages.add("复生\n\n把复生图腾拿在手上阵亡时原地复生，消耗 1 个。\n\n"
-                    + "没拿在手上就阵亡，可到营地北侧的祭坛站上金块 4 秒复生，"
-                    + (MonsterCoins.enabled(rules) ? "可先用怪物币在女巫处买复生补给。" : "空手出发。")
-                    + "落地获得图腾之力庇护：生命恢复 II、伤害吸收 IV、抗火，持续 "
-                    + seconds(dev.hardrush.core.round.WitchRecord.BLESSING_MILLIS) + " 秒。");
-            pages.add("救场\n\n所有人类阵亡后进入 " + seconds(RoundEngine.rescueMillis(rules))
-                    + " 秒救场：有图腾的怪物可以复生，也可以从集结区加入。");
-        }
+        pages.add("黄昏契约\n\n开局后到第一次日落前，玩家之间不能互相伤害。\n\n日落后，人类被人类击杀时会掉落 1 个复生图腾。");
+        pages.add("阵亡\n\n阵亡后不会原版重生，而是回到营地，可以到庭院的角色展位选择僵尸、骷髅或苦力怕，化身怪物追猎人类。");
+        pages.add("追猎\n\n右键庭院里的目标模型，开始寻找目标附近的出击位置，再次右键取消。落地时目标会听到一声洞穴音。\n\n"
+                + "出击后右键回响碎片，边走边引导 " + seconds(RoundEngine.returnChannelMillis(rules))
+                + " 秒返回营地，本次物资暂存到下次。");
+        pages.add("追迹罗盘\n\n追迹罗盘的指针指向你的目标，发光时右键，边走边引导 " + seconds(RoundEngine.retrackChannelMillis(rules))
+                + " 秒就能循迹到目标附近。\n\n受伤或动手会打断引导；落地后罗盘冷却 " + seconds(RoundEngine.retrackCooldownMillis(rules)) + " 秒。");
+        pages.add("击败\n\n怪物阵亡后马上可以追猎别人，只有击败它的人类在 " + seconds(RoundEngine.deployCooldownNanos(rules) / 1_000_000)
+                + " 秒内不会被它追猎。苦力怕引爆后，它这次追猎的目标同样如此。\n\n人类用打火石或火焰弹右键苦力怕，可以强行点燃它。");
+        pages.add("角色\n\n僵尸自带僵尸刷怪蛋，困难难度下能空手敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
+                + "骷髅潜行拉满弓触发三连射，陷进细雪会化身流浪者。\n\n苦力怕按住引爆器（打火石）引爆，也能用它点燃原版苦力怕。");
+        pages.add("挖掘与虫穴\n\n僵尸和骷髅空手按住左键，一次挖开 1×2 的石头、泥土、下界岩、末地石等天然方块，最长 "
+                + decimalSeconds(RoundEngine.digMillis(rules)) + " 秒，不掉落。苦力怕挖不动。\n\n"
+                + "出击找不到能走到人类身边的落点时，怪物会藏进人类旁边的石头里，挖开墙破石而出。");
+        if (MonsterCoins.enabled(rules)) pages.add("怪物币\n\n伤害人类、近期受玩家伤害后阵亡都能获得怪物币，悬赏越高的人类伤害越值钱。\n\n"
+                + "怪物币可以在女巫处购买出击增强，试炼钥匙可以在宝库开出一次性装备。拿到复生图腾后，女巫改卖复生补给。");
+        if (dev.hardrush.core.round.Bounty.enabled(rules)) pages.add("悬赏\n\n人类越强，悬赏星级越高：推进进度最显著，击杀怪物玩家、被怪物从营地追猎也会加分。星级在存活的人类之间比较，每条命重新计算。\n\n"
+                + "伤害 ★★★★★ 人类的收益是 ★☆☆☆☆ 的 " + multiplier(rules) + " 倍。庭院里头戴不祥旗帜的就是头号悬赏。");
+        if (MonsterWorth.enabled(rules)) pages.add("身价\n\n出击时的经验等级就是身价：从 " + (long) value(rules, MonsterWorth.BASE_LEVEL, 10)
+                + " 级起，伤害人类会上涨，最高 " + (long) value(rules, MonsterWorth.MAX_LEVEL, 30) + " 级。\n\n被玩家击杀时掉出经验，满 "
+                + (long) value(rules, MonsterWorth.BOOK_MIN_LEVEL, 15) + " 级再掉一本附魔书。");
+        pages.add("复生图腾\n\n人类每阵亡一次、每用掉一个图腾，都会放出 1 个：怪物击杀或逼出的直接归怪物，其余掉在原地，"
+                + "人类和出击中的怪物都能捡，但放出它的那条命捡不回来。\n\n"
+                + "没有被人击杀或逼出时，掉落会公布坐标。图腾不能丢弃，阵亡时自己的图腾不会掉落。");
+        pages.add("复生\n\n把复生图腾拿在手上阵亡时原地复生，消耗 1 个。\n\n"
+                + "没拿在手上就阵亡，可到营地北侧的祭坛站上金块 4 秒复生，"
+                + (MonsterCoins.enabled(rules) ? "可先用怪物币在女巫处买复生补给。" : "空手出发。")
+                + "落地获得图腾之力庇护：生命恢复 II、伤害吸收 IV、抗火，持续 "
+                + seconds(dev.hardrush.core.round.WitchRecord.BLESSING_MILLIS) + " 秒。");
+        pages.add("救场\n\n所有人类阵亡后进入 " + seconds(RoundEngine.rescueMillis(rules))
+                + " 秒救场：有图腾的怪物可以复生，也可以从集结区加入。");
         pages.add("结局\n\n通关后所有人到末地为胜者庆祝，最长 " + seconds(RoundEngine.successCelebrationMillis(rules))
                 + " 秒，胜者跳进末地传送门即结束。\n\n历届战绩在书屋查看。");
         pages.add("退出本轮\n\n按住 {key:key.sneak} 再按 {key:key.swapOffhand}，打开确认菜单。\n\n退出后本轮不能再加入，可以用望远镜观战，下一轮恢复。");

@@ -1,6 +1,5 @@
 package dev.hardrush.gametest;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.Participant;
 import dev.hardrush.core.round.ParticipantRole;
@@ -32,7 +31,8 @@ public final class TabListGameTest {
             var running = round(id, first, second, RoundPhase.RUNNING, PauseReason.NONE, 0, null);
             runtime.refresh(server, running, 7, null, true);
             var packet = latest(test, a);
-            test.assertTrue(packet.header().getString().contains("第 42 轮") && packet.header().getString().contains("普通模式")                    && packet.header().getString().contains("1:02:03"), "Native TAB header contains round, mode and second-granularity challenge time");
+            test.assertTrue(packet.header().getString().contains("第 42 轮")
+                    && packet.header().getString().contains("1:02:03"), "Native TAB header contains round and second-granularity challenge time");
             test.assertTrue(packet.footer().getString().contains("进入过末地 7 人") && packet.footer().getString().contains("人类 2"),
                     "Native TAB footer contains UUID-deduplicated End entrants and online human count");
             test.assertValueEqual(latest(test, b).header().getString(), packet.header().getString(), "Both native connections receive the same race header");
@@ -79,7 +79,7 @@ public final class TabListGameTest {
             players.put(player.getUUID(), new Participant(player.getUUID(), player.getScoreboardName(),
                     ParticipantRole.HUMAN_ACTIVE, true, false, 0, 0, 1, false));
         }
-        return new RoundSnapshot(id, 42, 12345, 1, RulesConfig.defaults().withMode(GameMode.NORMAL), phase, pause,
+        return new RoundSnapshot(id, 42, 12345, 1, RulesConfig.defaults(), phase, pause,
                 3_723_999_000_000L, remaining, players, false, false, result);
     }
     private static ClientboundTabListPacket latest(GameTestHelper test, TestClient capture) {

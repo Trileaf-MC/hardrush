@@ -3,7 +3,6 @@ package dev.hardrush.core.round;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.hardrush.core.api.MonotonicClock;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -22,7 +21,7 @@ class RoundEngineTest {
         void millis(long value) { now += value * 1_000_000; }
     }
     private final Clock clock = new Clock();
-    private RoundEngine create() { return RoundEngine.create(UUID.randomUUID(), 1, 123, RulesConfig.defaults().withMode(GameMode.NORMAL), clock); }
+    private RoundEngine create() { return RoundEngine.create(UUID.randomUUID(), 1, 123, RulesConfig.defaults(), clock); }
     private static void apply(RoundEngine engine, RoundTransition event) { assertTrue(engine.accept(event)); }
     private RoundEngine waiting() {
         RoundEngine engine = create();
@@ -143,22 +142,6 @@ class RoundEngineTest {
         clock.millis(9_000); engine.resumeAfterCheckpoint(); clock.millis(2_000);
         assertEquals(7_000, engine.view().challengeMillis());
         assertEquals(7_000_000_000L, engine.view().participants().get(A).humanNanos());
-    }
-
-    @Test void deathScreenPausesOnlyDeadHumansWithoutEndingTheRound() {
-        RoundEngine engine = running();
-        clock.millis(2_000);
-        apply(engine, firstLifeDeath(engine));
-        clock.millis(30_000);
-        assertEquals(RoundPhase.RUNNING, engine.view().phase());
-        assertEquals(2_000, engine.view().challengeMillis());
-        assertThrows(IllegalStateException.class, () -> engine.proposeJoin(UUID.randomUUID(), A, "Alice"));
-        apply(engine, engine.proposeAdmissionRespawn(UUID.randomUUID(), A, 1));
-        apply(engine, engine.proposeOnline(UUID.randomUUID(), A, "Alice", true));
-        assertThrows(IllegalStateException.class, () -> firstLifeDeath(engine));
-        clock.millis(3_000);
-        assertEquals(5_000, engine.view().challengeMillis());
-        assertEquals(2, engine.view().participants().get(A).lifeSequence());
     }
 
     @Test void oneDeadHumanDoesNotPauseOtherLiveHumans() {

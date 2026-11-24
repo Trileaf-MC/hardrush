@@ -185,18 +185,16 @@ public final class ParticipationExitGameTest {
                 .thenExecute(() -> {
                     try { test.assertTrue(java.util.Arrays.equals(sealed[0], Files.readAllBytes(archive[0])), "First equipment archive is immutable"); }
                     catch (Exception e) { throw new IllegalStateException(e); }
-                    c.player.hurtServer(c.player.level(), c.player.damageSources().genericKill(), Float.MAX_VALUE);
+                    execute(f.server.createCommandSourceStack(), "hardrush admin disqualify CampHumanC 取消最后一名人类的资格");
                 })
-                .thenWaitUntil(() -> f.await(role(f, c.profile.id()) == ParticipantRole.HUMAN_RESPAWNING && f.idle(), "Native death durable"))
-                .thenExecute(() -> execute(f.server.createCommandSourceStack(), "hardrush admin disqualify CampHumanC 等待重生时取消资格"))
                 .thenWaitUntil(() -> {
                     c.player = c.player.connection.player;
                     f.await(role(f, c.profile.id()) == ParticipantRole.DISQUALIFIED && c.player.isAlive()
-                            && LobbyWorld.isLobby(c.player.level()) && f.idle(), "Death-screen target safely replaced");
+                            && LobbyWorld.isLobby(c.player.level()) && f.idle(), "The last human is safely returned to camp");
                 })
                 .thenExecute(() -> {
                     test.assertTrue(f.round().phase() == RoundPhase.SETTLING && f.round().result().reason().equals("NO_ELIGIBLE_PARTICIPANTS"), "Last eligible human exit settles the round");
-                    test.assertValueEqual(f.round().participants().get(c.profile.id()).lifeSequence(), 1, "No extra respawn life");
+                    test.assertValueEqual(f.round().participants().get(c.profile.id()).lifeSequence(), 1, "No extra life");
                     f.clock.addAndGet(TimeUnit.MILLISECONDS.toNanos(f.round().rules().failureDisplayMillis() + 1000));
                 })
                 .thenWaitUntil(() -> f.await(f.round().sequence() == 2 && f.round().phase() == RoundPhase.WAITING

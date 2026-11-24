@@ -2,7 +2,6 @@ package dev.hardrush.core.round;
 
 import dev.hardrush.core.api.DamagePort.AttackKind;
 import dev.hardrush.core.combat.CombatOrigin;
-import dev.hardrush.core.config.GameMode;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,15 +29,14 @@ public final class TotemDrop {
     }
 
     /**
-     * The release of a lethal hit on {@code victimId}, a hardcore human of {@code before}, credited to {@code
+     * The release of a lethal hit on {@code victimId}, an active human of {@code before}, credited to {@code
      * killCredit}: the same for a death and for a revival totem the hit forces out. A qualifying monster gains it; a
      * qualifying human's attack drops it ({@link LooseTotem.Source#HUMAN}); anything else (no credit, a suicide, an
      * unlisted attack kind, an attacker who left the round or attacked from a later life) drops it unclaimed. Empty when
-     * nothing is released: a normal round, or a victim who is not an active human.
+     * nothing is released: a victim who is not an active human.
      */
     public static Optional<Release> release(RoundSnapshot before, UUID victimId, Optional<CombatOrigin> killCredit) {
         Objects.requireNonNull(before); Objects.requireNonNull(victimId); Objects.requireNonNull(killCredit);
-        if (before.rules().mode() != GameMode.HARDCORE) return Optional.empty();
         Participant victim = before.participants().get(victimId);
         if (victim == null || !victim.role().isActiveHuman()) return Optional.empty();
         var monster = monsterKiller(before, victimId, killCredit);
@@ -56,13 +54,12 @@ public final class TotemDrop {
     }
 
     /**
-     * A hardcore human of {@code before} hit by a direct attack another participant of this round launched while a
+     * An active human of {@code before} hit by a direct attack another participant of this round launched while a
      * human. Only the identity at the attack counts: the killer may have died since (a mutual kill, an arrow still in
      * flight).
      */
     public static boolean qualifies(RoundSnapshot before, UUID victimId, Optional<CombatOrigin> killCredit) {
         Objects.requireNonNull(before); Objects.requireNonNull(victimId); Objects.requireNonNull(killCredit);
-        if (before.rules().mode() != GameMode.HARDCORE) return false;
         Participant victim = before.participants().get(victimId);
         if (victim == null || !victim.role().isActiveHuman() || killCredit.isEmpty()) return false;
         var origin = killCredit.get();
@@ -73,12 +70,12 @@ public final class TotemDrop {
     }
 
     /**
-     * The player monster credited with hitting {@code victimId}, a hardcore human of {@code before}, by {@code
+     * The player monster credited with hitting {@code victimId}, an active human of {@code before}, by {@code
      * killCredit}: a direct monster attack launched by this round's monster, from no later life or sortie than its
      * current one.
      */
     static Optional<UUID> monsterKiller(RoundSnapshot before, UUID victimId, Optional<CombatOrigin> killCredit) {
-        if (before.rules().mode() != GameMode.HARDCORE || killCredit.isEmpty()) return Optional.empty();
+        if (killCredit.isEmpty()) return Optional.empty();
         Participant victim = before.participants().get(victimId);
         var origin = killCredit.get();
         if (victim == null || !victim.role().isActiveHuman() || !origin.roundId().equals(before.roundId())

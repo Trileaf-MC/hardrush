@@ -3,7 +3,6 @@ package dev.hardrush.core.round;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.hardrush.core.api.MonotonicClock;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,7 +39,7 @@ class MonsterSkillTest {
         var base = RulesConfig.defaults();
         var values = new LinkedHashMap<>(base.combatValues());
         values.put("skeleton.burstCooldownMillis", (double)burstCooldown);
-        return new RulesConfig(base.schemaVersion(), base.mode(), base.minecraftVersion(), base.difficulty(),
+        return new RulesConfig(base.schemaVersion(), base.minecraftVersion(), base.difficulty(),
                 base.generationRule(), values, base.startCountdownMillis(),
                 base.successCelebrationMillis(), base.failureDisplayMillis());
     }
@@ -142,14 +141,8 @@ class MonsterSkillTest {
         assertEquals(before, engine.committed());
     }
 
-    @Test void normalNewHumanLifeAndHardcoreDeathKeepTheSameUuidSkillDeadlines() {
+    @Test void aHumanDeathKeepsTheSameUuidSkillDeadlines() {
         var cooldowns = Map.of(MonsterSkill.ZOMBIE_SUMMON, NOW + 90_000, MonsterSkill.SKELETON_BURST, NOW + 20_000);
-        var normal = fixture(ParticipantRole.HUMAN_ACTIVE, RulesConfig.defaults().withMode(GameMode.NORMAL), cooldowns);
-        apply(normal, normal.proposeDeathBatch(UUID.randomUUID(), round,
-                List.of(new RoundDeath(player, 3, 4, Optional.empty())), null));
-        apply(normal, normal.proposeAdmissionRespawn(UUID.randomUUID(), player, 3));
-        assertEquals(4, current(normal).lifeSequence());
-        assertEquals(cooldowns, current(normal).monsterSkillReadyAtMillis());
         var hardcore = fixture(ParticipantRole.HUMAN_ACTIVE, RulesConfig.defaults(), cooldowns);
         apply(hardcore, hardcore.proposeDeathBatch(UUID.randomUUID(), round,
                 List.of(new RoundDeath(player, 3, 4, Optional.empty())), null));
@@ -157,7 +150,7 @@ class MonsterSkillTest {
         var p = current(hardcore);
         assertEquals(cooldowns, p.withSession("Copy", false).monsterSkillReadyAtMillis());
         assertEquals(cooldowns, p.withReady(false).monsterSkillReadyAtMillis());
-        assertEquals(cooldowns, p.withRole(ParticipantRole.HUMAN_RESPAWNING).monsterSkillReadyAtMillis());
+        assertEquals(cooldowns, p.withRole(ParticipantRole.MONSTER_DEPLOYED).monsterSkillReadyAtMillis());
         assertEquals(cooldowns, p.accrue(1).monsterSkillReadyAtMillis());
         assertEquals(cooldowns, p.start(1).monsterSkillReadyAtMillis());
         assertEquals(cooldowns, p.selectMonster(MonsterRole.CREEPER, MonsterDimension.END).monsterSkillReadyAtMillis());

@@ -7,7 +7,6 @@ import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.combat.CombatOrigin;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -263,8 +262,7 @@ class MonsterCoinsTest {
     @Test void pricesMustFitTwoEmeraldStacksAfterDoubling() {
         var values = new TreeMap<>(RULES.combatValues());
         values.put("coin.price.babyEgg", 70.0);
-        assertThrows(IllegalArgumentException.class, () -> new RulesConfig(RULES.schemaVersion(), RULES.mode(),
-                RULES.minecraftVersion(), RULES.difficulty(), RULES.generationRule(), values,
+        assertThrows(IllegalArgumentException.class, () -> new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(), RULES.generationRule(), values,
                 RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis()));
     }
 
@@ -291,7 +289,7 @@ class MonsterCoinsTest {
     @Test void roundsSavedBeforeTheSoulcatcherNeitherCarryNorSellIt() {
         var values = new TreeMap<>(RULES.combatValues());
         values.keySet().removeIf(key -> key.contains("soulcatcher"));
-        var legacy = new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+        var legacy = new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(),
                 RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
         assertFalse(MonsterCoins.soulcatcher(legacy));
@@ -327,18 +325,17 @@ class MonsterCoinsTest {
     }
 
     private static RulesConfig rules(Map<String, Double> values) {
-        return new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+        return new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
     }
 
     @Test void roundsWithoutCoinRulesKeepTheEconomyDisabled() {
         var values = new TreeMap<>(RULES.combatValues());
         values.keySet().removeIf(key -> key.startsWith("coin."));
-        var legacy = new RulesConfig(RULES.schemaVersion(), GameMode.HARDCORE, RULES.minecraftVersion(), RULES.difficulty(),
+        var legacy = new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(),
                 RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
         assertFalse(MonsterCoins.enabled(legacy));
-        assertFalse(MonsterCoins.enabled(RULES.withMode(GameMode.NORMAL)));
         assertTrue(MonsterCoins.enabled(legacy.forNewRound()));
     }
 
@@ -441,7 +438,7 @@ class MonsterCoinsTest {
     }
 
     private static RulesConfig withValues(Map<String, Double> values) {
-        return new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
+        return new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(), RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
     }
 

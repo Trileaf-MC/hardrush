@@ -3,7 +3,6 @@ package dev.hardrush.gametest;
 import dev.hardrush.HardRushProperties;
 import com.mojang.authlib.GameProfile;
 import dev.hardrush.core.api.MonotonicClock;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.record.ProgressWrite;
 import dev.hardrush.core.round.*;
 import dev.hardrush.round.RoundRuntime;
@@ -215,7 +214,6 @@ public final class TenRoundGameTest {
             session = service("SESSIONS", RoundSession.class);
             profiles = service("PROFILES", PlayerProfiles.class);
             test.assertValueEqual(round().sequence(), 1L, "The dedicated GameTest storage starts at round one");
-            test.assertValueEqual(round().rules().mode(), GameMode.NORMAL, "The runtime uses ordinary production rules");
             accelerated = new AtomicLong(System.nanoTime());
             // Reflection is confined to the test artifact, leaving production lifecycle/admission intact.
             try {
@@ -392,17 +390,6 @@ public final class TenRoundGameTest {
                             test.assertValueEqual(first.player.getEnderChestInventory().getItem(0).getCount(), 3, "Same-round ender inventory is preserved");
                         });
             }
-            if (number == 2) {
-                sequence.thenExecute(() -> test.assertTrue(first.player.hurtServer(first.player.level(),
-                                first.player.damageSources().genericKill(), Float.MAX_VALUE), "Native ordinary death damage is applied"))
-                        .thenWaitUntil(() -> await(!session.mutationPending() && round().participants().get(first.profile.id()).role() == ParticipantRole.HUMAN_RESPAWNING, "Native death commits ordinary respawn role"))
-                        .thenExecute(() -> {
-                            first.player.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
-                            first.player = first.player.connection.player;
-                            first.client.acknowledge();
-                        }).thenWaitUntil(() -> await(!session.mutationPending() && round().participants().get(first.profile.id()).lifeSequence() == 2
-                                && !PlayerProfiles.isLocked(first.player), "Native replacement waits for its durable next life"));
-            }
             sequence.thenExecute(() -> {
                 advance(number);
                 move(first, levels[2], new Vec3(.5, 128, .5));
@@ -433,8 +420,8 @@ public final class TenRoundGameTest {
                             test.assertValueEqual(roster.size(), number == 1 || number == 5 ? 2 : 1, "Offline players are not fabricated in absent rounds");
                             var a = roster.stream().filter(value -> value.playerId().equals(first.profile.id())).findFirst().orElseThrow();
                             test.assertTrue(a.advancementCount() >= 1 && a.firstEndNanos() == frozenTime, "Native progress and first End entry persist in this round");
-                            test.assertValueEqual(a.deathCount(), number == 2 ? 1 : 0, "Native deaths do not leak across rounds");
-                            test.assertValueEqual(a.revivalCount(), number == 2 ? 1 : 0, "Native ordinary respawn is counted once");
+                            test.assertValueEqual(a.deathCount(), 0, "No death leaks across rounds");
+                            test.assertValueEqual(a.revivalCount(), 0, "No revival leaks across rounds");
                         });
                     }).thenWaitUntil(() -> await(checked.isDone(), "Per-round records are read after atomic terminal"))
                     .thenExecute(() -> {

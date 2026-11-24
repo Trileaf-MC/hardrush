@@ -126,7 +126,7 @@ class HuntVotingServiceTest {
         var service = service(new SequenceRandom(0));
         service.synchronizeParticipants(List.of(monster(1), human(10, OVERWORLD),
                 view(11, ROUND, ParticipantRole.HUMAN_ACTIVE, false, OVERWORLD, false),
-                view(12, ROUND, ParticipantRole.HUMAN_RESPAWNING, true, OVERWORLD, false),
+                view(12, ROUND, ParticipantRole.LOBBY, true, OVERWORLD, false),
                 view(13, id(101), ParticipantRole.HUMAN_ACTIVE, true, OVERWORLD, false),
                 view(14, ROUND, ParticipantRole.HUMAN_ACTIVE, true, OVERWORLD, true),
                 human(15, NETHER), monster(16)));

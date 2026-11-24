@@ -22,7 +22,6 @@ public abstract class PlayerProfileTagMixin implements ProfileTagged {
     @Unique private String hardrush$suspensionId = "";
     @Unique private CompoundTag hardrush$loadedProfile;
     @Unique private int hardrush$lifeSequence;
-    @Unique private boolean hardrush$respawnPermitted;
 
     @Override public Optional<ProfileJournal.Generation> hardrush$generation() { return Optional.ofNullable(hardrush$generation); }
     @Override public void hardrush$generation(ProfileJournal.Generation generation) { hardrush$generation = generation; }
@@ -34,8 +33,6 @@ public abstract class PlayerProfileTagMixin implements ProfileTagged {
     @Override public void hardrush$clearLoadedProfile() { hardrush$loadedProfile = null; }
     @Override public int hardrush$lifeSequence() { return hardrush$lifeSequence; }
     @Override public void hardrush$lifeSequence(int lifeSequence) { hardrush$lifeSequence = lifeSequence; }
-    @Override public boolean hardrush$respawnPermitted() { return hardrush$respawnPermitted; }
-    @Override public void hardrush$respawnPermitted(boolean permitted) { hardrush$respawnPermitted = permitted; }
 
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
     private void hardrush$loadGeneration(ValueInput input, CallbackInfo ci) {
@@ -43,7 +40,6 @@ public abstract class PlayerProfileTagMixin implements ProfileTagged {
         hardrush$isolated = input.getBooleanOr("hardrush_isolated", false);
         hardrush$suspensionId = input.getStringOr("hardrush_suspension_id", "");
         hardrush$lifeSequence = Math.max(0, input.getIntOr("hardrush_life_sequence", 0));
-        hardrush$respawnPermitted = false;
         hardrush$loadedProfile = HardRushProperties.competitionEnabled() && input instanceof PlayerProfileInputAccessor accessor
                 ? accessor.hardrush$input().copy() : null;
         var id = input.getString("hardrush_round_id");

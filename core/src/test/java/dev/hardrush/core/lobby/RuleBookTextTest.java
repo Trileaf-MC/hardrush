@@ -2,25 +2,28 @@ package dev.hardrush.core.lobby;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class RuleBookTextTest {
-    private static List<String> pages(GameMode mode) { return RuleBookText.pages(RulesConfig.defaults().withMode(mode)); }
+    private static List<String> pages() { return RuleBookText.pages(RulesConfig.defaults()); }
 
     private static String page(List<String> pages, String title) {
         return pages.stream().filter(page -> page.startsWith(title + "\n")).findFirst().orElse(null);
     }
 
-    @Test void hardcorePactPageAnnouncesTheTotemDropAndNormalDoesNot() {
-        assertTrue(page(pages(GameMode.HARDCORE), "黄昏契约").endsWith("日落后，人类被人类击杀时会掉落 1 个复生图腾。"));
-        assertFalse(page(pages(GameMode.NORMAL), "黄昏契约").contains("复生图腾"));
+    @Test void pactPageAnnouncesTheTotemDrop() {
+        assertTrue(page(pages(), "黄昏契约").endsWith("日落后，人类被人类击杀时会掉落 1 个复生图腾。"));
     }
 
-    @Test void hardcoreSplitsTheTotemAndRevivalPages() {
-        var hardcore = pages(GameMode.HARDCORE);
+    @Test void deathPageSaysTheFallenTurnMonsterRatherThanRespawn() {
+        assertTrue(page(pages(), "阵亡").contains("阵亡后不会原版重生，而是回到营地"));
+        assertFalse(pages().stream().anyMatch(page -> page.contains("普通模式") || page.contains("本轮模式")));
+    }
+
+    @Test void theTotemAndRevivalPagesAreSplit() {
+        var hardcore = pages();
         var totem = page(hardcore, "复生图腾");
         assertTrue(totem.contains("人类每阵亡一次、每用掉一个图腾，都会放出 1 个：怪物击杀或逼出的直接归怪物，其余掉在原地，"));
         assertTrue(totem.contains("人类和出击中的怪物都能捡，但放出它的那条命捡不回来。"));
@@ -33,47 +36,39 @@ class RuleBookTextTest {
         assertTrue(revival.contains("持续 90 秒"), "The blessing is 90 seconds before any longer one is bought");
         assertEquals(hardcore.indexOf(totem) + 1, hardcore.indexOf(revival));
         assertFalse(hardcore.stream().anyMatch(page -> page.contains("击杀一名人类获得")), "The old kill reward is gone");
-        var normal = pages(GameMode.NORMAL);
-        assertNull(page(normal, "复生图腾"));
-        assertNull(page(normal, "复生"));
     }
 
-    @Test void diggingPageReadsTheRoundsCapAndOnlyHardcoreHuntsHaveIt() {
-        var dig = page(pages(GameMode.HARDCORE), "挖掘与虫穴");
+    @Test void diggingPageReadsTheRoundsCap() {
+        var dig = page(pages(), "挖掘与虫穴");
         assertTrue(dig.contains("最长 7.5 秒，不掉落。苦力怕挖不动。"), dig);
         assertTrue(dig.contains("破石而出"));
         var values = new java.util.TreeMap<>(RulesConfig.defaults().combatValues());
         values.put("monster.digMillis", 3_000.0);
         var rules = RulesConfig.defaults();
-        rules = new RulesConfig(rules.schemaVersion(), rules.mode(), rules.minecraftVersion(), rules.difficulty(), rules.generationRule(),
+        rules = new RulesConfig(rules.schemaVersion(), rules.minecraftVersion(), rules.difficulty(), rules.generationRule(),
                 values, rules.startCountdownMillis(), rules.successCelebrationMillis(), rules.failureDisplayMillis());
         assertTrue(page(RuleBookText.pages(rules), "挖掘与虫穴").contains("最长 3 秒"));
-        assertNull(page(pages(GameMode.NORMAL), "挖掘与虫穴"));
     }
 
-    @Test void entryPageNamesTheLateShelterOnlyWhenMonstersHuntAndRevivalPageTheBlessing() {
-        var hardcore = page(pages(GameMode.HARDCORE), "开局与加入");
-        assertTrue(hardcore.contains("落地后 5 分钟内怪物无法追猎你，离线不计时。"), hardcore);
-        assertFalse(hardcore.contains("出生保护"));
-        var normal = page(pages(GameMode.NORMAL), "开局与加入");
-        assertFalse(normal.contains("追猎") || normal.contains("出生保护"), normal);
-        assertTrue(page(pages(GameMode.HARDCORE), "复生").contains("图腾之力庇护"));
+    @Test void entryPageNamesTheLateShelterAndRevivalPageTheBlessing() {
+        var entry = page(pages(), "开局与加入");
+        assertTrue(entry.contains("落地后 5 分钟内怪物无法追猎你，离线不计时。"), entry);
+        assertFalse(entry.contains("出生保护"));
+        assertTrue(page(pages(), "复生").contains("图腾之力庇护"));
     }
 
     @Test void theHuntPageTellsBothSidesAboutTheLandingOmen() {
-        assertTrue(page(pages(GameMode.HARDCORE), "追猎").contains("落地时目标会听到一声洞穴音"));
+        assertTrue(page(pages(), "追猎").contains("落地时目标会听到一声洞穴音"));
     }
 
     @Test void theCompassHasItsOwnPageWithTheRoundsChannelAndRest() {
-        var compass = page(pages(GameMode.HARDCORE), "追迹罗盘");
+        var compass = page(pages(), "追迹罗盘");
         assertTrue(compass.contains("边走边引导 5 秒") && compass.contains("冷却 10 秒"), compass);
-        assertNull(page(pages(GameMode.NORMAL), "追迹罗盘"));
     }
 
     @Test void everyPageFitsTheFourteenLinesABookShows() {
         // A written book never scrolls: BookViewScreen shows 14 lines of 114 pixels and clips the rest.
-        for (var mode : GameMode.values())
-            for (var page : pages(mode)) assertTrue(wrappedLines(page) <= 14, wrappedLines(page) + " lines: " + page);
+        for (var page : pages()) assertTrue(wrappedLines(page) <= 14, wrappedLines(page) + " lines: " + page);
     }
 
     @Test void theWrapModelBreaksAtTheLastSpaceLikeTheVanillaSplitter() {

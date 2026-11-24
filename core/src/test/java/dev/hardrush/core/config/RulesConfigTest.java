@@ -16,7 +16,6 @@ class RulesConfigTest {
 
     @Test void defaultsFollowCurrentNativeRoleDecisionAndPhaseDurations() {
         RulesConfig rules = RulesConfig.defaults();
-        assertEquals(GameMode.HARDCORE, rules.mode());
         assertEquals(Difficulty.HARD, rules.difficulty());
         assertEquals("26.3", rules.minecraftVersion());
         assertEquals("normal", rules.generationRule());
@@ -48,10 +47,10 @@ class RulesConfigTest {
         var pending = new RulesConfigFile(original);
         RulesConfig active = pending.snapshotForNextRound();
         String originalFingerprint = active.fingerprint();
-        pending.setPending(original.withMode(GameMode.NORMAL));
-        assertEquals(GameMode.HARDCORE, active.mode());
+        pending.setPending(original.withDifficulty(Difficulty.NORMAL));
+        assertEquals(Difficulty.HARD, active.difficulty());
         assertEquals(originalFingerprint, active.fingerprint());
-        assertEquals(GameMode.NORMAL, pending.snapshotForNextRound().mode());
+        assertEquals(Difficulty.NORMAL, pending.snapshotForNextRound().difficulty());
         assertNotEquals(active.fingerprint(), pending.snapshotForNextRound().fingerprint());
         assertThrows(UnsupportedOperationException.class, () -> active.combatValues().put("zombie.maxHealth", 1.0));
     }
@@ -83,9 +82,19 @@ class RulesConfigTest {
     @Test void codecRoundTripsEscapedGenerationAndRejectsAmbiguousFields() {
         RulesConfig source = rules("26.3", " \t\f生成\\配置\nseed=normal", RulesConfig.defaults().combatValues(), 30_000, 600_000, 30_000);
         assertEquals(source, RulesConfig.decode(source.encode()));
-        assertThrows(IllegalArgumentException.class, () -> RulesConfig.decode(source.encode() + "mode=NORMAL\n"));
+        assertThrows(IllegalArgumentException.class, () -> RulesConfig.decode(source.encode() + "generationRule=again\n"));
         assertThrows(IllegalArgumentException.class, () -> RulesConfig.decode(source.encode() + "modTypo=foo\n"));
-        assertThrows(IllegalArgumentException.class, () -> RulesConfig.decode(source.encode().replace("mode=HARDCORE\n", "")));
+        assertThrows(IllegalArgumentException.class, () -> RulesConfig.decode(source.encode().replace("difficulty=HARD\n", "")));
+    }
+
+    @Test void retiredModeKeyOfOlderStoredRulesIsDropped() {
+        RulesConfig source = RulesConfig.defaults();
+        for (String mode : new String[] {"HARDCORE", "NORMAL"}) {
+            var read = RulesConfig.decode(source.encode() + "mode=" + mode + "\n");
+            assertEquals(source, read);
+            assertEquals(source.fingerprint(), read.fingerprint());
+        }
+        assertFalse(source.encode().contains("mode="));
     }
 
     @Test void everyLeaderboardRelevantFieldChangesFingerprint() {
@@ -93,9 +102,8 @@ class RulesConfigTest {
         var combat = new HashMap<>(defaults.combatValues());
         combat.put("zombie.maxHealth", 21.0);
         RulesConfig[] alternatives = {
-                defaults.withMode(GameMode.NORMAL),
                 rules("26.2", "normal", defaults.combatValues(), 30_000, 600_000, 30_000),
-                new RulesConfig(1, GameMode.HARDCORE, "26.3", Difficulty.NORMAL, "normal", defaults.combatValues(), 30_000, 600_000, 30_000),
+                new RulesConfig(1, "26.3", Difficulty.NORMAL, "normal", defaults.combatValues(), 30_000, 600_000, 30_000),
                 rules("26.3", "custom", defaults.combatValues(), 30_000, 600_000, 30_000),
                 withCombat(combat),
                 rules("26.3", "normal", defaults.combatValues(), 31_000, 600_000, 30_000),
@@ -139,10 +147,10 @@ class RulesConfigTest {
         RulesConfig active = RulesConfig.defaults();
         var pending = new RulesConfigFile(active);
         Path file = directory.resolve("rules.properties");
-        Files.writeString(file, active.withMode(GameMode.NORMAL).encode());
+        Files.writeString(file, active.withDifficulty(Difficulty.NORMAL).encode());
         pending.reload(file);
-        assertEquals(GameMode.NORMAL, pending.snapshotForNextRound().mode());
-        assertEquals(GameMode.HARDCORE, active.mode());
+        assertEquals(Difficulty.NORMAL, pending.snapshotForNextRound().difficulty());
+        assertEquals(Difficulty.HARD, active.difficulty());
         String validFingerprint = pending.snapshotForNextRound().fingerprint();
         Files.writeString(file, active.encode().replace("failureDisplayMillis=30000", "failureDisplayMillis=NaN"));
         assertThrows(IOException.class, () -> pending.reload(file));
@@ -155,7 +163,7 @@ class RulesConfigTest {
 
     private static RulesConfig rules(String version, String generation, Map<String, Double> combat,
             long countdown, long celebration, long failure) {
-        return new RulesConfig(1, GameMode.HARDCORE, version, Difficulty.HARD, generation, combat,
+        return new RulesConfig(1, version, Difficulty.HARD, generation, combat,
                 countdown, celebration, failure);
     }
 }

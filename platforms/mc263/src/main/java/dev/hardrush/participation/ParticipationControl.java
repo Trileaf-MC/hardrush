@@ -84,7 +84,7 @@ public final class ParticipationControl {
         var b = BINDINGS.get(player.level().getServer());
         var round = b == null ? null : b.session.snapshot().orElse(null);
         var p = round == null ? null : round.participants().get(player.getUUID());
-        return p != null && !p.role().isExcluded() && p.role() != ParticipantRole.HUMAN_RESPAWNING
+        return p != null && !p.role().isExcluded()
                 && p.role() != ParticipantRole.TRANSITION_PENDING && player.isAlive()
                 && player.level().getServer().getPlayerList().getPlayer(player.getUUID()) == player
                 && b.profiles.isReady(player.getUUID(), round) && b.session.state() == RoundSession.State.OPEN

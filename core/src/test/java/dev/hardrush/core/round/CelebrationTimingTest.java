@@ -3,7 +3,6 @@ package dev.hardrush.core.round;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.hardrush.core.api.MonotonicClock;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.List;
 import java.util.UUID;
@@ -77,7 +76,7 @@ class CelebrationTimingTest {
     }
 
     private static RoundEngine running(RulesConfig rules, Clock clock) {
-        var engine = RoundEngine.create(UUID.randomUUID(), 1, 123, rules.withMode(GameMode.NORMAL), clock);
+        var engine = RoundEngine.create(UUID.randomUUID(), 1, 123, rules, clock);
         apply(engine, engine.proposeWorldReady(UUID.randomUUID()));
         apply(engine, engine.proposeJoin(UUID.randomUUID(), HUMAN, "Human"));
         apply(engine, engine.proposeReady(UUID.randomUUID(), HUMAN, true));
@@ -87,8 +86,8 @@ class CelebrationTimingTest {
     }
 
     private static RulesConfig configured(long millis) {
-        var defaults = RulesConfig.defaults().withMode(GameMode.NORMAL);
-        return new RulesConfig(defaults.schemaVersion(), defaults.mode(), defaults.minecraftVersion(), defaults.difficulty(),
+        var defaults = RulesConfig.defaults();
+        return new RulesConfig(defaults.schemaVersion(), defaults.minecraftVersion(), defaults.difficulty(),
                 defaults.generationRule(), defaults.combatValues(),
                 defaults.startCountdownMillis(), millis, defaults.failureDisplayMillis());
     }

@@ -1,7 +1,6 @@
 package dev.hardrush.core.record;
 
 import dev.hardrush.core.book.SafeBookText;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.RoundResult;
 import java.util.ArrayList;
@@ -22,15 +21,13 @@ public final class LibraryText {
         return String.format(Locale.ROOT, "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60);
     }
 
-    public static String mode(GameMode mode) { return mode == GameMode.NORMAL ? "普通模式" : "极限挑战"; }
-
     public static String outcome(RoundResult result) {
         return switch (result.kind()) { case COMPLETED -> "挑战成功"; case FAILED -> "挑战失败"; case ABORTED -> "本轮已中止"; };
     }
 
     /** One round in the list: what, how it ended, how long, and whether the time still awaits review. */
     public static String round(RoundHistory row) {
-        String line = "第 " + row.sequence() + " 轮 · " + mode(row.rules().mode()) + " · " + outcome(row.result());
+        String line = "第 " + row.sequence() + " 轮 · " + outcome(row.result());
         if (row.result().kind() == RoundResult.Kind.ABORTED) return line;
         return line + " · " + clock(row.challengeMillis())
                 + (row.result().kind() == RoundResult.Kind.COMPLETED && !row.leaderboardEligible() ? "（有待核实）" : "");
@@ -60,7 +57,7 @@ public final class LibraryText {
 
     private static String finalRole(ParticipantRole role) {
         return switch (role) {
-            case HUMAN_ACTIVE, HUMAN_RESPAWNING -> "是人类";
+            case HUMAN_ACTIVE -> "是人类";
             case MONSTER_LOBBY, MONSTER_DEPLOYED -> "是怪物";
             case WITHDRAWN -> "退出本轮";
             case DISQUALIFIED -> "被取消资格";

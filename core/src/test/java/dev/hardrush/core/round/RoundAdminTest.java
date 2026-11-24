@@ -3,7 +3,6 @@ package dev.hardrush.core.round;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.hardrush.core.api.MonotonicClock;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.Map;
 import java.util.UUID;
@@ -20,7 +19,7 @@ class RoundAdminTest {
     }
     private final Clock clock = new Clock();
     private RoundEngine create() {
-        return RoundEngine.create(UUID.randomUUID(), 1, 123, RulesConfig.defaults().withMode(GameMode.NORMAL), clock);
+        return RoundEngine.create(UUID.randomUUID(), 1, 123, RulesConfig.defaults(), clock);
     }
     private static void accept(RoundEngine engine, RoundTransition transition) { assertTrue(engine.accept(transition)); }
     private RoundEngine countdown() {

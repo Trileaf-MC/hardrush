@@ -169,7 +169,7 @@ public final class DuskPactGameTest {
             test.assertValueEqual(capture.sounds(), 12L, "Dusk sound occurs once");
             test.assertTrue(capture.lastSound() == net.minecraft.sounds.SoundEvents.BELL_BLOCK, "Dusk rings the vanilla bell");
             test.assertValueEqual(capture.titles(DuskPact.RELEASED), 1L, "Dusk title occurs once");
-            test.assertValueEqual(capture.subtitles(DuskPact.releasedSubtitle(true)), 1L, "Hardcore subtitle announces the hunt");
+            test.assertValueEqual(capture.subtitles(DuskPact.RELEASED_SUBTITLE), 1L, "Hardcore subtitle announces the hunt");
             test.assertValueEqual(capture.titles(DuskPact.TITLE), 1L, "Entry title never repeats within the round");
             test.assertValueEqual(capture.elderGhosts().size(), 1, "Warnings and pact release do not replay the entry ghost or sound");
             test.assertFalse(capture.client.packets().stream().anyMatch(ClientboundSystemChatPacket.class::isInstance), "Pact never writes to public chat");

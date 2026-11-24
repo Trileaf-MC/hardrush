@@ -5,14 +5,12 @@ public final class HardRushProperties {
     private HardRushProperties() {}
 
     public static final String COMPETITION_ENABLED = "hardrush.competition.enabled";
-    public static final String ROUND_INITIAL_MODE = "hardrush.round.initialMode";
     public static final String STORAGE_FULL_CHECKPOINT_INTERVAL_SECONDS = "hardrush.storage.fullCheckpointIntervalSeconds";
     public static final String STORAGE_MINIMUM_FREE_BYTES = "hardrush.storage.minimumFreeBytes";
     /** showDistance, hideDistance, darken and darkenDistance; read once per server start. */
     public static final String HUNT_BOSS_BAR_PREFIX = "hardrush.hunt.bossBar.";
 
     public static boolean competitionEnabled() { return Boolean.getBoolean(COMPETITION_ENABLED); }
-    public static String initialMode() { return System.getProperty(ROUND_INITIAL_MODE, "hardcore"); }
     /** Vanilla's own autosave period; each point still costs one native save on the server thread. */
     public static final long DEFAULT_FULL_CHECKPOINT_INTERVAL_SECONDS = 300L;
     public static long fullCheckpointIntervalSeconds() { return Long.getLong(STORAGE_FULL_CHECKPOINT_INTERVAL_SECONDS, DEFAULT_FULL_CHECKPOINT_INTERVAL_SECONDS); }

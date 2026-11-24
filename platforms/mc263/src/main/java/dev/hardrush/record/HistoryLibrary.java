@@ -1,7 +1,6 @@
 package dev.hardrush.record;
 
 import dev.hardrush.core.book.HistoryBookComposer;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.lobby.LobbyContext;
 import dev.hardrush.core.record.RoundHistory;
 import dev.hardrush.core.record.LibraryText;
@@ -89,7 +88,7 @@ public final class HistoryLibrary {
     private void recent(View v,int page) {
         load(v,query.recent(page),rows->{
             var out=new ArrayList<ButtonMenu.Button>(); out.add(info("历届轮次 · 第 "+page+" 页"));
-            out.add(button("普通模式排行榜","leaders","normal")); out.add(button("极限挑战排行榜","leaders","hardcore"));
+            out.add(button("当前规则排行榜","leaders","current"));
             if(rows.isEmpty())out.add(info("还没有往届记录"));
             rows.stream().limit(HistoryQueries.PAGE_SIZE).forEach(r->out.add(button(LibraryText.round(r),"detail",r.roundId().toString())));
             if(page>1)out.add(button("上一批轮次","recent",Integer.toString(page-1)));
@@ -132,10 +131,10 @@ public final class HistoryLibrary {
         });
     }
     private void leaders(View v,String input) {
-        var rules=session.snapshot().orElseThrow().rules();
-        String fingerprint=input.equals("normal")?rules.withMode(GameMode.NORMAL).fingerprint():input.equals("hardcore")?rules.withMode(GameMode.HARDCORE).fingerprint():input;
+        boolean current=input.equals("current");
+        String fingerprint=current?session.snapshot().orElseThrow().rules().fingerprint():input;
         load(v,query.leaders(fingerprint),rows->{
-            var out=new ArrayList<ButtonMenu.Button>(); out.add(info(input.equals("normal")?"普通模式排行榜":input.equals("hardcore")?"极限挑战排行榜":"同规则排行榜"+(v.selected==null?"":" · 第 "+v.selected.sequence()+" 轮")));
+            var out=new ArrayList<ButtonMenu.Button>(); out.add(info(current?"当前规则排行榜":"同规则排行榜"+(v.selected==null?"":" · 第 "+v.selected.sequence()+" 轮")));
             rows.forEach(r->out.add(button(LibraryText.leader(r),"detail",r.round().roundId().toString())));
             if(rows.isEmpty())out.add(info("还没有通关成绩"));
             out.add(button("返回轮次列表","recent","1")); return out;

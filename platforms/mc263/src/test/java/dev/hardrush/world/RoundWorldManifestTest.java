@@ -90,6 +90,14 @@ final class RoundWorldManifestTest {
         assertEquals(ROUND, recovered.roundId);
     }
 
+    @Test void aManifestWrittenWhileRulesStillNamedTheirModeRecovers() throws IOException {
+        Path root = temporary.toRealPath(), file = RoundWorldPaths.manifest(root, ROUND);
+        new RoundWorldManifest(ROUND, 12345, RulesConfig.defaults().encode() + "mode=HARDCORE\n", manifest().generators, null)
+                .write(root, file);
+        RoundWorldManifest.read(root, file)
+                .requireSnapshot(RoundEngine.create(ROUND, 1, 12345, RulesConfig.defaults(), () -> 0).committed());
+    }
+
     @Test void recoveryRejectsDifferentSeedOrRulesWithoutRewritingEvidence() throws IOException {
         Path root = temporary.toRealPath(), file = RoundWorldPaths.manifest(root, ROUND);
         manifest().write(root, file);
@@ -98,7 +106,7 @@ final class RoundWorldManifestTest {
         assertThrows(IOException.class, () -> recovered.requireSnapshot(
                 RoundEngine.create(ROUND, 1, 54321, RulesConfig.defaults(), () -> 0).committed()));
         assertThrows(IOException.class, () -> recovered.requireSnapshot(
-                RoundEngine.create(ROUND, 1, 12345, RulesConfig.defaults().withMode(dev.hardrush.core.config.GameMode.NORMAL), () -> 0).committed()));
+                RoundEngine.create(ROUND, 1, 12345, RulesConfig.defaults().withDifficulty(dev.hardrush.core.config.Difficulty.NORMAL), () -> 0).committed()));
         assertEquals(before, Files.readString(file));
     }
 

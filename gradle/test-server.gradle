@@ -104,20 +104,20 @@ tasks.register('prepareTestServer') {
         // JVM-level settings live in launch.properties so they stick to the instance like server.properties.
         def launchFile = new File(dir, 'launch.properties')
         def launch = readProperties(launchFile)
-        [memory: option('Memory'), mode: option('Mode'), competition: option('Competition')].each { key, value ->
+        [memory: option('Memory'), competition: option('Competition')].each { key, value ->
             if (value != null) launch.setProperty(key, value)
         }
         def memory = launch.getProperty('memory', '2G')
-        def mode = launch.getProperty('mode', 'hardcore')
         def competition = launch.getProperty('competition', 'true')
         if (!(memory ==~ /\d+[MG]/)) throw new GradleException("--memory 格式应为 2G 或 2048M：${memory}")
-        if (!['normal', 'hardcore'].contains(mode)) throw new GradleException("--mode 只支持 normal 或 hardcore：${mode}")
-        launch.putAll(memory: memory, mode: mode, competition: competition)
+        // Instances made while a normal mode existed recorded it; every round is hardcore now.
+        launch.remove('mode')
+        launch.putAll(memory: memory, competition: competition)
         launchFile.withWriter('UTF-8') { launch.store(it, 'test-server launch settings') }
 
         def java = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }.get().executablePath.asFile.absolutePath
         def args = ["-Xms512M", "-Xmx${memory}", '--enable-native-access=ALL-UNNAMED',
-                    "-Dhardrush.competition.enabled=${competition}", "-Dhardrush.round.initialMode=${mode}",
+                    "-Dhardrush.competition.enabled=${competition}",
                     '-jar', 'fabric-server.jar', 'nogui'].join(' ')
         def startSh = new File(dir, 'start.sh')
         startSh.text = "#!/bin/sh\ncd \"\$(dirname \"\$0\")\" || exit 1\nexec \"${java}\" ${args} \"\$@\"\n"
@@ -127,7 +127,7 @@ tasks.register('prepareTestServer') {
         def actualPort = readProperties(serverProperties).getProperty('server-port')
         logger.lifecycle("""
 测试服实例：${dir}
-端口 ${actualPort} · 模式 ${mode} · 比赛运行时 ${competition} · 内存 ${memory} · 正版验证 ${readProperties(serverProperties).getProperty('online-mode')}
+端口 ${actualPort} · 比赛运行时 ${competition} · 内存 ${memory} · 正版验证 ${readProperties(serverProperties).getProperty('online-mode')}
 已自动同意 Minecraft EULA（https://aka.ms/MinecraftEULA）""")
     }
 }

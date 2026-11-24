@@ -4,7 +4,6 @@ import dev.hardrush.core.api.DamagePort.AttackKind;
 import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.combat.CombatOrigin;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.record.ProgressWrite;
 import dev.hardrush.core.round.ParticipantRole;
@@ -51,8 +50,8 @@ public final class RestartProcessFixture {
     }
 
     private void write(Path database, RoundPhase phase) throws Exception {
-        var defaults = RulesConfig.defaults().withMode(GameMode.NORMAL);
-        var rules = new RulesConfig(defaults.schemaVersion(), defaults.mode(), defaults.minecraftVersion(),
+        var defaults = RulesConfig.defaults();
+        var rules = new RulesConfig(defaults.schemaVersion(), defaults.minecraftVersion(),
                 defaults.difficulty(), defaults.generationRule(), defaults.combatValues(),
                 2_000, 4_000, 1_000);
         try (var store = new SqliteRoundStore(database)) {
@@ -98,18 +97,11 @@ public final class RestartProcessFixture {
                 clock.addAndGet(nanos(2));
                 tick(session);
                 unlock(session, NEW_NAME);
-                clock.addAndGet(nanos(2));
-                session.captureDeath(snapshot(session).roundId(), PLAYER, 1, 0, null, Optional.empty(), false);
-                idle(session);
-                clock.addAndGet(nanos(4)); // Respawning time must not accrue challenge or human time.
-                session.normalRespawn(PLAYER, 1);
-                idle(session);
-                unlock(session, NEW_NAME);
-                clock.addAndGet(nanos(1));
+                clock.addAndGet(nanos(3));
                 progress(session, NEW_NAME, Set.of("minecraft:story/mine_stone", "minecraft:story/upgrade_tools"),
                         "b".repeat(64));
-                equal(2, snapshot(session).participants().get(PLAYER).lifeSequence(), "Current identity has second life");
-                equal(nanos(3), session.view().orElseThrow().challengeNanos(), "Respawn delay excluded");
+                equal(1, snapshot(session).participants().get(PLAYER).lifeSequence(), "Current identity keeps its first life");
+                equal(nanos(3), session.view().orElseThrow().challengeNanos(), "Only unlocked play accrues challenge time");
             }
             if (phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING || phase == RoundPhase.ROTATING) {
                 finish(session);
@@ -123,8 +115,6 @@ public final class RestartProcessFixture {
                 }
             }
             equal(phase, snapshot(session).phase(), "Requested phase reached through Session transitions");
-            session.updateNextMode(GameMode.HARDCORE, "restart-fixture", reply -> check(reply.success(), reply.message()));
-            idle(session);
             clock.addAndGet(TimeUnit.MILLISECONDS.toNanos(500));
             var boundary = session.view().orElseThrow();
             session.prepareStop();
@@ -162,7 +152,6 @@ public final class RestartProcessFixture {
             equal(stopped.sequence(), restored.sequence(), "Clean recovery retains sequence");
             equal(stopped.seed(), restored.seed(), "Clean recovery retains seed");
             equal(stopped.rules(), restored.rules(), "Clean recovery retains active rule snapshot");
-            equal(GameMode.HARDCORE, session.nextRules().orElseThrow().mode(), "Next mode remains separate from active normal rules");
             equal(stopped.challengeNanos(), restored.challengeNanos(), "No prior-process clock origin or downtime in challenge");
             equal(remaining, restored.remainingPhaseNanos(), "No downtime in phase remainder");
             equal(stopped.result(), restored.result(), "Terminal result survives exactly");
@@ -214,7 +203,7 @@ public final class RestartProcessFixture {
                     equal(stopped.challengeNanos() + nanos(1), snapshot(session).challengeNanos(), "Race resumes only after verified reconnect");
                     var player = snapshot(session).participants().get(PLAYER);
                     equal(stopped.participants().get(PLAYER).humanNanos() + nanos(1), player.humanNanos(), "Human accrual resumes from saved duration");
-                    equal(2, player.lifeSequence(), "Reconnect cannot replace saved second life");
+                    equal(1, player.lifeSequence(), "Reconnect cannot replace the saved life");
                 }
                 case SETTLING, CELEBRATING, ROTATING -> {
                     equal(stopped.challengeNanos(), snapshot(session).challengeNanos(), "Rotation cannot alter result time");
@@ -232,7 +221,7 @@ public final class RestartProcessFixture {
             verifyHistory(store, previous, stopped, false);
             if (phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING || phase == RoundPhase.ROTATING) {
                 equal(3L, saved.sequence(), "Recovered terminal creates exactly one next round");
-                equal(GameMode.HARDCORE, saved.rules().mode(), "New round takes pending rules");
+                equal(stopped.rules(), saved.rules(), "New round takes the same pending rules");
                 check(saved.participants().isEmpty() && saved.result() == null, "Next round has no old identity or result");
                 equal(0L, store.endEntrantCount(saved.roundId()), "New round has no inherited statistics");
             } else {
@@ -290,7 +279,7 @@ public final class RestartProcessFixture {
         if (played && exactCurrentParticipation) {
             equal(NEW_NAME, currentRoster.getFirst().playerName(), "Current record uses current identity");
             equal(2, currentRoster.getFirst().advancementCount(), "Current progress stays separate");
-            equal(1, currentRoster.getFirst().deathCount(), "Current death stays separate");
+            equal(0, currentRoster.getFirst().deathCount(), "Current record keeps no prior death");
             equal(nanos(3), currentRoster.getFirst().firstEndNanos(), "Current first-end time stays separate");
             equal(Set.of("b".repeat(64)), currentRoster.getFirst().advancementSetFingerprints(), "Current advancement set stays separate");
         }

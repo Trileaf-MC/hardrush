@@ -24,7 +24,7 @@ public record RoundTab(String header, String footer) {
                 || round.phase() == RoundPhase.SETTLING || round.phase() == RoundPhase.CELEBRATING) {
             state += " · 剩余 " + seconds(round.remainingPhaseNanos()) + " 秒";
         }
-        String header = "HardRush · 第 " + round.sequence() + " 轮 · " + LibraryText.mode(round.rules().mode())
+        String header = "HardRush · 第 " + round.sequence() + " 轮"
                 + "\n" + state + " · 用时 " + duration(round.challengeMillis());
         String footer = "人类 " + humans + (offline > 0 ? "（离线 " + offline + "）· " : " · ")
                 + "怪物 " + monsters + (offlineMonsters > 0 ? "（离线 " + offlineMonsters + "）" : "")

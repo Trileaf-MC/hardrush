@@ -2,7 +2,6 @@ package dev.hardrush.core.round;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -18,10 +17,10 @@ class ParticipationExitTest {
             MonsterRole.CREEPER, MonsterDimension.NETHER, 0, 4, Map.of(MonsterSkill.ZOMBIE_SUMMON, 80_000L)); }
     private Participant monster() { return new Participant(m, "Monster", ParticipantRole.MONSTER_LOBBY,
             true, false, 50, 0, 1, 2, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 3, Map.of()); }
-    private RoundEngine engine(GameMode mode, RoundPhase phase, long remaining, Participant... participants) {
+    private RoundEngine engine(RoundPhase phase, long remaining, Participant... participants) {
         var players = new LinkedHashMap<UUID, Participant>();
         for (var p : participants) players.put(p.id(), p);
-        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults().withMode(mode), phase,
+        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults(), phase,
                 PauseReason.SERVER_STOPPED, 100, remaining, players, true, false, null);
         var e = RoundEngine.restore(stored, clock::get);
         for (var p : participants) if (p.online()) apply(e, e.proposeOnline(UUID.randomUUID(), p.id(), p.name(), true));
@@ -34,7 +33,7 @@ class ParticipationExitTest {
     private static void apply(RoundEngine e, RoundTransition t) { assertTrue(e.accept(t)); }
 
     @Test void voluntaryExitStopsOnlyThatPlayersClockAndRetainsHistoryWithoutDeathRewards() {
-        var e = engine(GameMode.HARDCORE, RoundPhase.RUNNING, 0, human(a), human(b), monster());
+        var e = engine(RoundPhase.RUNNING, 0, human(a), human(b), monster());
         clock.addAndGet(5_000_000_000L);
         var proposal = exit(e, a, ParticipantRole.WITHDRAWN);
         assertEquals(ParticipantRole.HUMAN_ACTIVE, e.committed().participants().get(a).role());
@@ -52,7 +51,7 @@ class ParticipationExitTest {
     }
 
     @Test void disqualificationRetainsOfflineIdentityAndMarksTheRoundForReview() {
-        var e = engine(GameMode.NORMAL, RoundPhase.RUNNING, 0, human(a).withSession("Offline", false), human(b));
+        var e = engine(RoundPhase.RUNNING, 0, human(a).withSession("Offline", false), human(b));
         apply(e, exit(e, a, ParticipantRole.DISQUALIFIED));
         assertTrue(e.view().timingUncertain());
         assertFalse(e.view().participants().get(a).online());
@@ -62,18 +61,17 @@ class ParticipationExitTest {
 
     @Test void excludedPlayersCannotReenterThroughAnyExistingLifeOrMonsterEntrance() {
         for (var role : new ParticipantRole[]{ParticipantRole.WITHDRAWN, ParticipantRole.DISQUALIFIED}) {
-            var e = engine(GameMode.HARDCORE, RoundPhase.RUNNING, 0, human(a), human(b), monster());
+            var e = engine(RoundPhase.RUNNING, 0, human(a), human(b), monster());
             apply(e, exit(e, a, role));
             assertThrows(IllegalStateException.class, () -> e.proposeJoin(UUID.randomUUID(), a, "Again"));
             assertThrows(IllegalStateException.class, () -> e.proposeRevival(UUID.randomUUID(), round, a, 2, 4));
             assertThrows(IllegalStateException.class, () -> e.proposeAdminGrantRevival(UUID.randomUUID(), round, a, 2, 0, 1));
-            assertThrows(IllegalStateException.class, () -> e.proposeAdmissionRespawn(UUID.randomUUID(), a, 2));
             assertFalse(e.pending());
         }
     }
 
     @Test void lastHumanExitUsesRescueAndRemovingTheRemainingReviverEndsTheRound() {
-        var e = engine(GameMode.HARDCORE, RoundPhase.RUNNING, 0, human(a), monster());
+        var e = engine(RoundPhase.RUNNING, 0, human(a), monster());
         apply(e, exit(e, a, ParticipantRole.WITHDRAWN));
         assertEquals(RoundPhase.RESCUE, e.view().phase());
         assertEquals(60_000, e.view().remainingPhaseMillis());
@@ -84,23 +82,16 @@ class ParticipationExitTest {
         assertEquals(RoundResult.Kind.FAILED, e.view().result().kind());
     }
 
-    @Test void ordinaryModeCannotRemainPausedForeverAfterItsLastHumanWithdraws() {
-        var e = engine(GameMode.NORMAL, RoundPhase.RUNNING, 0, human(a));
+    @Test void theLastHumanWithdrawingWithNobodyLeftToReviveEndsTheRound() {
+        var e = engine(RoundPhase.RUNNING, 0, human(a));
         apply(e, exit(e, a, ParticipantRole.WITHDRAWN));
         assertEquals(RoundPhase.SETTLING, e.view().phase());
         assertEquals(0, e.view().onlineHumans());
     }
 
-    @Test void aPendingNormalRespawnCanBeCancelledWithoutCreatingAnotherLife() {
-        var e = engine(GameMode.NORMAL, RoundPhase.RUNNING, 0, human(a).withRole(ParticipantRole.HUMAN_RESPAWNING), human(b));
-        apply(e, exit(e, a, ParticipantRole.DISQUALIFIED));
-        assertEquals(2, e.view().participants().get(a).lifeSequence());
-        assertEquals(RoundPhase.RUNNING, e.view().phase());
-    }
-
     @Test void cancellingTheLastPreparedPlayerReturnsToWaitingAndBlocksAssembly() {
         var lobby = new Participant(a, "Prepared", ParticipantRole.LOBBY, true, true, 0, -1, 0, false);
-        var e = engine(GameMode.NORMAL, RoundPhase.COUNTDOWN, 20_000_000_000L, lobby);
+        var e = engine(RoundPhase.COUNTDOWN, 20_000_000_000L, lobby);
         apply(e, exit(e, a, ParticipantRole.DISQUALIFIED));
         assertEquals(RoundPhase.WAITING, e.view().phase());
         assertFalse(e.view().participants().get(a).ready());
@@ -108,7 +99,7 @@ class ParticipationExitTest {
     }
 
     @Test void exitDoesNotResetAnExistingRescueDeadline() {
-        var e = engine(GameMode.HARDCORE, RoundPhase.RESCUE, 30_000_000_000L, monster(),
+        var e = engine(RoundPhase.RESCUE, 30_000_000_000L, monster(),
                 new Participant(a, "Visitor", ParticipantRole.LOBBY, true, false, 0, -1, 0, false));
         clock.addAndGet(5_000_000_000L);
         apply(e, exit(e, a, ParticipantRole.WITHDRAWN));
@@ -116,7 +107,7 @@ class ParticipationExitTest {
     }
 
     @Test void sanctionsCanUpgradeWithdrawalButWithdrawalCannotEraseSanctions() {
-        var e = engine(GameMode.NORMAL, RoundPhase.RUNNING, 0, human(a), human(b));
+        var e = engine(RoundPhase.RUNNING, 0, human(a), human(b));
         apply(e, exit(e, a, ParticipantRole.WITHDRAWN));
         assertThrows(IllegalStateException.class, () -> exit(e, a, ParticipantRole.WITHDRAWN));
         apply(e, exit(e, a, ParticipantRole.DISQUALIFIED));
@@ -125,7 +116,7 @@ class ParticipationExitTest {
     }
 
     @Test void staleIdentityAndUnknownExitKindsCannotAlterTheRoster() {
-        var e = engine(GameMode.NORMAL, RoundPhase.RUNNING, 0, human(a), human(b));
+        var e = engine(RoundPhase.RUNNING, 0, human(a), human(b));
         assertThrows(IllegalStateException.class, () -> e.proposeParticipationExit(UUID.randomUUID(), UUID.randomUUID(), a,
                 ParticipantRole.HUMAN_ACTIVE, 2, 4, ParticipantRole.DISQUALIFIED));
         assertThrows(IllegalStateException.class, () -> e.proposeParticipationExit(UUID.randomUUID(), round, a,
@@ -136,7 +127,7 @@ class ParticipationExitTest {
     }
 
     @Test void snapshotRestartKeepsExclusionsWhileTheNextRoundStartsFresh() {
-        var e = engine(GameMode.NORMAL, RoundPhase.RUNNING, 0, human(a), human(b));
+        var e = engine(RoundPhase.RUNNING, 0, human(a), human(b));
         apply(e, exit(e, a, ParticipantRole.DISQUALIFIED));
         apply(e, e.proposeCheckpoint(UUID.randomUUID(), true));
         var stored = RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(e.committed()));

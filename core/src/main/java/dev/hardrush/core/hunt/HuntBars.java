@@ -124,7 +124,7 @@ public final class HuntBars {
         return switch (target.role()) {
             case HUMAN_ACTIVE -> !target.online() ? TargetState.OFFLINE
                     : sameDimension ? TargetState.HUNTING : TargetState.OTHER_DIMENSION;
-            case HUMAN_RESPAWNING, MONSTER_LOBBY, MONSTER_DEPLOYED -> TargetState.KILLED;
+            case MONSTER_LOBBY, MONSTER_DEPLOYED -> TargetState.KILLED;
             default -> TargetState.GONE;
         };
     }

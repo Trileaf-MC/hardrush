@@ -1,7 +1,6 @@
 package dev.hardrush.player;
 
 import dev.hardrush.HardRushProperties;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.core.round.ParticipantRole;
@@ -35,7 +34,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundSetHealthPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -145,7 +143,7 @@ public final class PlayerProfiles implements AutoCloseable {
         var entry = service == null ? null : service.players.get(player.getUUID());
         return entry != null && entry.player == player && !service.closed && !entry.admitted
                 && (!dev.hardrush.participation.ParticipationControl.disabled(player.level().getServer(), player.getUUID()) || entry.exclusionInitialized)
-                && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit
+                && !entry.deathHeld
                 && player.isAlive() && player.gameMode.getGameModeForPlayer() == GameType.ADVENTURE
                 && dev.hardrush.round.RoundRuntime.lobbyActivityAllowed(player);
     }
@@ -155,7 +153,7 @@ public final class PlayerProfiles implements AutoCloseable {
         var service = SERVICES.get(player.level().getServer());
         var entry = service == null ? null : service.players.get(player.getUUID());
         return entry != null && entry.player == player && !service.closed && !entry.admitted && !entry.adminSpectating
-                && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit
+                && !entry.deathHeld
                 && entry.ready && entry.problem.isEmpty() && entry.diskSafe && player.isAlive()
                 && dev.hardrush.world.LobbyWorld.isLobby(player.level());
     }
@@ -177,7 +175,7 @@ public final class PlayerProfiles implements AutoCloseable {
         var service = SERVICES.get(player.level().getServer());
         var entry = service == null ? null : service.players.get(player.getUUID());
         return entry != null && entry.player == player && !service.closed && entry.admitted && !entry.adminSpectating
-                && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit && !entry.celebrationGuest
+                && !entry.deathHeld && !entry.celebrationGuest
                 && !entry.building && !entry.observing
                 && entry.ready && entry.problem.isEmpty() && entry.diskSafe && !isLocked(player)
                 && !player.isRemoved() && !player.isSpectator() && dev.hardrush.world.RoundWorldBundle.owns(player.level());
@@ -285,7 +283,6 @@ public final class PlayerProfiles implements AutoCloseable {
         reloadSuspendedBody(entry, body);
         ((ProfileTagged) player).hardrush$generation(entry.target);
         ((ProfileTagged) player).hardrush$isolated(true);
-        ((ProfileTagged) player).hardrush$respawnPermitted(false);
     }
 
     private static void clearPossessions(ServerPlayer player) {
@@ -310,7 +307,7 @@ public final class PlayerProfiles implements AutoCloseable {
         return service != null && !service.closed && entry != null && entry.player == player && entry.connected
                 && entry.ready && entry.diskSafe && entry.problem.isEmpty() && !entry.admitted
                 && (!dev.hardrush.participation.ParticipationControl.disabled(player.level().getServer(), player.getUUID()) || entry.exclusionInitialized)
-                && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit && player.isAlive();
+                && !entry.deathHeld && player.isAlive();
     }
 
     /** Commands or committed withdrawals grant observation; the target's OP status never implies a grant. */
@@ -547,11 +544,6 @@ public final class PlayerProfiles implements AutoCloseable {
         }
     }
 
-    public static boolean isRespawnAllowed(ServerPlayer player) {
-        return HardRushProperties.competitionEnabled() && ((ProfileTagged) player).hardrush$respawnPermitted()
-                && isLocked(player);
-    }
-
     public void onLogin(ServerPlayer player) { suspend(player, true); }
 
     /**
@@ -576,7 +568,6 @@ public final class PlayerProfiles implements AutoCloseable {
         entry.fromLogin = fromLogin;
         players.put(player.getUUID(), entry);
         tagged.hardrush$isolated(true);
-        tagged.hardrush$respawnPermitted(false);
         player.stopRiding();
         player.ejectPassengers();
         if (player.connection == null) {
@@ -623,7 +614,6 @@ public final class PlayerProfiles implements AutoCloseable {
         entry.deathHeld = true;
         // The admitted native death remains the authoritative save until it is suspended.
         // Persisting isolated=true here would make prepare() prefer its older living archive.
-        ((ProfileTagged) player).hardrush$respawnPermitted(false);
     }
 
     /** Scoped override: a committed monster is born in the persistent lobby, never at a human bed/anchor;
@@ -643,7 +633,7 @@ public final class PlayerProfiles implements AutoCloseable {
         requireMainThread();
         var entry = players.get(player.getUUID());
         var participant = round.participants().get(player.getUUID());
-        if (closed || round.rules().mode() != GameMode.HARDCORE || participant == null
+        if (closed || participant == null
                 || participant.role() != ParticipantRole.MONSTER_LOBBY || entry == null || entry.player != player
                 || !isReady(player.getUUID(), round)) return false;
         if (entry.monsterLobbyInitialized) return true;
@@ -730,7 +720,6 @@ public final class PlayerProfiles implements AutoCloseable {
         ((ProfileTagged) replacement).hardrush$generation(old.target);
         ((ProfileTagged) replacement).hardrush$lifeSequence(p.lifeSequence());
         ((ProfileTagged) replacement).hardrush$isolated(true);
-        ((ProfileTagged) replacement).hardrush$respawnPermitted(false);
         ((ProfileTagged) replacement).hardrush$suspensionId(UUID.randomUUID().toString());
         placeExcluded(replacement);
         var rebound = new Entry(replacement, Optional.of(old.target), false, capture(replacement, false));
@@ -779,7 +768,6 @@ public final class PlayerProfiles implements AutoCloseable {
         if (!player.teleportTo(level, position.x, position.y, position.z, Set.of(), yaw, 0, true)) return false;
         player.setGameMode(GameType.SURVIVAL);
         ((ProfileTagged) player).hardrush$isolated(false);
-        ((ProfileTagged) player).hardrush$respawnPermitted(false);
         entry.admitted = true;
         entry.sortie = true;
         entry.deathHeld = false;
@@ -807,7 +795,7 @@ public final class PlayerProfiles implements AutoCloseable {
         var old = players.get(previous.getUUID());
         if (old != null && old.player == replacement && old.monsterLobbyInitialized) return;
         var participant = round.participants().get(replacement.getUUID());
-        if (round.rules().mode() != GameMode.HARDCORE || participant == null
+        if (participant == null
                 || participant.role() != ParticipantRole.MONSTER_LOBBY || old == null
                 || !generation(round).equals(old.target)) throw new IllegalStateException("怪物大厅缺少已提交死亡身份");
         var books = campHistoryBooks(old, previous);
@@ -817,7 +805,6 @@ public final class PlayerProfiles implements AutoCloseable {
         ((ProfileTagged) replacement).hardrush$generation(old.target);
         ((ProfileTagged) replacement).hardrush$lifeSequence(participant.lifeSequence());
         ((ProfileTagged) replacement).hardrush$isolated(true);
-        ((ProfileTagged) replacement).hardrush$respawnPermitted(false);
         ((ProfileTagged) replacement).hardrush$suspensionId(UUID.randomUUID().toString());
         var camp = dev.hardrush.world.LobbyWorld.open(server);
         if (camp.ready() && lobby.get() == camp.holdingLevel()) placeInLobby(replacement, dev.hardrush.core.lobby.plan.Landing.MONSTER);
@@ -901,7 +888,6 @@ public final class PlayerProfiles implements AutoCloseable {
             // The witch's carried revival supplies are part of this body, so they enter the resume snapshot below with it.
             dev.hardrush.revival.RevivalSupplies.fill(player, participant);
             ((ProfileTagged) player).hardrush$lifeSequence(participant.lifeSequence());
-            ((ProfileTagged) player).hardrush$respawnPermitted(false);
             // The respawn packet of this crossing carries it: the vanilla recovery compass points at the last human death.
             player.setLastDeathLocation(dev.hardrush.revival.FallenCompass.claim(server, player.getUUID(), round.roundId(), participant.lifeSequence()));
             if (!player.teleportTo(spawnLevel, spawn.x, spawn.y, spawn.z, Set.of(), landing.yaw(), 0, true)) {
@@ -911,7 +897,6 @@ public final class PlayerProfiles implements AutoCloseable {
             player.setGameMode(GameType.SURVIVAL);
             entry.monsterLobbyInitialized = false;
             entry.deathHeld = false;
-            entry.awaitingRespawn = false;
             entry.admitted = false;
             entry.ready = false;
             entry.fresh = false;
@@ -960,31 +945,14 @@ public final class PlayerProfiles implements AutoCloseable {
         player.setHealth(player.getMaxHealth());
     }
 
-    /** Ordinary vanilla respawn preserves ender storage/advancements and the vanilla bed/anchor destination. */
-    public void onRespawn(ServerPlayer previous, ServerPlayer replacement, RoundSnapshot round) {
+    /**
+     * A native respawn into a round world that no committed identity explains: a dead human becomes a camp monster,
+     * so its replacement body belongs in the lobby, quarantined, until the round says otherwise.
+     */
+    public void onUnexpectedRespawn(ServerPlayer replacement) {
         requireMainThread();
-        var entry = players.get(previous.getUUID());
-        if (round.rules().mode() != GameMode.NORMAL || entry == null || entry.player != previous || !entry.admitted && !entry.deathScreenPermit
-                || !generation(round).equals(entry.target)) {
-            suspend(replacement, false);
-            moveToLobby(replacement);
-            return;
-        }
-        ((ProfileTagged) replacement).hardrush$generation(entry.target);
-        ((ProfileTagged) replacement).hardrush$suspensionId(((ProfileTagged) previous).hardrush$suspensionId());
-        ((ProfileTagged) replacement).hardrush$isolated(false);
-        var participant = round.participants().get(replacement.getUUID());
-        if (participant == null) throw new IllegalStateException("普通重生缺少本轮参与身份");
-        int nextLife = Math.addExact(participant.lifeSequence(), 1);
-        ((ProfileTagged) replacement).hardrush$lifeSequence(nextLife);
-        ((ProfileTagged) replacement).hardrush$respawnPermitted(false);
-        var rebound = new Entry(replacement, Optional.of(entry.target), false, capture(replacement, false));
-        rebound.target = entry.target;
-        rebound.awaitingRespawn = true;
-        rebound.expectedRespawnLife = nextLife;
-        ((ProfileTagged) replacement).hardrush$isolated(true);
-        players.put(replacement.getUUID(), rebound);
-        prepare(rebound, entry.target);
+        suspend(replacement, false);
+        moveToLobby(replacement);
     }
 
     /**
@@ -993,82 +961,6 @@ public final class PlayerProfiles implements AutoCloseable {
      */
     private static boolean humansMayEnter(RoundSnapshot round) {
         return round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE;
-    }
-
-    /** Unlock the vanilla bed/anchor destination only after the replacement life has durably committed. */
-    public boolean confirmRespawn(ServerPlayer player, RoundSnapshot round) {
-        requireMainThread();
-        var entry = players.get(player.getUUID());
-        var participant = round.participants().get(player.getUUID());
-        if (closed || round.rules().mode() != GameMode.NORMAL || !humansMayEnter(round)
-                || entry == null || entry.player != player || !isReady(player.getUUID(), round)
-                || participant == null || participant.role() != ParticipantRole.HUMAN_ACTIVE
-                || participant.lifeSequence() != entry.expectedRespawnLife) return false;
-        if (!entry.awaitingRespawn) return entry.admitted;
-        entry.awaitingRespawn = false;
-        entry.admitted = true;
-        ((ProfileTagged) player).hardrush$isolated(false);
-        ((ProfileTagged) player).hardrush$respawnPermitted(false);
-        return true;
-    }
-
-    /** Restore a committed dead human's same-round context, exposing only vanilla's respawn request. */
-    public boolean permitRespawn(ServerPlayer player, RoundSnapshot round, Predicate<ServerLevel> belongsToRound) {
-        requireMainThread();
-        var entry = players.get(player.getUUID());
-        var participant = round.participants().get(player.getUUID());
-        if (closed || round.rules().mode() != GameMode.NORMAL || round.phase() != RoundPhase.RUNNING
-                || !isReady(player.getUUID(), round) || entry.player != player
-                || participant == null || participant.role() != ParticipantRole.HUMAN_RESPAWNING) return false;
-        if (entry.admitted && entry.deathHeld) {
-            entry.deathScreenPermit = true;
-            ((ProfileTagged) player).hardrush$respawnPermitted(true);
-            return true;
-        }
-        if (entry.fresh || entry.admitted) return false;
-        if (entry.deathScreenPermit || entry.awaitingRespawn) return true;
-        try {
-            var snapshot = entry.resume;
-            if (snapshot == null) throw new IllegalStateException("本轮死亡恢复档案缺失");
-            int savedLife = snapshot.getIntOr("hardrush_life_sequence", 0);
-            float health = snapshot.getFloatOr("Health", 0);
-            int nextLife = Math.addExact(participant.lifeSequence(), 1);
-            boolean deadLife = health <= 0 && savedLife == participant.lifeSequence();
-            boolean newbornLife = health > 0 && savedLife == nextLife;
-            if (!deadLife && !newbornLife) throw new IllegalStateException("原版存档与死亡生命序号不一致，保留档案等待核验");
-            var dimension = snapshot.getString("Dimension").map(Identifier::parse)
-                    .map(id -> ResourceKey.create(Registries.DIMENSION, id)).map(server::getLevel).orElse(null);
-            if (dimension == null || !belongsToRound.test(dimension)) throw new IllegalStateException("死亡位置不属于本轮已就绪维度");
-            player.load(TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), snapshot.copy()));
-            ((ProfileTagged) player).hardrush$clearLoadedProfile();
-            restoreCarriedAndCrafting(player, snapshot);
-            restoreAdvancements(player, snapshot);
-            var position = player.position();
-            if (!player.teleportTo(dimension, position.x, position.y, position.z, Set.of(), player.getYRot(), player.getXRot(), true)) {
-                throw new IllegalStateException("本轮死亡档案恢复传送被拒绝");
-            }
-            ((ProfileTagged) player).hardrush$generation(entry.target);
-            ((ProfileTagged) player).hardrush$isolated(true);
-            ((ProfileTagged) player).hardrush$lifeSequence(savedLife);
-            ((ProfileTagged) player).hardrush$respawnPermitted(deadLife);
-            entry.deathScreenPermit = deadLife;
-            entry.awaitingRespawn = newbornLife;
-            entry.expectedRespawnLife = nextLife;
-            player.resetSentInfo();
-            player.inventoryMenu.sendAllDataToRemote();
-            player.connection.send(new ClientboundSetHealthPacket(player.getHealth(), player.getFoodData().getFoodLevel(), player.getFoodData().getSaturationLevel()));
-            return true;
-        } catch (RuntimeException error) { fail(entry, error); moveToLobby(player); return false; }
-    }
-
-    /** A stamped vanilla newborn saved before SQLite completion needs the existing replacement life committed, not a second respawn. */
-    public boolean respawnCommitPending(ServerPlayer player, RoundSnapshot round) {
-        var entry = players.get(player.getUUID());
-        var participant = round.participants().get(player.getUUID());
-        return entry != null && entry.player == player && entry.awaitingRespawn && !entry.deathScreenPermit
-                && isReady(player.getUUID(), round) && participant != null
-                && participant.role() == ParticipantRole.HUMAN_RESPAWNING
-                && entry.expectedRespawnLife == participant.lifeSequence() + 1;
     }
 
     public void tick(RoundSnapshot round) {
@@ -1102,7 +994,7 @@ public final class PlayerProfiles implements AutoCloseable {
             }
             // A new human life may already be at its round spawn while its journal is saving.
             // Only a completed profile can be reconciled as a movable lobby body.
-            if (entry.ready && !entry.admitted && !entry.deathHeld && !entry.awaitingRespawn && !entry.deathScreenPermit
+            if (entry.ready && !entry.admitted && !entry.deathHeld
                     && entry.player.isAlive()) {
                 if (entry.player.level() != lobby.get()) moveToLobby(entry.player);
                 applyLobbyMode(entry.player);
@@ -1131,7 +1023,7 @@ public final class PlayerProfiles implements AutoCloseable {
         // A builder's creative body must never be written into a checkpoint.
         return ioFailure == null && !closed && players.values().stream().noneMatch(entry -> entry.building)
                 && server.getPlayerList().getPlayers().stream()
-                .allMatch(player -> isReady(player.getUUID(), round) && !players.get(player.getUUID()).awaitingRespawn
+                .allMatch(player -> isReady(player.getUUID(), round)
                         && !players.get(player.getUUID()).deathHeld);
     }
 
@@ -1187,7 +1079,6 @@ public final class PlayerProfiles implements AutoCloseable {
             closeSuspendedContainer(player);
             var tagged = (ProfileTagged) player;
             tagged.hardrush$isolated(true);
-            tagged.hardrush$respawnPermitted(false);
             tagged.hardrush$clearLoadedProfile();
             moveToLobby(player);
         }
@@ -1301,8 +1192,6 @@ public final class PlayerProfiles implements AutoCloseable {
         returnToLobby(player);
         entry = players.get(player.getUUID());
         entry.deathHeld = false;
-        entry.awaitingRespawn = false;
-        entry.deathScreenPermit = false;
         clearMonsterLobbyState(player);
         moveToLobby(player);
         player.setKnownMovement(Vec3.ZERO);
@@ -1330,8 +1219,6 @@ public final class PlayerProfiles implements AutoCloseable {
         entry.celebrationGuest = true;
         entry.adminSpectating = false;
         entry.deathHeld = false;
-        entry.awaitingRespawn = false;
-        entry.deathScreenPermit = false;
         entry.observing = false;
     }
 
@@ -1362,7 +1249,6 @@ public final class PlayerProfiles implements AutoCloseable {
         tags.hardrush$lifeSequence(((ProfileTagged) previous).hardrush$lifeSequence());
         tags.hardrush$suspensionId(((ProfileTagged) previous).hardrush$suspensionId());
         tags.hardrush$isolated(true);
-        tags.hardrush$respawnPermitted(false);
         var rebound = new Entry(replacement, old.source, true, old.original);
         rebound.target = old.target;
         rebound.resume = old.resume;
@@ -1419,9 +1305,8 @@ public final class PlayerProfiles implements AutoCloseable {
                         : !humansMayEnter(round)) || participant == null
                 || participant.role() != ParticipantRole.HUMAN_ACTIVE
                 || entry.player != player || !generation(round).equals(entry.target)) return false;
-        if (celebration && (entry.fresh || entry.awaitingRespawn)) return false;
+        if (celebration && entry.fresh) return false;
         if (entry.admitted) return true;
-        if (entry.awaitingRespawn) return confirmRespawn(player, round);
         try {
             if (!entry.fresh) {
                 var snapshot = entry.resume;
@@ -1455,7 +1340,6 @@ public final class PlayerProfiles implements AutoCloseable {
             ((ProfileTagged) player).hardrush$generation(entry.target);
             ((ProfileTagged) player).hardrush$lifeSequence(participant.lifeSequence());
             ((ProfileTagged) player).hardrush$isolated(false);
-            ((ProfileTagged) player).hardrush$respawnPermitted(false);
             entry.admitted = true;
             player.setGameMode(GameType.SURVIVAL);
             if (!entry.fresh) {
@@ -1562,7 +1446,6 @@ public final class PlayerProfiles implements AutoCloseable {
                     ((ProfileTagged) entry.player).hardrush$generation(target);
                     ((ProfileTagged) entry.player).hardrush$suspensionId(entry.resume.getStringOr(SUSPENSION_ID, ""));
                     ((ProfileTagged) entry.player).hardrush$isolated(true);
-                    ((ProfileTagged) entry.player).hardrush$respawnPermitted(false);
                     closeSuspendedContainer(entry.player);
                     if (plan.transition().phase() == ProfileJournal.Phase.VERIFIED) {
                         entry.diskSafe = true;
@@ -1633,7 +1516,6 @@ public final class PlayerProfiles implements AutoCloseable {
         entry.ready = false;
         entry.admitted = false;
         ((ProfileTagged) entry.player).hardrush$isolated(true);
-        ((ProfileTagged) entry.player).hardrush$respawnPermitted(false);
         LOGGER.error("{} UUID={}", entry.problem, entry.player.getUUID(), error);
         if (entry.connected && entry.player.connection != null) {
             dev.hardrush.notice.Notices.personal(entry.player, "你的存档读取出错，本轮暂时不能参赛，请联系管理员");
@@ -1813,7 +1695,6 @@ public final class PlayerProfiles implements AutoCloseable {
         player.getAdvancements().flushDirty(player, true);
         ((ProfileTagged) player).hardrush$generation(generation);
         ((ProfileTagged) player).hardrush$lifeSequence(0);
-        ((ProfileTagged) player).hardrush$respawnPermitted(false);
         ((ProfileTagged) player).hardrush$isolated(true);
         player.resetSentInfo();
         player.onUpdateAbilities();
@@ -1874,9 +1755,6 @@ public final class PlayerProfiles implements AutoCloseable {
         boolean exclusionInitialized;
         ParticipantRole exclusionRole;
         boolean observing;
-        boolean awaitingRespawn;
-        int expectedRespawnLife;
-        boolean deathScreenPermit;
         boolean deathHeld;
         boolean monsterLobbyInitialized;
         boolean celebrationGuest;

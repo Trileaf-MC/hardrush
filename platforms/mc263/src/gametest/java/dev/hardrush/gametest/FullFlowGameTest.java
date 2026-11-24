@@ -335,11 +335,13 @@ public final class FullFlowGameTest {
                 .thenWaitUntil(()->f.await(visitor.client.packets().stream().anyMatch(ClientboundOpenBookPacket.class::isInstance),"Library reads a book from inventory slot 35 via native open-book packet"))
                 .thenExecute(()->{
                     state.facility(visitor.player,LobbyFunction.HISTORY);
-                }).thenWaitUntil(()->f.await(state.has(visitor.player,"普通模式排行榜"),"Mode leaderboards available"))
-                .thenExecute(()->state.click(visitor.player,"普通模式排行榜"))
-                .thenWaitUntil(()->f.await(state.has(visitor.player,"还没有通关成绩"),"Normal board excludes hardcore victory and synthetic aborted rounds"))
+                }).thenWaitUntil(()->f.await(state.has(visitor.player,"当前规则排行榜"),"Current-rules leaderboard available"))
+                .thenExecute(()->state.click(visitor.player,"当前规则排行榜"))
+                .thenWaitUntil(()->f.await(state.has(visitor.player,"当前规则排行榜")&&state.has(visitor.player,"返回轮次列表"),"Current-rules board opened"))
+                .thenExecute(()->test.assertTrue(java.util.stream.IntStream.range(100,122).noneMatch(n->state.has(visitor.player,"· 第 "+n+" 轮")),
+                        "The board excludes synthetic aborted rounds"))
                 .thenExecute(()->{
-                    System.out.println("FULL_FLOW_LIBRARY_PASS 22 synthetic terminal rounds / 42 entrants; history and roster pages; volume2; full inventory; separate normal board");
+                    System.out.println("FULL_FLOW_LIBRARY_PASS 22 synthetic terminal rounds / 42 entrants; history and roster pages; volume2; full inventory; current-rules board");
                     f.monster.disconnect();f.target.disconnect();visitor.disconnect();state.clearClock();
                 }).thenSucceed();
     }
@@ -382,7 +384,7 @@ public final class FullFlowGameTest {
                     for(int index=0;index<22;index++){
                         var id=UUID.randomUUID();var participants=new LinkedHashMap<UUID,Participant>();
                         for(int n=0;n<42;n++){var p=new Participant(UUID.randomUUID(),"PageFixture"+n,ParticipantRole.HUMAN_ACTIVE,false,false,0,0,1,false);participants.put(p.id(),p);}
-                        var start=new RoundSnapshot(id,100+index,42,0,rules.withMode(index%2==0?dev.hardrush.core.config.GameMode.NORMAL:dev.hardrush.core.config.GameMode.HARDCORE),RoundPhase.RUNNING,PauseReason.NO_ONLINE_HUMANS,0,0,participants,false,false,null);
+                        var start=new RoundSnapshot(id,100+index,42,0,rules,RoundPhase.RUNNING,PauseReason.NO_ONLINE_HUMANS,0,0,participants,false,false,null);
                         store.commit(new dev.hardrush.persistence.SnapshotWrite(id,-1,0,RoundSnapshotCodec.encode(start),UUID.randomUUID(),"ROUND_CREATED"));
                         var ended=new RoundSnapshot(id,start.sequence(),42,1,start.rules(),RoundPhase.SETTLING,PauseReason.SETTLED,0,0,participants,false,false,new RoundResult(RoundResult.Kind.ABORTED,null,"synthetic pagination fixture; not a played round"));
                         store.commit(new dev.hardrush.persistence.SnapshotWrite(id,0,1,RoundSnapshotCodec.encode(ended),UUID.randomUUID(),"FINISH"));

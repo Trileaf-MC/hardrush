@@ -15,6 +15,4 @@ public interface ProfileTagged {
     void hardrush$clearLoadedProfile();
     int hardrush$lifeSequence();
     void hardrush$lifeSequence(int lifeSequence);
-    boolean hardrush$respawnPermitted();
-    void hardrush$respawnPermitted(boolean permitted);
 }

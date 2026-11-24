@@ -1,6 +1,5 @@
 package dev.hardrush.revival;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.core.round.RoundSnapshot;
 import java.util.*;
@@ -24,7 +23,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Revival charges beside the names in the player list (docs/plan/复生图腾掉落.md 1.7, 2.8): a gold {@code ✦n} for every
- * online participant of a hardcore round who holds at least one charge, humans and monsters alike, read from
+ * online participant of a round who holds at least one charge, humans and monsters alike, read from
  * {@link Access#chargesLeft} so it always matches the projected stack.
  *
  * <p>Packets only: while it {@linkplain #takesOver takes over}, every connection gets its own objective
@@ -32,7 +31,7 @@ import org.slf4j.LoggerFactory;
  * or outlives the round. The name holds a colon, which {@code /scoreboard objectives add} (an unquoted
  * {@code StringArgumentType.word()}) cannot type, so the server owner's objectives never collide with it; an objective of
  * that name another mod adds through the API suspends the list instead, since a second ADD of a name the client already
- * has disconnects it. Outside a running or rescuing hardcore round nothing of ours is shown: the objective is removed
+ * has disconnects it. Outside a running or rescuing round nothing of ours is shown: the objective is removed
  * and the {@code list} slot goes back to whatever the server scoreboard shows there. Each score carries its own
  * {@link FixedFormat}; a player without a score is shown blank by the native {@code PlayerTabOverlay}, so a cleared count
  * is a reset.
@@ -85,14 +84,14 @@ public final class TotemTab {
     /** The fixed text a count is shown as. */
     static Component badge(int count) { return Component.literal("✦" + count).withStyle(ChatFormatting.GOLD); }
 
-    /** Whether {@code round} owns the list slot: a hardcore round that is running or rescuing. */
+    /** Whether {@code round} owns the list slot: a round that is running or rescuing. */
     static boolean takesOver(RoundSnapshot round) {
-        return round != null && round.rules().mode() == GameMode.HARDCORE
+        return round != null
                 && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE);
     }
 
     /**
-     * Who shows which count: online participants of a hardcore round that is running or rescuing, not withdrawn or
+     * Who shows which count: online participants of a round that is running or rescuing, not withdrawn or
      * disqualified, with at least one charge left; keyed by the name the player list shows. Empty while the round does
      * not {@linkplain #takesOver take over} the list slot.
      */

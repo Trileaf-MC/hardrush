@@ -2,7 +2,6 @@ package dev.hardrush.core.record;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import java.util.Map;
@@ -24,7 +23,7 @@ final class RoundTabTest {
         var round = snapshot(RoundPhase.RUNNING, PauseReason.NONE, 0,
                 Map.of(online.id(), online, offline.id(), offline, id, monster), false, null);
         var text = RoundTab.from(round, 2, null);
-        assertTrue(text.header().contains("极限挑战"));
+        assertTrue(text.header().startsWith("HardRush · 第 1 轮\n"), text.header());
         assertTrue(text.footer().contains("人类 1（离线 1）· 怪物 1\n"));
         assertTrue(text.footer().contains("进入过末地 2 人"));
         assertThrows(IllegalArgumentException.class, () -> RoundTab.from(round, -1, null));
@@ -88,7 +87,7 @@ final class RoundTabTest {
     }
     private static RoundSnapshot snapshot(RoundPhase phase, PauseReason pause, long remaining,
             Map<UUID, Participant> players, boolean uncertain, RoundResult result) {
-        return new RoundSnapshot(UUID.randomUUID(), 1, 12345, 1, RulesConfig.defaults().withMode(GameMode.HARDCORE),
+        return new RoundSnapshot(UUID.randomUUID(), 1, 12345, 1, RulesConfig.defaults(),
                 phase, pause, 3_723_999_000_000L, remaining, players, false, uncertain, result);
     }
 }

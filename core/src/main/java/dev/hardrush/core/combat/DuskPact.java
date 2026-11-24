@@ -11,6 +11,8 @@ public final class DuskPact {
     public static final String INTRO = "契约保护你免受其他玩家伤害，持续到日落";
     public static final String RELEASED = "黄昏契约已解除";
     public static final String BLOCKED = "黄昏契约生效中，不能攻击其他玩家";
+    /** Names the revival totem a human kill drops after dusk. */
+    public static final String RELEASED_SUBTITLE = "夜幕降临 · 击杀人类可夺得复生图腾";
     public enum Color { GREEN, YELLOW, RED }
     /** {@code tab} is always available; the bossbar only appears from the warning onward. */
     public record Display(Color color, String text, String tab, String blocked, long seconds, float progress, boolean advancing) {
@@ -19,13 +21,8 @@ public final class DuskPact {
 
     private DuskPact() {}
 
-    public static String releasedSubtitle(boolean hardcore) {
-        return hardcore ? "夜幕降临 · 击杀人类可夺得复生图腾" : "夜幕降临 · 祝你好运";
-    }
-
-    /** {@code hardcore} names the revival totem a human kill drops after dusk; normal rounds keep the plain warning. */
-    public static Display display(long ticks, float partialTick, float clockRate, double ticksPerSecond, boolean paused,
-                                  boolean hardcore) {
+    /** The warning names the revival totem a human kill drops after dusk. */
+    public static Display display(long ticks, float partialTick, float clockRate, double ticksPerSecond, boolean paused) {
         double remaining = Math.max(0, DUSK_TICKS - ticks - partialTick);
         boolean advancing = !paused && clockRate > 0 && ticksPerSecond > 0;
         double realRemaining = advancing ? remaining / (clockRate * ticksPerSecond) : Double.MAX_VALUE;
@@ -34,7 +31,7 @@ public final class DuskPact {
         String time = advancing ? "%02d:%02d".formatted(seconds / 60, seconds % 60) : "昼夜暂停";
         String text = switch (color) {
             case GREEN -> "黄昏契约 · 日落前暂息纷争 · " + time;
-            case YELLOW -> hardcore ? "夜幕将至，击杀人类可夺得复生图腾 · " + time : "夜幕将至 · 距猎杀开始还有 " + time;
+            case YELLOW -> "夜幕将至，击杀人类可夺得复生图腾 · " + time;
             case RED -> seconds <= FINAL_SECONDS ? "准备作战 · " + seconds : "准备作战";
         };
         String blocked = advancing ? BLOCKED + " · " + time : BLOCKED;

@@ -87,7 +87,7 @@ class RevivalStoreTest {
         var base = RulesConfig.defaults();
         var values = new java.util.LinkedHashMap<>(base.combatValues());
         values.put("skeleton.burstCooldownMillis", 90_000.0);
-        var rules = new RulesConfig(base.schemaVersion(), base.mode(), base.minecraftVersion(), base.difficulty(),
+        var rules = new RulesConfig(base.schemaVersion(), base.minecraftVersion(), base.difficulty(),
                 base.generationRule(), values, base.startCountdownMillis(),
                 base.successCelebrationMillis(), base.failureDisplayMillis());
         try (var fixture = new Fixture(directory.toRealPath().resolve("revival.sqlite"), rules)) {

@@ -7,7 +7,6 @@ import dev.hardrush.core.combat.CombatActor;
 import dev.hardrush.core.combat.CombatEvent;
 import dev.hardrush.core.combat.CombatEventCodec;
 import dev.hardrush.core.combat.CombatOrigin;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import java.nio.file.Path;
@@ -224,8 +223,8 @@ class TerminalTransactionTest {
     }
 
     private RoundSnapshot running() {
-        return new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults().withMode(GameMode.NORMAL), RoundPhase.RUNNING,
-                PauseReason.NONE, 100, 0, Map.of(player, new Participant(player, "Alice", ParticipantRole.HUMAN_RESPAWNING,
+        return new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults(), RoundPhase.RUNNING,
+                PauseReason.NONE, 100, 0, Map.of(player, new Participant(player, "Alice", ParticipantRole.MONSTER_LOBBY,
                 true, false, 100, 0, 1, false)), false, false, null);
     }
 

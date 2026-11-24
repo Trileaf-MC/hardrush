@@ -1,7 +1,6 @@
 package dev.hardrush.gametest;
 
 import com.mojang.authlib.GameProfile;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.round.*;
 import dev.hardrush.round.*;
@@ -14,7 +13,6 @@ import dev.hardrush.lobby.ButtonMenu;
 import dev.hardrush.lobby.LobbyMenus;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.HashedStack;
@@ -34,7 +32,6 @@ public final class StabilizationGameTest {
         var peers=new ArrayList<LobbyRuntimeGameTest.Fixture.Peer>();
         peers.add(f.monster);peers.add(f.target);
         for(int i=2;i<20;i++)peers.add(f.new Peer("Stabilize"+i));
-        var reply=new AtomicReference<RoundSession.Reply>();
         var state=new State(f,scene,peers,test);
         test.onEachTick(()->{
             if(f.clock!=null)f.clock.accumulateAndGet(System.nanoTime(),Math::max);
@@ -68,23 +65,11 @@ public final class StabilizationGameTest {
                     .thenExecute(()->f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
                     .thenWaitUntil(()->f.await(f.round().phase()==RoundPhase.RUNNING&&!f.session.mutationPending()&&peers.stream().filter(p->p.current()!=null).allMatch(p->!PlayerProfiles.isLocked(p.player)),"All connected humans admitted "+round))
                     .thenExecute(()->{
-                        test.assertValueEqual(f.round().rules().mode(),round==1?GameMode.NORMAL:GameMode.HARDCORE,"Alternating actual rules");
                         if(round==0){
                             var offline=peers.get(19);offline.player.getInventory().setItem(0,new ItemStack(Items.DIAMOND,13));
                             offline.player.getEnderChestInventory().setItem(0,new ItemStack(Items.EMERALD,7));offline.disconnect();
                         }
-                    }).thenWaitUntil(()->f.await(!f.session.mutationPending(),"Offline checkpoint drained "+round))
-                    .thenExecute(()->{reply.set(null);f.session.updateNextMode(round==0?GameMode.NORMAL:round==1?GameMode.HARDCORE:GameMode.NORMAL,"stabilization operator fixture",reply::set);
-                    }).thenWaitUntil(()->f.await(reply.get()!=null&&!f.session.mutationPending(),"Operator next-mode setting persisted "+round));
-            seq.thenExecute(()->test.assertTrue(reply.get().success(),"Next mode accepted: "+reply.get().message()));
-            if(round==1){
-                seq.thenExecute(()->f.monster.player.hurtServer(f.monster.player.level(),f.monster.player.damageSources().genericKill(),Float.MAX_VALUE))
-                        .thenWaitUntil(()->f.await(f.monster.participant().role()==ParticipantRole.HUMAN_RESPAWNING&&!f.session.mutationPending(),"Normal native death"))
-                        .thenExecute(()->{
-                            f.monster.player.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
-                            f.monster.player=f.monster.current();f.monster.acknowledge();
-                        }).thenWaitUntil(()->f.await(f.monster.participant().lifeSequence()==2&&!PlayerProfiles.isLocked(f.monster.player)&&!f.session.mutationPending(),"Normal button creates one life"));
-            }
+                    }).thenWaitUntil(()->f.await(!f.session.mutationPending(),"Offline checkpoint drained "+round));
             seq.thenExecute(()->scene.prepareDragon(f.target.player,f.monster.player))
                     .thenWaitUntil(()->f.await(scene.dragon()!=null,"Native first dragon fixture "+round))
                     .thenExecute(()->scene.finishDragon(f.target.player))
@@ -108,7 +93,7 @@ public final class StabilizationGameTest {
                     state.assertUiReleased(0);
                     test.assertValueEqual(f.server.getPlayerList().getPlayers().size(),0,"All native peers removed");
                     scene.clearClock();
-                    System.out.println("STABILIZATION_PASS connections=20 rounds=3 modes=hardcore/normal/hardcore cycles=8 offlineAcross=3; synthetic projection targets=41; low-health dragon/test clock; no graphics or performance claim");
+                    System.out.println("STABILIZATION_PASS connections=20 rounds=3 rounds=hardcore cycles=8 offlineAcross=3; synthetic projection targets=41; low-health dragon/test clock; no graphics or performance claim");
                 }).thenSucceed();
     }
 

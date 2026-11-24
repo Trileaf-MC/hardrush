@@ -61,7 +61,6 @@ public record RoundSnapshot(UUID roundId, long sequence, long seed, long version
     public long onlineHumans() { return participants.values().stream().filter(p -> p.online() && p.role().isActiveHuman()).count(); }
     /** A rescue that started because every remaining human went offline; their reconnect also ends it. */
     public boolean awaitingReconnect() {
-        return phase == RoundPhase.RESCUE && participants.values().stream().anyMatch(p -> p.role().isActiveHuman()
-                || p.role() == ParticipantRole.HUMAN_RESPAWNING);
+        return phase == RoundPhase.RESCUE && participants.values().stream().anyMatch(p -> p.role().isActiveHuman());
     }
 }

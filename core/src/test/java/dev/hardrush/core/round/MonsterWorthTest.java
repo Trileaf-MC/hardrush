@@ -3,7 +3,6 @@ package dev.hardrush.core.round;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.hardrush.core.api.MonotonicClock;
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -65,9 +64,8 @@ class MonsterWorthTest {
         assertEquals(16_000, MonsterWorth.milliLevels(RULES, committed.wallet()));
     }
 
-    @Test void roundsWithoutWorthRulesOrOutsideHardcoreKeepWorthDisabled() {
+    @Test void roundsWithoutWorthRulesKeepWorthDisabled() {
         assertTrue(MonsterWorth.enabled(RULES));
-        assertFalse(MonsterWorth.enabled(RULES.withMode(GameMode.NORMAL)));
         var values = new TreeMap<>(RULES.combatValues());
         values.keySet().removeIf(key -> key.startsWith("worth."));
         var legacy = rules(values);
@@ -88,7 +86,7 @@ class MonsterWorthTest {
     }
 
     private static RulesConfig rules(Map<String, Double> values) {
-        return new RulesConfig(RULES.schemaVersion(), GameMode.HARDCORE, RULES.minecraftVersion(), RULES.difficulty(),
+        return new RulesConfig(RULES.schemaVersion(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(),
                 RULES.successCelebrationMillis(), RULES.failureDisplayMillis());
     }

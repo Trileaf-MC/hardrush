@@ -2,7 +2,6 @@ package dev.hardrush.core.hunt;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.hardrush.core.config.GameMode;
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.*;
 import java.util.Map;
@@ -12,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class LateShelterTest {
     static final long MINUTE = 60_000_000_000L;
-    final RulesConfig hardcore = RulesConfig.defaults().withMode(GameMode.HARDCORE);
+    final RulesConfig hardcore = RulesConfig.defaults();
 
     static Participant human(long joinedAt, int life, long lifeHuman) {
         return new Participant(UUID.randomUUID(), "Late", ParticipantRole.HUMAN_ACTIVE, true, false, lifeHuman, joinedAt, life, 0,
@@ -36,24 +35,23 @@ class LateShelterTest {
         assertFalse(LateShelter.sheltered(hardcore, null));
     }
 
-    @Test void onlyHardcorePersonalHuntsHaveIt() {
-        assertFalse(LateShelter.sheltered(RulesConfig.defaults().withMode(GameMode.NORMAL), human(1, 1, 0)));
+    @Test void onlyPersonalHuntsHaveIt() {
         assertFalse(LateShelter.sheltered(hardcore.withHuntRule(RulesConfig.HuntRule.LEGACY_VOTE), human(1, 1, 0)));
     }
 
     @Test void theDurationIsARuleAndOlderRulesWithoutTheKeyKeepTheDefault() {
         var values = new TreeMap<>(hardcore.combatValues());
         values.put(LateShelter.KEY, 90_000.0);
-        var custom = new RulesConfig(hardcore.schemaVersion(), hardcore.mode(), hardcore.minecraftVersion(), hardcore.difficulty(),
+        var custom = new RulesConfig(hardcore.schemaVersion(), hardcore.minecraftVersion(), hardcore.difficulty(),
                 hardcore.generationRule(), values, hardcore.startCountdownMillis(), hardcore.successCelebrationMillis(), hardcore.failureDisplayMillis());
         assertEquals(90_000_000_000L, LateShelter.durationNanos(custom));
         assertEquals("1 分钟", LateShelter.duration(custom), "90 seconds never promise two minutes");
         values.put(LateShelter.KEY, 45_000.0);
-        var brief = new RulesConfig(hardcore.schemaVersion(), hardcore.mode(), hardcore.minecraftVersion(), hardcore.difficulty(),
+        var brief = new RulesConfig(hardcore.schemaVersion(), hardcore.minecraftVersion(), hardcore.difficulty(),
                 hardcore.generationRule(), values, hardcore.startCountdownMillis(), hardcore.successCelebrationMillis(), hardcore.failureDisplayMillis());
         assertEquals("45 秒", LateShelter.duration(brief));
         values.remove(LateShelter.KEY);
-        var older = new RulesConfig(hardcore.schemaVersion(), hardcore.mode(), hardcore.minecraftVersion(), hardcore.difficulty(),
+        var older = new RulesConfig(hardcore.schemaVersion(), hardcore.minecraftVersion(), hardcore.difficulty(),
                 hardcore.generationRule(), values, hardcore.startCountdownMillis(), hardcore.successCelebrationMillis(), hardcore.failureDisplayMillis());
         assertEquals(5 * MINUTE, LateShelter.durationNanos(older));
     }

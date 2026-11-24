@@ -31,7 +31,7 @@ import net.minecraft.world.scores.TeamColor;
 
 /**
  * Revival totems lying in the world (docs/plan/复生图腾掉落.md 2.3, 2.4; docs/plan/复生图腾守恒.md 1.1 to 1.5): every
- * hardcore human life that ends, and every revival totem that saves one, releases a totem that no monster earned, at
+ * human life that ends, and every revival totem that saves one, releases a totem that no monster earned, at
  * the moment of the death or the save ({@link TotemDrop#release}). Any human of the round or monster out hunting may
  * take it, except the very human life that released it ({@link LooseTotem#ownedBy}). The committed round's
  * {@code looseTotems} registry is the only proof a floor totem may be taken, and a floor totem is known by its drop

@@ -47,7 +47,7 @@ public final class CombatGameTest {
             java.nio.file.Files.createDirectories(root);
             database = root.resolve("terminal.sqlite");
         } catch (java.io.IOException error) { throw new IllegalStateException(error); }
-        var rules = dev.hardrush.core.config.RulesConfig.defaults().withMode(dev.hardrush.core.config.GameMode.NORMAL);
+        var rules = dev.hardrush.core.config.RulesConfig.defaults();
         var snapshot = new dev.hardrush.core.round.RoundSnapshot(UUID.randomUUID(), 1, 12345, 0, rules,
                 dev.hardrush.core.round.RoundPhase.RUNNING, dev.hardrush.core.round.PauseReason.SERVER_STOPPED,
                 0, 0, Map.of(player.getUUID(), new dev.hardrush.core.round.Participant(player.getUUID(), player.getScoreboardName(),

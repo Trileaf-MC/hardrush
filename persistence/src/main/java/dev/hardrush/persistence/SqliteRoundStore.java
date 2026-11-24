@@ -21,7 +21,7 @@ import java.util.UUID;
 
 /** Durable, Minecraft-independent storage. Calls serialize on one connection and may block for IO. */
 public final class SqliteRoundStore implements AutoCloseable {
-    public static final int SCHEMA_VERSION = 5;
+    public static final int SCHEMA_VERSION = 6;
     public static final int DEFAULT_BUSY_TIMEOUT_MILLIS = 1_000;
 
     private final Path databasePath;
@@ -73,6 +73,7 @@ public final class SqliteRoundStore implements AutoCloseable {
                 if (schemaVersion() == 2) migrateTerminalSchema();
                 if (schemaVersion() == 3) migrateRecordSchema();
                 if (schemaVersion() == 4) admins.migrate();
+                if (schemaVersion() == 5) records.retagRulesFingerprints();
                 return null;
             });
         } catch (SQLException | RuntimeException | Error failure) {
