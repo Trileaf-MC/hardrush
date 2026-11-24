@@ -75,7 +75,7 @@ public final class FullFlowGameTest {
                 .thenExecute(()->{f.monster.player=f.monster.current();HuntInputFixtures.role(f.monster.player,"zombie");})
                 .thenWaitUntil(()->f.await(!f.session.mutationPending(),"Role saved"))
                 .thenExecute(state::withdrawalShortcut)
-                .thenExecute(()->f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30)))
+                .thenExecute(()->f.clock.addAndGet(TimeUnit.SECONDS.toNanos(46)))
                 .thenExecute(()->HuntInputFixtures.hunt(f.monster.client,f.target.profile.id()))
                 .thenWaitUntil(()->f.await(f.deployed(1),"Model right click safely deployed"))
                 .thenExecute(state::withdrawalShortcut)
