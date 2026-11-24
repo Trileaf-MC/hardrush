@@ -283,8 +283,10 @@ public final class LobbyRuntimeGameTest {
                     f.assertSkillCooldowns();
                     f.assertStored();
                 });
-        // Where the previous cycle's prey fell: this cycle's hunter, revived, is pointed back there (遗落之地).
-        final net.minecraft.core.GlobalPos[] fallen = new net.minecraft.core.GlobalPos[1];
+        // What each prey carried when a monster player killed it: its next human life gets exactly that back, with its
+        // experience, and no 遗落之地 compass, since nothing lies where it fell (docs/plan/悬赏分档与追猎强度.md §1).
+        final var kept = new java.util.HashMap<java.util.UUID, java.util.Map<net.minecraft.world.item.Item, Integer>>();
+        final var keptLevels = new java.util.HashMap<java.util.UUID, Integer>();
         for (int cycle = 0; cycle < 20; cycle++) {
             final int iteration = cycle;
             final var hunter = cycle % 2 == 0 ? f.monster : f.target;
@@ -310,6 +312,9 @@ public final class LobbyRuntimeGameTest {
                         prey.player.removeAllEffects(); prey.player.setAbsorptionAmount(0);
                         prey.player.setHealth(1);
                         prey.player.setInvulnerableTime(0);
+                        prey.player.giveExperienceLevels(2 + iteration);
+                        kept.put(prey.profile.id(), carried(prey.player.getInventory()));
+                        keptLevels.put(prey.profile.id(), prey.player.experienceLevel);
                         MonsterRoleGameTest.emptyHanded(hunter.player);
                         boolean landed = MonsterRoles.attack(hunter.player, prey.player);
                         f.test.assertTrue(landed, "Native zombie melee accepts the legal human: cycle=" + iteration
@@ -326,7 +331,8 @@ public final class LobbyRuntimeGameTest {
                                 + ", sourceRejected=" + dev.hardrush.combat.MonsterCombatRuntime.reject(MonsterRoles.nativeModel(hunter.player), prey.player)
                                 + ", actor=" + MonsterRoles.status(hunter.player));
                         f.test.assertTrue(prey.player.isDeadOrDying(), "Actual native attack creates the lethal event");
-                        fallen[0] = net.minecraft.core.GlobalPos.of(prey.player.level().dimension(), prey.player.blockPosition());
+                        f.test.assertTrue(prey.player.level().getEntitiesOfClass(ItemEntity.class, prey.player.getBoundingBox().inflate(4)).isEmpty(),
+                                "A human a monster player killed spills nothing");
                     })
                     .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RESCUE && hunter.participant().revivalEntitled()
                             && prey.current() != null && prey.current().isAlive() && prey.current().level() == LobbyWorld.open(f.server).holdingLevel()
@@ -433,42 +439,17 @@ public final class LobbyRuntimeGameTest {
                         f.test.assertFalse(hunter.participant().revivalEntitled(), "Revival consumes the sole entitlement");
                         var inventory = hunter.player.getInventory();
                         var compasses = java.util.stream.IntStream.range(0, inventory.getContainerSize()).filter(i -> FallenCompass.is(inventory.getItem(i))).toArray();
-                        // Besides the 遗落之地 compass, only what the first cycle bought from the witch.
-                        f.test.assertTrue(java.util.stream.IntStream.range(0, inventory.getContainerSize())
-                                        .allMatch(i -> inventory.getItem(i).isEmpty() || FallenCompass.is(inventory.getItem(i))
-                                                || iteration == 0 && (inventory.getItem(i).is(Items.OAK_LOG) || inventory.getItem(i).is(Items.SHIELD))),
-                                "Revival never restores old human gear or role controls");
-                        if (iteration == 0) {
-                            f.test.assertTrue(hunter.player.getOffhandItem().is(Items.SHIELD), "The bought shield waits in the off hand");
-                            int logs = java.util.stream.IntStream.range(0, inventory.getContainerSize()).filter(i -> inventory.getItem(i).is(Items.OAK_LOG))
-                                    .map(i -> inventory.getItem(i).getCount()).sum();
-                            f.test.assertValueEqual(logs, 5, "The bought oak logs are in the backpack");
-                        }
+                        // What the previous life kept, and in the first cycle what it bought from the witch; never role controls.
+                        var expected = new java.util.HashMap<>(kept.getOrDefault(hunter.profile.id(), java.util.Map.of()));
+                        if (iteration == 0) { expected.merge(Items.OAK_LOG, 5, Integer::sum); expected.merge(Items.SHIELD, 1, Integer::sum); }
+                        f.test.assertValueEqual(carried(inventory), expected, "Revival brings back exactly the kept belongings and the bought supplies");
+                        if (iteration == 0) f.test.assertTrue(hunter.player.getOffhandItem().is(Items.SHIELD), "The bought shield waits in the off hand");
                         if (iteration > 0) {
-                            var at = fallen[0];
-                            f.test.assertTrue(compasses.length == 1 && FallenCompass.target(inventory.getItem(compasses[0])).equals(java.util.Optional.of(at)),
-                                    "A revived human lands with one 遗落之地 compass pointing at the previous human death: " + at);
-                            f.test.assertValueEqual(hunter.player.getLastDeathLocation(), java.util.Optional.of(at),
-                                    "The vanilla recovery needle reads the same spot, not the monster life's");
-                            if (iteration == 1) {
-                                hunter.player.getInventory().setSelectedSlot(compasses[0]);
-                                var hint = dev.hardrush.lobby.HeldItemHints.of(hunter.player).orElse("");
-                                f.test.assertTrue(hint.contains("主世界") && hint.contains(at.pos().getX() + " " + at.pos().getY() + " " + at.pos().getZ())
-                                        && hint.contains("距离"), "Held, the compass names the dimension, coordinates and distance: " + hint);
-                                hunter.move(net.minecraft.world.phys.Vec3.atBottomCenterOf(at.pos()).add(3, 0, 0));
-                                FallenCompass.tick(f.server, f.round());
-                                f.test.assertFalse(java.util.stream.IntStream.range(0, inventory.getContainerSize()).anyMatch(i -> FallenCompass.is(inventory.getItem(i))),
-                                        "Reaching the spot spends the compass");
-                            } else if (iteration == 2) {
-                                hunter.player.getInventory().setSelectedSlot(compasses[0]);
-                                hunter.player.connection.handlePlayerAction(new ServerboundPlayerActionPacket(
-                                        ServerboundPlayerActionPacket.Action.DROP_ALL_ITEMS, BlockPos.ZERO, Direction.DOWN));
-                                FallenCompass.tick(f.server, f.round());
-                                f.test.assertTrue(java.util.stream.IntStream.range(0, inventory.getContainerSize()).noneMatch(i -> FallenCompass.is(inventory.getItem(i)))
-                                                && hunter.player.level().getEntitiesOfClass(ItemEntity.class, hunter.player.getBoundingBox().inflate(8)).stream()
-                                                        .noneMatch(item -> FallenCompass.is(item.getItem())),
-                                        "A thrown compass vanishes and is never granted again");
-                            }
+                            f.test.assertValueEqual(compasses.length, 0, "A life a monster player ended left nothing to point back at");
+                            f.test.assertValueEqual(hunter.player.getLastDeathLocation(), java.util.Optional.empty(),
+                                    "The vanilla recovery needle points nowhere either");
+                            f.test.assertValueEqual(hunter.player.experienceLevel, keptLevels.get(hunter.profile.id()),
+                                    "The kept experience comes back with the belongings");
                         }
                         f.test.assertValueEqual(hunter.player.getHealth(), 20f, "Human default health is restored");
                         f.test.assertValueEqual(hunter.player.getFoodData().getFoodLevel(), 20, "Human default food is restored");
@@ -729,8 +710,17 @@ public final class LobbyRuntimeGameTest {
             test.assertValueEqual(monster.player.getFoodData().getFoodLevel(), 6, "The role body has no hunger or player sprint input");
             if (kind == MonsterRole.SKELETON) test.assertTrue(monster.player.getInventory().getItem(1).isEmpty()
                     && monster.player.getMainHandItem().is(Items.BOW), "The skeleton's volley rides on its bow; no separate control item");
-            else test.assertTrue(monster.player.getInventory().getItem(kind == MonsterRole.CREEPER ? 0 : 1).is(
-                    kind == MonsterRole.ZOMBIE ? Items.ZOMBIE_SPAWN_EGG : Items.FLINT_AND_STEEL), "Only the selected role's fixed skill control is equipped");
+            else if (kind == MonsterRole.CREEPER) test.assertTrue(monster.player.getInventory().getItem(0).is(Items.FLINT_AND_STEEL),
+                    "Only the selected role's fixed skill control is equipped");
+            else {
+                // Eggs by the sortie's tier, no baby egg of its own (docs/plan/悬赏分档与追猎强度.md §5.2).
+                int tier = monster.participant().sortie().tier();
+                var adult = monster.player.getInventory().getItem(2);
+                test.assertTrue(monster.player.getInventory().getItem(1).isEmpty(), "A zombie sortie brings no baby egg of its own");
+                int expected = dev.hardrush.core.round.HuntPressure.starterAdultEggs(tier);
+                test.assertTrue(expected == 0 ? adult.isEmpty() : adult.is(Items.ZOMBIE_SPAWN_EGG) && adult.getCount() == expected,
+                        "A tier-" + tier + " zombie brings " + expected + " adult eggs: " + adult);
+            }
             test.assertValueEqual(diamonds(), 3, "Outings do not duplicate or pick up the old human inventory");
         }
         void assertFixedControlsStayOnDropPacket() {
@@ -997,6 +987,16 @@ public final class LobbyRuntimeGameTest {
         }
         return true;
     }
+    /** Item counts a body holds, the 遗落之地 compass aside. */
+    private static java.util.Map<net.minecraft.world.item.Item, Integer> carried(net.minecraft.world.entity.player.Inventory inventory) {
+        var counts = new java.util.HashMap<net.minecraft.world.item.Item, Integer>();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            var stack = inventory.getItem(i);
+            if (!stack.isEmpty() && !FallenCompass.is(stack)) counts.merge(stack.getItem(), stack.getCount(), Integer::sum);
+        }
+        return counts;
+    }
+
     static int heldTotems(ServerPlayer player) {
         var inventory = player.getInventory();
         int count = 0;

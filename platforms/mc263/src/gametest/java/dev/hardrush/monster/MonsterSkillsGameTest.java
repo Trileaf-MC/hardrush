@@ -194,7 +194,7 @@ public final class MonsterSkillsGameTest {
     }
 
     @GameTest(maxTicks = 1800)
-    public void burstUsesCurrentAimEveryThreeHundredMillisAndClearCancelsOnlyUnfiredArrows(GameTestHelper test) {
+    public void burstUsesCurrentAimEveryTwoHundredMillisAndClearCancelsOnlyUnfiredArrows(GameTestHelper test) {
         var f = new Fixture(test, 2);
         var shots = new ArrayList<Shot>();
         var cancelled = new ArrayList<Shot>();
@@ -218,7 +218,7 @@ public final class MonsterSkillsGameTest {
                 })
                 .thenWaitUntil(() -> {
                     // GameTest may advance thousands of ticks per real second. Give
-                    // the production monotonic 0.6-second scheduler real time to run;
+                    // the production monotonic 0.4-second scheduler real time to run;
                     // the assertions below still require both exact native intervals.
                     if (shots.size() < 3) java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
                     test.assertValueEqual(shots.size(), 3, "The complete burst emits three arrows");
@@ -226,8 +226,8 @@ public final class MonsterSkillsGameTest {
                 .thenExecute(() -> {
                     try {
                         test.assertValueEqual(cancelled.size(), 1, "Leaving the body cancels both still-unfired arrows");
-                        for (int i = 1; i < 3; i++) test.assertTrue(shots.get(i).nanos() - shots.get(i - 1).nanos() >= 300_000_000L,
-                                "Consecutive arrows respect the real 0.3-second interval");
+                        for (int i = 1; i < 3; i++) test.assertTrue(shots.get(i).nanos() - shots.get(i - 1).nanos() >= 200_000_000L,
+                                "Consecutive arrows respect the real 0.2-second interval");
                         test.assertTrue(shots.get(0).direction().z > .8 && shots.get(1).direction().x < -.8
                                         && shots.get(2).direction().z < -.8,
                                 "Each shot uses the owner's current aim, with native scatter and no homing");
