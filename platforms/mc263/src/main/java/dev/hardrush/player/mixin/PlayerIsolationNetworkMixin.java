@@ -265,18 +265,21 @@ public abstract class PlayerIsolationNetworkMixin {
                 || !PlayerProfiles.isRespawnAllowed(player)) ci.cancel();
     }
 
+    // Both run on the server thread (vanilla's tryHandleChat schedules them). /tell, /me and the like stay usable.
     @Inject(method = "performUnsignedChatCommand", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdCommand(String command, CallbackInfo ci) {
-        if (PlayerProfiles.sealed(player) && !hardrush$allowedCommand(command)) ci.cancel();
+        if (hardrush$refuseCommand(command)) ci.cancel();
     }
 
     @Inject(method = "performSignedChatCommand", at = @At("HEAD"), cancellable = true)
     private void hardrush$holdSignedCommand(ServerboundChatCommandSignedPacket packet, LastSeenMessages messages, CallbackInfo ci) {
-        if (PlayerProfiles.sealed(player) && !hardrush$allowedCommand(packet.command())) ci.cancel();
+        if (hardrush$refuseCommand(packet.command())) ci.cancel();
     }
 
-    private boolean hardrush$allowedCommand(String command) {
-        return command.equals("hardrush") || command.startsWith("hardrush ")
-                || PlayerProfiles.administrativeCommandAllowed(player, command);
+    private boolean hardrush$refuseCommand(String command) {
+        if (!PlayerProfiles.sealed(player) || PlayerProfiles.sealedCommandAllowed(player, command)) return false;
+        // A silently swallowed command reads as a broken server; say why it did nothing.
+        dev.hardrush.notice.Notices.refuse(player, "现在只能用 **聊天** 类命令");
+        return true;
     }
 }
