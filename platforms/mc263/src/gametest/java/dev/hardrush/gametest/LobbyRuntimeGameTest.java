@@ -205,7 +205,10 @@ public final class LobbyRuntimeGameTest {
                     var inventory = f.monster.player.getInventory();
                     f.test.assertTrue(MonsterRoles.nativeModel(f.monster.player).getType() == EntityTypes.ZOMBIE, "The resumed body keeps its form");
                     f.test.assertTrue(inventory.getItem(1).isEmpty(), "The spent baby egg is not handed out again");
-                    f.test.assertValueEqual(inventory.getItem(2).getCount(), 1, "The remaining adult egg comes back in its slot");
+                    // The tier's own eggs plus the one bought, less the one hatched before the return.
+                    f.test.assertValueEqual(inventory.getItem(2).getCount(),
+                            dev.hardrush.core.round.HuntPressure.starterAdultEggs(f.monster.participant().sortie().tier()),
+                            "The remaining adult eggs come back in their slot");
                     f.test.assertTrue(inventory.getItem(7).is(Items.ECHO_SHARD) && dev.hardrush.monster.MonsterItems.owned(f.monster.player, inventory.getItem(7)),
                             "Parked bound items are rebound to the resumed deployment");
                     f.test.assertValueEqual(f.worldSwords(), 1, "The world sword stayed where the monster returned and is not parked");
