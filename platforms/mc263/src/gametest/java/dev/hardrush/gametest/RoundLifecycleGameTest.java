@@ -20,7 +20,7 @@ public final class RoundLifecycleGameTest {
         var server = test.getLevel().getServer();
         var command = server.getCommands().getDispatcher().getRoot().getChild("hardrush");
         test.assertTrue(command != null, "Competition command registered by mod initialization");
-        for (String entry : new String[]{"status", "join", "ready", "unready", "config"}) {
+        for (String entry : new String[]{"status", "join", "ready", "unready"}) {
             test.assertTrue(command.getChild(entry) != null, "Competition command entry exists: " + entry);
         }
         test.assertValueEqual(dispatch(server.createCommandSourceStack(), "hardrush status"), 1,

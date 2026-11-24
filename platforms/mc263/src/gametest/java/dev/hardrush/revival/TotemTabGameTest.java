@@ -30,7 +30,7 @@ import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 /**
  * Revival charges in the player list (docs/plan/复生图腾掉落.md 1.7, 2.8) as the packets real fixture connections
  * receive: the objective right after vanilla's scoreboard at login, one packet per change, resets for whoever stops
- * showing, a rebuilt objective for a new round, the list slot given back outside a running hardcore round and left alone
+ * showing, a rebuilt objective for a new round, the list slot given back outside a running round and left alone
  * while another mod owns the name. Every connection's whole packet log is replayed as a client scoreboard: no name is
  * ever added twice without a removal in between, which would disconnect a vanilla client. The round runtime is
  * scripted through {@link TotemTab.Access}. {@code -PhardrushTotemTab=true} runs it alone.
@@ -132,30 +132,6 @@ public final class TotemTabGameTest {
                         && c.packets.get(1) instanceof ClientboundSetObjectivePacket add && add.getMethod() == ClientboundSetObjectivePacket.METHOD_ADD
                         && TotemTab.OBJECTIVE.equals(c.lastListObjective()), "A new round rebuilds the objective: " + c.name());
                 test.assertValueEqual(c.score(human.name()).orElseThrow(), "✦2", "The new round's counts follow: " + c.name());
-            }
-
-            // Normal mode gives the list slot back at once: our objective goes, the server's own is shown again.
-            clear(clients);
-            s.rules = RulesConfig.defaults();
-            TotemTab.tick(server);
-            for (var c : clients) {
-                test.assertTrue(c.removed() && c.adds() == 0 && c.scores().findAny().isEmpty(), "Normal mode removes ours: " + c.name());
-                test.assertValueEqual(c.lastListObjective(), SERVER_OBJECTIVE, "Normal mode restores the server's list objective: " + c.name());
-            }
-            var normal = client(server, clients, "A" + run);
-            test.assertTrue(normal.ours().findAny().isEmpty(), "A newcomer in normal mode gets nothing of ours");
-            test.assertValueEqual(normal.lastListObjective(), SERVER_OBJECTIVE, "A newcomer in normal mode sees the server's list objective");
-            clear(clients);
-            TotemTab.refresh(server);
-            for (var c : clients) test.assertValueEqual(c.packets.size(), 0, "Given back once: " + c.name());
-
-            // Hardcore and running again: everyone, the newcomer too, gets the objective once more, added once.
-            s.rules = RulesConfig.defaults();
-            TotemTab.tick(server);
-            for (var c : clients) {
-                test.assertTrue(c.adds() == 1 && !c.removed() && TotemTab.OBJECTIVE.equals(c.lastListObjective()),
-                        "A running hardcore round takes the list slot again: " + c.name());
-                test.assertValueEqual(c.score(human.name()).orElseThrow(), "✦2", "Its counts follow: " + c.name());
             }
 
             // Settling gives it back as well; with no server list objective the slot is cleared.

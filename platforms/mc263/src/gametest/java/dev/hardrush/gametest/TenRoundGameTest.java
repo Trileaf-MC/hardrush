@@ -419,7 +419,8 @@ public final class TenRoundGameTest {
                         checked = session.participants(round().roundId(), 20, 0).thenAccept(roster -> {
                             test.assertValueEqual(roster.size(), number == 1 || number == 5 ? 2 : 1, "Offline players are not fabricated in absent rounds");
                             var a = roster.stream().filter(value -> value.playerId().equals(first.profile.id())).findFirst().orElseThrow();
-                            test.assertTrue(a.advancementCount() >= 1 && a.firstEndNanos() == frozenTime, "Native progress and first End entry persist in this round");
+                            test.assertTrue(a.advancementCount() >= 1, "Native progress persists in this round: " + a.advancementCount());
+                            test.assertTrue(java.util.Objects.equals(a.firstEndNanos(), frozenTime), "First End entry persists in this round: " + a.firstEndNanos() + " vs " + frozenTime);
                             test.assertValueEqual(a.deathCount(), 0, "No death leaks across rounds");
                             test.assertValueEqual(a.revivalCount(), 0, "No revival leaks across rounds");
                         });

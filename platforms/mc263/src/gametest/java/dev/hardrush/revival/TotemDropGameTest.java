@@ -93,14 +93,11 @@ public final class TotemDropGameTest {
                     "Everyone online receives the packet-only gold team: " + c.name());
             test.assertTrue(f.server.getScoreboard().getPlayerTeam(TotemDrops.TEAM) == null, "The server scoreboard is never written");
 
-            // Deaths that drop nothing in the world: a monster's kill (it is paid), normal mode.
+            // A death that drops nothing in the world: a monster's kill (it is paid).
             var round = s.snapshot();
             var monsterKill = Optional.of(new CombatOrigin(s.roundId, UUID.randomUUID(),
                     new CombatActor(deployed.id(), ParticipantRole.MONSTER_DEPLOYED, 1, 1), AttackKind.CREEPER, Optional.empty(), List.of()));
             test.assertTrue(TotemDrops.prepare(victim.player, round, monsterKill).isEmpty(), "A monster's kill drops nothing");
-            s.rules = RulesConfig.defaults();
-            test.assertTrue(TotemDrops.prepare(victim.player, s.snapshot(), s.melee(killer.id())).isEmpty(), "Normal mode drops nothing");
-            s.rules = RulesConfig.defaults();
             // A suicide and a death without credit release an unclaimed totem (守恒 1.1).
             for (var credit : List.of(s.melee(victim.id()), Optional.<CombatOrigin>empty())) {
                 var token = TotemDrops.prepare(victim.player, s.snapshot(), credit);
