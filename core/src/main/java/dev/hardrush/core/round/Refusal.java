@@ -24,6 +24,8 @@ public enum Refusal {
     SKILL_COOLDOWN,
     /** The chosen human defeated this monster a moment ago; others may be hunted at once. */
     HUNT_LOCKED,
+    /** An administrator paused the race; monsters wait in the camp until it resumes. */
+    PAUSED,
     /** Any other rule rejection; the caller supplies the wording for its own context. */
     REJECTED;
 

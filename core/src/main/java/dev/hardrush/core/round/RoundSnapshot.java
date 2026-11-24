@@ -12,7 +12,17 @@ public record RoundSnapshot(UUID roundId, long sequence, long seed, long version
                             RoundPhase phase, PauseReason pauseReason, long challengeNanos,
                             long remainingPhaseNanos, Map<UUID, Participant> participants,
                             boolean cleanShutdown, boolean timingUncertain, RoundResult result,
-                            Map<UUID, LooseTotem> looseTotems) {
+                            Map<UUID, LooseTotem> looseTotems, boolean adminPaused) {
+    /** A snapshot an administrator has not paused. */
+    public RoundSnapshot(UUID roundId, long sequence, long seed, long version, RulesConfig rules,
+                         RoundPhase phase, PauseReason pauseReason, long challengeNanos,
+                         long remainingPhaseNanos, Map<UUID, Participant> participants,
+                         boolean cleanShutdown, boolean timingUncertain, RoundResult result,
+                         Map<UUID, LooseTotem> looseTotems) {
+        this(roundId, sequence, seed, version, rules, phase, pauseReason, challengeNanos, remainingPhaseNanos,
+                participants, cleanShutdown, timingUncertain, result, looseTotems, false);
+    }
+
     /** A snapshot with no revival totem lying in the world. */
     public RoundSnapshot(UUID roundId, long sequence, long seed, long version, RulesConfig rules,
                          RoundPhase phase, PauseReason pauseReason, long challengeNanos,
@@ -39,6 +49,9 @@ public record RoundSnapshot(UUID roundId, long sequence, long seed, long version
         boolean terminal = phase == RoundPhase.SETTLING || phase == RoundPhase.CELEBRATING || phase == RoundPhase.ROTATING;
         if (terminal && result == null || !terminal && phase != RoundPhase.RECOVERY_REQUIRED && result != null) {
             throw new IllegalArgumentException("Round phase and result disagree");
+        }
+        if (adminPaused && phase != RoundPhase.RUNNING && phase != RoundPhase.RESCUE) {
+            throw new IllegalArgumentException("Only a live round can be paused by an administrator");
         }
         if (result != null && result.winner() != null && !participants.containsKey(result.winner())) {
             throw new IllegalArgumentException("Winner must belong to this round");
