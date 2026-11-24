@@ -109,9 +109,11 @@ public final class RoundEngine {
             phase = RoundPhase.RUNNING;
             remaining = 0;
         }
+        // An administrator's pause outlives a clean restart, but not a recovery or the end of the race.
+        boolean paused = stored.adminPaused() && (phase == RoundPhase.RUNNING || phase == RoundPhase.RESCUE);
         RoundSnapshot restored = new RoundSnapshot(stored.roundId(), stored.sequence(), stored.seed(), stored.version(),
-                stored.rules(), phase, pause(phase, players), stored.challengeNanos(), remaining,
-                players, stored.cleanShutdown(), uncertain, stored.result(), stored.looseTotems());
+                stored.rules(), phase, paused ? PauseReason.ADMIN : pause(phase, players), stored.challengeNanos(), remaining,
+                players, stored.cleanShutdown(), uncertain, stored.result(), stored.looseTotems(), paused);
         return new RoundEngine(restored, clock);
     }
 
@@ -137,7 +139,7 @@ public final class RoundEngine {
         stored.participants().forEach((id, p) -> players.put(id, p.withSession(p.name(), false)));
         return new RoundEngine(new RoundSnapshot(stored.roundId(), stored.sequence(), stored.seed(), stored.version(),
                 stored.rules(), RoundPhase.RUNNING, PauseReason.NO_ONLINE_HUMANS, stored.challengeNanos(),
-                stored.remainingPhaseNanos(), players, false, true, null, stored.looseTotems()), clock);
+                stored.remainingPhaseNanos(), players, false, true, null, stored.looseTotems(), stored.adminPaused()), clock);
     }
 
     /** A full checkpoint pauses native simulation; its disk-copy interval is not challenge time. */
@@ -573,6 +575,7 @@ public final class RoundEngine {
     private static Participant deployMonster(RoundSnapshot before, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence) {
         requireOpenRescue(before);
+        if (before.adminPaused()) throw new Refusal.Exception(Refusal.PAUSED, "比赛已暂停，暂时不能出击。");
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_LOBBY);
         requireNoRevival(before.rules(), player);
@@ -760,7 +763,7 @@ public final class RoundEngine {
         return new RoundSnapshot(base.roundId(), base.sequence(), base.seed(), base.version(), base.rules(), base.phase(),
                 base.pauseReason(), base.challengeNanos(), base.remainingPhaseNanos(),
                 creditDamageCoins(base, roundId, entries), base.cleanShutdown(), base.timingUncertain(), base.result(),
-                base.looseTotems());
+                base.looseTotems(), base.adminPaused());
     }
 
     /** A flushed damage batch waiting in the adapter's event queue, credited at its own event time. */
@@ -1018,30 +1021,151 @@ public final class RoundEngine {
         }
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
         startReady(players, admissionPending);
+        // Skipping the wait before anyone races changes no race time, so the record stays as trusted as before.
         return proposal(eventId, "ADMIN_START", before, RoundPhase.RUNNING, 0,
-                players, null, false, true);
+                players, null, false);
     }
 
     /** Admin credits are additive, like ordinary kill rewards. */
     public RoundTransition proposeAdminGrantRevival(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedCharges, int count) {
+        if (count <= 0) throw new IllegalArgumentException("发放次数必须为正整数。");
+        return proposeAdminRevival(eventId, roundId, playerId, expectedLifeSequence, expectedCharges, count);
+    }
+
+    /**
+     * An administrator gives ({@code delta > 0}) or takes back ({@code delta < 0}) revival charges. Taking the last
+     * charge a rescue was waiting for settles the round exactly as running out of revivals would.
+     */
+    public RoundTransition proposeAdminRevival(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedCharges, int delta) {
         RoundSnapshot before = capture();
-        requirePhase(before, RoundPhase.RUNNING, RoundPhase.RESCUE);
-        requireOpenRescue(before);
-        if (!before.roundId().equals(roundId)) throw new IllegalStateException("轮次已改变，请重新申请。");
-        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("仅极限模式支持发放复生次数。");
+        requireAdminLive(before, roundId);
+        if (before.rules().mode() != GameMode.HARDCORE) throw new IllegalStateException("仅极限模式支持复生图腾。");
+        if (delta == 0) throw new IllegalArgumentException("数量必须为正整数。");
         Participant player = requirePlayer(before, playerId);
         if ((!player.role().isMonster() && !player.role().isActiveHuman())
                 || player.lifeSequence() == 0 || player.joinedAtChallengeNanos() < 0) {
-            throw new IllegalStateException("只能向本轮已参赛的人类或怪物发放复生次数。");
+            throw new IllegalStateException("只能调整本轮已参赛的人类或怪物的复生图腾。");
         }
         if (player.lifeSequence() != expectedLifeSequence || player.revivalCharges() != expectedCharges) {
             throw new IllegalStateException("玩家生命或剩余次数已改变，请重新申请。");
         }
         Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
-        players.put(playerId, revivalFirst(before.rules(), player.addRevivalCharges(count)));
-        return proposal(eventId, "ADMIN_GRANT_REVIVAL", before, before.phase(), before.remainingPhaseNanos(),
+        if (delta > 0) players.put(playerId, revivalFirst(before.rules(), player.addRevivalCharges(delta)));
+        else players.put(playerId, player.removeRevivalCharges(-delta));
+        if (before.phase() == RoundPhase.RESCUE && !hasHuman(players)) {
+            return lastHumanGone(eventId, "ADMIN_TAKE_REVIVAL", before, players, "RESCUE_EXPIRED", true);
+        }
+        return proposal(eventId, delta > 0 ? "ADMIN_GRANT_REVIVAL" : "ADMIN_TAKE_REVIVAL", before, before.phase(),
+                before.remainingPhaseNanos(), players, before.result(), false, true);
+    }
+
+    /** An administrator gives ({@code delta > 0}) or takes back monster coins; a balance never goes below zero. */
+    public RoundTransition proposeAdminCoins(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedCoins, int delta) {
+        RoundSnapshot before = capture();
+        requireAdminLive(before, roundId);
+        if (!MonsterCoins.enabled(before.rules())) throw new IllegalStateException("本轮没有怪物币。");
+        if (delta == 0) throw new IllegalArgumentException("数量必须为正整数。");
+        Participant player = requirePlayer(before, playerId);
+        if (!player.role().isMonster()) throw new IllegalStateException("只有怪物持有怪物币。");
+        if (player.lifeSequence() != expectedLifeSequence || player.wallet().coins() != expectedCoins) {
+            throw new IllegalStateException("玩家生命或怪物币已改变，请重新申请。");
+        }
+        if (delta < 0 && -delta > player.wallet().coins()) {
+            throw new IllegalArgumentException("收回数量不能超过现有的 " + player.wallet().coins() + " 枚。");
+        }
+        var wallet = delta > 0 ? player.wallet().credit(delta) : player.wallet().spendCoins(-delta);
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.withWallet(wallet));
+        return proposal(eventId, "ADMIN_COINS", before, before.phase(), before.remainingPhaseNanos(),
                 players, before.result(), false, true);
+    }
+
+    /** An administrator sets a monster's remaining deployment cooldown, zero to let it go at once. */
+    public RoundTransition proposeAdminDeployCooldown(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, long cooldownNanos) {
+        RoundSnapshot before = capture();
+        requireAdminLive(before, roundId);
+        if (cooldownNanos < 0) throw new IllegalArgumentException("冷却时间不能为负数。");
+        Participant player = requirePlayer(before, playerId);
+        if (!player.role().isMonster()) throw new IllegalStateException("只有怪物有出击冷却。");
+        if (player.lifeSequence() != expectedLifeSequence) throw new IllegalStateException("玩家生命已改变，请重新申请。");
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.withMonsterCooldown(cooldownNanos));
+        return proposal(eventId, "ADMIN_DEPLOY_COOLDOWN", before, before.phase(), before.remainingPhaseNanos(),
+                players, before.result(), false, true);
+    }
+
+    /** An administrator lifts a monster's defeat locks: one human's, or every one when {@code human} is null. */
+    public RoundTransition proposeAdminHuntUnlock(UUID eventId, UUID roundId, UUID playerId, UUID human) {
+        RoundSnapshot before = capture();
+        requireAdminLive(before, roundId);
+        Participant player = requirePlayer(before, playerId);
+        if (!player.role().isMonster()) throw new IllegalStateException("只有怪物有击败锁定。");
+        if (player.huntLocks().isEmpty() || human != null && player.huntLockNanos(human) == 0) {
+            throw new IllegalStateException("这名怪物没有对应的击败锁定。");
+        }
+        var locks = new LinkedHashMap<UUID, Long>(player.huntLocks());
+        if (human == null) locks.clear(); else locks.remove(human);
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.withHuntLocks(locks));
+        return proposal(eventId, "ADMIN_HUNT_UNLOCK", before, before.phase(), before.remainingPhaseNanos(),
+                players, before.result(), false, true);
+    }
+
+    /**
+     * An administrator ends a human life's shelter: the 初入荒野 of a mid-round entrant, so monsters may choose it at
+     * once. The platform also lifts the altar's native blessing, which this engine does not track; either way the
+     * record is marked, since both protect a human from monsters.
+     */
+    public RoundTransition proposeAdminEndShelter(UUID eventId, UUID roundId, UUID playerId, int expectedLifeSequence) {
+        RoundSnapshot before = capture();
+        requireAdminLive(before, roundId);
+        Participant player = requirePlayer(before, playerId);
+        requireLife(player, ParticipantRole.HUMAN_ACTIVE, expectedLifeSequence);
+        Map<UUID, Participant> players = new LinkedHashMap<>(before.participants());
+        players.put(playerId, player.waiveShelter());
+        return proposal(eventId, "ADMIN_END_SHELTER", before, before.phase(), before.remainingPhaseNanos(),
+                players, before.result(), false, true);
+    }
+
+    /**
+     * An administrator sets what is left of the current timed phase: the start countdown, the result display or a
+     * rescue. Zero lets the next tick move on as if the time had run out. Only a rescue's deadline can change a
+     * race's outcome, so only that marks the record for review.
+     */
+    public RoundTransition proposeAdminPhaseTimer(UUID eventId, UUID roundId, long remainingNanos) {
+        RoundSnapshot before = capture();
+        if (!before.roundId().equals(roundId)) throw new IllegalStateException("轮次已改变，请重新申请。");
+        if (remainingNanos < 0) throw new IllegalArgumentException("剩余时间不能为负数。");
+        switch (before.phase()) {
+            case COUNTDOWN -> {
+                if (readyOnline(before.participants()) == 0) throw new IllegalStateException("倒计时没有已就绪的玩家。");
+            }
+            case SETTLING, CELEBRATING -> { }
+            case RESCUE -> requireOpenRescue(before);
+            default -> throw new IllegalStateException("当前阶段没有可以调整的倒计时：" + before.phase());
+        }
+        boolean rescue = before.phase() == RoundPhase.RESCUE;
+        return proposal(eventId, "ADMIN_PHASE_TIMER", before, before.phase(), remainingNanos,
+                before.participants(), before.result(), false, rescue || before.timingUncertain());
+    }
+
+    /** An administrator pauses or resumes every race timer this engine owns; the native world keeps running. */
+    public RoundTransition proposeAdminPause(UUID eventId, UUID roundId, boolean paused) {
+        RoundSnapshot before = capture();
+        requireAdminLive(before, roundId);
+        if (before.adminPaused() == paused) throw new IllegalStateException(paused ? "比赛已经处于暂停状态。" : "比赛没有暂停。");
+        return proposal(eventId, paused ? "ADMIN_PAUSE" : "ADMIN_RESUME", before, before.phase(), before.remainingPhaseNanos(),
+                before.participants(), before.result(), false, true, before.looseTotems(), paused);
+    }
+
+    private static void requireAdminLive(RoundSnapshot before, UUID roundId) {
+        requirePhase(before, RoundPhase.RUNNING, RoundPhase.RESCUE);
+        requireOpenRescue(before);
+        if (!before.roundId().equals(roundId)) throw new IllegalStateException("轮次已改变，请重新申请。");
     }
 
     /** A shared, non-lethal exit for voluntary withdrawal and trusted administrative/automatic sanctions. */
@@ -1177,6 +1301,12 @@ public final class RoundEngine {
     private RoundTransition proposal(UUID id, String type, RoundSnapshot before, RoundPhase phase, long remaining,
                                      Map<UUID, Participant> players, RoundResult result, boolean clean, boolean uncertain,
                                      Map<UUID, LooseTotem> looseTotems) {
+        return proposal(id, type, before, phase, remaining, players, result, clean, uncertain, looseTotems, before.adminPaused());
+    }
+
+    private RoundTransition proposal(UUID id, String type, RoundSnapshot before, RoundPhase phase, long remaining,
+                                     Map<UUID, Participant> players, RoundResult result, boolean clean, boolean uncertain,
+                                     Map<UUID, LooseTotem> looseTotems, boolean adminPaused) {
         // capture() and proposal() share one event timestamp, even if the clock advances between calls.
         long captured = capturedTime;
         // Every transition of a live round passes here, so no path can leave it running without a
@@ -1186,10 +1316,13 @@ public final class RoundEngine {
             phase = live.phase();
             remaining = live.remaining();
         }
+        // Leaving the race (settling, an abort, a recovery) always lifts an administrator's pause.
+        boolean paused = adminPaused && result == null && (phase == RoundPhase.RUNNING || phase == RoundPhase.RESCUE);
         RoundSnapshot after = new RoundSnapshot(before.roundId(), before.sequence(), before.seed(),
-                Math.addExact(before.version(), 1), before.rules(), phase, clean ? PauseReason.SERVER_STOPPED : pause(phase, players),
+                Math.addExact(before.version(), 1), before.rules(), phase,
+                clean ? PauseReason.SERVER_STOPPED : paused ? PauseReason.ADMIN : pause(phase, players),
                 before.challengeNanos(), remaining, players, clean, before.timingUncertain() || uncertain, result,
-                retainedLooseTotems(phase, result, looseTotems));
+                retainedLooseTotems(phase, result, looseTotems), paused);
         pending = new RoundTransition(id, type, before, after, captured);
         return pending;
     }
@@ -1217,8 +1350,9 @@ public final class RoundEngine {
 
     private long capturedTime;
     private RoundSnapshot project(RoundSnapshot base, long start, long now) {
-        long elapsed = now - start;
-        if (elapsed < 0) throw new IllegalStateException("Monotonic clock moved backwards");
+        if (now - start < 0) throw new IllegalStateException("Monotonic clock moved backwards");
+        // An administrator's pause freezes every race timer this engine owns.
+        long elapsed = base.adminPaused() ? 0 : now - start;
         long challenge = base.challengeNanos();
         Map<UUID, Participant> players = new LinkedHashMap<>(base.participants());
         if (!base.cleanShutdown() && base.phase() == RoundPhase.RUNNING && base.onlineHumans() > 0) {
@@ -1239,8 +1373,9 @@ public final class RoundEngine {
             remaining = Math.max(0, remaining - Math.min(elapsed, remaining));
         }
         return new RoundSnapshot(base.roundId(), base.sequence(), base.seed(), base.version(), base.rules(), base.phase(),
-                base.cleanShutdown() ? PauseReason.SERVER_STOPPED : pause(base.phase(), players), challenge, remaining,
-                players, base.cleanShutdown(), base.timingUncertain(), base.result(), base.looseTotems());
+                base.cleanShutdown() ? PauseReason.SERVER_STOPPED : base.adminPaused() ? PauseReason.ADMIN : pause(base.phase(), players),
+                challenge, remaining, players, base.cleanShutdown(), base.timingUncertain(), base.result(), base.looseTotems(),
+                base.adminPaused());
     }
 
     private static PauseReason pause(RoundPhase phase, Map<UUID, Participant> players) {

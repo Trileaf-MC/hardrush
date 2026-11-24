@@ -43,7 +43,7 @@ final class AdminSessionTest {
             pump(tasks, () -> reply.get() != null);
             assertTrue(reply.get().success(), reply.get().message());
             var running = session.snapshot().orElseThrow();
-            assertEquals(RoundPhase.RUNNING, running.phase()); assertTrue(running.timingUncertain());
+            assertEquals(RoundPhase.RUNNING, running.phase()); assertFalse(running.timingUncertain(), "Skipping the countdown changes no race time");
             assertFalse(running.participants().get(player).online(), "Durable human eligibility precedes unlocking");
             clock.set(TimeUnit.SECONDS.toNanos(10));
             assertEquals(0, session.view().orElseThrow().challengeNanos());
@@ -203,7 +203,7 @@ final class AdminSessionTest {
         var tasks = new LinkedBlockingQueue<Runnable>(); var clock = new AtomicLong();
         try (var session = opened(path, clock, tasks, true)) {
             var reply = new AtomicReference<RoundSession.Reply>();
-            session.adminGrantRevival(initial.roundId(), player, 1, 0, 3, "operator", "测试补偿", reply::set);
+            session.adminRevival(initial.roundId(), player, 1, 0, 3, "operator", "测试补偿", reply::set);
             assertNull(reply.get(), "Grant success must await SQLite commit and main-thread callback");
             assertEquals(0, session.snapshot().orElseThrow().participants().get(player).revivalCharges());
             pump(tasks, () -> reply.get() != null);
@@ -211,15 +211,15 @@ final class AdminSessionTest {
             assertEquals(3, session.snapshot().orElseThrow().participants().get(player).revivalCharges());
             assertTrue(session.snapshot().orElseThrow().timingUncertain());
             assertEquals(ParticipantRole.HUMAN_ACTIVE, session.snapshot().orElseThrow().participants().get(player).role());
-            session.adminGrantRevival(initial.roundId(), player, 1, 0, 3, "operator", "旧余额重放", reply::set);
+            session.adminRevival(initial.roundId(), player, 1, 0, 3, "operator", "旧余额重放", reply::set);
             assertFalse(reply.get().success());
             assertFalse(session.mutationPending());
             var rows = session.audits(initial.roundId(), 20, 0); pump(tasks, rows::isDone);
             assertEquals(1, rows.join().size());
             var audit = rows.join().getFirst();
-            assertEquals("GRANT_REVIVAL", audit.action());
-            assertTrue(audit.beforeValue().contains("player=" + player + ",revivalCharges=0"));
-            assertTrue(audit.afterValue().contains("player=" + player + ",revivalCharges=3"));
+            assertEquals("REVIVAL_ADJUST", audit.action());
+            assertTrue(audit.beforeValue().contains("player=" + player + ",role=HUMAN_ACTIVE,life=1,revivalCharges=0"));
+            assertTrue(audit.afterValue().contains("player=" + player + ",role=HUMAN_ACTIVE,life=1,revivalCharges=3"));
             var records = session.participants(initial.roundId(), 20, 0); pump(tasks, records::isDone);
             assertEquals(0, records.join().getFirst().revivalCount(), "Granting credits is not an actual revival");
         }
@@ -237,7 +237,7 @@ final class AdminSessionTest {
                 var raw = DriverManager.getConnection("jdbc:sqlite:" + path); var sql = raw.createStatement()) {
             sql.execute("CREATE TRIGGER fail_grant BEFORE INSERT ON admin_audits BEGIN SELECT RAISE(ABORT,'injected'); END");
             var reply = new AtomicReference<RoundSession.Reply>();
-            session.adminGrantRevival(initial.roundId(), player, 1, 0, 3, "operator", "失败补偿测试", reply::set);
+            session.adminRevival(initial.roundId(), player, 1, 0, 3, "operator", "失败补偿测试", reply::set);
             pump(tasks, () -> reply.get() != null);
             assertFalse(reply.get().success());
             assertEquals(RoundSession.State.FAILED, session.state());

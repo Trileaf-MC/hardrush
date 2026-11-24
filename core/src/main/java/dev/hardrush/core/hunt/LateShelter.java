@@ -39,7 +39,8 @@ public final class LateShelter {
     /** Human time this life still has to spend before it can be hunted; zero when it is not sheltered at all. */
     public static long remainingNanos(RulesConfig rules, Participant participant) {
         if (participant == null || !enabled(rules) || participant.role() != ParticipantRole.HUMAN_ACTIVE
-                || !participant.lateEntrant() || participant.lifeSequence() != 1) return 0;
+                || !participant.lateEntrant() || participant.lifeSequence() != 1
+                || participant.shelterWaived()) return 0;
         return Math.max(0, durationNanos(rules) - participant.lifeHumanNanos());
     }
 

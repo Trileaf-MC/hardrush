@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 15;
+    private static final int SCHEMA = 16;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -97,6 +97,12 @@ public final class RoundSnapshotCodec {
                 out.writeBoolean(sortie.quarry().isPresent());
                 if (sortie.quarry().isPresent()) writeUuid(out, sortie.quarry().get());
             }
+            // Schema 16: an administrator's pause, then the lives whose 初入荒野 an administrator ended.
+            out.writeBoolean(snapshot.adminPaused());
+            var waived = snapshot.participants().keySet().stream().sorted()
+                    .filter(id -> snapshot.participants().get(id).shelterWaived()).toList();
+            out.writeInt(waived.size());
+            for (var id : waived) writeUuid(out, id);
             out.flush();
             if (bytes.size() > MAX_BYTES) throw new IllegalArgumentException("Snapshot exceeds size limit");
             return bytes.toByteArray();
@@ -288,6 +294,20 @@ public final class RoundSnapshotCodec {
                     players.put(playerId, restored);
                 }
             }
+            // Schemas 1–15 predate administrator pauses and shelter waivers.
+            boolean adminPaused = false;
+            if (schema >= 16) {
+                adminPaused = in.readBoolean();
+                int waived = in.readInt();
+                if (waived < 0 || waived > players.size()) throw new IOException("Invalid shelter waiver count");
+                var seen = new java.util.HashSet<UUID>();
+                for (int i = 0; i < waived; i++) {
+                    UUID playerId = readUuid(in);
+                    Participant p = players.get(playerId);
+                    if (p == null || !seen.add(playerId)) throw new IOException("Shelter waiver for an unknown or repeated participant");
+                    players.put(playerId, p.waiveShelter());
+                }
+            }
             if (in.available() != 0) throw new IOException("Trailing snapshot data");
             if (remaining < 0) throw new IOException("Invalid remaining phase time");
             // Schemas 1–4 stored the configured (formerly ten-minute) success timer.
@@ -298,7 +318,7 @@ public final class RoundSnapshotCodec {
                 remaining = Math.max(0, remaining - removedMillis * 1_000_000L);
             }
             return new RoundSnapshot(id, sequence, seed, version, rules, phase, pause, challenge, remaining,
-                    players, clean, uncertain, result, looseTotems);
+                    players, clean, uncertain, result, looseTotems, adminPaused);
         } catch (IOException | IllegalArgumentException invalid) {
             throw new IllegalArgumentException("Invalid round snapshot", invalid);
         }

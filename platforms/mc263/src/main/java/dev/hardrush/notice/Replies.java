@@ -27,6 +27,7 @@ public final class Replies {
             case SKILL_COOLDOWN -> "技能冷却中";
             case HUNT_LOCKED -> "你刚在追猎这名人类时倒下，暂时不能再追他";
             case HUNT_FULL -> "追猎这名人类的怪物已满";
+            case PAUSED -> "比赛已暂停，暂时不能出击";
             case REJECTED -> rejected;
         };
     }

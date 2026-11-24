@@ -767,7 +767,7 @@ public final class RoundSession implements AutoCloseable {
 
     public void adminStart(String actor, String reason, Consumer<Reply> reply) {
         requestAdminTransition(actor, reason, false, () -> engine.proposeAdmissionAdminStart(UUID.randomUUID()), reply,
-                "管理员开赛已持久化；本轮计时标记待核验，不自动进入正常榜。");
+                "管理员开赛已持久化；只带已就绪的玩家出发。");
     }
 
     public void adminAbort(String actor, String reason, Consumer<Reply> reply) {
@@ -796,13 +796,64 @@ public final class RoundSession implements AutoCloseable {
         return before != null && after != null && before.role() != after.role() && after.role().isExcluded();
     }
 
-    public void adminGrantRevival(UUID roundId, UUID playerId, int lifeSequence, int expectedCharges,
-            int count, String actor, String reason, Consumer<Reply> reply) {
+    /** Gives ({@code delta > 0}) or takes back revival charges; see docs/plan/管理员命令与面板.md. */
+    public void adminRevival(UUID roundId, UUID playerId, int lifeSequence, int expectedCharges,
+            int delta, String actor, String reason, Consumer<Reply> reply) {
         requestAdminTransition(actor, reason, false,
-                () -> engine.proposeAdminGrantRevival(UUID.randomUUID(), roundId, playerId, lifeSequence, expectedCharges, count),
-                reply, "已发放 " + count + " 次复生，剩余 " + ((long) expectedCharges + count)
-                        + " 次；本轮成绩标记待核验。", "GRANT_REVIVAL",
-                r -> adminValue(r) + ",player=" + playerId + ",revivalCharges=" + r.participants().get(playerId).revivalCharges());
+                () -> engine.proposeAdminRevival(UUID.randomUUID(), roundId, playerId, lifeSequence, expectedCharges, delta),
+                reply, (delta > 0 ? "已发放 " + delta : "已收回 " + -delta) + " 个复生图腾，剩余 " + ((long) expectedCharges + delta)
+                        + " 个；本轮成绩标记待核验。", "REVIVAL_ADJUST", r -> adminValue(r) + participantValue(r, playerId));
+    }
+
+    public void adminCoins(UUID roundId, UUID playerId, int lifeSequence, int expectedCoins,
+            int delta, String actor, String reason, Consumer<Reply> reply) {
+        requestAdminTransition(actor, reason, false,
+                () -> engine.proposeAdminCoins(UUID.randomUUID(), roundId, playerId, lifeSequence, expectedCoins, delta),
+                reply, (delta > 0 ? "已发放 " + delta : "已收回 " + -delta) + " 枚怪物币，现有 " + ((long) expectedCoins + delta)
+                        + " 枚；本轮成绩标记待核验。", "COINS_ADJUST", r -> adminValue(r) + participantValue(r, playerId));
+    }
+
+    public void adminDeployCooldown(UUID roundId, UUID playerId, int lifeSequence, long cooldownNanos,
+            String actor, String reason, Consumer<Reply> reply) {
+        requestAdminTransition(actor, reason, false,
+                () -> engine.proposeAdminDeployCooldown(UUID.randomUUID(), roundId, playerId, lifeSequence, cooldownNanos),
+                reply, (cooldownNanos == 0 ? "出击冷却已清零" : "出击冷却已设为 " + cooldownNanos / 1_000_000_000L + " 秒")
+                        + "；本轮成绩标记待核验。", "DEPLOY_COOLDOWN", r -> adminValue(r) + participantValue(r, playerId));
+    }
+
+    /** {@code human} null lifts every lock the monster holds. */
+    public void adminHuntUnlock(UUID roundId, UUID playerId, UUID human, String actor, String reason, Consumer<Reply> reply) {
+        requestAdminTransition(actor, reason, false,
+                () -> engine.proposeAdminHuntUnlock(UUID.randomUUID(), roundId, playerId, human),
+                reply, "击败锁定已清除；本轮成绩标记待核验。", "HUNT_UNLOCK", r -> adminValue(r) + participantValue(r, playerId));
+    }
+
+    public void adminEndShelter(UUID roundId, UUID playerId, int lifeSequence, String actor, String reason, Consumer<Reply> reply) {
+        requestAdminTransition(actor, reason, false,
+                () -> engine.proposeAdminEndShelter(UUID.randomUUID(), roundId, playerId, lifeSequence),
+                reply, "初入荒野已结束；本轮成绩标记待核验。", "SHELTER_END", r -> adminValue(r) + participantValue(r, playerId));
+    }
+
+    public void adminPhaseTimer(UUID roundId, long remainingNanos, String actor, String reason, Consumer<Reply> reply) {
+        requestAdminTransition(actor, reason, false,
+                () -> engine.proposeAdminPhaseTimer(UUID.randomUUID(), roundId, remainingNanos),
+                reply, "当前阶段剩余时间已设为 " + remainingNanos / 1_000_000_000L + " 秒。", "PHASE_TIMER",
+                r -> adminValue(r) + ",remainingNanos=" + r.remainingPhaseNanos());
+    }
+
+    public void adminPause(UUID roundId, boolean paused, String actor, String reason, Consumer<Reply> reply) {
+        requestAdminTransition(actor, reason, false,
+                () -> engine.proposeAdminPause(UUID.randomUUID(), roundId, paused),
+                reply, paused ? "比赛已暂停，计时已冻结；本轮成绩标记待核验。" : "比赛已继续。", paused ? "PAUSE" : "RESUME",
+                r -> adminValue(r) + ",adminPaused=" + r.adminPaused());
+    }
+
+    private static String participantValue(RoundSnapshot round, UUID playerId) {
+        var p = round.participants().get(playerId);
+        if (p == null) return ",player=" + playerId;
+        return ",player=" + playerId + ",role=" + p.role() + ",life=" + p.lifeSequence() + ",revivalCharges=" + p.revivalCharges()
+                + ",coins=" + p.wallet().coins() + ",deployCooldownNanos=" + p.monsterCooldownNanos()
+                + ",huntLocks=" + p.huntLocks().size() + ",shelterWaived=" + p.shelterWaived();
     }
 
     /** This only restores database availability. Native effects and competition remain quarantined. */
@@ -956,7 +1007,7 @@ public final class RoundSession implements AutoCloseable {
         if (abort && engine.committed().phase() == RoundPhase.PREPARING) {
             reply.accept(new Reply(false, "世界准备阶段保留原轮重试；本批只中止已就绪的轮次。")); return;
         }
-        if (mutationPending() || !events.isEmpty()) { reply.accept(new Reply(false, "上一项状态仍在提交，请稍后重试。")); return; }
+        if (mutationPending() || !events.isEmpty()) { reply.accept(Reply.refused(Refusal.BUSY, "上一项状态仍在提交，请稍后重试。")); return; }
         long accepted = clock.nanoTime();
         eventTime = accepted;
         try {

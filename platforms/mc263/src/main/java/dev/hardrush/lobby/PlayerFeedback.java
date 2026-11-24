@@ -50,9 +50,11 @@ public final class PlayerFeedback {
         boolean celebrating = round.phase() == RoundPhase.CELEBRATING && completed;
         boolean recovery = round.phase() == RoundPhase.RECOVERY_REQUIRED || dev.hardrush.round.RoundRuntime.sessionState(server)
                 .filter(state -> state != RoundSession.State.OPEN).isPresent();
-        boolean visible = recovery || rescue || displaying;
+        boolean paused = round.adminPaused();
+        boolean visible = recovery || paused || rescue || displaying;
         String text;
         if (recovery) text = "比赛已暂停 · 等待管理员处理";
+        else if (paused) text = "比赛已暂停 · 管理员暂停了比赛，计时已冻结";
         else if (rescue) text = (round.awaitingReconnect() ? "人类全部离线 · 等待重连或救场" : "救场 · 祭坛复生或集结区加入")
                 + " · " + Notices.key((round.remainingPhaseMillis() + 999) / 1000) + " 秒";
         else if (displaying && round.result().kind() == RoundResult.Kind.FAILED) text = "挑战失败，等待下一局";
@@ -60,12 +62,13 @@ public final class PlayerFeedback {
         stageBar.setName(Notices.bar(text));
         long total = rescue ? round.awaitingReconnect() ? RoundEngine.reconnectMillis(round.rules()) : RoundEngine.rescueMillis(round.rules()) : completed
                 ? RoundEngine.successCelebrationMillis(round.rules()) : round.rules().failureDisplayMillis();
-        stageBar.setProgress(recovery ? 0 : Math.max(0, Math.min(1, (float) round.remainingPhaseMillis() / Math.max(1, total))));
+        stageBar.setProgress(recovery || paused ? 0 : Math.max(0, Math.min(1, (float) round.remainingPhaseMillis() / Math.max(1, total))));
         stageBar.setVisible(visible);
         for (var player : server.getPlayerList().getPlayers()) {
             if (!visible) { StatusBars.hide(player, StatusBars.Slot.PAUSE); StatusBars.hide(player, StatusBars.Slot.STAGE); continue; }
-            var slot = recovery ? StatusBars.Slot.PAUSE : StatusBars.Slot.STAGE;
-            StatusBars.hide(player, recovery ? StatusBars.Slot.STAGE : StatusBars.Slot.PAUSE);
+            boolean pauseSlot = recovery || paused;
+            var slot = pauseSlot ? StatusBars.Slot.PAUSE : StatusBars.Slot.STAGE;
+            StatusBars.hide(player, pauseSlot ? StatusBars.Slot.STAGE : StatusBars.Slot.PAUSE);
             StatusBars.show(player, slot, stageBar);
         }
     }

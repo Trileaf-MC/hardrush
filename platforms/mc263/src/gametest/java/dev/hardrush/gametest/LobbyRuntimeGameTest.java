@@ -445,6 +445,26 @@ public final class LobbyRuntimeGameTest {
                         f.test.assertValueEqual(hunter.player.getAbsorptionAmount(), 16f, "Absorption IV holds eight golden hearts");
                         f.test.assertTrue(hunter.player.getEffect(net.minecraft.world.effect.MobEffects.RESISTANCE) == null,
                                 "No resistance: the blessing must not win human fights");
+                        if (iteration == 0) {
+                            // docs/plan/管理员命令与面板.md 2.1: an administrator lifts exactly the altar's instances.
+                            f.test.assertTrue(dev.hardrush.lobby.RevivalAltar.blessed(hunter.player), "The altar's blessing is recognised");
+                            f.test.assertTrue(dev.hardrush.lobby.RevivalAltar.liftBlessing(hunter.player), "The altar's blessing is lifted");
+                            f.test.assertTrue(hunter.player.getEffect(net.minecraft.world.effect.MobEffects.REGENERATION) == null
+                                    && hunter.player.getEffect(net.minecraft.world.effect.MobEffects.ABSORPTION) == null
+                                    && hunter.player.getEffect(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE) == null,
+                                    "Lifting removes all three altar effects");
+                            // An enchanted golden apple (26.3 Consumables): the same levels, its own durations.
+                            hunter.player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.REGENERATION, 400, 1));
+                            hunter.player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.ABSORPTION, 2400, 3));
+                            hunter.player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE, 6000, 0));
+                            f.test.assertFalse(dev.hardrush.lobby.RevivalAltar.blessed(hunter.player), "A golden apple is not the altar's blessing");
+                            f.test.assertFalse(dev.hardrush.lobby.RevivalAltar.liftBlessing(hunter.player), "Nothing of the altar is left to lift");
+                            f.test.assertTrue(hunter.player.getEffect(net.minecraft.world.effect.MobEffects.ABSORPTION) != null,
+                                    "The apple's effects stay");
+                            for (var type : java.util.List.of(net.minecraft.world.effect.MobEffects.REGENERATION,
+                                    net.minecraft.world.effect.MobEffects.ABSORPTION, net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE))
+                                hunter.player.removeEffect(type);
+                        }
                         f.test.assertFalse(hunter.participant().revivalEntitled(), "Revival consumes the sole entitlement");
                         var inventory = hunter.player.getInventory();
                         var compasses = java.util.stream.IntStream.range(0, inventory.getContainerSize()).filter(i -> FallenCompass.is(inventory.getItem(i))).toArray();

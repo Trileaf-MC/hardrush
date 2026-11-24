@@ -26,6 +26,8 @@ public enum Refusal {
     HUNT_LOCKED,
     /** As many monsters as the human's stars allow are already out on it; a slot frees when one of them ends. */
     HUNT_FULL,
+    /** An administrator paused the race; monsters wait in the camp until it resumes. */
+    PAUSED,
     /** Any other rule rejection; the caller supplies the wording for its own context. */
     REJECTED;
 

@@ -21,9 +21,11 @@ public final class RoundLifecycleGameTest {
         var server = test.getLevel().getServer();
         var command = server.getCommands().getDispatcher().getRoot().getChild("hardrush");
         test.assertTrue(command != null, "Competition command registered by mod initialization");
-        for (String entry : new String[]{"status", "join", "ready", "unready", "config"}) {
+        for (String entry : new String[]{"status", "join", "ready", "unready", "admin"}) {
             test.assertTrue(command.getChild(entry) != null, "Competition command entry exists: " + entry);
         }
+        test.assertTrue(command.getChild("config") == null && command.getChild("retry-world") == null,
+                "Operator entries live under /hardrush admin only");
         test.assertValueEqual(dispatch(server.createCommandSourceStack(), "hardrush status"), 1,
                 "Read-only status dispatches on a real server");
         if (!HardRushProperties.competitionEnabled()) {
@@ -65,7 +67,7 @@ public final class RoundLifecycleGameTest {
                     test.assertTrue(RoundRuntime.snapshot(server).orElseThrow().participants().isEmpty(),
                             "Rejected commands do not fabricate participants");
                     var pendingRules = RoundRuntime.nextRules(server).orElseThrow();
-                    test.assertValueEqual(dispatch(adminSource, "hardrush config next-mode normal 大厅生命周期测试设为普通"),
+                    test.assertValueEqual(dispatch(adminSource, "hardrush admin next-mode normal 大厅生命周期测试设为普通"),
                             1, "Legacy config entry directly submits the rule write");
                     test.assertValueEqual(RoundRuntime.nextRules(server).orElseThrow(), pendingRules,
                             "Direct config waits for SQLite before publishing rules");
@@ -78,7 +80,7 @@ public final class RoundLifecycleGameTest {
                     test.assertValueEqual(RoundRuntime.snapshot(server).orElseThrow().rules().fingerprint(),
                             fingerprint[0], "Mode command preserves the current round's frozen rules");
                     var pendingRules = RoundRuntime.nextRules(server).orElseThrow();
-                    test.assertValueEqual(dispatch(adminSource, "hardrush config next-mode hardcore 大厅生命周期测试恢复极限"),
+                    test.assertValueEqual(dispatch(adminSource, "hardrush admin next-mode hardcore 大厅生命周期测试恢复极限"),
                             1, "Legacy config restore directly submits the rule write");
                     test.assertValueEqual(RoundRuntime.nextRules(server).orElseThrow(), pendingRules,
                             "Direct restore waits for SQLite before publishing rules");

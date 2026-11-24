@@ -61,7 +61,7 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(3, active.lifeSequence());
         assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(15, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(16, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 
@@ -157,8 +157,25 @@ class RoundSnapshotCodecMigrationTest {
                 900_000, 0, Map.of(VICTIM, victim, KILLER, killer), false, false, null, totems);
     }
 
-    /** The current encoding without its trailing v15 quarry count, which snapshots with no camp hunt out write as 0. */
-    private static byte[] withoutQuarries(byte[] v15) {
+    /** The v16 tail: the administrator's pause flag and the shelter-waiver count. */
+    private static final int ADMIN_TAIL = 1 + 4;
+
+    /** The current encoding without its trailing v16 pause flag and waiver count, which an unpaused round writes as 0. */
+    private static byte[] withoutAdmin(byte[] v16) {
+        assertEquals(0, ByteBuffer.wrap(v16).getInt(v16.length - 4));
+        assertEquals(0, v16[v16.length - ADMIN_TAIL]);
+        return java.util.Arrays.copyOf(v16, v16.length - ADMIN_TAIL);
+    }
+
+    @Test void schemaFifteenAndEarlierReadNoAdminPauseOrWaiver() {
+        byte[] v15 = withoutAdmin(RoundSnapshotCodec.encode(withTotems(Map.of())));
+        ByteBuffer.wrap(v15).putInt(4, 15);
+        assertEquals(withTotems(Map.of()), RoundSnapshotCodec.decode(v15));
+    }
+
+    /** The current encoding without its v16 tail and v15 quarry count, which snapshots with no camp hunt out write as 0. */
+    private static byte[] withoutQuarries(byte[] v16) {
+        byte[] v15 = withoutAdmin(v16);
         assertEquals(0, ByteBuffer.wrap(v15).getInt(v15.length - 4));
         return java.util.Arrays.copyOf(v15, v15.length - 4);
     }
@@ -186,7 +203,7 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(snapshot, RoundSnapshotCodec.decode(bytes));
         assertEquals(new Sortie(java.util.Optional.of(KILLER), 3), RoundSnapshotCodec.decode(bytes).participants().get(VICTIM).sortie());
         // Name the human as the hunter instead: a human is never out on a hunt.
-        int idAt = bytes.length - (16 + 4 + 1 + 16);
+        int idAt = bytes.length - ADMIN_TAIL - (16 + 4 + 1 + 16);
         ByteBuffer.wrap(bytes).putLong(idAt, KILLER.getMostSignificantBits());
         ByteBuffer.wrap(bytes).putLong(idAt + 8, KILLER.getLeastSignificantBits());
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(bytes));
@@ -219,7 +236,7 @@ class RoundSnapshotCodecMigrationTest {
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
         assertEquals(snapshot, RoundSnapshotCodec.decode(bytes));
         assertEquals(record, RoundSnapshotCodec.decode(bytes).participants().get(KILLER).witch());
-        int countAt = bytes.length - (4 + 4 + 16 + 1 + 4 + 1 + 4 + (4 + "bonusChest".length() + 4) + (4 + "bread".length() + 4));
+        int countAt = bytes.length - ADMIN_TAIL - (4 + 4 + 16 + 1 + 4 + 1 + 4 + (4 + "bonusChest".length() + 4) + (4 + "bread".length() + 4));
         assertEquals(1, ByteBuffer.wrap(bytes).getInt(countAt));
         int idAt = countAt + 4;
         ByteBuffer.wrap(bytes).putLong(idAt, 99);
@@ -250,7 +267,7 @@ class RoundSnapshotCodecMigrationTest {
         totems.put(unclaimed, new LooseTotem(VICTIM, 3, LooseTotem.Source.UNCLAIMED, java.util.Optional.empty(), 900_000));
         var snapshot = withTotems(totems);
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
-        assertEquals(15, ByteBuffer.wrap(bytes).getInt(4));
+        assertEquals(16, ByteBuffer.wrap(bytes).getInt(4));
         var decoded = RoundSnapshotCodec.decode(bytes);
         assertEquals(snapshot, decoded);
         assertEquals(List.of(low, high, unclaimed), List.copyOf(decoded.looseTotems().keySet()), "Encoded sorted by token");
@@ -277,7 +294,7 @@ class RoundSnapshotCodecMigrationTest {
         var migrated = RoundSnapshotCodec.decode(v9);
         assertTrue(migrated.looseTotems().isEmpty());
         assertEquals(withTotems(Map.of()), migrated);
-        assertEquals(15, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
+        assertEquals(16, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
         assertTrue(RoundSnapshotCodec.decode(schemaOneFixtureUnchecked()).looseTotems().isEmpty());
     }
 
@@ -305,11 +322,11 @@ class RoundSnapshotCodecMigrationTest {
         assertArrayEquals(bytes, RoundSnapshotCodec.encode(withLocks(plain, reordered)), "Deterministic regardless of insertion order");
         // The last lock's remaining time must stay positive.
         byte[] spent = bytes.clone();
-        ByteBuffer.wrap(spent).putLong(spent.length - 4 - 4 - 8, 0);
+        ByteBuffer.wrap(spent).putLong(spent.length - ADMIN_TAIL - 4 - 4 - 8, 0);
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(spent));
         // A holder with no lock is never written.
         byte[] empty = bytes.clone();
-        ByteBuffer.wrap(empty).putInt(bytes.length - 4 - 4 - 2 * (16 + 8) - 4, 0);
+        ByteBuffer.wrap(empty).putInt(bytes.length - ADMIN_TAIL - 4 - 4 - 2 * (16 + 8) - 4, 0);
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(empty));
     }
 
@@ -327,7 +344,7 @@ class RoundSnapshotCodecMigrationTest {
                 900_000, 0, Map.of(KILLER, killer), false, false, null);
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
         assertEquals(snapshot, RoundSnapshotCodec.decode(bytes));
-        int idAt = bytes.length - 4 - 4 - (16 + 16);
+        int idAt = bytes.length - ADMIN_TAIL - 4 - 4 - (16 + 16);
         assertEquals(KILLER.getMostSignificantBits(), ByteBuffer.wrap(bytes).getLong(idAt));
         ByteBuffer.wrap(bytes).putLong(idAt, 99);
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(bytes));
@@ -336,7 +353,7 @@ class RoundSnapshotCodecMigrationTest {
     @Test void corruptRegistryCountsAndDuplicatesAreRejected() {
         var token = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
         byte[] one = RoundSnapshotCodec.encode(withTotems(Map.of(token, byKiller(1, 5))));
-        int countAt = one.length - (4 + 4 + HUMAN_ENTRY) - 4 - 4 - 4;
+        int countAt = one.length - ADMIN_TAIL - (4 + 4 + HUMAN_ENTRY) - 4 - 4 - 4;
         assertEquals(1, ByteBuffer.wrap(one).getInt(countAt));
         for (int count : new int[]{-1, LooseTotem.MAX_REGISTERED + 1, 2}) {
             byte[] corrupt = one.clone();
@@ -351,7 +368,7 @@ class RoundSnapshotCodecMigrationTest {
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(duplicate));
         // A negative drop time is not a valid entry either.
         byte[] negative = one.clone();
-        ByteBuffer.wrap(negative).putLong(one.length - 4 - 8, -1);
+        ByteBuffer.wrap(negative).putLong(one.length - ADMIN_TAIL - 4 - 4 - 4 - 4 - 8, -1);
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(negative));
     }
 

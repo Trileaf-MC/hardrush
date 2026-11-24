@@ -261,6 +261,7 @@ public final class LobbyRuntime {
         return current(player, b) && dev.hardrush.world.LobbyWorld.isLobby(player.level())
                 && player.isAlive();
     }
+    private static final String PAUSED = "比赛已暂停，暂时不能出击";
     /** Only called with a server-owned projection selection after BOTH packet guards. */
     private static void beginDeployment(ServerPlayer player, Binding b, LobbyProjections.Selection selected) {
         var round = b.session.view().orElse(null);
@@ -292,6 +293,7 @@ public final class LobbyRuntime {
             Notices.hint(player, "正在出击……"); return;
         }
         if (revivalFirst(player, round, p)) return;
+        if (round.adminPaused()) { Notices.refuse(player, PAUSED); return; }
         var quarry = round.participants().get(targetId);
         if (quarry != null && quarry.lifeSequence() == targetLife && LateShelter.sheltered(round.rules(), quarry)) {
             // Not a failed search: no retry penalty, and the target is neither away nor dead.
@@ -362,6 +364,9 @@ public final class LobbyRuntime {
             for (var retrack : List.copyOf(b.retracks.values())) interruptChannel(retrack.player, "比赛状态变化");
             b.resumptions.clear(); return;
         }
+        // An administrator's pause stops sorties at once (docs/plan/管理员命令与面板.md 2.2); searching on would only
+        // be refused at commit, up to a minute later. Not the hunter's fault: no retry wait.
+        if (round.adminPaused()) for (var d : List.copyOf(b.searches.values())) cancelSearch(b, d, PAUSED);
         for (var refund : List.copyOf(b.refunds.values())) compensate(b, refund);
         for (var d : List.copyOf(b.resumptions.values())) {
             if (!current(d.player, b)) {
@@ -842,6 +847,7 @@ public final class LobbyRuntime {
             case "MONSTER_DAMAGE_COINS" -> null;
             case "DEATH_BATCH" -> before.role().isActiveHuman() ? "阵亡补给" : "阵亡奖励";
             case "MONSTER_DEPLOY", "MONSTER_SELECTION" -> "出击退回";
+            case "ADMIN_COINS" -> "管理员发放";
             default -> "奖励";
         };
         Notices.hint(player, Notices.key("+" + gained) + " " + Notices.COINS + (reason == null ? "" : "（" + reason + "）")

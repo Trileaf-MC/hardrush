@@ -48,11 +48,12 @@ class RoundAdminTest {
         assertEquals(ParticipantRole.LOBBY, engine.view().participants().get(B).role());
         assertEquals(ParticipantRole.LOBBY, engine.view().participants().get(C).role());
         assertFalse(engine.view().participants().get(C).ready());
-        assertTrue(engine.view().timingUncertain());
+        // Skipping the wait before the race changes no race time.
+        assertFalse(engine.view().timingUncertain());
         clock.millis(4_000);
         assertEquals(4_000, engine.view().challengeMillis());
         accept(engine, engine.proposeCheckpoint(UUID.randomUUID(), true));
-        assertTrue(RoundEngine.restore(engine.committed(), clock).view().timingUncertain());
+        assertFalse(RoundEngine.restore(engine.committed(), clock).view().timingUncertain());
     }
 
     @Test void admissionAdminStartKeepsTimeStoppedUntilProfileUnlockIsDurable() {
