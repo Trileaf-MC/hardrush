@@ -338,7 +338,7 @@ public final class PersonalHuntGameTest {
                     f.c.player = f.c.current();
                     test.assertValueEqual(f.spawnSent(f.c), Optional.of(f.c.player.level().getRespawnData().globalPos()),
                             "Back in camp, the compass points at the real spawn again");
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); f.useSearchClock();
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121)); f.useSearchClock();
                     f.moveVoid(f.a, 1);
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.b.participant().monsterCooldownNanos() == 0, "death-life setup"))
@@ -355,7 +355,7 @@ public final class PersonalHuntGameTest {
                     f.session.requestRevival(f.round().roundId(), f.c.id(), p.lifeSequence(), p.monsterDeploymentSequence(), f.reply::set);
                 })
                 .thenWaitUntil(() -> f.await(f.reply.get()!=null && f.reply.get().success() && f.idle() && !PlayerProfiles.isLocked(f.c.player), "fixture C revives using actual earned entitlement"))
-                .thenExecute(() -> { f.move(f.c,0); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); f.searchClock.addAndGet(3_000_000_000L); f.a.role("zombie"); })
+                .thenExecute(() -> { f.move(f.c,0); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121)); f.searchClock.addAndGet(3_000_000_000L); f.a.role("zombie"); })
                 .thenWaitUntil(() -> f.await(f.idle() && f.a.participant().monsterCooldownNanos()==0, "A monster setup"))
                 .thenExecute(() -> f.a.hunt(f.c))
                 .thenWaitUntil(() -> f.await(f.deployed(f.a,0), "A hunts restored C"))
@@ -393,7 +393,7 @@ public final class PersonalHuntGameTest {
                     f.refresh(); HuntInputFixtures.click(f.oldBody,f.oldModel,InteractionHand.MAIN_HAND);
                     HuntInputFixtures.click(f.c.player,f.oldModel,InteractionHand.MAIN_HAND);
                     test.assertTrue(f.searches().isEmpty(),"Old connection object and ID cannot enter a replacement body");
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); f.searchClock.addAndGet(3_000_000_000L); f.move(f.a,0);
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121)); f.searchClock.addAndGet(3_000_000_000L); f.move(f.a,0);
                     f.prepareFault();
                 })
                 .thenWaitUntil(() -> f.await(f.ioTask.isDone() && f.idle() && f.c.participant().monsterCooldownNanos()==0,"fault fixture ready"))
@@ -596,7 +596,7 @@ public final class PersonalHuntGameTest {
                         if(terrain) levels[0].setBlock(BlockPos.containing(found[0]).below(),Blocks.STONE.defaultBlockState(),2);
                         kill(c);
                     }).thenWaitUntil(() -> await(lobby(c),"race defeat back in camp"))
-                    .thenExecute(() -> { c.player=c.current(); clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); })
+                    .thenExecute(() -> { c.player=c.current(); clock.addAndGet(TimeUnit.SECONDS.toNanos(121)); })
                     .thenWaitUntil(() -> await(idle() && c.participant().monsterCooldownNanos()==0,"race cooldown elapsed"));
         }
         void pages() {

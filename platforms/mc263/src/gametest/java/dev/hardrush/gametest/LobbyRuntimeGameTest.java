@@ -148,7 +148,8 @@ public final class LobbyRuntimeGameTest {
                     f.assertFixedControlsStayOnDropPacket();
                     f.equipWorldSword();
                     f.test.assertFalse(MonsterRoles.summon(f.monster.player), "Historical summon action remains retired");
-                    f.spawnEgg(1, 2);
+                    // No baby egg comes with a sortie any more (docs/plan/悬赏分档与追猎强度.md §5.2); only a bought one would sit in slot 1.
+                    if (!f.monster.player.getInventory().getItem(1).isEmpty()) f.spawnEgg(1, 2);
                     f.spawnEgg(2, -2);
                     f.test.assertValueEqual(f.summons(), 2, "The formal outing owns one adult and one baby from its eggs");
                     f.test.assertFalse(f.monster.participant().monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON), "Egg use does not create retired cooldown state");
