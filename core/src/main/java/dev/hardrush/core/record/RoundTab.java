@@ -18,7 +18,8 @@ public record RoundTab(String header, String footer) {
         long offlineMonsters = round.participants().values().stream().filter(p -> p.role().isMonster() && !p.online()).count();
         // The status bar shows state and progress; TAB is the scoreboard players hold open for the exact numbers.
         String state = phase(round);
-        if (round.phase() == RoundPhase.RUNNING && round.pauseReason() == PauseReason.SERVER_STOPPED) state = "计时暂停 · 服务器重启";
+        if (round.adminPaused()) state = "计时暂停 · 管理员暂停";
+        else if (round.phase() == RoundPhase.RUNNING && round.pauseReason() == PauseReason.SERVER_STOPPED) state = "计时暂停 · 服务器重启";
         else if (round.phase() == RoundPhase.RUNNING && round.pauseReason() != PauseReason.NONE) state = "计时暂停 · 等待人类上线";
         if (round.phase() == RoundPhase.COUNTDOWN || round.phase() == RoundPhase.RESCUE
                 || round.phase() == RoundPhase.SETTLING || round.phase() == RoundPhase.CELEBRATING) {
