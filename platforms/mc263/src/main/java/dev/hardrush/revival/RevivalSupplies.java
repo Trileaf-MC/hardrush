@@ -38,6 +38,7 @@ public final class RevivalSupplies {
                 case SHIELD -> player.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
                 case IRON_BUCKET -> give(player, new ItemStack(Items.BUCKET, count));
                 case IRON_PICKAXE -> give(player, new ItemStack(Items.IRON_PICKAXE, count));
+                case BELL -> give(player, new ItemStack(Items.BELL, count));
                 case OAK_LOGS -> give(player, new ItemStack(Items.OAK_LOG, 5 * count));
                 case BREAD -> give(player, new ItemStack(Items.BREAD, 8 * count));
                 default -> {} // Landing supplies wait for the landing.
