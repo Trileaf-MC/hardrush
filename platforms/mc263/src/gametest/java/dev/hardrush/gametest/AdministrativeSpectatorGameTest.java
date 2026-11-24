@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.protocol.game.ClientboundDisguisedChatPacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerChatPacket;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,6 +39,16 @@ public final class AdministrativeSpectatorGameTest {
                 .thenExecute(() -> { f.bind(); f.callbacks(); });
         f.a.login(sequence); f.b.login(sequence);
         sequence.thenWaitUntil(() -> f.await(f.idle(), "Both non-participant profiles ready"))
+                .thenExecute(() -> {
+                    // Sealed lobby bodies still talk: /tell (and its aliases) passes the isolation gate.
+                    test.assertTrue(PlayerProfiles.sealed(f.b.player), "The lobby body is sealed");
+                    test.assertTrue(PlayerProfiles.sealedCommandAllowed(f.b.player, "w CampHumanA hi")
+                            && PlayerProfiles.sealedCommandAllowed(f.b.player, "me waves")
+                            && !PlayerProfiles.sealedCommandAllowed(f.b.player, "trigger anything"), "Only conversation commands open");
+                    f.a.client.clearPackets();
+                    packet(f.b.player, "tell CampHumanA whisper-through-the-gate");
+                })
+                .thenWaitUntil(() -> f.await(whispered(f.a.client, "whisper-through-the-gate"), "A sealed lobby body whispers through the real command packet"))
                 .thenExecute(() -> {
                     packet(f.b.player, "gamemode spectator");
                     test.assertFalse(PlayerProfiles.administrativeCommandAllowed(f.b.player, "tp @s CampHumanA"), "Non-OP commands stay sealed");
@@ -143,6 +155,11 @@ public final class AdministrativeSpectatorGameTest {
     private static void assertObserver(GameTestHelper test, ServerPlayer player) {
         test.assertTrue(PlayerProfiles.isAdministrativeSpectator(player) && !PlayerProfiles.simulationFrozen(player), "Authorized spectator can move");
         test.assertTrue(PlayerProfiles.isLocked(player) && !PlayerProfiles.verifiedLobbyBody(player), "Movement leaves admission, items and lobby interactions sealed");
+    }
+    /** A signed sender arrives as player chat; this fixture has no chat session, so vanilla disguises it instead. */
+    private static boolean whispered(TestClient client, String text) {
+        return client.packets(ClientboundPlayerChatPacket.class).stream().anyMatch(chat -> chat.body().content().equals(text))
+                || client.packets(ClientboundDisguisedChatPacket.class).stream().anyMatch(chat -> chat.message().getString().equals(text));
     }
     private static void packet(ServerPlayer player, String command) {
         player.connection.handleChatCommand(new ServerboundChatCommandPacket(command));
