@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Bounded, version-pinned vanilla Minecraft lookups; Python standard library only.
 
-Local commands never download artifacts or launch Minecraft. Generated sources live
-under .local/mc-knowledge; stdout defaults to JSON with provenance and metrics.
+Local commands never download artifacts or launch Minecraft. The project defaults to
+the nearest ancestor of the working directory with a gradle.properties; generated
+sources live under <project>/.local/mc-knowledge (or a user cache when no project is
+found). stdout defaults to JSON with provenance and metrics.
 Use --format compact for a metadata header followed by the exact raw body.
 """
 import argparse
@@ -20,8 +22,21 @@ import tempfile
 import time
 import zipfile
 
-ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = 2
+
+
+def find_project(start):
+    """Nearest ancestor (including start) holding gradle.properties, or None."""
+    for folder in (start, *start.parents):
+        if (folder / "gradle.properties").is_file():
+            return folder
+    return None
+
+
+def user_cache_dir():
+    if os.environ.get("XDG_CACHE_HOME"):
+        return Path(os.environ["XDG_CACHE_HOME"]) / "mc-knowledge"
+    return Path.home() / ".cache/mc-knowledge"
 
 
 def next_command(args, command=None, class_name=None, descriptor=None):
@@ -150,9 +165,8 @@ def java_tools(args, required):
     if args.java_home:
         candidates.append(Path(args.java_home))
     else:
-        pointer = args.project / ".local/toolchains/java-home.txt"
-        if pointer.is_file():
-            candidates.append(Path(pointer.read_text().strip()))
+        if os.environ.get("MC_KNOWLEDGE_JAVA_HOME"):
+            candidates.append(Path(os.environ["MC_KNOWLEDGE_JAVA_HOME"]))
         if os.environ.get("JAVA_HOME"):
             candidates.append(Path(os.environ["JAVA_HOME"]))
         found = shutil.which("javap")
@@ -551,7 +565,7 @@ def nonnegative(value):
 
 def parser():
     common = argparse.ArgumentParser(add_help=False, argument_default=argparse.SUPPRESS, allow_abbrev=False)
-    common.add_argument("--project", type=Path, help="项目根目录，默认本脚本所属仓库")
+    common.add_argument("--project", type=Path, help="项目根目录；默认从当前目录向上找含 gradle.properties 的目录")
     common.add_argument("--version", help="显式比较其他版本；默认 gradle.properties")
     common.add_argument("--gradle-home", type=Path)
     common.add_argument("--cache-dir", type=Path)
@@ -602,7 +616,7 @@ def parser():
 def parse_args(argv=None):
     args = parser().parse_args(argv)
     args.explicit_start = hasattr(args, "start_line") or hasattr(args, "start_char")
-    defaults = {"project": ROOT, "version": None, "gradle_home": Path(os.environ.get("GRADLE_USER_HOME", Path.home() / ".gradle")),
+    defaults = {"project": None, "version": None, "gradle_home": Path(os.environ.get("GRADLE_USER_HOME", Path.home() / ".gradle")),
                 "java_home": None, "vineflower": None, "jar": None, "side": "server", "offline": False,
                 "max_lines": 80, "max_chars": 5000, "start_line": 1, "start_char": 0, "limit": 5, "timeout": 30,
                 "format": os.environ.get("MC_KNOWLEDGE_FORMAT", "json"), "max_output_chars": None, "provenance": "reference"}
@@ -611,9 +625,17 @@ def parse_args(argv=None):
             setattr(args, key, value)
     if args.format not in ("json", "compact"):
         parser().error("MC_KNOWLEDGE_FORMAT 必须为 json 或 compact")
+    if args.project is None:
+        args.project = find_project(Path.cwd().resolve()) or Path.cwd()
+        project_cache = args.project / ".local/mc-knowledge" if (args.project / "gradle.properties").is_file() else None
+    else:
+        project_cache = args.project / ".local/mc-knowledge"
     args.project = args.project.expanduser().resolve()
     args.gradle_home = args.gradle_home.expanduser().resolve()
-    args.cache_dir = getattr(args, "cache_dir", args.project / ".local/mc-knowledge").expanduser().resolve()
+    if not hasattr(args, "cache_dir"):
+        configured = os.environ.get("MC_KNOWLEDGE_CACHE_DIR")
+        args.cache_dir = Path(configured) if configured else project_cache or user_cache_dir()
+    args.cache_dir = args.cache_dir.expanduser().resolve()
     if getattr(args, "descriptor", None) and not getattr(args, "member", None):
         parser().error("--descriptor 需要 --member")
     return args

@@ -189,5 +189,42 @@ class KnowledgeTests(unittest.TestCase):
             mc.page_text("hello", self.args("source", "Thing", "--start-line", "2"))
 
 
+class DefaultLocationTests(unittest.TestCase):
+    """Without --project the tool follows the working directory, not its own install path."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        environment = patch.dict("os.environ", {"XDG_CACHE_HOME": str(self.root / "xdg")})
+        environment.start()
+        self.addCleanup(environment.stop)
+        mc.os.environ.pop("MC_KNOWLEDGE_CACHE_DIR", None)  # restored by patch.dict
+
+    def parse_in(self, folder, *arguments):
+        folder.mkdir(parents=True, exist_ok=True)
+        with patch.object(mc.Path, "cwd", return_value=folder):
+            return mc.parse_args([*arguments, "doctor"])
+
+    def test_project_is_nearest_ancestor_with_gradle_properties(self):
+        project = self.root / "mod"
+        project.mkdir()
+        (project / "gradle.properties").write_text("minecraft_version=26.3\n")
+        args = self.parse_in(project / "src/main/java")
+        self.assertEqual(args.project, project)
+        self.assertEqual(args.cache_dir, project / ".local/mc-knowledge")
+        self.assertEqual(mc.project_version(args.project), "26.3")
+
+    def test_without_project_cache_goes_to_user_cache(self):
+        args = self.parse_in(self.root / "elsewhere", "--version", "26.3")
+        self.assertEqual(args.project, self.root / "elsewhere")
+        self.assertEqual(args.cache_dir, self.root / "xdg/mc-knowledge")
+
+    def test_cache_dir_environment_override(self):
+        with patch.dict("os.environ", {"MC_KNOWLEDGE_CACHE_DIR": str(self.root / "shared")}):
+            args = self.parse_in(self.root / "elsewhere")
+        self.assertEqual(args.cache_dir, self.root / "shared")
+
+
 if __name__ == "__main__":
     unittest.main()

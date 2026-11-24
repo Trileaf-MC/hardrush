@@ -1,13 +1,24 @@
 ---
 name: minecraft-knowledge
-description: 查询并核实 HardRush 所用版本的 Minecraft 原版数值、实体 AI、数据标签和行为差异；按需读取本地 JAR 数据、源码片段及 Wiki，适用于机制实现和查证。
+description: 查询并核实项目所用版本的 Minecraft Java 版原版数值、实体 AI、数据标签和行为差异；按需读取本地 JAR 数据、源码片段及 Wiki，适用于机制实现和查证。
 ---
 
 # 原版机制查询
 
-在仓库根目录运行 `python3 scripts/mc-knowledge.py --format compact`，复用本机 Gradle 缓存、JDK 和 Vineflower，生成内容留在 `.local/`。已知类、成员或数据路径时直接查询；参数不明确时查看对应子命令的 `--help`，需要确认环境或排查工具链错误时运行 `doctor`。
+下文的 `MCK` 指本 skill 目录（即这份 `SKILL.md` 所在目录）下的 `scripts/mc-knowledge.py`，运行时写成它的绝对路径：`python3 <本 skill 目录>/scripts/mc-knowledge.py --format compact ...`。
+
+在目标模组项目内任意目录运行即可：脚本从当前目录向上找含 `gradle.properties` 的目录作为项目，读取其中的 `minecraft_version`，复用本机 Gradle 缓存、JDK 和 Vineflower，生成内容留在项目的 `.local/mc-knowledge/`。已知类、成员或数据路径时直接查询；参数不明确时查看对应子命令的 `--help`，需要确认环境或排查工具链错误时运行 `doctor`。
 
 紧凑格式默认限制整个响应为 6000 字符；`--max-output-chars` 调整总预算，`--max-chars` 仍只限制正文。脚本需要原有 JSON 结构时用默认格式或 `--format json`。每次返回都保留版本、来源入口、告警及截断信息；需要完整出处时读取返回的证据文件或使用 `--provenance full`。
+
+## 适用范围与环境
+
+- 只需 Python 3 标准库和 JDK（含 `javap`）；反编译另需 Vineflower JAR。本地命令从不下载制品，也不启动游戏；只有 `wiki` 访问网络。
+- 原版 JAR 默认取自 Fabric Loom 缓存 `$GRADLE_USER_HOME/caches/fabric-loom/<版本>/`，项目至少构建过一次即可。非 Loom 项目（NeoForge、Paper 等）用 `--jar` 指定本地 JAR，并用 `--version` 指定版本。
+- 依赖 JAR 中可读的 `net.minecraft` 类名：未混淆的版本（26.1 起）可直接使用；更早版本需先准备好已映射的 JAR。
+- 项目根、版本、缓存目录与工具都可显式指定：`--project`、`--version`、`--cache-dir`（或环境变量 `MC_KNOWLEDGE_CACHE_DIR`）、`--java-home`（或 `MC_KNOWLEDGE_JAVA_HOME`，其后依次回退到 `JAVA_HOME`、`PATH` 中的 `javap`）、`--vineflower`、`--gradle-home`。找不到项目时缓存写到 `$XDG_CACHE_HOME/mc-knowledge`（默认 `~/.cache/mc-knowledge`）。
+- 缓存会写盘：在只读沙箱中运行会失败，需给缓存目录写权限。
+- 单元测试：在本 skill 的 `scripts/` 目录运行 `python3 -m unittest`。
 
 ## 按问题选择资料
 
@@ -17,17 +28,17 @@ description: 查询并核实 HardRush 所用版本的 Minecraft 原版数值、�
 | 精确数值、AI 优先级、条件和调用顺序 | `find-class` 定位后用 `outline`、`source` 读相关成员 |
 | 机制概览、常用术语、搜索关键词 | `wiki` 的首段、目录或最小相关子节 |
 | Fabric 接入方法 | 官方文档／可用的文档 MCP；核对项目实际依赖版本 |
-| HardRush 行为为何不同 | 原版证据之后检查项目 Mixin、适配代码与数据覆盖 |
+| 项目里的行为为何与原版不同 | 原版证据之后检查项目的 Mixin、适配代码与数据覆盖 |
 
 用当前未解决的问题决定下一次查询：优先读相关成员，条件落在父类、调用方或数据文件时沿该处补查；确实需要类的整体结构或初始化上下文时再读整类。已验证的本地版本与制品身份可直接作为版本依据，网页查询围绕概念、历史差异或资料缺口定位到相关段落。外部 MCP 或固定版本的 mcmeta 可补充缺口；保留版本与来源，不用近似版本静默替代目标。
 
 ## 本地查询
 
 ```bash
-python3 scripts/mc-knowledge.py --format compact find-class Skeleton
-python3 scripts/mc-knowledge.py --format compact outline AbstractSkeleton --member registerGoals
-python3 scripts/mc-knowledge.py --format compact source AbstractSkeleton --member registerGoals
-python3 scripts/mc-knowledge.py --format compact data damage_type/mob_attack --pointer /scaling
+python3 MCK --format compact find-class Skeleton
+python3 MCK --format compact outline AbstractSkeleton --member registerGoals
+python3 MCK --format compact source AbstractSkeleton --member registerGoals
+python3 MCK --format compact data damage_type/mob_attack --pointer /scaling
 ```
 
 - 默认版本由项目配置确定，原版服务端问题优先使用服务端 JAR。跨版本比较时显式指定 `--version`，分别保留每个版本的证据。
@@ -40,9 +51,9 @@ python3 scripts/mc-knowledge.py --format compact data damage_type/mob_attack --p
 ## Wiki 查询
 
 ```bash
-python3 scripts/mc-knowledge.py --format compact wiki --search Skeleton
-python3 scripts/mc-knowledge.py --format compact wiki Skeleton --toc
-python3 scripts/mc-knowledge.py --format compact wiki Skeleton --section SECTION --oldid REVISION
+python3 MCK --format compact wiki --search Skeleton
+python3 MCK --format compact wiki Skeleton --toc
+python3 MCK --format compact wiki Skeleton --section SECTION --oldid REVISION
 ```
 
 将 `SECTION`、`REVISION` 替换为查询返回的章节索引与修订号。同次调查沿用 `--oldid`，优先读最小相关子节。`--offline` 只使用已有缓存；缺少缓存时改查本地来源或说明资料缺口。

@@ -13,7 +13,7 @@ from urllib.parse import urlencode, quote
 from urllib.request import Request, urlopen
 
 
-USER_AGENT = "HardRush-MinecraftKnowledge/1.0 (read-only research CLI)"
+USER_AGENT = "mc-knowledge/1.0 (read-only Minecraft research CLI)"
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 LATEST_CACHE_SECONDS = 24 * 60 * 60
 
