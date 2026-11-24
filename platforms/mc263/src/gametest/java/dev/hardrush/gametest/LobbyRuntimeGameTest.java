@@ -394,7 +394,8 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertTrue(dev.hardrush.lobby.MonsterShop.isShop(hunter.player), "The guide was already read: the shop opens at once");
                     var offers = ((net.minecraft.world.inventory.MerchantMenu) hunter.player.containerMenu).getOffers();
                     var sold = offers.stream().map(offer -> offer.getResult().getItem()).toList();
-                    f.test.assertValueEqual(sold.size(), 7, "Seven revival supplies on the shelf: " + sold);
+                    f.test.assertValueEqual(sold.size(), 8, "Eight revival supplies on the shelf, the bell among them: " + sold);
+                    f.test.assertTrue(sold.contains(Items.BELL), "The witch sells the bell as a revival supply");
                     f.test.assertFalse(sold.contains(Items.ZOMBIE_SPAWN_EGG), "No sortie goods for a totem holder");
                     f.test.assertTrue(sold.contains(Items.CHEST) && sold.contains(Items.SHIELD), "The shelf holds the bonus chest and the shield");
                     hunter.player.closeContainer();
