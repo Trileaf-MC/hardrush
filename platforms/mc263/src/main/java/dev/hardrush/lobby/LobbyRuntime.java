@@ -1161,7 +1161,7 @@ public final class LobbyRuntime {
                                 ? available.stream().min(java.util.Comparator.comparingLong(lived::huntLockNanos)) : Optional.<UUID>empty();
                         if (inCamp(observer)) {
                             String guidance = creeper && !p.wallet().creeperTicket()
-                                    ? "苦力怕未解锁 · 右键苦力怕石像花 " + MonsterCoins.creeperUnlockPrice(r.rules()) + " 怪物币解锁"
+                                    ? "苦力怕未解锁 · 右键苦力怕石像，花 " + MonsterCoins.creeperUnlockPrice(r.rules()) + " 怪物币解锁"
                                     : available.isEmpty() ? (creeper ? "苦力怕只追三星以上 · 暂无可追的人类" : "暂无可追猎的人类")
                                     : Notices.key(kindName(p.monsterRole())) + (p.monsterCooldownNanos() > 0
                                     ? " · 出击冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"
@@ -1174,7 +1174,8 @@ public final class LobbyRuntime {
                             long locked = lived == null ? 0 : lived.huntLockNanos(selected.target());
                             hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
                                     Notices.key(r.participants().get(selected.target()).name())
-                                            + (creeper && belowCreeperStars(standings, selected.target()) ? " · 苦力怕只追三星以上"
+                                            + (creeper && !p.wallet().creeperTicket() ? " · 先回苦力怕石像解锁"
+                                            : creeper && belowCreeperStars(standings, selected.target()) ? " · 苦力怕只追三星以上"
                                             : projections.sheltered(observer, selected) ? " · " + LateShelter.NAME
                                             : p.monsterCooldownNanos() > 0 ? " · 冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"
                                             : locked > 0 ? " · 提防你 " + Notices.key(seconds(locked)) + " 秒" : " · 右键追猎") + " · 左键观察", now + 300);
