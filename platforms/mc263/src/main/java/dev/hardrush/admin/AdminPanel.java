@@ -74,7 +74,7 @@ public final class AdminPanel {
     private static void main(ServerPlayer player) {
         var session = session(player);
         var round = session == null ? null : session.snapshot().orElse(null);
-        if (round == null) return;
+        if (round == null) { clear(player); return; }
         send(player, mainDialog(round, session.view().orElse(round), owner(player)));
     }
 
@@ -105,7 +105,7 @@ public final class AdminPanel {
 
     private static void timerDialog(ServerPlayer player) {
         var round = snapshot(player);
-        if (round != null) send(player, timerDialog(round));
+        if (round != null) send(player, timerDialog(round)); else clear(player);
     }
 
     public static MultiActionDialog timerDialog(RoundSnapshot round) {
@@ -119,7 +119,7 @@ public final class AdminPanel {
 
     private static void playersDialog(ServerPlayer player) {
         var round = snapshot(player);
-        if (round == null) return;
+        if (round == null) { clear(player); return; }
         var server = player.level().getServer();
         send(player, playersDialog(round, p -> server.getPlayerList().getPlayer(p.id()) != null));
     }
@@ -136,7 +136,7 @@ public final class AdminPanel {
     private static void playerDialog(ServerPlayer player, UUID id) {
         var session = session(player);
         var round = snapshot(player);
-        if (round == null) return;
+        if (round == null) { clear(player); return; }
         var p = round.participants().get(id);
         if (p == null) { playersDialog(player); return; }
         var body = player.level().getServer().getPlayerList().getPlayer(id);
@@ -194,10 +194,10 @@ public final class AdminPanel {
 
     private static void recordsDialog(ServerPlayer player) {
         var session = session(player);
-        if (session == null || !owner(player)) return;
+        if (session == null || !owner(player)) { clear(player); return; }
         session.history(50, 0).whenComplete((rows, error) -> {
             if (!player.connection.isAcceptingMessages()) return;
-            if (error != null) { player.sendSystemMessage(Component.literal("历史查询失败，请稍后再试。")); return; }
+            if (error != null) { player.sendSystemMessage(Component.literal("历史查询失败，请稍后再试。")); clear(player); return; }
             var pending = rows.stream().filter(r -> r.result().kind() == RoundResult.Kind.COMPLETED && r.result().winner() != null
                     && !r.leaderboardEligible()).limit(MAX_RECORDS).toList();
             var buttons = new ArrayList<ActionButton>();
@@ -215,7 +215,8 @@ public final class AdminPanel {
     // ---- Clicks ---------------------------------------------------------------------------------------------------
 
     private static void clicked(ServerPlayer player, String action, Optional<Tag> payload) {
-        if (commands == null || !admin(player)) return;
+        // The client waits for every click's answer: anything that does not reopen a dialog closes it.
+        if (commands == null || !admin(player)) { clear(player); return; }
         var source = player.createCommandSourceStack();
         var values = payload.filter(CompoundTag.class::isInstance).map(CompoundTag.class::cast).orElseGet(CompoundTag::new);
         String reason = reason(values);
@@ -224,6 +225,7 @@ public final class AdminPanel {
         String rest = slash < 0 ? "" : action.substring(slash + 1);
         Runnable back = () -> main(player);
         switch (verb) {
+            case "close" -> clear(player);
             case "main" -> main(player);
             case "players" -> playersDialog(player);
             case "timer" -> timerDialog(player);
@@ -240,7 +242,7 @@ public final class AdminPanel {
             case "verify" -> uuid(rest).ifPresentOrElse(id -> commands.revise(source, id.toString(), 0, "none", reason, true,
                     () -> recordsDialog(player)), back);
             case "do" -> perform(player, source, rest, values, reason);
-            default -> { }
+            default -> clear(player);
         }
     }
 
@@ -274,8 +276,13 @@ public final class AdminPanel {
         var body = Component.literal(String.join("\n", lines));
         var common = new CommonDialogData(Component.literal(title), Optional.of(Component.literal("HardRush 管理")), true, false,
                 DialogAction.WAIT_FOR_RESPONSE, List.of(new PlainMessage(body, WIDTH)), inputs);
-        var close = new ActionButton(new CommonButtonData(Component.literal("关闭"), BUTTON), Optional.empty());
+        // Every button waits for an answer, so closing is a request too: the server answers with a clear.
+        var close = button("关闭", "close");
         return new MultiActionDialog(common, buttons, Optional.of(close), 2);
+    }
+
+    private static void clear(ServerPlayer player) {
+        player.connection.send(net.minecraft.network.protocol.common.ClientboundClearDialogPacket.INSTANCE);
     }
 
     private static void send(ServerPlayer player, MultiActionDialog dialog) {

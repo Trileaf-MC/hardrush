@@ -1055,7 +1055,7 @@ public final class RoundEngine {
         if (delta > 0) players.put(playerId, revivalFirst(before.rules(), player.addRevivalCharges(delta)));
         else players.put(playerId, player.removeRevivalCharges(-delta));
         if (before.phase() == RoundPhase.RESCUE && !hasHuman(players)) {
-            return lastHumanGone(eventId, "ADMIN_REVIVAL", before, players, "RESCUE_EXPIRED", true);
+            return lastHumanGone(eventId, "ADMIN_TAKE_REVIVAL", before, players, "RESCUE_EXPIRED", true);
         }
         return proposal(eventId, delta > 0 ? "ADMIN_GRANT_REVIVAL" : "ADMIN_TAKE_REVIVAL", before, before.phase(),
                 before.remainingPhaseNanos(), players, before.result(), false, true);

@@ -53,6 +53,8 @@ public final class RevivalAltar {
     private final Map<UUID, Arrival> arrivals = new HashMap<>();
     /** Revived lives (round, player, life) blessed in this server run; a restart forgets them, see {@link #deliver}. */
     private final Set<List<Object>> blessed = new HashSet<>();
+    /** Game tick each player's current blessing runs out on, so an administrator lifts exactly the altar's instances. */
+    private final Map<UUID, Long> blessingEnds = new HashMap<>();
     /** Lives whose landing supplies are being committed right now. */
     private final Set<List<Object>> delivering = new HashSet<>();
     /** Lives whose bonus chest was set down in this server run, committed or not. */
@@ -235,32 +237,47 @@ public final class RevivalAltar {
     private void bless(ServerPlayer player, RoundSnapshot round, dev.hardrush.core.round.Participant life) {
         blessed.add(List.of(round.roundId(), life.id(), life.lifeSequence()));
         int ticks = (int) (life.witch().blessingMillis(life.lifeSequence()) / 50);
+        blessingEnds.put(player.getUUID(), player.level().getGameTime() + ticks);
         player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, ticks, 1));
         player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, ticks, 3));
         player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, ticks, 0));
     }
 
-    /** Whether the player still carries the altar's blessing, recognised by its exact effect levels. */
+    /** Whether the player still carries the altar's own blessing instances (not a golden apple's or a potion's). */
     public static boolean blessed(ServerPlayer player) {
-        return effect(player, MobEffects.REGENERATION, 1) || effect(player, MobEffects.ABSORPTION, 3);
+        return !altarEffects(player).isEmpty();
     }
 
     /**
-     * An administrator ends the blessing early (docs/plan/管理员命令与面板.md 2.1). Only the altar's set is lifted: fire
-     * resistance goes only together with one of the other two, so a potion drunk on its own stays.
+     * An administrator ends the blessing early (docs/plan/管理员命令与面板.md 2.1). Only the instances the altar applied
+     * are lifted, recognised by level and by remaining time against the recorded end: a golden apple eaten since
+     * (same levels, a fresh duration) or a potion drunk on its own stays.
      */
     public static boolean liftBlessing(ServerPlayer player) {
-        boolean regeneration = effect(player, MobEffects.REGENERATION, 1), absorption = effect(player, MobEffects.ABSORPTION, 3);
-        if (!regeneration && !absorption) return false;
-        if (regeneration) player.removeEffect(MobEffects.REGENERATION);
-        if (absorption) player.removeEffect(MobEffects.ABSORPTION);
-        if (effect(player, MobEffects.FIRE_RESISTANCE, 0)) player.removeEffect(MobEffects.FIRE_RESISTANCE);
-        return true;
+        var effects = altarEffects(player);
+        effects.forEach(player::removeEffect);
+        var s = SERVICES.get(player.level().getServer());
+        if (s != null) s.blessingEnds.remove(player.getUUID());
+        return !effects.isEmpty();
     }
 
-    private static boolean effect(ServerPlayer player, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> type, int amplifier) {
-        var instance = player.getEffect(type);
-        return instance != null && instance.getAmplifier() == amplifier;
+    /** Ticks of slack between the recorded end and an effect's own countdown (they tick in different places). */
+    private static final int BLESSING_SLACK_TICKS = 5;
+
+    private static List<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>> altarEffects(ServerPlayer player) {
+        var s = SERVICES.get(player.level().getServer());
+        Long end = s == null ? null : s.blessingEnds.get(player.getUUID());
+        if (end == null) return List.of();
+        long left = end - player.level().getGameTime();
+        if (left <= 0) return List.of();
+        var found = new java.util.ArrayList<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>>();
+        for (var entry : List.of(Map.entry(MobEffects.REGENERATION, 1), Map.entry(MobEffects.ABSORPTION, 3),
+                Map.entry(MobEffects.FIRE_RESISTANCE, 0))) {
+            var instance = player.getEffect(entry.getKey());
+            if (instance != null && instance.getAmplifier() == entry.getValue()
+                    && Math.abs(instance.getDuration() - left) <= BLESSING_SLACK_TICKS) found.add(entry.getKey());
+        }
+        return found;
     }
 
     private static void fizzle(ServerPlayer player) {

@@ -11,7 +11,11 @@ import net.minecraft.server.MinecraftServer;
 final class NextTick {
     private static final Map<MinecraftServer, List<Runnable>> TASKS = new IdentityHashMap<>();
 
-    static { ServerTickEvents.END_SERVER_TICK.register(NextTick::run); }
+    static {
+        ServerTickEvents.END_SERVER_TICK.register(NextTick::run);
+        // A batch cut short by a stop must not keep the old server alive.
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPED.register(TASKS::remove);
+    }
 
     private NextTick() {}
 
