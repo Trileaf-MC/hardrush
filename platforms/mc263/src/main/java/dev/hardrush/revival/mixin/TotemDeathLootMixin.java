@@ -11,7 +11,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Death never spills the dying player's own totems (design 2.6), nor the 遗落之地 compass of the life that ends. Runs beside {@code MonsterLivingMixin.noRoleLoot} at
+ * Death never spills the dying player's own totems (design 2.6), nor the 遗落之地 compass of the life that ends; a human
+ * a monster player killed spills nothing at all, its belongings sealed for its next life. Runs beside {@code MonsterLivingMixin.noRoleLoot} at
  * the same head: that one cancels the whole loot of a monster body, this one only empties the totems, so their
  * order does not matter.
  */
@@ -22,5 +23,6 @@ public abstract class TotemDeathLootMixin {
         if (!((Object) this instanceof ServerPlayer player)) return;
         TotemKeeping.stripForDeath(player);
         dev.hardrush.revival.FallenCompass.stripForDeath(player);
+        dev.hardrush.round.RoundRuntime.keepBelongingsAtDeath(player, source);
     }
 }

@@ -63,7 +63,7 @@ public final class PersonalHuntGameTest {
                     f.c.player = f.c.current(); f.d.player = f.d.current();
                     f.refresh(); f.assertModels();
                     f.c.hunt(f.a); test.assertTrue(f.searches().isEmpty(), "Cooldown click cannot reserve automatic departure");
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31));
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(46));
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterCooldownNanos() == 0, "cooldown elapsed without automatic request"))
                 .thenExecute(() -> {
@@ -90,9 +90,11 @@ public final class PersonalHuntGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.lobby(f.c) && f.lobby(f.d), "both defeated back in camp"))
                 .thenExecute(() -> {
-                    f.c.player = f.c.current(); f.d.player = f.d.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31));
+                    // Each fell on its sortie: a one-star quarry stays wary of it for 120 seconds (docs/plan/悬赏分档与追猎强度.md §4).
+                    f.c.player = f.c.current(); f.d.player = f.d.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121));
                 })
-                .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterCooldownNanos() == 0 && f.d.participant().monsterCooldownNanos() == 0, "second cooldown"))
+                .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterCooldownNanos() == 0 && f.d.participant().monsterCooldownNanos() == 0
+                        && f.c.participant().huntLocks().isEmpty() && f.d.participant().huntLocks().isEmpty(), "second cooldown"))
                 .thenExecute(() -> {
                     // C left-clicks A's courtyard model and rides A's camera from the camp into the End.
                     var camp = f.c.player.position();
@@ -116,13 +118,16 @@ public final class PersonalHuntGameTest {
                 .thenExecute(() -> test.assertFalse(f.searches().containsKey(f.c.id()), "Jump held under a second never hunts"))
                 .thenWaitUntil(() -> f.await(f.searches().containsKey(f.c.id()) || f.pending().containsKey(f.c.id()) || f.deployed(f.c, 2),
                         "holding jump for a second hunts the watched human"))
+                // Entering the End scored A ten points: two stars, so two monsters may hunt it at once (docs/plan/悬赏分档与追猎强度.md §3).
                 .thenWaitUntil(() -> f.await(f.deployed(f.c, 2) && f.deployed(f.d, 2) && !Observation.observing(f.c.player)
-                        && f.c.player.getCamera() == f.c.player, "both select same End human without quota; C lands straight from the camera"))
+                        && f.c.player.getCamera() == f.c.player, "both select the same two-star End human; C lands straight from the camera"))
+                .thenExecute(() -> test.assertValueEqual(dev.hardrush.core.round.Bounty.standing(f.round().rules(), f.round().participants(), f.a.id()).stars(), 2,
+                        "A two-star human takes two hunters"))
                 .thenExecute(() -> f.c.input(new Input(false, false, false, false, false, false, false)))
                 .thenExecute(() -> { f.kill(f.c); f.kill(f.d); })
                 .thenWaitUntil(() -> f.await(f.lobby(f.c) && f.lobby(f.d), "budget case camp"))
                 .thenExecute(() -> {
-                    f.c.player = f.c.current(); f.d.player = f.d.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31));
+                    f.c.player = f.c.current(); f.d.player = f.d.current(); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121));
                     f.useSearchClock(); f.moveVoid(f.a, 1);
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.c.participant().monsterCooldownNanos() == 0, "budget cooldown"))
@@ -305,7 +310,12 @@ public final class PersonalHuntGameTest {
                     f.c.player.teleportTo(f.b.player.level(), f.b.player.getX()+1, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
                     f.b.player.setHealth(20); f.b.player.setInvulnerableTime(0);
                     MonsterRoleGameTest.emptyHanded(f.c.player);
-                    test.assertTrue(MonsterRoles.attack(f.c.player, f.b.player) && f.b.player.getHealth() < 20, "Non-lethal hit on a human C did not select");
+                    boolean landed = MonsterRoles.attack(f.c.player, f.b.player);
+                    test.assertTrue(landed && f.b.player.getHealth() < 20, "Non-lethal hit on a human C did not select: landed=" + landed
+                            + ", hp=" + f.b.player.getHealth() + ", absorption=" + f.b.player.getAbsorptionAmount()
+                            + ", legal=" + MonsterRoles.legalTarget(f.c.id(), f.b.player.level(), f.b.player)
+                            + ", hidden=" + dev.hardrush.hunt.HuntBurrows.hidden(f.c.player)
+                            + ", distance=" + f.c.player.distanceTo(f.b.player) + ", actor=" + MonsterRoles.status(f.c.player));
                 })
                 .thenWaitUntil(() -> f.await(f.huntBars(f.b).equals(List.of("来自 HuntC 的追猎")), "damage shows any monster player's bar"))
                 .thenIdle(25)
@@ -333,7 +343,7 @@ public final class PersonalHuntGameTest {
                     f.c.player = f.c.current();
                     test.assertValueEqual(f.spawnSent(f.c), Optional.of(f.c.player.level().getRespawnData().globalPos()),
                             "Back in camp, the compass points at the real spawn again");
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); f.useSearchClock();
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121)); f.useSearchClock();
                     f.moveVoid(f.a, 1);
                 })
                 .thenWaitUntil(() -> f.await(f.idle() && f.b.participant().monsterCooldownNanos() == 0, "death-life setup"))
@@ -350,10 +360,13 @@ public final class PersonalHuntGameTest {
                     f.session.requestRevival(f.round().roundId(), f.c.id(), p.lifeSequence(), p.monsterDeploymentSequence(), f.reply::set);
                 })
                 .thenWaitUntil(() -> f.await(f.reply.get()!=null && f.reply.get().success() && f.idle() && !PlayerProfiles.isLocked(f.c.player), "fixture C revives using actual earned entitlement"))
-                .thenExecute(() -> { f.move(f.c,0); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); f.searchClock.addAndGet(3_000_000_000L); f.a.role("zombie"); })
+                .thenExecute(() -> { f.move(f.c,0); f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121)); f.searchClock.addAndGet(3_000_000_000L); f.a.role("zombie"); })
                 .thenWaitUntil(() -> f.await(f.idle() && f.a.participant().monsterCooldownNanos()==0, "A monster setup"))
                 .thenExecute(() -> f.a.hunt(f.c))
-                .thenWaitUntil(() -> f.await(f.deployed(f.a,0), "A hunts restored C"))
+                .thenWaitUntil(() -> f.await(f.deployed(f.a,0), "A hunts restored C: " + dev.hardrush.lobby.LobbyInteractions.get(f.server).orElseThrow()
+                        .hints(f.a.player).current(System.nanoTime() / 1_000_000).orElse("") + ", A=" + f.a.participant() + ", C stars="
+                        + dev.hardrush.core.round.Bounty.standing(f.round().rules(), f.round().participants(), f.c.id()).stars()
+                        + ", hunters on C=" + dev.hardrush.core.round.RoundEngine.huntersOn(f.round(), f.c.id())))
                 .thenExecute(() -> {
                     f.a.player.teleportTo(f.c.player.level(),f.c.player.getX()+1,f.c.player.getY(),f.c.player.getZ(),Set.of(),0,0,true);
                     f.c.player.removeAllEffects();f.c.player.setAbsorptionAmount(0);f.c.player.setHealth(1); f.c.player.setInvulnerableTime(0);
@@ -388,7 +401,7 @@ public final class PersonalHuntGameTest {
                     f.refresh(); HuntInputFixtures.click(f.oldBody,f.oldModel,InteractionHand.MAIN_HAND);
                     HuntInputFixtures.click(f.c.player,f.oldModel,InteractionHand.MAIN_HAND);
                     test.assertTrue(f.searches().isEmpty(),"Old connection object and ID cannot enter a replacement body");
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); f.searchClock.addAndGet(3_000_000_000L); f.move(f.a,0);
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121)); f.searchClock.addAndGet(3_000_000_000L); f.move(f.a,0);
                     f.prepareFault();
                 })
                 .thenWaitUntil(() -> f.await(f.ioTask.isDone() && f.idle() && f.c.participant().monsterCooldownNanos()==0,"fault fixture ready"))
@@ -591,7 +604,7 @@ public final class PersonalHuntGameTest {
                         if(terrain) levels[0].setBlock(BlockPos.containing(found[0]).below(),Blocks.STONE.defaultBlockState(),2);
                         kill(c);
                     }).thenWaitUntil(() -> await(lobby(c),"race defeat back in camp"))
-                    .thenExecute(() -> { c.player=c.current(); clock.addAndGet(TimeUnit.SECONDS.toNanos(31)); })
+                    .thenExecute(() -> { c.player=c.current(); clock.addAndGet(TimeUnit.SECONDS.toNanos(121)); })
                     .thenWaitUntil(() -> await(idle() && c.participant().monsterCooldownNanos()==0,"race cooldown elapsed"));
         }
         void pages() {

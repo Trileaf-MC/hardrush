@@ -306,8 +306,10 @@ public final class CelebrationRuntime {
         var service = SERVICES.get(player.level().getServer());
         var round = service == null ? null : service.session.snapshot().orElse(null);
         if (round == null) return;
+        var participant = round.participants().get(player.getUUID());
+        int tier = participant == null ? 0 : participant.sortie().tier();
         service.skillReadyAt.computeIfAbsent(player.getUUID(), ignored -> new EnumMap<>(MonsterSkill.class))
-                .put(skill, System.currentTimeMillis() + skill.cooldownMillis(round.rules()));
+                .put(skill, System.currentTimeMillis() + skill.cooldownMillis(round.rules(), tier));
     }
 
     private long skillDeadline(ServerPlayer player, MonsterSkill skill) {

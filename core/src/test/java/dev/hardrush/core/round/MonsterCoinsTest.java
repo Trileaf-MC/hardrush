@@ -320,7 +320,7 @@ class MonsterCoinsTest {
         values.put("coin.killedByHuman", 5.0);
         values.put("coin.price.trialKey", 20.0); // an operator's own price is kept
         var legacy = rules(values).forNewRound();
-        assertEquals(8.0, legacy.combatValues().get("coin.killedByHuman"));
+        assertNull(legacy.combatValues().get("coin.killedByHuman"), "Retired: the killer's stars decide it");
         assertEquals(20.0, legacy.combatValues().get("coin.price.trialKey"));
         assertEquals(12.0, legacy.combatValues().get("coin.price.ominousKey"));
         assertEquals(legacy, legacy.forNewRound(), "Migrated rules are stable");

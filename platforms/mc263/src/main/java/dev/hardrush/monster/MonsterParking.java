@@ -23,9 +23,12 @@ import net.minecraft.world.item.ItemStack;
  * they settle where the monster left.
  */
 public final class MonsterParking {
-    /** Slot {@code -1} is the cursor; it rejoins the inventory on resume. */
+    /**
+     * Slot {@code -1} is the cursor; it rejoins the inventory on resume. {@code tier} is the tier the sortie's own
+     * goods were issued for, 0 for a body parked before tiers; resuming onto a weaker human takes back what exceeds it.
+     */
     public record Body(MonsterRole role, MonsterForm form, boolean charged, float health, int selected,
-                       Map<Integer, ItemStack> items, java.util.List<MobEffectInstance> effects) {}
+                       Map<Integer, ItemStack> items, java.util.List<MobEffectInstance> effects, int tier) {}
     /** The witch's effects; their remaining time pauses in the camp. */
     private static final Map<String, Holder<MobEffect>> PAID_EFFECTS = Map.of("speed", MobEffects.SPEED,
             "fire_resistance", MobEffects.FIRE_RESISTANCE, "regeneration", MobEffects.REGENERATION);
@@ -63,6 +66,7 @@ public final class MonsterParking {
         body.addProperty("charged", form == MonsterForm.CREEPER && MonsterCreeper.charged(player));
         body.addProperty("health", player.getHealth());
         body.addProperty("selected", inventory.getSelectedSlot());
+        body.addProperty("tier", MonsterRoundRuntime.sortieTier(player));
         body.add("items", items);
         body.add("effects", effects);
         var text = body.toString();
@@ -89,7 +93,7 @@ public final class MonsterParking {
                 if (!stack.isEmpty()) items.put(entry.get("slot").getAsInt(), stack);
             }
             return Optional.of(new Body(role, form, body.get("charged").getAsBoolean(), body.get("health").getAsFloat(),
-                    body.get("selected").getAsInt(), items, java.util.List.copyOf(effects)));
+                    body.get("selected").getAsInt(), items, java.util.List.copyOf(effects), body.has("tier") ? body.get("tier").getAsInt() : 0));
         } catch (RuntimeException damaged) {
             return Optional.empty();
         }

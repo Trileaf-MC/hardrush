@@ -425,7 +425,7 @@ public final class RoundSession implements AutoCloseable {
         if (death != null) deaths.put(event.victimId(), death.withCause(event));
     }
 
-    /** Actual milli-health a deployed monster's attack took from a human of this round. */
+    /** Milli-health a deployed monster's attack brought on a human of this round, before armour (§6.1). */
     public void recordMonsterDamage(UUID roundId, UUID owner, int life, int sortie, UUID victim, long damageMilli) {
         if (damageMilli <= 0 || engine == null || stopping || state != State.OPEN || competitionLocked()
                 || !engine.committed().roundId().equals(roundId)) return;

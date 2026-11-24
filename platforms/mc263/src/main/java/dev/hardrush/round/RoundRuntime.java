@@ -63,6 +63,29 @@ public final class RoundRuntime {
     private static final Map<MinecraftServer, RoundSession> SESSIONS = new IdentityHashMap<>();
     private static final Map<MinecraftServer, RoundWorldBundle> WORLDS = new IdentityHashMap<>();
     private static final Map<MinecraftServer, PlayerProfiles> PROFILES = new IdentityHashMap<>();
+    /** Human bodies whose death loot was just sealed for their next life; their death leaves no 遗落之地 behind. */
+    private static final java.util.Set<ServerPlayer> KEPT = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+
+    /**
+     * {@code dropAllDeathLoot}, before vanilla spills anything: a human of this round whose death pays its totem to a
+     * monster player (the same {@link dev.hardrush.core.round.TotemDrop#release} the engine applies on commit) keeps
+     * its belongings and experience for its next human life (docs/plan/悬赏分档与追猎强度.md §1). Any other death drops
+     * as vanilla does.
+     */
+    public static void keepBelongingsAtDeath(ServerPlayer player, net.minecraft.world.damagesource.DamageSource source) {
+        var server = player.level().getServer();
+        var session = SESSIONS.get(server);
+        var profiles = PROFILES.get(server);
+        var round = session == null ? null : session.snapshot().orElse(null);
+        if (round == null || profiles == null || round.rules().mode() != dev.hardrush.core.config.GameMode.HARDCORE
+                || CelebrationRuntime.successful(round) || !RoundWorldBundle.owns(player.level())) return;
+        var participant = round.participants().get(player.getUUID());
+        if (participant == null || participant.role() != ParticipantRole.HUMAN_ACTIVE) return;
+        var credit = CombatRuntime.peekKillCredit(player.level(), player, source);
+        if (!(dev.hardrush.core.round.TotemDrop.release(round, player.getUUID(), credit).orElse(null)
+                instanceof dev.hardrush.core.round.TotemDrop.Release.ToMonster)) return;
+        if (profiles.keepBelongings(player, round.roundId(), participant.lifeSequence())) KEPT.add(player);
+    }
     private static final Map<MinecraftServer, Map<java.util.UUID, String>> ADMITTED = new IdentityHashMap<>();
     /** Player → round whose life began after the challenge started. In memory; after a restart, challenge time decides. */
     private static final Map<MinecraftServer, Map<java.util.UUID, java.util.UUID>> LATE_ENTRANTS = new IdentityHashMap<>();
@@ -205,14 +228,14 @@ public final class RoundRuntime {
                 }
                 @Override public void batchClosed(UUID roundId, UUID batchId) { session.finishDamageBatch(roundId, batchId); }
                 @Override public void playerDamaged(net.minecraft.server.level.ServerLevel level, ServerPlayer victim,
-                        dev.hardrush.core.combat.CombatOrigin origin, float actualDamage) {
+                        dev.hardrush.core.combat.CombatOrigin origin, float incomingDamage) {
                     var round = session.snapshot().orElse(null);
                     var worlds = WORLDS.get(server);
                     var target = round == null ? null : round.participants().get(victim.getUUID());
                     if (target == null || target.role() != ParticipantRole.HUMAN_ACTIVE || worlds == null || !worlds.ready()) return;
                     dev.hardrush.hunt.HuntBossBars.damaged(victim, origin, round);
                     session.recordMonsterDamage(origin.roundId(), origin.actor().playerId(), (int) origin.actor().lifeSequence(),
-                            (int) origin.actor().deploymentSequence(), victim.getUUID(), Math.round((double) actualDamage * 1000));
+                            (int) origin.actor().deploymentSequence(), victim.getUUID(), Math.round((double) incomingDamage * 1000));
                 }
             }, event -> {
                 var worlds = WORLDS.get(server);
@@ -411,7 +434,10 @@ public final class RoundRuntime {
                         participant.monsterDeploymentSequence(), CombatRuntime.currentBatch(player.level()).orElse(null), killCredit,
                         false, drop);
                 drop.ifPresent(token -> dev.hardrush.revival.TotemDrops.captured(player, round.roundId(), token, captured));
-                if (captured) dev.hardrush.revival.FallenCompass.died(player, round.roundId(), participant.lifeSequence());
+                // Nothing lies where a life that kept its belongings fell, so there is nothing to point back at. The mark is
+                // taken whatever the capture says, so a later death of the same body never reads it.
+                boolean kept = KEPT.remove(player);
+                if (captured && !kept) dev.hardrush.revival.FallenCompass.died(player, round.roundId(), participant.lifeSequence());
             } else if (participant != null && participant.role() == ParticipantRole.MONSTER_DEPLOYED
                     && RoundWorldBundle.owns(player.level())) {
                 var profiles = PROFILES.get(player.level().getServer());
