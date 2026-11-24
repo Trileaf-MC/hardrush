@@ -273,8 +273,9 @@ public final class LobbyRuntimeGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.CREEPER && !f.session.mutationPending(), "Creeper selection keeps both skill deadlines"))
                 .thenExecute(() -> {
-                    // A human credited with the defeat stays locked for the deploy wait (docs/plan/击败锁定与怪物平衡.md §1).
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(45));
+                    // The quarry, and the human credited with the defeat, stay wary of a fallen monster: 120 s at one star
+                    // (docs/plan/悬赏分档与追猎强度.md §4).
+                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121));
                     f.monster.hunt(f.target.profile.id());
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(4), "Third formal safe deployment"))

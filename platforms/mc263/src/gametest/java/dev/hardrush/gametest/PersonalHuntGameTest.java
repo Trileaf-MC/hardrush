@@ -310,7 +310,12 @@ public final class PersonalHuntGameTest {
                     f.c.player.teleportTo(f.b.player.level(), f.b.player.getX()+1, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
                     f.b.player.setHealth(20); f.b.player.setInvulnerableTime(0);
                     MonsterRoleGameTest.emptyHanded(f.c.player);
-                    test.assertTrue(MonsterRoles.attack(f.c.player, f.b.player) && f.b.player.getHealth() < 20, "Non-lethal hit on a human C did not select");
+                    boolean landed = MonsterRoles.attack(f.c.player, f.b.player);
+                    test.assertTrue(landed && f.b.player.getHealth() < 20, "Non-lethal hit on a human C did not select: landed=" + landed
+                            + ", hp=" + f.b.player.getHealth() + ", absorption=" + f.b.player.getAbsorptionAmount()
+                            + ", legal=" + MonsterRoles.legalTarget(f.c.id(), f.b.player.level(), f.b.player)
+                            + ", hidden=" + dev.hardrush.hunt.HuntBurrows.hidden(f.c.player)
+                            + ", distance=" + f.c.player.distanceTo(f.b.player) + ", actor=" + MonsterRoles.status(f.c.player));
                 })
                 .thenWaitUntil(() -> f.await(f.huntBars(f.b).equals(List.of("来自 HuntC 的追猎")), "damage shows any monster player's bar"))
                 .thenIdle(25)
