@@ -14,6 +14,7 @@ public final class MonsterSeaGameTest {
         var p = MonsterRoleGameTest.actor(test);
         try {
             MonsterRoles.select(p, "zombie");
+            MonsterRoleGameTest.withEggs(p);
             MonsterRoles.riseFromSea(p);
             test.assertValueEqual(MonsterRoles.currentForm(p), MonsterForm.DROWNED, "A sea deployment is a drowned at once");
             test.assertTrue(MonsterItems.matches(p, p.getMainHandItem(), MonsterRoles.SEA_TRIDENT) && p.getMainHandItem().is(Items.TRIDENT),

@@ -157,6 +157,7 @@ public final class MonsterSoulcatcherGameTest {
         test.runAfterDelay(80, () -> {
             try {
                 MonsterRoles.select(owner, "zombie");
+                MonsterRoleGameTest.withEggs(owner);
                 MonsterRoles.select(rival, "zombie");
                 rival.teleportTo(owner.getX() - 3, owner.getY(), owner.getZ());
                 int before = eggs(owner, "adult_egg");
