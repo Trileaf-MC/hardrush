@@ -205,14 +205,14 @@ public final class RoundRuntime {
                 }
                 @Override public void batchClosed(UUID roundId, UUID batchId) { session.finishDamageBatch(roundId, batchId); }
                 @Override public void playerDamaged(net.minecraft.server.level.ServerLevel level, ServerPlayer victim,
-                        dev.hardrush.core.combat.CombatOrigin origin, float actualDamage) {
+                        dev.hardrush.core.combat.CombatOrigin origin, float incomingDamage) {
                     var round = session.snapshot().orElse(null);
                     var worlds = WORLDS.get(server);
                     var target = round == null ? null : round.participants().get(victim.getUUID());
                     if (target == null || target.role() != ParticipantRole.HUMAN_ACTIVE || worlds == null || !worlds.ready()) return;
                     dev.hardrush.hunt.HuntBossBars.damaged(victim, origin, round);
                     session.recordMonsterDamage(origin.roundId(), origin.actor().playerId(), (int) origin.actor().lifeSequence(),
-                            (int) origin.actor().deploymentSequence(), victim.getUUID(), Math.round((double) actualDamage * 1000));
+                            (int) origin.actor().deploymentSequence(), victim.getUUID(), Math.round((double) incomingDamage * 1000));
                 }
             }, event -> {
                 var worlds = WORLDS.get(server);
