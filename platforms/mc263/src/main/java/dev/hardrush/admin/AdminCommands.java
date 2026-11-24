@@ -69,7 +69,10 @@ public final class AdminCommands {
             .then(Commands.literal("status").executes(c -> inspect(c.getSource(), false)))
             .then(Commands.literal("rules").executes(c -> inspect(c.getSource(), true)))
             .then(reasoned(Commands.literal("start").requires(Commands.hasPermission(Commands.LEVEL_ADMINS)), (c, r) -> current(c.getSource(), AdminAction.START, r)))
-            .then(reasoned(Commands.literal("abort").requires(Commands.hasPermission(Commands.LEVEL_ADMINS)), (c, r) -> current(c.getSource(), AdminAction.ABORT, r)))
+            // Ending a round cannot be undone: unlike every other operation, abort keeps its reason mandatory.
+            .then(Commands.literal("abort").requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
+                .then(Commands.argument("reason", StringArgumentType.greedyString())
+                    .executes(c -> current(c.getSource(), AdminAction.ABORT, StringArgumentType.getString(c, "reason")))))
             .then(reasoned(Commands.literal("retry-world").requires(Commands.hasPermission(Commands.LEVEL_ADMINS)), (c, r) -> current(c.getSource(), AdminAction.RETRY, r)))
             .then(reasoned(Commands.literal("recheck-storage").requires(Commands.hasPermission(Commands.LEVEL_ADMINS)),
                 (c, r) -> current(c.getSource(), AdminAction.RECHECK_STORAGE, r)))
@@ -298,22 +301,21 @@ public final class AdminCommands {
         if (targets == null) return 0;
         var session = session(source);
         String actor = actor(source).identity();
-        batch(source, targets, (p, done) -> {
+        int n = Math.abs(delta);
+        String what = item == Item.TOTEM ? " 个复生图腾" : " 枚怪物币";
+        batch(source, input, targets, (p, done) -> {
             var now = session.snapshot().map(r -> r.participants().get(p.id())).orElse(p);
             if (item == Item.TOTEM) session.adminRevival(round.roundId(), p.id(), now.lifeSequence(), now.revivalCharges(), delta, actor, reason, done);
             else session.adminCoins(round.roundId(), p.id(), now.lifeSequence(), now.wallet().coins(), delta, actor, reason, done);
         }, p -> {
-            int n = Math.abs(delta);
-            String what = item == Item.TOTEM ? " 个复生图腾" : " 枚怪物币";
             if (delta < 0) {
                 var left = session.snapshot().map(r -> r.participants().get(p.id())).orElse(p);
                 tell(source.getServer(), p, item == Item.TOTEM
                         ? "管理员收回了 " + Notices.key(n) + " 个复生图腾 · 还剩 " + Notices.key(left.revivalCharges()) + " 个"
                         : Notices.key("-" + n) + " " + Notices.COINS + "（管理员收回） · 共 " + Notices.key(left.wallet().coins()));
             }
-            announce(source.getServer(), p.id(), "管理员" + (delta > 0 ? "给 " : "收回了 ") + Notices.name(p.name())
-                    + (delta > 0 ? " 发放了 " : " 的 ") + Notices.key(n) + what);
-        }, after);
+        }, who -> "管理员" + (delta > 0 ? "给 " : "收回了 ") + who
+                + (delta > 0 ? " 发放了 " : " 的 ") + Notices.key(n) + what, after);
         return 1;
     }
 
@@ -324,12 +326,11 @@ public final class AdminCommands {
         if (targets == null) return 0;
         var session = session(source);
         String actor = actor(source).identity();
-        batch(source, targets, (p, done) -> session.adminDeployCooldown(round.roundId(), p.id(),
-                p.lifeSequence(), seconds * 1_000_000_000L, actor, reason, done), p -> {
-            tell(source.getServer(), p, seconds == 0 ? "管理员清除了你的出击冷却" : "管理员把你的出击冷却设为 " + Notices.key(seconds) + " 秒");
-            announce(source.getServer(), p.id(), "管理员" + (seconds == 0 ? "清除了 " + Notices.name(p.name()) + " 的出击冷却"
-                    : "把 " + Notices.name(p.name()) + " 的出击冷却设为 " + Notices.key(seconds) + " 秒"));
-        }, after);
+        batch(source, input, targets, (p, done) -> session.adminDeployCooldown(round.roundId(), p.id(),
+                p.lifeSequence(), seconds * 1_000_000_000L, actor, reason, done), p ->
+            tell(source.getServer(), p, seconds == 0 ? "管理员清除了你的出击冷却" : "管理员把你的出击冷却设为 " + Notices.key(seconds) + " 秒"),
+            who -> "管理员" + (seconds == 0 ? "清除了 " + who + " 的出击冷却"
+                    : "把 " + who + " 的出击冷却设为 " + Notices.key(seconds) + " 秒"), after);
         return 1;
     }
 
@@ -350,10 +351,8 @@ public final class AdminCommands {
         if (targets == null) return 0;
         var session = session(source);
         String actor = actor(source).identity();
-        batch(source, targets, (p, done) -> session.adminHuntUnlock(round.roundId(), p.id(), only, actor, reason, done), p -> {
-            tell(source.getServer(), p, "管理员清除了你的击败锁定");
-            announce(source.getServer(), p.id(), "管理员清除了 " + Notices.name(p.name()) + " 的击败锁定");
-        }, after);
+        batch(source, input, targets, (p, done) -> session.adminHuntUnlock(round.roundId(), p.id(), only, actor, reason, done),
+            p -> tell(source.getServer(), p, "管理员清除了你的击败锁定"), who -> "管理员清除了 " + who + " 的击败锁定", after);
         return 1;
     }
 
@@ -373,12 +372,11 @@ public final class AdminCommands {
         if (targets == null) return 0;
         var session = session(source);
         String actor = actor(source).identity();
-        batch(source, targets, (p, done) -> session.adminEndShelter(round.roundId(), p.id(), p.lifeSequence(), actor, reason, done), p -> {
+        batch(source, input, targets, (p, done) -> session.adminEndShelter(round.roundId(), p.id(), p.lifeSequence(), actor, reason, done), p -> {
             var player = server.getPlayerList().getPlayer(p.id());
             if (player != null) dev.hardrush.lobby.RevivalAltar.liftBlessing(player);
             tell(server, p, "管理员结束了你的庇护，现在可以被追猎");
-            announce(server, p.id(), "管理员结束了 " + Notices.name(p.name()) + " 的庇护");
-        }, after);
+        }, who -> "管理员结束了 " + who + " 的庇护", after);
         return 1;
     }
 
@@ -496,31 +494,54 @@ public final class AdminCommands {
 
     /**
      * Submits one step per participant, each after the previous one committed (a later step waits on the commit queue
-     * for up to {@link #BATCH_RETRIES} ticks). Every outcome is reported with the participant's name;
-     * {@code succeeded} tells the players about each success.
+     * for up to {@link #BATCH_RETRIES} ticks). Every outcome is reported with the participant's name; {@code succeeded}
+     * tells each participant concerned. The other racers hear {@code line} once: per participant for a named target,
+     * or a single line naming the group once the whole group is done, so a group never floods the action bar.
      */
-    private static void batch(CommandSourceStack source, List<Participant> targets,
-            BiConsumer<Participant, Consumer<RoundSession.Reply>> step, Consumer<Participant> succeeded, Runnable after) {
-        batch(source, new ArrayList<>(targets), 0, step, succeeded, after);
+    private void batch(CommandSourceStack source, String input, List<Participant> targets,
+            BiConsumer<Participant, Consumer<RoundSession.Reply>> step, Consumer<Participant> succeeded,
+            Function<String, String> line, Runnable after) {
+        String group = groupName(input);
+        var done = new ArrayList<Participant>();
+        Runnable finished = () -> {
+            if (group != null && !done.isEmpty()) announce(source.getServer(), null, line.apply(Notices.key(group)) + "（"
+                    + Notices.key(done.size()) + " 人）");
+            done(after, 0);
+        };
+        Consumer<Participant> each = p -> {
+            done.add(p);
+            succeeded.accept(p);
+            if (group == null) announce(source.getServer(), p.id(), line.apply(Notices.name(p.name())));
+        };
+        batch(source, new ArrayList<>(targets), 0, step, each, finished);
+    }
+
+    private static String groupName(String input) {
+        return switch (input.toLowerCase(Locale.ROOT)) {
+            case "all-humans" -> "全体人类";
+            case "all-monsters" -> "全体怪物";
+            case "all-players" -> "全体参赛者";
+            default -> null;
+        };
     }
 
     private static void batch(CommandSourceStack source, List<Participant> left, int attempt,
-            BiConsumer<Participant, Consumer<RoundSession.Reply>> step, Consumer<Participant> succeeded, Runnable after) {
-        if (left.isEmpty()) { done(after, 0); return; }
+            BiConsumer<Participant, Consumer<RoundSession.Reply>> step, Consumer<Participant> succeeded, Runnable finished) {
+        if (left.isEmpty()) { finished.run(); return; }
         var p = left.getFirst();
         // Only a later step waits; the first answers at once, like any single command.
         boolean later = attempt > 0;
         step.accept(p, reply -> {
             if (!reply.success() && reply.refusal() == Refusal.BUSY && attempt < BATCH_RETRIES && later) {
-                NextTick.schedule(source.getServer(), () -> batch(source, left, attempt + 1, step, succeeded, after));
+                NextTick.schedule(source.getServer(), () -> batch(source, left, attempt + 1, step, succeeded, finished));
                 return;
             }
             if (reply.success()) { say(source, p.name() + "：" + reply.message()); succeeded.accept(p); }
             else failure(source, p.name() + "：" + reply.message(), null);
             left.removeFirst();
-            if (left.isEmpty()) { done(after, 0); return; }
+            if (left.isEmpty()) { finished.run(); return; }
             // The next step waits for this commit's queued events, so it starts on the next tick.
-            NextTick.schedule(source.getServer(), () -> batch(source, left, 1, step, succeeded, after));
+            NextTick.schedule(source.getServer(), () -> batch(source, left, 1, step, succeeded, finished));
         });
     }
 

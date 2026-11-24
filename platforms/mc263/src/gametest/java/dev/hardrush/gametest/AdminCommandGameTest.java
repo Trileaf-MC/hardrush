@@ -54,7 +54,7 @@ public final class AdminCommandGameTest {
             parses(test, dispatcher, reader, command, true);
         }
         for (String command : new String[]{"hardrush admin start 测试原因", "hardrush admin abort 测试原因",
-                "hardrush admin start", "hardrush admin abort", "hardrush admin next-mode normal",
+                "hardrush admin start", "hardrush admin next-mode normal",
                 "hardrush admin retry-world 测试原因", "hardrush admin next-mode normal 测试原因",
                 "hardrush admin recheck-storage 测试原因",
                 "hardrush admin give Tester totem 3 测试补偿", "hardrush admin take Tester coins 2",
@@ -82,7 +82,9 @@ public final class AdminCommandGameTest {
         // Retired duplicates: operator entries live under /hardrush admin only.
         for (String command : new String[]{"hardrush admin grant-revival Tester 3 测试补偿",
                 "hardrush retry-world 测试原因", "hardrush config next-mode normal 测试原因",
-                "hardrush admin give Tester totem 0", "hardrush admin timer -1"}) {
+                "hardrush admin give Tester totem 0", "hardrush admin timer -1",
+                // Ending a round cannot be undone, so abort alone keeps its reason mandatory.
+                "hardrush admin abort"}) {
             parses(test, dispatcher, owner, command, false);
         }
         test.succeed();
