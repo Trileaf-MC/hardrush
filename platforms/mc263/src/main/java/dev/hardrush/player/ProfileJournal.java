@@ -99,6 +99,27 @@ public final class ProfileJournal {
         else atomicWrite(path, envelope(snapshot));
     }
 
+    /**
+     * What a human life killed by a monster player left behind (docs/plan/悬赏分档与追猎强度.md §1), sealed for the next
+     * human life of the same round. Written once per ended life; a later write of the same life is a retry.
+     */
+    public void keep(UUID player, UUID roundId, int life, byte[] belongings) throws IOException {
+        requireSnapshot(belongings);
+        if (life < 1) throw new IllegalArgumentException("Invalid life");
+        atomicWrite(playerDirectory(player).resolve("kept-" + roundId + "-" + life + ".bin"), envelope(belongings));
+    }
+
+    /** The belongings {@code life} of {@code roundId} left behind, if it was killed by a monster player. */
+    public Optional<byte[]> kept(UUID player, UUID roundId, int life) throws IOException {
+        Path path = playerDirectory(player).resolve("kept-" + roundId + "-" + life + ".bin");
+        return Files.exists(path, LinkOption.NOFOLLOW_LINKS) ? Optional.of(readSnapshot(path)) : Optional.empty();
+    }
+
+    /** Forgets kept belongings once a revived body holds them durably. */
+    public void forgetKept(UUID player, UUID roundId, int life) throws IOException {
+        Files.deleteIfExists(playerDirectory(player).resolve("kept-" + roundId + "-" + life + ".bin"));
+    }
+
     public Optional<byte[]> suspended(UUID player, Generation generation) throws IOException {
         Path path = playerDirectory(player).resolve("suspended-" + generation.roundId() + ".bin");
         return Files.exists(path, LinkOption.NOFOLLOW_LINKS) ? Optional.of(readSnapshot(path)) : Optional.empty();

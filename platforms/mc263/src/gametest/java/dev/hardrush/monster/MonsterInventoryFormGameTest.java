@@ -34,6 +34,7 @@ public final class MonsterInventoryFormGameTest {
         var p = MonsterRoleGameTest.actor(test);
         try {
             MonsterRoles.select(p, "zombie");
+            MonsterRoleGameTest.withEggs(p);
             var egg = p.getInventory().getItem(1).copy();
             var menu = p.inventoryMenu;
             // Inventory menu: hotbar slot i is menu index 36 + i.
@@ -204,6 +205,7 @@ public final class MonsterInventoryFormGameTest {
             compareConversionTicks(test,p,fresh,freshTracker,901,MonsterForm.DROWNED,101,901);
             cleanupConvertedBodies(p);
             MonsterRoles.select(p,"zombie"); p.setHealth(8);
+            MonsterRoleGameTest.withEggs(p);
             var nativeBody=nativeConversionBody(p,true);
             var tracker=nativeTracker(nativeBody);
             p.getInventory().setItem(1,ItemStack.EMPTY);

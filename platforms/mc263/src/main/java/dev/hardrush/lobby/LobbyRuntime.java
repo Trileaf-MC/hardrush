@@ -60,9 +60,13 @@ public final class LobbyRuntime {
         ServerLevel level;
         SafeDeployment.Search search;
         boolean cancelled, seaTipShown;
+        /** 0 while it holds one of the quarry's hunt slots; otherwise its place in that quarry's queue. */
+        int queued;
+        /** When the 60-second search window counts from: the click, or later when a long queue left too little of it. */
+        long searchFrom;
         Deployment(ServerPlayer player, ServerPlayer target, PersonalHuntRequest identity, long started) {
             this.player = player; targetPlayer = target; connection = player.connection; targetConnection = target == null ? null : target.connection;
-            this.identity = identity; this.started = started; sortie = identity.initialSortie();
+            this.identity = identity; this.started = started; searchFrom = started; sortie = identity.initialSortie();
         }
     }
     private record Refund(Deployment deployment, boolean resume) {}
@@ -297,7 +301,7 @@ public final class LobbyRuntime {
         if (p.monsterCooldownNanos() > 0) { Notices.refuse(player, "出击冷却中 · " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"); return; }
         long locked = b.session.view().map(live -> live.participants().get(p.id())).map(live -> live.huntLockNanos(targetId)).orElse(0L);
         if (locked > 0) {
-            Notices.refuse(player, Notices.key(targetName(round, targetId)) + " 刚击败了你 · " + Notices.key(seconds(locked)) + " 秒后才能再追猎");
+            Notices.refuse(player, Notices.key(targetName(round, targetId)) + " 正提防着你 · " + Notices.key(seconds(locked)) + " 秒后才能再追猎");
             return;
         }
         Long retry = b.retryAt.get(p.id());
@@ -412,6 +416,21 @@ public final class LobbyRuntime {
             }
             // Watching the quarry from its camera keeps the hunt; the body returns to the courtyard it left.
             if (!inCamp(d.player) && !dev.hardrush.observe.Observation.observing(d.player)) { cancelSearch(b, d, "你离开了庭院，追猎取消"); continue; }
+            // A full quarry keeps the rest waiting in click order; the wait counts toward the same 60 seconds.
+            boolean wasQueued = d.queued > 0;
+            d.queued = queuePlace(b, round, d);
+            if (d.queued > 0) {
+                if (b.searchClock.getAsLong() - d.started >= SafeDeployment.DEPLOY_WAIT_NANOS)
+                    searchFailed(b, d, Notices.key(d.targetPlayer.getScoreboardName()) + " 一直满员，追猎取消 · 可以换个人");
+                continue;
+            }
+            if (wasQueued) {
+                // Its turn came: the queue counted toward the 60 seconds, but at least a short search remains.
+                long now = b.searchClock.getAsLong();
+                d.searchFrom = Math.max(d.started, now - SafeDeployment.DEPLOY_WAIT_NANOS + MIN_SEARCH_AFTER_QUEUE_NANOS);
+                restartSearch(b, d);
+                continue;
+            }
             var target = d.targetPlayer;
             if (target.level() != d.level) { restartSearch(b, d); continue; }
             var result = d.search.tick(SafeDeployment.Quarry.of(target), humans(b, d.level));
@@ -427,6 +446,10 @@ public final class LobbyRuntime {
     }
     private static void completeDeployment(Binding b, Deployment d, RoundSession.Reply reply) {
         UUID id = d.identity.hunter();
+        if (!reply.success() && reply.refusal() == Refusal.HUNT_FULL) {
+            // Another monster took the last slot first: back into the queue, not a failed search.
+            b.pending.remove(id, d); b.committing.remove(id); restartSearch(b, d); return;
+        }
         if (!reply.success()) {
             b.pending.remove(id, d); b.committing.remove(id); searchFailed(b, d, Replies.text(reply, Notices.key(d.targetPlayer.getScoreboardName()) + " 情况有变，临时去掉了出击 · 可再次尝试")); return;
         }
@@ -503,6 +526,23 @@ public final class LobbyRuntime {
             } else searchFailed(b, d, Notices.key(d.targetPlayer.getScoreboardName()) + " 情况有变，临时去掉了出击 · 可再次尝试");
         });
     }
+    /**
+     * 0 while this search holds one of its quarry's hunt slots (docs/plan/悬赏分档与追猎强度.md §3); otherwise its
+     * 1-based place in the quarry's queue. Monsters out on the quarry and deployments being committed take slots
+     * first, then searches in the order they were clicked.
+     */
+    private static int queuePlace(Binding b, RoundSnapshot view, Deployment d) {
+        UUID quarry = d.identity.target();
+        int cap = HuntPressure.concurrentHunters(Bounty.standing(view.rules(), view.participants(), quarry).stars());
+        int taken = RoundEngine.huntersOn(view, quarry) + (int) b.pending.values().stream()
+                .filter(other -> other != d && other.identity.target().equals(quarry)
+                        && view.participants().get(other.identity.hunter()) != null
+                        && view.participants().get(other.identity.hunter()).role() != ParticipantRole.MONSTER_DEPLOYED).count();
+        var line = b.searches.values().stream().filter(other -> other.identity.target().equals(quarry))
+                .sorted(Comparator.comparingLong((Deployment other) -> other.started).thenComparing(other -> other.identity.hunter())).toList();
+        int free = Math.max(0, cap - taken), index = line.indexOf(d);
+        return index < 0 || index < free ? 0 : index - free + 1;
+    }
     /** A deliberate cancel or target switch: no failure sound and no retry wait. */
     private static void cancelSearch(Binding b, Deployment d, String message) {
         b.searches.remove(d.identity.hunter(), d); b.resumptions.remove(d.identity.hunter(), d);
@@ -520,22 +560,27 @@ public final class LobbyRuntime {
             Notices.hint(d.player, message); sound(d.player, false);
         }
     }
-    /** Same target life only; dimension changes and compensation share the original start and 60-second wait. */
+    /**
+     * Same target life only; dimension changes and compensation share one 60-second wait, counted from the click, or
+     * from a little later when a queue left too little of it ({@code searchFrom}).
+     */
     private static void restartSearch(Binding b, Deployment d) {
         b.searches.remove(d.identity.hunter(), d);
         d.search = null;
         if (!requestHunter(b, d, ParticipantRole.MONSTER_LOBBY, d.sortie) || !requestTarget(b, d)) {
             searchFailed(b, d, Notices.key(d.targetPlayer.getScoreboardName()) + " 已离线或阵亡，追猎取消"); return;
         }
-        if (b.searchClock.getAsLong() - d.started >= SafeDeployment.DEPLOY_WAIT_NANOS) {
+        if (b.searchClock.getAsLong() - d.searchFrom >= SafeDeployment.DEPLOY_WAIT_NANOS) {
             searchFailed(b, d, NO_DEPLOYMENT); return;
         }
         d.level = d.targetPlayer.level();
         d.search = new SafeDeployment.Search(d.level, d.player, d.identity.kind(), SafeDeployment.Quarry.of(d.targetPlayer),
-                humans(b, d.level), b.searchRandom, b.searchClock, d.started, SafeDeployment.DEPLOY_WAIT_NANOS);
+                humans(b, d.level), b.searchRandom, b.searchClock, d.searchFrom, SafeDeployment.DEPLOY_WAIT_NANOS);
         b.searches.put(d.identity.hunter(), d);
     }
     private static final String CELEBRATION_RETURN = "庆祝期间不能返回营地";
+    /** A queued hunter whose turn comes late still gets this long to find a landing. */
+    private static final long MIN_SEARCH_AFTER_QUEUE_NANOS = 15_000_000_000L;
     private static final String NO_DEPLOYMENT = "暂时没找到合适的出击位置 · " + Notices.key(3) + " 秒后可重试";
 
     public static boolean useReturn(ServerPlayer player) {
@@ -859,7 +904,7 @@ public final class LobbyRuntime {
             if (quarry == null) return;
             names.add(quarry.name());
             var body = server.getPlayerList().getPlayer(human);
-            if (body != null) Notices.hint(body, "你击退了 " + Notices.key(monster.name()) + " · 一段时间内它无法再找你");
+            if (body != null) Notices.hint(body, Notices.key(monster.name()) + " 倒下了 · 一段时间内它不会再来找你");
         });
         return names;
     }
@@ -1015,7 +1060,7 @@ public final class LobbyRuntime {
                 }
             }
             if (lived != null && lived.role() == ParticipantRole.MONSTER_LOBBY) freedFromLocks(observer, b, live, lived);
-            var seen = seenBy(lived, looks, hunters);
+            var seen = seenBy(lived, looks, hunters, live);
             // Only who stands where rebuilds the page; names, stars, glow and gear change on the standing models.
             if (old == null || old.player != observer || old.connection != observer.connection || !old.targets.equals(targets) || view.isEmpty()) {
                 int page = view.map(LobbyProjections.View::page).orElse(0);
@@ -1038,7 +1083,8 @@ public final class LobbyRuntime {
                         long waited = Math.max(0, b.searchClock.getAsLong() - attempt.started) / 1_000_000_000L;
                         String cancel = dev.hardrush.observe.Observation.observing(observer) ? " · 长按空格取消" : " · 再次右键取消";
                         String state;
-                        if (SafeDeployment.atSea(quarry)) {
+                        if (attempt.queued > 0) state = "追猎 " + name + " 的怪物已满 · 排队第 " + Notices.key(attempt.queued) + " 位" + cancel;
+                        else if (SafeDeployment.atSea(quarry)) {
                             if (attempt.identity.kind() != MonsterRole.ZOMBIE) {
                                 state = name + " 在海上，等靠岸后出击" + cancel;
                                 if (!attempt.seaTipShown) {
@@ -1164,7 +1210,7 @@ public final class LobbyRuntime {
      * after each human, and who is still wary of it after beating it. Anyone else sees the shared looks.
      */
     private static Map<UUID, LobbyProjections.Look> seenBy(Participant monster, Map<UUID, LobbyProjections.Look> looks,
-                                                           Map<UUID, Integer> hunters) {
+                                                           Map<UUID, Integer> hunters, RoundSnapshot live) {
         if (monster == null || monster.role() != ParticipantRole.MONSTER_LOBBY) return looks;
         var seen = new HashMap<UUID, LobbyProjections.Look>();
         looks.forEach((id, look) -> {
@@ -1172,7 +1218,10 @@ public final class LobbyRuntime {
             long locked = monster.huntLockNanos(id);
             if (hunting == 0 && locked == 0) { seen.put(id, look); return; }
             var name = look.name().copy();
-            if (hunting > 0) name.append(Component.literal(" · " + hunting + " 只怪物在追").withStyle(net.minecraft.ChatFormatting.GRAY));
+            int cap = HuntPressure.concurrentHunters(Bounty.standing(live.rules(), live.participants(), id).stars());
+            if (hunting >= cap) name.append(Component.literal(" · 满员 " + cap + "/" + cap
+                    + (hunting > cap ? " · " + (hunting - cap) + " 只在排队" : "")).withStyle(net.minecraft.ChatFormatting.GRAY));
+            else if (hunting > 0) name.append(Component.literal(" · " + hunting + "/" + cap + " 只怪物在追").withStyle(net.minecraft.ChatFormatting.GRAY));
             if (locked > 0) name.append(Component.literal(" · 提防你 " + seconds(locked) + " 秒").withStyle(net.minecraft.ChatFormatting.RED));
             seen.put(id, new LobbyProjections.Look(name, look.glowing() && locked == 0, look.gear()));
         });

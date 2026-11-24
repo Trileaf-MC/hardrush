@@ -29,18 +29,26 @@ public final class RevivalSupplies {
 
     private RevivalSupplies() {}
 
-    /** Fills the fresh body of {@code life}'s revived human; called once, before its first resume snapshot. */
-    public static void fill(ServerPlayer player, Participant life) {
+    /**
+     * Fills the fresh body of {@code life}'s revived human; called once, before its first resume snapshot. The body may
+     * already hold what its previous life kept, so nothing it carries is replaced: the shield takes the off hand only
+     * when that is free, and whatever finds no room joins {@code leftovers}, which the caller sets down only once the
+     * body stands in the wild (the body is still in camp here).
+     */
+    public static void fill(ServerPlayer player, Participant life, java.util.List<ItemStack> leftovers) {
         var supply = life.witch().supplyOf(life.lifeSequence());
         for (var entry : supply.entrySet()) {
             int count = entry.getValue();
             switch (entry.getKey()) {
-                case SHIELD -> player.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
-                case IRON_BUCKET -> give(player, new ItemStack(Items.BUCKET, count));
-                case IRON_PICKAXE -> give(player, new ItemStack(Items.IRON_PICKAXE, count));
-                case BELL -> give(player, new ItemStack(Items.BELL, count));
-                case OAK_LOGS -> give(player, new ItemStack(Items.OAK_LOG, 5 * count));
-                case BREAD -> give(player, new ItemStack(Items.BREAD, 8 * count));
+                case SHIELD -> {
+                    if (player.getItemBySlot(EquipmentSlot.OFFHAND).isEmpty()) player.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+                    else give(player, new ItemStack(Items.SHIELD), leftovers);
+                }
+                case IRON_BUCKET -> give(player, new ItemStack(Items.BUCKET, count), leftovers);
+                case IRON_PICKAXE -> give(player, new ItemStack(Items.IRON_PICKAXE, count), leftovers);
+                case BELL -> give(player, new ItemStack(Items.BELL, count), leftovers);
+                case OAK_LOGS -> give(player, new ItemStack(Items.OAK_LOG, 5 * count), leftovers);
+                case BREAD -> give(player, new ItemStack(Items.BREAD, 8 * count), leftovers);
                 default -> {} // Landing supplies wait for the landing.
             }
         }
@@ -90,15 +98,19 @@ public final class RevivalSupplies {
         table.fill(chest, new LootParams.Builder(level).withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(player.blockPosition()))
                 .withLuck(player.getLuck()).withParameter(LootContextParams.THIS_ENTITY, player)
                 .create(LootContextParamSets.CHEST), level.getRandom().nextLong());
-        for (var stack : chest.removeAllItems()) give(player, stack);
+        // Unpacked after landing, so a full backpack spills at the landed body's feet.
+        for (var stack : chest.removeAllItems()) give(player, stack, null);
     }
 
     /** Into the backpack; whatever does not fit falls at the player's feet. */
-    private static void give(ServerPlayer player, ItemStack stack) {
+    /** What does not fit joins {@code leftovers}, or drops at the body's feet when there is no list. */
+    private static void give(ServerPlayer player, ItemStack stack, java.util.List<ItemStack> leftovers) {
         if (stack.isEmpty()) return;
         // A partial fit still answers true and leaves the rest in the stack.
         player.getInventory().add(stack);
-        if (!stack.isEmpty()) player.spawnAtLocation(player.level(), stack);
+        if (stack.isEmpty()) return;
+        if (leftovers != null) leftovers.add(stack);
+        else player.spawnAtLocation(player.level(), stack);
     }
 
     /** Whether {@code life}'s supplies hold anything bought at all. */

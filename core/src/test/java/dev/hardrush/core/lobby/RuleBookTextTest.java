@@ -60,6 +60,15 @@ class RuleBookTextTest {
         assertTrue(page(pages(GameMode.HARDCORE), "复生").contains("图腾之力庇护"));
     }
 
+    @Test void deathByAMonsterKeepsBelongingsAndTheStarsSetLocksAndSlots() {
+        var hardcore = pages(GameMode.HARDCORE);
+        assertTrue(page(hardcore, "阵亡").contains("被怪物玩家杀死时，身上的东西和经验都不掉落"));
+        var wary = page(hardcore, "提防与满员");
+        assertTrue(wary.contains("一星 120 秒，五星 30 秒") && wary.contains("返回营地不算") && wary.contains("满员时排队"), wary);
+        assertFalse(page(hardcore, "悬赏").contains("被怪物从营地追猎"), "Being hunted no longer scores");
+        assertFalse(page(pages(GameMode.NORMAL), "阵亡").contains("怪物玩家"));
+    }
+
     @Test void theHuntPageTellsBothSidesAboutTheLandingOmen() {
         assertTrue(page(pages(GameMode.HARDCORE), "追猎").contains("落地时目标会听到一声洞穴音"));
     }
