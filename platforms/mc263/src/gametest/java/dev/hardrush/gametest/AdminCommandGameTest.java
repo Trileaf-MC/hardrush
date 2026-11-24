@@ -54,10 +54,15 @@ public final class AdminCommandGameTest {
             parses(test, dispatcher, reader, command, true);
         }
         for (String command : new String[]{"hardrush admin start 测试原因", "hardrush admin abort 测试原因",
+                "hardrush admin start", "hardrush admin abort", "hardrush admin next-mode normal",
                 "hardrush admin retry-world 测试原因", "hardrush admin next-mode normal 测试原因",
                 "hardrush admin recheck-storage 测试原因",
-                "hardrush admin grant-revival Tester 3 测试补偿",
-                "hardrush retry-world 测试原因", "hardrush config next-mode normal 测试原因"}) {
+                "hardrush admin give Tester totem 3 测试补偿", "hardrush admin take Tester coins 2",
+                "hardrush admin give all-monsters coins 5", "hardrush admin skip", "hardrush admin timer 10 调试",
+                "hardrush admin pause", "hardrush admin resume 继续", "hardrush admin cooldown all-monsters clear",
+                "hardrush admin cooldown Monster 30", "hardrush admin unlock Monster all",
+                "hardrush admin unlock Monster Tester 原因", "hardrush admin shelter Tester end",
+                "hardrush admin pull Tester", "hardrush admin disqualify Tester"}) {
             parses(test, dispatcher, player, command, false);
             parses(test, dispatcher, reader, command, false);
             parses(test, dispatcher, admin, command, true);
@@ -73,6 +78,13 @@ public final class AdminCommandGameTest {
             parses(test, dispatcher, owner, command, true);
         }
         parses(test, dispatcher, owner, "hardrush admin confirm " + UUID.randomUUID(), false);
+        parses(test, dispatcher, owner, "hardrush admin validate 1", true);
+        // Retired duplicates: operator entries live under /hardrush admin only.
+        for (String command : new String[]{"hardrush admin grant-revival Tester 3 测试补偿",
+                "hardrush retry-world 测试原因", "hardrush config next-mode normal 测试原因",
+                "hardrush admin give Tester totem 0", "hardrush admin timer -1"}) {
+            parses(test, dispatcher, owner, command, false);
+        }
         test.succeed();
     }
 
@@ -256,37 +268,164 @@ public final class AdminCommandGameTest {
             var source = server.createCommandSourceStack().withSource(output);
             var admin = permission(source, 3);
             var reader = permission(source, 2);
-            parses(test, dispatcher, admin, "hardrush admin grant-revival Monster 0 测试", false);
-            parses(test, dispatcher, admin, "hardrush admin grant-revival Monster -1 测试", false);
-            execute(dispatcher, admin, "hardrush admin grant-revival Unknown 1 测试");
+            parses(test, dispatcher, admin, "hardrush admin give Monster totem 0 测试", false);
+            parses(test, dispatcher, admin, "hardrush admin give Monster totem -1 测试", false);
+            execute(dispatcher, admin, "hardrush admin give Unknown totem 1 测试");
             test.assertTrue(output.last().contains("玩家不存在"), "Unknown target is rejected");
-            parses(test, dispatcher, reader, "hardrush admin grant-revival Monster 3 越权", false);
+            parses(test, dispatcher, reader, "hardrush admin give Monster totem 3 越权", false);
             int firstMessage = output.messages.size();
-            execute(dispatcher, admin, "hardrush admin grant-revival Monster 3 管理补偿");
+            execute(dispatcher, admin, "hardrush admin give Monster totem 3 管理补偿");
             test.assertFalse(output.hasTicketAfter(firstMessage), "Grant command never issues a confirmation ticket");
             test.assertValueEqual(session.snapshot().orElseThrow().participants().get(target).revivalCharges(), 0,
                     "Credits publish only after the SQLite callback");
-            execute(dispatcher, admin, "hardrush admin grant-revival Monster 3 提交中重复请求");
+            execute(dispatcher, admin, "hardrush admin give Monster totem 3");
             test.assertTrue(output.last().contains("上一项状态仍在提交"), "Concurrent grant cannot duplicate a pending write");
             pumpUntil(test, callbacks, () -> !session.mutationPending());
             test.assertValueEqual(session.snapshot().orElseThrow().participants().get(target).revivalCharges(), 3,
                     "One command directly grants exact credits to an offline monster");
-            test.assertTrue(output.last().contains("Monster") && output.last().contains("已发放 3 次复生"),
+            test.assertTrue(output.last().contains("Monster") && output.last().contains("已发放 3 个复生图腾"),
                     "Success identifies the target and committed amount");
             test.assertTrue(session.snapshot().orElseThrow().timingUncertain(), "Admin intervention marks the round uncertain");
-            execute(dispatcher, admin, "hardrush admin grant-revival Monster 2147483647 溢出");
-            test.assertTrue(output.last().contains("不能超过"), "Balance overflow is refused");
-            execute(dispatcher, admin, "hardrush admin grant-revival " + target + " 2 追加补偿");
+            execute(dispatcher, admin, "hardrush admin take Monster totem 4 超额收回");
+            test.assertTrue(output.last().contains("不能超过"), "Taking more than the balance is refused");
+            execute(dispatcher, admin, "hardrush admin give " + target + " totem 2 追加补偿");
             pumpUntil(test, callbacks, () -> !session.mutationPending());
             test.assertValueEqual(session.snapshot().orElseThrow().participants().get(target).revivalCharges(), 5,
                     "Another direct UUID command adds to the latest balance");
-            test.assertFalse(output.hasTicketAfter(firstMessage), "No grant operation requires confirm");
+            execute(dispatcher, admin, "hardrush admin take Monster totem 1");
+            pumpUntil(test, callbacks, () -> !session.mutationPending());
+            test.assertValueEqual(session.snapshot().orElseThrow().participants().get(target).revivalCharges(), 4,
+                    "Taking back lowers the balance");
+            test.assertFalse(output.hasTicketAfter(firstMessage), "No adjustment requires confirm");
             var audits = query(test, callbacks, session.audits(roundId, 20, 0));
-            test.assertValueEqual(audits.size(), 2, "Only the two successful grants are audited");
-            test.assertTrue(audits.stream().allMatch(a -> a.action().equals("GRANT_REVIVAL") && a.afterValue().contains("player=" + target)),
-                    "Audit records the grant target and resulting balance");
+            test.assertValueEqual(audits.size(), 3, "Only the three successful adjustments are audited");
+            test.assertTrue(audits.stream().allMatch(a -> a.action().equals("REVIVAL_ADJUST") && a.afterValue().contains("player=" + target)),
+                    "Audit records the target and resulting balance");
+            test.assertTrue(audits.stream().anyMatch(a -> a.reason().equals(AdminCommands.DEFAULT_REASON)),
+                    "A command without a reason is audited with the default one");
         }
         test.succeed();
+    }
+
+    /** docs/plan/管理员命令与面板.md 2: coins, cooldowns, locks, pause and phase refusals, and a group batch. */
+    @GameTest(maxTicks = 300)
+    public void raceAdjustmentsCommitWithAuditAndGroupsRunOneCommitPerTick(GameTestHelper test) throws Exception {
+        var server = test.getLevel().getServer();
+        Path database = Files.createTempDirectory("hardrush-admin-adjust-").toRealPath().resolve("rounds.sqlite");
+        UUID roundId = UUID.randomUUID(), first = UUID.randomUUID(), second = UUID.randomUUID(), human = UUID.randomUUID();
+        var rules = RulesConfig.defaults().withMode(GameMode.HARDCORE);
+        long lock = 45_000_000_000L;
+        var initial = new RoundSnapshot(roundId, 1, 123, 0, rules, RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
+                0, 0, Map.of(first, monster(first, "First", Map.of(human, lock)), second, monster(second, "Second", Map.of()),
+                        human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 0, 0, 1, false)),
+                true, false, null);
+        try (var store = new SqliteRoundStore(database)) {
+            store.savePendingRules(rules.encode().getBytes(java.nio.charset.StandardCharsets.UTF_8), UUID.randomUUID(), "fixture");
+            store.commit(new SnapshotWrite(roundId, -1, 0, RoundSnapshotCodec.encode(initial), UUID.randomUUID(), "ROUND_CREATED"));
+        }
+        var callbacks = new LinkedBlockingQueue<Runnable>();
+        var output = new RecordingSource();
+        var session = new RoundSession(database, () -> 0, callbacks::add);
+        pumpUntil(test, callbacks, () -> session.state() == RoundSession.State.OPEN && !session.mutationPending());
+        session.adaptersReady(roundId);
+        pumpUntil(test, callbacks, () -> !session.mutationPending());
+        var commands = new AdminCommands(ignored -> session, ignored -> Optional.empty(), (ignored, failure) -> {});
+        var dispatcher = new CommandDispatcher<CommandSourceStack>();
+        dispatcher.register(commands.attach(Commands.literal("hardrush")));
+        var admin = permission(server.createCommandSourceStack().withSource(output), 3);
+        java.util.function.Function<UUID, Participant> now = id -> session.snapshot().orElseThrow().participants().get(id);
+        java.util.function.Consumer<String> run = command -> {
+            execute(dispatcher, admin, command);
+            try { pumpUntil(test, callbacks, () -> !session.mutationPending()); } catch (Exception e) { throw new IllegalStateException(e); }
+        };
+
+        run.accept("hardrush admin give First coins 5");
+        test.assertValueEqual(now.apply(first).wallet().coins(), 15, "Coins are credited");
+        run.accept("hardrush admin take First coins 20 超额");
+        test.assertTrue(output.last().contains("不能超过"), "Taking more coins than held is refused");
+        run.accept("hardrush admin give Human coins 1");
+        test.assertTrue(output.last().contains("只有怪物"), "Humans hold no coins");
+        run.accept("hardrush admin cooldown First clear");
+        test.assertValueEqual(now.apply(first).monsterCooldownNanos(), 0L, "Deployment cooldown cleared");
+        run.accept("hardrush admin unlock First all");
+        test.assertTrue(now.apply(first).huntLocks().isEmpty(), "Defeat locks lifted");
+        run.accept("hardrush admin unlock Second all");
+        test.assertTrue(output.last().contains("没有对应的击败锁定"), "Nothing to lift is refused");
+        run.accept("hardrush admin shelter Human end");
+        test.assertTrue(output.last().contains("没有初入荒野"), "An opening entrant has no shelter to end");
+        run.accept("hardrush admin skip");
+        test.assertTrue(output.last().contains("abort"), "A running race has nothing to skip and points to abort");
+        run.accept("hardrush admin timer 10");
+        test.assertTrue(output.last().contains("没有可以调整的倒计时"), "A running race has no phase timer");
+        run.accept("hardrush admin pause 调试");
+        test.assertTrue(session.snapshot().orElseThrow().adminPaused(), "Paused");
+        run.accept("hardrush admin pause");
+        test.assertTrue(output.last().contains("已经处于暂停"), "Pausing twice is refused");
+        run.accept("hardrush admin resume");
+        test.assertFalse(session.snapshot().orElseThrow().adminPaused(), "Resumed");
+        test.assertTrue(session.snapshot().orElseThrow().timingUncertain(), "Race adjustments mark the record for review");
+
+        // A group commits one participant at a time, each on a later tick than the previous commit.
+        execute(dispatcher, admin, "hardrush admin give all-monsters coins 2 分组补偿");
+        pumpUntil(test, callbacks, () -> !session.mutationPending());
+        test.runAfterDelay(20, () -> {
+            try {
+                pumpUntil(test, callbacks, () -> now.apply(second).wallet().coins() == 12 && !session.mutationPending());
+                test.assertValueEqual(now.apply(first).wallet().coins(), 17, "The group reached the first monster");
+                var audits = query(test, callbacks, session.audits(roundId, 50, 0));
+                test.assertValueEqual(audits.stream().filter(a -> a.action().equals("COINS_ADJUST")).count(), 3L,
+                        "One audit per committed coin adjustment");
+                test.assertTrue(audits.stream().anyMatch(a -> a.action().equals("PAUSE"))
+                        && audits.stream().anyMatch(a -> a.action().equals("RESUME"))
+                        && audits.stream().anyMatch(a -> a.action().equals("DEPLOY_COOLDOWN"))
+                        && audits.stream().anyMatch(a -> a.action().equals("HUNT_UNLOCK")), "Every adjustment is audited");
+                session.close();
+            } catch (Exception error) { throw new IllegalStateException(error); }
+            test.succeed();
+        });
+    }
+
+    /** Every panel dialog encodes through the vanilla packet codec a client decodes, in each state it can show. */
+    @GameTest
+    public void panelDialogsEncodeAsAVanillaClientReceivesThem(GameTestHelper test) {
+        var server = test.getLevel().getServer();
+        UUID roundId = UUID.randomUUID(), human = UUID.randomUUID(), monster = UUID.randomUUID(), late = UUID.randomUUID();
+        var rules = RulesConfig.defaults().withMode(GameMode.HARDCORE);
+        var players = new java.util.LinkedHashMap<UUID, Participant>();
+        players.put(human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, true, false, 0, 0, 1, false));
+        players.put(late, new Participant(late, "Late", ParticipantRole.HUMAN_ACTIVE, true, false, 0, 50, 1, false));
+        players.put(monster, monster(monster, "Monster", Map.of(human, 45_000_000_000L)));
+        var live = new RoundSnapshot(roundId, 1, 123, 0, rules, RoundPhase.RUNNING, PauseReason.NONE, 5, 0, players, false, true, null);
+        var rescue = new RoundSnapshot(roundId, 1, 123, 0, rules, RoundPhase.RESCUE, PauseReason.ADMIN, 5, 30_000_000_000L,
+                players, false, true, null, Map.of(), true);
+        var dialogs = new ArrayList<net.minecraft.server.dialog.Dialog>();
+        for (var round : java.util.List.of(live, rescue)) {
+            dialogs.add(dev.hardrush.admin.AdminPanel.mainDialog(round, round, true));
+            dialogs.add(dev.hardrush.admin.AdminPanel.timerDialog(round));
+            dialogs.add(dev.hardrush.admin.AdminPanel.playersDialog(round, p -> p.id() != late));
+            for (var p : round.participants().values()) {
+                dialogs.add(dev.hardrush.admin.AdminPanel.playerDialog(round, round, p, true, p.id().equals(human)));
+            }
+        }
+        var waiting = new RoundSnapshot(roundId, 1, 123, 0, rules, RoundPhase.WAITING, PauseReason.NOT_RUNNING, 0, 0,
+                Map.of(human, new Participant(human, "Human", ParticipantRole.LOBBY, true, false, 0, -1, 0, false)), false, false, null);
+        dialogs.add(dev.hardrush.admin.AdminPanel.mainDialog(waiting, waiting, false));
+        dialogs.add(dev.hardrush.admin.AdminPanel.playerDialog(waiting, waiting, waiting.participants().get(human), true, false));
+        for (var dialog : dialogs) {
+            var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), server.registryAccess());
+            var packet = new net.minecraft.network.protocol.common.ClientboundShowDialogPacket(net.minecraft.core.Holder.direct(dialog));
+            net.minecraft.network.protocol.common.ClientboundShowDialogPacket.STREAM_CODEC.encode(buffer, packet);
+            var decoded = net.minecraft.network.protocol.common.ClientboundShowDialogPacket.STREAM_CODEC.decode(buffer);
+            test.assertValueEqual(decoded.dialog().value(), dialog, "The panel dialog round-trips through the packet codec");
+        }
+        test.succeed();
+    }
+
+    private static Participant monster(UUID id, String name, Map<UUID, Long> locks) {
+        return new Participant(id, name, ParticipantRole.MONSTER_LOBBY, false, false, 0, 0, 1, 0,
+                dev.hardrush.core.round.MonsterRole.ZOMBIE, dev.hardrush.core.round.MonsterDimension.OVERWORLD,
+                45_000_000_000L, 0, Map.of(), dev.hardrush.core.round.MonsterWallet.EMPTY.credit(10), 0, false,
+                dev.hardrush.core.round.HumanThreat.NONE, locks);
     }
 
     private static CommandSourceStack permission(CommandSourceStack source, int level) {

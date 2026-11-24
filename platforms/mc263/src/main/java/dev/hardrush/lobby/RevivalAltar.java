@@ -240,6 +240,29 @@ public final class RevivalAltar {
         player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, ticks, 0));
     }
 
+    /** Whether the player still carries the altar's blessing, recognised by its exact effect levels. */
+    public static boolean blessed(ServerPlayer player) {
+        return effect(player, MobEffects.REGENERATION, 1) || effect(player, MobEffects.ABSORPTION, 3);
+    }
+
+    /**
+     * An administrator ends the blessing early (docs/plan/管理员命令与面板.md 2.1). Only the altar's set is lifted: fire
+     * resistance goes only together with one of the other two, so a potion drunk on its own stays.
+     */
+    public static boolean liftBlessing(ServerPlayer player) {
+        boolean regeneration = effect(player, MobEffects.REGENERATION, 1), absorption = effect(player, MobEffects.ABSORPTION, 3);
+        if (!regeneration && !absorption) return false;
+        if (regeneration) player.removeEffect(MobEffects.REGENERATION);
+        if (absorption) player.removeEffect(MobEffects.ABSORPTION);
+        if (effect(player, MobEffects.FIRE_RESISTANCE, 0)) player.removeEffect(MobEffects.FIRE_RESISTANCE);
+        return true;
+    }
+
+    private static boolean effect(ServerPlayer player, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> type, int amplifier) {
+        var instance = player.getEffect(type);
+        return instance != null && instance.getAmplifier() == amplifier;
+    }
+
     private static void fizzle(ServerPlayer player) {
         play(player, SoundEvents.BEACON_DEACTIVATE, .7f, 1.4f);
         player.level().sendParticles(ParticleTypes.SMOKE, player.getX(), player.getY() + .9, player.getZ(), 8, .3, .5, .3, .02);
