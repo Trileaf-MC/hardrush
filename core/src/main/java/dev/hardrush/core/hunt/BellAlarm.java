@@ -11,6 +11,8 @@ import java.util.WeakHashMap;
  * Server thread only.
  */
 public final class BellAlarm<B> {
+    // The radii and the glow time are vanilla BellBlockEntity's own and only word the rule book: changing them here
+    // changes no behaviour. Keep them equal to vanilla's.
     public static final int RESONATE_RADIUS = 32;
     public static final int REVEAL_RADIUS = 48;
     public static final int GLOW_SECONDS = 3;

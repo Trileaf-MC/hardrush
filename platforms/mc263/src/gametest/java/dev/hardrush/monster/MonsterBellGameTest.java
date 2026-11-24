@@ -23,20 +23,26 @@ public final class MonsterBellGameTest {
     @GameTest(maxTicks = 400)
     public void aRungBellRevealsMonsterPlayersOnlyAndThenRests(GameTestHelper test) {
         var monster = MonsterRoleGameTest.actor(test);
-        // The next arena lies 24 blocks away: inside both the resonance and the reveal radius.
+        // Two more actors join the first one's arena, a few blocks from the bell.
+        var partner = MonsterRoleGameTest.actor(test);
         var human = MonsterRoleGameTest.actor(test);
         var level = monster.level();
         var bell = monster.blockPosition().east(2);
+        var other = bell.north(3);
         var zombie = new Zombie[1];
         Runnable cleanup = () -> {
             if (zombie[0] != null) zombie[0].discard();
             level.setBlockAndUpdate(bell, Blocks.AIR.defaultBlockState());
-            MonsterRoleGameTest.remove(monster); MonsterRoleGameTest.remove(human);
+            level.setBlockAndUpdate(other, Blocks.AIR.defaultBlockState());
+            MonsterRoleGameTest.remove(monster); MonsterRoleGameTest.remove(partner); MonsterRoleGameTest.remove(human);
         };
         test.startSequence()
                 .thenIdle(80)
                 .thenExecute(guarded(cleanup, () -> {
                     MonsterRoles.select(monster, "zombie");
+                    partner.teleportTo(monster.getX(), monster.getY(), monster.getZ() + 4);
+                    MonsterRoles.select(partner, "skeleton");
+                    human.teleportTo(monster.getX() - 4, monster.getY(), monster.getZ() - 4);
                     var helper = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.MOB_SUMMONED);
                     helper.setNoAi(true);
                     helper.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
@@ -50,22 +56,22 @@ public final class MonsterBellGameTest {
                 .thenExecute(guarded(cleanup, () -> {
                     test.assertTrue(monster.hasEffect(MobEffects.GLOWING), "The bell reveals the monster player");
                     test.assertTrue(monster.isCurrentlyGlowing(), "The disguise mirrors the owner's glow");
+                    // The rest is recorded after the whole glow pass, so a second monster player is not filtered out.
+                    test.assertTrue(partner.hasEffect(MobEffects.GLOWING), "Every monster player in range glows");
                     test.assertFalse(human.hasEffect(MobEffects.GLOWING), "A human never glows");
                     test.assertFalse(zombie[0].hasEffect(MobEffects.GLOWING), "A native zombie is no raider and stays dark");
-                    monster.removeEffect(MobEffects.GLOWING);
+                    monster.removeEffect(MobEffects.GLOWING); partner.removeEffect(MobEffects.GLOWING);
                     ring(level, bell);
                 }))
                 .thenIdle(REVEAL_TICKS)
                 .thenExecute(guarded(cleanup, () -> {
                     test.assertFalse(monster.hasEffect(MobEffects.GLOWING), "A bell that just revealed someone rests");
-                    var other = bell.west(4);
                     level.setBlockAndUpdate(other, Blocks.BELL.defaultBlockState());
                     ring(level, other);
                 }))
                 .thenIdle(REVEAL_TICKS)
                 .thenExecute(guarded(cleanup, () -> {
                     test.assertTrue(monster.hasEffect(MobEffects.GLOWING), "Another bell keeps its own rest");
-                    level.setBlockAndUpdate(bell.west(4), Blocks.AIR.defaultBlockState());
                     cleanup.run();
                 }))
                 .thenSucceed();
