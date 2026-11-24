@@ -72,6 +72,7 @@ public final class MonsterShop {
             case OAK_LOGS -> new ItemStack(Items.OAK_LOG, 5);
             case IRON_PICKAXE -> new ItemStack(Items.IRON_PICKAXE);
             case SHIELD -> new ItemStack(Items.SHIELD);
+            case BELL -> new ItemStack(Items.BELL);
             case BREAD -> new ItemStack(Items.BREAD, 8);
         };
         stack.set(DataComponents.CUSTOM_NAME, Component.literal(offer.title())
@@ -114,6 +115,7 @@ public final class MonsterShop {
                     dev.hardrush.core.round.WitchRecord.MAX_BLESSING_MILLIS, dev.hardrush.core.round.WitchRecord.BLESSING_MILLIS
                     + dev.hardrush.core.round.WitchRecord.BLESSING_STEP_MILLIS * (owned + 1)));
             case IRON_BUCKET, OAK_LOGS, IRON_PICKAXE, BREAD -> "复生时放进背包";
+            case BELL -> "复生时放进背包 · 敲响后，附近的怪物玩家发光";
             case SHIELD -> "复生时放进副手";
         };
     }
