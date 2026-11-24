@@ -196,6 +196,19 @@ public final class FullFlowGameTest {
                     var inv=f.monster.player.getInventory();
                     test.assertTrue(java.util.stream.IntStream.range(0,inv.getContainerSize()).allMatch(i->inv.getItem(i).isEmpty()||dev.hardrush.revival.FallenCompass.is(inv.getItem(i))),"Control and return items removed from human inventory; only the 遗落之地 compass remains");
                     test.assertValueEqual((int)java.util.stream.IntStream.range(0,inv.getContainerSize()).filter(i->dev.hardrush.revival.FallenCompass.is(inv.getItem(i))).count(),1,"The altar revival after a human death lands with exactly one 遗落之地 compass");
+                    // Moved here from the lobby runtime cycle, whose deaths are monster kills and so leave no compass now.
+                    int compass=java.util.stream.IntStream.range(0,9).filter(i->dev.hardrush.revival.FallenCompass.is(inv.getItem(i))).findFirst().orElse(-1);
+                    test.assertTrue(compass>=0,"The 遗落之地 compass lands in the hotbar");
+                    var at=dev.hardrush.revival.FallenCompass.target(inv.getItem(compass)).orElseThrow();
+                    test.assertValueEqual(f.monster.player.getLastDeathLocation(),java.util.Optional.of(at),"The vanilla recovery needle reads the compass's spot");
+                    inv.setSelectedSlot(compass);
+                    var hint=dev.hardrush.lobby.HeldItemHints.of(f.monster.player).orElse("");
+                    test.assertTrue(hint.contains(at.pos().getX()+" "+at.pos().getY()+" "+at.pos().getZ()),"Held, the compass names the coordinates: "+hint);
+                    if(f.monster.player.level().dimension()==at.dimension()){
+                        f.monster.move(net.minecraft.world.phys.Vec3.atBottomCenterOf(at.pos()).add(3,0,0));
+                        dev.hardrush.revival.FallenCompass.tick(f.server,f.round());
+                        test.assertTrue(java.util.stream.IntStream.range(0,inv.getContainerSize()).noneMatch(i->dev.hardrush.revival.FallenCompass.is(inv.getItem(i))),"Reaching the spot spends the compass");
+                    }
                     f.target.player=f.target.current();f.monster.move(f.anchor);
                     HuntInputFixtures.role(f.target.player,"creeper");
                 })

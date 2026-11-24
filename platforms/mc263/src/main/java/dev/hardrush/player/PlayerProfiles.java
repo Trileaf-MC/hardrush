@@ -547,6 +547,75 @@ public final class PlayerProfiles implements AutoCloseable {
         }
     }
 
+    /**
+     * A human killed by a monster player keeps what it carried (docs/plan/悬赏分档与追猎强度.md §1): just before vanilla
+     * drops the death loot, every inventory slot (armour and offhand included) and the experience are sealed for the
+     * next human life of this round, and the body is emptied so nothing spills and no experience orb drops. False when
+     * they could not be sealed durably: the death then drops as vanilla does, so nothing is ever lost twice.
+     */
+    public boolean keepBelongings(ServerPlayer player, UUID roundId, int life) {
+        requireMainThread();
+        if (closed || journal == null) return false;
+        var inventory = player.getInventory();
+        var output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, player.registryAccess());
+        var items = output.list("Inventory", ItemStackWithSlot.CODEC);
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            var stack = inventory.getItem(slot);
+            if (!stack.isEmpty()) items.add(new ItemStackWithSlot(slot, stack.copy()));
+        }
+        output.putInt("XpLevel", player.experienceLevel);
+        output.putFloat("XpP", player.experienceProgress);
+        output.putInt("XpTotal", player.totalExperience);
+        try {
+            // TODO: [Refactor] A synchronous journal write on the main thread, once per such death: vanilla drops the loot
+            // in this same call, so the belongings must be durable before the body is emptied. Move it off-thread only
+            // together with holding back vanilla's drop until the write completes.
+            journal.join().keep(player.getUUID(), roundId, life, encode(output.buildResult()));
+        } catch (IOException | RuntimeException failure) {
+            LOGGER.error("Could not keep the belongings of {}'s life {}; they drop as usual", player.getUUID(), life, failure);
+            return false;
+        }
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) inventory.setItem(slot, ItemStack.EMPTY);
+        player.experienceLevel = 0;
+        player.experienceProgress = 0;
+        player.totalExperience = 0;
+        return true;
+    }
+
+    /**
+     * Puts back what the previous human life of this round kept when a monster player killed it, each item in its own
+     * slot where that is free. Returns whether there was any, and adds what found no room to {@code leftovers}.
+     */
+    private boolean restoreBelongings(ServerPlayer player, UUID roundId, int life, java.util.List<ItemStack> leftovers) {
+        if (life < 2) return false;
+        Optional<byte[]> kept;
+        try { kept = journal.join().kept(player.getUUID(), roundId, life - 1); }
+        catch (IOException | RuntimeException failure) {
+            LOGGER.error("Could not read the kept belongings of {}'s life {}", player.getUUID(), life - 1, failure);
+            return false;
+        }
+        if (kept.isEmpty()) return false;
+        CompoundTag tag;
+        try { tag = decode(kept.get()); }
+        catch (IOException failure) {
+            LOGGER.error("Kept belongings of {}'s life {} are damaged", player.getUUID(), life - 1, failure);
+            return false;
+        }
+        var input = TagValueInput.create(ProblemReporter.DISCARDING, server.registryAccess(), tag);
+        var inventory = player.getInventory();
+        var misplaced = new java.util.ArrayList<ItemStack>();
+        input.listOrEmpty("Inventory", ItemStackWithSlot.CODEC).forEach(item -> {
+            if (item.slot() >= 0 && item.slot() < inventory.getContainerSize() && inventory.getItem(item.slot()).isEmpty())
+                inventory.setItem(item.slot(), item.stack());
+            else misplaced.add(item.stack());
+        });
+        for (var stack : misplaced) if (!inventory.add(stack) || !stack.isEmpty()) leftovers.add(stack);
+        player.experienceLevel = input.getIntOr("XpLevel", 0);
+        player.experienceProgress = input.getFloatOr("XpP", 0);
+        player.totalExperience = input.getIntOr("XpTotal", 0);
+        return true;
+    }
+
     public static boolean isRespawnAllowed(ServerPlayer player) {
         return HardRushProperties.competitionEnabled() && ((ProfileTagged) player).hardrush$respawnPermitted()
                 && isLocked(player);
@@ -898,6 +967,9 @@ public final class PlayerProfiles implements AutoCloseable {
             for (var cooldown : Set.copyOf(((PlayerCooldownAccessor) player.getCooldowns()).hardrush$cooldowns().keySet())) {
                 player.getCooldowns().removeCooldown(cooldown);
             }
+            // A life a monster player ended kept its belongings: they come back first, in their own slots.
+            var leftovers = new java.util.ArrayList<ItemStack>();
+            boolean restored = restoreBelongings(player, round.roundId(), participant.lifeSequence(), leftovers);
             // The witch's carried revival supplies are part of this body, so they enter the resume snapshot below with it.
             dev.hardrush.revival.RevivalSupplies.fill(player, participant);
             ((ProfileTagged) player).hardrush$lifeSequence(participant.lifeSequence());
@@ -909,6 +981,8 @@ public final class PlayerProfiles implements AutoCloseable {
                 return false;
             }
             player.setGameMode(GameType.SURVIVAL);
+            // A full body (history books took some slots) leaves the rest at its feet in the wild, never in camp.
+            for (var stack : leftovers) player.spawnAtLocation(player.level(), stack);
             entry.monsterLobbyInitialized = false;
             entry.deathHeld = false;
             entry.awaitingRespawn = false;
@@ -916,7 +990,12 @@ public final class PlayerProfiles implements AutoCloseable {
             entry.ready = false;
             entry.fresh = false;
             var snapshot = capture(player, false);
-            supply(() -> { journal.join().suspend(player.getUUID(), entry.target, encode(snapshot)); return null; })
+            supply(() -> {
+                journal.join().suspend(player.getUUID(), entry.target, encode(snapshot));
+                // The revived body now holds them durably; matching only the previous life, a stale file is harmless.
+                if (restored) journal.join().forgetKept(player.getUUID(), round.roundId(), participant.lifeSequence() - 1);
+                return null;
+            })
                     .whenComplete((ignored, error) -> callbacks.execute(() -> {
                         if (!current(entry, generation(round))) return;
                         if (error != null) { fail(entry, error); moveToLobby(player); return; }
