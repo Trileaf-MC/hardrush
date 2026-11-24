@@ -797,6 +797,7 @@ public final class LobbyRuntime {
             case "MONSTER_DAMAGE_COINS" -> null;
             case "DEATH_BATCH" -> before.role().isActiveHuman() ? "阵亡补给" : "阵亡奖励";
             case "MONSTER_DEPLOY", "MONSTER_SELECTION" -> "出击退回";
+            case "ADMIN_COINS" -> "管理员发放";
             default -> "奖励";
         };
         Notices.hint(player, Notices.key("+" + gained) + " " + Notices.COINS + (reason == null ? "" : "（" + reason + "）")

@@ -47,10 +47,11 @@ public final class ParticipationControl {
                                                     .startsWith(builder.getRemainingLowerCase())).forEach(builder::suggest));
                                     return builder.buildFuture();
                                 })
+                                .executes(c -> administrativeExit(c.getSource(), StringArgumentType.getString(c, "player"),
+                                        dev.hardrush.admin.AdminCommands.DEFAULT_REASON, destination(action), null))
                                 .then(Commands.argument("reason", StringArgumentType.greedyString())
                                         .executes(c -> administrativeExit(c.getSource(), StringArgumentType.getString(c, "player"),
-                                                StringArgumentType.getString(c, "reason"), action.equals("disqualify")
-                                                        ? ParticipantRole.DISQUALIFIED : ParticipantRole.WITHDRAWN)))));
+                                                StringArgumentType.getString(c, "reason"), destination(action), null)))));
             }
             dispatcher.register(Commands.literal("hardrush").then(admin)
                     .then(Commands.literal("spectate").executes(c -> {
@@ -62,23 +63,35 @@ public final class ParticipationControl {
         });
     }
 
-    private static int administrativeExit(CommandSourceStack source, String input, String reason, ParticipantRole destination) {
-        if (!Commands.hasPermission(Commands.LEVEL_ADMINS).test(source)) return 0;
+    private static ParticipantRole destination(String action) {
+        return action.equals("disqualify") ? ParticipantRole.DISQUALIFIED : ParticipantRole.WITHDRAWN;
+    }
+
+    /** Shared by the commands and the operator panel; {@code after} runs once the outcome was told, may be null. */
+    public static int administrativeExit(CommandSourceStack source, String input, String reason, ParticipantRole destination,
+            Runnable after) {
+        if (!Commands.hasPermission(Commands.LEVEL_ADMINS).test(source)) return done(after, 0);
         var b = BINDINGS.get(source.getServer());
         var round = b == null ? null : b.session.snapshot().orElse(null);
-        if (round == null) { source.sendFailure(Component.literal("正式轮次尚未就绪。")); return 0; }
+        if (round == null) { source.sendFailure(Component.literal("正式轮次尚未就绪。")); return done(after, 0); }
         var matches = round.participants().values().stream()
                 .filter(p -> p.id().toString().equalsIgnoreCase(input) || p.name().equalsIgnoreCase(input)).toList();
-        if (matches.size() != 1) { source.sendFailure(Component.literal("玩家不存在或名称不唯一；可填写本轮玩家 UUID（支持离线玩家）。")); return 0; }
+        if (matches.size() != 1) {
+            source.sendFailure(Component.literal("玩家不存在或名称不唯一；可填写本轮玩家 UUID（支持离线玩家）。"));
+            return done(after, 0);
+        }
         var p = matches.getFirst();
         String actor = source.getEntity() == null ? "console:" + source.getTextName() : "entity:" + source.getEntity().getUUID();
         b.session.requestParticipationExit(round.roundId(), p.id(), p.role(), p.lifeSequence(), p.monsterDeploymentSequence(),
                 destination, actor, reason, reply -> {
                     if (reply.success()) source.sendSuccess(() -> Component.literal(p.name() + "：" + reply.message()), true);
                     else source.sendFailure(Component.literal(reply.message()));
+                    done(after, 0);
                 });
         return 1;
     }
+
+    private static int done(Runnable after, int result) { if (after != null) after.run(); return result; }
 
     public static boolean canWithdraw(ServerPlayer player) {
         var b = BINDINGS.get(player.level().getServer());

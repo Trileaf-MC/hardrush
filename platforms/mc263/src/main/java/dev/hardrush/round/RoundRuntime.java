@@ -1,7 +1,6 @@
 package dev.hardrush.round;
 
 import dev.hardrush.HardRushProperties;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import dev.hardrush.core.api.MonotonicClock;
 import dev.hardrush.core.api.OperationTag;
@@ -25,7 +24,6 @@ import dev.hardrush.record.ProgressRuntime;
 import dev.hardrush.record.TabListRuntime;
 import dev.hardrush.record.HistoryCommands;
 import dev.hardrush.admin.AdminCommands;
-import dev.hardrush.core.admin.AdminAction;
 import dev.hardrush.core.book.HistoryBookService;
 import dev.hardrush.core.record.*;
 import dev.hardrush.book.WrittenBookPort;
@@ -530,21 +528,9 @@ public final class RoundRuntime {
                             return 0;
                         }))
                         .then(Commands.literal("ready").executes(context -> ready(context.getSource(), true)))
-                        .then(Commands.literal("unready").executes(context -> ready(context.getSource(), false)))
-                        .then(Commands.literal("retry-world")
-                                .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
-                                .then(Commands.argument("reason", StringArgumentType.greedyString())
-                                        .executes(context -> ADMIN.current(context.getSource(), AdminAction.RETRY,
-                                                StringArgumentType.getString(context, "reason")))))
-                        .then(Commands.literal("config")
-                                .requires(Commands.hasPermission(Commands.LEVEL_ADMINS))
-                                .then(Commands.literal("next-mode")
-                                        .then(Commands.argument("mode", StringArgumentType.word())
-                                                .suggests((context, builder) -> builder.suggest("normal").suggest("hardcore").buildFuture())
-                                                .then(Commands.argument("reason", StringArgumentType.greedyString())
-                                                        .executes(context -> ADMIN.nextMode(context.getSource(),
-                                                                StringArgumentType.getString(context, "mode"),
-                                                                StringArgumentType.getString(context, "reason")))))))));
+                        // Operator entries live under /hardrush admin only (docs/plan/管理员命令与面板.md 2).
+                        .then(Commands.literal("unready").executes(context -> ready(context.getSource(), false)))));
+        dev.hardrush.admin.AdminPanel.install(ADMIN, SESSIONS::get);
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(ADMIN.attach(Commands.literal("hardrush"))));
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(

@@ -47,6 +47,27 @@ public final class HumanEntry {
     public static void close(MinecraftServer server) {
         var s = SERVICES.remove(server); if (s != null) { dev.hardrush.notice.StatusBars.hideEverywhere(server, s.countdownBar); s.intents.values().forEach(HumanEntry::stopJoin); }
     }
+    /**
+     * An administrator's shortcut into the assembly circle (docs/plan/管理员命令与面板.md 2.1): the player lands on the
+     * circle's restore-ready spot and the ordinary flow takes over — preparing before the start, the four-second
+     * dwell of a mid-round join after it. Nothing is committed here, so nothing needs auditing.
+     *
+     * @return why the player cannot be placed there, or empty once placed
+     */
+    public static java.util.Optional<String> pull(ServerPlayer player) {
+        var s = SERVICES.get(player.level().getServer());
+        var round = s == null ? null : s.session.snapshot().orElse(null);
+        if (round == null) return java.util.Optional.of("比赛模式尚未启用。");
+        if (!s.verified(player)) return java.util.Optional.of("这名玩家不在营地，或档案仍在核验中。");
+        boolean open = s.worldReady() && !s.session.recoveringCountdown()
+                && (round.phase() == RoundPhase.WAITING || round.phase() == RoundPhase.COUNTDOWN) && s.eligible(player, round);
+        if (!open && !s.midroundOpen(player, round)) {
+            return java.util.Optional.of("集结区现在不对这名玩家开放：" + s.closedReason(player, round));
+        }
+        if (!LobbyWorld.open(s.server).safeLanding(Landing.RESTORE_READY)) return java.util.Optional.of("集结区落点暂不安全。");
+        s.profiles.placeInLobby(player, Landing.RESTORE_READY);
+        return java.util.Optional.empty();
+    }
     public static void disconnected(ServerPlayer player) {
         var s = SERVICES.get(player.level().getServer()); if (s != null) { var intent = s.intents.remove(player.getUUID()); if (intent != null) stopJoin(intent); s.joining.remove(player.getUUID()); }
     }
