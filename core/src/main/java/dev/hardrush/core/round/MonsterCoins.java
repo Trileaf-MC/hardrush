@@ -6,6 +6,7 @@ import dev.hardrush.core.config.RulesConfig;
 /** Monster coin economy values, read from the round's immutable rules snapshot. */
 public final class MonsterCoins {
     public static final String STARTER = "coin.starter";
+    public static final String CREEPER_UNLOCK = "coin.creeperUnlock";
     /** Rounds saved before stars decided it paid this flat amount for every monster a human killed. */
     public static final String KILLED_BY_HUMAN = "coin.killedByHuman";
     public static final String KILLED_BY_HUMAN_PREFIX = "coin.killedByHuman.star";
@@ -24,6 +25,12 @@ public final class MonsterCoins {
     public static boolean enabled(RulesConfig rules) {
         return rules.mode() == GameMode.HARDCORE && rules.combatValues().containsKey(STARTER);
     }
+
+    public static boolean creeperPaid(RulesConfig rules) {
+        return enabled(rules) && Bounty.enabled(rules) && rules.combatValues().containsKey(CREEPER_UNLOCK);
+    }
+
+    public static int creeperUnlockPrice(RulesConfig rules) { return amount(rules, CREEPER_UNLOCK); }
 
     public static int amount(RulesConfig rules, String key) {
         Double value = rules.combatValues().get(key);

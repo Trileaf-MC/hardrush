@@ -24,11 +24,13 @@ import java.util.UUID;
  * @param sortieDamage per-human damage credit of the current or most recently ended deployment
  * @param parked       the platform's encoded body of a sortie paused by a deliberate return, empty when
  *                     none; a resumed deployment keeps it until the sortie parks again or ends
+ * @param creeperTicket one paid creeper sortie; spent when the sortie truly ends and kept on a deliberate
+ *                      return, a cancelled deployment or a change of role
  */
 public record MonsterWallet(int coins, boolean roleChosen,
                             Map<ShopOffer, Integer> bought, Map<ShopOffer, Integer> order,
                             Map<ShopOffer, Integer> active, List<GearPiece> gear, List<GearPiece> activeGear,
-                            int nextGearSerial, Map<UUID, DamageCredit> sortieDamage, String parked) {
+                            int nextGearSerial, Map<UUID, DamageCredit> sortieDamage, String parked, boolean creeperTicket) {
     public static final int MAX_GEAR = 16;
     public static final int MAX_GEAR_TEXT = 8192;
     public static final int MAX_DAMAGE_VICTIMS = 256;
@@ -75,7 +77,14 @@ public record MonsterWallet(int coins, boolean roleChosen,
     public MonsterWallet(int coins, boolean roleChosen, Map<ShopOffer, Integer> bought, Map<ShopOffer, Integer> order,
                          Map<ShopOffer, Integer> active, List<GearPiece> gear, List<GearPiece> activeGear,
                          int nextGearSerial, Map<UUID, DamageCredit> sortieDamage) {
-        this(coins, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage, "");
+        this(coins, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage, "", false);
+    }
+
+    /** A wallet without a paid creeper ticket. */
+    public MonsterWallet(int coins, boolean roleChosen, Map<ShopOffer, Integer> bought, Map<ShopOffer, Integer> order,
+                         Map<ShopOffer, Integer> active, List<GearPiece> gear, List<GearPiece> activeGear,
+                         int nextGearSerial, Map<UUID, DamageCredit> sortieDamage, String parked) {
+        this(coins, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage, parked, false);
     }
 
     private static Map<ShopOffer, Integer> counts(Map<ShopOffer, Integer> source) {
@@ -98,11 +107,12 @@ public record MonsterWallet(int coins, boolean roleChosen,
                                List<GearPiece> newGear, List<GearPiece> newActiveGear, int serial,
                                Map<UUID, DamageCredit> damage) {
         return new MonsterWallet(newCoins, chosen, newBought, newOrder, newActive, newGear, newActiveGear,
-                serial, damage, parked);
+                serial, damage, parked, creeperTicket);
     }
 
     private MonsterWallet withParked(String body) {
-        return new MonsterWallet(coins, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage, body);
+        return new MonsterWallet(coins, roleChosen, bought, order, active, gear, activeGear,
+                nextGearSerial, sortieDamage, body, creeperTicket);
     }
 
     public MonsterWallet credit(int amount) {
@@ -120,8 +130,22 @@ public record MonsterWallet(int coins, boolean roleChosen,
 
     /** Every new monster life starts with the gift; revival already emptied the previous wallet. */
     public MonsterWallet becameMonster(int starter) {
-        var wallet = credit(starter);
+        var wallet = credit(starter).useCreeperTicket();
         return wallet.with(wallet.coins, false, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage);
+    }
+
+    public MonsterWallet unlockCreeper(int price) {
+        if (creeperTicket) throw new IllegalStateException("已经持有苦力怕出击资格。");
+        if (price < 0) throw new IllegalArgumentException("苦力怕解锁价格不能为负数。");
+        if (coins < price) throw new Refusal.Exception(Refusal.NOT_ENOUGH_COINS, "怪物币不足：需要 " + price + "，现有 " + coins + "。");
+        return new MonsterWallet(coins - price, roleChosen, bought, order, active, gear, activeGear,
+                nextGearSerial, sortieDamage, parked, true);
+    }
+
+    public MonsterWallet useCreeperTicket() {
+        if (!creeperTicket) return this;
+        return new MonsterWallet(coins, roleChosen, bought, order, active, gear, activeGear,
+                nextGearSerial, sortieDamage, parked, false);
     }
 
     public int nextPrice(RulesConfig rules, ShopOffer offer) {
@@ -223,7 +247,8 @@ public record MonsterWallet(int coins, boolean roleChosen,
      */
     public MonsterWallet park(String body) {
         if (Objects.requireNonNull(body).isEmpty()) throw new IllegalArgumentException("Empty parked body");
-        return new MonsterWallet(coins, roleChosen, bought, order, Map.of(), gear, List.of(), nextGearSerial, sortieDamage, body);
+        return new MonsterWallet(coins, roleChosen, bought, order, Map.of(), gear, List.of(),
+                nextGearSerial, sortieDamage, body, creeperTicket);
     }
 
     /**

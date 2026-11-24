@@ -13,6 +13,9 @@ import java.util.Optional;
  * lower of the paused tier and the new quarry's stars ({@link #resumedTier}).
  */
 public final class HuntPressure {
+    /** Minimum bounty stars a paid creeper may hunt. */
+    public static final int CREEPER_MIN_STARS = 3;
+
     private static final long[] LOCK_MILLIS = {120_000, 90_000, 60_000, 45_000, 30_000};
     private static final int[] STARTER_ADULT_EGGS = {0, 1, 2, 3, 3};
     private static final long[] VOLLEY_COOLDOWN_MILLIS = {40_000, 30_000, 20_000, 10_000, 10_000};

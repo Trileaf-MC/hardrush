@@ -460,7 +460,7 @@ loom.runs.named('gameTest') {
 
 // A single production runtime suite owns each JVM; every launch receives a new directory.
 def isolatedSuites = ['hardrushParticipationExit', 'hardrushAdminSpectator', 'hardrushTenRounds', 'hardrushCelebration', 'hardrushStorageReserve', 'hardrushRecovery',
-    'hardrushIdentityRuntime', 'hardrushLobbyRuntime', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt', 'hardrushFullFlow', 'hardrushStabilization',
+    'hardrushIdentityRuntime', 'hardrushLobbyRuntime', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt', 'hardrushCreeperUnlock', 'hardrushFullFlow', 'hardrushStabilization',
     'hardrushLobbyAdmin', 'hardrushWorkshop']
 if (isolatedSuites.count { providers.gradleProperty(it).orNull == 'true' } > 1)
     throw new GradleException('Production runtime suites must use separate isolated JVMs')
@@ -497,6 +497,18 @@ loom.runs.named('gameTest') {
         vmArg '-Dhardrush.round.initialMode=hardcore'
         vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:personal_hunt_game_test*'
         runDir personalHuntRunDir.absolutePath
+    }
+}
+
+// Paid creeper booths and tickets (docs/plan/苦力怕付费解锁.md) on a real hardcore round.
+def creeperUnlockRunDir = rootProject.file(".local/creeper-unlock/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushCreeperUnlock').orNull == 'true') {
+        if (providers.gradleProperty('hardrushCompetition').orNull != 'true') throw new GradleException('Creeper unlock requires competition mode')
+        vmArg '-Dhardrush.test.creeperUnlock=true'
+        vmArg '-Dhardrush.round.initialMode=hardcore'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:creeper_unlock_game_test*'
+        runDir creeperUnlockRunDir.absolutePath
     }
 }
 

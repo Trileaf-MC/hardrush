@@ -260,7 +260,7 @@ public final class RoundEngine {
         Participant connected = player.withSession(name, online);
         if (!online && player.role() == ParticipantRole.LOBBY) connected = connected.withReady(false);
         if (player.role() == ParticipantRole.MONSTER_DEPLOYED && player.online() != online) {
-            connected = endSortie(connected, deployCooldownNanos(before.rules()));
+            connected = endSortie(before.rules(), connected, deployCooldownNanos(before.rules()));
         }
         players.put(playerId, connected);
         RoundPhase phase = before.phase();
@@ -357,7 +357,7 @@ public final class RoundEngine {
                                 becameMonster(before.rules(), player.wallet())).withWitch(player.witch()));
             } else {
                 // A defeat no longer benches the monster: only the humans it locks get their respite (applied below).
-                players.put(player.id(), endSortie(player, 0));
+                players.put(player.id(), endSortie(before.rules(), player, 0));
                 defeats.add(death);
             }
         }
@@ -522,6 +522,7 @@ public final class RoundEngine {
         if (before.rules().huntRule() == RulesConfig.HuntRule.PERSONAL_TARGET && dimension != player.monsterDimension())
             throw new IllegalStateException("个人追猎由系统决定维度。");
         requireNoRevival(before.rules(), player);
+        player = unlockCreeper(before, player, role);
         return monsterProposal(eventId, "MONSTER_SELECTION", before,
                 chooseRole(before.rules(), abandonPause(player, role).selectMonster(role, dimension)));
     }
@@ -531,8 +532,10 @@ public final class RoundEngine {
         RoundSnapshot before = capture();
         var player = requireMonster(before, roundId, playerId, life, sortie, ParticipantRole.MONSTER_LOBBY);
         requireNoRevival(before.rules(), player);
+        Objects.requireNonNull(role);
+        player = unlockCreeper(before, player, role);
         return monsterProposal(eventId, "MONSTER_SELECTION", before,
-                chooseRole(before.rules(), abandonPause(player, Objects.requireNonNull(role)).selectMonsterRole(role)));
+                chooseRole(before.rules(), abandonPause(player, role).selectMonsterRole(role)));
     }
 
     public RoundTransition proposePersonalHunt(UUID eventId, dev.hardrush.core.hunt.PersonalHuntRequest request, int sortie) {
@@ -541,13 +544,16 @@ public final class RoundEngine {
                 || !request.hunterMatches(before, ParticipantRole.MONSTER_LOBBY, sortie)
                 || !request.targetMatches(before) || sortie < request.initialSortie())
             throw new IllegalStateException("追猎目标、生命或发起身份已改变。");
-        if (before.participants().get(request.hunter()).huntLockNanos(request.target()) > 0)
-            throw new Refusal.Exception(Refusal.HUNT_LOCKED, "这只怪物在追猎这名人类时阵亡，锁定尚未结束。");
-        if (huntersOn(before, request.target()) >= HuntPressure.concurrentHunters(
-                Bounty.standing(before.rules(), before.participants(), request.target()).stars()))
-            throw new Refusal.Exception(Refusal.HUNT_FULL, "追猎这名人类的怪物已满。");
         Participant hunter = before.participants().get(request.hunter());
         int stars = Bounty.standing(before.rules(), before.participants(), request.target()).stars();
+        requireCreeperTicket(before.rules(), hunter);
+        if (MonsterCoins.creeperPaid(before.rules()) && hunter.monsterRole() == MonsterRole.CREEPER
+                && stars < HuntPressure.CREEPER_MIN_STARS)
+            throw new Refusal.Exception(Refusal.CREEPER_LOW_STARS, "苦力怕只追三星以上的人类。");
+        if (hunter.huntLockNanos(request.target()) > 0)
+            throw new Refusal.Exception(Refusal.HUNT_LOCKED, "这只怪物在追猎这名人类时阵亡，锁定尚未结束。");
+        if (huntersOn(before, request.target()) >= HuntPressure.concurrentHunters(stars))
+            throw new Refusal.Exception(Refusal.HUNT_FULL, "追猎这名人类的怪物已满。");
         // Resuming a paused sortie never climbs: its body already holds the kit of the tier it was issued for.
         int tier = hunter.wallet().hasParkedBody() && hunter.sortie().tier() > 0
                 ? HuntPressure.resumedTier(hunter.sortie().tier(), stars) : stars;
@@ -579,6 +585,7 @@ public final class RoundEngine {
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_LOBBY);
         requireNoRevival(before.rules(), player);
+        requireCreeperTicket(before.rules(), player);
         if (player.monsterCooldownNanos() != 0) throw new IllegalStateException("Monster deployment cooldown has not elapsed");
         var deployed = player.deployMonster();
         if (MonsterCoins.enabled(before.rules()))
@@ -662,7 +669,7 @@ public final class RoundEngine {
     /**
      * A deliberate return. With the platform's encoded {@code parkedBody} the sortie only pauses:
      * the body, worth, damage caps and price ladder continue at the next deployment. Without one the
-     * sortie ends as before, still with the return cooldown.
+     * sortie's gear and pricing reset with the return cooldown. Either way a creeper keeps its ticket.
      */
     public RoundTransition proposeMonsterReturn(UUID eventId, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence, String parkedBody) {
@@ -671,8 +678,9 @@ public final class RoundEngine {
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_DEPLOYED);
         long cooldown = returnCooldownNanos(before.rules());
-        var returned = parkedBody.isEmpty() ? endSortie(player, cooldown)
-                : player.monsterLobby(cooldown).withWallet(player.wallet().park(parkedBody)).withSortie(player.sortie());
+        var lobby = player.monsterLobby(cooldown);
+        var returned = parkedBody.isEmpty() ? lobby.withWallet(player.wallet().endSortie())
+                : lobby.withWallet(player.wallet().park(parkedBody)).withSortie(player.sortie());
         return monsterProposal(eventId, "MONSTER_RETURN", before, returned);
     }
 
@@ -696,7 +704,7 @@ public final class RoundEngine {
         RoundSnapshot before = capture();
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_DEPLOYED);
-        return monsterProposal(eventId, type, before, endSortie(player, deployCooldownNanos(before.rules())));
+        return monsterProposal(eventId, type, before, endSortie(before.rules(), player, deployCooldownNanos(before.rules())));
     }
 
     private RoundTransition monsterProposal(UUID eventId, String type, RoundSnapshot before, Participant player) {
@@ -882,7 +890,7 @@ public final class RoundEngine {
 
     private static Participant revivalFirst(RulesConfig rules, Participant player) {
         return MonsterCoins.enabled(rules) && player.revivalEntitled() && player.role() == ParticipantRole.MONSTER_DEPLOYED
-                ? endSortie(player, deployCooldownNanos(rules)) : player;
+                ? endSortie(rules, player, deployCooldownNanos(rules)) : player;
     }
 
     private static MonsterWallet becameMonster(RulesConfig rules, MonsterWallet wallet) {
@@ -895,9 +903,26 @@ public final class RoundEngine {
                 ? player.withWallet(player.wallet().endSortie()) : player;
     }
 
-    private static Participant endSortie(Participant player, long cooldown) {
+    private static Participant endSortie(RulesConfig rules, Participant player, long cooldown) {
         var lobby = player.monsterLobby(cooldown);
-        return player.role() == ParticipantRole.MONSTER_DEPLOYED ? lobby.withWallet(player.wallet().endSortie()) : lobby;
+        if (player.role() != ParticipantRole.MONSTER_DEPLOYED) return lobby;
+        var wallet = player.wallet().endSortie();
+        if (MonsterCoins.creeperPaid(rules) && player.monsterRole() == MonsterRole.CREEPER) wallet = wallet.useCreeperTicket();
+        return lobby.withWallet(wallet);
+    }
+
+    private static Participant unlockCreeper(RoundSnapshot before, Participant player, MonsterRole role) {
+        var rules = before.rules();
+        if (!MonsterCoins.creeperPaid(rules) || role != MonsterRole.CREEPER || player.wallet().creeperTicket()) return player;
+        boolean hasQuarry = Bounty.standings(rules, before.participants()).entrySet().stream().anyMatch(entry ->
+                entry.getValue().stars() >= HuntPressure.CREEPER_MIN_STARS && before.participants().get(entry.getKey()).online());
+        if (!hasQuarry) throw new Refusal.Exception(Refusal.CREEPER_NO_QUARRY, "场上还没有三星以上的人类，苦力怕暂时无人可追。");
+        return player.withWallet(player.wallet().unlockCreeper(MonsterCoins.creeperUnlockPrice(rules)));
+    }
+
+    private static void requireCreeperTicket(RulesConfig rules, Participant hunter) {
+        if (MonsterCoins.creeperPaid(rules) && hunter.monsterRole() == MonsterRole.CREEPER && !hunter.wallet().creeperTicket())
+            throw new Refusal.Exception(Refusal.CREEPER_LOCKED, "请先在展位解锁苦力怕出击资格。");
     }
 
     private static Participant chooseRole(RulesConfig rules, Participant player) {

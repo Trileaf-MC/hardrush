@@ -23,6 +23,7 @@ public final class WitchGuideText {
                     Line.plain("众所周知，"), Line.plain("MC 的极限模式可没法复活捏..."), Line.plain(""), Line.plain("（偷笑）")),
             List.of(Line.plain("但是没关系，"), Line.plain(""), Line.plain("事情还没结束！"), Line.plain(""),
                     Line.plain("你可以右键我旁边的三个家伙，"), Line.plain(""), Line.plain("化身成他们，向人类发起猎杀 （冲啊"), Line.plain(""),
+                    Line.plain("不过苦力怕要先付我 40 怪物币才肯出门（它一炸就没了嘛..."), Line.plain(""),
                     new Line("一旦猎杀成功，你还能变回人类！", Look.BOLD), Line.plain(""),
                     Line.plain("至于我嘛，就在这里卖卖东西啦～"), Line.plain(""),
                     new Line("什么，你想化身成我？这可不行啊，那就没人在这里卖东西了（悲...", Look.ASIDE)),

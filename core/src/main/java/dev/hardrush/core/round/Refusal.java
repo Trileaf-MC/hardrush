@@ -21,6 +21,12 @@ public enum Refusal {
     /** A camp monster holding a revival totem must revive before hunting, choosing or trading. */
     REVIVAL_FIRST,
     NOT_ENOUGH_COINS,
+    /** A creeper tried to deploy without a sortie ticket. */
+    CREEPER_LOCKED,
+    /** No online human has enough bounty stars to unlock the creeper. */
+    CREEPER_NO_QUARRY,
+    /** The creeper's chosen human has fewer than three bounty stars. */
+    CREEPER_LOW_STARS,
     SKILL_COOLDOWN,
     /** The chosen human defeated this monster a moment ago; others may be hunted at once. */
     HUNT_LOCKED,

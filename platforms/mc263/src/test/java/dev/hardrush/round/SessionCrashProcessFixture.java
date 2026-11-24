@@ -153,7 +153,9 @@ public final class SessionCrashProcessFixture {
                 100, 0, 1, false, MonsterRole.CREEPER, MonsterDimension.OVERWORLD, 0, 0);
         var victim = new Participant(VICTIM, "Victim", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false);
         var winner = new Participant(WINNER, "Winner", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false);
-        var initial = new RoundSnapshot(ROUND, 3, 12345, 0, RulesConfig.defaults(), RoundPhase.RUNNING,
+        var rules = RulesConfig.decode(RulesConfig.defaults().encode()
+                .replaceAll("(?m)^combat\\.coin\\.creeperUnlock=.*\n", ""));
+        var initial = new RoundSnapshot(ROUND, 3, 12345, 0, rules, RoundPhase.RUNNING,
                 PauseReason.SERVER_STOPPED, 100, 0, Map.of(HUNTER, hunter, VICTIM, victim, WINNER, winner), true, false, null);
         try (var store = new SqliteRoundStore(database)) {
             equal(CommitResult.APPLIED, store.commit(new SnapshotWrite(ROUND, -1, 0,

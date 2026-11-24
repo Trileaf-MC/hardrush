@@ -73,7 +73,7 @@ public final class LobbyRuntime {
     private record Display(ServerPlayer player, net.minecraft.server.network.ServerGamePacketListenerImpl connection,
                            List<LobbyProjections.Target> targets) {}
     /** A death told once the body lands in camp; {@code wary} names the humans a monster's defeat locked. */
-    private record Arrival(boolean human, List<String> wary) {}
+    private record Arrival(boolean human, List<String> wary, boolean paidCreeper) {}
     private static final class Binding {
         final RoundSession session;
         final PlayerProfiles profiles;
@@ -295,6 +295,16 @@ public final class LobbyRuntime {
         if (revivalFirst(player, round, p)) return;
         if (round.adminPaused()) { Notices.refuse(player, PAUSED); return; }
         var quarry = round.participants().get(targetId);
+        if (paidCreeper(round.rules(), p)) {
+            if (!p.wallet().creeperTicket()) {
+                Notices.refuse(player, "苦力怕的出击资格已用掉 · 回苦力怕展位付 " + MonsterCoins.creeperUnlockPrice(round.rules()) + " 怪物币解锁");
+                return;
+            }
+            if (quarry != null && quarry.role() == ParticipantRole.HUMAN_ACTIVE && quarry.lifeSequence() == targetLife
+                    && Bounty.stars(round.rules(), Bounty.threat(round.rules(), quarry)) < HuntPressure.CREEPER_MIN_STARS) {
+                Notices.refuse(player, Replies.CREEPER_LOW_STARS); return;
+            }
+        }
         if (quarry != null && quarry.lifeSequence() == targetLife && LateShelter.sheltered(round.rules(), quarry)) {
             // Not a failed search: no retry penalty, and the target is neither away nor dead.
             Notices.refuse(player, Notices.key(quarry.name()) + " " + LateShelter.NAME + "，稍后才能追猎"); return;
@@ -322,6 +332,18 @@ public final class LobbyRuntime {
         var b = BINDINGS.get(server);
         var r = b == null ? null : b.session.snapshot().orElse(null);
         return r != null && personalOpen(b, r);
+    }
+    static LobbyRoleModels.CreeperBooth creeperBooth(ServerPlayer viewer) {
+        var b = BINDINGS.get(viewer.level().getServer());
+        var round = b == null ? null : b.session.snapshot().orElse(null);
+        if (round == null || !MonsterCoins.creeperPaid(round.rules())) return LobbyRoleModels.CreeperBooth.NATIVE;
+        var p = round.participants().get(viewer.getUUID());
+        if (p == null || p.role().isExcluded()) return LobbyRoleModels.CreeperBooth.NATIVE;
+        var state = p.wallet().creeperTicket() ? LobbyRoleModels.CreeperState.UNLOCKED : LobbyRoleModels.CreeperState.LOCKED;
+        return new LobbyRoleModels.CreeperBooth(state, MonsterCoins.creeperUnlockPrice(round.rules()));
+    }
+    private static boolean paidCreeper(RulesConfig rules, Participant p) {
+        return p.monsterRole() == MonsterRole.CREEPER && MonsterCoins.creeperPaid(rules);
     }
     private static boolean personalOpen(Binding b, RoundSnapshot r) {
         return r.rules().mode() == dev.hardrush.core.config.GameMode.HARDCORE
@@ -809,12 +831,12 @@ public final class LobbyRuntime {
             }
             // Both deaths are told after the respawn lands in camp; a death screen would hide them.
             if (old != null && old.role() == ParticipantRole.HUMAN_ACTIVE && p.role() == ParticipantRole.MONSTER_LOBBY)
-                b.arrivals.put(p.id(), new Arrival(true, List.of()));
+                b.arrivals.put(p.id(), new Arrival(true, List.of(), false));
             // Deaths commit as a batch; the single monster death event only remains for older callers.
             var event = b.session.committedEventType();
             if (old != null && old.role() == ParticipantRole.MONSTER_DEPLOYED && p.role() == ParticipantRole.MONSTER_LOBBY
                     && ("DEATH_BATCH".equals(event) || "MONSTER_DEATH".equals(event)))
-                b.arrivals.put(p.id(), new Arrival(false, defeated(server, after, old, p)));
+                b.arrivals.put(p.id(), new Arrival(false, defeated(server, after, old, p), paidCreeper(after.rules(), old)));
             if (p.role() != ParticipantRole.MONSTER_LOBBY || old == null || old.role() != ParticipantRole.MONSTER_DEPLOYED) continue;
             var player = server.getPlayerList().getPlayer(p.id());
             if (player == null || !b.profiles.manages(player)) continue;
@@ -919,12 +941,18 @@ public final class LobbyRuntime {
         b.arrivals.entrySet().removeIf(entry -> {
             var player = server.getPlayerList().getPlayer(entry.getKey());
             if (player == null) return true;
-            if (!player.isAlive() || !dev.hardrush.world.LobbyWorld.isLobby(player.level()) || PlayerProfiles.isLocked(player)
+            var arrival = entry.getValue();
+            // TODO: [Refactor] A verified camp body is never admitted to the round, so isLocked alone holds competition arrivals
+            // forever. Only the paid creeper's line, which says the ticket is spent, uses the camp-body check for now: widening it
+            // to every arrival made the lobby runtime GameTest's parked-sword step flaky, which needs its own investigation.
+            boolean ready = arrival.paidCreeper() ? PlayerProfiles.verifiedLobbyBody(player) : !PlayerProfiles.isLocked(player);
+            if (!player.isAlive() || !dev.hardrush.world.LobbyWorld.isLobby(player.level()) || !ready
                     || player.connection == null || !player.connection.hasClientLoaded()) return false;
-            if (entry.getValue().human()) Notices.title(player, "你阵亡了", "已回到营地 · 可以在展位化身怪物出击");
-            else if (entry.getValue().wary().isEmpty()) Notices.hint(player, "你在出击中倒下，回到了庭院 · 可以马上再出击");
-            else Notices.hint(player, "你在出击中倒下 · " + String.join("、", entry.getValue().wary().stream().map(Notices::key).toList())
-                    + " 暂时会提防你，可以先去追猎别人");
+            if (arrival.human()) Notices.title(player, "你阵亡了", "已回到营地 · 可以在展位化身怪物出击");
+            else if (arrival.wary().isEmpty()) Notices.hint(player, "你在出击中倒下，回到了庭院"
+                    + (arrival.paidCreeper() ? " · 苦力怕需重新解锁" : " · 可以马上再出击"));
+            else Notices.hint(player, "你在出击中倒下 · " + String.join("、", arrival.wary().stream().map(Notices::key).toList())
+                    + " 暂时会提防你" + (arrival.paidCreeper() ? " · 苦力怕需重新解锁" : "，可以先去追猎别人"));
             return true;
         });
     }
@@ -975,24 +1003,39 @@ public final class LobbyRuntime {
             case ROLE_ZOMBIE -> MonsterRole.ZOMBIE; case ROLE_SKELETON -> MonsterRole.SKELETON; case ROLE_CREEPER -> MonsterRole.CREEPER;
             default -> null;
         };
-        // Picking another role ends a waiting hunt; the new body would not match the pending identity.
-        var waiting = p == null ? null : b.searches.get(p.id());
-        if (waiting != null && role != null) cancelSearch(b, waiting, "已换角色，对 " + Notices.key(waiting.targetPlayer.getScoreboardName()) + " 的追猎已取消");
         if (p == null || p.role() != ParticipantRole.MONSTER_LOBBY) { Notices.refuse(player, "阵亡后才能在这里选择怪物角色"); return; }
-        if (b.committing.contains(p.id()) || b.searches.containsKey(p.id()) || b.resumptions.containsKey(p.id())) {
+        if (b.committing.contains(p.id()) || b.resumptions.containsKey(p.id())) {
             Notices.refuse(player, "正在出击，稍等片刻"); return;
         }
         if (role != null && revivalFirst(player, r, p)) return;
         if (role == null) return;
+        boolean unlocking = role == MonsterRole.CREEPER && MonsterCoins.creeperPaid(r.rules()) && !p.wallet().creeperTicket();
+        int price = unlocking ? MonsterCoins.creeperUnlockPrice(r.rules()) : 0;
+        if (unlocking) {
+            if (p.wallet().coins() < price) { Notices.refuse(player, creeperPrice(price, p)); return; }
+            boolean hasQuarry = r.participants().values().stream().anyMatch(q -> q.online() && q.role() == ParticipantRole.HUMAN_ACTIVE
+                    && Bounty.stars(r.rules(), Bounty.threat(r.rules(), q)) >= HuntPressure.CREEPER_MIN_STARS);
+            if (!hasQuarry) { Notices.refuse(player, Replies.CREEPER_NO_QUARRY); return; }
+        }
+        // Picking another role ends a waiting hunt; the new body would not match the pending identity.
+        var waiting = b.searches.get(p.id());
+        if (waiting != null) cancelSearch(b, waiting, "已换角色，对 " + Notices.key(waiting.targetPlayer.getScoreboardName()) + " 的追猎已取消");
         if (p.wallet().hasParkedBody() && role != p.monsterRole() && !confirmAbandon(b, player, p, role)) return;
         b.committing.add(p.id());
         b.session.requestMonsterRole(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), role, reply -> {
             b.committing.remove(p.id());
             if (!current(player, b)) return;
-            // Success shows itself: the role's items arrive. How each item works is in its description.
-            if (reply.success()) sound(player, true);
+            var after = b.session.snapshot().filter(round -> round.roundId().equals(r.roundId()))
+                    .map(round -> round.participants().get(p.id())).orElse(p);
+            if (reply.success()) {
+                if (unlocking && after.wallet().creeperTicket()) Notices.hint(player, "苦力怕已解锁 · 右键三星以上的人类出击");
+                else sound(player, true);
+            } else if (unlocking) Replies.refuse(player, reply, "现在不能选择角色", creeperPrice(price, after));
             else Replies.refuse(player, reply, "现在不能选择角色");
         });
+    }
+    private static String creeperPrice(int price, Participant p) {
+        return "解锁苦力怕需要 " + price + " 怪物币，现有 " + p.wallet().coins();
     }
     /**
      * Another role discards the paused sortie, so it takes a second click within a few seconds.
@@ -1049,9 +1092,10 @@ public final class LobbyRuntime {
             }
             targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state));
         }
-        var looks = looks(server, b, r, targets);
         // Defeat locks count down in live server time; the committed round only moves at commits.
         var live = b.session.view().orElse(r);
+        var standings = Bounty.standings(live.rules(), live.participants());
+        var looks = looks(server, b, r, targets, standings);
         var hunters = hunters(server, b, r);
         b.locked.keySet().removeIf(id -> live.participants().get(id) == null || !live.participants().get(id).role().isMonster());
         for (var observer : server.getPlayerList().getPlayers()) {
@@ -1066,7 +1110,7 @@ public final class LobbyRuntime {
                 }
             }
             if (lived != null && lived.role() == ParticipantRole.MONSTER_LOBBY) freedFromLocks(observer, b, live, lived);
-            var seen = seenBy(lived, looks, hunters, live);
+            var seen = seenBy(lived, looks, hunters, live.rules(), standings);
             // Only who stands where rebuilds the page; names, stars, glow and gear change on the standing models.
             if (old == null || old.player != observer || old.connection != observer.connection || !old.targets.equals(targets) || view.isEmpty()) {
                 int page = view.map(LobbyProjections.View::page).orElse(0);
@@ -1107,14 +1151,18 @@ public final class LobbyRuntime {
                     } else if (attempt != null || b.committing.contains(p.id()) || b.resumptions.containsKey(p.id()))
                         hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "正在出击……", now + 300);
                     else if (!dev.hardrush.core.round.MonsterCoins.enabled(r.rules()) || !p.revivalEntitled()) {
+                        boolean creeper = paidCreeper(r.rules(), p);
                         var available = targets.stream().filter(target -> target.state() == LobbyProjections.State.AVAILABLE)
-                                .map(target -> target.originalProfile().id()).toList();
+                                .map(target -> target.originalProfile().id())
+                                .filter(id -> !creeper || !belowCreeperStars(standings, id)).toList();
                         // Every human it may see has just beaten it: the soonest one free is the wait.
                         var freest = lived == null || available.isEmpty() ? Optional.<UUID>empty()
                                 : available.stream().allMatch(id -> lived.huntLockNanos(id) > 0)
                                 ? available.stream().min(java.util.Comparator.comparingLong(lived::huntLockNanos)) : Optional.<UUID>empty();
                         if (inCamp(observer)) {
-                            String guidance = available.isEmpty() ? "暂无可追猎的人类"
+                            String guidance = creeper && !p.wallet().creeperTicket()
+                                    ? "苦力怕未解锁 · 右键苦力怕石像花 " + MonsterCoins.creeperUnlockPrice(r.rules()) + " 怪物币解锁"
+                                    : available.isEmpty() ? (creeper ? "苦力怕只追三星以上 · 暂无可追的人类" : "暂无可追猎的人类")
                                     : Notices.key(kindName(p.monsterRole())) + (p.monsterCooldownNanos() > 0
                                     ? " · 出击冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"
                                     : freest.map(id -> " · 人类都在提防你 · " + Notices.key(seconds(lived.huntLockNanos(id))) + " 秒后可追猎 "
@@ -1126,7 +1174,8 @@ public final class LobbyRuntime {
                             long locked = lived == null ? 0 : lived.huntLockNanos(selected.target());
                             hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
                                     Notices.key(r.participants().get(selected.target()).name())
-                                            + (projections.sheltered(observer, selected) ? " · " + LateShelter.NAME
+                                            + (creeper && belowCreeperStars(standings, selected.target()) ? " · 苦力怕只追三星以上"
+                                            : projections.sheltered(observer, selected) ? " · " + LateShelter.NAME
                                             : p.monsterCooldownNanos() > 0 ? " · 冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"
                                             : locked > 0 ? " · 提防你 " + Notices.key(seconds(locked)) + " 秒" : " · 右键追猎") + " · 左键观察", now + 300);
                         });
@@ -1166,8 +1215,7 @@ public final class LobbyRuntime {
      * bounty a glow and the ominous banner of a raid captain in place of its helmet.
      */
     private static Map<UUID, LobbyProjections.Look> looks(MinecraftServer server, Binding b, RoundSnapshot r,
-                                                         List<LobbyProjections.Target> targets) {
-        var standings = dev.hardrush.core.round.Bounty.standings(r.rules(), b.session.view().map(RoundSnapshot::participants).orElse(r.participants()));
+                                                         List<LobbyProjections.Target> targets, Map<UUID, Bounty.Standing> standings) {
         boolean refreshGear = server.getTickCount() % GEAR_TICKS == 0;
         var looks = new HashMap<UUID, LobbyProjections.Look>();
         for (var target : targets) {
@@ -1216,15 +1264,21 @@ public final class LobbyRuntime {
      * after each human, and who is still wary of it after beating it. Anyone else sees the shared looks.
      */
     private static Map<UUID, LobbyProjections.Look> seenBy(Participant monster, Map<UUID, LobbyProjections.Look> looks,
-                                                           Map<UUID, Integer> hunters, RoundSnapshot live) {
+                                                           Map<UUID, Integer> hunters, RulesConfig rules, Map<UUID, Bounty.Standing> standings) {
         if (monster == null || monster.role() != ParticipantRole.MONSTER_LOBBY) return looks;
+        boolean creeper = paidCreeper(rules, monster);
         var seen = new HashMap<UUID, LobbyProjections.Look>();
         looks.forEach((id, look) -> {
+            if (creeper && belowCreeperStars(standings, id)) {
+                var name = look.name().copy().append(Component.literal(" · 苦力怕只追三星以上").withStyle(net.minecraft.ChatFormatting.GRAY));
+                seen.put(id, new LobbyProjections.Look(name, look.glowing(), look.gear()));
+                return;
+            }
             int hunting = hunters.getOrDefault(id, 0);
             long locked = monster.huntLockNanos(id);
             if (hunting == 0 && locked == 0) { seen.put(id, look); return; }
             var name = look.name().copy();
-            int cap = HuntPressure.concurrentHunters(Bounty.standing(live.rules(), live.participants(), id).stars());
+            int cap = HuntPressure.concurrentHunters(standings.getOrDefault(id, Bounty.Standing.NONE).stars());
             if (hunting >= cap) name.append(Component.literal(" · 满员 " + cap + "/" + cap
                     + (hunting > cap ? " · " + (hunting - cap) + " 只在排队" : "")).withStyle(net.minecraft.ChatFormatting.GRAY));
             else if (hunting > 0) name.append(Component.literal(" · " + hunting + "/" + cap + " 只怪物在追").withStyle(net.minecraft.ChatFormatting.GRAY));
@@ -1232,6 +1286,10 @@ public final class LobbyRuntime {
             seen.put(id, new LobbyProjections.Look(name, look.glowing() && locked == 0, look.gear()));
         });
         return seen;
+    }
+
+    private static boolean belowCreeperStars(Map<UUID, Bounty.Standing> standings, UUID target) {
+        return standings.getOrDefault(target, Bounty.Standing.NONE).stars() < HuntPressure.CREEPER_MIN_STARS;
     }
 
     /** Tells a camp monster once a human who beat it may be hunted again. */
