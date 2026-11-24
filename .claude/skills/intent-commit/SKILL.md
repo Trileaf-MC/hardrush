@@ -1,6 +1,6 @@
 ---
 name: intent-commit
-description: 按独立改动意图整理并创建 Git commit，或拟写、审查、优化 commit message。需要 git 提交时使用
+description: 规定了怎么 git commit。本仓库任何 git commit 都必须符合此文档要求
 ---
 
 # Git 提交工作流
