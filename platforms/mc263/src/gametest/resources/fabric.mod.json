@@ -48,6 +48,7 @@
       "dev.hardrush.gametest.HumanEntryGameTest",
       "dev.hardrush.gametest.WorkshopGameTest",
       "dev.hardrush.gametest.PersonalHuntGameTest",
+      "dev.hardrush.gametest.CreeperUnlockGameTest",
       "dev.hardrush.gametest.FullFlowGameTest",
       "dev.hardrush.gametest.StabilizationGameTest",
       "dev.hardrush.gametest.MonsterAiIdentityGameTest",

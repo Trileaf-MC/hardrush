@@ -227,7 +227,9 @@ class DeathBatchSessionTest {
         Path path = temp.toRealPath().resolve("batch.sqlite");
         var monster = new Participant(hunter, "Hunter", hunterRole, false, false, 100, 0, 1, false, MonsterRole.CREEPER, MonsterDimension.OVERWORLD, 0, 0);
         var human = new Participant(victim, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, false);
-        var snapshot = new RoundSnapshot(round, 1, 9, 0, RulesConfig.defaults(), RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
+        var rules = RulesConfig.decode(RulesConfig.defaults().encode()
+                .replaceAll("(?m)^combat\\.coin\\.creeperUnlock=.*\n", ""));
+        var snapshot = new RoundSnapshot(round, 1, 9, 0, rules, RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
                 100, 0, Map.of(hunter, monster, victim, human), true, false, null);
         try (var store = new SqliteRoundStore(path)) {
             assertEquals(CommitResult.APPLIED, store.commit(new SnapshotWrite(round, -1, 0, RoundSnapshotCodec.encode(snapshot), UUID.randomUUID(), "FIXTURE")));

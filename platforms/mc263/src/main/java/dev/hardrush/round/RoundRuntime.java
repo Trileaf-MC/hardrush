@@ -393,6 +393,8 @@ public final class RoundRuntime {
         });
         // On the server thread before vanilla saves and removes the body; see PlayerDisconnects.
         dev.hardrush.player.PlayerDisconnects.register((player, server) -> {
+            // Before the offline report below: a lit creeper's death must reach the round first.
+            dev.hardrush.monster.MonsterCreeper.disconnected(player);
             CelebrationRuntime.disconnected(player);
             dev.hardrush.observe.Observation.disconnected(player);
             LobbyRuntime.disconnected(player);

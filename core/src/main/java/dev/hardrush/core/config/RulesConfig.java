@@ -149,6 +149,8 @@ public record RulesConfig(
     /** Monster coin economy; each offer's price doubles per purchase within one sortie. */
     private static final Map<String, Double> COIN_DEFAULTS = Map.ofEntries(
             Map.entry("coin.starter", 6.0),
+            // One creeper sortie ticket, see docs/plan/苦力怕付费解锁.md.
+            Map.entry("coin.creeperUnlock", 40.0),
             // Coins for a monster a human killed, by the killer's stars; bought back as sortie upgrades.
             Map.entry("coin.killedByHuman.star1", 8.0), Map.entry("coin.killedByHuman.star2", 10.0),
             Map.entry("coin.killedByHuman.star3", 13.0), Map.entry("coin.killedByHuman.star4", 16.0),

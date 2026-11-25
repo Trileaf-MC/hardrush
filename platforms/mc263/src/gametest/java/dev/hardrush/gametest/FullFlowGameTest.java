@@ -11,6 +11,7 @@ import dev.hardrush.book.WrittenBookPort;
 import dev.hardrush.celebration.*;
 import dev.hardrush.lobby.*;
 import dev.hardrush.monster.MonsterRoundRuntime;
+import dev.hardrush.player.PlayerProfiles;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -153,7 +154,7 @@ public final class FullFlowGameTest {
                     test.assertValueEqual(f.session.view().orElseThrow().remainingPhaseMillis(),60000L,"Rescue starts at sixty seconds under controlled clock");
                     test.assertValueEqual(f.monster.participant().role(),dev.hardrush.core.round.ParticipantRole.MONSTER_LOBBY,"The kill's revival sends the hunter straight back to the camp");
                 })
-                .thenWaitUntil(()->f.await(f.monsterReady(false),"Recalled hunter is in the camp with a thirty-second cooldown"));
+                .thenWaitUntil(()->f.await(f.monsterReady(false),"Recalled hunter is in the camp with a deployment cooldown"));
         if (System.getProperty(TestProperties.FULL_FLOW_FAULT,"none").equals("revival")) {
             seq.thenExecute(state::revivalFault)
                     .thenWaitUntil(()->f.await(state.io.isDone(),"Real SQLite revival fault installed"))
@@ -209,13 +210,24 @@ public final class FullFlowGameTest {
                         dev.hardrush.revival.FallenCompass.tick(f.server,f.round());
                         test.assertTrue(java.util.stream.IntStream.range(0,inv.getContainerSize()).noneMatch(i->dev.hardrush.revival.FallenCompass.is(inv.getItem(i))),"Reaching the spot spends the compass");
                     }
-                    f.target.player=f.target.current();f.monster.move(f.anchor);
-                    HuntInputFixtures.role(f.target.player,"creeper");
+                    f.monster.move(f.anchor);
                 })
-                .thenWaitUntil(()->f.await(f.target.participant().monsterRole()==MonsterRole.CREEPER&&!f.session.mutationPending(),"Creeper booth saved"))
-                .thenExecute(()->{f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));HuntInputFixtures.hunt(f.target.client,f.monster.profile.id());})
+                .thenWaitUntil(() -> f.await(f.target.current() != null && PlayerProfiles.verifiedLobbyBody(f.target.current())
+                        && !RevivalAltar.arriving(f.server, f.monster.profile.id()), "Creeper hunter and revived quarry both ready"));
+        LobbyRuntimeGameTest.preparePaidCreeper(seq, () -> f.session, f.target.profile.id(), f.monster.profile.id(), f::await);
+        seq.thenExecute(() -> {
+                    f.target.player = f.target.current();
+                    HuntInputFixtures.role(f.target.player, "creeper");
+                })
+                .thenWaitUntil(() -> f.await(f.target.participant().monsterRole() == MonsterRole.CREEPER
+                        && f.target.participant().wallet().creeperTicket() && CampTransferFixtures.actionsReady(f.session), "Paid creeper booth saved"))
+                .thenExecute(() -> f.clock.addAndGet(RoundEngine.deployCooldownNanos(f.round().rules())))
+                .thenWaitUntil(() -> f.await(f.target.participant().monsterCooldownNanos() == 0
+                        && CampTransferFixtures.actionsReady(f.session), "Creeper deployment cooldown elapsed"))
+                .thenExecute(() -> HuntInputFixtures.hunt(f.target.client, f.monster.profile.id()))
                 .thenWaitUntil(()->f.await(f.target.participant().role()==ParticipantRole.MONSTER_DEPLOYED&&MonsterRoles.isMonster(f.target.player)&&!f.session.mutationPending(),"Creeper deployed via model"))
                 .thenExecute(()->{
+                    test.assertValueEqual(f.target.participant().sortie().tier(), 3, "The creeper hunts the revived three-star life");
                     f.target.move(f.monster.player.position().add(1,0,0)); f.monster.player.setHealth(1); f.monster.player.setInvulnerableTime(0);
                     state.use(f.target.player,0);test.assertTrue(MonsterRoles.isIgniting(f.target.player),"Held igniter starts native creeper swelling");
                     state.use(f.target.player,7);test.assertFalse(LobbyRuntime.channeling(f.target.player),"Swelling creeper cannot channel return");
@@ -235,7 +247,15 @@ public final class FullFlowGameTest {
                 .thenWaitUntil(()->f.await(f.target.participant().role()==ParticipantRole.HUMAN_ACTIVE&&f.target.participant().online()
                         &&!dev.hardrush.player.PlayerProfiles.isLocked(f.target.player)&&!f.session.mutationPending(),"Second altar consumes entitlement once"))
                 .thenWaitUntil(()->f.await(f.monster.current()!=null&&f.monster.current().isAlive()&&f.profiles.isReady(f.monster.profile.id(),f.round()),"Other dead human replacement verified"))
-                .thenExecute(()->{f.monster.player=f.monster.current();f.target.move(f.anchor);f.clock.addAndGet(TimeUnit.SECONDS.toNanos(30));HuntInputFixtures.hunt(f.monster.client,f.target.profile.id());})
+                .thenExecute(() -> {
+                    f.monster.player = f.monster.current();
+                    f.target.move(f.anchor);
+                    f.clock.addAndGet(RoundEngine.deployCooldownNanos(f.round().rules()));
+                })
+                .thenWaitUntil(() -> f.await(f.monster.participant().monsterCooldownNanos() == 0
+                        && !RevivalAltar.arriving(f.server, f.target.profile.id())
+                        && CampTransferFixtures.actionsReady(f.session), "Post-blast deployment cooldown elapsed"))
+                .thenExecute(() -> HuntInputFixtures.hunt(f.monster.client, f.target.profile.id()))
                 .thenWaitUntil(()->f.await(f.monster.participant().role()==ParticipantRole.MONSTER_DEPLOYED&&MonsterRoles.isMonster(f.monster.player)&&!f.session.mutationPending(),"Monster ready for ceremony roster"))
                 .thenExecute(()->state.prepareDragon(f.target.player,f.monster.player))
                 .thenWaitUntil(()->f.await(state.dragon()!=null,"Low-health native first dragon fixture"))

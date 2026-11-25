@@ -1,5 +1,8 @@
 package dev.hardrush.core.lobby;
 
+import dev.hardrush.core.config.RulesConfig;
+import dev.hardrush.core.round.MonsterCoins;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -18,6 +21,7 @@ public final class WitchGuideText {
 
     private WitchGuideText() {}
 
+    /** The pages as written, for rounds whose creepers hunt for free. */
     public static final List<List<Line>> PAGES = List.of(
             List.of(Line.plain("emmm...."), Line.plain(""), Line.plain("你怎么寄了，这可是极限模式..."), Line.plain(""),
                     Line.plain("众所周知，"), Line.plain("MC 的极限模式可没法复活捏..."), Line.plain(""), Line.plain("（偷笑）")),
@@ -32,4 +36,16 @@ public final class WitchGuideText {
                     Line.plain(""), Line.plain("其次，"), Line.plain("如果你成功猎杀人类，获得复生机会后，也可以来找我"),
                     Line.plain("我可以给你卖点人类需要用的装备")),
             List.of(Line.plain("购物愉快 o.O")));
+
+    /** The round's pages: where creepers are paid for, the second page says what one costs (docs/plan/苦力怕付费解锁.md). */
+    public static List<List<Line>> pages(RulesConfig rules) {
+        if (!MonsterCoins.creeperPaid(rules)) return PAGES;
+        var second = new ArrayList<>(PAGES.get(1));
+        int after = second.indexOf(Line.plain("化身成他们，向人类发起猎杀 （冲啊")) + 2;
+        second.add(after, Line.plain("不过苦力怕要先付我 " + MonsterCoins.creeperUnlockPrice(rules) + " 怪物币才肯出门（它一炸就没了嘛..."));
+        second.add(after + 1, Line.plain(""));
+        var pages = new ArrayList<>(PAGES);
+        pages.set(1, List.copyOf(second));
+        return List.copyOf(pages);
+    }
 }

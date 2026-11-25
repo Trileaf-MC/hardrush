@@ -61,7 +61,7 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(3, active.lifeSequence());
         assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(16, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(17, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 
@@ -150,11 +150,67 @@ class RoundSnapshotCodecMigrationTest {
     private static final UUID KILLER = UUID.fromString("00000000-0000-0000-0000-000000000005");
 
     private static RoundSnapshot withTotems(Map<UUID, LooseTotem> totems) {
+        return withTotems(totems, MonsterWallet.EMPTY);
+    }
+
+    private static RoundSnapshot withTotems(Map<UUID, LooseTotem> totems, MonsterWallet wallet) {
         var victim = new Participant(VICTIM, "Victim", ParticipantRole.MONSTER_LOBBY, true, false,
-                10, 0, 2, 0, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of());
+                10, 0, 2, 0, MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of()).withWallet(wallet);
         var killer = new Participant(KILLER, "Killer", ParticipantRole.HUMAN_ACTIVE, true, false, 10, 0, 1, false);
         return new RoundSnapshot(ROUND, 1, 1, 3, RulesConfig.defaults(), RoundPhase.RUNNING, PauseReason.NONE,
                 900_000, 0, Map.of(VICTIM, victim, KILLER, killer), false, false, null, totems);
+    }
+
+    @Test void schemaSixteenReadsNoCreeperTicketAndSeventeenKeepsIt() throws Exception {
+        var wallet = MonsterWallet.EMPTY.credit(15).chooseRole(RulesConfig.defaults(), MonsterRole.ZOMBIE).park("parked-body");
+        var old = withTotems(Map.of(), wallet);
+        var migrated = RoundSnapshotCodec.decode(schemaSixteenFixture(old));
+        assertEquals(old, migrated);
+        assertFalse(migrated.participants().get(VICTIM).wallet().creeperTicket());
+
+        var paid = withTotems(Map.of(), wallet.credit(40).unlockCreeper(40));
+        byte[] encoded = RoundSnapshotCodec.encode(paid);
+        assertEquals(17, ByteBuffer.wrap(encoded).getInt(4));
+        var decoded = RoundSnapshotCodec.decode(encoded);
+        assertEquals(paid, decoded);
+        assertTrue(decoded.participants().get(VICTIM).wallet().creeperTicket());
+    }
+
+    /** The schema-16 layout for these fixtures: simple wallets, optional loose totems, and empty trailing tables. */
+    private static byte[] schemaSixteenFixture(RoundSnapshot snapshot) throws Exception {
+        var bytes = new ByteArrayOutputStream();
+        var out = new DataOutputStream(bytes);
+        out.writeInt(0x48525331); out.writeInt(16);
+        uuid(out, snapshot.roundId());
+        out.writeLong(snapshot.sequence()); out.writeLong(snapshot.seed()); out.writeLong(snapshot.version());
+        text(out, snapshot.rules().encode()); text(out, snapshot.phase().name()); text(out, snapshot.pauseReason().name());
+        out.writeLong(snapshot.challengeNanos()); out.writeLong(snapshot.remainingPhaseNanos());
+        out.writeBoolean(snapshot.cleanShutdown()); out.writeBoolean(snapshot.timingUncertain());
+        out.writeInt(snapshot.participants().size());
+        for (var id : snapshot.participants().keySet().stream().sorted().toList()) {
+            var p = snapshot.participants().get(id);
+            uuid(out, id); text(out, p.name()); text(out, p.role().name());
+            out.writeBoolean(p.online()); out.writeBoolean(p.ready()); out.writeLong(p.humanNanos());
+            out.writeLong(p.joinedAtChallengeNanos()); out.writeInt(p.lifeSequence()); out.writeInt(p.revivalCharges());
+            text(out, p.monsterRole().name()); text(out, p.monsterDimension().name());
+            out.writeLong(p.monsterCooldownNanos()); out.writeInt(p.monsterDeploymentSequence()); out.writeInt(0);
+            out.writeInt(p.wallet().coins()); out.writeBoolean(p.wallet().roleChosen()); out.writeInt(p.wallet().nextGearSerial());
+            for (int i = 0; i < 6; i++) out.writeInt(0); // Bought, ordered, carried, gear, carried gear, damage.
+            text(out, p.wallet().parked());
+            out.writeLong(p.lifeHumanNanos());
+        }
+        out.writeBoolean(false); // No round result.
+        out.writeInt(snapshot.looseTotems().size());
+        for (var entry : snapshot.looseTotems().entrySet()) {
+            var totem = entry.getValue();
+            uuid(out, entry.getKey()); uuid(out, totem.victim()); out.writeInt(totem.victimLife());
+            text(out, totem.source().name()); out.writeBoolean(totem.killer().isPresent());
+            if (totem.killer().isPresent()) uuid(out, totem.killer().get());
+            out.writeLong(totem.droppedAtChallengeNanos());
+        }
+        for (int i = 0; i < 4; i++) out.writeInt(0); // Threats, hunt locks, witch records, quarries.
+        out.writeBoolean(false); out.writeInt(0); // Admin pause and shelter waivers.
+        return bytes.toByteArray();
     }
 
     /** The v16 tail: the administrator's pause flag and the shelter-waiver count. */
@@ -167,8 +223,8 @@ class RoundSnapshotCodecMigrationTest {
         return java.util.Arrays.copyOf(v16, v16.length - ADMIN_TAIL);
     }
 
-    @Test void schemaFifteenAndEarlierReadNoAdminPauseOrWaiver() {
-        byte[] v15 = withoutAdmin(RoundSnapshotCodec.encode(withTotems(Map.of())));
+    @Test void schemaFifteenAndEarlierReadNoAdminPauseOrWaiver() throws Exception {
+        byte[] v15 = withoutAdmin(schemaSixteenFixture(withTotems(Map.of())));
         ByteBuffer.wrap(v15).putInt(4, 15);
         assertEquals(withTotems(Map.of()), RoundSnapshotCodec.decode(v15));
     }
@@ -187,8 +243,8 @@ class RoundSnapshotCodecMigrationTest {
         return java.util.Arrays.copyOf(v14, v14.length - 4);
     }
 
-    @Test void schemaFourteenAndEarlierReadNoQuarry() {
-        byte[] v14 = withoutQuarries(RoundSnapshotCodec.encode(withTotems(Map.of())));
+    @Test void schemaFourteenAndEarlierReadNoQuarry() throws Exception {
+        byte[] v14 = withoutQuarries(schemaSixteenFixture(withTotems(Map.of())));
         ByteBuffer.wrap(v14).putInt(4, 14);
         assertEquals(withTotems(Map.of()), RoundSnapshotCodec.decode(v14));
     }
@@ -222,8 +278,8 @@ class RoundSnapshotCodecMigrationTest {
         return java.util.Arrays.copyOf(v11, v11.length - 4);
     }
 
-    @Test void schemaThirteenAndEarlierReadNoWitchRecord() {
-        byte[] v13 = withoutWitches(RoundSnapshotCodec.encode(withTotems(Map.of())));
+    @Test void schemaThirteenAndEarlierReadNoWitchRecord() throws Exception {
+        byte[] v13 = withoutWitches(schemaSixteenFixture(withTotems(Map.of())));
         ByteBuffer.wrap(v13).putInt(4, 13);
         assertEquals(withTotems(Map.of()), RoundSnapshotCodec.decode(v13));
     }
@@ -267,7 +323,7 @@ class RoundSnapshotCodecMigrationTest {
         totems.put(unclaimed, new LooseTotem(VICTIM, 3, LooseTotem.Source.UNCLAIMED, java.util.Optional.empty(), 900_000));
         var snapshot = withTotems(totems);
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
-        assertEquals(16, ByteBuffer.wrap(bytes).getInt(4));
+        assertEquals(17, ByteBuffer.wrap(bytes).getInt(4));
         var decoded = RoundSnapshotCodec.decode(bytes);
         assertEquals(snapshot, decoded);
         assertEquals(List.of(low, high, unclaimed), List.copyOf(decoded.looseTotems().keySet()), "Encoded sorted by token");
@@ -276,9 +332,9 @@ class RoundSnapshotCodecMigrationTest {
         assertArrayEquals(bytes, RoundSnapshotCodec.encode(withTotems(reordered)), "Deterministic regardless of insertion order");
     }
 
-    @Test void schemasTenAndElevenReadEveryEntryAsAHumansDropNamingItsKiller() {
+    @Test void schemasTenAndElevenReadEveryEntryAsAHumansDropNamingItsKiller() throws Exception {
         var token = new UUID(1, 0);
-        byte[] v12 = withoutHuntLocks(withoutWitches(RoundSnapshotCodec.encode(withTotems(Map.of(token, byKiller(2, 700))))));
+        byte[] v12 = withoutHuntLocks(withoutWitches(schemaSixteenFixture(withTotems(Map.of(token, byKiller(2, 700))))));
         // Drop the source text and the killer flag, which schema 12 added between the life and the killer.
         int sourceAt = v12.length - 4 - HUMAN_ENTRY + 16 + 16 + 4;
         byte[] v11 = new byte[v12.length - (4 + "HUMAN".length() + 1)];
@@ -288,24 +344,24 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(withTotems(Map.of(token, byKiller(2, 700))), RoundSnapshotCodec.decode(v11));
     }
 
-    @Test void schemaNineAndEarlierReadAnEmptyRegistry() {
-        byte[] v9 = withoutLooseTotems(RoundSnapshotCodec.encode(withTotems(Map.of())));
+    @Test void schemaNineAndEarlierReadAnEmptyRegistry() throws Exception {
+        byte[] v9 = withoutLooseTotems(schemaSixteenFixture(withTotems(Map.of())));
         ByteBuffer.wrap(v9).putInt(4, 9);
         var migrated = RoundSnapshotCodec.decode(v9);
         assertTrue(migrated.looseTotems().isEmpty());
         assertEquals(withTotems(Map.of()), migrated);
-        assertEquals(16, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
+        assertEquals(17, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
         assertTrue(RoundSnapshotCodec.decode(schemaOneFixtureUnchecked()).looseTotems().isEmpty());
     }
 
-    @Test void schemaTenAndEarlierReadNoThreat() {
-        byte[] v10 = withoutThreats(RoundSnapshotCodec.encode(withTotems(Map.of())));
+    @Test void schemaTenAndEarlierReadNoThreat() throws Exception {
+        byte[] v10 = withoutThreats(schemaSixteenFixture(withTotems(Map.of())));
         ByteBuffer.wrap(v10).putInt(4, 10);
         assertEquals(withTotems(Map.of()), RoundSnapshotCodec.decode(v10));
     }
 
-    @Test void schemaTwelveAndEarlierReadNoHuntLock() {
-        byte[] v12 = withoutHuntLocks(withoutWitches(RoundSnapshotCodec.encode(withTotems(Map.of()))));
+    @Test void schemaTwelveAndEarlierReadNoHuntLock() throws Exception {
+        byte[] v12 = withoutHuntLocks(withoutWitches(schemaSixteenFixture(withTotems(Map.of()))));
         ByteBuffer.wrap(v12).putInt(4, 12);
         assertEquals(withTotems(Map.of()), RoundSnapshotCodec.decode(v12));
     }

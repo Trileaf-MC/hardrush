@@ -280,6 +280,27 @@ public final class MonsterCreeper {
         }
     }
 
+    /**
+     * A creeper whose fuse a human lit cannot return, so leaving the game must not save it either: the body is spent as if
+     * the fuse ran out, crediting the igniter, but without a blast (docs/plan/苦力怕付费解锁.md §1). Runs before the
+     * disconnect is reported, so the death is recorded first and spends a paid creeper's ticket.
+     */
+    public static void disconnected(ServerPlayer player) {
+        State state = STATES.get(player.getUUID());
+        if (state == null || state.igniter == null || state.exploding || !player.isAlive() || !available(player)) return;
+        state.exploding = true;
+        UUID igniter = state.igniter;
+        state.swell = 0;
+        state.igniter = null;
+        release(player);
+        LIT_BY.put(player.getUUID(), igniter);
+        try (var credit = CombatRuntime.rememberedCredit(player.level())) {
+            player.hurtServer(player.level(), player.damageSources().genericKill(), Float.MAX_VALUE);
+        } finally {
+            LIT_BY.remove(player.getUUID());
+        }
+    }
+
     private static void spawnCloud(ServerPlayer player, Creeper model) {
         if (player.getActiveEffects().isEmpty()) return;
         var cloud = new AreaEffectCloud(player.level(), player.getX(), player.getY(), player.getZ());

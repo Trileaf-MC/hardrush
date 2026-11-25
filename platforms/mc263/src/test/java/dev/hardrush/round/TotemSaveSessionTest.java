@@ -209,7 +209,9 @@ class TotemSaveSessionTest {
         var players = new LinkedHashMap<UUID, Participant>(Map.of(hunter, monster, human, player));
         if (withRival) players.put(rival, new Participant(rival, "Rival", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 0, 1, 0,
                 MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of(), MonsterWallet.EMPTY, 0, false));
-        var snapshot = new RoundSnapshot(round, 1, 9, 0, RulesConfig.defaults(), RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
+        var rules = RulesConfig.decode(RulesConfig.defaults().encode()
+                .replaceAll("(?m)^combat\\.coin\\.creeperUnlock=.*\n", ""));
+        var snapshot = new RoundSnapshot(round, 1, 9, 0, rules, RoundPhase.RUNNING, PauseReason.SERVER_STOPPED,
                 100, 0, players, true, false, null);
         try (var store = new SqliteRoundStore(path)) {
             assertEquals(CommitResult.APPLIED, store.commit(new SnapshotWrite(round, -1, 0, RoundSnapshotCodec.encode(snapshot), UUID.randomUUID(), "FIXTURE")));

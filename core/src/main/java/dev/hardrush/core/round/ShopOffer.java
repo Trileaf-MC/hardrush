@@ -59,6 +59,11 @@ public enum ShopOffer {
     /** Revival supplies that take effect where the revived body lands rather than in its backpack. */
     public boolean landing() { return this == BONUS_CHEST || this == LONGER_BLESSING; }
     public Set<MonsterRole> roles() { return roles; }
+    /**
+     * Paid creeper state (docs/plan/苦力怕付费解锁.md): kept through returns, role changes and disconnects, and spent
+     * only when a sortie carrying it is used up by the monster's death.
+     */
+    public boolean keptUntilUsed() { return this == CHARGED; }
     /** Whether a sortie as {@code role} carries it; revival supplies never ride a sortie. */
     public boolean sellableTo(MonsterRole role) { return !revival() && roles.contains(role); }
     public String priceKey() { return "coin.price." + id; }

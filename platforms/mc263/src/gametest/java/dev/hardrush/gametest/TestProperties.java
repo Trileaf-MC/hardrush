@@ -6,6 +6,7 @@ public final class TestProperties {
 
     public static final String ADMIN_SPECTATOR = "hardrush.test.adminSpectator";
     public static final String CELEBRATION = "hardrush.test.celebration";
+    public static final String CREEPER_UNLOCK = "hardrush.test.creeperUnlock";
     public static final String CRASH_BOUNDARY = "hardrush.test.crash.boundary";
     public static final String CRASH_SCENARIO = "hardrush.test.crash.scenario";
     public static final String FULL_CHECKPOINT = "hardrush.test.fullCheckpoint";

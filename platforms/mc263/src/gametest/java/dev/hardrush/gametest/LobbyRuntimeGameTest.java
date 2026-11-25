@@ -25,6 +25,9 @@ import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.core.BlockPos;
@@ -80,7 +83,7 @@ public final class LobbyRuntimeGameTest {
             f.monster.client.close();
             f.target.client.close();
             FROZEN_SUMMON_OWNERS.remove(f.monster.profile.id());
-            if (f.lootChunk != null) f.level.getChunkSource().removeTicketWithRadius(LOOT_FIXTURE, f.lootChunk, ARENA_TICKET_RADIUS);
+            f.releaseArena();
         });
         test.onEachTick(() -> {
             if (f.clock != null) f.clock.accumulateAndGet(System.nanoTime(), Math::max);
@@ -269,17 +272,24 @@ public final class LobbyRuntimeGameTest {
                             "A native fall death after recent player damage pays the monster exactly eight coins");
                     f.assertWorthReward();
                     f.assertSkillCooldowns();
-                    HuntInputFixtures.role(f.monster.player, "creeper");
-                })
-                .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.CREEPER && !f.session.mutationPending(), "Creeper selection keeps both skill deadlines"))
-                .thenExecute(() -> {
-                    // The quarry, and the human credited with the defeat, stay wary of a fallen monster: 120 s at one star
-                    // (docs/plan/悬赏分档与追猎强度.md §4).
-                    f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121));
-                    f.monster.hunt(f.target.profile.id());
-                })
+                });
+        preparePaidCreeper(sequence, () -> f.session, f.monster.profile.id(), f.target.profile.id(), f::await);
+        sequence.thenExecute(() -> HuntInputFixtures.role(f.monster.player, "creeper"))
+                .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.CREEPER
+                        && f.monster.participant().wallet().creeperTicket() && CampTransferFixtures.actionsReady(f.session),
+                        "Paid creeper selection keeps both skill deadlines"))
+                // The defeat locked the quarry for 120 seconds at one star. The later milestones do not shorten that lock.
+                .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121)))
+                .thenWaitUntil(() -> f.await(f.monster.participant().huntLockNanos(f.target.profile.id()) == 0
+                        && f.monster.participant().monsterCooldownNanos() == 0 && CampTransferFixtures.actionsReady(f.session),
+                        "The original one-star defeat lock has expired"))
+                .thenExecute(() -> f.monster.hunt(f.target.profile.id()))
                 .thenWaitUntil(() -> f.await(f.deployed(4), "Third formal safe deployment"))
-                .thenExecute(() -> { f.assertDeployment(4); f.monster.disconnect(); })
+                .thenExecute(() -> {
+                    f.assertDeployment(4);
+                    test.assertValueEqual(f.monster.participant().sortie().tier(), 3, "The paid creeper lands on a three-star quarry");
+                    f.monster.disconnect();
+                })
                 .thenWaitUntil(() -> f.await(!f.monster.participant().online()
                         && f.monster.participant().role() == ParticipantRole.MONSTER_LOBBY && !f.session.mutationPending(), "Outside disconnect commits lobby identity"));
         f.monster.login(sequence);
@@ -514,6 +524,47 @@ public final class LobbyRuntimeGameTest {
                 }).thenSucceed();
     }
 
+    /** Commit the paid booth's prerequisites, leaving the purchase itself to the native booth click. */
+    static void preparePaidCreeper(GameTestSequence sequence, Supplier<RoundSession> session,
+                                   UUID hunterId, UUID quarryId, BiConsumer<Boolean, String> await) {
+        var credit = new AtomicReference<RoundSession.Reply>();
+        sequence.thenWaitUntil(() -> await.accept(CampTransferFixtures.actionsReady(session.get()), "Session ready for creeper funding"))
+                .thenExecute(() -> {
+                    var current = session.get();
+                    var round = current.snapshot().orElseThrow();
+                    var hunter = round.participants().get(hunterId);
+                    if (!MonsterCoins.creeperPaid(round.rules()) || hunter.role() != ParticipantRole.MONSTER_LOBBY)
+                        throw new IllegalStateException("Creeper funding requires a paid round and a camp monster");
+                    current.requestMonsterCoinPickup(round.roundId(), hunterId, hunter.lifeSequence(), hunter.monsterDeploymentSequence(),
+                            MonsterCoins.creeperUnlockPrice(round.rules()), credit::set);
+                })
+                .thenWaitUntil(() -> await.accept(credit.get() != null && CampTransferFixtures.actionsReady(session.get()),
+                        "Creeper funding committed"))
+                .thenExecute(() -> {
+                    if (!credit.get().success()) throw new IllegalStateException("Creeper funding refused: " + credit.get().message());
+                    var current = session.get();
+                    var round = current.snapshot().orElseThrow();
+                    var quarry = round.participants().get(quarryId);
+                    if (!quarry.online() || quarry.role() != ParticipantRole.HUMAN_ACTIVE)
+                        throw new IllegalStateException("Creeper quarry must be an online active human");
+                    var earned = quarry.threat().forLife(quarry.lifeSequence()).milestones();
+                    int threat = Bounty.threat(round.rules(), quarry);
+                    for (String advancement : List.of("minecraft:story/mine_diamond", "minecraft:story/enter_the_nether",
+                            "minecraft:nether/find_fortress", "minecraft:nether/obtain_blaze_rod")) {
+                        if (Bounty.stars(round.rules(), threat) >= HuntPressure.CREEPER_MIN_STARS) break;
+                        if (earned.contains(advancement)) continue;
+                        current.threatMilestone(round.roundId(), quarryId, quarry.lifeSequence(), advancement);
+                        threat += Bounty.MILESTONES.get(advancement);
+                    }
+                })
+                .thenWaitUntil(() -> {
+                    var current = session.get();
+                    var round = current.snapshot().orElseThrow();
+                    int stars = Bounty.standing(round.rules(), round.participants(), quarryId).stars();
+                    await.accept(CampTransferFixtures.actionsReady(current) && stars == 3, "Creeper quarry's three stars committed");
+                });
+    }
+
     static final class Fixture {
         final GameTestHelper test;
         final MinecraftServer server;
@@ -639,6 +690,9 @@ public final class LobbyRuntimeGameTest {
                 if (!level.isPositionEntityTicking(center.offset(dx, 0, dz))) return false;
             }
             return true;
+        }
+        void releaseArena() {
+            if (lootChunk != null) level.getChunkSource().removeTicketWithRadius(LOOT_FIXTURE, lootChunk, ARENA_TICKET_RADIUS);
         }
         void allowCombat() {
             // Combat starts at the first dusk; do not bypass the production pact gate.

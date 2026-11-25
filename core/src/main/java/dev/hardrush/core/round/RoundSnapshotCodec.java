@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 16;
+    private static final int SCHEMA = 17;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -350,6 +350,12 @@ public final class RoundSnapshotCodec {
             out.writeInt(entry.getValue().paid());
         }
         writeText(out, wallet.parked());
+        out.writeBoolean(wallet.creeperTicket());
+        out.writeInt(wallet.parkedGoods().size());
+        for (var offer : ShopOffer.values()) {
+            Integer count = wallet.parkedGoods().get(offer);
+            if (count != null) { writeText(out, offer.id()); out.writeInt(count); }
+        }
     }
 
     private static MonsterWallet readWallet(DataInputStream in, int schema) throws IOException {
@@ -392,8 +398,18 @@ public final class RoundSnapshotCodec {
         }
         // Schema 7 predates paused sorties: every stored return already ended its sortie.
         String parked = schema >= 8 ? readText(in, MonsterWallet.MAX_PARKED_TEXT * 4) : "";
+        // Paid creeper tickets first appear in schema 17.
+        boolean creeperTicket = schema >= 17 && in.readBoolean();
+        var parkedGoods = new java.util.EnumMap<ShopOffer, Integer>(ShopOffer.class);
+        if (schema >= 17) {
+            int size = in.readInt();
+            if (size < 0 || size > ShopOffer.values().length) throw new IOException("Invalid parked goods count");
+            for (int i = 0; i < size; i++) {
+                if (parkedGoods.put(ShopOffer.fromId(readText(in, 128)), in.readInt()) != null) throw new IOException("Duplicate parked goods");
+            }
+        }
         return new MonsterWallet(coins, chosen, counts.get(0), counts.get(1), counts.get(2),
-                gear.get(0), gear.get(1), serial, damage, parked);
+                gear.get(0), gear.get(1), serial, damage, parked, creeperTicket, parkedGoods);
     }
 
     private static void writeUuid(DataOutputStream out, UUID id) throws IOException {

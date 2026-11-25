@@ -31,6 +31,7 @@ final class CampTransferFixtures {
             LobbyRuntimeGameTest.Fixture.Peer donor, LobbyRuntimeGameTest.Fixture.Peer receiver) {
         int[] balances = new int[2];
         ItemEntity[] floor = new ItemEntity[1];
+        int[] dropped = new int[1];
         sequence.thenExecute(() -> {
             CampKit.tick(f.server);
             balances[0] = donor.participant().wallet().coins();
@@ -76,11 +77,18 @@ final class CampTransferFixtures {
                     floor[0].playerTouch(donor.current());
                 }).thenWaitUntil(() -> f.await(!f.session.mutationPending() && floor[0].isRemoved()
                         && donor.participant().wallet().coins() == balances[0] + balances[1], "Coin transfers conserve total value"))
-                .thenExecute(() -> throwKey(donor.current(), CampKit::isCoin, true))
-                .thenWaitUntil(() -> f.await(!f.session.mutationPending() && donor.participant().wallet().coins() == 0
+                .thenExecute(() -> {
+                    // A balance above one native stack projects several stacks; Ctrl+Q drops only the selected one.
+                    dropped[0] = java.util.stream.IntStream.range(0, 9).mapToObj(donor.current().getInventory()::getItem)
+                            .filter(CampKit::isCoin).findFirst().orElseThrow().getCount();
+                    throwKey(donor.current(), CampKit::isCoin, true);
+                })
+                .thenWaitUntil(() -> f.await(!f.session.mutationPending()
+                        && donor.participant().wallet().coins() == balances[0] + balances[1] - dropped[0]
                         && floor(donor.current(), CampKit::isCoin) != null, "Hotbar Ctrl+Q debits the entire coin stack"))
                 .thenExecute(() -> {
                     floor[0] = floor(donor.current(), CampKit::isCoin);
+                    f.test.assertValueEqual(floor[0].getItem().getCount(), dropped[0], "The floor holds exactly the selected stack");
                     floor[0].setPickUpDelay(0);
                     floor[0].playerTouch(donor.current());
                 }).thenWaitUntil(() -> f.await(!f.session.mutationPending() && floor[0].isRemoved()

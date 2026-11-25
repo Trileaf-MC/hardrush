@@ -145,7 +145,9 @@ class MonsterSessionTest {
         var players = new java.util.LinkedHashMap<UUID, Participant>();
         players.put(player, participant);
         for (var other : others) players.put(other.id(), other);
-        var snapshot = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults(), RoundPhase.RUNNING,
+        var rules = RulesConfig.decode(RulesConfig.defaults().encode()
+                .replaceAll("(?m)^combat\\.coin\\.creeperUnlock=.*\n", ""));
+        var snapshot = new RoundSnapshot(round, 1, 123, 0, rules, RoundPhase.RUNNING,
                 PauseReason.SERVER_STOPPED, 123, 0, players, true, false, null);
         try (var store = new SqliteRoundStore(path)) {
             store.commit(new SnapshotWrite(round, -1, 0, RoundSnapshotCodec.encode(snapshot), UUID.randomUUID(), "FIXTURE"));

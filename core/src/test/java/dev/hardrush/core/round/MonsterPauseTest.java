@@ -55,7 +55,10 @@ class MonsterPauseTest {
     }
 
     @Test void choosingAnotherRoleAbandonsThePause() {
-        var engine = engine(RULES, MonsterWallet.EMPTY.chooseRole(RULES, MonsterRole.ZOMBIE));
+        var values = new TreeMap<>(RULES.combatValues());
+        values.remove(MonsterCoins.CREEPER_UNLOCK);
+        var legacyRules = rules(values);
+        var engine = engine(legacyRules, MonsterWallet.EMPTY.chooseRole(legacyRules, MonsterRole.ZOMBIE));
         accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, monster, 1, 3, BODY));
         accept(engine, engine.proposeMonsterRole(UUID.randomUUID(), round, monster, 1, 3, MonsterRole.ZOMBIE));
         assertTrue(engine.view().participants().get(monster).wallet().hasParkedBody(), "The same role keeps its pause");

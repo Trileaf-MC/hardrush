@@ -161,10 +161,12 @@ public final class PersonalHuntGameTest {
         });
         // Changed terrain and target movement AFTER real SQLite submission, BEFORE the native callback.
         f.commitRace(s, false); f.commitRace(s, true);
-        // A creeper's blast kills its own body in the same call; the surviving bystander must still see the bar.
+        // Keep A's original stars through the shared hunt and commit races. The blast case needs a three-star anchor.
+        LobbyRuntimeGameTest.preparePaidCreeper(s, () -> f.session, f.d.id(), f.a.id(), f::await);
+        // A creeper's blast kills its own body in the same call. The surviving bystander must still see the bar.
         s.thenExecute(() -> f.d.role("creeper"))
-                .thenWaitUntil(() -> f.await(f.idle() && f.d.participant().monsterRole()==MonsterRole.CREEPER
-                        && f.d.participant().monsterCooldownNanos()==0, "creeper role for blast bar"))
+                .thenWaitUntil(() -> f.await(CampTransferFixtures.actionsReady(f.session) && f.d.participant().monsterRole()==MonsterRole.CREEPER
+                        && f.d.participant().wallet().creeperTicket() && f.d.participant().monsterCooldownNanos()==0, "paid creeper role for blast bar"))
                 .thenExecute(() -> {
                     f.move(f.a, 0); f.move(f.b, 0);
                     f.b.player.teleportTo(f.levels[0], f.anchor[0].x + 10, f.anchor[0].y, f.anchor[0].z, Set.of(), 0,0,true);
@@ -172,6 +174,7 @@ public final class PersonalHuntGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(f.d, 0), "creeper hunts A"))
                 .thenExecute(() -> {
+                    test.assertValueEqual(f.d.participant().sortie().tier(), 3, "The blast case deploys onto three-star A");
                     f.dusk();
                     f.d.player.teleportTo(f.b.player.level(), f.b.player.getX()+4.5, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
                     f.b.player.setHealth(20); f.b.player.setInvulnerableTime(0);

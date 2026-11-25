@@ -17,6 +17,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class DeathBatchRevivalTest {
+    // Keep the creeper fixture focused on death attribution and revival.
+    private static final RulesConfig RULES = RulesConfig.decode(RulesConfig.defaults().encode()
+            .replaceAll("(?m)^combat\\.coin\\.creeperUnlock=.*\n", ""));
     private final UUID round = UUID.randomUUID();
     private final UUID human = UUID.randomUUID();
     private final UUID other = UUID.randomUUID();
@@ -40,7 +43,7 @@ class DeathBatchRevivalTest {
     private RoundEngine fixture(GameMode mode, Participant... participants) {
         Map<UUID, Participant> players = new LinkedHashMap<>();
         for (var p : participants) players.put(p.id(), p);
-        var stored = new RoundSnapshot(round, 1, 123, 0, RulesConfig.defaults().withMode(mode),
+        var stored = new RoundSnapshot(round, 1, 123, 0, RULES.withMode(mode),
                 RoundPhase.RUNNING, PauseReason.SERVER_STOPPED, 100, 0, players, true, false, null);
         var engine = RoundEngine.restore(stored, clock);
         for (var p : participants) if (p.online()) apply(engine, engine.proposeOnline(UUID.randomUUID(), p.id(), p.name(), true));
