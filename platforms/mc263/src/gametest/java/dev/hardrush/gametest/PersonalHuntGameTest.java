@@ -101,6 +101,8 @@ public final class PersonalHuntGameTest {
                     f.c.watch(f.a);
                     test.assertTrue(Observation.observing(f.c.player) && f.c.player.getCamera() == f.a.player
                             && f.c.player.level() == f.levels[2] && f.c.player.isSpectator(), "Left-click rides the human's camera across worlds");
+                    test.assertTrue(dev.hardrush.player.SealedCommands.refusal(f.c.player, "tell " + f.d.player.getGameProfile().name() + " hi").isEmpty(),
+                            "A watching camp monster can still whisper (#86)");
                     f.c.input(new Input(false, false, false, true, false, false, false));
                     test.assertTrue(f.c.player.getCamera() == f.b.player && f.c.player.level() == f.levels[1], "D moves the camera to the next human");
                     f.c.input(new Input(false, false, true, false, false, false, false));
