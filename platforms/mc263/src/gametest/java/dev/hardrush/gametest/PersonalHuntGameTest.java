@@ -172,10 +172,14 @@ public final class PersonalHuntGameTest {
                 .thenExecute(() -> {
                     f.move(f.a, 0); f.move(f.b, 0);
                     f.b.player.teleportTo(f.levels[0], f.anchor[0].x + 10, f.anchor[0].y, f.anchor[0].z, Set.of(), 0,0,true);
+                    // Past any earlier omen window onto A, so a silent landing is the creeper's own doing.
+                    f.searchClock.addAndGet(dev.hardrush.core.hunt.HuntOmens.INTERVAL_MILLIS * 1_000_000L + 1_000_000_000L);
+                    f.omens = f.omenCounts();
                     f.d.hunt(f.a); f.refresh();
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(f.d, 0), "creeper hunts A"))
                 .thenExecute(() -> {
+                    test.assertValueEqual(f.omenCounts(), f.omens, "A creeper lands without sounding the omen");
                     test.assertValueEqual(f.d.participant().sortie().tier(), 3, "The blast case deploys onto three-star A");
                     f.dusk();
                     f.d.player.teleportTo(f.b.player.level(), f.b.player.getX()+4.5, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
