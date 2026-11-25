@@ -915,6 +915,7 @@ public final class LobbyRuntime {
     public static void disconnected(ServerPlayer player) {
         LobbyInteractions.disconnected(player);
         MonsterVaults.disconnected(player);
+        CreeperUnlockDialog.disconnected(player);
         var b = BINDINGS.get(player.level().getServer()); if (b == null) return;
         b.channels.remove(player.getUUID()); b.retracks.remove(player.getUUID()); b.displays.remove(player.getUUID());
         var attempts = new HashSet<Deployment>(b.searches.values()); attempts.addAll(b.resumptions.values()); attempts.addAll(b.pending.values());
@@ -998,14 +999,21 @@ public final class LobbyRuntime {
             case HISTORY -> dev.hardrush.record.HistoryLibrary.open(player);
             case VAULT, OMINOUS_VAULT -> MonsterVaults.use(player, function == LobbyFunction.OMINOUS_VAULT
                     ? ShopOffer.OMINOUS_KEY : ShopOffer.TRIAL_KEY, java.util.Objects.requireNonNull(clicked, "vault position"));
-            case PAGE_PREV, PAGE_NEXT, ROLE_ZOMBIE, ROLE_SKELETON, ROLE_CREEPER, MERCHANT -> courtyard(player, function, priced);
+            case PAGE_PREV, PAGE_NEXT, ROLE_ZOMBIE, ROLE_SKELETON, ROLE_CREEPER, MERCHANT -> courtyard(player, function, priced ? Entry.PRICED : Entry.UNPRICED, null);
             default -> throw new IllegalArgumentException("Not a clickable lobby function: " + function.id());
         }
     }
     /** Role models, the merchant and paging share the courtyard's opening hours. */
-    /** The dialog's pay button: the same courtyard click, now confirmed; every check runs again. */
-    static void confirmCreeperUnlock(ServerPlayer player) { courtyard(player, LobbyFunction.ROLE_CREEPER, true); }
-    private static void courtyard(ServerPlayer player, LobbyFunction function, boolean priced) {
+    /** How a courtyard click reached the role booth: whether its price was on show, or a dialog already confirmed it. */
+    private enum Entry { UNPRICED, PRICED, CONFIRMED }
+    /**
+     * The creeper dialog's pay button, for the offer it was opened with: the same courtyard click, confirmed, as long as the
+     * round, price and booth are still those the player was shown. Every other check runs again.
+     */
+    static void confirmCreeperUnlock(ServerPlayer player, CreeperUnlockDialog.Offer offer) {
+        courtyard(player, LobbyFunction.ROLE_CREEPER, Entry.CONFIRMED, offer);
+    }
+    private static void courtyard(ServerPlayer player, LobbyFunction function, Entry entry, CreeperUnlockDialog.Offer offer) {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);
         if (r == null || !contextAvailable(player, b, LobbyContext.DISPLAY) || !personalOpen(b, r)) {
@@ -1035,13 +1043,27 @@ public final class LobbyRuntime {
             boolean hasQuarry = r.participants().values().stream().anyMatch(q -> q.online() && q.role() == ParticipantRole.HUMAN_ACTIVE
                     && Bounty.stars(r.rules(), Bounty.threat(r.rules(), q)) >= HuntPressure.CREEPER_MIN_STARS);
             if (!hasQuarry) { Notices.refuse(player, Replies.CREEPER_NO_QUARRY); return; }
-            // A block or tagged-entity booth shows no price of its own: a native dialog names it and its button pays.
-            if (!priced) { CreeperUnlockDialog.show(player, price, p.wallet().coins()); return; }
+            // A block or tagged-entity booth shows no price of its own: a native dialog names it, and what a different
+            // role would discard, and its button pays.
+            if (entry == Entry.UNPRICED) {
+                var discarded = p.wallet().hasParkedBody() && role != p.monsterRole()
+                        ? Optional.of(dev.hardrush.monster.MonsterParking.describe(p.wallet().parked()).orElse(kindName(p.monsterRole())))
+                        : Optional.<String>empty();
+                CreeperUnlockDialog.show(player, new CreeperUnlockDialog.Offer(UUID.randomUUID(), r.roundId(), price,
+                        player.position(), player.level().getServer().getTickCount()), p.wallet().coins(), discarded);
+                return;
+            }
+            if (entry == Entry.CONFIRMED && (offer == null || !offer.round().equals(r.roundId()) || offer.price() != price
+                    || player.position().distanceToSqr(offer.at()) > CreeperUnlockDialog.REACH * CreeperUnlockDialog.REACH)) {
+                Notices.refuse(player, "价格或位置已变化，请重新右键苦力怕展位"); return;
+            }
         }
         // Picking another role ends a waiting hunt; the new body would not match the pending identity.
         var waiting = b.searches.get(p.id());
         if (waiting != null) cancelSearch(b, waiting, "已换角色，对 " + Notices.key(waiting.targetPlayer.getScoreboardName()) + " 的追猎已取消");
-        if (p.wallet().hasParkedBody() && role != p.monsterRole() && !confirmAbandon(b, player, p, role)) return;
+        // The pay dialog already named the paused sortie it discards.
+        if (p.wallet().hasParkedBody() && role != p.monsterRole() && !(unlocking && entry == Entry.CONFIRMED)
+                && !confirmAbandon(b, player, p, role)) return;
         b.committing.add(p.id());
         b.session.requestMonsterRole(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), role, reply -> {
             b.committing.remove(p.id());

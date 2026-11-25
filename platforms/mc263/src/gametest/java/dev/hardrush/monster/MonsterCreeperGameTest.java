@@ -152,6 +152,26 @@ public final class MonsterCreeperGameTest {
     }
 
     @GameTest(maxTicks = 200)
+    public void aLitCreeperThatDisconnectsIsSpentWithoutABlast(GameTestHelper test) {
+        var f = new Fixture(test, 2);
+        test.runAfterDelay(80, () -> {
+            try {
+                MonsterRoles.select(f.owner, "creeper");
+                var human = f.players.get(1);
+                MonsterCreeper.disconnected(f.owner);
+                test.assertTrue(f.owner.isAlive(), "An unlit creeper leaves the game alive; its own swell never kills it");
+                test.assertTrue(MonsterCreeper.forceIgnite(f.owner, human), "A human's igniter lights the creeper player");
+                float humanHealth = human.getHealth();
+                MonsterCreeper.disconnected(f.owner);
+                test.assertFalse(f.owner.isAlive(), "Leaving with a lit fuse spends the body as if the fuse ran out");
+                test.assertTrue(MonsterCreeper.litBy(f.owner).isEmpty(), "The igniter mark ends with the death");
+                test.assertValueEqual(human.getHealth(), humanHealth, "No blast reaches the human who lit it");
+            } finally { f.close(); }
+            test.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = 200)
     public void humanRightClickWithFlintAndSteelLightsTheCreeperPlayer(GameTestHelper test) {
         var f = new Fixture(test, 2);
         test.runAfterDelay(80, () -> {
