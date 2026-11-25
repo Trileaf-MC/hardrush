@@ -212,15 +212,21 @@ public final class LobbyRuntimeGameTest {
                             "The resumed body keeps the drowned form the water gave it");
                     f.test.assertFalse(dev.hardrush.monster.MonsterItems.matches(f.monster.player, inventory.getItem(1), "baby_egg"),
                             "The spent baby egg is not handed out again");
-                    f.test.assertTrue(inventory.getItem(2).is(Items.DROWNED_SPAWN_EGG), "A resumed drowned's eggs are drowned eggs");
-                    int tridents = 0;
-                    for (int i = 0; i < inventory.getContainerSize(); i++)
-                        if (dev.hardrush.monster.MonsterItems.matches(f.monster.player, inventory.getItem(i), MonsterRoles.SEA_TRIDENT)) tridents++;
+                    int tridents = 0, adultEggs = 0;
+                    for (int i = 0; i < inventory.getContainerSize(); i++) {
+                        var stack = inventory.getItem(i);
+                        if (dev.hardrush.monster.MonsterItems.matches(f.monster.player, stack, MonsterRoles.SEA_TRIDENT)) tridents++;
+                        f.test.assertFalse(stack.is(Items.ZOMBIE_SPAWN_EGG), "A resumed drowned carries no zombie egg");
+                        if (dev.hardrush.monster.MonsterItems.matches(f.monster.player, stack, "adult_egg")) adultEggs += stack.getCount();
+                    }
                     f.test.assertValueEqual(tridents, 1, "The drowned's bound trident parks and is rebound to the resumed deployment");
-                    // The tier's own eggs plus the one bought, less the one hatched before the return.
-                    f.test.assertValueEqual(inventory.getItem(2).getCount(),
+                    // The tier's own eggs plus the one bought, less the one hatched before the return. At one star that
+                    // leaves none, so the empty hand took the trident at conversion and it comes back in that slot.
+                    f.test.assertValueEqual(adultEggs,
                             dev.hardrush.core.round.HuntPressure.starterAdultEggs(f.monster.participant().sortie().tier()),
-                            "The remaining adult eggs come back in their slot");
+                            "The remaining adult eggs come back");
+                    if (adultEggs == 0) f.test.assertTrue(dev.hardrush.monster.MonsterItems.matches(f.monster.player, inventory.getItem(2), MonsterRoles.SEA_TRIDENT),
+                            "The trident returns to the slot it was parked in");
                     f.test.assertTrue(inventory.getItem(7).is(Items.ECHO_SHARD) && dev.hardrush.monster.MonsterItems.owned(f.monster.player, inventory.getItem(7)),
                             "Parked bound items are rebound to the resumed deployment");
                     f.test.assertValueEqual(f.worldSwords(), 1, "The world sword stayed where the monster returned and is not parked");
