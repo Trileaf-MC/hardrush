@@ -268,15 +268,19 @@ public final class Observation {
         boolean huntingThis = hunting.filter(s.target::equals).isPresent();
         // A late entrant's first minutes can be watched but not hunted; the bar says until when instead of offering it.
         var shelter = s.group == Group.MONSTER && !huntingThis && !lost && target != null ? LobbyRuntime.shelterClock(target) : Optional.<String>empty();
-        boolean holding = s.group == Group.MONSTER && s.jumpSince >= 0 && !s.jumpFired && !lost && shelter.isEmpty();
+        // A paid creeper without a ticket, or watching a human below three stars, is not offered a hunt it would be refused.
+        var creeper = s.group == Group.MONSTER && !huntingThis && !lost && shelter.isEmpty()
+                ? LobbyRuntime.creeperRefusal(s.player, s.target) : Optional.<String>empty();
+        boolean holding = s.group == Group.MONSTER && s.jumpSince >= 0 && !s.jumpFired && !lost && shelter.isEmpty() && creeper.isEmpty();
         // The bar says whom and what; the keys live on the action bar below it, at the lowest priority.
         String title;
         if (lost) title = s.targetName + " 已无法观察，即将切换";
         else if (shelter.isPresent()) title = s.targetName + " " + dev.hardrush.core.hunt.LateShelter.NAME + " · " + shelter.get() + " 后可追猎";
+        else if (creeper.isPresent()) title = s.targetName + " · " + creeper.get();
         else if (holding) title = (huntingThis ? "按住空格取消追猎 " : hunting.isPresent() ? "按住空格改追 " : "按住空格追猎 ") + s.targetName + "……";
         else title = (huntingThis ? "正在追猎 " : "正在观察 ") + s.targetName;
         if (!title.equals(s.shownTitle)) { s.bar.setName(dev.hardrush.notice.Notices.bar(title)); s.shownTitle = title; }
-        String keys = s.group == Group.EXCLUDED || shelter.isPresent() ? "A/D 切换 · 潜行退出"
+        String keys = s.group == Group.EXCLUDED || shelter.isPresent() || creeper.isPresent() ? "A/D 切换 · 潜行退出"
                 : "A/D 切换 · " + (huntingThis ? "长按空格取消追猎" : hunting.isPresent() ? "长按空格改追此人" : "长按空格追猎") + " · 潜行退出";
         LobbyInteractions.get(s.player.level().getServer()).ifPresent(router -> router.hints(s.player).offer("observe-help",
                 LobbyHints.Priority.GUIDANCE, keys, System.nanoTime() / 1_000_000 + 500));

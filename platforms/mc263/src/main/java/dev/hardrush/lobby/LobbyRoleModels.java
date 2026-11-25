@@ -77,6 +77,7 @@ public final class LobbyRoleModels {
     private static final List<LobbyFunction> NATIVE_MODELS = List.of(LobbyFunction.ROLE_ZOMBIE, LobbyFunction.ROLE_SKELETON,
             LobbyFunction.MERCHANT);
     private static final String CREEPER_TEAM_PREFIX = "hardrush_creeper_booth_";
+    private static final int BUNDLE_LIMIT = 4000;
     private final LobbyInteractions router;
     private final Map<UUID, Viewer> displays = new HashMap<>();
     private static int lastNativeId = -1;
@@ -158,7 +159,9 @@ public final class LobbyRoleModels {
                         point.x(), point.y() + .75, point.z(), 1f, 1f, display.owner.getRandom().nextLong()));
             }
         }
-        display.connection.send(new ClientboundBundlePacket(packets));
+        // A native client rejects a bundle above 4096 packets; a lobby with many booths spans several, still in order.
+        for (int from = 0; from < packets.size(); from += BUNDLE_LIMIT)
+            display.connection.send(new ClientboundBundlePacket(packets.subList(from, Math.min(packets.size(), from + BUNDLE_LIMIT))));
     }
 
     private static List<Model> buildCreepers(Viewer display, CreeperBooth booth) {

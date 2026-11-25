@@ -100,6 +100,8 @@ public final class LobbyRuntime {
         final Map<UUID, Long> retryAt = new HashMap<>();
         final Set<UUID> committing = new HashSet<>();
         final Map<UUID, AbandonAsk> abandoning = new HashMap<>();
+        /** Block-bound creeper booths waiting for the click that pays. */
+        final Map<UUID, AbandonAsk> unlocking = new HashMap<>();
         /** Deaths waiting for the respawned body to stand in camp before they are told. */
         final Map<UUID, Arrival> arrivals = new HashMap<>();
         Binding(RoundSession session, PlayerProfiles profiles, Supplier<RoundWorldBundle> worlds) {
@@ -230,7 +232,7 @@ public final class LobbyRuntime {
     public static void prepareStop(MinecraftServer server) {
         var b = BINDINGS.get(server); if (b == null) return;
         b.pending.values().forEach(d -> d.cancelled = true);
-        b.channels.clear(); b.retracks.clear(); b.searches.clear(); b.resumptions.clear(); b.displays.clear(); b.cooling.clear(); b.abandoning.clear();
+        b.channels.clear(); b.retracks.clear(); b.searches.clear(); b.resumptions.clear(); b.displays.clear(); b.cooling.clear(); b.abandoning.clear(); b.unlocking.clear();
         LobbyInteractions.get(server).ifPresent(r -> r.projections().clear());
         for (var player : List.copyOf(server.getPlayerList().getPlayers())) {
             if (MonsterRoles.isMonster(player)) MonsterRoles.clear(player);
@@ -295,16 +297,8 @@ public final class LobbyRuntime {
         if (revivalFirst(player, round, p)) return;
         if (round.adminPaused()) { Notices.refuse(player, PAUSED); return; }
         var quarry = round.participants().get(targetId);
-        if (paidCreeper(round.rules(), p)) {
-            if (!p.wallet().creeperTicket()) {
-                Notices.refuse(player, "苦力怕的出击资格已用掉 · 回苦力怕展位付 " + MonsterCoins.creeperUnlockPrice(round.rules()) + " 怪物币解锁");
-                return;
-            }
-            if (quarry != null && quarry.role() == ParticipantRole.HUMAN_ACTIVE && quarry.lifeSequence() == targetLife
-                    && Bounty.stars(round.rules(), Bounty.threat(round.rules(), quarry)) < HuntPressure.CREEPER_MIN_STARS) {
-                Notices.refuse(player, Replies.CREEPER_LOW_STARS); return;
-            }
-        }
+        var creeperRefusal = creeperRefusal(round, p, targetId);
+        if (creeperRefusal.isPresent()) { Notices.refuse(player, creeperRefusal.get()); return; }
         if (quarry != null && quarry.lifeSequence() == targetLife && LateShelter.sheltered(round.rules(), quarry)) {
             // Not a failed search: no retry penalty, and the target is neither away nor dead.
             Notices.refuse(player, Notices.key(quarry.name()) + " " + LateShelter.NAME + "，稍后才能追猎"); return;
@@ -341,6 +335,27 @@ public final class LobbyRuntime {
         if (p == null || p.role().isExcluded()) return LobbyRoleModels.CreeperBooth.NATIVE;
         var state = p.wallet().creeperTicket() ? LobbyRoleModels.CreeperState.UNLOCKED : LobbyRoleModels.CreeperState.LOCKED;
         return new LobbyRoleModels.CreeperBooth(state, MonsterCoins.creeperUnlockPrice(round.rules()));
+    }
+    /**
+     * Why this camp creeper may not set out after {@code target} (docs/plan/苦力怕付费解锁.md): its ticket is spent, or the
+     * human is below three stars. Empty when the paid-creeper rules allow the hunt; core checks the same at commit.
+     */
+    private static Optional<String> creeperRefusal(RoundSnapshot round, Participant p, UUID target) {
+        if (!paidCreeper(round.rules(), p)) return Optional.empty();
+        if (!p.wallet().creeperTicket())
+            return Optional.of("苦力怕的出击资格已用掉 · 回苦力怕展位付 " + MonsterCoins.creeperUnlockPrice(round.rules()) + " 怪物币解锁");
+        var quarry = round.participants().get(target);
+        if (quarry != null && quarry.role() == ParticipantRole.HUMAN_ACTIVE
+                && Bounty.stars(round.rules(), Bounty.threat(round.rules(), quarry)) < HuntPressure.CREEPER_MIN_STARS)
+            return Optional.of(Replies.CREEPER_LOW_STARS);
+        return Optional.empty();
+    }
+    /** {@link #creeperRefusal(RoundSnapshot, Participant, UUID)} for a camp monster watching {@code target}. */
+    public static Optional<String> creeperRefusal(ServerPlayer hunter, UUID target) {
+        var b = BINDINGS.get(hunter.level().getServer());
+        var round = b == null ? null : b.session.snapshot().orElse(null);
+        var p = round == null ? null : round.participants().get(hunter.getUUID());
+        return p == null || p.role() != ParticipantRole.MONSTER_LOBBY ? Optional.empty() : creeperRefusal(round, p, target);
     }
     private static boolean paidCreeper(RulesConfig rules, Participant p) {
         return p.monsterRole() == MonsterRole.CREEPER && MonsterCoins.creeperPaid(rules);
@@ -917,7 +932,7 @@ public final class LobbyRuntime {
         var round = b.session.snapshot().orElse(null); if (round == null) return;
         if (!round.roundId().equals(b.round)) {
             b.round = round.roundId(); b.searchRandom = new Random(round.seed() ^ 0x4841524452555348L);
-            b.slots.clear(); b.deadAt.clear(); b.displays.clear(); b.cooling.clear(); b.locked.clear(); b.abandoning.clear(); b.reviving.clear();
+            b.slots.clear(); b.deadAt.clear(); b.displays.clear(); b.cooling.clear(); b.locked.clear(); b.abandoning.clear(); b.unlocking.clear(); b.reviving.clear();
         }
     }
     /**
@@ -981,12 +996,12 @@ public final class LobbyRuntime {
             case HISTORY -> dev.hardrush.record.HistoryLibrary.open(player);
             case VAULT, OMINOUS_VAULT -> MonsterVaults.use(player, function == LobbyFunction.OMINOUS_VAULT
                     ? ShopOffer.OMINOUS_KEY : ShopOffer.TRIAL_KEY, java.util.Objects.requireNonNull(clicked, "vault position"));
-            case PAGE_PREV, PAGE_NEXT, ROLE_ZOMBIE, ROLE_SKELETON, ROLE_CREEPER, MERCHANT -> courtyard(player, function);
+            case PAGE_PREV, PAGE_NEXT, ROLE_ZOMBIE, ROLE_SKELETON, ROLE_CREEPER, MERCHANT -> courtyard(player, function, clicked != null);
             default -> throw new IllegalArgumentException("Not a clickable lobby function: " + function.id());
         }
     }
     /** Role models, the merchant and paging share the courtyard's opening hours. */
-    private static void courtyard(ServerPlayer player, LobbyFunction function) {
+    private static void courtyard(ServerPlayer player, LobbyFunction function, boolean blockBound) {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);
         if (r == null || !contextAvailable(player, b, LobbyContext.DISPLAY) || !personalOpen(b, r)) {
@@ -1016,6 +1031,8 @@ public final class LobbyRuntime {
             boolean hasQuarry = r.participants().values().stream().anyMatch(q -> q.online() && q.role() == ParticipantRole.HUMAN_ACTIVE
                     && Bounty.stars(r.rules(), Bounty.threat(r.rules(), q)) >= HuntPressure.CREEPER_MIN_STARS);
             if (!hasQuarry) { Notices.refuse(player, Replies.CREEPER_NO_QUARRY); return; }
+            // A block booth shows no price of its own, so its first click only names the price.
+            if (blockBound && !confirmUnlock(b, player, p, price)) return;
         }
         // Picking another role ends a waiting hunt; the new body would not match the pending identity.
         var waiting = b.searches.get(p.id());
@@ -1036,6 +1053,16 @@ public final class LobbyRuntime {
     }
     private static String creeperPrice(int price, Participant p) {
         return "解锁苦力怕需要 " + price + " 怪物币，现有 " + p.wallet().coins();
+    }
+    /** A second click within a few seconds pays for the creeper; held right-click repeats count as the first click. */
+    private static boolean confirmUnlock(Binding b, ServerPlayer player, Participant p, int price) {
+        long now = player.level().getServer().getTickCount();
+        var ask = b.unlocking.get(p.id());
+        if (ask != null && now - ask.lastClick() <= 5) { b.unlocking.put(p.id(), new AbandonAsk(MonsterRole.CREEPER, ask.asked(), now)); return false; }
+        if (ask != null && now - ask.asked() <= 120) { b.unlocking.remove(p.id()); return true; }
+        b.unlocking.put(p.id(), new AbandonAsk(MonsterRole.CREEPER, now, now));
+        Notices.hint(player, "再点一次花 " + Notices.key(price) + " 怪物币解锁苦力怕 · 现有 " + Notices.key(p.wallet().coins()));
+        return false;
     }
     /**
      * Another role discards the paused sortie, so it takes a second click within a few seconds.
