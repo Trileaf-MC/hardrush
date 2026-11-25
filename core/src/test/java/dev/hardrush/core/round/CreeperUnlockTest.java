@@ -141,6 +141,47 @@ class CreeperUnlockTest {
         }
     }
 
+    @Test void aChargeWaitsThroughRoleChangesUntilAPaidCreeperUsesIt() {
+        var engine = engine(RULES, camp(100), true);
+        select(engine, MonsterRole.CREEPER);
+        buy(engine, ShopOffer.CHARGED);
+        assertEquals(20, hunter(engine).wallet().coins());
+        select(engine, MonsterRole.ZOMBIE);
+        assertEquals(1, hunter(engine).wallet().ordered(ShopOffer.CHARGED), "Another role does not refund the charge");
+        assertEquals(20, hunter(engine).wallet().coins());
+        select(engine, MonsterRole.CREEPER);
+        assertEquals(20, hunter(engine).wallet().coins(), "The ticket was kept too");
+        hunt(engine, threeStars);
+        assertEquals(1, hunter(engine).wallet().carried(ShopOffer.CHARGED));
+        accept(engine, engine.proposeMonsterDeath(UUID.randomUUID(), round, hunter, 1, 1));
+        assertEquals(0, hunter(engine).wallet().ordered(ShopOffer.CHARGED), "A death uses the charge up");
+        assertFalse(hunter(engine).wallet().creeperTicket());
+    }
+
+    @Test void aChargeCarriedOutComesBackWhenTheSortieEndsUnused() {
+        for (String ending : List.of("return", "disconnect", "abandon")) {
+            var engine = engine(RULES, camp(100), true);
+            select(engine, MonsterRole.CREEPER);
+            buy(engine, ShopOffer.CHARGED);
+            hunt(engine, threeStars);
+            switch (ending) {
+                case "return" -> accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, hunter, 1, 1, ""));
+                case "disconnect" -> online(engine, hunter, false);
+                default -> {
+                    accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, hunter, 1, 1, "creeper-body"));
+                    assertEquals(1, hunter(engine).wallet().parkedGoods().get(ShopOffer.CHARGED), "The parked body holds the charge");
+                    if (!hunter(engine).online()) online(engine, hunter, true);
+                    select(engine, MonsterRole.ZOMBIE);
+                    assertTrue(hunter(engine).wallet().parked().isEmpty());
+                }
+            }
+            var wallet = hunter(engine).wallet();
+            assertEquals(1, wallet.ordered(ShopOffer.CHARGED), ending + " keeps the charge for the next creeper sortie");
+            assertTrue(wallet.parkedGoods().isEmpty());
+            assertTrue(wallet.creeperTicket());
+        }
+    }
+
     @Test void deploymentCancelledBeforeArrivalKeepsTheTicket() {
         var engine = deployed();
         accept(engine, engine.proposeMonsterDeployCancelled(UUID.randomUUID(), round, hunter, 1, 1));
@@ -245,6 +286,12 @@ class CreeperUnlockTest {
         var player = hunter(engine);
         accept(engine, engine.proposeMonsterRole(UUID.randomUUID(), round, hunter, player.lifeSequence(),
                 player.monsterDeploymentSequence(), role));
+    }
+
+    private void buy(RoundEngine engine, ShopOffer offer) {
+        var player = hunter(engine);
+        accept(engine, engine.proposeShopPurchase(UUID.randomUUID(), round, hunter, player.lifeSequence(),
+                player.monsterDeploymentSequence(), offer, player.wallet().nextPrice(RULES, offer)));
     }
 
     private Refusal huntRefusal(RoundEngine engine, UUID target) {

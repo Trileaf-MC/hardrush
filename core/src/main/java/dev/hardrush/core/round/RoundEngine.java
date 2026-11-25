@@ -681,7 +681,7 @@ public final class RoundEngine {
                 ParticipantRole.MONSTER_DEPLOYED);
         long cooldown = returnCooldownNanos(before.rules());
         var lobby = player.monsterLobby(cooldown);
-        var returned = parkedBody.isEmpty() ? lobby.withWallet(player.wallet().endSortie())
+        var returned = parkedBody.isEmpty() ? lobby.withWallet(player.wallet().keepUnspent().endSortie())
                 : lobby.withWallet(player.wallet().park(parkedBody)).withSortie(player.sortie());
         return monsterProposal(eventId, "MONSTER_RETURN", before, returned);
     }
@@ -902,7 +902,7 @@ public final class RoundEngine {
     /** Choosing another role gives up a paused sortie: its parked body could not become the new one. */
     private static Participant abandonPause(Participant player, MonsterRole role) {
         return player.wallet().hasParkedBody() && role != player.monsterRole()
-                ? player.withWallet(player.wallet().endSortie()) : player;
+                ? player.withWallet(player.wallet().keepUnspent().endSortie()) : player;
     }
 
     private static Participant endSortie(RulesConfig rules, Participant player, long cooldown) {
@@ -913,7 +913,8 @@ public final class RoundEngine {
     private static Participant endSortie(RulesConfig rules, Participant player, long cooldown, boolean spendTicket) {
         var lobby = player.monsterLobby(cooldown);
         if (player.role() != ParticipantRole.MONSTER_DEPLOYED) return lobby;
-        var wallet = player.wallet().endSortie();
+        // A sortie not used up (a disconnect) hands its paid creeper state back to the camp.
+        var wallet = (spendTicket ? player.wallet() : player.wallet().keepUnspent()).endSortie();
         if (spendTicket && MonsterCoins.creeperPaid(rules) && player.monsterRole() == MonsterRole.CREEPER) wallet = wallet.useCreeperTicket();
         return lobby.withWallet(wallet);
     }
