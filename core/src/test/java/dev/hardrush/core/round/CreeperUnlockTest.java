@@ -115,16 +115,17 @@ class CreeperUnlockTest {
         assertEquals(Refusal.CREEPER_LOCKED, huntRefusal(engine, threeStars));
     }
 
-    @Test void monsterDeathAndDisconnectBothSpendTheTicket() {
+    @Test void monsterDeathSpendsTheTicketButADisconnectKeepsIt() {
         var killed = deployed();
         accept(killed, killed.proposeMonsterDeath(UUID.randomUUID(), round, hunter, 1, 1));
         assertEquals(ParticipantRole.MONSTER_LOBBY, hunter(killed).role());
         assertFalse(hunter(killed).wallet().creeperTicket());
 
+        // Also covers a disconnect racing a deployment that never landed: the ticket survives either way.
         var disconnected = deployed();
         online(disconnected, hunter, false);
         assertEquals(ParticipantRole.MONSTER_LOBBY, hunter(disconnected).role());
-        assertFalse(hunter(disconnected).wallet().creeperTicket());
+        assertTrue(hunter(disconnected).wallet().creeperTicket());
     }
 
     @Test void deliberateReturnCanRedeployOnTheSameTicketWithOrWithoutAParkedBody() {

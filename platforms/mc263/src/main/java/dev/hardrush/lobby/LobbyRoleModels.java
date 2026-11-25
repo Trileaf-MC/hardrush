@@ -319,7 +319,7 @@ public final class LobbyRoleModels {
         if (result == LobbyInteractions.Result.ACCEPTED && (packet.hand() != InteractionHand.MAIN_HAND
                 || hit != null && (!Double.isFinite(hit.lengthSqr()) || hit.lengthSqr() > 9)))
             result = LobbyInteractions.Result.INPUT;
-        if (result == LobbyInteractions.Result.ACCEPTED) LobbyRuntime.activate(observer, model.function, null);
+        if (result == LobbyInteractions.Result.ACCEPTED) LobbyRuntime.activate(observer, model.function, null, true);
         return result;
     }
 

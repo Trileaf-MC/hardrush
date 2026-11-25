@@ -100,8 +100,6 @@ public final class LobbyRuntime {
         final Map<UUID, Long> retryAt = new HashMap<>();
         final Set<UUID> committing = new HashSet<>();
         final Map<UUID, AbandonAsk> abandoning = new HashMap<>();
-        /** Block-bound creeper booths waiting for the click that pays. */
-        final Map<UUID, AbandonAsk> unlocking = new HashMap<>();
         /** Deaths waiting for the respawned body to stand in camp before they are told. */
         final Map<UUID, Arrival> arrivals = new HashMap<>();
         Binding(RoundSession session, PlayerProfiles profiles, Supplier<RoundWorldBundle> worlds) {
@@ -232,7 +230,7 @@ public final class LobbyRuntime {
     public static void prepareStop(MinecraftServer server) {
         var b = BINDINGS.get(server); if (b == null) return;
         b.pending.values().forEach(d -> d.cancelled = true);
-        b.channels.clear(); b.retracks.clear(); b.searches.clear(); b.resumptions.clear(); b.displays.clear(); b.cooling.clear(); b.abandoning.clear(); b.unlocking.clear();
+        b.channels.clear(); b.retracks.clear(); b.searches.clear(); b.resumptions.clear(); b.displays.clear(); b.cooling.clear(); b.abandoning.clear();
         LobbyInteractions.get(server).ifPresent(r -> r.projections().clear());
         for (var player : List.copyOf(server.getPlayerList().getPlayers())) {
             if (MonsterRoles.isMonster(player)) MonsterRoles.clear(player);
@@ -932,7 +930,7 @@ public final class LobbyRuntime {
         var round = b.session.snapshot().orElse(null); if (round == null) return;
         if (!round.roundId().equals(b.round)) {
             b.round = round.roundId(); b.searchRandom = new Random(round.seed() ^ 0x4841524452555348L);
-            b.slots.clear(); b.deadAt.clear(); b.displays.clear(); b.cooling.clear(); b.locked.clear(); b.abandoning.clear(); b.unlocking.clear(); b.reviving.clear();
+            b.slots.clear(); b.deadAt.clear(); b.displays.clear(); b.cooling.clear(); b.locked.clear(); b.abandoning.clear(); b.reviving.clear();
         }
     }
     /**
@@ -988,6 +986,10 @@ public final class LobbyRuntime {
      * block triggers and null otherwise.
      */
     public static void activate(ServerPlayer player, LobbyFunction function, net.minecraft.core.BlockPos clicked) {
+        activate(player, function, clicked, false);
+    }
+    /** {@code priced}: the clicked facility already shows its own price, as the courtyard's creeper statue does. */
+    public static void activate(ServerPlayer player, LobbyFunction function, net.minecraft.core.BlockPos clicked, boolean priced) {
         switch (function) {
             case RULES -> {
                 var b = BINDINGS.get(player.level().getServer());
@@ -996,12 +998,14 @@ public final class LobbyRuntime {
             case HISTORY -> dev.hardrush.record.HistoryLibrary.open(player);
             case VAULT, OMINOUS_VAULT -> MonsterVaults.use(player, function == LobbyFunction.OMINOUS_VAULT
                     ? ShopOffer.OMINOUS_KEY : ShopOffer.TRIAL_KEY, java.util.Objects.requireNonNull(clicked, "vault position"));
-            case PAGE_PREV, PAGE_NEXT, ROLE_ZOMBIE, ROLE_SKELETON, ROLE_CREEPER, MERCHANT -> courtyard(player, function, clicked != null);
+            case PAGE_PREV, PAGE_NEXT, ROLE_ZOMBIE, ROLE_SKELETON, ROLE_CREEPER, MERCHANT -> courtyard(player, function, priced);
             default -> throw new IllegalArgumentException("Not a clickable lobby function: " + function.id());
         }
     }
     /** Role models, the merchant and paging share the courtyard's opening hours. */
-    private static void courtyard(ServerPlayer player, LobbyFunction function, boolean blockBound) {
+    /** The dialog's pay button: the same courtyard click, now confirmed; every check runs again. */
+    static void confirmCreeperUnlock(ServerPlayer player) { courtyard(player, LobbyFunction.ROLE_CREEPER, true); }
+    private static void courtyard(ServerPlayer player, LobbyFunction function, boolean priced) {
         var b = BINDINGS.get(player.level().getServer());
         var r = b == null ? null : b.session.snapshot().orElse(null);
         if (r == null || !contextAvailable(player, b, LobbyContext.DISPLAY) || !personalOpen(b, r)) {
@@ -1031,8 +1035,8 @@ public final class LobbyRuntime {
             boolean hasQuarry = r.participants().values().stream().anyMatch(q -> q.online() && q.role() == ParticipantRole.HUMAN_ACTIVE
                     && Bounty.stars(r.rules(), Bounty.threat(r.rules(), q)) >= HuntPressure.CREEPER_MIN_STARS);
             if (!hasQuarry) { Notices.refuse(player, Replies.CREEPER_NO_QUARRY); return; }
-            // A block booth shows no price of its own, so its first click only names the price.
-            if (blockBound && !confirmUnlock(b, player, p, price)) return;
+            // A block or tagged-entity booth shows no price of its own: a native dialog names it and its button pays.
+            if (!priced) { CreeperUnlockDialog.show(player, price, p.wallet().coins()); return; }
         }
         // Picking another role ends a waiting hunt; the new body would not match the pending identity.
         var waiting = b.searches.get(p.id());
@@ -1053,16 +1057,6 @@ public final class LobbyRuntime {
     }
     private static String creeperPrice(int price, Participant p) {
         return "解锁苦力怕需要 " + price + " 怪物币，现有 " + p.wallet().coins();
-    }
-    /** A second click within a few seconds pays for the creeper; held right-click repeats count as the first click. */
-    private static boolean confirmUnlock(Binding b, ServerPlayer player, Participant p, int price) {
-        long now = player.level().getServer().getTickCount();
-        var ask = b.unlocking.get(p.id());
-        if (ask != null && now - ask.lastClick() <= 5) { b.unlocking.put(p.id(), new AbandonAsk(MonsterRole.CREEPER, ask.asked(), now)); return false; }
-        if (ask != null && now - ask.asked() <= 120) { b.unlocking.remove(p.id()); return true; }
-        b.unlocking.put(p.id(), new AbandonAsk(MonsterRole.CREEPER, now, now));
-        Notices.hint(player, "再点一次花 " + Notices.key(price) + " 怪物币解锁苦力怕 · 现有 " + Notices.key(p.wallet().coins()));
-        return false;
     }
     /**
      * Another role discards the paused sortie, so it takes a second click within a few seconds.
@@ -1133,7 +1127,9 @@ public final class LobbyRuntime {
             if (identity != null && identity.role() == ParticipantRole.MONSTER_LOBBY) {
                 boolean cooling = identity.monsterCooldownNanos() > 0;
                 if (Boolean.TRUE.equals(b.cooling.put(identity.id(), cooling)) && !cooling) {
-                    Notices.hint(observer, "可以再次出击了"); sound(observer, true);
+                    if (paidCreeper(r.rules(), identity) && !identity.wallet().creeperTicket())
+                        Notices.hint(observer, "出击冷却结束 · 苦力怕要先回石像解锁");
+                    else { Notices.hint(observer, "可以再次出击了"); sound(observer, true); }
                 }
             }
             if (lived != null && lived.role() == ParticipantRole.MONSTER_LOBBY) freedFromLocks(observer, b, live, lived);
@@ -1328,6 +1324,8 @@ public final class LobbyRuntime {
         for (var human : before) {
             var quarry = live.participants().get(human);
             if (now.contains(human) || quarry == null || quarry.role() != ParticipantRole.HUMAN_ACTIVE) continue;
+            // A paid creeper still could not set out after this human; the courtyard says why when it tries.
+            if (creeperRefusal(live, monster, human).isPresent()) continue;
             Notices.hint(observer, "可以再次追猎 " + Notices.key(quarry.name()) + " 了"); sound(observer, true);
         }
     }

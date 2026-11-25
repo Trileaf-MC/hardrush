@@ -260,7 +260,9 @@ public final class RoundEngine {
         Participant connected = player.withSession(name, online);
         if (!online && player.role() == ParticipantRole.LOBBY) connected = connected.withReady(false);
         if (player.role() == ParticipantRole.MONSTER_DEPLOYED && player.online() != online) {
-            connected = endSortie(before.rules(), connected, deployCooldownNanos(before.rules()));
+            // A disconnect, even one racing the landing it never reached, keeps a paid creeper's ticket: a deliberate
+            // return keeps it too, so dropping the connection gains nothing a return would not.
+            connected = endSortie(before.rules(), connected, deployCooldownNanos(before.rules()), false);
         }
         players.put(playerId, connected);
         RoundPhase phase = before.phase();
@@ -904,10 +906,15 @@ public final class RoundEngine {
     }
 
     private static Participant endSortie(RulesConfig rules, Participant player, long cooldown) {
+        return endSortie(rules, player, cooldown, true);
+    }
+
+    /** {@code spendTicket}: whether a paid creeper's ticket goes with the sortie (docs/plan/苦力怕付费解锁.md §1). */
+    private static Participant endSortie(RulesConfig rules, Participant player, long cooldown, boolean spendTicket) {
         var lobby = player.monsterLobby(cooldown);
         if (player.role() != ParticipantRole.MONSTER_DEPLOYED) return lobby;
         var wallet = player.wallet().endSortie();
-        if (MonsterCoins.creeperPaid(rules) && player.monsterRole() == MonsterRole.CREEPER) wallet = wallet.useCreeperTicket();
+        if (spendTicket && MonsterCoins.creeperPaid(rules) && player.monsterRole() == MonsterRole.CREEPER) wallet = wallet.useCreeperTicket();
         return lobby.withWallet(wallet);
     }
 

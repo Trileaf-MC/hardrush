@@ -267,10 +267,12 @@ public final class Observation {
         var hunting = s.group == Group.MONSTER ? LobbyRuntime.huntTarget(s.player) : Optional.<UUID>empty();
         boolean huntingThis = hunting.filter(s.target::equals).isPresent();
         // A late entrant's first minutes can be watched but not hunted; the bar says until when instead of offering it.
-        var shelter = s.group == Group.MONSTER && !huntingThis && !lost && target != null ? LobbyRuntime.shelterClock(target) : Optional.<String>empty();
-        // A paid creeper without a ticket, or watching a human below three stars, is not offered a hunt it would be refused.
-        var creeper = s.group == Group.MONSTER && !huntingThis && !lost && shelter.isEmpty()
+        // A paid creeper without a ticket, or watching a human below three stars, is not offered a hunt it would be refused;
+        // that comes before any wait, since waiting would not make the hunt possible.
+        var creeper = s.group == Group.MONSTER && !huntingThis && !lost
                 ? LobbyRuntime.creeperRefusal(s.player, s.target) : Optional.<String>empty();
+        var shelter = s.group == Group.MONSTER && !huntingThis && !lost && target != null && creeper.isEmpty()
+                ? LobbyRuntime.shelterClock(target) : Optional.<String>empty();
         boolean holding = s.group == Group.MONSTER && s.jumpSince >= 0 && !s.jumpFired && !lost && shelter.isEmpty() && creeper.isEmpty();
         // The bar says whom and what; the keys live on the action bar below it, at the lowest priority.
         String title;
