@@ -35,7 +35,7 @@ public final class RuleBookText {
         } else {
             pages.add("阵亡\n\n极限挑战中阵亡后回到营地，可以到庭院的角色展位选择僵尸、骷髅或苦力怕，化身怪物追猎人类。\n\n"
                     + "被怪物玩家杀死时，身上的东西和经验都不掉落，从祭坛复生时原样带回。");
-            pages.add("追猎\n\n右键庭院里的目标模型，开始寻找目标附近的出击位置，再次右键取消。落地时目标会听到一声洞穴音。\n\n"
+            pages.add("追猎\n\n右键庭院里的目标模型，开始寻找目标附近的出击位置，再次右键取消。僵尸和骷髅落地时，目标会听到一声洞穴音；苦力怕悄无声息。\n\n"
                     + "出击后右键回响碎片，边走边引导 " + seconds(RoundEngine.returnChannelMillis(rules))
                     + " 秒返回营地，本次物资暂存到下次。");
             pages.add("追迹罗盘\n\n追迹罗盘的指针指向你的目标，发光时右键，边走边引导 " + seconds(RoundEngine.retrackChannelMillis(rules))
