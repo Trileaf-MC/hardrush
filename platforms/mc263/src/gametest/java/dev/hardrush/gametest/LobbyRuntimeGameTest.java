@@ -157,6 +157,8 @@ public final class LobbyRuntimeGameTest {
                     f.spawnEgg(2, -2);
                     f.test.assertValueEqual(f.summons(), baby ? 2 : 1, "The formal outing owns one companion per egg it hatched");
                     f.test.assertFalse(f.monster.participant().monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON), "Egg use does not create retired cooldown state");
+                    // Turned by the water mid-sortie: the drowned form, its eggs and its trident all park with the body (#83).
+                    MonsterRoles.convert(f.monster.player, dev.hardrush.monster.MonsterForm.DROWNED);
                     f.monster.useReturn();
                     f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "Using the echo shard begins a return channel");
                     f.monster.move(f.monster.player.position().add(.2, 0, 0));
@@ -206,8 +208,15 @@ public final class LobbyRuntimeGameTest {
                 .thenWaitUntil(() -> f.await(f.deployed(2), "The paused sortie resumes at once"))
                 .thenExecute(() -> {
                     var inventory = f.monster.player.getInventory();
-                    f.test.assertTrue(MonsterRoles.nativeModel(f.monster.player).getType() == EntityTypes.ZOMBIE, "The resumed body keeps its form");
-                    f.test.assertTrue(inventory.getItem(1).isEmpty(), "The spent baby egg is not handed out again");
+                    f.test.assertTrue(MonsterRoles.nativeModel(f.monster.player).getType() == EntityTypes.DROWNED,
+                            "The resumed body keeps the drowned form the water gave it");
+                    f.test.assertFalse(dev.hardrush.monster.MonsterItems.matches(f.monster.player, inventory.getItem(1), "baby_egg"),
+                            "The spent baby egg is not handed out again");
+                    f.test.assertTrue(inventory.getItem(2).is(Items.DROWNED_SPAWN_EGG), "A resumed drowned's eggs are drowned eggs");
+                    int tridents = 0;
+                    for (int i = 0; i < inventory.getContainerSize(); i++)
+                        if (dev.hardrush.monster.MonsterItems.matches(f.monster.player, inventory.getItem(i), MonsterRoles.SEA_TRIDENT)) tridents++;
+                    f.test.assertValueEqual(tridents, 1, "The drowned's bound trident parks and is rebound to the resumed deployment");
                     // The tier's own eggs plus the one bought, less the one hatched before the return.
                     f.test.assertValueEqual(inventory.getItem(2).getCount(),
                             dev.hardrush.core.round.HuntPressure.starterAdultEggs(f.monster.participant().sortie().tier()),

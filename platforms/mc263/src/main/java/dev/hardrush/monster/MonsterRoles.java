@@ -230,7 +230,7 @@ public final class MonsterRoles {
         for (var entry : body.items().entrySet()) {
             var purpose = MonsterItems.purpose(entry.getValue());
             boolean egg = purpose.equals(MonsterCompanions.BABY_EGG) || purpose.equals(MonsterCompanions.ADULT_EGG);
-            // A body always resumes in its base form, so a drowned's eggs come back as zombie eggs.
+            // Eggs follow the resumed form: a parked drowned's come back as drowned eggs.
             // The fixed controls are issued afresh, so their item and description follow the current rules.
             if (lowered && purpose.equals(SPAWN_GEAR)) continue;
             int count = entry.getValue().getCount();
@@ -325,7 +325,7 @@ public final class MonsterRoles {
     private static ItemStack returnShard(ServerPlayer player, Role role) {
         return MonsterItems.bind(player, ItemText.lore(ItemText.name(new ItemStack(Items.ECHO_SHARD), "返回营地"),
                 returnUsage(role), "受伤或动手会打断，走路不打断",
-                "本次的物资、增益和身价会暂存，下次以同一角色出击时带上 · 溺尸、流浪者形态不保留"), RETURN_SHARD);
+                "本次的物资、增益和身价会暂存，下次以同一角色出击时带上 · 溺尸、流浪者形态也会保留"), RETURN_SHARD);
     }
     /** A plain compass: {@link HuntRetracks} points its needle at the quarry the way vanilla points one at the world spawn. */
     private static ItemStack trackingCompass(ServerPlayer player, Role role) {
@@ -567,7 +567,7 @@ public final class MonsterRoles {
                 dev.hardrush.notice.Notices.hint(player, form == MonsterForm.ZOMBIE ? "泡在水里会慢慢化身溺尸" : "陷在细雪里会慢慢化身流浪者");
         });
     }
-    /** Purpose of the trident a zombie receives when it rises from the sea as a drowned; never parked. */
+    /** Purpose of the bound trident every drowned holds; it parks and resumes with the drowned it belongs to. */
     public static final String SEA_TRIDENT = "sea_trident";
     /** Armour and weapons a sortie spawned with by its tier, unlike vault gear, which coins bought. */
     public static final String SPAWN_GEAR = "spawn_gear";
@@ -579,24 +579,18 @@ public final class MonsterRoles {
 
     /**
      * A zombie deployed under water rises as a drowned at once, without the conversion: it never was a land
-     * zombie here. Like a native drowned, it holds a trident (thrown copies, endless; see MonsterNativeWeapons).
+     * zombie here. It has just arrived holding nothing it is using, so its trident goes straight into its hand.
+     * A parked drowned resuming at sea already is one and keeps the trident it parked.
      */
     public static void riseFromSea(ServerPlayer player) {
         var role = ROLES.get(player.getUUID());
-        if (role == null || role.form != MonsterForm.ZOMBIE) return;
-        convert(player, MonsterForm.DROWNED, false);
-        var inventory = player.getInventory();
-        int slot = inventory.getSelectedSlot();
-        var trident = MonsterItems.bind(player, ItemText.lore(new ItemStack(Items.TRIDENT), TRIDENT_USAGE), SEA_TRIDENT);
-        var held = inventory.getItem(slot);
-        // Into the hand when the held stack can move aside; otherwise the backpack (a full kit is never dropped).
-        if (held.isEmpty()) inventory.setItem(slot, trident);
-        else if (inventory.getFreeSlot() >= 0) { inventory.setItem(slot, trident); inventory.add(held); }
-        else inventory.add(trident);
-        repairLoadout(player);
+        if (role == null || !role.form.zombie()) return;
+        if (role.form == MonsterForm.ZOMBIE) convert(player, MonsterForm.DROWNED, true);
+        else { seaTrident(player, true); repairLoadout(player); }
     }
-    static void convert(ServerPlayer player, MonsterForm form) { convert(player, form, true); }
-    private static void convert(ServerPlayer player, MonsterForm form, boolean announce) {
+    /** The environment turns the body: water makes a zombie a drowned, powder snow a skeleton a stray. */
+    public static void convert(ServerPlayer player, MonsterForm form) { convert(player, form, false); }
+    private static void convert(ServerPlayer player, MonsterForm form, boolean risen) {
         var role = ROLES.get(player.getUUID());
         if (role == null || role.form.role != form.role || role.form == form) return;
         stopActions(player); role.form = form; role.exposure = 0; role.conversion = -1;
@@ -615,13 +609,34 @@ public final class MonsterRoles {
             if (baby || MonsterItems.matches(player, held, MonsterCompanions.ADULT_EGG)) {
                 var egg = MonsterCompanions.egg(player, baby, true); egg.setCount(held.getCount()); player.containerMenu.setCarried(egg);
             }
+            seaTrident(player, risen);
         }
-        if (announce) {
+        if (!risen) {
             player.level().playSound(null, player.blockPosition(), form == MonsterForm.DROWNED
                     ? SoundEvents.ZOMBIE_CONVERTED_TO_DROWNED : SoundEvents.SKELETON_CONVERTED_TO_STRAY, SoundSource.HOSTILE, 1, 1);
             // The native conversion sound and the changed eggs and model say it; no chat line.
         }
         repairLoadout(player);
+    }
+    /**
+     * Every drowned holds one bound trident, however it became one. Vanilla gives a converted drowned none and a
+     * spawned one only sometimes; here the form is the weapon, so a player never has to tell the two ways apart.
+     * {@code intoHand}: a sortie that just rose from the sea takes it into its hand, moving what it held aside;
+     * one converted mid-sortie keeps what it is using and finds the trident in the first free slot, hotbar first.
+     * A full inventory gets none this time; it is never dropped.
+     */
+    private static void seaTrident(ServerPlayer player, boolean intoHand) {
+        var inventory = player.getInventory();
+        if (MonsterItems.matches(player, player.containerMenu.getCarried(), SEA_TRIDENT)) return;
+        for (int i = 0; i < inventory.getContainerSize(); i++) if (MonsterItems.matches(player, inventory.getItem(i), SEA_TRIDENT)) return;
+        var trident = MonsterItems.bind(player, ItemText.lore(new ItemStack(Items.TRIDENT), TRIDENT_USAGE), SEA_TRIDENT);
+        int slot = inventory.getSelectedSlot();
+        var held = inventory.getItem(slot);
+        if (held.isEmpty()) { inventory.setItem(slot, trident); return; }
+        int free = inventory.getFreeSlot();
+        if (free < 0) return;
+        if (intoHand) { inventory.setItem(slot, trident); inventory.setItem(free, held); }
+        else inventory.setItem(free, trident);
     }
     public static String status(ServerPlayer player) {
         var role = ROLES.get(player.getUUID());
