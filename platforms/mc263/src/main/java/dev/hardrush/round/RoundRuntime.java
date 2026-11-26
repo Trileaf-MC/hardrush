@@ -394,9 +394,12 @@ public final class RoundRuntime {
             }
         });
         // On the server thread before vanilla saves and removes the body; see PlayerDisconnects.
-        dev.hardrush.player.PlayerDisconnects.register((player, server) -> {
-            // Before the offline report below: a lit creeper's death must reach the round first.
+        dev.hardrush.player.PlayerDisconnects.register((player, server, cause) -> {
+            // Before the offline report below: a lit creeper's death, or a human's departure mid-fight, must reach the
+            // round first.
+            var session = SESSIONS.get(server);
             dev.hardrush.monster.MonsterCreeper.disconnected(player);
+            dev.hardrush.combat.CombatDepartures.disconnected(player, cause, session == null ? null : session.snapshot().orElse(null));
             CelebrationRuntime.disconnected(player);
             dev.hardrush.observe.Observation.disconnected(player);
             LobbyRuntime.disconnected(player);
@@ -406,7 +409,6 @@ public final class RoundRuntime {
             dev.hardrush.notice.StatusBars.forget(player);
             dev.hardrush.hunt.HuntBossBars.disconnected(player);
             dev.hardrush.revival.TotemTab.disconnected(player);
-            var session = SESSIONS.get(server);
             if (session != null) session.onOnline(player.getUUID(), player.getScoreboardName(), false);
             var admitted = ADMITTED.get(server);
             if (admitted != null) admitted.remove(player.getUUID());

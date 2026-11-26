@@ -8,6 +8,8 @@
 
 lane 定义在 `~/.config/delegate-skills/config.json`：`execute`、`research`、`critic-codex`（均为 codex-delegate），`critic-cursor-grok`（cursor-delegate）。
 
+当 lane 中定义的模型因为额度用尽/网络故障等原因用不了的时候，改为直接根据需要派出 Claude Sonnet 5.5 High 或者 Claude Opus 5.5 Medium/High 子代理作为 fallback。
+
 ## 何时委派：按顺序问自己
 
 1. 下一步是否立刻依赖这个结果，而且几次 Read/Grep 就能拿到？是 → 自己做。
