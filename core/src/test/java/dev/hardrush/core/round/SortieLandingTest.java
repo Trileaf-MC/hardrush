@@ -100,7 +100,7 @@ class SortieLandingTest {
     /** A human and a zombie in the camp before its third sortie, an adult egg bought for it. */
     private RoundEngine engine() {
         var wallet = MonsterWallet.EMPTY.credit(40).chooseRole(RULES, MonsterRole.ZOMBIE)
-                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 6);
+                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 8);
         Map<UUID, Participant> players = new LinkedHashMap<>();
         players.put(human, new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, true, false, 0, 0, 1, 0,
                 MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of(), MonsterWallet.EMPTY, 0, false, HumanThreat.NONE));

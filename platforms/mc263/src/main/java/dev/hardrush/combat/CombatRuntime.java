@@ -298,10 +298,11 @@ public final class CombatRuntime {
         var binding = BINDINGS.get(level.getServer()); var round = round(level);
         if (binding == null || round.isEmpty()) return;
         var cause = current(level);
-        var origin = cause == null ? Optional.<CombatOrigin>empty() : cause.origin;
+        // A creature a soulcatcher let out credits its releaser for damage as well as kills (docs/plan/拘魂袋.md §4).
+        var origin = killCredit(source, cause == null ? Optional.<CombatOrigin>empty() : cause.origin);
         var memory = CREDITS.get(level.getServer());
         if (memory != null && victim.isAlive() && actualDamage > 0) {
-            killCredit(source, origin).ifPresent(credit -> memory.hurt(victim.getUUID(), credit, level.getServer().getTickCount()));
+            origin.ifPresent(credit -> memory.hurt(victim.getUUID(), credit, level.getServer().getTickCount()));
         }
         if (origin.isEmpty() || !origin.get().roundId().equals(round.get())
                 || origin.get().actor().identity() != dev.hardrush.core.round.ParticipantRole.MONSTER_DEPLOYED) return;

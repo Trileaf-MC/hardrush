@@ -133,6 +133,9 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(f::meetWitch)
                 .thenWaitUntil(() -> f.await(f.monster.participant().witch().guideSeen() && !f.session.mutationPending(),
                         "The witch's guide is recorded as seen once shown"))
+                .thenExecute(f::topUpForAdultEgg)
+                .thenWaitUntil(() -> f.await(f.monster.participant().wallet().coins() == 8 && !f.session.mutationPending(),
+                        "The admin grant covering the egg commits"))
                 .thenExecute(f::buyAdultEggFromWitch)
                 .thenWaitUntil(() -> f.await(f.monster.participant().wallet().ordered(dev.hardrush.core.round.ShopOffer.ADULT_EGG) == 1
                         && !f.session.mutationPending(), "The witch purchase commits durably"))
@@ -892,17 +895,22 @@ public final class LobbyRuntimeGameTest {
             clickWitch();
             test.assertFalse(dev.hardrush.lobby.MonsterShop.isShop(monster.player), "The first visit shows the guide, not the shop");
         }
+        /** The starter gift (6) no longer covers an adult egg (8, docs/plan/怪物盲盒.md); an admin grant makes up the rest. */
+        void topUpForAdultEgg() {
+            var p = monster.participant();
+            test.assertTrue(p.wallet().coins() == 6 && p.wallet().roleChosen(), "The first transformation gives the starter coins and the role is chosen");
+            session.adminCoins(round().roundId(), p.id(), p.lifeSequence(), 6, 2, "gametest", "补足成年僵尸蛋的差价", reply ->
+                    test.assertTrue(reply.success(), "The admin grant is accepted: " + reply.message()));
+        }
         void buyAdultEggFromWitch() {
-            var wallet = monster.participant().wallet();
-            test.assertTrue(wallet.coins() == 6 && wallet.roleChosen(), "The first transformation gives the starter coins and the role is chosen");
             dev.hardrush.lobby.CampKit.tick(server);
-            test.assertValueEqual(coins(), 6, "The camp projects the coin balance as native emeralds");
+            test.assertValueEqual(coins(), 8, "The camp projects the coin balance as native emeralds");
             clickWitch();
             test.assertTrue(dev.hardrush.lobby.MonsterShop.isShop(monster.player), "Right-clicking the witch model again opens the native trading screen");
             var menu = monster.player.containerMenu;
             // The isolated camp body may still select an offer; vanilla moves the projected coins into the payment slot.
             monster.player.connection.handleSelectTrade(new net.minecraft.network.protocol.game.ServerboundSelectTradePacket(0));
-            test.assertTrue(dev.hardrush.lobby.CampKit.isCoin(menu.getSlot(0).getItem()) && menu.getSlot(0).getItem().getCount() == 6,
+            test.assertTrue(dev.hardrush.lobby.CampKit.isCoin(menu.getSlot(0).getItem()) && menu.getSlot(0).getItem().getCount() == 8,
                     "Selecting the adult egg offer pays with the projected coins");
             test.assertFalse(menu.getSlot(2).getItem().isEmpty(), "The native result slot shows the paid offer");
             monster.player.connection.handleContainerClick(new ServerboundContainerClickPacket(menu.containerId, menu.getStateId(),

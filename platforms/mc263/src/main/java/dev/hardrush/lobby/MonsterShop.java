@@ -81,6 +81,11 @@ public final class MonsterShop {
         int arrows = MonsterCoins.amount(rules, MonsterCoins.ARROWS_PER_BUNDLE);
         var stack = offer.potion() ? dev.hardrush.monster.MonsterPotions.bottle(offer, rules, role) : switch (offer) {
             case ADULT_EGG, BABY_EGG -> new ItemStack(Items.ZOMBIE_SPAWN_EGG);
+            case MONSTER_BOX -> {
+                var box = new ItemStack(Items.ZOMBIE_SPAWN_EGG);
+                box.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+                yield box;
+            }
             case SLOWNESS_ARROWS -> PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.SLOWNESS).copyWithCount(arrows);
             case POISON_ARROWS -> PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.POISON).copyWithCount(arrows);
             case CHARGED -> new ItemStack(Items.CREEPER_HEAD);
@@ -123,6 +128,7 @@ public final class MonsterShop {
         return switch (offer) {
             case ADULT_EGG -> "下次出击多带 1 枚成年僵尸刷怪蛋";
             case BABY_EGG -> "下次出击多带 1 枚幼年僵尸刷怪蛋";
+            case MONSTER_BOX -> "下次出击多带 1 个怪物盲盒 · 升级拘魂袋，它能开出更疯狂的东西";
             case SLOWNESS_ARROWS -> "下次出击时带上，射一箭消耗一支";
             case POISON_ARROWS -> "下次出击时带上，射一箭消耗一支";
             case CHARGED -> "下次出击成为闪电苦力怕，爆炸威力翻倍";

@@ -10,6 +10,8 @@ import java.util.Set;
 public enum ShopOffer {
     ADULT_EGG("adultEgg", "成年僵尸刷怪蛋", Kind.CARRIED, MonsterRole.ZOMBIE),
     BABY_EGG("babyEgg", "幼年僵尸刷怪蛋", Kind.CARRIED, MonsterRole.ZOMBIE),
+    // What it lets out depends on the soulcatcher's tier (docs/plan/怪物盲盒.md); rounds without a soulcatcher never stock it.
+    MONSTER_BOX("monsterBox", "怪物盲盒", Kind.CARRIED, MonsterRole.ZOMBIE),
     // Witch potions (docs/plan/女巫药水与药水盲盒.md) ride the sortie as bound bottles the monster drinks itself.
     SWIFTNESS("swiftness", "迅捷药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     FIRE_RESISTANCE("fireResistance", "抗火药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),

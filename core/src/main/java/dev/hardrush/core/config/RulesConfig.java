@@ -181,8 +181,10 @@ public record RulesConfig(
             Map.entry("coin.potionBox.rareMinSeconds", 60.0), Map.entry("coin.potionBox.rareMaxSeconds", 120.0),
             Map.entry("coin.potionBox.epicLevelTwoPermille", 500.0),
             Map.entry("coin.potionBox.epicMinSeconds", 90.0), Map.entry("coin.potionBox.epicMaxSeconds", 180.0),
-            Map.entry("coin.price.adultEgg", 6.0), Map.entry("coin.limit.adultEgg", 3.0),
-            Map.entry("coin.price.babyEgg", 16.0), Map.entry("coin.limit.babyEgg", 2.0),
+            Map.entry("coin.price.adultEgg", 8.0), Map.entry("coin.limit.adultEgg", 3.0),
+            Map.entry("coin.price.babyEgg", 20.0), Map.entry("coin.limit.babyEgg", 2.0),
+            // 25 doubles to 100 on the third box; a fourth would pass the trade's 128-coin ceiling.
+            Map.entry("coin.price.monsterBox", 25.0), Map.entry("coin.limit.monsterBox", 3.0),
             Map.entry("coin.price.swiftness", 10.0), Map.entry("coin.limit.swiftness", 1.0),
             Map.entry("coin.price.fireResistance", 5.0), Map.entry("coin.limit.fireResistance", 1.0),
             // Every bottle at the base price: the doubling ladder skips it (ShopOffer.flatPrice).
@@ -200,7 +202,8 @@ public record RulesConfig(
             // Keys keep one price; the limit matches the camp's gear cap (MonsterWallet.MAX_GEAR), so coins bound them.
             Map.entry("coin.price.trialKey", 3.0), Map.entry("coin.limit.trialKey", 16.0),
             Map.entry("coin.price.ominousKey", 8.0), Map.entry("coin.limit.ominousKey", 16.0),
-            Map.entry("coin.price.soulcatcherTier", 30.0), Map.entry("coin.limit.soulcatcherTier", 3.0),
+            // 32 is the highest base whose third step (128) still fits the trade's two payment slots.
+            Map.entry("coin.price.soulcatcherTier", 32.0), Map.entry("coin.limit.soulcatcherTier", 3.0),
             Map.entry("coin.price.soulcatcherCapacity", 20.0), Map.entry("coin.limit.soulcatcherCapacity", 3.0),
             // Revival supplies (docs/plan/复生补给与女巫说明.md); the doubling ladder applies to repeat purchases.
             Map.entry("coin.price.bonusChest", 30.0), Map.entry("coin.limit.bonusChest", 1.0),
@@ -289,7 +292,11 @@ public record RulesConfig(
             // Revision 5 (issue #88): vault keys are cheaper, flat-priced and bought as often as the camp holds gear.
             Map.of("coin.price.trialKey", Map.entry(5.0, 3.0), "coin.limit.trialKey", Map.entry(2.0, 16.0),
                     "coin.price.ominousKey", Map.entry(12.0, 8.0), "coin.limit.ominousKey", Map.entry(1.0, 16.0)),
-            // Revision 6 (docs/plan/女巫药水与药水盲盒.md): fire resistance becomes a cheap staple.
+            // Revision 6 (docs/plan/怪物盲盒.md): the monster box arrives; eggs and soulcatcher tiers cost a little more.
+            Map.of("coin.price.adultEgg", Map.entry(6.0, 8.0),
+                    "coin.price.babyEgg", Map.entry(16.0, 20.0),
+                    "coin.price.soulcatcherTier", Map.entry(30.0, 32.0)),
+            // Revision 7 (docs/plan/女巫药水与药水盲盒.md): fire resistance becomes a cheap staple.
             Map.of("coin.price.fireResistance", Map.entry(6.0, 5.0)));
     private static final int DEFAULTS_REVISION = 1 + RETUNED_DEFAULTS.size();
 

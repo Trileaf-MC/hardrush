@@ -21,7 +21,7 @@ class MonsterPauseTest {
 
     @Test void deliberateReturnPausesTheSortieWithoutCooldown() {
         var engine = engine(RULES, MonsterWallet.EMPTY.credit(40).chooseRole(RULES, MonsterRole.ZOMBIE)
-                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 6));
+                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 8));
         accept(engine, engine.proposeMonsterDamageCoins(UUID.randomUUID(), round,
                 List.of(new RoundEngine.DamageCoins(monster, 1, 3, human, 1000, 20_000))));
         accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, monster, 1, 3, BODY));
@@ -35,7 +35,7 @@ class MonsterPauseTest {
         assertEquals(20_000, paused.wallet().sortieDamage().get(human).countedMilli());
 
         // Only goods bought during the pause are frozen for the resumed deployment.
-        accept(engine, engine.proposeShopPurchase(UUID.randomUUID(), round, monster, 1, 3, ShopOffer.ADULT_EGG, 12));
+        accept(engine, engine.proposeShopPurchase(UUID.randomUUID(), round, monster, 1, 3, ShopOffer.ADULT_EGG, 16));
         accept(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
         var resumed = engine.view().participants().get(monster);
         assertEquals(1, resumed.wallet().carried(ShopOffer.ADULT_EGG));

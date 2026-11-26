@@ -54,6 +54,7 @@
     "CompanionSpawnAccessor",
     "CompanionMobAccessor",
     "CompanionConversionMixin",
+    "CompanionWardenMixin",
     "TrackingCompassNeedleMixin",
     "MonsterBellMixin",
     "MonsterInfestedMixin",
