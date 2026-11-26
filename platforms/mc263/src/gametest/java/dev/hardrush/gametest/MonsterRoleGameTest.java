@@ -309,29 +309,38 @@ public final class MonsterRoleGameTest {
     }
 
     @GameTest(maxTicks=1200)
-    public void creeperUsesNativeBlastWithoutBlocksOrIllegalVictims(GameTestHelper test) {
+    public void creeperUsesNativeBlastThatBreaksBlocksAndSparesIllegalVictims(GameTestHelper test) {
         var creeper=actor(test); var human=actor(test);
         human.teleportTo(creeper.getX()+1.5,creeper.getY(),creeper.getZ());
         var pig=EntityTypes.PIG.create(creeper.level(),net.minecraft.world.entity.EntitySpawnReason.COMMAND);
         pig.setNoAi(true); pig.snapTo(creeper.position().add(-1.5,0,0)); creeper.level().addFreshEntity(pig);
-        var floor=creeper.blockPosition().below(); float pigHealth=pig.getHealth();
+        float pigHealth=pig.getHealth();
         MonsterRoles.select(creeper,"creeper");
         test.runAfterDelay(80,()->{
-            double walkingSpeed=creeper.getAttributeValue(Attributes.MOVEMENT_SPEED);
-            test.assertTrue(MonsterRoles.ignite(creeper),"Native creeper fuse starts");
+            var level=creeper.level(); var rules=level.getGameRules();
+            boolean griefing=rules.get(net.minecraft.world.level.gamerules.GameRules.MOB_GRIEFING);
+            var planks=List.of(creeper.blockPosition().north(2),creeper.blockPosition().north(2).above(),creeper.blockPosition().south(2));
+            try {
+                rules.set(net.minecraft.world.level.gamerules.GameRules.MOB_GRIEFING,true,level.getServer());
+                for(var pos:planks)level.setBlockAndUpdate(pos,Blocks.OAK_PLANKS.defaultBlockState());
+                double walkingSpeed=creeper.getAttributeValue(Attributes.MOVEMENT_SPEED);
+                test.assertTrue(MonsterRoles.ignite(creeper),"Native creeper fuse starts");
                 test.assertTrue(MonsterRoles.ignite(creeper),"Repeated held input keeps the same native fuse active");
-            test.assertTrue(walkingSpeed>0,"Creeper walking speed is positive");
-            test.assertValueEqual(creeper.getAttributeValue(Attributes.MOVEMENT_SPEED),walkingSpeed,"Priming and repeated ignition preserve normal walking speed");
-            test.startSequence().thenWaitUntil(()->test.assertTrue(!creeper.isAlive(),"Blast ends the prototype body"))
-                .thenExecute(()->{
-                    try {
-                        test.assertTrue(human.getHealth()<20 || !human.isAlive(),"Legal human receives native blast damage");
-                        test.assertTrue(pig.getHealth()<pigHealth,"Native animals receive the native blast damage");
-                        test.assertTrue(creeper.level().getBlockState(floor).is(Blocks.SMOOTH_STONE),"Blocks are preserved");
-                        var loot=creeper.level().getEntitiesOfClass(ItemEntity.class,creeper.getBoundingBox().inflate(5));
-                        test.assertTrue(loot.stream().noneMatch(item -> item.getItem().is(Items.FLINT_AND_STEEL)),"Bound role controls do not drop as loot");
-                    } finally { pig.discard(); remove(creeper); remove(human); }
-                }).thenSucceed();
+                test.assertTrue(walkingSpeed>0,"Creeper walking speed is positive");
+                test.assertValueEqual(creeper.getAttributeValue(Attributes.MOVEMENT_SPEED),walkingSpeed,"Priming and repeated ignition preserve normal walking speed");
+                // The held fuse runs to its blast inside this callback, so no other test can flip mobGriefing mid-fuse.
+                for(int tick=0;tick<40&&creeper.isAlive();tick++)dev.hardrush.monster.MonsterCreeper.tick(creeper);
+                test.assertFalse(creeper.isAlive(),"Blast ends the prototype body");
+                for(var pos:planks)test.assertTrue(level.getBlockState(pos).isAir(),"The native blast breaks nearby planks: "+pos);
+                test.assertTrue(human.getHealth()<20 || !human.isAlive(),"Legal human receives native blast damage");
+                test.assertTrue(pig.getHealth()<pigHealth,"Native animals receive the native blast damage");
+                var loot=level.getEntitiesOfClass(ItemEntity.class,creeper.getBoundingBox().inflate(5));
+                test.assertTrue(loot.stream().noneMatch(item -> item.getItem().is(Items.FLINT_AND_STEEL)),"Bound role controls do not drop as loot");
+            } finally {
+                rules.set(net.minecraft.world.level.gamerules.GameRules.MOB_GRIEFING,griefing,level.getServer());
+                pig.discard(); remove(creeper); remove(human);
+            }
+            test.succeed();
         });
     }
 

@@ -32,31 +32,49 @@ import net.minecraft.world.phys.HitResult;
 
 /**
  * A monster's hands on the world, driven by vanilla mining input while the authoritative body stays in adventure mode:
- * a zombie breaks a wooden door with the native door goal, and a zombie or skeleton digs through the plain ground of
- * {@link MonsterDiggable}, two blocks at a time so the opening fits its own body.
+ * a zombie breaks a wooden door with the native door goal, and a zombie or skeleton digs whatever
+ * {@link MonsterDiggable} allows, two blocks at a time so the opening fits its own body. Held items dig at the same
+ * bare-handed speed; the client's survival input turns on only while that dig is actually held.
  */
 public final class MonsterMining {
     private static final Map<UUID, Progress> ACTIVE = new HashMap<>();
     private static final Map<UUID, ServerPlayer> MINING_INPUT = new HashMap<>();
-    /** The tick each body last heard "empty hands only", so a held swing does not repeat it every tick. */
+    /** Main hand that armed survival input. Empty hands arm from aim alone and never land here. */
+    private static final Map<UUID, net.minecraft.world.item.ItemStack> HELD_LATCH = new HashMap<>();
+    /** The tick each body last heard why a swing failed, so a held swing does not repeat it every tick. */
     private static final Map<UUID, Integer> HAND_HINTS = new HashMap<>();
     private static final int HAND_HINT_TICKS = 60;
     private static final Identifier NO_PREDICTED_MINING = Identifier.fromNamespaceAndPath("hardrush", "mining_input");
     private static final int INPUT_GRACE_TICKS = 4;
+    /**
+     * After a held item's first swing arms survival input, the client streams punches only once that mode change has
+     * reached it, a round trip later: wait this long for the stream before giving up.
+     */
+    private static final int ARMING_GRACE_TICKS = 20;
     /** Vanilla only sends block-breaking progress this close ({@code ServerLevel.destroyBlockProgress}). */
     private static final double CRACK_RANGE_SQR = 1024;
 
     private MonsterMining() {}
 
-    /** Called inside ServerPlayerGameMode so the network handler still acknowledges prediction sequences. */
+    /**
+     * Called inside ServerPlayerGameMode so the network handler still acknowledges prediction sequences.
+     * A release is only noted here and settled in {@link #tick}: the server handles every queued packet before it
+     * ticks ({@code MinecraftServer.processPacketsAndTick}), and a client whose held item changed components (a bow's
+     * refreshed bar, a glowing compass) restarts the same break as ABORT then START within one batch.
+     */
     public static void action(ServerPlayer player, BlockPos pos, Action action) {
         switch (action) {
             case START_DESTROY_BLOCK -> {
-                if (!start(player, pos)) { cancel(player); resync(player, pos); }
+                if (!start(player, pos)) { cancel(player); releaseHeldInput(player); resync(player, pos); return; }
+                var work = ACTIVE.get(player.getUUID());
+                work.released = null;
+                work.confirmed = true;
             }
             case ABORT_DESTROY_BLOCK, STOP_DESTROY_BLOCK -> {
                 // A native zero-speed client never predicts completion. STOP cannot bypass the timer.
-                cancel(player);
+                var work = ACTIVE.get(player.getUUID());
+                if (work != null) { work.released = pos.immutable(); return; }
+                releaseHeldInput(player);
                 resync(player, pos);
             }
             case CHANGE_DESTROY_DIRECTION -> { }
@@ -67,7 +85,7 @@ public final class MonsterMining {
     static boolean start(ServerPlayer player, BlockPos clicked) {
         var aim = aim(player);
         if (aim == null || !aim.accepts(player.level(), clicked)) return false;
-        miningInput(player, true);
+        if (player.getMainHandItem().isEmpty()) miningInput(player, true);
         MonsterRoles.syncNativeContext(player);
         var current = ACTIVE.get(player.getUUID());
         if (current != null && current.valid(player, aim)) return true;
@@ -87,10 +105,25 @@ public final class MonsterMining {
         var aim = aim(player);
         if (aim == null) {
             clear(player);
-            if (diggableButHolding(player)) handHint(player);
+            var reason = refusal(player);
+            if (reason != null) handHint(player, reason);
             return;
         }
-        if (start(player, aim.primary())) ACTIVE.get(player.getUUID()).lastPunchTick = player.level().getServer().getTickCount();
+        // Adventure still sends the swing. Survival input waits for a break that actually started, so a held egg
+        // or bow keeps its right-click until the monster is holding the break. Doors arm the same way: a knock
+        // needs the stream of punches an adventure client only sends once the block looks mineable.
+        boolean holding = !player.getMainHandItem().isEmpty();
+        var before = ACTIVE.get(player.getUUID());
+        if (start(player, aim.primary())) {
+            boolean arming = holding && !held(player);
+            if (holding) holdInput(player);
+            var work = ACTIVE.get(player.getUUID());
+            work.lastPunchTick = player.level().getServer().getTickCount();
+            work.grace = arming ? ARMING_GRACE_TICKS : INPUT_GRACE_TICKS;
+            // A lone click with a held item arms input but is not yet a held break: an adventure client sends
+            // nothing when it lets go. Time starts with the next punch, or the START a held button sends.
+            work.confirmed = !(arming && work != before);
+        }
     }
 
     public static boolean acceptsAttack(ServerPlayer player, BlockPos pos) {
@@ -100,19 +133,32 @@ public final class MonsterMining {
 
     public static void tick(ServerPlayer player) {
         var aim = aim(player);
-        miningInput(player, aim != null);
+        if (player.getMainHandItem().isEmpty()) {
+            HELD_LATCH.remove(player.getUUID());
+            miningInput(player, aim != null);
+        } else if (aim == null || !held(player)) {
+            HELD_LATCH.remove(player.getUUID());
+            miningInput(player, false);
+        } else miningInput(player, true);
         var work = ACTIVE.get(player.getUUID());
         if (work == null) return; // Aiming enables input, never progress.
         MonsterRoles.syncNativeContext(player);
-        if (!work.valid(player, aim) || player.level().getServer().getTickCount() - work.lastPunchTick > INPUT_GRACE_TICKS) {
-            cancel(player); return;
+        var released = work.released;
+        if (released != null || !work.valid(player, aim)
+                || player.level().getServer().getTickCount() - work.lastPunchTick > work.grace) {
+            cancel(player);
+            releaseHeldInput(player);
+            if (released != null) resync(player, released);
+            return;
         }
+        if (!work.confirmed) return;
         work.tick();
-        if (work.finished()) cancel(player);
+        if (work.finished()) { cancel(player); releaseHeldInput(player); }
     }
 
     public static void clear(ServerPlayer player) {
         cancel(player);
+        HELD_LATCH.remove(player.getUUID());
         miningInput(player, false);
     }
 
@@ -135,7 +181,9 @@ public final class MonsterMining {
     /** A cosmetic owner respawn replaces the local player and its input mode, but not this server body. */
     public static void refreshInput(ServerPlayer player) {
         if (MINING_INPUT.get(player.getUUID()) != player) return;
-        if (aim(player) == null) clear(player);
+        var aim = aim(player);
+        boolean armed = player.getMainHandItem().isEmpty() || held(player);
+        if (aim == null || !armed) clear(player);
         else syncInput(player, GameType.SURVIVAL);
     }
 
@@ -156,7 +204,7 @@ public final class MonsterMining {
             syncInput(previous, previous.gameMode.getGameModeForPlayer());
         }
         if (enabled) {
-            // Empty hands cannot mine in a vanilla adventure client. Only its input mode changes;
+            // An adventure client will not stream mining packets. Only its input mode changes;
             // all mining packets are still rejected or handled here on the server.
             var speed = player.getAttribute(Attributes.BLOCK_BREAK_SPEED);
             speed.addTransientModifier(new AttributeModifier(NO_PREDICTED_MINING, -1,
@@ -183,10 +231,8 @@ public final class MonsterMining {
         }
     }
 
-    /** Hands free, standing in the world as an acting monster, under mob griefing. */
-    private static boolean available(ServerPlayer player) {
-        return player.getMainHandItem().isEmpty() && able(player);
-    }
+    /** Standing in the world as an acting monster, under mob griefing. The main hand may hold anything. */
+    private static boolean available(ServerPlayer player) { return able(player); }
 
     private static boolean able(ServerPlayer player) {
         return player.isAlive() && !player.isRemoved() && player.gameMode.getGameModeForPlayer() == GameType.ADVENTURE
@@ -201,24 +247,66 @@ public final class MonsterMining {
         return form != null && form != MonsterForm.CREEPER;
     }
 
-    /** Swinging something at plain ground, not at a creature standing in front of it. */
-    private static boolean diggableButHolding(ServerPlayer player) {
-        if (player.getMainHandItem().isEmpty() || !able(player) || !digger(player)) return false;
-        var hit = hit(player);
-        if (hit == null || !diggableAt(player, hit, 0)) return false;
+    /** Why this swing cannot open the block it hit, or null when the monster should hear nothing. */
+    private static String refusal(ServerPlayer player) {
+        if (!able(player)) return null;
+        var pos = hit(player);
+        if (pos == null || !clearOfCreatures(player, pos) || !mayChange(player, pos)) return null;
+        if (!digger(player)) return "苦力怕挖不动 · 引爆能炸开方块";
+        var verdict = MonsterDiggable.verdict(player, pos);
+        if (verdict == null || verdict == MonsterDiggable.Verdict.DIGGABLE) return null;
+        return switch (verdict) {
+            case DOOR -> doorRefusal(player, pos);
+            case CONTAINER -> "里面装着东西，挖不动";
+            case ORE -> "矿石挖不动";
+            case TOO_HARD -> "太硬了，挖不动";
+            case DIGGABLE -> null;
+        };
+    }
+
+    /** Wooden doors name who can knock; an iron door is shut to everyone. A knock that merely missed its range stays quiet. */
+    private static String doorRefusal(ServerPlayer player, BlockPos pos) {
+        // The floor under a door answers for the door it carries.
+        var state = player.level().getBlockState(pos);
+        if (!(state.getBlock() instanceof DoorBlock)) state = player.level().getBlockState(pos.above());
+        if (!DoorBlock.isWoodenDoor(state)) return "铁门敲不开";
+        if (!(MonsterRoles.nativeModel(player) instanceof Zombie)) return "只有僵尸能敲开木门";
+        if (player.level().getDifficulty() != Difficulty.HARD) return "困难难度下僵尸才能敲开木门";
+        return null;
+    }
+
+    /** A creature between the eyes and the block means the swing was an attack, not a failed dig. */
+    private static boolean clearOfCreatures(ServerPlayer player, BlockPos block) {
         var eye = player.getEyePosition();
-        var end = eye.add(player.getLookAngle().scale(Math.sqrt(player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(hit))) + 1));
+        var end = eye.add(player.getLookAngle().scale(Math.sqrt(player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(block))) + 1));
         var box = player.getBoundingBox().expandTowards(end.subtract(eye)).inflate(1);
         return net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(player, eye, end, box,
                 entity -> !entity.isSpectator() && entity.isPickable(), eye.distanceToSqr(end)) == null;
     }
 
-    private static void handHint(ServerPlayer player) {
+    private static void handHint(ServerPlayer player, String text) {
         int now = player.level().getServer().getTickCount();
         Integer last = HAND_HINTS.get(player.getUUID());
         if (last != null && now - last < HAND_HINT_TICKS && now >= last) return;
         HAND_HINTS.put(player.getUUID(), now);
-        dev.hardrush.notice.Notices.hint(player, "空手才能挖");
+        dev.hardrush.notice.Notices.hint(player, text);
+    }
+
+    private static void holdInput(ServerPlayer player) {
+        HELD_LATCH.put(player.getUUID(), player.getMainHandItem().copy());
+        miningInput(player, true);
+    }
+
+    private static boolean held(ServerPlayer player) {
+        var stack = HELD_LATCH.get(player.getUUID());
+        return stack != null && net.minecraft.world.item.ItemStack.matches(stack, player.getMainHandItem());
+    }
+
+    /** Releasing the break, or changing hands, returns a held item to adventure input. Empty hands stay aimed. */
+    private static void releaseHeldInput(ServerPlayer player) {
+        if (player.getMainHandItem().isEmpty()) return;
+        HELD_LATCH.remove(player.getUUID());
+        miningInput(player, false);
     }
 
     private static BlockPos hit(ServerPlayer player) {
@@ -255,7 +343,8 @@ public final class MonsterMining {
     }
 
     private static boolean diggableAt(ServerPlayer player, BlockPos pos, double slack) {
-        return MonsterDiggable.is(player.level(), pos) && player.isWithinBlockInteractionRange(pos, slack) && mayChange(player, pos);
+        return MonsterDiggable.verdict(player, pos) == MonsterDiggable.Verdict.DIGGABLE
+                && player.isWithinBlockInteractionRange(pos, slack) && mayChange(player, pos);
     }
 
     private static boolean mayChange(ServerPlayer player, BlockPos pos) {
@@ -307,14 +396,24 @@ public final class MonsterMining {
         final ServerLevel level;
         final String binding;
         int lastPunchTick;
+        /** Ticks without a punch before the break is abandoned. */
+        int grace = INPUT_GRACE_TICKS;
+        /** Where the client let go this batch; a START for the same break clears it before the tick settles it. */
+        BlockPos released;
+        /** Whether the break is actually held. Only a held item's lone first swing starts unconfirmed, without time. */
+        boolean confirmed = true;
+
+        final net.minecraft.world.item.ItemStack hand;
 
         Progress(ServerPlayer player) {
             owner = player; level = player.level(); binding = MonsterRoles.binding(player);
+            hand = player.getMainHandItem().copy();
             lastPunchTick = level.getServer().getTickCount();
         }
 
         boolean sameBody(ServerPlayer player) {
-            return owner == player && player.level() == level && binding.equals(MonsterRoles.binding(player));
+            return owner == player && player.level() == level && binding.equals(MonsterRoles.binding(player))
+                    && net.minecraft.world.item.ItemStack.matches(hand, player.getMainHandItem());
         }
 
         abstract String label();
@@ -398,7 +497,7 @@ public final class MonsterMining {
             for (var cell : cells) {
                 var state = level.getBlockState(cell);
                 states.add(state);
-                longest = Math.max(longest, MonsterDiggable.ticks(state, cap));
+                longest = Math.max(longest, MonsterDiggable.ticks(level, cell, state, cap));
             }
             duration = longest;
         }

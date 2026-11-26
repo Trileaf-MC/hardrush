@@ -256,15 +256,15 @@ public record RulesConfig(
 
     /**
      * A deliberate return pauses the sortie, so hunting again may follow at once; a defeat only locks the human
-     * who won it (docs/plan/击败锁定与怪物平衡.md). The tracking compass channels five seconds and rests ten after each landing. A monster digs a block no slower than
-     * bare-handed stone (7.5 seconds), however hard the block.
+     * who won it (docs/plan/击败锁定与怪物平衡.md). The tracking compass channels five seconds and rests ten after each landing. Natural ground is dug no slower than
+     * bare-handed stone (7.5 seconds); a block whose bare-handed time exceeds 30 seconds is too hard to dig.
      * A zombie's soulcatcher holds three creatures before the witch enlarges it. A round whose humans
      * have all left waits three minutes for one of them: long enough to restart a client and rejoin.
      * A mid-round entrant's first life cannot be chosen as a hunt target for five minutes of its own human time.
      */
     private static final Map<String, Double> SORTIE_DEFAULTS = Map.of("monster.returnCooldownMillis", 0.0,
             "monster.retrackCooldownMillis", 10_000.0, "monster.retrackChannelMillis", 5_000.0, "monster.digMillis", 7_500.0,
-            "soulcatcher.capacity", 3.0, "round.reconnectMillis", 180_000.0,
+            "monster.digMaxMillis", 30_000.0, "soulcatcher.capacity", 3.0, "round.reconnectMillis", 180_000.0,
             "entry.lateShelterMillis", 300_000.0);
 
     /**

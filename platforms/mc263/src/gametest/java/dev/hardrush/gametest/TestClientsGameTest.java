@@ -11,6 +11,7 @@ import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
+import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
@@ -563,8 +564,22 @@ public final class TestClientsGameTest {
     private static BlockPos arena(ServerLevel level) {
         var floor = new BlockPos(24008 + ARENAS.getAndIncrement() * 512, 149, 8);
         level.setChunkForced(floor.getX() >> 4, floor.getZ() >> 4, true);
+        generateNow(level, ChunkPos.containing(floor), ENTITY_TICKING_RADIUS);
         for (int dx = -6; dx <= 6; dx++) for (int dz = -6; dz <= 6; dz++) level.setBlockAndUpdate(floor.offset(dx, 0, dz), Blocks.STONE.defaultBlockState());
         return floor;
+    }
+
+    /** The chunks around a forced chunk that must be loaded before it ticks entities. */
+    private static final int ENTITY_TICKING_RADIUS = 2;
+
+    /**
+     * Generates every chunk within {@code radius} of {@code center} now, on the server thread. Arenas lie in fresh
+     * terrain, and the headless GameTest server ticks as fast as it can: left to the background, the terrain would cost
+     * wall-clock time, so how many ticks a wait for it takes would depend on how much other terrain the tests sharing the
+     * batch generate. Blocking here keeps each wait down to the few ticks vanilla takes to promote loaded chunks.
+     */
+    private static void generateNow(ServerLevel level, ChunkPos center, int radius) {
+        for (int dx = -radius; dx <= radius; dx++) for (int dz = -radius; dz <= radius; dz++) level.getChunk(center.x() + dx, center.z() + dz);
     }
 
     private static void clear(ServerLevel level, BlockPos floor) {
@@ -604,8 +619,11 @@ public final class TestClientsGameTest {
         GameTestSequence append(GameTestSequence sequence) {
             return sequence
                     // An entity in a chunk whose entities are not tracked yet is paired once they are, chunk or not.
-                    .thenWaitUntil(() -> test.assertTrue(ClientLevelLoad.loaded(client.player()) && readyToSend(floor)
-                            && level.isPositionEntityTicking(floor), "The client has loaded its level and the arena is ready"))
+                    // Before its first batch, the client still has a batch to take: the teleport would make it the arena's.
+                    .thenWaitUntil(() -> test.assertTrue(ClientLevelLoad.loaded(client.player())
+                            && !client.packets(ClientboundChunkBatchFinishedPacket.class).isEmpty(),
+                            "The client has loaded its level and taken its first chunk batch"))
+                    .thenWaitUntil(() -> test.assertTrue(readyToSend(floor) && level.isPositionEntityTicking(floor), "The arena is ready"))
                     .thenExecute(() -> {
                         client.player().teleportTo(floor.getX() + 2.5, floor.getY() + 1, floor.getZ() + .5);
                         client.acknowledge();
@@ -656,6 +674,9 @@ public final class TestClientsGameTest {
             // Chunk-centred, far from every other arena, three chunks from the watcher: tracked even at view 2, but 40 blocks away.
             drop = new BlockPos(24008 + ARENAS.getAndIncrement() * 512, 150, 8);
             level.setChunkForced(drop.getX() >> 4, drop.getZ() >> 4, true);
+            generateNow(level, ChunkPos.containing(drop), ENTITY_TICKING_RADIUS);
+            // The server sends the nearest chunks first: everything as near the watcher as the drop chunk, three chunks away.
+            generateNow(level, ChunkPos.containing(drop.offset(DISTANCE, 0, 0)), 3);
             client = TestClient.named(level.getServer(), "HRWatch").viewDistance(viewDistance);
             player = client.place(level);
             player.teleportTo(drop.getX() + DISTANCE + .5, drop.getY(), drop.getZ() + .5);

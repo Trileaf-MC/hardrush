@@ -132,7 +132,10 @@ public final class MonsterCreeperGameTest {
     public void humanIgniterLightsAFuseTheCreeperCannotLetGoOf(GameTestHelper test) {
         var f = new Fixture(test, 2);
         test.runAfterDelay(80, () -> {
+            boolean griefing = f.level.getGameRules().get(GameRules.MOB_GRIEFING);
             try {
+                // The blast is about the fuse, not blocks: keep the shared ground whole.
+                f.level.getGameRules().set(GameRules.MOB_GRIEFING, false, f.level.getServer());
                 MonsterRoles.select(f.owner, "creeper");
                 var human = f.players.get(1);
                 test.assertTrue(MonsterCreeper.forceIgnite(f.owner, human), "A human's igniter lights the creeper player");
@@ -146,7 +149,10 @@ public final class MonsterCreeperGameTest {
                 for (int tick = 0; tick < 40 && f.owner.isAlive(); tick++) MonsterCreeper.tick(f.owner);
                 test.assertFalse(f.owner.isAlive(), "The lit fuse runs out into the creeper's own blast");
                 test.assertTrue(MonsterCreeper.litBy(f.owner).isEmpty(), "The igniter mark ends with the blast");
-            } finally { f.close(); }
+            } finally {
+                f.level.getGameRules().set(GameRules.MOB_GRIEFING, griefing, f.level.getServer());
+                f.close();
+            }
             test.succeed();
         });
     }
@@ -246,8 +252,11 @@ public final class MonsterCreeperGameTest {
         var f = new Fixture(test, 3);
         test.runAfterDelay(80, () -> {
             boolean mobDrops = f.level.getGameRules().get(GameRules.MOB_DROPS);
+            boolean griefing = f.level.getGameRules().get(GameRules.MOB_GRIEFING);
             try (var ignored = f.installCombat()) {
                 f.level.getGameRules().set(GameRules.MOB_DROPS, true, f.level.getServer());
+                // Charged blasts here are about heads and clouds, not blocks: keep the shared ground whole.
+                f.level.getGameRules().set(GameRules.MOB_GRIEFING, false, f.level.getServer());
                 MonsterRoles.select(f.owner, "creeper");
                 var model = (Creeper)MonsterRoles.nativeModel(f.owner);
                 f.zombie(2, 0);
@@ -279,7 +288,6 @@ public final class MonsterCreeperGameTest {
                         .filter(event -> event.victimId().equals(f.owner.getUUID()) || event.victimId().equals(victim.getUUID())).toList();
                 test.assertValueEqual(deaths.size(), 2, "Both player deaths have combat evidence");
                 test.assertValueEqual(deaths.get(0).batchId(), deaths.get(1).batchId(), "Explosion victims and self-death share one batch");
-                test.assertTrue(f.level.getBlockState(BlockPos.containing(f.center).below()).is(Blocks.SMOOTH_STONE), "The charged blast preserves blocks");
                 test.assertTrue(f.level.getBlockState(BlockPos.containing(f.center)).isAir(), "The charged blast creates no fire");
                 var clouds = f.level.getEntitiesOfClass(AreaEffectCloud.class, f.owner.getBoundingBox().inflate(5));
                 test.assertValueEqual(clouds.size(), 1, "An affected exploding body creates one native lingering cloud");
@@ -313,10 +321,97 @@ public final class MonsterCreeperGameTest {
                         "Stale cloud effects are rejected at the native effect boundary");
             } finally {
                 f.level.getGameRules().set(GameRules.MOB_DROPS, mobDrops, f.level.getServer());
+                f.level.getGameRules().set(GameRules.MOB_GRIEFING, griefing, f.level.getServer());
                 f.close();
             }
             test.succeed();
         });
+    }
+
+    @GameTest(maxTicks = 200)
+    public void mobGriefingDecidesWhetherTheBlastBreaksPlanksAndLeaves(GameTestHelper test) {
+        var f = new Fixture(test, 1);
+        test.runAfterDelay(80, () -> {
+            boolean griefing = f.level.getGameRules().get(GameRules.MOB_GRIEFING);
+            try {
+                f.level.getGameRules().set(GameRules.MOB_GRIEFING, true, f.level.getServer());
+                MonsterRoles.select(f.owner, "creeper");
+                var model = (Creeper) MonsterRoles.nativeModel(f.owner);
+                var origin = BlockPos.containing(f.center).east(8);
+                var nearLeaf = origin.east();
+                var nearPlank = origin.east().above();
+                f.level.setBlockAndUpdate(nearLeaf, Blocks.OAK_LEAVES.defaultBlockState());
+                f.level.setBlockAndUpdate(nearPlank, Blocks.OAK_PLANKS.defaultBlockState());
+                var far = origin.east(6);
+                placeLeafWall(f, far);
+                MonsterRoles.nativeCreeperBlast(model, f.owner.getUUID(), Vec3.atCenterOf(origin), 3);
+                test.assertTrue(f.level.getBlockState(nearLeaf).isAir() && f.level.getBlockState(nearPlank).isAir(),
+                        "Griefing on, a blast breaks nearby leaves and planks");
+                test.assertValueEqual(countLeaves(f, far), 15, "Power 3 does not reach a wall six blocks away");
+                MonsterRoles.nativeCreeperBlast(model, f.owner.getUUID(), Vec3.atCenterOf(origin), 6);
+                test.assertTrue(countLeaves(f, far) < 15, "A charged blast reaches further");
+                f.level.getGameRules().set(GameRules.MOB_GRIEFING, false, f.level.getServer());
+                var sparedLeaf = origin.west();
+                var sparedPlank = origin.west().above();
+                f.level.setBlockAndUpdate(sparedLeaf, Blocks.OAK_LEAVES.defaultBlockState());
+                f.level.setBlockAndUpdate(sparedPlank, Blocks.OAK_PLANKS.defaultBlockState());
+                MonsterRoles.nativeCreeperBlast(model, f.owner.getUUID(), Vec3.atCenterOf(origin), 6);
+                test.assertTrue(f.level.getBlockState(sparedLeaf).is(Blocks.OAK_LEAVES)
+                        && f.level.getBlockState(sparedPlank).is(Blocks.OAK_PLANKS), "Griefing off, the blast breaks nothing");
+            } finally {
+                f.level.getGameRules().set(GameRules.MOB_GRIEFING, griefing, f.level.getServer());
+                f.close();
+            }
+            test.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = 200)
+    public void aLeafCageTakesTheBlastBeforeThePersonInsideDoes(GameTestHelper test) {
+        var f = new Fixture(test, 2);
+        test.runAfterDelay(80, () -> {
+            try (var ignored = f.installCombat()) {
+                MonsterRoles.select(f.owner, "creeper");
+                var human = f.players.get(1);
+                human.getAbilities().invulnerable = false;
+                human.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000);
+                human.setHealth(1000);
+                var feet = BlockPos.containing(f.center).west(10);
+                human.teleportTo(feet.getX() + .5, feet.getY(), feet.getZ() + .5);
+                cage(f, feet, Blocks.OAK_LEAVES);
+                var boom = Vec3.atCenterOf(feet.east(3).above());
+                var model = (Creeper) MonsterRoles.nativeModel(f.owner);
+                MonsterRoles.nativeCreeperBlast(model, f.owner.getUUID(), boom, 3);
+                float caged = 1000 - human.getHealth();
+                human.setHealth(1000);
+                human.damageCooldownTime = 0;
+                human.setInvulnerableTime(0);
+                cage(f, feet, Blocks.AIR);
+                MonsterRoles.nativeCreeperBlast(model, f.owner.getUUID(), boom, 3);
+                float open = 1000 - human.getHealth();
+                test.assertTrue(open >= 4 && caged * 3 <= open, "Leaf cage " + caged + " vs open " + open);
+            } finally { f.close(); }
+            test.succeed();
+        });
+    }
+
+    private static void placeLeafWall(Fixture f, BlockPos origin) {
+        for (int y = 0; y < 3; y++) for (int z = -2; z <= 2; z++)
+            f.level.setBlockAndUpdate(origin.offset(0, y, z), Blocks.OAK_LEAVES.defaultBlockState());
+    }
+
+    private static int countLeaves(Fixture f, BlockPos origin) {
+        int leaves = 0;
+        for (int y = 0; y < 3; y++) for (int z = -2; z <= 2; z++)
+            if (f.level.getBlockState(origin.offset(0, y, z)).is(Blocks.OAK_LEAVES)) leaves++;
+        return leaves;
+    }
+
+    private static void cage(Fixture f, BlockPos inside, net.minecraft.world.level.block.Block fill) {
+        for (int x = -1; x <= 1; x++) for (int y = 0; y <= 2; y++) for (int z = -1; z <= 1; z++) {
+            boolean hollow = fill != Blocks.AIR && x == 0 && z == 0 && y <= 1;
+            f.level.setBlockAndUpdate(inside.offset(x, y, z), (hollow ? Blocks.AIR : fill).defaultBlockState());
+        }
     }
 
     private static final class Fixture implements AutoCloseable {

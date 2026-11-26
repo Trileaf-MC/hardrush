@@ -330,7 +330,7 @@ public final class SafeDeployment {
                 var cell = open.poll();
                 if (open(cell.above()) && !open(cell.below())) {
                     for (var side : Direction.Plane.HORIZONTAL) {
-                        if (!MonsterDiggable.is(level.getBlockState(cell.relative(side)))) continue;
+                        if (!MonsterDiggable.natural(level.getBlockState(cell.relative(side)))) continue;
                         var pocket = cell.relative(side, 2);
                         var point = Vec3.atBottomCenterOf(pocket);
                         if (!canBurrowAt(level, player, point, cell, swept.position(), humans)) continue;
@@ -601,7 +601,7 @@ public final class SafeDeployment {
         var cells = java.util.List.of(pocket, pocket.above());
         var walls = java.util.List.of(wall, wall.above());
         for (var pos : List.of(pocket, pocket.above(), wall, wall.above())) {
-            if (!MonsterDiggable.is(level.getBlockState(pos)) || level.getServer().isUnderSpawnProtection(level, pos, player)) return false;
+            if (!MonsterDiggable.natural(level.getBlockState(pos)) || level.getServer().isUnderSpawnProtection(level, pos, player)) return false;
         }
         // Sealed: every face of the pocket meets opaque ground, so nobody sees in and nothing flows in.
         for (var cell : cells) for (var side : Direction.values()) {

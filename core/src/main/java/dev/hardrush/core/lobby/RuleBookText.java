@@ -48,14 +48,14 @@ public final class RuleBookText {
             pages.add("钟声\n\n敲钟时，若 " + BellAlarm.RESONATE_RADIUS + " 格内有怪物玩家，钟会嗡嗡共鸣，随后 "
                     + BellAlarm.REVEAL_RADIUS + " 格内的怪物玩家发光 " + BellAlarm.GLOW_SECONDS + " 秒，随从不发光。女巫、掠夺者等原版袭击者也会引起共鸣。\n\n"
                     + "让怪物显形后，这口钟 " + BellAlarm.restSeconds() + " 秒内只响不共鸣。");
-            pages.add("角色\n\n僵尸追二星以上的人类时自带刷怪蛋，困难难度下能空手敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
+            pages.add("角色\n\n僵尸追二星以上的人类时自带刷怪蛋，困难难度下能敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
                     + "骷髅潜行拉满弓触发三连射，陷进细雪会化身流浪者。\n\n苦力怕按住引爆器（打火石）引爆，也能用它点燃原版苦力怕。");
             if (MonsterCoins.creeperPaid(rules)) pages.add("苦力怕解锁\n\n苦力怕每次出击要先右键展位的苦力怕石像，付 "
                     + MonsterCoins.creeperUnlockPrice(rules) + " 怪物币解锁。它只追三星以上的人类。\n\n"
                     + "返回营地不用重新付；自爆或倒下后要重新解锁。");
-            pages.add("挖掘与虫穴\n\n僵尸和骷髅空手按住左键，一次挖开 1×2 的石头、泥土、下界岩、末地石等天然方块，最长 "
-                    + decimalSeconds(RoundEngine.digMillis(rules)) + " 秒，不掉落。苦力怕挖不动。\n\n"
-                    + "出击找不到能走到人类身边的落点时，怪物会藏进人类旁边的石头里，挖开墙破石而出。");
+            pages.add("挖掘\n\n僵尸和骷髅按住左键挖掘，一次挖开 1×2，跟人类空手挖一样快，拿着什么都一样；石头、泥土、下界岩这类天然方块最长 "
+                    + decimalSeconds(RoundEngine.digMillis(rules)) + " 秒。不掉落。门、装着东西的方块、矿石和黑曜石这类太硬的方块挖不动。苦力怕挖不动，但爆炸能炸开方块。");
+            pages.add("破石而出\n\n出击找不到能走到人类身边的落点时，怪物会藏进人类旁边的石头里，挖开墙破石而出。");
             if (MonsterCoins.enabled(rules)) pages.add("怪物币\n\n伤害人类、被人类击杀都能获得怪物币；击杀二星以上的人类，或逼他用掉图腾，还有一笔赏金。\n\n"
                     + "怪物币可以在女巫处购买出击增强。药水出击时自己喝，药水盲盒喝下才揭晓；亡灵喝伤害药水会回血。"
                     + "试炼钥匙可以在宝库开出一次性装备。拿到复生图腾后，女巫改卖复生补给。");
