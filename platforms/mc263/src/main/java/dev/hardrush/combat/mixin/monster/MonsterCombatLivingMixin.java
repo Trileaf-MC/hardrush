@@ -21,7 +21,11 @@ public abstract class MonsterCombatLivingMixin {
     @Inject(method="addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z", at=@At("HEAD"), cancellable=true)
     private void effect(MobEffectInstance effect, Entity source, CallbackInfoReturnable<Boolean> ci) {
         if (MonsterCombatRuntime.rejectEffect(source, (Entity)(Object)this, effect)) ci.setReturnValue(false);
-        else dev.hardrush.combat.EffectOrigins.applied((net.minecraft.world.entity.LivingEntity)(Object)this, effect, MonsterCombatRuntime.acting());
+    }
+    /** Only an effect that actually took hold changes who its later ticks belong to; a refused or weaker one does not. */
+    @Inject(method="addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z", at=@At("RETURN"))
+    private void effectOrigin(MobEffectInstance effect, Entity source, CallbackInfoReturnable<Boolean> ci) {
+        if (ci.getReturnValueZ()) dev.hardrush.combat.EffectOrigins.applied((net.minecraft.world.entity.LivingEntity)(Object)this, effect, MonsterCombatRuntime.acting());
     }
     @Inject(method="forceAddEffect", at=@At("HEAD"), cancellable=true)
     private void effect(MobEffectInstance effect, Entity source, CallbackInfo ci) {
