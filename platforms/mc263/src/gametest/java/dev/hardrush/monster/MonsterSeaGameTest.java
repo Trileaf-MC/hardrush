@@ -10,7 +10,7 @@ import net.minecraft.world.item.Items;
 /** A zombie rising from the sea, and what a deliberate return parks of it; in-process bodies without a client. */
 public final class MonsterSeaGameTest {
     @GameTest(maxTicks=200)
-    public void aSeaRisenDrownedParksAsAZombieKeepingOnlyPaidEffects(GameTestHelper test) {
+    public void aSeaRisenDrownedParksAsAZombieKeepingItsTimedEffects(GameTestHelper test) {
         var p = MonsterRoleGameTest.actor(test);
         try {
             MonsterRoles.select(p, "zombie");
@@ -29,10 +29,11 @@ public final class MonsterSeaGameTest {
             test.assertFalse(body.items().values().stream().anyMatch(stack -> stack.is(Items.TRIDENT)), "The sea trident stays behind");
             test.assertTrue(body.items().values().stream().anyMatch(stack -> MonsterItems.purpose(stack).equals("baby_egg")),
                     "Remaining starting eggs are parked");
-            test.assertValueEqual(body.effects().size(), 1, "Only the witch's paid effects are parked");
-            var speed = body.effects().getFirst();
-            test.assertTrue(speed.is(MobEffects.SPEED) && speed.getAmplifier() == 1 && speed.getDuration() > 1100,
-                    "A paid effect keeps its strength and remaining time");
+            // Every timed effect is parked since witch potions are drunk (docs/plan/女巫药水与药水盲盒.md §1).
+            test.assertValueEqual(body.effects().size(), 2, "Every timed effect is parked");
+            var speed = body.effects().stream().filter(effect -> effect.is(MobEffects.SPEED)).findFirst().orElseThrow();
+            test.assertTrue(speed.getAmplifier() == 1 && speed.getDuration() > 1100,
+                    "A parked effect keeps its strength and remaining time");
         } finally { MonsterRoleGameTest.remove(p); }
         test.succeed();
     }
