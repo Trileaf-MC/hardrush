@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 17;
+    private static final int SCHEMA = 18;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -95,7 +95,8 @@ public final class RoundSnapshotCodec {
                 var sortie = entry.getValue().sortie();
                 out.writeInt(sortie.tier());
                 out.writeBoolean(sortie.quarry().isPresent());
-                if (sortie.quarry().isPresent()) writeUuid(out, sortie.quarry().get());
+                // Schema 18: whether an outing out on its quarry is still landing.
+                if (sortie.quarry().isPresent()) { writeUuid(out, sortie.quarry().get()); out.writeBoolean(sortie.landing()); }
             }
             // Schema 16: an administrator's pause, then the lives whose 初入荒野 an administrator ended.
             out.writeBoolean(snapshot.adminPaused());
@@ -286,8 +287,10 @@ public final class RoundSnapshotCodec {
                     if (p == null || !seen.add(playerId)) throw new IOException("Sortie for an unknown or repeated participant");
                     int tier = in.readInt();
                     var quarry = in.readBoolean() ? java.util.Optional.of(readUuid(in)) : java.util.Optional.<UUID>empty();
+                    // Schemas 15–17 did not record landing: an outing out then had landed, as it was settled.
+                    boolean landing = schema >= 18 && quarry.isPresent() && in.readBoolean();
                     Sortie sortie;
-                    try { sortie = new Sortie(quarry, tier); }
+                    try { sortie = new Sortie(quarry, tier, landing); }
                     catch (IllegalArgumentException invalid) { throw new IOException("Invalid sortie", invalid); }
                     var restored = p.withSortie(sortie);
                     if (!restored.sortie().equals(sortie)) throw new IOException("Sortie the participant cannot hold");
