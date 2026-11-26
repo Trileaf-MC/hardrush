@@ -80,6 +80,7 @@ public final class LobbyRuntimeGameTest {
         test.assertTrue(HardRushProperties.competitionEnabled(), "The dedicated run requires the production runtime");
         var f = new Fixture(test);
         TestTeardown.atEnd(test, () -> {
+            if (f.committing != null) f.releaseCommits();
             f.monster.client.close();
             f.target.client.close();
             FROZEN_SUMMON_OWNERS.remove(f.monster.profile.id());
@@ -457,8 +458,22 @@ public final class LobbyRuntimeGameTest {
                             } finally { f.level.getChunkAt(floor).setBlockState(floor, original, 2); }
                         }
                         hunter.command("hardrush revive");
-                    })
-                    .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RUNNING && hunter.participant().role() == ParticipantRole.HUMAN_ACTIVE
+                    });
+            if (iteration == 0) {
+                // #72: the player leaves at "正在复生……", so the revival commits while its body still stands in camp and
+                // is never built. The reconnect must build the new life's body, supplies and blessing included, as the
+                // revival it is; the checks below are the ones every revival passes.
+                final var campLife = new java.util.concurrent.atomic.AtomicInteger();
+                sequence.thenWaitUntil(() -> f.await(dev.hardrush.lobby.RevivalAltar.channeling(hunter.player), "The rite starts on the altar"))
+                        .thenExecute(() -> { campLife.set(hunter.participant().lifeSequence()); f.holdCommits(); })
+                        .thenWaitUntil(() -> f.await(dev.hardrush.lobby.RevivalAltar.submitting(hunter.player), "The rite submits its revival"))
+                        .thenExecute(() -> { hunter.disconnect(); f.releaseCommits(); })
+                        .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.HUMAN_ACTIVE
+                                && hunter.participant().lifeSequence() == campLife.get() + 1 && !hunter.participant().connected()
+                                && !f.session.mutationPending(), "The revival commits while its player is away"));
+                hunter.login(sequence);
+            }
+            sequence.thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RUNNING && hunter.participant().role() == ParticipantRole.HUMAN_ACTIVE
                             && hunter.participant().online() && !PlayerProfiles.isLocked(hunter.player)
                             && f.profiles.isReady(hunter.profile.id(), f.round()) && !f.session.mutationPending()
                             && !dev.hardrush.lobby.RevivalAltar.arriving(f.server, hunter.profile.id()), "Cycle exactly one revival unlocks an empty human " + iteration))

@@ -339,6 +339,8 @@ public final class RoundRuntime {
                     }
                     if (participant != null && participant.role() == ParticipantRole.HUMAN_ACTIVE
                             && worlds != null && worlds.ready() && PlayerProfiles.isLocked(player)) {
+                        // The body unlocks once its journal write lands; the online report below follows then.
+                        if (profiles.revivalBodyPending(player, round)) { revive(server, worlds, profiles, player, round); continue; }
                         if (!profiles.admit(player, round, arrival(server, worlds, round, participant),
                                 level -> RoundWorldBundle.sameRound(activeWorlds.level(Level.OVERWORLD), level))) continue;
                         names.put(player.getUUID(), player.getScoreboardName());
@@ -722,9 +724,10 @@ public final class RoundRuntime {
             if (participant.role() == ParticipantRole.HUMAN_ACTIVE && PlayerProfiles.isLocked(player)
                     && (previous == null || previous.role() == ParticipantRole.MONSTER_LOBBY || previous.role() == ParticipantRole.LOBBY
                         || previous.role() == ParticipantRole.HUMAN_RESPAWNING || !previous.online())) {
-                boolean revived = previous != null && previous.role() == ParticipantRole.MONSTER_LOBBY;
+                boolean revived = previous != null && previous.role() == ParticipantRole.MONSTER_LOBBY
+                        || profiles.revivalBodyPending(player, after);
                 boolean admitted = revived
-                        ? profiles.revive(player, after, () -> dev.hardrush.world.FarLandings.take(server, worlds, player.getUUID()))
+                        ? revive(server, worlds, profiles, player, after)
                         : previous != null && previous.role() == ParticipantRole.HUMAN_RESPAWNING
                         ? profiles.confirmRespawn(player, after)
                         : profiles.admit(player, after, arrival(server, worlds, after, participant),
@@ -736,6 +739,19 @@ public final class RoundRuntime {
                     SESSIONS.get(server).onOnline(player.getUUID(), player.getScoreboardName(), true);
             }
         }
+    }
+
+    /**
+     * Builds the body of an altar-revived life far out in the wild. Also the way in for a revival whose body was never
+     * built (#72): a reconnect after a disconnect or restart between the commit and this call, which also lands with
+     * the altar's totem pop and blessing, as the revival it is.
+     */
+    private static boolean revive(MinecraftServer server, RoundWorldBundle worlds, PlayerProfiles profiles,
+            ServerPlayer player, RoundSnapshot round) {
+        if (!profiles.revive(player, round, () -> dev.hardrush.world.FarLandings.take(server, worlds, player.getUUID()))) return false;
+        dev.hardrush.lobby.RevivalAltar.expectArrival(server, player.getUUID(), round.roundId(),
+                round.participants().get(player.getUUID()).lifeSequence());
+        return true;
     }
 
     /** An opening life scatters like vanilla's first join; a mid-round one lands far out, away from any spawn camp. */
