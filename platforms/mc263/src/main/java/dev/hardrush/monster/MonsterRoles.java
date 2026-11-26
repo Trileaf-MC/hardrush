@@ -29,6 +29,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -404,6 +405,14 @@ public final class MonsterRoles {
         MonsterAiIdentity.changed(player);
     }
 
+    /**
+     * Native monsters hunt by sight line, not light (docs/plan/怪物夜视.md): every bound body sees in the dark all
+     * sortie long. Infinite so it never flickers, without particles so it never tells a player from a native mob.
+     */
+    static MobEffectInstance nightVision() {
+        return new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false, true);
+    }
+
     private static void restoreOriginal(ServerPlayer player, Role role) {
         player.stopUsingItem();
         for (var entry : role.originalAttributes.entrySet()) player.getAttribute(entry.getKey()).setBaseValue(entry.getValue());
@@ -412,6 +421,7 @@ public final class MonsterRoles {
         for (int slot = 1; slot <= 4; slot++) player.inventoryMenu.slots.get(slot).set(role.crafting.get(slot - 1).copy());
         player.inventoryMenu.setCarried(role.carried.copy());
         ((MonsterLivingAccessor) player).hardrush$detectEquipmentUpdates();
+        player.removeEffect(MobEffects.NIGHT_VISION);
         player.setGameMode(role.gameMode); player.getFoodData().setFoodLevel(role.food);
         player.getFoodData().setSaturation(role.saturation); player.setHealth(Math.min(role.health, player.getMaxHealth()));
     }
@@ -984,6 +994,7 @@ public final class MonsterRoles {
         else if (!Float.isNaN(resumedHealth)) player.setHealth(Math.min(resumedHealth, player.getMaxHealth()));
         role.disconnectedHealth = Float.NaN;
         player.getFoodData().setFoodLevel(6); player.getFoodData().setSaturation(0);
+        player.addEffect(nightVision());
         MonsterDisguise.apply(player, role.form.id());
         if (role.model instanceof Creeper creeper) MonsterCreeper.bindModel(player, creeper);
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player); MonsterAiIdentity.changed(player);
