@@ -1,6 +1,7 @@
 package dev.hardrush.player.mixin;
 
 import dev.hardrush.player.PlayerDisconnects;
+import dev.hardrush.player.ServerKicked;
 import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -17,6 +18,6 @@ public abstract class PlayerDisconnectMixin {
 
     @Inject(method = "onDisconnect", at = @At("HEAD"))
     private void hardrush$disconnected(DisconnectionDetails details, CallbackInfo ci) {
-        PlayerDisconnects.fire(player);
+        PlayerDisconnects.fire(player, ((ServerKicked) this).hardrush$serverKick());
     }
 }
