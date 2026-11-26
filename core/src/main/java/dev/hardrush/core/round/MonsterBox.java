@@ -36,7 +36,7 @@ public final class MonsterBox {
 
     /** One draw: the creature, or for a jockey the rider and its mount, as the platform builds it. */
     public enum Result {
-        ZOMBIE(Group.ZOMBIES, 35, "僵尸"), BABY_ZOMBIE(Group.ZOMBIES, 15, "小僵尸"), HUSK(Group.ZOMBIES, 15, "尸壳"),
+        ZOMBIE(Group.ZOMBIES, 35, "僵尸"), BABY_ZOMBIE(Group.ZOMBIES, 15, "幼年僵尸"), HUSK(Group.ZOMBIES, 15, "尸壳"),
         DROWNED(Group.ZOMBIES, 12, "溺尸"), ZOMBIE_VILLAGER(Group.ZOMBIES, 12, "僵尸村民"),
         ZOMBIE_HORSEMAN(Group.ZOMBIES, 6, "僵尸骑兵"), CHICKEN_JOCKEY(Group.ZOMBIES, 5, "鸡骑士"),
         SKELETON(Group.SKELETONS_AND_SPIDERS, 22, "骷髅"), SPIDER(Group.SKELETONS_AND_SPIDERS, 20, "蜘蛛"),
