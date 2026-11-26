@@ -62,15 +62,6 @@ public final class MonsterPotions {
         };
     }
 
-    /** Whether the witch brews {@code offer} as a potion the monster drinks. */
-    public static boolean potion(ShopOffer offer) {
-        return switch (offer) {
-            case SWIFTNESS, FIRE_RESISTANCE, INSTANT_HEALTH, ABSORPTION, RESISTANCE, TURTLE_MASTER, POISON,
-                 COMMON_POTION_BOX, RARE_POTION_BOX, EPIC_POTION_BOX -> true;
-            default -> false;
-        };
-    }
-
     /** The native potion's name, by form for the harming-or-healing offer. */
     public static String title(ShopOffer offer, MonsterRole role) {
         if (offer == ShopOffer.INSTANT_HEALTH) return role == MonsterRole.CREEPER ? "治疗药水" : "伤害药水";
@@ -105,7 +96,7 @@ public final class MonsterPotions {
     /** The sortie's bottles, one per purchase: potions never stack. */
     static void give(ServerPlayer player, dev.hardrush.core.round.MonsterWallet kit, RulesConfig rules, MonsterRole role) {
         for (var offer : ShopOffer.values()) {
-            if (!potion(offer) || !MonsterCoins.offered(rules, offer)) continue;
+            if (!offer.potion() || !MonsterCoins.offered(rules, offer)) continue;
             for (int i = 0; i < kit.carried(offer); i++) player.getInventory().add(sortieBottle(player, offer, rules, role));
         }
     }

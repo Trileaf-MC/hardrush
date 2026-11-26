@@ -71,7 +71,7 @@ public final class MonsterShop {
             case COMMON -> ChatFormatting.WHITE; case RARE -> ChatFormatting.AQUA; case EPIC -> ChatFormatting.LIGHT_PURPLE;
         }).orElse(offer.key() ? ChatFormatting.AQUA : offer.permanent() ? ChatFormatting.LIGHT_PURPLE
                 : offer.revival() ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
-        return Component.literal(dev.hardrush.monster.MonsterPotions.potion(offer)
+        return Component.literal(offer.potion()
                 ? dev.hardrush.monster.MonsterPotions.title(offer, role) : offer.title())
                 .withStyle(Style.EMPTY.withItalic(false).withColor(color));
     }
@@ -79,10 +79,8 @@ public final class MonsterShop {
     /** {@code owned} names the next soulcatcher step; other goods ignore it. */
     private static ItemStack goods(ShopOffer offer, dev.hardrush.core.config.RulesConfig rules, MonsterRole role, int owned) {
         int arrows = MonsterCoins.amount(rules, MonsterCoins.ARROWS_PER_BUNDLE);
-        var stack = switch (offer) {
+        var stack = offer.potion() ? dev.hardrush.monster.MonsterPotions.bottle(offer, rules, role) : switch (offer) {
             case ADULT_EGG, BABY_EGG -> new ItemStack(Items.ZOMBIE_SPAWN_EGG);
-            case SWIFTNESS, FIRE_RESISTANCE, INSTANT_HEALTH, ABSORPTION, RESISTANCE, TURTLE_MASTER, POISON,
-                 COMMON_POTION_BOX, RARE_POTION_BOX, EPIC_POTION_BOX -> dev.hardrush.monster.MonsterPotions.bottle(offer, rules, role);
             case SLOWNESS_ARROWS -> PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.SLOWNESS).copyWithCount(arrows);
             case POISON_ARROWS -> PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.POISON).copyWithCount(arrows);
             case CHARGED -> new ItemStack(Items.CREEPER_HEAD);
@@ -98,6 +96,7 @@ public final class MonsterShop {
             case SHIELD -> new ItemStack(Items.SHIELD);
             case BELL -> new ItemStack(Items.BELL);
             case BREAD -> new ItemStack(Items.BREAD, 8);
+            default -> throw new IllegalArgumentException("A witch potion is brewed by MonsterPotions: " + offer);
         };
         stack.set(DataComponents.CUSTOM_NAME, name(offer, role));
         var lore = new ArrayList<Component>();
@@ -120,11 +119,10 @@ public final class MonsterShop {
             "升为史诗拘魂袋：可收编唤魔者、劫掠兽、猪灵蛮兵、旋风人、恶魂、恼鬼、凋灵、监守者、远古守卫者"};
 
     private static String description(ShopOffer offer, int owned) {
+        if (offer.potion()) return "下次出击时带上，自己喝";
         return switch (offer) {
             case ADULT_EGG -> "下次出击多带 1 枚成年僵尸刷怪蛋";
             case BABY_EGG -> "下次出击多带 1 枚幼年僵尸刷怪蛋";
-            case SWIFTNESS, FIRE_RESISTANCE, INSTANT_HEALTH, ABSORPTION, RESISTANCE, TURTLE_MASTER, POISON,
-                 COMMON_POTION_BOX, RARE_POTION_BOX, EPIC_POTION_BOX -> "下次出击时带上，自己喝";
             case SLOWNESS_ARROWS -> "下次出击时带上，射一箭消耗一支";
             case POISON_ARROWS -> "下次出击时带上，射一箭消耗一支";
             case CHARGED -> "下次出击成为闪电苦力怕，爆炸威力翻倍";
@@ -140,6 +138,7 @@ public final class MonsterShop {
             case IRON_BUCKET, OAK_LOGS, IRON_PICKAXE, BREAD -> "复生时放进背包";
             case BELL -> "复生时放进背包 · 敲响后，附近的怪物玩家发光";
             case SHIELD -> "复生时放进副手";
+            default -> throw new IllegalArgumentException("A witch potion is described above: " + offer);
         };
     }
 

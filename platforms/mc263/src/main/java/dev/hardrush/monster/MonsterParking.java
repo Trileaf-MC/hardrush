@@ -9,10 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.core.Holder;
-import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -29,12 +26,6 @@ public final class MonsterParking {
      */
     public record Body(MonsterRole role, MonsterForm form, boolean charged, float health, float absorption, int selected,
                        Map<Integer, ItemStack> items, java.util.List<MobEffectInstance> effects, int tier) {}
-    /**
-     * Names bodies parked before every timed effect was kept; those bodies only ever held the witch's three old effects.
-     * Every timed effect now pauses in the camp, the bad with the good, so a return never washes one away.
-     */
-    private static final Map<String, Holder<MobEffect>> LEGACY_EFFECTS = Map.of("speed", MobEffects.SPEED,
-            "fire_resistance", MobEffects.FIRE_RESISTANCE, "regeneration", MobEffects.REGENERATION);
 
     private MonsterParking() {}
 
@@ -86,13 +77,9 @@ public final class MonsterParking {
             var effects = new java.util.ArrayList<MobEffectInstance>();
             if (body.has("effects")) for (var element : body.getAsJsonArray("effects")) {
                 var entry = element.getAsJsonObject();
-                if (entry.has("instance")) {
-                    MobEffectInstance.CODEC.parse(player.level().registryAccess().createSerializationContext(
-                            com.mojang.serialization.JsonOps.INSTANCE), entry.get("instance")).result().ifPresent(effects::add);
-                    continue;
-                }
-                var effect = LEGACY_EFFECTS.get(entry.get("effect").getAsString());
-                if (effect != null) effects.add(new MobEffectInstance(effect, entry.get("ticks").getAsInt(), entry.get("amplifier").getAsInt()));
+                if (!entry.has("instance")) continue;
+                MobEffectInstance.CODEC.parse(player.level().registryAccess().createSerializationContext(
+                        com.mojang.serialization.JsonOps.INSTANCE), entry.get("instance")).result().ifPresent(effects::add);
             }
             var items = new LinkedHashMap<Integer, ItemStack>();
             for (var element : body.getAsJsonArray("items")) {

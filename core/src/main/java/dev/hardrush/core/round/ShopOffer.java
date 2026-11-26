@@ -80,6 +80,14 @@ public enum ShopOffer {
     public boolean flatPrice() { return key() || this == INSTANT_HEALTH; }
     /** Whether a sortie as {@code role} carries it; revival supplies never ride a sortie. */
     public boolean sellableTo(MonsterRole role) { return !revival() && roles.contains(role); }
+    /** A bottle the witch brews, drunk by the monster itself on its next sortie (docs/plan/女巫药水与药水盲盒.md). */
+    public boolean potion() {
+        return switch (this) {
+            case SWIFTNESS, FIRE_RESISTANCE, INSTANT_HEALTH, ABSORPTION, RESISTANCE, TURTLE_MASTER, POISON,
+                 COMMON_POTION_BOX, RARE_POTION_BOX, EPIC_POTION_BOX -> true;
+            default -> false;
+        };
+    }
     /** The blind box this offer is, or empty for every other offer. */
     public java.util.Optional<PotionBox> potionBox() {
         return switch (this) {
