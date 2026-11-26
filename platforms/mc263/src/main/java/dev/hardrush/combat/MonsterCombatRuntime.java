@@ -43,6 +43,12 @@ public final class MonsterCombatRuntime {
                         (int)Math.min(Integer.MAX_VALUE, origin.actor().lifeSequence()),
                         (int)Math.min(Integer.MAX_VALUE, origin.actor().deploymentSequence()), true));
     }
+    /** {@code playerId} as the bound round records it now, if that round is still {@code roundId}. */
+    public static Optional<dev.hardrush.core.round.Participant> participant(net.minecraft.server.MinecraftServer server, UUID roundId, UUID playerId) {
+        var access = BINDINGS.get(server);
+        return (access == null ? Optional.<RoundSnapshot>empty() : access.snapshot())
+                .filter(round -> round.roundId().equals(roundId)).map(round -> round.participants().get(playerId));
+    }
     /** Called on the native model, each child and each arrow before it enters the world. */
     public static void stampSource(Entity entity, ServerPlayer owner) {
         if (!(entity instanceof MonsterSourceHolder holder)) return;

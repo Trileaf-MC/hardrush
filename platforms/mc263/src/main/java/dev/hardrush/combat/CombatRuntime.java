@@ -189,7 +189,9 @@ public final class CombatRuntime {
         var parent = current(level);
         var round = round(level);
         if (round.isEmpty()) return Scope.NONE;
-        return push(level, new Cause(level, round.get(), origin, parent == null ? UUID.randomUUID() : parent.batchId, true));
+        var standing = dev.hardrush.monster.MonsterLegacy.standing(level.getServer(), origin);
+        if (standing.isEmpty()) return Scope.NONE;
+        return push(level, new Cause(level, round.get(), standing, parent == null ? UUID.randomUUID() : parent.batchId, true));
     }
     /**
      * Remembers {@code origin} as the last attack on {@code victim} without damage, as {@link #creditHit} does for a human:
@@ -202,7 +204,8 @@ public final class CombatRuntime {
     }
     public static Scope damage(ServerLevel level, DamageSource source) {
         var parent = current(level);
-        return push(level, resolve(level, source), parent == null ? null : parent.batchId);
+        return push(level, dev.hardrush.monster.MonsterLegacy.standing(level.getServer(), resolve(level, source)),
+                parent == null ? null : parent.batchId);
     }
     private static Scope push(ServerLevel level, Optional<CombatOrigin> origin, UUID batch) {
         var round = round(level);
@@ -318,7 +321,8 @@ public final class CombatRuntime {
     public static Optional<CombatOrigin> killCredit(ServerLevel level, ServerPlayer victim, DamageSource source) {
         var memory = CREDITS.get(level.getServer());
         if (memory == null || round(level).isEmpty()) return Optional.empty();
-        return memory.died(victim.getUUID(), lethalCredit(level, source), level.getServer().getTickCount());
+        return dev.hardrush.monster.MonsterLegacy.standing(level.getServer(),
+                memory.died(victim.getUUID(), lethalCredit(level, source), level.getServer().getTickCount()));
     }
     /**
      * The credit {@link #killCredit(ServerLevel, ServerPlayer, DamageSource)} would resolve for this lethal hit right now,
@@ -327,11 +331,14 @@ public final class CombatRuntime {
     public static Optional<CombatOrigin> peekKillCredit(ServerLevel level, ServerPlayer victim, DamageSource source) {
         var memory = CREDITS.get(level.getServer());
         if (memory == null || round(level).isEmpty()) return Optional.empty();
-        return memory.peek(victim.getUUID(), lethalCredit(level, source), level.getServer().getTickCount());
+        return dev.hardrush.monster.MonsterLegacy.standing(level.getServer(),
+                memory.peek(victim.getUUID(), lethalCredit(level, source), level.getServer().getTickCount()));
     }
     private static Optional<CombatOrigin> lethalCredit(ServerLevel level, DamageSource source) {
         var cause = current(level);
-        return killCredit(source, cause == null ? resolve(level, source) : cause.origin);
+        // A lapsed leftover's lethal hit yields to the remembered hits, as a sourceless death would.
+        return dev.hardrush.monster.MonsterLegacy.standing(level.getServer(),
+                killCredit(source, cause == null ? resolve(level, source) : cause.origin));
     }
     /**
      * A revival totem has just saved {@code victim} inside the hit being taken. The pop restores health and grants

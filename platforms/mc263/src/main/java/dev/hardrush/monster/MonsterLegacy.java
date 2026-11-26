@@ -201,8 +201,52 @@ public final class MonsterLegacy {
         return null;
     }
 
+    /**
+     * What left {@code origin} behind, if anything: remembered since it was left, or read off the creature itself after
+     * a restart forgot that.
+     */
     private static Optional<Source> source(MinecraftServer server, CombatOrigin origin) {
-        return origin.directEntityId().map(direct -> sources(server).get(direct));
+        return origin.directEntityId().flatMap(direct -> {
+            var known = sources(server).get(direct);
+            if (known != null) return Optional.of(known);
+            for (var level : server.getAllLevels()) {
+                var entity = level.getEntity(direct);
+                if (entity == null) continue;
+                var owner = owner(entity);
+                var kind = kind(entity);
+                return owner == null || kind == null ? Optional.<Source>empty() : Optional.of(new Source(owner, kind));
+            }
+            return Optional.empty();
+        });
+    }
+
+    /**
+     * {@code origin}, unless it was left behind by a monster that has moved on since: what its potions left counts for it
+     * until it deploys again or is revived (docs/plan/女巫药水与药水盲盒.md §5.1). Everything else passes untouched.
+     */
+    public static Optional<CombatOrigin> standing(MinecraftServer server, Optional<CombatOrigin> origin) {
+        if (origin.isEmpty()) return origin;
+        var source = source(server, origin.get()).orElse(null);
+        return source == null || !lapsed(server, source.owner(), origin.get()) ? origin : Optional.empty();
+    }
+
+    private static boolean lapsed(MinecraftServer server, UUID owner, CombatOrigin origin) {
+        var participant = MonsterCombatRuntime.participant(server, origin.roundId(), owner).orElse(null);
+        if (participant == null) return true;
+        // A body just spent may still be on its way back to the camp; that is not moving on.
+        boolean stillMonster = switch (participant.role()) {
+            case MONSTER_LOBBY, MONSTER_DEPLOYED, TRANSITION_PENDING -> true;
+            default -> false;
+        };
+        return !stillMonster || participant.monsterDeploymentSequence() > origin.actor().deploymentSequence();
+    }
+
+    /** The owner a death message names a leftover after, or null once that owner has moved on. */
+    public static UUID standingOwner(Entity entity) {
+        var owner = owner(entity);
+        if (owner == null || !(entity instanceof CombatOriginHolder holder) || !(entity.level() instanceof ServerLevel level)) return owner;
+        var origin = holder.hardrush$combatOrigin();
+        return origin.isPresent() && lapsed(level.getServer(), owner, origin.get()) ? null : owner;
     }
 
     /** A human just took damage from {@code origin}: if it was left behind, its owner hears of it, at most every few seconds. */

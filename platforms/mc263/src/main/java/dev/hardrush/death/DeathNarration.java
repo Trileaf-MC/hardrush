@@ -135,7 +135,8 @@ public final class DeathNarration {
         var releaser = MonsterSoulcatcher.releaser(entity);
         if (releaser.isPresent()) return owned(server, releaser.get(), "收编的", entity);
         // What a monster's potions left behind: the slimes of oozing, the silverfish of infested.
-        var left = dev.hardrush.monster.MonsterLegacy.owner(entity);
+        // Once its owner has moved on it is a plain creature again, and vanilla names it.
+        var left = dev.hardrush.monster.MonsterLegacy.standingOwner(entity);
         var kind = dev.hardrush.monster.MonsterLegacy.kind(entity);
         if (left != null && kind != null) return owned(server, left, kind.relation(), entity);
         var summoner = MonsterCompanions.owner(entity);

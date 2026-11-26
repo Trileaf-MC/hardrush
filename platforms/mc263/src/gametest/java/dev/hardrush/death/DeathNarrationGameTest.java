@@ -194,6 +194,17 @@ public final class DeathNarrationGameTest {
                 test.assertValueEqual(key(message), "death.attack.mob", "The vanilla mob sentence is kept");
                 test.assertValueEqual(arg(message, 1).getString(), f.owner.getName().getString() + "留下的"
                         + EntityTypes.SLIME.getDescription().getString(), "A slime of oozing is named after its monster");
+
+                // The owner deploys again: what its last body left no longer counts for it, nor bears its name.
+                var slime = slimes.getLast();
+                var origin = CombatRuntime.originOf(slime);
+                test.assertTrue(dev.hardrush.monster.MonsterLegacy.standing(f.level.getServer(), origin).isPresent(), "Still the owner's");
+                var p = f.participants.get(f.owner.getUUID());
+                f.participants.put(p.id(), new Participant(p.id(), p.name(), p.role(), true, false, 0, 0, 1, false, p.monsterRole(),
+                        MonsterDimension.OVERWORLD, 0, p.monsterDeploymentSequence() + 1));
+                test.assertTrue(dev.hardrush.monster.MonsterLegacy.standing(f.level.getServer(), origin).isEmpty(),
+                        "A slime left by an earlier sortie lapses once its owner deploys again");
+                test.assertTrue(dev.hardrush.monster.MonsterLegacy.standingOwner(slime) == null, "It is a plain slime again");
             }
             test.succeed();
         });
