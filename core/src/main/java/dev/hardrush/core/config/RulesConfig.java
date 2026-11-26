@@ -455,8 +455,10 @@ public record RulesConfig(
     private static void validateCombatValue(String key, double value) {
         // An immediate re-hunt after a deliberate return is the default, not a misconfiguration.
         if (value == 0 && key.equals("monster.returnCooldownMillis")) return;
-        if (value == 0 && !key.endsWith("armor") && !key.endsWith("Resistance")) {
-            throw new IllegalArgumentException("战斗参数必须为正数（护甲／抗性可为零）: " + key);
+        // A blind box chance of zero turns that draw off (docs/plan/女巫药水与药水盲盒.md §3.3).
+        boolean chance = key.startsWith("coin.potionBox.") && key.endsWith("Permille");
+        if (value == 0 && !key.endsWith("armor") && !key.endsWith("Resistance") && !chance) {
+            throw new IllegalArgumentException("战斗参数必须为正数（护甲／抗性／盲盒概率可为零）: " + key);
         }
         if ((key.endsWith("Health") || key.endsWith("Damage") || key.endsWith("Attribute")
                 || key.endsWith("Distance") || key.endsWith("Strength")) && value <= 0) {
