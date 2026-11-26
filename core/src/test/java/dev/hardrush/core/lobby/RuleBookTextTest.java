@@ -75,7 +75,7 @@ class RuleBookTextTest {
     }
 
     @Test void theHuntPageTellsBothSidesAboutTheLandingOmen() {
-        assertTrue(page(pages(GameMode.HARDCORE), "追猎").contains("落地时目标会听到一声洞穴音"));
+        assertTrue(page(pages(GameMode.HARDCORE), "追猎").contains("僵尸和骷髅落地时，目标会听到一声洞穴音；苦力怕悄无声息"));
     }
 
     @Test void theCompassHasItsOwnPageWithTheRoundsChannelAndRest() {

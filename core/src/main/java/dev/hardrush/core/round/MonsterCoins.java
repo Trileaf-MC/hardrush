@@ -62,9 +62,10 @@ public final class MonsterCoins {
 
     public static int limit(RulesConfig rules, ShopOffer offer) { return amount(rules, offer.limitKey()); }
 
-    /** Each further purchase within one sortie window doubles the price. */
+    /** Each further purchase within one sortie window doubles the price, except for {@linkplain ShopOffer#flatPrice flat-priced} offers. */
     public static int price(RulesConfig rules, ShopOffer offer, int bought) {
         if (bought < 0) throw new IllegalArgumentException("Negative purchase count");
+        if (offer.flatPrice()) return amount(rules, offer.priceKey());
         return Math.multiplyExact(amount(rules, offer.priceKey()), 1 << Math.min(bought, 30));
     }
 

@@ -69,6 +69,7 @@
       "dev.hardrush.monster.MonsterInventoryFormGameTest",
       "dev.hardrush.monster.MonsterSeaGameTest",
       "dev.hardrush.monster.MonsterBellGameTest",
+      "dev.hardrush.monster.MonsterNightVisionGameTest",
       "dev.hardrush.lobby.HeldItemHintsGameTest",
       "dev.hardrush.revival.RevivalTotemGameTest",
       "dev.hardrush.revival.TotemDropGameTest",

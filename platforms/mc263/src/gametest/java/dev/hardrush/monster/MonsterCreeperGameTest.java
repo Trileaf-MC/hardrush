@@ -225,6 +225,23 @@ public final class MonsterCreeperGameTest {
     }
 
     @GameTest(maxTicks = 200)
+    public void aBlastWithOnlyNightVisionLeavesNoCloud(GameTestHelper test) {
+        var f = new Fixture(test, 1);
+        test.runAfterDelay(80, () -> {
+            try (var ignored = f.installCombat()) {
+                MonsterRoles.select(f.owner, "creeper");
+                test.assertTrue(f.owner.hasEffect(MobEffects.NIGHT_VISION), "The creeper body sees in the dark");
+                MonsterCreeper.use(f.owner, InteractionHand.MAIN_HAND);
+                for (int tick = 0; tick < 30; tick++) MonsterCreeper.tick(f.owner);
+                test.assertFalse(f.owner.isAlive(), "The held fuse ends the body");
+                test.assertTrue(f.level.getEntitiesOfClass(AreaEffectCloud.class, f.owner.getBoundingBox().inflate(5)).isEmpty(),
+                        "Like a native creeper with no effects, a body with only its own night vision leaves no cloud");
+            } finally { f.close(); }
+            test.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = 200)
     public void chargedBlastKeepsNativeHeadsCloudSourceAndOneDeathBatch(GameTestHelper test) {
         var f = new Fixture(test, 3);
         test.runAfterDelay(80, () -> {
@@ -282,6 +299,7 @@ public final class MonsterCreeperGameTest {
                 survivor.damageCooldownTime = 0; survivor.setInvulnerableTime(0);
                 for (int tick = 0; tick < 10; tick++) { cloud.tickCount++; cloud.tick(); }
                 test.assertTrue(survivor.hasEffect(MobEffects.SLOWNESS), "The native cloud still applies effects after its owner's death and role change");
+                test.assertFalse(survivor.hasEffect(MobEffects.NIGHT_VISION), "The body's own night vision never rides the cloud");
                 test.assertValueEqual(survivor.getEffect(MobEffects.SLOWNESS).getDuration(), 200,
                         "The native cloud applies one quarter of the copied effect duration");
                 test.assertTrue(survivor.getLastDamageSource() != null
