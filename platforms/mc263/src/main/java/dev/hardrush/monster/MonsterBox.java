@@ -1,6 +1,7 @@
 package dev.hardrush.monster;
 
-import dev.hardrush.core.round.MonsterBox.Result;
+import dev.hardrush.core.round.MonsterBoxPool;
+import dev.hardrush.core.round.MonsterBoxPool.Result;
 import dev.hardrush.notice.Notices;
 import java.util.List;
 import java.util.Optional;
@@ -94,13 +95,17 @@ public final class MonsterBox {
     /**
      * Where the landing is refused (unloaded, outside the border, protected) the box is kept and nothing is drawn, so a
      * refusal never tells what was inside. Anywhere else the creature comes out without asking whether it fits.
+     *
+     * <p>Invariant: every refusal a player can provoke happens before the draw. A failure after it keeps the box, so a
+     * check added to {@link #letOut} (room, light, anything the player controls) would become a free redraw; such a
+     * check belongs ahead of the draw, and must not depend on the result.
      */
-    private static boolean open(ServerPlayer player, InteractionHand hand, MonsterCompanions.Landing landing) {
+    static boolean open(ServerPlayer player, InteractionHand hand, MonsterCompanions.Landing landing) {
         if (!MonsterCompanions.landable(player, landing)) { Notices.refuse(player, "这里放不出生物"); return false; }
         dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, "使用物品");
-        var result = dev.hardrush.core.round.MonsterBox.draw(MonsterSoulcatcher.tier(player),
-                player.getRandom().nextInt(dev.hardrush.core.round.MonsterBox.TOTAL));
+        var result = MonsterBoxPool.draw(MonsterSoulcatcher.tier(player), player.getRandom().nextInt(MonsterBoxPool.TOTAL));
         var mob = letOut(player, landing, result);
+        // Only the level refusing the entity itself gets here; nothing the player chose decides it.
         if (mob == null) { Notices.refuse(player, "怪物盲盒没能打开"); return false; }
         player.getItemInHand(hand).shrink(1);
         player.inventoryMenu.broadcastChanges();
@@ -168,7 +173,11 @@ public final class MonsterBox {
                 yield wither;
             }
             case WARDEN -> warden(player, landing);
-            default -> placed(player, landing, simpleType(result), EntitySpawnReason.SPAWN_ITEM_USE, null);
+            // Listed one by one, with no default: a result added to the pool fails to compile until it is built here.
+            case SKELETON, SPIDER, STRAY, BOGGED, PARCHED, CAVE_SPIDER, SLIME, MAGMA_CUBE,
+                 CREEPER, WITCH, PILLAGER, VINDICATOR, WITHER_SKELETON, BLAZE,
+                 EVOKER, BREEZE, PIGLIN_BRUTE, RAVAGER, CHICKEN, PIG, VILLAGER ->
+                    placed(player, landing, simpleType(result), EntitySpawnReason.SPAWN_ITEM_USE, null);
         };
     }
 

@@ -1,6 +1,6 @@
 package dev.hardrush.monster;
 
-import dev.hardrush.core.round.MonsterBox.Result;
+import dev.hardrush.core.round.MonsterBoxPool.Result;
 import dev.hardrush.gametest.MonsterRoleGameTest;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;

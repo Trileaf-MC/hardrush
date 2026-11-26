@@ -11,7 +11,7 @@ import java.util.Map;
  * shares its draws among groups, and a group shares its part among its results. Weights are whole units of
  * {@link #TOTAL} per tier, so the bosses' 1/500 and 1/300 are exact.
  */
-public final class MonsterBox {
+public final class MonsterBoxPool {
     /** Soulcatcher tiers: common, uncommon, rare, epic. */
     public static final int TIERS = 4;
     /** Every tier's weights add up to this; 1/500 and 1/300 of it are whole numbers. */
@@ -69,7 +69,7 @@ public final class MonsterBox {
 
     private static final List<Map<Result, Integer>> WEIGHTS = weights();
 
-    private MonsterBox() {}
+    private MonsterBoxPool() {}
 
     private static List<Map<Result, Integer>> weights() {
         var tiers = new ArrayList<Map<Result, Integer>>(TIERS);
