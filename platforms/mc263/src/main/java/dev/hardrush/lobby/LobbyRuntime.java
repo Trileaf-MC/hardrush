@@ -758,8 +758,8 @@ public final class LobbyRuntime {
     private static void burrowed(ServerPlayer hunter) {
         dev.hardrush.hunt.HuntBurrows.entered(hunter, hunter.position());
         Notices.hint(hunter, MonsterRoles.currentForm(hunter) == dev.hardrush.monster.MonsterForm.CREEPER
-                ? "你藏进了石头里 · 苦力怕挖不动墙，等人挖到你，或者就地引爆"
-                : "你藏进了石头里 · " + Notices.key("空手") + "挖开前面的墙，破石而出");
+                ? "你藏进了石头里 · 苦力怕挖不动，等人挖到你再引爆"
+                : "你藏进了石头里 · 挖开前面的墙，破石而出");
     }
     /**
      * Breaks a return or retrack channel, or the retrack's search that follows it.

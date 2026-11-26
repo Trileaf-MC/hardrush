@@ -891,11 +891,17 @@ public final class MonsterRoles {
     }
     static void nativeCreeperBlast(Creeper creeper, UUID owner, Vec3 position, float strength) {
         var level = (ServerLevel) creeper.level();
+        var player = level.getServer().getPlayerList().getPlayer(owner);
         var calculator = new ExplosionDamageCalculator() {
+            @Override public boolean shouldBlockExplode(Explosion explosion, net.minecraft.world.level.BlockGetter world,
+                    net.minecraft.core.BlockPos pos, net.minecraft.world.level.block.state.BlockState state, float power) {
+                // Same vanilla spawn-protection check as digging; only a dedicated server implements it, so GameTest cannot see it.
+                return player == null || !level.getServer().isUnderSpawnProtection(level, pos, player);
+            }
             @Override public boolean shouldDamageEntity(Explosion explosion, Entity target) { return legalTarget(owner, level, target); }
             @Override public float getKnockbackMultiplier(Entity target) { return legalTarget(owner, level, target) ? super.getKnockbackMultiplier(target) : 0; }
         };
-        level.explode(creeper, null, calculator, position, strength, false, Level.ExplosionInteraction.NONE);
+        level.explode(creeper, null, calculator, position, strength, false, Level.ExplosionInteraction.MOB);
     }
     public static UUID summonOwner(Entity entity) { return MonsterCompanions.owner(entity); }
     public static UUID summonEvent(Entity entity) { return MonsterCompanions.event(entity); }

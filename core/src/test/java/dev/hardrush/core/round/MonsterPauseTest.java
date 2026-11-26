@@ -97,11 +97,16 @@ class MonsterPauseTest {
         assertEquals(7_000L, RoundEngine.retrackCooldownMillis(rules(values)));
         values.remove("monster.retrackCooldownMillis");
         assertEquals(10_000L, RoundEngine.retrackCooldownMillis(rules(values)), "Older rounds keep the default rest");
-        assertEquals(7_500L, RoundEngine.digMillis(RULES), "New rounds cap digging at bare-handed stone");
+        assertEquals(7_500L, RoundEngine.digMillis(RULES), "New rounds cap natural ground at bare-handed stone");
         values.put("monster.digMillis", 3_000.0);
         assertEquals(3_000L, RoundEngine.digMillis(rules(values)));
         values.remove("monster.digMillis");
         assertEquals(7_500L, RoundEngine.digMillis(rules(values)), "Older rounds keep the default cap");
+        assertEquals(30_000L, RoundEngine.digMaxMillis(RULES), "New rounds stop at thirty seconds of bare-handed work");
+        values.put("monster.digMaxMillis", 12_000.0);
+        assertEquals(12_000L, RoundEngine.digMaxMillis(rules(values)));
+        values.remove("monster.digMaxMillis");
+        assertEquals(30_000L, RoundEngine.digMaxMillis(rules(values)), "Older rounds keep the default limit");
         assertThrows(IllegalArgumentException.class, () -> {
             var invalid = new TreeMap<>(RULES.combatValues());
             invalid.put("monster.deployCooldownMillis", 0.0);

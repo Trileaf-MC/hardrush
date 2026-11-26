@@ -39,16 +39,24 @@ class RuleBookTextTest {
     }
 
     @Test void diggingPageReadsTheRoundsCapAndOnlyHardcoreHuntsHaveIt() {
-        var dig = page(pages(GameMode.HARDCORE), "挖掘与虫穴");
-        assertTrue(dig.contains("最长 7.5 秒，不掉落。苦力怕挖不动。"), dig);
-        assertTrue(dig.contains("破石而出"));
+        var hardcore = pages(GameMode.HARDCORE);
+        var dig = page(hardcore, "挖掘");
+        assertTrue(dig.contains("按住左键挖掘") && dig.contains("一次挖开 1×2"), dig);
+        assertTrue(dig.contains("跟人类空手挖一样快") && dig.contains("拿着什么都一样"), dig);
+        assertTrue(dig.contains("石头、泥土、下界岩这类天然方块最长 7.5 秒") && dig.contains("不掉落"), dig);
+        assertTrue(dig.contains("门、装着东西的方块、矿石和黑曜石这类太硬的方块挖不动"), dig);
+        assertTrue(dig.contains("苦力怕挖不动，但爆炸能炸开方块"), dig);
+        assertTrue(page(hardcore, "破石而出").contains("藏进人类旁边的石头里，挖开墙破石而出"));
+        assertTrue(page(hardcore, "角色").contains("困难难度下能敲开木门") && !page(hardcore, "角色").contains("空手敲开"),
+                page(hardcore, "角色"));
         var values = new java.util.TreeMap<>(RulesConfig.defaults().combatValues());
         values.put("monster.digMillis", 3_000.0);
         var rules = RulesConfig.defaults();
         rules = new RulesConfig(rules.schemaVersion(), rules.mode(), rules.minecraftVersion(), rules.difficulty(), rules.generationRule(),
                 values, rules.startCountdownMillis(), rules.successCelebrationMillis(), rules.failureDisplayMillis());
-        assertTrue(page(RuleBookText.pages(rules), "挖掘与虫穴").contains("最长 3 秒"));
-        assertNull(page(pages(GameMode.NORMAL), "挖掘与虫穴"));
+        assertTrue(page(RuleBookText.pages(rules), "挖掘").contains("最长 3 秒"));
+        assertNull(page(pages(GameMode.NORMAL), "挖掘"));
+        assertNull(page(pages(GameMode.NORMAL), "破石而出"));
     }
 
     @Test void entryPageNamesTheLateShelterOnlyWhenMonstersHuntAndRevivalPageTheBlessing() {

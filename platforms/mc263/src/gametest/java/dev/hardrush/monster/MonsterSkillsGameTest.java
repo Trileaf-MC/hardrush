@@ -374,6 +374,9 @@ public final class MonsterSkillsGameTest {
     public void creeperCanWalkDuringThirtyTickFuseAndDefeatCancelsPendingBlast(GameTestHelper test) {
         var f = new Fixture(test, 3);
         test.runAfterDelay(80, () -> {
+            // This blast is about the fuse, not blocks: keep it from cratering the shared ground, restored at the end.
+            boolean griefing = f.level.getGameRules().get(GameRules.MOB_GRIEFING);
+            f.level.getGameRules().set(GameRules.MOB_GRIEFING, false, f.level.getServer());
             MonsterRoles.select(f.owner, "creeper"); MonsterRoles.select(f.target, "creeper");
             var victim = f.players.get(2);
             victim.teleportTo(f.target.getX() + 2, f.target.getY(), f.target.getZ());
@@ -402,9 +405,11 @@ public final class MonsterSkillsGameTest {
                 try {
                     test.assertFalse(f.owner.isAlive(), "The native 30-tick warning ends the igniting body");
                     test.assertValueEqual(victim.getHealth(), 20f, "An early-defeated body's pending blast never damages a nearby human");
-                    test.assertTrue(f.level.getBlockState(f.owner.blockPosition().below()).is(Blocks.SMOOTH_STONE), "The live blast preserves blocks");
                     test.assertTrue(f.level.getBlockState(f.owner.blockPosition()).isAir(), "The live blast does not create fire");
-                } finally { f.close(); }
+                } finally {
+                    f.level.getGameRules().set(GameRules.MOB_GRIEFING, griefing, f.level.getServer());
+                    f.close();
+                }
                 test.succeed();
             });
         });

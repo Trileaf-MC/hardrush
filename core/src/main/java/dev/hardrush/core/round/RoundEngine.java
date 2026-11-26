@@ -25,6 +25,8 @@ public final class RoundEngine {
     public static final long RETURN_CHANNEL_MILLIS = 4_000;
     /** Bare-handed stone: hardness 1.5 x 100 ticks without the correct tool. */
     public static final long DIG_MILLIS = 7_500;
+    /** Bare-handed work slower than this is too hard to dig. Obsidian is far past it. */
+    public static final long DIG_MAX_MILLIS = 30_000;
 
     /** Wait before hunting after a disconnect, a recall or a first monster life; also how long a defeat locks a human. */
     public static long deployCooldownNanos(RulesConfig rules) {
@@ -56,10 +58,16 @@ public final class RoundEngine {
         return millis == null ? returnChannelMillis(rules) : Math.round(millis);
     }
 
-    /** The longest a monster takes to dig one block; rounds stored before the setting keep its default. */
+    /** The longest a monster takes to dig natural ground; rounds stored before the setting keep its default. */
     public static long digMillis(RulesConfig rules) {
         Double millis = rules.combatValues().get("monster.digMillis");
         return millis == null ? DIG_MILLIS : Math.round(millis);
+    }
+
+    /** Bare-handed work slower than this cannot be dug; rounds stored before the setting keep its default. */
+    public static long digMaxMillis(RulesConfig rules) {
+        Double millis = rules.combatValues().get("monster.digMaxMillis");
+        return millis == null ? DIG_MAX_MILLIS : Math.round(millis);
     }
 
     /** Live server milliseconds, shared by every completion path and its player-facing duration. */

@@ -63,13 +63,21 @@ public final class MonsterMiningGameTest {
     @GameTest(maxTicks = 200)
     public void onlyEligibleDoorsAndBodiesCanStartBreaking(GameTestHelper test) {
         try (var f = new Fixture(test)) {
+            f.player.setOnGround(true);
             for (var block : List.of(Blocks.IRON_DOOR, Blocks.OAK_TRAPDOOR, Blocks.OAK_FENCE_GATE, Blocks.OAK_PLANKS)) {
                 f.door(block);
-                test.assertFalse(f.use(), "Iron doors, trapdoors, fence gates and ordinary blocks cannot be broken");
+                f.aimAt(f.lower);
+                if (block == Blocks.IRON_DOOR) test.assertFalse(f.use(), "An iron door cannot be knocked or dug");
+                else {
+                    test.assertTrue(f.use(), "Trapdoors, gates and planks are dug, not knocked: " + block);
+                    f.mining(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, f.lower);
+                    MonsterMining.clear(f.player);
+                }
                 f.mining(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, f.lower);
                 f.mining(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, f.lower);
-                test.assertTrue(f.level.getBlockState(f.lower).is(block), "Mining packets cannot bypass the ordinary-block restriction");
+                test.assertTrue(f.level.getBlockState(f.lower).is(block), "One packet pair cannot remove it: " + block);
             }
+            f.faceDoor();
             f.door(Blocks.OAK_DOOR);
             for (var difficulty : List.of(Difficulty.PEACEFUL, Difficulty.EASY, Difficulty.NORMAL)) {
                 f.level.getServer().setDifficulty(difficulty, true);
@@ -80,7 +88,17 @@ public final class MonsterMiningGameTest {
             test.assertFalse(f.use(), "Mob griefing is required");
             f.griefing(true);
             f.player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_AXE));
-            test.assertFalse(f.use(), "A tool does not grant mining or accelerated door breaking");
+            f.client.clearPackets();
+            f.tick(1);
+            test.assertFalse(f.clientMode(GameType.SURVIVAL), "Looking at a door with a tool stays in adventure");
+            test.assertTrue(f.use(), "A held tool can start a knock");
+            f.client.clearPackets();
+            f.punch();
+            test.assertTrue(f.clientMode(GameType.SURVIVAL), "Punching the door arms mining input");
+            f.hold(20);
+            test.assertTrue(f.level.getBlockState(f.lower).is(Blocks.OAK_DOOR), "A tool does not shorten the knock");
+            f.mining(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, f.lower);
+            MonsterMining.clear(f.player);
             f.emptyHand();
             f.open();
             test.assertFalse(f.use(), "Open doors cannot be broken");
@@ -223,6 +241,7 @@ public final class MonsterMiningGameTest {
             test.assertTrue(f.client.packets().stream().anyMatch(p -> p instanceof ClientboundBlockDestructionPacket progress
                     && progress.getId() == ~f.player.getId() && progress.getProgress() > 0), "Owner gets cracks under an ID distinct from local mining");
             f.mining(ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, f.lower);
+            f.tick(1); // A release is settled on the tick, after the batch it arrived in.
             test.assertTrue(f.client.packets().getLast() instanceof ClientboundBlockUpdatePacket, "Release resynchronizes the door");
             test.assertTrue(f.client.packets().stream().anyMatch(p -> p instanceof ClientboundBlockDestructionPacket progress
                     && progress.getId() == ~f.player.getId() && progress.getProgress() == -1), "Release clears owner progress");
@@ -258,6 +277,17 @@ public final class MonsterMiningGameTest {
 
         void emptyHand() { player.getInventory().setSelectedSlot(0); player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY); }
         void faceDoor() { player.setYRot(0); player.setXRot(0); }
+        /** Pitch 0 looks over a one-block-tall target. Tip down until the crosshair actually meets it. */
+        void aimAt(BlockPos pos) {
+            var eye = player.getEyePosition();
+            for (int pitch = 0; pitch <= 80; pitch += 5) {
+                player.setXRot(pitch);
+                var end = eye.add(player.getLookAngle().scale(8));
+                var hit = level.clip(new net.minecraft.world.level.ClipContext(eye, end,
+                        net.minecraft.world.level.ClipContext.Block.OUTLINE, net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+                if (hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK && hit.getBlockPos().equals(pos)) return;
+            }
+        }
         void griefing(boolean value) { level.getGameRules().set(GameRules.MOB_GRIEFING, value, level.getServer()); }
         void tick(int count) { for (int i = 0; i < count; i++) MonsterMining.tick(player); }
         void punch() { player.connection.handlePunch(ServerboundPunchPacket.INSTANCE); }
