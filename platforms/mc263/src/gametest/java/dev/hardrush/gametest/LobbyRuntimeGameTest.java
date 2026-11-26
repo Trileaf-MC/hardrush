@@ -190,12 +190,27 @@ public final class LobbyRuntimeGameTest {
                     // behind (a repeated online report no longer writes, #35). Its commit callback is held, so the
                     // write stays in flight however fast the IO finishes.
                     f.holdCommits();
+                    boolean held = false;
                     try {
                         f.clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
                         f.session.tick();
                         f.test.assertTrue(f.session.mutationPending(), "The mature return channel competes with a real SQLite write");
                         LobbyRuntime.tick(f.server);
                         f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "A mature return channel waits while the write is in flight");
+                        held = true;
+                    } finally { if (!held) f.releaseCommits(); }
+                })
+                // Only the admission write is let through: once the channel ends, the return's own commit stays held.
+                .thenWaitUntil(() -> {
+                    if (LobbyRuntime.channeling(f.monster.player)) f.passHeldCommits();
+                    f.await(!LobbyRuntime.channeling(f.monster.player) && f.session.mutationPending(), "The finished return channel commits its return");
+                })
+                .thenExecute(() -> {
+                    try {
+                        f.test.assertValueEqual(f.monster.participant().role(), ParticipantRole.MONSTER_DEPLOYED, "The return has not committed yet");
+                        f.monster.useReturn();
+                        f.test.assertFalse(LobbyRuntime.channeling(f.monster.player),
+                                "Pressing the shard again while the return commits starts no second channel");
                     } finally { f.releaseCommits(); }
                 })
                 .thenWaitUntil(() -> f.await(f.monsterReady(false), "Completed return channel durably enters lobby"))
@@ -649,6 +664,12 @@ public final class LobbyRuntimeGameTest {
                 heldCommits.clear();
             }
             released.forEach(committing::execute);
+        }
+        /** Applies the commits held so far; later ones are still held. */
+        void passHeldCommits() {
+            List<Runnable> passed;
+            synchronized (commitGate) { passed = List.copyOf(heldCommits); heldCommits.clear(); }
+            passed.forEach(committing::execute);
         }
         RoundSnapshot round() { return RoundRuntime.snapshot(server).orElseThrow(); }
         void await(boolean condition, String message) {
