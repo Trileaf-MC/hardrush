@@ -15,6 +15,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.entity.animal.chicken.Chicken;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -113,21 +114,63 @@ public final class MonsterBoxGameTest {
     }
 
     @GameTest(maxTicks = 200)
-    public void aBoxWardenNeverTargetsItsOwner(GameTestHelper test) {
+    public void aRefusedLandingKeepsTheBoxAndLetsNothingOut(GameTestHelper test) {
         var owner = MonsterRoleGameTest.actor(test);
         test.runAfterDelay(80, () -> {
-            Warden plain = null;
             try {
                 MonsterRoles.select(owner, "zombie");
-                plain = EntityTypes.WARDEN.create(owner.level(), EntitySpawnReason.COMMAND);
+                owner.setItemInHand(InteractionHand.MAIN_HAND, MonsterBox.stack(owner, 2));
+                // Far outside anything loaded: the refusal comes before the draw, so it cannot tell what was inside.
+                var unloaded = new MonsterCompanions.Landing(new BlockPos(29_000_000, 64, 29_000_000), false, false);
+                test.assertTrue(!MonsterCompanions.landable(owner, unloaded), "The fixture landing really is refused");
+                test.assertTrue(!MonsterBox.open(owner, InteractionHand.MAIN_HAND, unloaded), "An unloaded landing refuses the box");
+                test.assertValueEqual(owner.getMainHandItem().getCount(), 2, "A refused box is not spent");
+                test.assertTrue(owned(owner).isEmpty(), "Nothing comes out anywhere");
+            } finally { clean(owner); }
+            test.succeed();
+        });
+    }
+
+    /**
+     * Wardens choose by anger (CompanionWardenMixin); the wither's spare heads and brain-driven breezes choose through
+     * targeting conditions. Each spares its owner and the owner's allies yet still takes an iron golem, which all three
+     * hunt natively (Breeze.canAttack admits only players and iron golems).
+     */
+    @GameTest(maxTicks = 200)
+    public void bossesAndBrainsSpareTheOwnerAndAlliesButStillHunt(GameTestHelper test) {
+        var owner = MonsterRoleGameTest.actor(test);
+        var rival = MonsterRoleGameTest.actor(test);
+        test.runAfterDelay(80, () -> {
+            Warden plain = null;
+            Mob golem = null;
+            try {
+                MonsterRoles.select(owner, "zombie");
+                MonsterRoles.select(rival, "zombie");
+                var level = owner.level();
+                rival.teleportTo(owner.getX() - 3, owner.getY(), owner.getZ());
+                golem = EntityTypes.IRON_GOLEM.create(level, EntitySpawnReason.COMMAND);
+                golem.snapTo(owner.getX(), owner.getY(), owner.getZ() - 3, 0, 0);
+                level.addFreshEntity(golem);
+                plain = EntityTypes.WARDEN.create(level, EntitySpawnReason.COMMAND);
                 plain.snapTo(owner.getX() - 3, owner.getY(), owner.getZ(), 0, 0);
                 test.assertTrue(plain.canTargetEntity(owner), "A native warden would hunt the zombie player");
+
                 var warden = (Warden) MonsterBox.letOut(owner, landing(owner), Result.WARDEN);
-                test.assertTrue(!warden.canTargetEntity(owner), "The owner's box warden never takes its owner as a target");
-                warden.discard();
+                test.assertTrue(!warden.canTargetEntity(owner), "The box warden never takes its owner as a target");
+                test.assertTrue(!warden.canTargetEntity(rival), "Nor another monster player");
+                test.assertTrue(warden.canTargetEntity(golem), "It still takes an iron golem");
+
+                var conditions = TargetingConditions.forCombat().ignoreLineOfSight();
+                for (var result : List.of(Result.WITHER, Result.BREEZE)) {
+                    var mob = MonsterBox.letOut(owner, landing(owner), result);
+                    test.assertTrue(!conditions.test(level, mob, owner), result + " never targets its owner");
+                    test.assertTrue(!conditions.test(level, mob, rival), result + " never targets another monster player");
+                    test.assertTrue(conditions.test(level, mob, golem), result + " still targets an iron golem");
+                }
             } finally {
                 if (plain != null) plain.discard();
-                clean(owner);
+                if (golem != null) golem.discard();
+                clean(owner); clean(rival);
             }
             test.succeed();
         });
