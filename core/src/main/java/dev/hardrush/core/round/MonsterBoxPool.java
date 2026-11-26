@@ -11,7 +11,7 @@ import java.util.Map;
  * shares its draws among groups, and a group shares its part among its results. Weights are whole units of
  * {@link #TOTAL} per tier, so the bosses' 1/500 and 1/300 are exact.
  */
-public final class MonsterBox {
+public final class MonsterBoxPool {
     /** Soulcatcher tiers: common, uncommon, rare, epic. */
     public static final int TIERS = 4;
     /** Every tier's weights add up to this; 1/500 and 1/300 of it are whole numbers. */
@@ -36,7 +36,7 @@ public final class MonsterBox {
 
     /** One draw: the creature, or for a jockey the rider and its mount, as the platform builds it. */
     public enum Result {
-        ZOMBIE(Group.ZOMBIES, 35, "僵尸"), BABY_ZOMBIE(Group.ZOMBIES, 15, "小僵尸"), HUSK(Group.ZOMBIES, 15, "尸壳"),
+        ZOMBIE(Group.ZOMBIES, 35, "僵尸"), BABY_ZOMBIE(Group.ZOMBIES, 15, "幼年僵尸"), HUSK(Group.ZOMBIES, 15, "尸壳"),
         DROWNED(Group.ZOMBIES, 12, "溺尸"), ZOMBIE_VILLAGER(Group.ZOMBIES, 12, "僵尸村民"),
         ZOMBIE_HORSEMAN(Group.ZOMBIES, 6, "僵尸骑兵"), CHICKEN_JOCKEY(Group.ZOMBIES, 5, "鸡骑士"),
         SKELETON(Group.SKELETONS_AND_SPIDERS, 22, "骷髅"), SPIDER(Group.SKELETONS_AND_SPIDERS, 20, "蜘蛛"),
@@ -69,7 +69,7 @@ public final class MonsterBox {
 
     private static final List<Map<Result, Integer>> WEIGHTS = weights();
 
-    private MonsterBox() {}
+    private MonsterBoxPool() {}
 
     private static List<Map<Result, Integer>> weights() {
         var tiers = new ArrayList<Map<Result, Integer>>(TIERS);
