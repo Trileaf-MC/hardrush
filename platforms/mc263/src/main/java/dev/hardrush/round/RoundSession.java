@@ -1270,6 +1270,27 @@ public final class RoundSession implements AutoCloseable {
                 lifeSequence, deploymentSequence), reply, "出场安全重验未通过，已回到大厅且保留出场机会。");
     }
 
+    /**
+     * The platform put a personal hunt's body down at its drop point. Queued like a death rather than requested like an
+     * action: it must commit before any later disconnect of the same body, which would otherwise find the sortie still
+     * landing and cancel it, refunding goods the landed body already holds.
+     */
+    public void monsterLanded(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence) {
+        if (engine == null || stopping || state != State.OPEN || competitionLocked()
+                || !engine.committed().roundId().equals(roundId)) return;
+        enqueue(e -> {
+            var current = e.committed();
+            var player = current.participants().get(playerId);
+            if (!current.roundId().equals(roundId) || current.phase() != RoundPhase.RUNNING && current.phase() != RoundPhase.RESCUE
+                    || player == null || player.role() != ParticipantRole.MONSTER_DEPLOYED || !player.online()
+                    || player.lifeSequence() != lifeSequence || player.monsterDeploymentSequence() != deploymentSequence
+                    || !player.sortie().landing()) {
+                return e.proposeCheckpoint(UUID.randomUUID(), false);
+            }
+            return e.proposeMonsterLanded(UUID.randomUUID(), roundId, playerId, lifeSequence, deploymentSequence);
+        });
+    }
+
     public void monsterDeath(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence) {
         if (engine == null || stopping || state != State.OPEN || competitionLocked()
                 || !engine.committed().roundId().equals(roundId)) return;

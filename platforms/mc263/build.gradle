@@ -274,6 +274,21 @@ loom.runs.named('gameTest') {
     }
 }
 
+// Leaving mid-fight on the production runtime (docs/plan/战斗中断线.md): five native humans in a fresh hardcore round.
+def combatDepartureRunDir = rootProject.file(".local/combat-departure/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    if (providers.gradleProperty('hardrushCombatDeparture').orNull == 'true') {
+        if (providers.gradleProperty('hardrushCompetition').orNull != 'true'
+                || ['hardrushTenRounds', 'hardrushIdentityRuntime', 'hardrushLobbyRuntime', 'hardrushRecovery', 'hardrushStorageReserve'].any {
+                    providers.gradleProperty(it).orNull == 'true'
+                }) throw new GradleException('Combat departure regression requires -PhardrushCompetition=true and its own run')
+        vmArg '-Dhardrush.test.combatDeparture=true'
+        vmArg '-Dhardrush.round.initialMode=hardcore'
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:combat_departure_game_test*'
+        runDir combatDepartureRunDir.absolutePath
+    }
+}
+
 // Downloads MCPFabric and the debug mods; only the managed debug instances need them.
 // runClientGameTest drives an already running debug server (debug-tools.py start), so it needs nothing here.
 tasks.register('prepareDebugTools', Exec) {

@@ -73,10 +73,13 @@ public enum ShopOffer {
      * only when a sortie carrying it is used up by the monster's death.
      */
     public boolean keptUntilUsed() { return this == CHARGED; }
+    /**
+     * Every purchase costs the base price: the doubling ladder skips it. Vault keys each open a single random piece, so
+     * the camp's gear cap, not a rising price, bounds them; a potion of harming or healing is a staple bought by the bottle.
+     */
+    public boolean flatPrice() { return key() || this == INSTANT_HEALTH; }
     /** Whether a sortie as {@code role} carries it; revival supplies never ride a sortie. */
     public boolean sellableTo(MonsterRole role) { return !revival() && roles.contains(role); }
-    /** Every bottle costs the base price: the doubling ladder skips it. */
-    public boolean flatPrice() { return this == INSTANT_HEALTH; }
     /** The blind box this offer is, or empty for every other offer. */
     public java.util.Optional<PotionBox> potionBox() {
         return switch (this) {

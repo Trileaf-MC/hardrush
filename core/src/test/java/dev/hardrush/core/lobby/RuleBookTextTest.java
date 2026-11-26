@@ -62,6 +62,11 @@ class RuleBookTextTest {
         assertTrue(page(pages(GameMode.HARDCORE), "复生").contains("图腾之力庇护"));
     }
 
+    @Test void leavingMidFightCountsAsDeathOnlyInHardcore() {
+        assertTrue(page(pages(GameMode.HARDCORE), "离线与救场").contains("人类离线时保留资格，但被玩家打中后 5 秒内断线算作阵亡。"));
+        assertTrue(page(pages(GameMode.NORMAL), "离线与救场").contains("人类离线时保留资格。所有人类都离线时"));
+    }
+
     @Test void deathByAMonsterKeepsBelongingsAndTheStarsSetLocksAndSlots() {
         var hardcore = pages(GameMode.HARDCORE);
         assertTrue(page(hardcore, "阵亡").contains("被怪物玩家杀死时，身上的东西和经验都不掉落"));

@@ -227,7 +227,7 @@ public final class MonsterInventoryFormGameTest {
             test.assertValueEqual(countPurpose(p,"adult_egg"),1,"Adult egg count is preserved");
             test.assertValueEqual(MonsterRoles.binding(p),binding,"Water conversion keeps binding");
             test.assertValueEqual(p.getHealth(),8f,"Water conversion keeps health");
-            test.assertFalse(p.getMainHandItem().is(Items.TRIDENT),"Player conversion does not grant a trident");
+            test.assertValueEqual(countPurpose(p,MonsterRoles.SEA_TRIDENT),1,"Water conversion grants the drowned its one bound trident (#83)");
         } finally { p.level().setBlockAndUpdate(head,Blocks.AIR.defaultBlockState());p.level().setBlockAndUpdate(p.blockPosition(),Blocks.AIR.defaultBlockState());cleanupConvertedBodies(p);MonsterRoleGameTest.remove(p); }
         test.succeed();
         });

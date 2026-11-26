@@ -17,10 +17,9 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * The body a deliberate return parks in the round record: lightning charge, health, every timed effect
- * with its remaining time, and the sortie's own bound items in their slots. Only what coins bought or the
- * sortie started with carries over: the body always resumes in its base form (no drowned, no stray), the
- * sea trident stays behind, and spent starting goods are never replenished. World items are never parked;
- * they settle where the monster left.
+ * with its remaining time, the form the environment turned it into (drowned, stray) and the sortie's own bound
+ * items in their slots, a drowned's trident among them. Spent starting goods are never replenished. World items
+ * are never parked; they settle where the monster left.
  */
 public final class MonsterParking {
     /**
@@ -47,8 +46,7 @@ public final class MonsterParking {
         var inventory = player.getInventory();
         for (int slot = -1; slot < inventory.getContainerSize(); slot++) {
             var stack = slot < 0 ? player.containerMenu.getCarried() : inventory.getItem(slot);
-            if (stack.isEmpty() || !MonsterItems.owned(player, stack)
-                    || MonsterItems.purpose(stack).equals(MonsterRoles.SEA_TRIDENT)) continue;
+            if (stack.isEmpty() || !MonsterItems.owned(player, stack)) continue;
             var entry = new JsonObject();
             entry.addProperty("slot", slot);
             entry.addProperty("item", MonsterGacha.encode(registries, stack));
@@ -65,7 +63,7 @@ public final class MonsterParking {
                     });
         }
         var body = new JsonObject();
-        body.addProperty("form", base(form).name());
+        body.addProperty("form", form.name());
         body.addProperty("charged", form == MonsterForm.CREEPER && MonsterCreeper.charged(player));
         body.addProperty("health", player.getHealth());
         body.addProperty("selected", inventory.getSelectedSlot());
@@ -81,7 +79,7 @@ public final class MonsterParking {
         if (text.isEmpty()) return Optional.empty();
         try {
             var body = JsonParser.parseString(text).getAsJsonObject();
-            var form = base(MonsterForm.valueOf(body.get("form").getAsString()));
+            var form = MonsterForm.valueOf(body.get("form").getAsString());
             if (form.role != role) return Optional.empty();
             var effects = new java.util.ArrayList<MobEffectInstance>();
             if (body.has("effects")) for (var element : body.getAsJsonArray("effects")) {
@@ -112,18 +110,11 @@ public final class MonsterParking {
         if (text.isEmpty()) return Optional.empty();
         try {
             var body = JsonParser.parseString(text).getAsJsonObject();
-            var name = switch (base(MonsterForm.valueOf(body.get("form").getAsString()))) {
+            var name = switch (MonsterForm.valueOf(body.get("form").getAsString())) {
                 case ZOMBIE -> "僵尸"; case DROWNED -> "溺尸"; case SKELETON -> "骷髅"; case STRAY -> "流浪者"; case CREEPER -> "苦力怕";
             };
             return Optional.of(body.get("charged").getAsBoolean() ? "带电" + name : name);
         } catch (RuntimeException damaged) { return Optional.empty(); }
-    }
-
-    /** Environmental forms are earned out there and stay there: a drowned parks as a zombie, a stray as a skeleton. */
-    static MonsterForm base(MonsterForm form) {
-        return switch (form.role) {
-            case ZOMBIE -> MonsterForm.ZOMBIE; case SKELETON -> MonsterForm.SKELETON; case CREEPER -> MonsterForm.CREEPER;
-        };
     }
 
     /** Health the camp body takes on after the return; the camp's native peaceful regeneration heals it from there. */
