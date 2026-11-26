@@ -412,6 +412,13 @@ public final class MonsterRoles {
     static MobEffectInstance nightVision() {
         return new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false, true);
     }
+    /**
+     * Whether {@code effect} is the body's own night vision rather than something it drank or was hit with. Only
+     * the body keeps it: a creeper's lingering cloud must not copy it, and leaving the body removes only this one.
+     */
+    public static boolean intrinsic(MobEffectInstance effect) {
+        return effect.is(MobEffects.NIGHT_VISION) && effect.isInfiniteDuration() && !effect.isVisible();
+    }
 
     private static void restoreOriginal(ServerPlayer player, Role role) {
         player.stopUsingItem();
@@ -421,7 +428,8 @@ public final class MonsterRoles {
         for (int slot = 1; slot <= 4; slot++) player.inventoryMenu.slots.get(slot).set(role.crafting.get(slot - 1).copy());
         player.inventoryMenu.setCarried(role.carried.copy());
         ((MonsterLivingAccessor) player).hardrush$detectEquipmentUpdates();
-        player.removeEffect(MobEffects.NIGHT_VISION);
+        var vision = player.getEffect(MobEffects.NIGHT_VISION);
+        if (vision != null && intrinsic(vision)) player.removeEffect(MobEffects.NIGHT_VISION);
         player.setGameMode(role.gameMode); player.getFoodData().setFoodLevel(role.food);
         player.getFoodData().setSaturation(role.saturation); player.setHealth(Math.min(role.health, player.getMaxHealth()));
     }
