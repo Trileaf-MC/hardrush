@@ -96,6 +96,8 @@ public final class LobbyRuntime {
         final Map<UUID, java.util.Set<UUID>> locked = new HashMap<>();
         final Set<UUID> reviving = new HashSet<>();
         final Map<UUID, Channel> channels = new HashMap<>();
+        /** Monsters whose return channel finished and whose return is still committing: the shard answers nothing meanwhile. */
+        final Set<UUID> returning = new HashSet<>();
         final Map<UUID, Retrack> retracks = new HashMap<>();
         final Map<UUID, Long> retryAt = new HashMap<>();
         final Set<UUID> committing = new HashSet<>();
@@ -230,7 +232,7 @@ public final class LobbyRuntime {
     public static void prepareStop(MinecraftServer server) {
         var b = BINDINGS.get(server); if (b == null) return;
         b.pending.values().forEach(d -> d.cancelled = true);
-        b.channels.clear(); b.retracks.clear(); b.searches.clear(); b.resumptions.clear(); b.displays.clear(); b.cooling.clear(); b.abandoning.clear();
+        b.channels.clear(); b.returning.clear(); b.retracks.clear(); b.searches.clear(); b.resumptions.clear(); b.displays.clear(); b.cooling.clear(); b.abandoning.clear();
         LobbyInteractions.get(server).ifPresent(r -> r.projections().clear());
         for (var player : List.copyOf(server.getPlayerList().getPlayers())) {
             if (MonsterRoles.isMonster(player)) MonsterRoles.clear(player);
@@ -440,8 +442,10 @@ public final class LobbyRuntime {
                 // Only the sortie's own bound items are parked; world items settle here when the return commits.
                 var from = ch.player.position(); var level = (ServerLevel) ch.player.level();
                 String parked = dev.hardrush.monster.MonsterParking.capture(ch.player);
+                b.returning.add(p.id());
                 b.session.requestMonsterReturn(round.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
                         parked, reply -> {
+                            b.returning.remove(p.id());
                             if (reply.success()) {
                                 ChannelEffects.departed(ch.player, level, from, false);
                                 Notices.hint(ch.player, returned(round, !parked.isEmpty()));
@@ -641,8 +645,8 @@ public final class LobbyRuntime {
         if (p.role() != ParticipantRole.MONSTER_DEPLOYED || MonsterRoles.isIgniting(player) || MonsterRoles.performingSkill(player)) {
             Notices.refuse(player, "现在不能返回营地"); return;
         }
-        // Holding the item, or right-clicking again, neither restarts nor repeats a running channel.
-        if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) return;
+        // Holding the item, or right-clicking again, neither restarts nor repeats a running or finished channel.
+        if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id()) || b.returning.contains(p.id())) return;
         var round = b.session.view().orElseThrow();
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), false));
@@ -682,6 +686,7 @@ public final class LobbyRuntime {
             Notices.refuse(player, "现在不能循迹"); return false;
         }
         if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) return true;
+        if (b.returning.contains(p.id())) return false;
         // The native cooldown overlay on the compass already says it is not ready.
         if (player.getCooldowns().isOnCooldown(compass)) return false;
         if (retrackTarget(b, player).isEmpty()) {
@@ -810,7 +815,7 @@ public final class LobbyRuntime {
         if (!before.roundId().equals(after.roundId())) {
             for (var player : server.getPlayerList().getPlayers()) if (MonsterRoles.isMonster(player)) MonsterRoles.clear(player);
             b.pending.values().forEach(d -> d.cancelled = true);
-            b.searches.clear(); b.resumptions.clear(); b.pending.clear(); b.refunds.clear(); b.channels.clear(); b.retracks.clear(); b.committing.clear(); b.retryAt.clear(); b.displays.clear(); return;
+            b.searches.clear(); b.resumptions.clear(); b.pending.clear(); b.refunds.clear(); b.channels.clear(); b.returning.clear(); b.retracks.clear(); b.committing.clear(); b.retryAt.clear(); b.displays.clear(); return;
         }
         if (dev.hardrush.celebration.CelebrationRuntime.successful(after)) {
             b.searches.clear(); b.resumptions.clear(); b.channels.clear(); b.retracks.clear(); return;
