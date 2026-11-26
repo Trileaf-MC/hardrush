@@ -40,6 +40,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class DeathNarrationGameTest {
     private static final AtomicInteger ARENAS = new AtomicInteger();
+    private static final int ARENA_SPACING = 256;
 
     @GameTest(maxTicks = 200)
     public void monsterBodiesAndMonsterVictimsAreNamedInVanillaSentences(GameTestHelper test) {
@@ -237,7 +238,9 @@ public final class DeathNarrationGameTest {
         final UUID round = UUID.randomUUID();
 
         Fixture(GameTestHelper test, MonsterRole role, int count) {
-            level = test.getLevel(); center = new Vec3(70000 + ARENAS.getAndIncrement() * 128 + .5, 150, .5);
+            // Farther apart than any fixture's floor and closing sweep reach (20 + 24 per player, 140 for five), so one
+            // test ending never discards another's entities, such as a lingering cloud still handing out its poison.
+            level = test.getLevel(); center = new Vec3(70000 + ARENAS.getAndIncrement() * ARENA_SPACING + .5, 150, .5);
             var root = new ChunkPos((int) Math.floor(center.x) >> 4, (int) Math.floor(center.z) >> 4);
             for (int dx = -2; dx <= 6; dx++) for (int dz = -2; dz <= 2; dz++) {
                 var chunk = new ChunkPos(root.x() + dx, root.z() + dz);
