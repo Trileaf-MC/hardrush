@@ -318,6 +318,9 @@ public final class PersonalHuntGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.huntBars(f.a).equals(List.of("来自 HuntC 的追猎")) && f.huntBars(f.b).isEmpty(),
                         "proximity bar only for the selected target"))
+                // C steps into another dimension and strikes in the very tick it comes back: its native model follows at once.
+                .thenExecute(() -> f.move(f.c, 1))
+                .thenIdle(1)
                 .thenExecute(() -> {
                     f.dusk();
                     f.c.player.teleportTo(f.b.player.level(), f.b.player.getX()+1, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);

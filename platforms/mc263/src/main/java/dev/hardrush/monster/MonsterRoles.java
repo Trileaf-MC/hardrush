@@ -13,6 +13,7 @@ import dev.hardrush.hunt.HuntRetracks;
 import dev.hardrush.notice.ItemText;
 import dev.hardrush.notice.Notices;
 import java.util.*;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.player.*;
@@ -146,7 +147,12 @@ public final class MonsterRoles {
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((old, player, alive) -> {
             Role role = ROLES.get(player.getUUID());
-            if (role != null) bind(player, role, false);
+            if (role != null) ensureBound(player, role);
+        });
+        // Damage admission requires the model in its target's level: a strike in the tick of arrival must not miss.
+        ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, origin, destination) -> {
+            Role role = ROLES.get(player.getUUID());
+            if (role != null && player.isAlive()) ensureBound(player, role);
         });
     }
 
@@ -684,7 +690,7 @@ public final class MonsterRoles {
                 MonsterMining.clear(player);
                 MonsterCreeper.cancelInput(player); player.stopUsingItem(); continue;
             }
-            if (role.player != player || role.model == null || role.model.level() != player.level()) bind(player, role, false);
+            ensureBound(player, role);
             player.setSprinting(false);
             if (player.gameMode.getGameModeForPlayer() != GameType.ADVENTURE) {
                 MonsterMining.clear(player);
@@ -992,6 +998,10 @@ public final class MonsterRoles {
         return !(causing instanceof ServerPlayer player && isMonster(player));
     }
 
+    /** The native model lives in its body's level, bound to this very body; rebinding happens once per change. */
+    private static void ensureBound(ServerPlayer player, Role role) {
+        if (role.player != player || role.model == null || role.model.level() != player.level()) bind(player, role, false);
+    }
     private static void bind(ServerPlayer player, Role role, boolean heal) {
         MonsterMining.clear(player);
         float resumedHealth = role.player == null ? role.disconnectedHealth : Float.NaN;
