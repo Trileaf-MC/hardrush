@@ -15,6 +15,7 @@
     "TotemPickupMixin",
     "TotemHopperMixin",
     "TotemSaveMixin",
+    "TotemDeathProtectionInvoker",
     "TotemFallStartAccessor",
     "TotemVoidMixin",
     "FallenCompassDropMixin"

@@ -26,7 +26,9 @@ public final class RuleBookText {
         pages.add("HardRush\n\n人类击败末影龙即通关，对末影龙打出最后一击的人类是胜者。\n\n本轮模式：" + (hardcore ? "极限挑战" : "普通模式"));
         pages.add("开局与加入\n\n开局前走进集结区即准备，走出即取消。\n\n挑战开始后，在集结区站 4 秒可以空手中途加入，落在远离出生点的荒野。"
                 + (LateShelter.enabled(rules) ? "落地后 " + LateShelter.duration(rules) + "内怪物无法追猎你，离线不计时。" : ""));
-        pages.add("离线与救场\n\n人类离线时保留资格。所有人类都离线时等待 " + seconds(RoundEngine.reconnectMillis(rules))
+        pages.add("离线与救场\n\n人类离线时保留资格"
+                + (hardcore ? "，但被玩家打中后 " + dev.hardrush.core.round.CombatDeparture.windowSeconds() + " 秒内断线算作阵亡" : "")
+                + "。所有人类都离线时等待 " + seconds(RoundEngine.reconnectMillis(rules))
                 + " 秒，期间有人重连、复生或中途加入就继续，否则本轮结束。");
         pages.add("黄昏契约\n\n开局后到第一次日落前，玩家之间不能互相伤害。"
                 + (hardcore ? "\n\n日落后，人类被人类击杀时会掉落 1 个复生图腾。" : ""));

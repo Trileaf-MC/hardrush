@@ -39,6 +39,7 @@
       "dev.hardrush.gametest.TenRoundGameTest",
       "dev.hardrush.gametest.IdentityRespawnGameTest",
       "dev.hardrush.gametest.IdentityRuntimeGameTest",
+      "dev.hardrush.gametest.CombatDepartureGameTest",
       "dev.hardrush.gametest.ProtectionGameTest",
       "dev.hardrush.gametest.SafeDeploymentGameTest",
       "dev.hardrush.gametest.LobbyMenuGameTest",

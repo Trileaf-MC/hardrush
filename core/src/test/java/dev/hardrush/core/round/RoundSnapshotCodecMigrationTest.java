@@ -61,7 +61,7 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(3, active.lifeSequence());
         assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(17, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(18, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 
@@ -170,7 +170,7 @@ class RoundSnapshotCodecMigrationTest {
 
         var paid = withTotems(Map.of(), wallet.credit(40).unlockCreeper(40));
         byte[] encoded = RoundSnapshotCodec.encode(paid);
-        assertEquals(17, ByteBuffer.wrap(encoded).getInt(4));
+        assertEquals(18, ByteBuffer.wrap(encoded).getInt(4));
         var decoded = RoundSnapshotCodec.decode(encoded);
         assertEquals(paid, decoded);
         assertTrue(decoded.participants().get(VICTIM).wallet().creeperTicket());
@@ -257,9 +257,16 @@ class RoundSnapshotCodecMigrationTest {
                 900_000, 0, Map.of(VICTIM, hunter, KILLER, killer), false, false, null);
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
         assertEquals(snapshot, RoundSnapshotCodec.decode(bytes));
-        assertEquals(new Sortie(java.util.Optional.of(KILLER), 3), RoundSnapshotCodec.decode(bytes).participants().get(VICTIM).sortie());
+        assertEquals(new Sortie(java.util.Optional.of(KILLER), 3, true), RoundSnapshotCodec.decode(bytes).participants().get(VICTIM).sortie());
+        // Schema 17 wrote no landing flag: an outing out on its quarry then reads as landed.
+        int landingAt = bytes.length - ADMIN_TAIL - 1;
+        byte[] v17 = new byte[bytes.length - 1];
+        System.arraycopy(bytes, 0, v17, 0, landingAt);
+        System.arraycopy(bytes, landingAt + 1, v17, landingAt, bytes.length - landingAt - 1);
+        ByteBuffer.wrap(v17).putInt(4, 17);
+        assertEquals(new Sortie(java.util.Optional.of(KILLER), 3), RoundSnapshotCodec.decode(v17).participants().get(VICTIM).sortie());
         // Name the human as the hunter instead: a human is never out on a hunt.
-        int idAt = bytes.length - ADMIN_TAIL - (16 + 4 + 1 + 16);
+        int idAt = bytes.length - ADMIN_TAIL - (16 + 4 + 1 + 16 + 1);
         ByteBuffer.wrap(bytes).putLong(idAt, KILLER.getMostSignificantBits());
         ByteBuffer.wrap(bytes).putLong(idAt + 8, KILLER.getLeastSignificantBits());
         assertThrows(IllegalArgumentException.class, () -> RoundSnapshotCodec.decode(bytes));
@@ -323,7 +330,7 @@ class RoundSnapshotCodecMigrationTest {
         totems.put(unclaimed, new LooseTotem(VICTIM, 3, LooseTotem.Source.UNCLAIMED, java.util.Optional.empty(), 900_000));
         var snapshot = withTotems(totems);
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
-        assertEquals(17, ByteBuffer.wrap(bytes).getInt(4));
+        assertEquals(18, ByteBuffer.wrap(bytes).getInt(4));
         var decoded = RoundSnapshotCodec.decode(bytes);
         assertEquals(snapshot, decoded);
         assertEquals(List.of(low, high, unclaimed), List.copyOf(decoded.looseTotems().keySet()), "Encoded sorted by token");
@@ -350,7 +357,7 @@ class RoundSnapshotCodecMigrationTest {
         var migrated = RoundSnapshotCodec.decode(v9);
         assertTrue(migrated.looseTotems().isEmpty());
         assertEquals(withTotems(Map.of()), migrated);
-        assertEquals(17, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
+        assertEquals(18, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
         assertTrue(RoundSnapshotCodec.decode(schemaOneFixtureUnchecked()).looseTotems().isEmpty());
     }
 

@@ -79,6 +79,42 @@ class MonsterSessionTest {
         }
     }
 
+    @Test void aDisconnectRacingTheLandingCancelsButOneQueuedBehindTheLandingEndsTheSortie() throws Exception {
+        UUID human = UUID.randomUUID();
+        var quarry = new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 0, 0, 1, 0,
+                MonsterRole.ZOMBIE, MonsterDimension.OVERWORLD, 0, 0, Map.of(), MonsterWallet.EMPTY, 0, false, HumanThreat.NONE);
+        try (var session = open(seed(quarry))) {
+            session.onOnline(human, "Human", true);
+            pump(() -> !session.mutationPending());
+            request(reply -> session.requestMonsterRole(round, player, 3, 4, MonsterRole.ZOMBIE, reply));
+            // The hunt's write is still in flight when the monster drops: the disconnect queues behind it.
+            var committed = new AtomicReference<RoundSession.Reply>();
+            session.requestPersonalHunt(new dev.hardrush.core.hunt.PersonalHuntRequest(round, player, 3, 4,
+                    MonsterRole.ZOMBIE, human, 1), 4, committed::set);
+            assertTrue(session.mutationPending());
+            session.onOnline(player, "Monster", false);
+            pump(() -> committed.get() != null && !session.mutationPending()
+                    && session.snapshot().orElseThrow().participants().get(player).role() == ParticipantRole.MONSTER_LOBBY);
+            assertTrue(committed.get().success(), committed.get().message());
+            var cancelled = session.snapshot().orElseThrow().participants().get(player);
+            assertEquals(0, cancelled.monsterCooldownNanos(), "A sortie that never landed is cancelled, not ended");
+            assertEquals(5, cancelled.monsterDeploymentSequence());
+
+            session.onOnline(player, "Monster", true);
+            pump(() -> !session.mutationPending() && session.snapshot().orElseThrow().participants().get(player).online());
+            request(reply -> session.requestPersonalHunt(new dev.hardrush.core.hunt.PersonalHuntRequest(round, player, 3, 5,
+                    MonsterRole.ZOMBIE, human, 1), 5, reply));
+            assertTrue(session.snapshot().orElseThrow().participants().get(player).sortie().landing());
+            // Landed, then dropped in the same tick: the landing commits first, so the drop ends a used sortie.
+            session.monsterLanded(round, player, 3, 6);
+            session.onOnline(player, "Monster", false);
+            pump(() -> !session.mutationPending()
+                    && session.snapshot().orElseThrow().participants().get(player).role() == ParticipantRole.MONSTER_LOBBY);
+            assertEquals(45_000_000_000L, session.snapshot().orElseThrow().participants().get(player).monsterCooldownNanos());
+            assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
+        }
+    }
+
     @Test void bufferedDamagePaysCoinsThatBuyGoodsForTheNextSortie() throws Exception {
         UUID human = UUID.randomUUID();
         Path path = seed(new Participant(human, "Human", ParticipantRole.HUMAN_ACTIVE, false, false, 100, 50, 1, false));

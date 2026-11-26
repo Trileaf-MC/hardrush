@@ -98,7 +98,7 @@ class CreeperUnlockTest {
         assertTrue(hunter(engine).wallet().creeperTicket());
         hunt(engine, threeStars);
         assertEquals(ParticipantRole.MONSTER_DEPLOYED, hunter(engine).role());
-        assertEquals(Sortie.onto(threeStars, 3), hunter(engine).sortie());
+        assertEquals(Sortie.onto(threeStars, 3).landed(), hunter(engine).sortie());
         assertTrue(hunter(engine).wallet().creeperTicket());
     }
 
@@ -183,12 +183,24 @@ class CreeperUnlockTest {
     }
 
     @Test void deploymentCancelledBeforeArrivalKeepsTheTicket() {
-        var engine = deployed();
+        var engine = engine();
+        select(engine, MonsterRole.CREEPER);
+        commitHunt(engine, threeStars);
         accept(engine, engine.proposeMonsterDeployCancelled(UUID.randomUUID(), round, hunter, 1, 1));
         assertEquals(ParticipantRole.MONSTER_LOBBY, hunter(engine).role());
         assertTrue(hunter(engine).wallet().creeperTicket());
         hunt(engine, threeStars);
         assertEquals(10, hunter(engine).wallet().coins());
+    }
+
+    @Test void aDisconnectBeforeLandingKeepsTheTicketWithNoWait() {
+        var engine = engine();
+        select(engine, MonsterRole.CREEPER);
+        commitHunt(engine, threeStars);
+        accept(engine, engine.proposeOnline(UUID.randomUUID(), hunter, "Hunter", false));
+        assertEquals(ParticipantRole.MONSTER_LOBBY, hunter(engine).role());
+        assertTrue(hunter(engine).wallet().creeperTicket());
+        assertEquals(0, hunter(engine).monsterCooldownNanos());
     }
 
     @Test void revivalRecallSpendsADeployedCreepersTicket() {
@@ -238,7 +250,7 @@ class CreeperUnlockTest {
             assertEquals(0, hunter(engine).wallet().coins());
             assertFalse(hunter(engine).wallet().creeperTicket());
             hunt(engine, oneStar);
-            assertEquals(Sortie.onto(oneStar, 1), hunter(engine).sortie());
+            assertEquals(Sortie.onto(oneStar, 1).landed(), hunter(engine).sortie());
         }
     }
 
@@ -298,7 +310,14 @@ class CreeperUnlockTest {
         return assertThrows(Refusal.Exception.class, () -> hunt(engine, target)).refusal();
     }
 
+    /** Commits the hunt and lands it, as the platform does once the body reaches its drop point. */
     private void hunt(RoundEngine engine, UUID target) {
+        commitHunt(engine, target);
+        var player = hunter(engine);
+        accept(engine, engine.proposeMonsterLanded(UUID.randomUUID(), round, hunter, player.lifeSequence(), player.monsterDeploymentSequence()));
+    }
+
+    private void commitHunt(RoundEngine engine, UUID target) {
         var player = hunter(engine);
         int sortie = player.monsterDeploymentSequence();
         accept(engine, engine.proposePersonalHunt(UUID.randomUUID(),
