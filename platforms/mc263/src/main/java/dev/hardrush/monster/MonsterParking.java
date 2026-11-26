@@ -9,15 +9,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.core.Holder;
-import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * The body a deliberate return parks in the round record: lightning charge, health, the witch's paid effects
- * with their remaining time, the form the environment turned it into (drowned, stray) and the sortie's own bound
+ * The body a deliberate return parks in the round record: lightning charge, health, every timed effect
+ * with its remaining time, the form the environment turned it into (drowned, stray) and the sortie's own bound
  * items in their slots, a drowned's trident among them. Spent starting goods are never replenished. World items
  * are never parked; they settle where the monster left.
  */
@@ -25,12 +22,10 @@ public final class MonsterParking {
     /**
      * Slot {@code -1} is the cursor; it rejoins the inventory on resume. {@code tier} is the tier the sortie's own
      * goods were issued for, 0 for a body parked before tiers; resuming onto a weaker human takes back what exceeds it.
+     * {@code absorption} is what was left of the yellow hearts: a resumed absorption effect must not refill them.
      */
-    public record Body(MonsterRole role, MonsterForm form, boolean charged, float health, int selected,
+    public record Body(MonsterRole role, MonsterForm form, boolean charged, float health, float absorption, int selected,
                        Map<Integer, ItemStack> items, java.util.List<MobEffectInstance> effects, int tier) {}
-    /** The witch's effects; their remaining time pauses in the camp. */
-    private static final Map<String, Holder<MobEffect>> PAID_EFFECTS = Map.of("speed", MobEffects.SPEED,
-            "fire_resistance", MobEffects.FIRE_RESISTANCE, "regeneration", MobEffects.REGENERATION);
 
     private MonsterParking() {}
 
@@ -50,19 +45,20 @@ public final class MonsterParking {
             items.add(entry);
         }
         var effects = new JsonArray();
-        PAID_EFFECTS.forEach((name, effect) -> {
-            var active = player.getEffect(effect);
-            if (active == null || active.isInfiniteDuration()) return;
-            var entry = new JsonObject();
-            entry.addProperty("effect", name);
-            entry.addProperty("ticks", active.getDuration());
-            entry.addProperty("amplifier", active.getAmplifier());
-            effects.add(entry);
-        });
+        for (var active : player.getActiveEffects()) {
+            if (active.isInfiniteDuration()) continue;
+            MobEffectInstance.CODEC.encodeStart(registries.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), active)
+                    .result().ifPresent(encoded -> {
+                        var entry = new JsonObject();
+                        entry.add("instance", encoded);
+                        effects.add(entry);
+                    });
+        }
         var body = new JsonObject();
         body.addProperty("form", form.name());
         body.addProperty("charged", form == MonsterForm.CREEPER && MonsterCreeper.charged(player));
         body.addProperty("health", player.getHealth());
+        body.addProperty("absorption", player.getAbsorptionAmount());
         body.addProperty("selected", inventory.getSelectedSlot());
         body.addProperty("tier", MonsterRoundRuntime.sortieTier(player));
         body.add("items", items);
@@ -81,8 +77,9 @@ public final class MonsterParking {
             var effects = new java.util.ArrayList<MobEffectInstance>();
             if (body.has("effects")) for (var element : body.getAsJsonArray("effects")) {
                 var entry = element.getAsJsonObject();
-                var effect = PAID_EFFECTS.get(entry.get("effect").getAsString());
-                if (effect != null) effects.add(new MobEffectInstance(effect, entry.get("ticks").getAsInt(), entry.get("amplifier").getAsInt()));
+                if (!entry.has("instance")) continue;
+                MobEffectInstance.CODEC.parse(player.level().registryAccess().createSerializationContext(
+                        com.mojang.serialization.JsonOps.INSTANCE), entry.get("instance")).result().ifPresent(effects::add);
             }
             var items = new LinkedHashMap<Integer, ItemStack>();
             for (var element : body.getAsJsonArray("items")) {
@@ -91,7 +88,7 @@ public final class MonsterParking {
                 if (!stack.isEmpty()) items.put(entry.get("slot").getAsInt(), stack);
             }
             return Optional.of(new Body(role, form, body.get("charged").getAsBoolean(), body.get("health").getAsFloat(),
-                    body.get("selected").getAsInt(), items, java.util.List.copyOf(effects), body.has("tier") ? body.get("tier").getAsInt() : 0));
+                    body.has("absorption") ? body.get("absorption").getAsFloat() : 0, body.get("selected").getAsInt(), items, java.util.List.copyOf(effects), body.has("tier") ? body.get("tier").getAsInt() : 0));
         } catch (RuntimeException damaged) {
             return Optional.empty();
         }

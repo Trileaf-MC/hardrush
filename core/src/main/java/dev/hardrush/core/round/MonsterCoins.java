@@ -15,7 +15,9 @@ public final class MonsterCoins {
     public static final String ARROWS_PER_BUNDLE = "coin.arrowsPerBundle";
     public static final String SWIFTNESS_SECONDS = "coin.potion.swiftnessSeconds";
     public static final String FIRE_RESISTANCE_SECONDS = "coin.potion.fireResistanceSeconds";
-    public static final String REGENERATION_SECONDS = "coin.potion.regenerationSeconds";
+    public static final String ABSORPTION_SECONDS = "coin.potion.absorptionSeconds";
+    public static final String RESISTANCE_SECONDS = "coin.potion.resistanceSeconds";
+    public static final String POISON_SECONDS = "coin.potion.poisonSeconds";
     /** One trade slot holds one native emerald stack; a price above it spills into the second payment slot. */
     public static final int STACK_PRICE = 64;
 
@@ -61,6 +63,7 @@ public final class MonsterCoins {
      */
     public static boolean offered(RulesConfig rules, ShopOffer offer) {
         return rules.combatValues().containsKey(offer.priceKey()) && rules.combatValues().containsKey(offer.limitKey())
+                && (offer.potionBox().isEmpty() || PotionBox.configured(rules))
                 && (offer != ShopOffer.MONSTER_BOX || soulcatcher(rules));
     }
 

@@ -143,6 +143,8 @@ public final class MonsterRoles {
         ServerLivingEntityEvents.ALLOW_DAMAGE.register(MonsterRoles::allowDamage);
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
             if (entity instanceof ServerPlayer player && isMonster(player)) {
+                // What its potions leave behind happens where it fell, before the body is spent.
+                MonsterLegacy.died(player);
                 dropRoleEquipment(player, true);
                 stopActions(player);
                 MonsterCompanions.clearOwner(player);
@@ -272,6 +274,8 @@ public final class MonsterRoles {
         if (role.form == MonsterForm.DROWNED) seaTrident(player, false);
         if (body.charged()) MonsterCreeper.charge(player);
         for (var effect : body.effects()) player.addEffect(effect);
+        // A resumed absorption effect would natively refill its hearts; only what was left of them comes back.
+        player.setAbsorptionAmount(Math.min(player.getAbsorptionAmount(), body.absorption()));
         player.setHealth(Math.max(1, Math.min(role.health, player.getMaxHealth())));
         if (role.form.zombie()) {
             addEggs(player, role, true, kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG));
@@ -370,12 +374,8 @@ public final class MonsterRoles {
             if (count > 0) player.getInventory().add(MonsterItems.bind(player, net.minecraft.world.item.alchemy.PotionContents
                     .createItemStack(Items.TIPPED_ARROW, entry.getValue()).copyWithCount(count), "shop_arrow"));
         }
-        effect(player, kit, dev.hardrush.core.round.ShopOffer.SWIFTNESS, net.minecraft.world.effect.MobEffects.SPEED,
-                rules, dev.hardrush.core.round.MonsterCoins.SWIFTNESS_SECONDS);
-        effect(player, kit, dev.hardrush.core.round.ShopOffer.FIRE_RESISTANCE, net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE,
-                rules, dev.hardrush.core.round.MonsterCoins.FIRE_RESISTANCE_SECONDS);
-        effect(player, kit, dev.hardrush.core.round.ShopOffer.REGENERATION, net.minecraft.world.effect.MobEffects.REGENERATION,
-                rules, dev.hardrush.core.round.MonsterCoins.REGENERATION_SECONDS);
+        // Witch potions are drunk by the monster itself (docs/plan/女巫药水与药水盲盒.md).
+        MonsterPotions.give(player, kit, rules, form.role);
         if (form == MonsterForm.CREEPER && kit.carried(dev.hardrush.core.round.ShopOffer.CHARGED) > 0) MonsterCreeper.charge(player);
         if (form.zombie()) addBoxes(player, kit.carried(dev.hardrush.core.round.ShopOffer.MONSTER_BOX));
     }
@@ -389,13 +389,6 @@ public final class MonsterRoles {
             if (MonsterBox.isBox(player, stack)) { stack.grow(count); return; }
         }
         inventory.add(MonsterBox.stack(player, count));
-    }
-
-    private static void effect(ServerPlayer player, dev.hardrush.core.round.MonsterWallet kit, dev.hardrush.core.round.ShopOffer offer,
-                               net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect, RulesConfig rules, String seconds) {
-        if (kit.carried(offer) <= 0) return;
-        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(effect,
-                dev.hardrush.core.round.MonsterCoins.amount(rules, seconds) * 20));
     }
 
     public static void clear(ServerPlayer player) {
@@ -442,6 +435,16 @@ public final class MonsterRoles {
      */
     public static boolean intrinsic(MobEffectInstance effect) {
         return effect.is(MobEffects.NIGHT_VISION) && effect.isInfiniteDuration() && !effect.isVisible();
+    }
+    /**
+     * Night vision arriving on a body that already sees in the dark adds nothing, and the native merge would still copy
+     * its visibility onto the body's own, which then no longer reads as {@linkplain #intrinsic intrinsic}: a cloud
+     * would hand it out and leaving the body would keep it. So the body refuses it.
+     */
+    public static boolean refusesSight(ServerPlayer player, MobEffectInstance effect) {
+        if (!effect.is(MobEffects.NIGHT_VISION) || !isMonster(player)) return false;
+        var own = player.getEffect(MobEffects.NIGHT_VISION);
+        return own != null && intrinsic(own);
     }
 
     private static void restoreOriginal(ServerPlayer player, Role role) {
@@ -794,6 +797,7 @@ public final class MonsterRoles {
         if (MonsterItems.matches(player, item, HuntRetracks.PURPOSE)) return dev.hardrush.lobby.LobbyRuntime.useRetrack(player, item);
         if (!MonsterRoundRuntime.canAct(player)) return false;
         dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, channelBreak(player, hand, "使用物品"));
+        if (MonsterPotions.holds(player, hand)) return MonsterPotions.drink(player, hand);
         if (isEgg(player, item)) return MonsterCompanions.use(player, hand);
         if (MonsterBox.isBox(player, item)) return MonsterBox.use(player, hand);
         if (role.form == MonsterForm.CREEPER) return MonsterCreeper.use(player, hand);

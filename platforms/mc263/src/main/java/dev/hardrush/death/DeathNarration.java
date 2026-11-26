@@ -119,7 +119,8 @@ public final class DeathNarration {
 
     /**
      * The name {@code entity} goes by in a death message being built right now, or null for vanilla's own: a monster
-     * body is "化身{形态}的{玩家}", a bag creature "{主人}收编的{生物}", a companion "{主人}召唤的{生物}".
+     * body is "化身{形态}的{玩家}", a bag creature "{主人}收编的{生物}", a companion "{主人}召唤的{生物}", and what a monster's
+     * potions left behind "{主人}留下的史莱姆" or "{主人}身上钻出的蠹虫".
      */
     public static Component displayName(Entity entity) {
         var naming = NAMING.get();
@@ -133,6 +134,11 @@ public final class DeathNarration {
         // A bag creature that follows its releaser is a companion too; the bag is what it came from.
         var releaser = MonsterSoulcatcher.releaser(entity);
         if (releaser.isPresent()) return owned(server, releaser.get(), "收编的", entity);
+        // What a monster's potions left behind: the slimes of oozing, the silverfish of infested.
+        // Once its owner has moved on it is a plain creature again, and vanilla names it.
+        var left = dev.hardrush.monster.MonsterLegacy.standingOwner(entity);
+        var kind = dev.hardrush.monster.MonsterLegacy.kind(entity);
+        if (left != null && kind != null) return owned(server, left, kind.relation(), entity);
         var summoner = MonsterCompanions.owner(entity);
         return summoner == null ? null : owned(server, summoner, "召唤的", entity);
     }

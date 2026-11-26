@@ -378,7 +378,7 @@ class MonsterCoinsTest {
     }
 
     @Test void revisionSixRaisesEggAndSoulcatcherPricesStillOnTheOldDefaults() {
-        // Already on revision 5 (the key prices): only revision 6 may run, and it must still run.
+        // Already on revision 5 (the key prices): revision 5 must not replay, and revision 6 must still run.
         var values = new TreeMap<>(RULES.combatValues());
         values.put(RulesConfig.DEFAULTS_REVISION_KEY, 5.0);
         values.put("coin.price.adultEgg", 6.0);
@@ -393,7 +393,8 @@ class MonsterCoinsTest {
         assertEquals(5.0, next.combatValues().get("coin.price.trialKey"));
         assertEquals(25.0, next.combatValues().get("coin.price.monsterBox"));
         assertEquals(3.0, next.combatValues().get("coin.limit.monsterBox"));
-        assertEquals(6.0, next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+        // Revision 7 (the witch's potions) follows and leaves these prices alone.
+        assertEquals(7.0, next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
 
         // From revision 4 both steps run in order.
         values.put(RulesConfig.DEFAULTS_REVISION_KEY, 4.0);
@@ -401,7 +402,7 @@ class MonsterCoinsTest {
         var both = rules(values).forNewRound();
         assertEquals(3.0, both.combatValues().get("coin.price.trialKey"));
         assertEquals(8.0, both.combatValues().get("coin.price.adultEgg"));
-        assertEquals(6.0, both.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+        assertEquals(7.0, both.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
     }
 
     private static RulesConfig rules(Map<String, Double> values) {
