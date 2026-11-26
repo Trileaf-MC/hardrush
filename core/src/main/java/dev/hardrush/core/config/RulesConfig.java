@@ -69,6 +69,10 @@ public record RulesConfig(
             // Numeric equality must not create different leaderboard groups.
             copy.put(key, value == 0 ? 0.0 : value);
         });
+        for (var box : java.util.List.of("negative", "common", "rare", "epic")) {
+            Double min = copy.get("coin.potionBox." + box + "MinSeconds"), max = copy.get("coin.potionBox." + box + "MaxSeconds");
+            if (min != null && max != null && min > max) throw new IllegalArgumentException("盲盒最短时长不能大于最长时长: " + box);
+        }
         Double summonMin = copy.get("zombie.summonMinDistance");
         Double summonMax = copy.get("zombie.summonMaxDistance");
         if (summonMin != null && summonMax != null && summonMin > summonMax) {
@@ -161,14 +165,33 @@ public record RulesConfig(
             Map.entry("coin.headBounty.star4", 150.0), Map.entry("coin.headBounty.star5", 250.0),
             Map.entry("coin.damageCapPerHuman", 20.0),
             Map.entry("coin.arrowsPerBundle", 4.0),
+            // Witch potions and blind boxes (docs/plan/女巫药水与药水盲盒.md); the turtle master keeps its native 20 seconds.
             Map.entry("coin.potion.swiftnessSeconds", 180.0),
             Map.entry("coin.potion.fireResistanceSeconds", 180.0),
-            Map.entry("coin.potion.regenerationSeconds", 45.0),
+            Map.entry("coin.potion.absorptionSeconds", 120.0),
+            Map.entry("coin.potion.resistanceSeconds", 90.0),
+            Map.entry("coin.potion.poisonSeconds", 45.0),
+            Map.entry("coin.potionBox.negativePermille", 150.0),
+            Map.entry("coin.potionBox.negativeMinSeconds", 20.0), Map.entry("coin.potionBox.negativeMaxSeconds", 45.0),
+            Map.entry("coin.potionBox.commonLevelTwoPermille", 100.0),
+            Map.entry("coin.potionBox.commonMinSeconds", 45.0), Map.entry("coin.potionBox.commonMaxSeconds", 90.0),
+            Map.entry("coin.potionBox.rareLevelTwoPermille", 300.0),
+            Map.entry("coin.potionBox.rareMinSeconds", 60.0), Map.entry("coin.potionBox.rareMaxSeconds", 120.0),
+            Map.entry("coin.potionBox.epicLevelTwoPermille", 500.0),
+            Map.entry("coin.potionBox.epicMinSeconds", 90.0), Map.entry("coin.potionBox.epicMaxSeconds", 180.0),
             Map.entry("coin.price.adultEgg", 6.0), Map.entry("coin.limit.adultEgg", 3.0),
             Map.entry("coin.price.babyEgg", 16.0), Map.entry("coin.limit.babyEgg", 2.0),
             Map.entry("coin.price.swiftness", 10.0), Map.entry("coin.limit.swiftness", 1.0),
-            Map.entry("coin.price.fireResistance", 6.0), Map.entry("coin.limit.fireResistance", 1.0),
-            Map.entry("coin.price.regeneration", 8.0), Map.entry("coin.limit.regeneration", 1.0),
+            Map.entry("coin.price.fireResistance", 5.0), Map.entry("coin.limit.fireResistance", 1.0),
+            // Every bottle at the base price: the doubling ladder skips it (ShopOffer.flatPrice).
+            Map.entry("coin.price.instantHealth", 4.0), Map.entry("coin.limit.instantHealth", 2.0),
+            Map.entry("coin.price.absorption", 12.0), Map.entry("coin.limit.absorption", 1.0),
+            Map.entry("coin.price.resistance", 12.0), Map.entry("coin.limit.resistance", 1.0),
+            Map.entry("coin.price.turtleMaster", 12.0), Map.entry("coin.limit.turtleMaster", 1.0),
+            Map.entry("coin.price.poison", 8.0), Map.entry("coin.limit.poison", 1.0),
+            Map.entry("coin.price.commonPotionBox", 8.0), Map.entry("coin.limit.commonPotionBox", 3.0),
+            Map.entry("coin.price.rarePotionBox", 18.0), Map.entry("coin.limit.rarePotionBox", 2.0),
+            Map.entry("coin.price.epicPotionBox", 35.0), Map.entry("coin.limit.epicPotionBox", 1.0),
             Map.entry("coin.price.slownessArrows", 8.0), Map.entry("coin.limit.slownessArrows", 2.0),
             Map.entry("coin.price.poisonArrows", 10.0), Map.entry("coin.limit.poisonArrows", 2.0),
             Map.entry("coin.price.charged", 40.0), Map.entry("coin.limit.charged", 1.0),
@@ -212,7 +235,9 @@ public record RulesConfig(
     private static boolean retiredKey(String key) {
         return key.startsWith("coin.bounty.") || key.startsWith("coin.survival.") || key.equals("bounty.floor")
                 || key.startsWith("bounty.") && key.endsWith("Ratio") || key.equals("bounty.huntedPoints")
-                || key.equals("coin.killedByHuman") || key.equals("skeleton.burstCooldownMillis");
+                || key.equals("coin.killedByHuman") || key.equals("skeleton.burstCooldownMillis")
+                || key.equals("coin.price.regeneration") || key.equals("coin.limit.regeneration")
+                || key.equals("coin.potion.regenerationSeconds");
     }
 
     /** Worth runs from level 10 to 30, one level per damage point; a slain body sprays 10 experience per level and leaves a book from level 15. */
@@ -257,7 +282,9 @@ public record RulesConfig(
                     "coin.price.ominousKey", Map.entry(40.0, 12.0)),
             // Revision 4 (docs/plan/悬赏分档与追猎强度.md): kills score well below milestones; a tighter volley.
             Map.of("bounty.killPoints", Map.entry(3.0, 2.0),
-                    "skeleton.burstIntervalMillis", Map.entry(300.0, 200.0)));
+                    "skeleton.burstIntervalMillis", Map.entry(300.0, 200.0)),
+            // Revision 5 (docs/plan/女巫药水与药水盲盒.md): fire resistance becomes a cheap staple.
+            Map.of("coin.price.fireResistance", Map.entry(6.0, 5.0)));
     private static final int DEFAULTS_REVISION = 1 + RETUNED_DEFAULTS.size();
 
     private int defaultsRevision() {
@@ -458,6 +485,10 @@ public record RulesConfig(
                 && value > 1) throw new IllegalArgumentException("只交付一次的复生补给限购只能为 1: " + key);
         if (key.equals("coin.limit.longerBlessing") && value > LONGER_BLESSING_STEPS)
             throw new IllegalArgumentException("延长庇护的档数不能超过上限能容纳的 " + LONGER_BLESSING_STEPS + " 档: " + key);
+        if (key.startsWith("coin.potionBox.") && key.endsWith("Permille") && value > 1000)
+            throw new IllegalArgumentException("盲盒概率以千分比表示，不能超过 1000: " + key);
+        if (key.startsWith("coin.potionBox.") && key.endsWith("Seconds") && value > dev.hardrush.core.round.PotionBox.MAX_SECONDS)
+            throw new IllegalArgumentException("盲盒效果时长不能超过 " + dev.hardrush.core.round.PotionBox.MAX_SECONDS + " 秒: " + key);
         if (key.equals("zombie.summonMaxDistance") && value > 30_000_000) {
             throw new IllegalArgumentException("召唤距离超出有效世界范围");
         }

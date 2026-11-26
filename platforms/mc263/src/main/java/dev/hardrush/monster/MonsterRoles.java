@@ -357,20 +357,9 @@ public final class MonsterRoles {
             if (count > 0) player.getInventory().add(MonsterItems.bind(player, net.minecraft.world.item.alchemy.PotionContents
                     .createItemStack(Items.TIPPED_ARROW, entry.getValue()).copyWithCount(count), "shop_arrow"));
         }
-        effect(player, kit, dev.hardrush.core.round.ShopOffer.SWIFTNESS, net.minecraft.world.effect.MobEffects.SPEED,
-                rules, dev.hardrush.core.round.MonsterCoins.SWIFTNESS_SECONDS);
-        effect(player, kit, dev.hardrush.core.round.ShopOffer.FIRE_RESISTANCE, net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE,
-                rules, dev.hardrush.core.round.MonsterCoins.FIRE_RESISTANCE_SECONDS);
-        effect(player, kit, dev.hardrush.core.round.ShopOffer.REGENERATION, net.minecraft.world.effect.MobEffects.REGENERATION,
-                rules, dev.hardrush.core.round.MonsterCoins.REGENERATION_SECONDS);
+        // Witch potions are drunk by the monster itself (docs/plan/女巫药水与药水盲盒.md).
+        MonsterPotions.give(player, kit, rules, form.role);
         if (form == MonsterForm.CREEPER && kit.carried(dev.hardrush.core.round.ShopOffer.CHARGED) > 0) MonsterCreeper.charge(player);
-    }
-
-    private static void effect(ServerPlayer player, dev.hardrush.core.round.MonsterWallet kit, dev.hardrush.core.round.ShopOffer offer,
-                               net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect, RulesConfig rules, String seconds) {
-        if (kit.carried(offer) <= 0) return;
-        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(effect,
-                dev.hardrush.core.round.MonsterCoins.amount(rules, seconds) * 20));
     }
 
     public static void clear(ServerPlayer player) {
@@ -737,6 +726,7 @@ public final class MonsterRoles {
         if (MonsterItems.matches(player, item, HuntRetracks.PURPOSE)) return dev.hardrush.lobby.LobbyRuntime.useRetrack(player, item);
         if (!MonsterRoundRuntime.canAct(player)) return false;
         dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, channelBreak(player, hand, "使用物品"));
+        if (MonsterPotions.holds(player, hand)) return MonsterPotions.drink(player, hand);
         if (isEgg(player, item)) return MonsterCompanions.use(player, hand);
         if (role.form == MonsterForm.CREEPER) return MonsterCreeper.use(player, hand);
         if (role.form.skeleton() && item.is(Items.BOW)) {

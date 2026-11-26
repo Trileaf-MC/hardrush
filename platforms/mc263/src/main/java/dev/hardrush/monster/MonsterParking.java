@@ -16,8 +16,8 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * The body a deliberate return parks in the round record: lightning charge, health, the witch's paid effects
- * with their remaining time, and the sortie's own bound items in their slots. Only what coins bought or the
+ * The body a deliberate return parks in the round record: lightning charge, health, every timed effect
+ * with its remaining time, and the sortie's own bound items in their slots. Only what coins bought or the
  * sortie started with carries over: the body always resumes in its base form (no drowned, no stray), the
  * sea trident stays behind, and spent starting goods are never replenished. World items are never parked;
  * they settle where the monster left.
@@ -29,8 +29,11 @@ public final class MonsterParking {
      */
     public record Body(MonsterRole role, MonsterForm form, boolean charged, float health, int selected,
                        Map<Integer, ItemStack> items, java.util.List<MobEffectInstance> effects, int tier) {}
-    /** The witch's effects; their remaining time pauses in the camp. */
-    private static final Map<String, Holder<MobEffect>> PAID_EFFECTS = Map.of("speed", MobEffects.SPEED,
+    /**
+     * Names bodies parked before every timed effect was kept; those bodies only ever held the witch's three old effects.
+     * Every timed effect now pauses in the camp, the bad with the good, so a return never washes one away.
+     */
+    private static final Map<String, Holder<MobEffect>> LEGACY_EFFECTS = Map.of("speed", MobEffects.SPEED,
             "fire_resistance", MobEffects.FIRE_RESISTANCE, "regeneration", MobEffects.REGENERATION);
 
     private MonsterParking() {}
@@ -52,15 +55,15 @@ public final class MonsterParking {
             items.add(entry);
         }
         var effects = new JsonArray();
-        PAID_EFFECTS.forEach((name, effect) -> {
-            var active = player.getEffect(effect);
-            if (active == null || active.isInfiniteDuration()) return;
-            var entry = new JsonObject();
-            entry.addProperty("effect", name);
-            entry.addProperty("ticks", active.getDuration());
-            entry.addProperty("amplifier", active.getAmplifier());
-            effects.add(entry);
-        });
+        for (var active : player.getActiveEffects()) {
+            if (active.isInfiniteDuration()) continue;
+            MobEffectInstance.CODEC.encodeStart(registries.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), active)
+                    .result().ifPresent(encoded -> {
+                        var entry = new JsonObject();
+                        entry.add("instance", encoded);
+                        effects.add(entry);
+                    });
+        }
         var body = new JsonObject();
         body.addProperty("form", base(form).name());
         body.addProperty("charged", form == MonsterForm.CREEPER && MonsterCreeper.charged(player));
@@ -83,7 +86,12 @@ public final class MonsterParking {
             var effects = new java.util.ArrayList<MobEffectInstance>();
             if (body.has("effects")) for (var element : body.getAsJsonArray("effects")) {
                 var entry = element.getAsJsonObject();
-                var effect = PAID_EFFECTS.get(entry.get("effect").getAsString());
+                if (entry.has("instance")) {
+                    MobEffectInstance.CODEC.parse(player.level().registryAccess().createSerializationContext(
+                            com.mojang.serialization.JsonOps.INSTANCE), entry.get("instance")).result().ifPresent(effects::add);
+                    continue;
+                }
+                var effect = LEGACY_EFFECTS.get(entry.get("effect").getAsString());
                 if (effect != null) effects.add(new MobEffectInstance(effect, entry.get("ticks").getAsInt(), entry.get("amplifier").getAsInt()));
             }
             var items = new LinkedHashMap<Integer, ItemStack>();

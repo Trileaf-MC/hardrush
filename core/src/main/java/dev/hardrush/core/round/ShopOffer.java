@@ -10,10 +10,19 @@ import java.util.Set;
 public enum ShopOffer {
     ADULT_EGG("adultEgg", "成年僵尸刷怪蛋", Kind.CARRIED, MonsterRole.ZOMBIE),
     BABY_EGG("babyEgg", "幼年僵尸刷怪蛋", Kind.CARRIED, MonsterRole.ZOMBIE),
+    // Witch potions (docs/plan/女巫药水与药水盲盒.md) ride the sortie as bound bottles the monster drinks itself.
     SWIFTNESS("swiftness", "迅捷药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     FIRE_RESISTANCE("fireResistance", "抗火药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
-    // Native undead ignore regeneration, so the witch only brews it for creepers.
-    REGENERATION("regeneration", "再生药水", Kind.CARRIED, MonsterRole.CREEPER),
+    // Native undead heal from harming, so the undead get a potion of harming and the creeper one of healing.
+    INSTANT_HEALTH("instantHealth", "伤害／治疗药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    ABSORPTION("absorption", "伤害吸收药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    RESISTANCE("resistance", "抗性提升药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    TURTLE_MASTER("turtleMaster", "神龟药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    // The creeper is poisoned too, and its explosion turns the poison into a lingering cloud.
+    POISON("poison", "剧毒药水", Kind.CARRIED, MonsterRole.CREEPER),
+    COMMON_POTION_BOX("commonPotionBox", "普通药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    RARE_POTION_BOX("rarePotionBox", "稀有药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    EPIC_POTION_BOX("epicPotionBox", "史诗药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     SLOWNESS_ARROWS("slownessArrows", "缓慢药箭", Kind.CARRIED, MonsterRole.SKELETON),
     POISON_ARROWS("poisonArrows", "剧毒药箭", Kind.CARRIED, MonsterRole.SKELETON),
     CHARGED("charged", "带电出击", Kind.CARRIED, MonsterRole.CREEPER),
@@ -66,8 +75,22 @@ public enum ShopOffer {
     public boolean keptUntilUsed() { return this == CHARGED; }
     /** Whether a sortie as {@code role} carries it; revival supplies never ride a sortie. */
     public boolean sellableTo(MonsterRole role) { return !revival() && roles.contains(role); }
+    /** Every bottle costs the base price: the doubling ladder skips it. */
+    public boolean flatPrice() { return this == INSTANT_HEALTH; }
+    /** The blind box this offer is, or empty for every other offer. */
+    public java.util.Optional<PotionBox> potionBox() {
+        return switch (this) {
+            case COMMON_POTION_BOX -> java.util.Optional.of(PotionBox.COMMON);
+            case RARE_POTION_BOX -> java.util.Optional.of(PotionBox.RARE);
+            case EPIC_POTION_BOX -> java.util.Optional.of(PotionBox.EPIC);
+            default -> java.util.Optional.empty();
+        };
+    }
     public String priceKey() { return "coin.price." + id; }
     public String limitKey() { return "coin.limit." + id; }
+
+    /** Offers taken off the shelf; a stored count of one is dropped when an older round is read. */
+    public static boolean retired(String id) { return id.equals("regeneration"); }
 
     public static ShopOffer fromId(String id) {
         for (var offer : values()) if (offer.id.equals(id)) return offer;

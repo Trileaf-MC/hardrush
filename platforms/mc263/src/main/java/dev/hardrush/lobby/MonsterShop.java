@@ -48,17 +48,41 @@ public final class MonsterShop {
 
     public static boolean isShop(ServerPlayer player) { return player.containerMenu instanceof ShopMenu; }
 
-    /** What the witch sells, also used for the camp projection of paid goods. */
-    public static ItemStack goods(ShopOffer offer, dev.hardrush.core.config.RulesConfig rules) { return goods(offer, rules, 0); }
+    /**
+     * What the witch sells, also used for the camp projection of paid goods. {@code role} picks between the undead's
+     * potion of harming and the creeper's potion of healing.
+     */
+    public static ItemStack goods(ShopOffer offer, dev.hardrush.core.config.RulesConfig rules, MonsterRole role) {
+        return goods(offer, rules, role, 0);
+    }
+
+    /** A witch potion as a sortie carries it: the shop's name, and the drinking line ahead of the witch's notes. */
+    public static ItemStack sortiePotion(ShopOffer offer, dev.hardrush.core.config.RulesConfig rules, MonsterRole role) {
+        var stack = dev.hardrush.monster.MonsterPotions.bottle(offer, rules, role);
+        stack.set(DataComponents.CUSTOM_NAME, name(offer, role));
+        var lines = new ArrayList<String>();
+        lines.add("按住右键喝下");
+        lines.addAll(dev.hardrush.monster.MonsterPotions.notes(offer));
+        return dev.hardrush.notice.ItemText.lore(stack, lines);
+    }
+
+    private static Component name(ShopOffer offer, MonsterRole role) {
+        var color = offer.potionBox().map(box -> switch (box) {
+            case COMMON -> ChatFormatting.WHITE; case RARE -> ChatFormatting.AQUA; case EPIC -> ChatFormatting.LIGHT_PURPLE;
+        }).orElse(offer.key() ? ChatFormatting.AQUA : offer.permanent() ? ChatFormatting.LIGHT_PURPLE
+                : offer.revival() ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
+        return Component.literal(dev.hardrush.monster.MonsterPotions.potion(offer)
+                ? dev.hardrush.monster.MonsterPotions.title(offer, role) : offer.title())
+                .withStyle(Style.EMPTY.withItalic(false).withColor(color));
+    }
 
     /** {@code owned} names the next soulcatcher step; other goods ignore it. */
-    private static ItemStack goods(ShopOffer offer, dev.hardrush.core.config.RulesConfig rules, int owned) {
+    private static ItemStack goods(ShopOffer offer, dev.hardrush.core.config.RulesConfig rules, MonsterRole role, int owned) {
         int arrows = MonsterCoins.amount(rules, MonsterCoins.ARROWS_PER_BUNDLE);
         var stack = switch (offer) {
             case ADULT_EGG, BABY_EGG -> new ItemStack(Items.ZOMBIE_SPAWN_EGG);
-            case SWIFTNESS -> PotionContents.createItemStack(Items.POTION, Potions.SWIFTNESS);
-            case FIRE_RESISTANCE -> PotionContents.createItemStack(Items.POTION, Potions.FIRE_RESISTANCE);
-            case REGENERATION -> PotionContents.createItemStack(Items.POTION, Potions.REGENERATION);
+            case SWIFTNESS, FIRE_RESISTANCE, INSTANT_HEALTH, ABSORPTION, RESISTANCE, TURTLE_MASTER, POISON,
+                 COMMON_POTION_BOX, RARE_POTION_BOX, EPIC_POTION_BOX -> dev.hardrush.monster.MonsterPotions.bottle(offer, rules, role);
             case SLOWNESS_ARROWS -> PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.SLOWNESS).copyWithCount(arrows);
             case POISON_ARROWS -> PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.POISON).copyWithCount(arrows);
             case CHARGED -> new ItemStack(Items.CREEPER_HEAD);
@@ -75,11 +99,11 @@ public final class MonsterShop {
             case BELL -> new ItemStack(Items.BELL);
             case BREAD -> new ItemStack(Items.BREAD, 8);
         };
-        stack.set(DataComponents.CUSTOM_NAME, Component.literal(offer.title())
-                .withStyle(Style.EMPTY.withItalic(false).withColor(offer.key() ? ChatFormatting.AQUA
-                        : offer.permanent() ? ChatFormatting.LIGHT_PURPLE : offer.revival() ? ChatFormatting.GREEN : ChatFormatting.YELLOW)));
+        stack.set(DataComponents.CUSTOM_NAME, name(offer, role));
         var lore = new ArrayList<Component>();
         lore.add(Component.literal(description(offer, owned)).withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GRAY)));
+        for (var note : dev.hardrush.monster.MonsterPotions.notes(offer))
+            lore.add(Component.literal(note).withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.GRAY)));
         if (offer.permanent()) lore.add(Component.literal("本轮以僵尸出击时一直有效 · 复生后清空")
                 .withStyle(Style.EMPTY.withItalic(false).withColor(ChatFormatting.DARK_GRAY)));
         if (offer.revival()) lore.add(Component.literal("复生后可用")
@@ -99,9 +123,8 @@ public final class MonsterShop {
         return switch (offer) {
             case ADULT_EGG -> "下次出击多带 1 枚成年僵尸刷怪蛋";
             case BABY_EGG -> "下次出击多带 1 枚幼年僵尸刷怪蛋";
-            case SWIFTNESS -> "出击时获得迅捷（3:00）";
-            case FIRE_RESISTANCE -> "出击时获得抗火（3:00）";
-            case REGENERATION -> "出击时获得再生（0:45）· 爆炸后化作药水云";
+            case SWIFTNESS, FIRE_RESISTANCE, INSTANT_HEALTH, ABSORPTION, RESISTANCE, TURTLE_MASTER, POISON,
+                 COMMON_POTION_BOX, RARE_POTION_BOX, EPIC_POTION_BOX -> "下次出击时带上，自己喝";
             case SLOWNESS_ARROWS -> "下次出击时带上，射一箭消耗一支";
             case POISON_ARROWS -> "下次出击时带上，射一箭消耗一支";
             case CHARGED -> "下次出击成为闪电苦力怕，爆炸威力翻倍";
@@ -227,7 +250,7 @@ public final class MonsterShop {
                 int bought = buyer.wallet().bought(offer), limit = MonsterCoins.limit(rules, offer);
                 int base = MonsterCoins.price(rules, offer, 0);
                 int price = MonsterCoins.price(rules, offer, Math.min(bought, limit - 1));
-                var goods = goods(offer, rules, Math.min(bought, limit - 1));
+                var goods = goods(offer, rules, role, Math.min(bought, limit - 1));
                 MerchantOffer trade;
                 if (price <= MonsterCoins.STACK_PRICE) {
                     trade = new MerchantOffer(coins(base), Optional.empty(), goods, Math.min(bought, limit), limit, 0, 0);
