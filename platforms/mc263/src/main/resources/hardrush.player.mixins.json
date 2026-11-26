@@ -12,6 +12,7 @@
     "PlayerIsolationEntityMixin",
     "PlayerIsolationNetworkMixin",
     "PlayerDisconnectMixin",
+    "ServerKickMixin",
     "ParticipationExitNetworkMixin",
     "PlayerAdvancementProfileAccessor",
     "PlayerAdvancementIsolationMixin",
