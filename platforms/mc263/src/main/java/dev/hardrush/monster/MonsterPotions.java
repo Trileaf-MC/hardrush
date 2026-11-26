@@ -182,12 +182,13 @@ public final class MonsterPotions {
     static Holder<MobEffect> effect(PotionBrew brew) {
         return switch (brew) {
             case SWIFTNESS -> MobEffects.SPEED; case LEAPING -> MobEffects.JUMP_BOOST; case FIRE_RESISTANCE -> MobEffects.FIRE_RESISTANCE;
-            case NIGHT_VISION -> MobEffects.NIGHT_VISION; case SLOW_FALLING -> MobEffects.SLOW_FALLING; case HASTE -> MobEffects.HASTE;
+            case SLOW_FALLING -> MobEffects.SLOW_FALLING; case DOLPHINS_GRACE -> MobEffects.DOLPHINS_GRACE;
+            case WATER_BREATHING -> MobEffects.WATER_BREATHING;
             case STRENGTH -> MobEffects.STRENGTH; case RESISTANCE -> MobEffects.RESISTANCE; case ABSORPTION -> MobEffects.ABSORPTION;
             case REGENERATION -> MobEffects.REGENERATION; case INVISIBILITY -> MobEffects.INVISIBILITY; case WEAVING -> MobEffects.WEAVING;
             case OOZING -> MobEffects.OOZING; case INFESTED -> MobEffects.INFESTED; case WIND_CHARGED -> MobEffects.WIND_CHARGED;
             case SLOWNESS -> MobEffects.SLOWNESS; case WEAKNESS -> MobEffects.WEAKNESS; case GLOWING -> MobEffects.GLOWING;
-            case NAUSEA -> MobEffects.NAUSEA; case MINING_FATIGUE -> MobEffects.MINING_FATIGUE;
+            case NAUSEA -> MobEffects.NAUSEA; case BLINDNESS -> MobEffects.BLINDNESS;
             case MENDING, WOUNDING, TURTLE_MASTER -> throw new IllegalArgumentException("Not a single effect: " + brew);
         };
     }

@@ -4,17 +4,20 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * What a {@linkplain PotionBox blind box} can brew, by pool. Each form only draws what works on it natively:
- * the undead heal from harming and are hurt by healing, a creeper has no hands to dig or strike with, and only a
- * creeper benefits from regeneration.
+ * What a {@linkplain PotionBox blind box} can brew, by pool. Each form only draws what works on it: the undead heal
+ * from harming and are hurt by healing, breathe under water and ignore regeneration, and a creeper has no hands to
+ * strike with. Every monster already sees in the dark, and its digging runs on a fixed timer that haste and mining
+ * fatigue never touch, so none of those three is ever brewed.
  */
 public enum PotionBrew {
     SWIFTNESS(Grade.COMMON, "迅捷药水", "迅捷药水", true, Roles.ALL),
     LEAPING(Grade.COMMON, "跳跃药水", "跳跃药水", true, Roles.ALL),
     FIRE_RESISTANCE(Grade.COMMON, "抗火药水", "抗火药水", false, Roles.ALL),
-    NIGHT_VISION(Grade.COMMON, "夜视药水", "夜视药水", false, Roles.ALL),
     SLOW_FALLING(Grade.COMMON, "缓降药水", "缓降药水", false, Roles.ALL),
-    HASTE(Grade.COMMON, "急迫药水", "急迫药水", true, Roles.HANDED),
+    /** Swims as fast as a dolphin: the chase after a human escaping across water. */
+    DOLPHINS_GRACE(Grade.COMMON, "海豚的恩惠药水", "海豚的恩惠药水", false, Roles.ALL),
+    /** The undead never drown; a creeper does. */
+    WATER_BREATHING(Grade.COMMON, "水肺药水", "水肺药水", false, Roles.CREEPER),
 
     STRENGTH(Grade.RARE, "力量药水", "力量药水", true, Roles.HANDED),
     RESISTANCE(Grade.RARE, "抗性提升药水", "抗性提升药水", true, Roles.ALL),
@@ -34,7 +37,7 @@ public enum PotionBrew {
     WEAKNESS(Grade.NEGATIVE, "虚弱药水", "虚弱药水", false, Roles.ALL),
     GLOWING(Grade.NEGATIVE, "发光药水", "发光药水", false, Roles.ALL),
     NAUSEA(Grade.NEGATIVE, "反胃药水", "反胃药水", false, Roles.ALL),
-    MINING_FATIGUE(Grade.NEGATIVE, "挖掘疲劳药水", "挖掘疲劳药水", false, Roles.HANDED),
+    BLINDNESS(Grade.NEGATIVE, "失明药水", "失明药水", false, Roles.HANDED),
     /** Hurts whoever drinks it, and may kill: healing for the undead, harming for a creeper. */
     WOUNDING(Grade.NEGATIVE, "治疗药水", "伤害药水", false, Roles.ALL);
 

@@ -108,6 +108,24 @@ public final class MonsterPotionsGameTest {
                 .thenSucceed();
     }
 
+    /** A body that already sees in the dark refuses more night vision, so its own keeps reading as its own (#95). */
+    @GameTest(maxTicks = 200)
+    public void aMonsterRefusesNightVisionOnTopOfItsOwn(GameTestHelper test) {
+        var zombie = MonsterRoleGameTest.actor(test);
+        Runnable cleanup = () -> MonsterRoleGameTest.remove(zombie);
+        test.startSequence()
+                .thenIdle(80)
+                .thenExecute(guarded(cleanup, () -> {
+                    MonsterRoles.select(zombie, "zombie");
+                    test.assertTrue(MonsterRoles.intrinsic(zombie.getEffect(MobEffects.NIGHT_VISION)), "The body sees in the dark");
+                    test.assertFalse(zombie.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 1200)), "More night vision adds nothing");
+                    test.assertTrue(MonsterRoles.intrinsic(zombie.getEffect(MobEffects.NIGHT_VISION)),
+                            "The body's own night vision still reads as its own, so no cloud copies it and leaving removes it");
+                    cleanup.run();
+                }))
+                .thenSucceed();
+    }
+
     private static Runnable guarded(Runnable cleanup, Runnable body) {
         return () -> {
             try { body.run(); } catch (RuntimeException | AssertionError failure) { cleanup.run(); throw failure; }

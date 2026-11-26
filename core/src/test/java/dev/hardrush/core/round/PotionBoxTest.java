@@ -55,8 +55,11 @@ class PotionBoxTest {
         assertTrue(PotionBrew.pool(PotionBrew.Grade.RARE, MonsterRole.SKELETON).contains(PotionBrew.STRENGTH));
         assertFalse(PotionBrew.pool(PotionBrew.Grade.RARE, MonsterRole.ZOMBIE).contains(PotionBrew.REGENERATION));
         assertTrue(PotionBrew.pool(PotionBrew.Grade.RARE, MonsterRole.CREEPER).contains(PotionBrew.REGENERATION));
-        assertFalse(PotionBrew.pool(PotionBrew.Grade.COMMON, MonsterRole.CREEPER).contains(PotionBrew.HASTE));
-        assertFalse(PotionBrew.pool(PotionBrew.Grade.NEGATIVE, MonsterRole.CREEPER).contains(PotionBrew.MINING_FATIGUE));
+        assertTrue(PotionBrew.pool(PotionBrew.Grade.COMMON, MonsterRole.CREEPER).contains(PotionBrew.WATER_BREATHING));
+        assertFalse(PotionBrew.pool(PotionBrew.Grade.COMMON, MonsterRole.ZOMBIE).contains(PotionBrew.WATER_BREATHING), "The undead never drown");
+        assertTrue(PotionBrew.pool(PotionBrew.Grade.COMMON, MonsterRole.SKELETON).contains(PotionBrew.DOLPHINS_GRACE));
+        assertFalse(PotionBrew.pool(PotionBrew.Grade.NEGATIVE, MonsterRole.CREEPER).contains(PotionBrew.BLINDNESS));
+        assertTrue(PotionBrew.pool(PotionBrew.Grade.NEGATIVE, MonsterRole.ZOMBIE).contains(PotionBrew.BLINDNESS));
         assertEquals("伤害药水", PotionBrew.MENDING.potionName(MonsterRole.ZOMBIE));
         assertEquals("治疗药水", PotionBrew.MENDING.potionName(MonsterRole.CREEPER));
         assertEquals("治疗药水", PotionBrew.WOUNDING.potionName(MonsterRole.SKELETON));

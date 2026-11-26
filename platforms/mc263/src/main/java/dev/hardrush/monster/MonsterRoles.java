@@ -419,6 +419,16 @@ public final class MonsterRoles {
     public static boolean intrinsic(MobEffectInstance effect) {
         return effect.is(MobEffects.NIGHT_VISION) && effect.isInfiniteDuration() && !effect.isVisible();
     }
+    /**
+     * Night vision arriving on a body that already sees in the dark adds nothing, and the native merge would still copy
+     * its visibility onto the body's own, which then no longer reads as {@linkplain #intrinsic intrinsic}: a cloud
+     * would hand it out and leaving the body would keep it. So the body refuses it.
+     */
+    public static boolean refusesSight(ServerPlayer player, MobEffectInstance effect) {
+        if (!effect.is(MobEffects.NIGHT_VISION) || !isMonster(player)) return false;
+        var own = player.getEffect(MobEffects.NIGHT_VISION);
+        return own != null && intrinsic(own);
+    }
 
     private static void restoreOriginal(ServerPlayer player, Role role) {
         player.stopUsingItem();
