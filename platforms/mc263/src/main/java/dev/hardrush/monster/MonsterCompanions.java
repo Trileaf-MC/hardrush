@@ -311,7 +311,7 @@ public final class MonsterCompanions {
      */
     public static void configure(Mob mob) {
         if (owner(mob) == null || isDismissing(mob)) return;
-        if (!(mob instanceof Zombie) && !(mob instanceof Vex) && !MonsterSoulcatcher.companionType(mob.getType())) return;
+        if (!(mob instanceof Zombie) && !(mob instanceof Vex) && !MonsterSoulcatcher.follows(mob.getType())) return;
         var access = (MonsterMobAccessor) mob;
         access.hardrush$goalSelector().removeAllGoals(goal -> goal instanceof CompanionFollowGoal);
         access.hardrush$targetSelector().removeAllGoals(goal -> goal instanceof CompanionCommandGoal);

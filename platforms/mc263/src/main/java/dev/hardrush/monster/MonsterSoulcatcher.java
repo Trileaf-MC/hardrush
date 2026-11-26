@@ -51,6 +51,11 @@ import net.minecraft.world.phys.BlockHitResult;
  * A zombie's soulcatcher: a native bundle that folds a creature into its native spawn egg and lets it
  * out again. The bundle's own weight is the capacity, since each egg stacks only up to it. Eggs never
  * leave the bag; it releases the selected one directly, like the egg itself would.
+ *
+ * <p>The bag never decides who is a companion (docs/plan/拘魂袋.md, 2026-11-26): only the role's own and bought eggs,
+ * monster boxes included, make companions, and one of the owner's companions comes out of the bag as one again.
+ * Every other creature comes out ordinary and native, carrying only the owner's mark: its kills and its damage
+ * credit the owner.
  */
 public final class MonsterSoulcatcher {
     public static final String PURPOSE = "soulcatcher";
@@ -59,17 +64,17 @@ public final class MonsterSoulcatcher {
     private static final String[] TIER_NAMES = {"普通", "罕见", "稀有", "史诗"};
     private static final DyeColor[] BAGS = {DyeColor.WHITE, DyeColor.YELLOW, DyeColor.CYAN, DyeColor.PURPLE};
     private static final Rarity[] RARITIES = {Rarity.COMMON, Rarity.UNCOMMON, Rarity.RARE, Rarity.EPIC};
-    /** Goal-driven hostiles that follow and fight for their owner, by the tier that first catches them. */
-    private static final List<Set<String>> COMPANIONS = List.of(
+    /** Goal-driven hostiles that, as someone's companion, follow and fight for them; by the tier that first catches them. */
+    private static final List<Set<String>> FOLLOWERS = List.of(
             Set.of("zombie", "husk", "drowned", "zombie_villager"),
             Set.of("skeleton", "stray", "bogged", "parched", "spider", "cave_spider", "silverfish", "endermite", "slime", "magma_cube"),
             Set.of("creeper", "witch", "pillager", "vindicator", "wither_skeleton", "blaze"),
             Set.of("evoker", "ravager"));
     /**
-     * Released as ordinary native creatures: fliers and hostiles that cannot walk after their owner,
+     * Even as a companion these keep their native ways: fliers and hostiles that cannot walk after their owner,
      * brain-driven species whose native AI ignores goals, bosses, and every neutral or passive mob.
      */
-    private static final List<Set<String>> ORDINARY = List.of(
+    private static final List<Set<String>> NATIVE_WAYS = List.of(
             Set.of(),
             Set.of("phantom"),
             Set.of("zombified_piglin", "enderman", "shulker", "guardian", "creaking", "piglin", "hoglin", "zoglin"),
@@ -91,16 +96,16 @@ public final class MonsterSoulcatcher {
 
     private MonsterSoulcatcher() {}
 
-    /** The catch rule of one species: the tier that first holds it and whether it fights for its owner. */
-    public record Catch(int tier, boolean companion) {}
+    /** The catch rule of one species: the tier that first holds it and whether, as a companion, it follows and fights. */
+    public record Catch(int tier, boolean follows) {}
 
     /** Empty for the ender dragon, the round's win condition, and anything that is not a mob. */
     public static Optional<Catch> rule(EntityType<?> type) {
         if (type == net.minecraft.world.entity.EntityTypes.ENDER_DRAGON) return Optional.empty();
         String id = EntityType.getKey(type).getPath();
         for (int tier = 0; tier < TIERS; tier++) {
-            if (COMPANIONS.get(tier).contains(id)) return Optional.of(new Catch(tier, true));
-            if (ORDINARY.get(tier).contains(id)) return Optional.of(new Catch(tier, false));
+            if (FOLLOWERS.get(tier).contains(id)) return Optional.of(new Catch(tier, true));
+            if (NATIVE_WAYS.get(tier).contains(id)) return Optional.of(new Catch(tier, false));
         }
         return Optional.empty();
     }
@@ -111,7 +116,8 @@ public final class MonsterSoulcatcher {
         return rule(mob.getType()).or(() -> Optional.of(new Catch(mob instanceof Enemy ? 3 : 2, false)));
     }
 
-    public static boolean companionType(EntityType<?> type) { return rule(type).map(Catch::companion).orElse(false); }
+    /** Whether a companion of this species follows its owner and takes orders, rather than keeping its native ways. */
+    public static boolean follows(EntityType<?> type) { return rule(type).map(Catch::follows).orElse(false); }
 
     public static boolean isBag(ItemStack stack) { return MonsterItems.purpose(stack).equals(PURPOSE); }
 
@@ -208,7 +214,8 @@ public final class MonsterSoulcatcher {
         var rule = rule(mob).orElse(null);
         if (rule == null) { dev.hardrush.notice.Notices.refuse(player, dev.hardrush.notice.Notices.key(mob.getName().getString()) + " 不能被收编"); return false; }
         int tier = tier(player);
-        if (rule.tier() > tier) {
+        // The owner's own companions (a monster box may let out a boss even from a common bag) always fit.
+        if (owner == null && rule.tier() > tier) {
             dev.hardrush.notice.Notices.refuse(player, "需要 " + dev.hardrush.notice.Notices.key(TIER_NAMES[rule.tier()]) + " 拘魂袋才能收编 " + dev.hardrush.notice.Notices.key(mob.getName().getString())); return false;
         }
         var item = SpawnEggItem.byId(mob.getType()).orElse(null);
@@ -232,10 +239,10 @@ public final class MonsterSoulcatcher {
         stack.set(DataComponents.ENTITY_DATA, TypedEntityData.of(mob.getType(), data));
         stack.set(DataComponents.CUSTOM_NAME, Component.literal("收编的" + mob.getName().getString())
                 .withStyle(Style.EMPTY.withItalic(false)));
-        boolean companion = rule(mob).map(Catch::companion).orElse(false);
+        boolean companion = player.getUUID().equals(MonsterCompanions.owner(mob));
         stack.set(DataComponents.LORE, new ItemLore(List.of(
                 line("生命值 " + Math.round(mob.getHealth()) + "/" + Math.round(mob.getMaxHealth()), ChatFormatting.GRAY),
-                line(companion ? "放出后成为随从：跟随并协助你攻击" : "放出后是普通生物，按原版行动", ChatFormatting.GRAY))));
+                line(companion ? "你的随从：放出后仍是你的随从" : "放出后是普通生物，按原版行动 · 击杀与伤害记在你名下", ChatFormatting.GRAY))));
         return stack;
     }
 
@@ -282,7 +289,8 @@ public final class MonsterSoulcatcher {
         }
         data.loadInto(mob);
         if (!MonsterCompanions.place(player, mob, landing)) { mob.discard(); dev.hardrush.notice.Notices.refuse(player, "这里放不下 " + dev.hardrush.notice.Notices.key(mob.getName().getString())); return false; }
-        if (rule(mob).map(Catch::companion).orElse(false)) MonsterCompanions.adopt(player, mob);
+        // Only the owner's own companion comes back as one; the bag itself never makes a companion.
+        if (player.getUUID().equals(MonsterCompanions.owner(mob))) MonsterCompanions.adopt(player, mob);
         else MonsterCompanions.release(mob);
         mob.setPersistenceRequired();
         markRelease(mob, CombatRuntime.originOf(mob).or(() -> MonsterCombatRuntime.formalOrigin(mob, player, AttackKind.SUMMON)));
