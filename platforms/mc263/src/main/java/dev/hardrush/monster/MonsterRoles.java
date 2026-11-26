@@ -89,6 +89,9 @@ public final class MonsterRoles {
             if (isEgg(owner, owner.getItemInHand(hand))) {
                 MonsterCompanions.useOn(owner, hand, hit); return InteractionResult.CONSUME;
             }
+            if (MonsterBox.isBox(owner, owner.getItemInHand(hand))) {
+                MonsterBox.useOn(owner, hand, hit); return InteractionResult.CONSUME;
+            }
             if (channelControl(owner, hand)) MonsterClicks.answer(owner, step);
             if (useControl(owner, hand)) return InteractionResult.CONSUME;
             // Beyond its own controls, a native monster opens no container and operates no block.
@@ -262,7 +265,7 @@ public final class MonsterRoles {
             for (var slot : EquipmentSlot.VALUES) if (!player.getItemBySlot(slot).isEmpty()) worn.add(slot);
             wearSpawnEquipment(player, role, role.form, tier, worn);
         }
-        if (role.form.zombie()) refreshSoulcatcher(player);
+        if (role.form.zombie()) { refreshSoulcatcher(player); MonsterBox.refresh(player); }
         if (body.selected() >= 0 && body.selected() < 9) inventory.setSelectedSlot(body.selected());
         // A drowned that parked without its trident (a full inventory at the conversion, or a trident worn out in melee)
         // takes it now: world items are never parked, so the resumed body nearly always has room.
@@ -374,6 +377,18 @@ public final class MonsterRoles {
         effect(player, kit, dev.hardrush.core.round.ShopOffer.REGENERATION, net.minecraft.world.effect.MobEffects.REGENERATION,
                 rules, dev.hardrush.core.round.MonsterCoins.REGENERATION_SECONDS);
         if (form == MonsterForm.CREEPER && kit.carried(dev.hardrush.core.round.ShopOffer.CHARGED) > 0) MonsterCreeper.charge(player);
+        if (form.zombie()) addBoxes(player, kit.carried(dev.hardrush.core.round.ShopOffer.MONSTER_BOX));
+    }
+
+    /** Monster boxes join a stack the sortie already carries, as bought eggs do. */
+    private static void addBoxes(ServerPlayer player, int count) {
+        if (count <= 0) return;
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            var stack = inventory.getItem(i);
+            if (MonsterBox.isBox(player, stack)) { stack.grow(count); return; }
+        }
+        inventory.add(MonsterBox.stack(player, count));
     }
 
     private static void effect(ServerPlayer player, dev.hardrush.core.round.MonsterWallet kit, dev.hardrush.core.round.ShopOffer offer,
@@ -780,6 +795,7 @@ public final class MonsterRoles {
         if (!MonsterRoundRuntime.canAct(player)) return false;
         dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, channelBreak(player, hand, "使用物品"));
         if (isEgg(player, item)) return MonsterCompanions.use(player, hand);
+        if (MonsterBox.isBox(player, item)) return MonsterBox.use(player, hand);
         if (role.form == MonsterForm.CREEPER) return MonsterCreeper.use(player, hand);
         if (role.form.skeleton() && item.is(Items.BOW)) {
             if (MonsterRoundRuntime.casting(player) || role.burstRemaining > 0 || role.chargeTick >= 0

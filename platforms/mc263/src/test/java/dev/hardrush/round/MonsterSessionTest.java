@@ -123,7 +123,7 @@ class MonsterSessionTest {
             pump(() -> !session.mutationPending());
             request(reply -> session.requestMonsterRole(round, player, 3, 4, MonsterRole.ZOMBIE, reply));
             var broke = new AtomicReference<RoundSession.Reply>();
-            session.requestShopPurchase(round, player, 3, 4, ShopOffer.ADULT_EGG, 6, broke::set);
+            session.requestShopPurchase(round, player, 3, 4, ShopOffer.FIRE_RESISTANCE, 6, broke::set);
             pump(() -> broke.get() != null);
             assertFalse(broke.get().success(), "No coins yet");
             request(reply -> session.requestMonsterDeploy(round, player, 3, 4, reply));
@@ -136,13 +136,13 @@ class MonsterSessionTest {
             pump(() -> !session.mutationPending());
             assertEquals(7, session.snapshot().orElseThrow().participants().get(player).wallet().coins());
             request(reply -> session.requestMonsterReturn(round, player, 3, 5, reply));
-            request(reply -> session.requestShopPurchase(round, player, 3, 5, ShopOffer.ADULT_EGG, 6, reply));
+            request(reply -> session.requestShopPurchase(round, player, 3, 5, ShopOffer.FIRE_RESISTANCE, 6, reply));
             assertEquals(RoundSession.State.OPEN, session.state(), session.problem());
         }
         try (var session = open(path)) {
             var wallet = session.snapshot().orElseThrow().participants().get(player).wallet();
             assertEquals(1, wallet.coins());
-            assertEquals(1, wallet.ordered(ShopOffer.ADULT_EGG));
+            assertEquals(1, wallet.ordered(ShopOffer.FIRE_RESISTANCE));
         }
     }
 

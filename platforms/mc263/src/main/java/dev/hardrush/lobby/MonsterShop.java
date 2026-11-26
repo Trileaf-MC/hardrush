@@ -56,6 +56,11 @@ public final class MonsterShop {
         int arrows = MonsterCoins.amount(rules, MonsterCoins.ARROWS_PER_BUNDLE);
         var stack = switch (offer) {
             case ADULT_EGG, BABY_EGG -> new ItemStack(Items.ZOMBIE_SPAWN_EGG);
+            case MONSTER_BOX -> {
+                var box = new ItemStack(Items.ZOMBIE_SPAWN_EGG);
+                box.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+                yield box;
+            }
             case SWIFTNESS -> PotionContents.createItemStack(Items.POTION, Potions.SWIFTNESS);
             case FIRE_RESISTANCE -> PotionContents.createItemStack(Items.POTION, Potions.FIRE_RESISTANCE);
             case REGENERATION -> PotionContents.createItemStack(Items.POTION, Potions.REGENERATION);
@@ -99,6 +104,7 @@ public final class MonsterShop {
         return switch (offer) {
             case ADULT_EGG -> "下次出击多带 1 枚成年僵尸刷怪蛋";
             case BABY_EGG -> "下次出击多带 1 枚幼年僵尸刷怪蛋";
+            case MONSTER_BOX -> "下次出击多带 1 个怪物盲盒 · 升级拘魂袋，它能开出更疯狂的东西";
             case SWIFTNESS -> "出击时获得迅捷（3:00）";
             case FIRE_RESISTANCE -> "出击时获得抗火（3:00）";
             case REGENERATION -> "出击时获得再生（0:45）· 爆炸后化作药水云";

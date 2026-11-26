@@ -28,6 +28,7 @@ public final class HeldItemHints {
             dev.hardrush.monster.MonsterBowDisplay::heldHint,
             dev.hardrush.monster.MonsterCompanions::heldHint,
             dev.hardrush.monster.MonsterSoulcatcher::heldHint,
+            dev.hardrush.monster.MonsterBox::heldHint,
             dev.hardrush.monster.MonsterRoles::heldHint,
             CampKit::heldHint,
             dev.hardrush.revival.RevivalTotems::heldHint,
