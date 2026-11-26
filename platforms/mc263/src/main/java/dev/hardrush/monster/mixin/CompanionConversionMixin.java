@@ -17,5 +17,6 @@ public abstract class CompanionConversionMixin {
     private void inheritConversion(ConversionType type, Mob source, Mob child, ConversionParams params, Operation<Void> original) {
         original.call(type, source, child, params);
         MonsterCompanions.inherit(MonsterCompanions.conversionSource(source), child);
+        dev.hardrush.monster.MonsterLegacy.inherit(source, child);
     }
 }

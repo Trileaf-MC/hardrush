@@ -138,6 +138,8 @@ public final class MonsterRoles {
         ServerLivingEntityEvents.ALLOW_DAMAGE.register(MonsterRoles::allowDamage);
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
             if (entity instanceof ServerPlayer player && isMonster(player)) {
+                // What its potions leave behind happens where it fell, before the body is spent.
+                MonsterLegacy.died(player);
                 dropRoleEquipment(player, true);
                 stopActions(player);
                 MonsterCompanions.clearOwner(player);

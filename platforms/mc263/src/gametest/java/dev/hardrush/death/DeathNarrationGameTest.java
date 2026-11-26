@@ -145,6 +145,79 @@ public final class DeathNarrationGameTest {
         });
     }
 
+    /** docs/plan/女巫药水与药水盲盒.md §5–6: what a monster's potions leave where it fell is its own doing, and named so. */
+    @GameTest(maxTicks = 200)
+    public void whatAMonstersPotionsLeaveBehindIsItsOwnDoing(GameTestHelper test) {
+        var f = new Fixture(test, MonsterRole.ZOMBIE, 3);
+        TestTeardown.atEnd(test, f::close);
+        test.runAfterDelay(80, () -> {
+            try (var ignored = f.installCombat()) {
+                MonsterRoles.select(f.owner, "zombie");
+                var zombie = monster(EntityTypes.ZOMBIE, f.owner);
+                var thrown = f.players.get(1);
+                thrown.teleportTo(f.center.x + 2, f.center.y, f.center.z);
+                for (var effect : List.of(net.minecraft.world.effect.MobEffects.OOZING, net.minecraft.world.effect.MobEffects.WEAVING,
+                        net.minecraft.world.effect.MobEffects.WIND_CHARGED))
+                    f.owner.addEffect(new net.minecraft.world.effect.MobEffectInstance(effect, 600));
+                f.owner.hurtServer(f.level, f.level.damageSources().playerAttack(f.players.get(2)), 1000);
+                test.assertFalse(f.owner.isAlive(), "The monster falls");
+                var slimes = f.level.getEntitiesOfClass(net.minecraft.world.entity.monster.cubemob.Slime.class,
+                        f.owner.getBoundingBox().inflate(4));
+                test.assertValueEqual(slimes.size(), 2, "Oozing leaves its two native slimes");
+                test.assertTrue(slimes.stream().allMatch(slime -> f.owner.getUUID().equals(dev.hardrush.monster.MonsterLegacy.owner(slime))),
+                        "The slimes act for the monster that left them");
+                boolean webs = false;
+                for (var pos : BlockPos.betweenClosed(BlockPos.containing(f.center).offset(-2, -1, -2), BlockPos.containing(f.center).offset(2, 2, 2)))
+                    webs |= f.level.getBlockState(pos).is(Blocks.COBWEB);
+                test.assertTrue(webs, "Weaving leaves its cobwebs where the monster fell");
+                test.assertFalse(f.owner.hasEffect(net.minecraft.world.effect.MobEffects.OOZING), "Death effects happen once");
+
+                thrown.fallDistance = 20;
+                thrown.hurtServer(f.level, f.level.damageSources().fall(), 1000);
+                var message = f.death(1);
+                test.assertValueEqual(key(message), "death.fell.assist", "A fall after the gust keeps vanilla's assisted wording");
+                test.assertValueEqual(arg(message, 1).getString(), zombie, "The gust is the monster's push");
+
+                var slain = f.players.get(2);
+                slain.hurtServer(f.level, f.level.damageSources().mobAttack(slimes.getFirst()), 1000);
+                message = f.death(2);
+                test.assertValueEqual(key(message), "death.attack.mob", "The vanilla mob sentence is kept");
+                test.assertValueEqual(arg(message, 1).getString(), f.owner.getName().getString() + "留下的"
+                        + EntityTypes.SLIME.getDescription().getString(), "A slime of oozing is named after its monster");
+            }
+            test.succeed();
+        });
+    }
+
+    /** A poisoned creeper's blast leaves the poison in its cloud; every later tick of it is the creeper's, and it is told. */
+    @GameTest(maxTicks = 300)
+    public void aCreepersPoisonCloudKeepsHurtingOnItsBehalf(GameTestHelper test) {
+        var f = new Fixture(test, MonsterRole.CREEPER, 2);
+        TestTeardown.atEnd(test, f::close);
+        var combat = new MonsterCombatRuntime.Scope[1];
+        test.runAfterDelay(80, () -> {
+            combat[0] = f.installCombat();
+            MonsterRoles.select(f.owner, "creeper");
+            f.owner.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON, 900));
+            var victim = f.players.get(1);
+            victim.teleportTo(f.center.x, f.center.y, f.center.z + 1.5);
+            MonsterCreeper.use(f.owner, InteractionHand.MAIN_HAND);
+            for (int tick = 0; tick < 30 && f.owner.isAlive(); tick++) MonsterCreeper.tick(f.owner);
+            test.assertFalse(f.owner.isAlive(), "The creeper blew up");
+        });
+        test.runAfterDelay(160, () -> {
+            try {
+                var victim = f.players.get(1);
+                test.assertTrue(victim.hasEffect(net.minecraft.world.effect.MobEffects.POISON), "The cloud hands the creeper's poison on");
+                var told = f.clients.get(0).packets(net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket.class).stream()
+                        .map(packet -> packet.text().getString()).toList();
+                test.assertTrue(told.contains("你留下的药水云伤到了 " + victim.getName().getString()),
+                        "A poison tick of the cloud is the creeper's hit, and the creeper is told: " + told);
+            } finally { if (combat[0] != null) combat[0].close(); }
+            test.succeed();
+        });
+    }
+
     private static String monster(EntityType<?> type, ServerPlayer owner) {
         return "化身" + type.getDescription().getString() + "的" + owner.getName().getString();
     }

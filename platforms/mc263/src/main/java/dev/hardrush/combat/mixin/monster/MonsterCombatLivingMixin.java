@@ -21,6 +21,7 @@ public abstract class MonsterCombatLivingMixin {
     @Inject(method="addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z", at=@At("HEAD"), cancellable=true)
     private void effect(MobEffectInstance effect, Entity source, CallbackInfoReturnable<Boolean> ci) {
         if (MonsterCombatRuntime.rejectEffect(source, (Entity)(Object)this, effect)) ci.setReturnValue(false);
+        else dev.hardrush.combat.EffectOrigins.applied((net.minecraft.world.entity.LivingEntity)(Object)this, effect, MonsterCombatRuntime.acting());
     }
     @Inject(method="forceAddEffect", at=@At("HEAD"), cancellable=true)
     private void effect(MobEffectInstance effect, Entity source, CallbackInfo ci) {

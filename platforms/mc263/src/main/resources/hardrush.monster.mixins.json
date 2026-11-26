@@ -55,7 +55,8 @@
     "CompanionMobAccessor",
     "CompanionConversionMixin",
     "TrackingCompassNeedleMixin",
-    "MonsterBellMixin"
+    "MonsterBellMixin",
+    "MonsterInfestedMixin"
   ],
   "injectors": {
     "defaultRequire": 1

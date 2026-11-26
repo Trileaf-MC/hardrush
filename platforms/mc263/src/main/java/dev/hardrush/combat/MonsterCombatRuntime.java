@@ -85,6 +85,8 @@ public final class MonsterCombatRuntime {
             if (stack.isEmpty()) SOURCES.remove(); };
     }
     private static Entity current() { return SOURCES.get().peek(); }
+    /** The entity whose native action is running right now (a cloud handing out its effects), or null. */
+    public static Entity acting() { return current(); }
     private static boolean capturedHuman(Entity entity) {
         return CombatRuntime.originOf(entity).filter(origin -> origin.actor().identity().isActiveHuman()).isPresent();
     }

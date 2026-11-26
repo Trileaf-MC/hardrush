@@ -319,6 +319,7 @@ public final class MonsterCreeper {
         var origin = CombatRuntime.originOf(model)
                 .map(parent -> parent.child(UUID.randomUUID(), AttackKind.CREEPER, Optional.of(cloud.getUUID())));
         ((CombatOriginHolder)cloud).hardrush$sealCombatOrigin(origin);
+        MonsterLegacy.cloud(player, origin);
         player.level().addFreshEntity(cloud);
     }
 
