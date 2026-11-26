@@ -73,15 +73,16 @@ public final class MonsterSoulcatcherGameTest {
                 var floor = owner.blockPosition().east(2).below();
                 test.assertTrue(MonsterSoulcatcher.releaseOn(owner, InteractionHand.MAIN_HAND, hit(floor)), "The selected egg lands on the clicked face");
                 var released = owner.level().getEntitiesOfClass(Zombie.class, owner.getBoundingBox().inflate(8)).stream()
-                        .filter(mob -> owner.getUUID().equals(MonsterCompanions.owner(mob))).toList();
+                        .filter(mob -> mob.getType() == EntityTypes.HUSK).toList();
                 test.assertValueEqual(released.size(), 1, "One release creates one body");
                 var husk = released.getFirst();
-                test.assertTrue(husk.getType() == EntityTypes.HUSK && husk.getHealth() == 7
-                        && husk.getMainHandItem().is(Items.IRON_SWORD), "Health and equipment survive the bag");
+                test.assertTrue(husk.getHealth() == 7 && husk.getMainHandItem().is(Items.IRON_SWORD), "Health and equipment survive the bag");
                 test.assertTrue(!husk.getUUID().equals(wounded.getUUID()) && husk.isPersistenceRequired(), "A fresh, persistent body");
-                test.assertTrue(MonsterCompanions.hatchedBaby(husk).isEmpty(), "A caught body never folds into a role egg");
+                // The bag never makes a companion (docs/plan/拘魂袋.md, 2026-11-26): a wild husk comes back native, marked as the owner's.
+                // Outside a round there is no formal identity to mark it with; in a round its kills and damage credit the releaser.
+                test.assertTrue(MonsterCompanions.owner(husk) == null, "A caught wild creature does not become a companion");
                 test.assertValueEqual(contents(owner).itemCopies().mapToInt(ItemStack::getCount).sum(), 2, "Release frees one place");
-                test.assertTrue(MonsterSoulcatcher.capture(owner, InteractionHand.MAIN_HAND, husk), "An own companion goes back into the bag");
+                test.assertTrue(MonsterSoulcatcher.capture(owner, InteractionHand.MAIN_HAND, husk), "A released creature can be caught again");
                 test.assertTrue(!MonsterSoulcatcher.capture(owner, InteractionHand.MAIN_HAND, overflow), "The bag is full again");
                 overflow.discard();
             } finally { clean(owner); }
@@ -207,7 +208,10 @@ public final class MonsterSoulcatcherGameTest {
                 owner.level().setBlockAndUpdate(water, Blocks.WATER.defaultBlockState());
                 owner.setYRot(-90); owner.setYHeadRot(-90); owner.setXRot(40);
                 test.assertTrue(MonsterSoulcatcher.releaseInLiquid(owner, InteractionHand.MAIN_HAND), "A water surface takes the release");
-                test.assertValueEqual(owned(owner).size(), 1, "The drowned returns as a companion");
+                var drowned = owner.level().getEntitiesOfClass(net.minecraft.world.entity.monster.zombie.Drowned.class,
+                        owner.getBoundingBox().inflate(12), body -> MonsterCompanions.owner(body) == null);
+                test.assertValueEqual(drowned.size(), 1, "The drowned comes back in the water, native rather than a companion");
+                drowned.forEach(Entity::discard);
                 owner.setXRot(-90);
                 test.assertTrue(!MonsterSoulcatcher.releaseInLiquid(owner, InteractionHand.MAIN_HAND), "Plain air never releases");
             } finally {

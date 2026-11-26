@@ -1,6 +1,7 @@
 package dev.hardrush.death;
 
 import dev.hardrush.celebration.CelebrationRuntime;
+import dev.hardrush.combat.CombatDepartures;
 import dev.hardrush.combat.CombatRuntime;
 import dev.hardrush.core.combat.CombatOrigin;
 import dev.hardrush.core.combat.RevengeLedger;
@@ -32,8 +33,8 @@ import net.minecraft.world.entity.LivingEntity;
  * Death messages that say who was behind a monster (docs/plan/死亡消息.md). Vanilla still chooses every sentence and
  * translation key; while it builds one, the names of monster bodies, their companions and bag creatures are rewritten
  * ({@link #displayName}), so "被骷髅射杀" reads "被化身骷髅的Bob射杀" and the assisted-fall and ".player" variants follow
- * the same credit the revival totems and records use. Two sentences are replaced whole: a creeper body's own
- * detonation, and a revenge.
+ * the same credit the revival totems and records use. Three sentences are replaced whole: a creeper body's own
+ * detonation, a departure mid-fight, and a revenge.
  *
  * <p>Main thread only. Revenge debts live in memory and are lost on a restart: they are flavour, never fairness.</p>
  *
@@ -81,6 +82,8 @@ public final class DeathNarration {
         return naming(server, victim, credit, () -> {
             // The igniter's own blast is the creeper's end, as vanilla words a creeper that blew up.
             if (MonsterCreeper.detonating(victim)) return Component.translatable("death.attack.explosion", victim.getDisplayName());
+            // Before a revenge: leaving is what the others need to hear about, and what explains the death.
+            if (CombatDepartures.departing(victim)) return departed(server, victim, credit);
             if (dying != null && dying.avenger().isPresent()) return revenge(server, dying.avenger().get(), victim, source);
             return vanilla.get();
         });
@@ -116,7 +119,8 @@ public final class DeathNarration {
 
     /**
      * The name {@code entity} goes by in a death message being built right now, or null for vanilla's own: a monster
-     * body is "化身{形态}的{玩家}", a bag creature "{主人}收编的{生物}", a companion "{主人}召唤的{生物}".
+     * body is "化身{形态}的{玩家}", a bag creature "{主人}收编的{生物}", a companion "{主人}召唤的{生物}", and what a monster's
+     * potions left behind "{主人}留下的史莱姆" or "{主人}身上钻出的蠹虫".
      */
     public static Component displayName(Entity entity) {
         var naming = NAMING.get();
@@ -130,6 +134,11 @@ public final class DeathNarration {
         // A bag creature that follows its releaser is a companion too; the bag is what it came from.
         var releaser = MonsterSoulcatcher.releaser(entity);
         if (releaser.isPresent()) return owned(server, releaser.get(), "收编的", entity);
+        // What a monster's potions left behind: the slimes of oozing, the silverfish of infested.
+        // Once its owner has moved on it is a plain creature again, and vanilla names it.
+        var left = dev.hardrush.monster.MonsterLegacy.standingOwner(entity);
+        var kind = dev.hardrush.monster.MonsterLegacy.kind(entity);
+        if (left != null && kind != null) return owned(server, left, kind.relation(), entity);
         var summoner = MonsterCompanions.owner(entity);
         return summoner == null ? null : owned(server, summoner, "召唤的", entity);
     }
@@ -141,6 +150,16 @@ public final class DeathNarration {
         NAMING.set(new Naming(server, victim, credited));
         try { return body.get(); }
         finally { if (outer == null) NAMING.remove(); else NAMING.set(outer); }
+    }
+
+    /** "Alice在与化身骷髅的Bob交战时断线，按阵亡处理", in place of the {@code genericKill} sentence a departure would get. */
+    private static Component departed(MinecraftServer server, ServerPlayer victim, Optional<CombatOrigin> credit) {
+        LivingEntity killer = victim.getKillCredit();
+        Component name = killer != null && killer != victim ? killer.getDisplayName()
+                : credit.map(origin -> (Component) Component.literal(name(server, origin.actor().playerId()))).orElse(null);
+        var line = Component.empty().append(victim.getDisplayName());
+        return name == null ? line.append("在交战中断线，按阵亡处理")
+                : line.append("在与").append(name).append("交战时断线，按阵亡处理");
     }
 
     /** Books {@code victim}'s competitive human death in the {@link RevengeLedger}; the avenger, if this death settles a debt. */

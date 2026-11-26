@@ -302,7 +302,10 @@ public final class MonsterCreeper {
     }
 
     private static void spawnCloud(ServerPlayer player, Creeper model) {
-        if (player.getActiveEffects().isEmpty()) return;
+        // The body's own night vision is not a potion: copied, it would hand humans infinite sight, and a cloud
+        // after every blast would tell a player creeper from a native one, which carries no effects.
+        var effects = player.getActiveEffects().stream().filter(effect -> !MonsterRoles.intrinsic(effect)).toList();
+        if (effects.isEmpty()) return;
         var cloud = new AreaEffectCloud(player.level(), player.getX(), player.getY(), player.getZ());
         cloud.setRadius(2.5f);
         cloud.setRadiusOnUse(-.5f);
@@ -312,13 +315,14 @@ public final class MonsterCreeper {
         cloud.setRadiusPerTick(-cloud.getRadius() / cloud.getDuration());
         cloud.setOwner(player);
         MonsterClouds.bind(cloud, player.getUUID());
-        for (var effect : player.getActiveEffects()) cloud.addEffect(new MobEffectInstance(effect));
+        for (var effect : effects) cloud.addEffect(new MobEffectInstance(effect));
         // Capture before killing the owner. Later life, role and connection changes must
         // not make a lingering cloud adopt a new actor or lose its original permission.
         MonsterCombatRuntime.source(model).ifPresent(source -> ((MonsterSourceHolder)cloud).hardrush$stampMonsterSource(source));
         var origin = CombatRuntime.originOf(model)
                 .map(parent -> parent.child(UUID.randomUUID(), AttackKind.CREEPER, Optional.of(cloud.getUUID())));
         ((CombatOriginHolder)cloud).hardrush$sealCombatOrigin(origin);
+        MonsterLegacy.cloud(player, origin);
         player.level().addFreshEntity(cloud);
     }
 

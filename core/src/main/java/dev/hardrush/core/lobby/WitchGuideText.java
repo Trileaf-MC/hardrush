@@ -35,7 +35,10 @@ public final class WitchGuideText {
                     Line.plain("而怪物币可以通过对人类造成伤害，或者被人类杀死获得。"), Line.plain("追猎被我悬赏的人，能获得更多怪物币！"),
                     Line.plain(""), Line.plain("其次，"), Line.plain("如果你成功猎杀人类，获得复生机会后，也可以来找我"),
                     Line.plain("我可以给你卖点人类需要用的装备")),
-            List.of(Line.plain("购物愉快 o.O")));
+            // docs/plan/女巫药水与药水盲盒.md §7.
+            List.of(Line.plain("对了，我的药水都要你出击时自己喝下去才有用"), Line.plain(""),
+                    Line.plain("亡灵喝伤害药水反而会回血哦（嘿嘿"), Line.plain(""),
+                    Line.plain("购物愉快 o.O")));
 
     /** The round's pages: where creepers are paid for, the second page says what one costs (docs/plan/苦力怕付费解锁.md). */
     public static List<List<Line>> pages(RulesConfig rules) {

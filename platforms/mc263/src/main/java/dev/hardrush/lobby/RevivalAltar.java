@@ -48,7 +48,8 @@ public final class RevivalAltar {
     private final Map<UUID, Rite> rites = new HashMap<>();
     /**
      * Revived lives not yet blessed. Kept while the player is away so a reconnect still lands with its blessing; lost
-     * on a restart, which is rare enough to accept (docs/plan/复生庇护与初入荒野.md 1.2).
+     * on a restart, which is rare enough to accept (docs/plan/复生庇护与初入荒野.md 1.2), unless the body was not built
+     * yet ({@link #expectArrival}).
      */
     private final Map<UUID, Arrival> arrivals = new HashMap<>();
     /** Revived lives (round, player, life) blessed in this server run; a restart forgets them, see {@link #deliver}. */
@@ -80,6 +81,13 @@ public final class RevivalAltar {
         return rite != null && rite.player == player && !rite.spent && rite.dwell > 0;
     }
 
+    /** Test seam: the player's rite was submitted and its revival has not answered yet ("正在复生……"). */
+    public static boolean submitting(ServerPlayer player) {
+        var s = SERVICES.get(player.level().getServer()); if (s == null) return false;
+        var rite = s.rites.get(player.getUUID());
+        return rite != null && rite.player == player && rite.spent && LobbyRuntime.reviveCommitting(player);
+    }
+
     /** A revived life that has not been blessed yet; monsters cannot choose it before then. */
     public static boolean arriving(MinecraftServer server, UUID player) {
         var s = SERVICES.get(server);
@@ -99,6 +107,17 @@ public final class RevivalAltar {
         var level = lobby.holdingLevel();
         level.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, at.x, at.y, at.z, 60, .8, .8, .8, .5);
         level.playSound(null, at.x, at.y, at.z, SoundEvents.TOTEM_USE, SoundSource.BLOCKS, 1f, 1f);
+    }
+
+    /**
+     * The body of a committed revival is being built: it lands with the totem pop and the blessing. Normally
+     * {@link #revived} is already waiting for it; this restores that after a restart forgot it while the player was away
+     * before the body was built (#72). A life that already landed is never blessed twice.
+     */
+    public static void expectArrival(MinecraftServer server, UUID player, UUID round, int life) {
+        var s = SERVICES.get(server); if (s == null || s.blessed.contains(List.of(round, player, life))) return;
+        var waiting = s.arrivals.get(player);
+        if (waiting == null || !waiting.round.equals(round) || waiting.life != life) s.arrivals.put(player, new Arrival(round, life));
     }
 
     private void run(RoundSnapshot round, RoundSession session) {

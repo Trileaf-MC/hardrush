@@ -55,11 +55,15 @@ public final class PersonalHuntGameTest {
                         && f.peers.stream().allMatch(p -> !PlayerProfiles.isLocked(p.player)), "four admitted humans"))
                 .thenExecute(f::arenas)
                 .thenWaitUntil(() -> f.await(f.arenasTicking(), "three arenas ticking"))
-                .thenExecute(() -> { f.move(f.a, 0); f.move(f.b, 1); f.move(f.c, 0); f.move(f.d, 0); f.kill(f.c); })
+                // C and D fall in the empty End arena: each natural death leaves an unclaimed totem where it fell
+                // (docs/plan/复生图腾守恒.md 1.1), which a human standing there would pick up.
+                .thenExecute(() -> { f.move(f.a, 0); f.move(f.b, 1); f.move(f.c, 2); f.move(f.d, 2); f.kill(f.c); })
                 .thenWaitUntil(() -> f.await(f.lobby(f.c), "C hardcore death lobby"))
                 .thenExecute(() -> f.kill(f.d))
                 .thenWaitUntil(() -> f.await(f.lobby(f.d), "D hardcore death lobby"))
                 .thenExecute(() -> {
+                    // The rest of the hunt needs monsters without revivals, so nobody may ever collect these two.
+                    f.clearOpeningDrops();
                     f.c.player = f.c.current(); f.d.player = f.d.current();
                     f.refresh(); f.assertModels();
                     f.c.hunt(f.a); test.assertTrue(f.searches().isEmpty(), "Cooldown click cannot reserve automatic departure");
@@ -101,6 +105,8 @@ public final class PersonalHuntGameTest {
                     f.c.watch(f.a);
                     test.assertTrue(Observation.observing(f.c.player) && f.c.player.getCamera() == f.a.player
                             && f.c.player.level() == f.levels[2] && f.c.player.isSpectator(), "Left-click rides the human's camera across worlds");
+                    test.assertTrue(dev.hardrush.player.SealedCommands.refusal(f.c.player, "tell " + f.d.player.getGameProfile().name() + " hi").isEmpty(),
+                            "A watching camp monster can still whisper (#86)");
                     f.c.input(new Input(false, false, false, true, false, false, false));
                     test.assertTrue(f.c.player.getCamera() == f.b.player && f.c.player.level() == f.levels[1], "D moves the camera to the next human");
                     f.c.input(new Input(false, false, true, false, false, false, false));
@@ -170,10 +176,14 @@ public final class PersonalHuntGameTest {
                 .thenExecute(() -> {
                     f.move(f.a, 0); f.move(f.b, 0);
                     f.b.player.teleportTo(f.levels[0], f.anchor[0].x + 10, f.anchor[0].y, f.anchor[0].z, Set.of(), 0,0,true);
+                    // Past any earlier omen window onto A, so a silent landing is the creeper's own doing.
+                    f.searchClock.addAndGet(dev.hardrush.core.hunt.HuntOmens.INTERVAL_MILLIS * 1_000_000L + 1_000_000_000L);
+                    f.omens = f.omenCounts();
                     f.d.hunt(f.a); f.refresh();
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(f.d, 0), "creeper hunts A"))
                 .thenExecute(() -> {
+                    test.assertValueEqual(f.omenCounts(), f.omens, "A creeper lands without sounding the omen");
                     test.assertValueEqual(f.d.participant().sortie().tier(), 3, "The blast case deploys onto three-star A");
                     f.dusk();
                     f.d.player.teleportTo(f.b.player.level(), f.b.player.getX()+4.5, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
@@ -308,6 +318,9 @@ public final class PersonalHuntGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.huntBars(f.a).equals(List.of("来自 HuntC 的追猎")) && f.huntBars(f.b).isEmpty(),
                         "proximity bar only for the selected target"))
+                // C steps into another dimension and strikes in the very tick it comes back: its native model follows at once.
+                .thenExecute(() -> f.move(f.c, 1))
+                .thenIdle(1)
                 .thenExecute(() -> {
                     f.dusk();
                     f.c.player.teleportTo(f.b.player.level(), f.b.player.getX()+1, f.b.player.getY(), f.b.player.getZ(), Set.of(),0,0,true);
@@ -551,6 +564,23 @@ public final class PersonalHuntGameTest {
             for(int i=0;i<3;i++) for(int x:new int[]{-67,67}) for(int z:new int[]{-67,67})
                 if(!levels[i].isPositionEntityTicking(BlockPos.containing(anchor[i]).offset(x,0,z))) return false;
             return true;
+        }
+        /**
+         * The opening natural deaths of C and D each registered one unclaimed floor totem in the End arena. Their entities
+         * are removed so that A, later carried to the End, never collects them: a human holding a revival dies into a
+         * monster that may only go to the altar, which the hunt steps below cannot use.
+         */
+        void clearOpeningDrops() {
+            var drops = round().looseTotems().values();
+            test.assertTrue(drops.size() == 2 && drops.stream().allMatch(t -> t.source() == dev.hardrush.core.round.LooseTotem.Source.UNCLAIMED)
+                    && drops.stream().map(dev.hardrush.core.round.LooseTotem::victim).collect(java.util.stream.Collectors.toSet()).equals(Set.of(c.id(), d.id())),
+                    "Each opening natural death leaves one unclaimed totem: " + drops);
+            var floor = levels[2].getEntities(net.minecraft.world.level.entity.EntityTypeTest.forClass(net.minecraft.world.entity.item.ItemEntity.class),
+                    new net.minecraft.world.phys.AABB(BlockPos.containing(anchor[2])).inflate(8),
+                    item -> dev.hardrush.revival.RevivalTotems.is(item.getItem()));
+            test.assertValueEqual(floor.size(), 2, "Both opening totems lie where C and D fell");
+            floor.forEach(net.minecraft.world.entity.Entity::discard);
+            test.assertValueEqual(a.participant().revivalCharges(), 0, "A never stood where they fell");
         }
         void move(Peer p,int dimension) { var pos=anchor[dimension]; p.player.teleportTo(levels[dimension],pos.x,pos.y,pos.z,Set.of(),0,0,true); p.client.acknowledge(); }
         void moveVoid(Peer p,int dimension) { var pos=anchor[dimension].add(1800,80,1800); p.player.teleportTo(levels[dimension],pos.x,pos.y,pos.z,Set.of(),0,0,true); p.client.acknowledge(); }

@@ -143,7 +143,7 @@ public final class CampKit {
         }
         for (var entry : wallet.order().entrySet()) {
             var offer = entry.getKey();
-            var stack = MonsterShop.goods(offer, rules);
+            var stack = MonsterShop.goods(offer, rules, p.monsterRole());
             stack.setCount(Math.min(stack.getMaxStackSize(), stack.getCount() * entry.getValue()));
             String key = "order:" + offer.id();
             if (offer.revival()) {

@@ -83,7 +83,7 @@ public final class IdentityRuntimeGameTest {
                 .thenWaitUntil(() -> fixture.await(fixture.monsterReady(), "Production death listener replaces the dead human in the monster lobby"))
                 .thenExecute(() -> {
                     fixture.player = fixture.server.getPlayerList().getPlayer(fixture.profile.id());
-                    fixture.assertMonster();
+                    fixture.assertMonster("after native respawn");
                     fixture.assertStoredIdentity();
                     fixture.disconnect();
                 })
@@ -94,7 +94,7 @@ public final class IdentityRuntimeGameTest {
                 .thenExecute(fixture::rejectMidroundGate)
                 .thenWaitUntil(() -> fixture.await(!fixture.session.mutationPending(), "Rejected middle gate preserves the committed identity"))
                 .thenExecute(() -> {
-                    fixture.assertMonster();
+                    fixture.assertMonster("after native reconnect");
                     fixture.assertStoredIdentity();
                     fixture.disconnect();
                 }).thenSucceed();
@@ -209,7 +209,8 @@ public final class IdentityRuntimeGameTest {
                     && profiles.isReady(profile.id(), round()) && !session.mutationPending();
         }
 
-        void assertMonster() {
+        /** {@code stage} names which of the two checkpoints is asserting, so a failure says where the body changed. */
+        void assertMonster(String stage) {
             player = server.getPlayerList().getPlayer(profile.id());
             test.assertValueEqual(round().phase(), RoundPhase.RESCUE, "An offline human turns the last death into a rescue, not an elimination");
             test.assertTrue(round().awaitingReconnect(), "The rescue waits for the offline human to reconnect");
@@ -222,13 +223,25 @@ public final class IdentityRuntimeGameTest {
             test.assertTrue(player.connection.player == player,
                     "The native connection must bind the replacement monster, not the removed dead human: listed="
                             + identity(player) + ",listener=" + identity(player.connection.player) + ",dead=" + identity(dead));
-            test.assertTrue(player.getInventory().isEmpty(), "Native respawn and reconnect cannot duplicate the dropped human inventory");
+            test.assertTrue(player.getInventory().isEmpty(), "Native respawn and reconnect cannot duplicate the dropped human inventory ("
+                    + stage + "): " + inventory(player));
             test.assertValueEqual(player.getEnderChestInventory().getItem(0).getCount(), 6, "This round's ender storage survives death and native reconnect");
             var advancement = server.getAdvancements().get(Identifier.parse("minecraft:story/mine_stone"));
             test.assertTrue(player.getAdvancements().getOrStartProgress(advancement).isDone(), "This round's native completed advancement survives");
             test.assertValueEqual(player.getStats().getValue(net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.JUMP)), 11,
                     "Actual native cumulative statistics survive monster conversion and PrepareSpawnTask reconnect");
             test.assertValueEqual(diamonds(), 3, "Exactly one set of native death drops remains in the original round");
+        }
+
+        /** Every occupied slot of {@code value}'s inventory (armour and offhand included), with its component patch. */
+        String inventory(ServerPlayer value) {
+            var items = new java.util.ArrayList<String>();
+            var inventory = value.getInventory();
+            for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+                var stack = inventory.getItem(slot);
+                if (!stack.isEmpty()) items.add(slot + "=" + stack.getCount() + "x" + stack.getItem() + stack.getComponentsPatch());
+            }
+            return items.toString();
         }
 
         void assertStoredIdentity() {

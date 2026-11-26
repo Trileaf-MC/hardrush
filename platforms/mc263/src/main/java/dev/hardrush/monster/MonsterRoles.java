@@ -13,6 +13,7 @@ import dev.hardrush.hunt.HuntRetracks;
 import dev.hardrush.notice.ItemText;
 import dev.hardrush.notice.Notices;
 import java.util.*;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.player.*;
@@ -29,6 +30,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -87,6 +89,9 @@ public final class MonsterRoles {
             if (isEgg(owner, owner.getItemInHand(hand))) {
                 MonsterCompanions.useOn(owner, hand, hit); return InteractionResult.CONSUME;
             }
+            if (MonsterBox.isBox(owner, owner.getItemInHand(hand))) {
+                MonsterBox.useOn(owner, hand, hit); return InteractionResult.CONSUME;
+            }
             if (channelControl(owner, hand)) MonsterClicks.answer(owner, step);
             if (useControl(owner, hand)) return InteractionResult.CONSUME;
             // Beyond its own controls, a native monster opens no container and operates no block.
@@ -138,6 +143,8 @@ public final class MonsterRoles {
         ServerLivingEntityEvents.ALLOW_DAMAGE.register(MonsterRoles::allowDamage);
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
             if (entity instanceof ServerPlayer player && isMonster(player)) {
+                // What its potions leave behind happens where it fell, before the body is spent.
+                MonsterLegacy.died(player);
                 dropRoleEquipment(player, true);
                 stopActions(player);
                 MonsterCompanions.clearOwner(player);
@@ -145,7 +152,12 @@ public final class MonsterRoles {
         });
         ServerPlayerEvents.AFTER_RESPAWN.register((old, player, alive) -> {
             Role role = ROLES.get(player.getUUID());
-            if (role != null) bind(player, role, false);
+            if (role != null) ensureBound(player, role);
+        });
+        // Damage admission requires the model in its target's level: a strike in the tick of arrival must not miss.
+        ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, origin, destination) -> {
+            Role role = ROLES.get(player.getUUID());
+            if (role != null && player.isAlive()) ensureBound(player, role);
         });
     }
 
@@ -230,7 +242,7 @@ public final class MonsterRoles {
         for (var entry : body.items().entrySet()) {
             var purpose = MonsterItems.purpose(entry.getValue());
             boolean egg = purpose.equals(MonsterCompanions.BABY_EGG) || purpose.equals(MonsterCompanions.ADULT_EGG);
-            // A body always resumes in its base form, so a drowned's eggs come back as zombie eggs.
+            // Eggs follow the resumed form: a parked drowned's come back as drowned eggs.
             // The fixed controls are issued afresh, so their item and description follow the current rules.
             if (lowered && purpose.equals(SPAWN_GEAR)) continue;
             int count = entry.getValue().getCount();
@@ -255,10 +267,15 @@ public final class MonsterRoles {
             for (var slot : EquipmentSlot.VALUES) if (!player.getItemBySlot(slot).isEmpty()) worn.add(slot);
             wearSpawnEquipment(player, role, role.form, tier, worn);
         }
-        if (role.form.zombie()) refreshSoulcatcher(player);
+        if (role.form.zombie()) { refreshSoulcatcher(player); MonsterBox.refresh(player); }
         if (body.selected() >= 0 && body.selected() < 9) inventory.setSelectedSlot(body.selected());
+        // A drowned that parked without its trident (a full inventory at the conversion, or a trident worn out in melee)
+        // takes it now: world items are never parked, so the resumed body nearly always has room.
+        if (role.form == MonsterForm.DROWNED) seaTrident(player, false);
         if (body.charged()) MonsterCreeper.charge(player);
         for (var effect : body.effects()) player.addEffect(effect);
+        // A resumed absorption effect would natively refill its hearts; only what was left of them comes back.
+        player.setAbsorptionAmount(Math.min(player.getAbsorptionAmount(), body.absorption()));
         player.setHealth(Math.max(1, Math.min(role.health, player.getMaxHealth())));
         if (role.form.zombie()) {
             addEggs(player, role, true, kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG));
@@ -325,7 +342,7 @@ public final class MonsterRoles {
     private static ItemStack returnShard(ServerPlayer player, Role role) {
         return MonsterItems.bind(player, ItemText.lore(ItemText.name(new ItemStack(Items.ECHO_SHARD), "返回营地"),
                 returnUsage(role), "受伤或动手会打断，走路不打断",
-                "本次的物资、增益和身价会暂存，下次以同一角色出击时带上 · 溺尸、流浪者形态不保留"), RETURN_SHARD);
+                "本次的物资、增益和身价会暂存，下次以同一角色出击时带上 · 溺尸、流浪者形态也会保留"), RETURN_SHARD);
     }
     /** A plain compass: {@link HuntRetracks} points its needle at the quarry the way vanilla points one at the world spawn. */
     private static ItemStack trackingCompass(ServerPlayer player, Role role) {
@@ -357,20 +374,21 @@ public final class MonsterRoles {
             if (count > 0) player.getInventory().add(MonsterItems.bind(player, net.minecraft.world.item.alchemy.PotionContents
                     .createItemStack(Items.TIPPED_ARROW, entry.getValue()).copyWithCount(count), "shop_arrow"));
         }
-        effect(player, kit, dev.hardrush.core.round.ShopOffer.SWIFTNESS, net.minecraft.world.effect.MobEffects.SPEED,
-                rules, dev.hardrush.core.round.MonsterCoins.SWIFTNESS_SECONDS);
-        effect(player, kit, dev.hardrush.core.round.ShopOffer.FIRE_RESISTANCE, net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE,
-                rules, dev.hardrush.core.round.MonsterCoins.FIRE_RESISTANCE_SECONDS);
-        effect(player, kit, dev.hardrush.core.round.ShopOffer.REGENERATION, net.minecraft.world.effect.MobEffects.REGENERATION,
-                rules, dev.hardrush.core.round.MonsterCoins.REGENERATION_SECONDS);
+        // Witch potions are drunk by the monster itself (docs/plan/女巫药水与药水盲盒.md).
+        MonsterPotions.give(player, kit, rules, form.role);
         if (form == MonsterForm.CREEPER && kit.carried(dev.hardrush.core.round.ShopOffer.CHARGED) > 0) MonsterCreeper.charge(player);
+        if (form.zombie()) addBoxes(player, kit.carried(dev.hardrush.core.round.ShopOffer.MONSTER_BOX));
     }
 
-    private static void effect(ServerPlayer player, dev.hardrush.core.round.MonsterWallet kit, dev.hardrush.core.round.ShopOffer offer,
-                               net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect, RulesConfig rules, String seconds) {
-        if (kit.carried(offer) <= 0) return;
-        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(effect,
-                dev.hardrush.core.round.MonsterCoins.amount(rules, seconds) * 20));
+    /** Monster boxes join a stack the sortie already carries, as bought eggs do. */
+    private static void addBoxes(ServerPlayer player, int count) {
+        if (count <= 0) return;
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            var stack = inventory.getItem(i);
+            if (MonsterBox.isBox(player, stack)) { stack.grow(count); return; }
+        }
+        inventory.add(MonsterBox.stack(player, count));
     }
 
     public static void clear(ServerPlayer player) {
@@ -404,6 +422,31 @@ public final class MonsterRoles {
         MonsterAiIdentity.changed(player);
     }
 
+    /**
+     * Native monsters hunt by sight line, not light (docs/plan/怪物夜视.md): every bound body sees in the dark all
+     * sortie long. Infinite so it never flickers, without particles so it never tells a player from a native mob.
+     */
+    static MobEffectInstance nightVision() {
+        return new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false, true);
+    }
+    /**
+     * Whether {@code effect} is the body's own night vision rather than something it drank or was hit with. Only
+     * the body keeps it: a creeper's lingering cloud must not copy it, and leaving the body removes only this one.
+     */
+    public static boolean intrinsic(MobEffectInstance effect) {
+        return effect.is(MobEffects.NIGHT_VISION) && effect.isInfiniteDuration() && !effect.isVisible();
+    }
+    /**
+     * Night vision arriving on a body that already sees in the dark adds nothing, and the native merge would still copy
+     * its visibility onto the body's own, which then no longer reads as {@linkplain #intrinsic intrinsic}: a cloud
+     * would hand it out and leaving the body would keep it. So the body refuses it.
+     */
+    public static boolean refusesSight(ServerPlayer player, MobEffectInstance effect) {
+        if (!effect.is(MobEffects.NIGHT_VISION) || !isMonster(player)) return false;
+        var own = player.getEffect(MobEffects.NIGHT_VISION);
+        return own != null && intrinsic(own);
+    }
+
     private static void restoreOriginal(ServerPlayer player, Role role) {
         player.stopUsingItem();
         for (var entry : role.originalAttributes.entrySet()) player.getAttribute(entry.getKey()).setBaseValue(entry.getValue());
@@ -412,6 +455,8 @@ public final class MonsterRoles {
         for (int slot = 1; slot <= 4; slot++) player.inventoryMenu.slots.get(slot).set(role.crafting.get(slot - 1).copy());
         player.inventoryMenu.setCarried(role.carried.copy());
         ((MonsterLivingAccessor) player).hardrush$detectEquipmentUpdates();
+        var vision = player.getEffect(MobEffects.NIGHT_VISION);
+        if (vision != null && intrinsic(vision)) player.removeEffect(MobEffects.NIGHT_VISION);
         player.setGameMode(role.gameMode); player.getFoodData().setFoodLevel(role.food);
         player.getFoodData().setSaturation(role.saturation); player.setHealth(Math.min(role.health, player.getMaxHealth()));
     }
@@ -567,7 +612,7 @@ public final class MonsterRoles {
                 dev.hardrush.notice.Notices.hint(player, form == MonsterForm.ZOMBIE ? "泡在水里会慢慢化身溺尸" : "陷在细雪里会慢慢化身流浪者");
         });
     }
-    /** Purpose of the trident a zombie receives when it rises from the sea as a drowned; never parked. */
+    /** Purpose of the bound trident every drowned holds; it parks and resumes with the drowned it belongs to. */
     public static final String SEA_TRIDENT = "sea_trident";
     /** Armour and weapons a sortie spawned with by its tier, unlike vault gear, which coins bought. */
     public static final String SPAWN_GEAR = "spawn_gear";
@@ -579,24 +624,18 @@ public final class MonsterRoles {
 
     /**
      * A zombie deployed under water rises as a drowned at once, without the conversion: it never was a land
-     * zombie here. Like a native drowned, it holds a trident (thrown copies, endless; see MonsterNativeWeapons).
+     * zombie here. It has just arrived holding nothing it is using, so its trident goes straight into its hand.
+     * A parked drowned resuming at sea already is one and keeps the trident it parked.
      */
     public static void riseFromSea(ServerPlayer player) {
         var role = ROLES.get(player.getUUID());
-        if (role == null || role.form != MonsterForm.ZOMBIE) return;
-        convert(player, MonsterForm.DROWNED, false);
-        var inventory = player.getInventory();
-        int slot = inventory.getSelectedSlot();
-        var trident = MonsterItems.bind(player, ItemText.lore(new ItemStack(Items.TRIDENT), TRIDENT_USAGE), SEA_TRIDENT);
-        var held = inventory.getItem(slot);
-        // Into the hand when the held stack can move aside; otherwise the backpack (a full kit is never dropped).
-        if (held.isEmpty()) inventory.setItem(slot, trident);
-        else if (inventory.getFreeSlot() >= 0) { inventory.setItem(slot, trident); inventory.add(held); }
-        else inventory.add(trident);
-        repairLoadout(player);
+        if (role == null || !role.form.zombie()) return;
+        if (role.form == MonsterForm.ZOMBIE) convert(player, MonsterForm.DROWNED, true);
+        else { seaTrident(player, true); repairLoadout(player); }
     }
-    static void convert(ServerPlayer player, MonsterForm form) { convert(player, form, true); }
-    private static void convert(ServerPlayer player, MonsterForm form, boolean announce) {
+    /** The environment turns the body: water makes a zombie a drowned, powder snow a skeleton a stray. */
+    public static void convert(ServerPlayer player, MonsterForm form) { convert(player, form, false); }
+    private static void convert(ServerPlayer player, MonsterForm form, boolean risen) {
         var role = ROLES.get(player.getUUID());
         if (role == null || role.form.role != form.role || role.form == form) return;
         stopActions(player); role.form = form; role.exposure = 0; role.conversion = -1;
@@ -615,13 +654,34 @@ public final class MonsterRoles {
             if (baby || MonsterItems.matches(player, held, MonsterCompanions.ADULT_EGG)) {
                 var egg = MonsterCompanions.egg(player, baby, true); egg.setCount(held.getCount()); player.containerMenu.setCarried(egg);
             }
+            seaTrident(player, risen);
         }
-        if (announce) {
+        if (!risen) {
             player.level().playSound(null, player.blockPosition(), form == MonsterForm.DROWNED
                     ? SoundEvents.ZOMBIE_CONVERTED_TO_DROWNED : SoundEvents.SKELETON_CONVERTED_TO_STRAY, SoundSource.HOSTILE, 1, 1);
             // The native conversion sound and the changed eggs and model say it; no chat line.
         }
         repairLoadout(player);
+    }
+    /**
+     * Every drowned holds one bound trident, however it became one. Vanilla gives a converted drowned none and a
+     * spawned one only sometimes; here the form is the weapon, so a player never has to tell the two ways apart.
+     * {@code intoHand}: a sortie that just rose from the sea takes it into its hand, moving what it held aside;
+     * one converted mid-sortie keeps what it is using and finds the trident in the first free slot, hotbar first.
+     * A full inventory gets none this time; it is never dropped, and the next resume of the parked drowned tops it up.
+     */
+    private static void seaTrident(ServerPlayer player, boolean intoHand) {
+        var inventory = player.getInventory();
+        if (MonsterItems.matches(player, player.containerMenu.getCarried(), SEA_TRIDENT)) return;
+        for (int i = 0; i < inventory.getContainerSize(); i++) if (MonsterItems.matches(player, inventory.getItem(i), SEA_TRIDENT)) return;
+        var trident = MonsterItems.bind(player, ItemText.lore(new ItemStack(Items.TRIDENT), TRIDENT_USAGE), SEA_TRIDENT);
+        int slot = inventory.getSelectedSlot();
+        var held = inventory.getItem(slot);
+        if (held.isEmpty()) { inventory.setItem(slot, trident); return; }
+        int free = inventory.getFreeSlot();
+        if (free < 0) return;
+        if (intoHand) { inventory.setItem(slot, trident); inventory.setItem(free, held); }
+        else inventory.setItem(free, trident);
     }
     public static String status(ServerPlayer player) {
         var role = ROLES.get(player.getUUID());
@@ -648,7 +708,7 @@ public final class MonsterRoles {
                 MonsterMining.clear(player);
                 MonsterCreeper.cancelInput(player); player.stopUsingItem(); continue;
             }
-            if (role.player != player || role.model == null || role.model.level() != player.level()) bind(player, role, false);
+            ensureBound(player, role);
             player.setSprinting(false);
             if (player.gameMode.getGameModeForPlayer() != GameType.ADVENTURE) {
                 MonsterMining.clear(player);
@@ -737,7 +797,9 @@ public final class MonsterRoles {
         if (MonsterItems.matches(player, item, HuntRetracks.PURPOSE)) return dev.hardrush.lobby.LobbyRuntime.useRetrack(player, item);
         if (!MonsterRoundRuntime.canAct(player)) return false;
         dev.hardrush.lobby.LobbyRuntime.interruptChannel(player, channelBreak(player, hand, "使用物品"));
+        if (MonsterPotions.holds(player, hand)) return MonsterPotions.drink(player, hand);
         if (isEgg(player, item)) return MonsterCompanions.use(player, hand);
+        if (MonsterBox.isBox(player, item)) return MonsterBox.use(player, hand);
         if (role.form == MonsterForm.CREEPER) return MonsterCreeper.use(player, hand);
         if (role.form.skeleton() && item.is(Items.BOW)) {
             if (MonsterRoundRuntime.casting(player) || role.burstRemaining > 0 || role.chargeTick >= 0
@@ -962,6 +1024,10 @@ public final class MonsterRoles {
         return !(causing instanceof ServerPlayer player && isMonster(player));
     }
 
+    /** The native model lives in its body's level, bound to this very body; rebinding happens once per change. */
+    private static void ensureBound(ServerPlayer player, Role role) {
+        if (role.player != player || role.model == null || role.model.level() != player.level()) bind(player, role, false);
+    }
     private static void bind(ServerPlayer player, Role role, boolean heal) {
         MonsterMining.clear(player);
         float resumedHealth = role.player == null ? role.disconnectedHealth : Float.NaN;
@@ -990,6 +1056,7 @@ public final class MonsterRoles {
         else if (!Float.isNaN(resumedHealth)) player.setHealth(Math.min(resumedHealth, player.getMaxHealth()));
         role.disconnectedHealth = Float.NaN;
         player.getFoodData().setFoodLevel(6); player.getFoodData().setSaturation(0);
+        player.addEffect(nightVision());
         MonsterDisguise.apply(player, role.form.id());
         if (role.model instanceof Creeper creeper) MonsterCreeper.bindModel(player, creeper);
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player); MonsterAiIdentity.changed(player);

@@ -93,10 +93,14 @@ public final class FullFlowGameTest {
                 .thenExecute(()->{
                     test.assertTrue(LobbyRuntime.channeling(f.monster.player),"Progress action bar appears while the return is still channeling");
                     f.monster.keys(true);
-                })
-                .thenWaitUntil(()->f.await(!LobbyRuntime.channeling(f.monster.player),"Movement keys cancel return"))
+                }).thenIdle(2)
+                // Walking never breaks a return (docs/plan/击败锁定与怪物平衡.md §3). Left alone, the channel would finish
+                // and its commit would carry the monster to camp in the middle of the click checks below.
                 .thenExecute(()->{
+                    test.assertTrue(LobbyRuntime.channeling(f.monster.player),"Walking keeps the return channel");
                     f.monster.keys(false);
+                    f.monster.player.connection.handlePunch(ServerboundPunchPacket.INSTANCE);
+                    test.assertFalse(LobbyRuntime.channeling(f.monster.player),"A punch ends the channel before it can return");
                     test.assertTrue(f.monster.player.getOffhandItem().isEmpty(),"Native click fixture models an empty off hand");
                     state.clickBlock(f.monster.player,7,f.monster.player.blockPosition().below());
                     test.assertTrue(LobbyRuntime.channeling(f.monster.player),"Right-clicking a block starts return; the off-hand packets of that click do not break it");
@@ -112,7 +116,6 @@ public final class FullFlowGameTest {
                     p.connection.handlePunch(ServerboundPunchPacket.INSTANCE);
                 }).thenIdle(2)
                 .thenExecute(()->{
-                    f.monster.keys(false);
                     state.use(f.monster.player,7); f.monster.player.connection.handlePunch(ServerboundPunchPacket.INSTANCE);
                     test.assertFalse(LobbyRuntime.channeling(f.monster.player),"Punch cancels return");
                     state.use(f.monster.player,7); state.use(f.monster.player,2);

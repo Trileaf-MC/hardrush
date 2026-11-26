@@ -268,8 +268,8 @@ public final class RoundEngine {
         Participant connected = player.withSession(name, online);
         if (!online && player.role() == ParticipantRole.LOBBY) connected = connected.withReady(false);
         if (player.role() == ParticipantRole.MONSTER_DEPLOYED && player.online() != online) {
-            // A disconnect, even one racing the landing it never reached, keeps a paid creeper's ticket: a deliberate
-            // return keeps it too, so dropping the connection gains nothing a return would not.
+            // A disconnect keeps a paid creeper's ticket: a deliberate return keeps it too, so dropping the connection
+            // gains nothing a return would not. One racing a landing it never reached cancels the sortie instead.
             connected = endSortie(before.rules(), connected, deployCooldownNanos(before.rules()), false);
         }
         players.put(playerId, connected);
@@ -700,8 +700,22 @@ public final class RoundEngine {
         RoundSnapshot before = capture();
         Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
                 ParticipantRole.MONSTER_DEPLOYED);
-        return monsterProposal(eventId, "MONSTER_DEPLOY_CANCELLED", before,
-                player.monsterLobby(0).withWallet(player.wallet().cancelDeploy()));
+        // A personal hunt the platform already put down has been used; only its ordinary ends settle it.
+        if (player.quarry().isPresent() && !player.sortie().landing()) throw new IllegalStateException("出击已经落地，不能取消。");
+        return monsterProposal(eventId, "MONSTER_DEPLOY_CANCELLED", before, neverLanded(player));
+    }
+
+    /**
+     * The platform put the body down at its drop point. From here on the sortie counts as used: a disconnect, death
+     * or recall ends it with what it carried spent, where before landing it would only have been cancelled.
+     */
+    public RoundTransition proposeMonsterLanded(UUID eventId, UUID roundId, UUID playerId,
+            int expectedLifeSequence, int expectedDeploymentSequence) {
+        RoundSnapshot before = capture();
+        Participant player = requireMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence,
+                ParticipantRole.MONSTER_DEPLOYED);
+        if (!player.sortie().landing()) throw new IllegalStateException("出击已经落地。");
+        return monsterProposal(eventId, "MONSTER_LANDED", before, player.withSortie(player.sortie().landed()));
     }
 
     public RoundTransition proposeMonsterDeath(UUID eventId, UUID roundId, UUID playerId,
@@ -917,14 +931,23 @@ public final class RoundEngine {
         return endSortie(rules, player, cooldown, true);
     }
 
-    /** {@code spendTicket}: whether a paid creeper's ticket goes with the sortie (docs/plan/苦力怕付费解锁.md §1). */
+    /**
+     * {@code spendTicket}: whether a paid creeper's ticket goes with the sortie (docs/plan/苦力怕付费解锁.md §1). A
+     * sortie that never {@linkplain Sortie#landing landed} is cancelled instead, whatever ended it.
+     */
     private static Participant endSortie(RulesConfig rules, Participant player, long cooldown, boolean spendTicket) {
+        if (player.role() == ParticipantRole.MONSTER_DEPLOYED && player.sortie().landing()) return neverLanded(player);
         var lobby = player.monsterLobby(cooldown);
         if (player.role() != ParticipantRole.MONSTER_DEPLOYED) return lobby;
         // A sortie not used up (a disconnect) hands its paid creeper state back to the camp.
         var wallet = (spendTicket ? player.wallet() : player.wallet().keepUnspent()).endSortie();
         if (spendTicket && MonsterCoins.creeperPaid(rules) && player.monsterRole() == MonsterRole.CREEPER) wallet = wallet.useCreeperTicket();
         return lobby.withWallet(wallet);
+    }
+
+    /** An outing that never opened: everything it froze, the creeper's ticket included, returns with no wait. */
+    private static Participant neverLanded(Participant player) {
+        return player.monsterLobby(0).withWallet(player.wallet().cancelDeploy());
     }
 
     private static Participant unlockCreeper(RoundSnapshot before, Participant player, MonsterRole role) {

@@ -15,7 +15,9 @@ public final class MonsterCoins {
     public static final String ARROWS_PER_BUNDLE = "coin.arrowsPerBundle";
     public static final String SWIFTNESS_SECONDS = "coin.potion.swiftnessSeconds";
     public static final String FIRE_RESISTANCE_SECONDS = "coin.potion.fireResistanceSeconds";
-    public static final String REGENERATION_SECONDS = "coin.potion.regenerationSeconds";
+    public static final String ABSORPTION_SECONDS = "coin.potion.absorptionSeconds";
+    public static final String RESISTANCE_SECONDS = "coin.potion.resistanceSeconds";
+    public static final String POISON_SECONDS = "coin.potion.poisonSeconds";
     /** One trade slot holds one native emerald stack; a price above it spills into the second payment slot. */
     public static final int STACK_PRICE = 64;
 
@@ -55,16 +57,22 @@ public final class MonsterCoins {
 
     public static boolean soulcatcher(RulesConfig rules) { return rules.combatValues().containsKey(SOULCATCHER_CAPACITY); }
 
-    /** Rounds saved before an offer existed have neither its price nor its limit, and the witch never stocks it. */
+    /**
+     * Rounds saved before an offer existed have neither its price nor its limit, and the witch never stocks it. The
+     * monster box draws by the soulcatcher's tier, so a round without a soulcatcher does not stock it either.
+     */
     public static boolean offered(RulesConfig rules, ShopOffer offer) {
-        return rules.combatValues().containsKey(offer.priceKey()) && rules.combatValues().containsKey(offer.limitKey());
+        return rules.combatValues().containsKey(offer.priceKey()) && rules.combatValues().containsKey(offer.limitKey())
+                && (offer.potionBox().isEmpty() || PotionBox.configured(rules))
+                && (offer != ShopOffer.MONSTER_BOX || soulcatcher(rules));
     }
 
     public static int limit(RulesConfig rules, ShopOffer offer) { return amount(rules, offer.limitKey()); }
 
-    /** Each further purchase within one sortie window doubles the price. */
+    /** Each further purchase within one sortie window doubles the price, except for {@linkplain ShopOffer#flatPrice flat-priced} offers. */
     public static int price(RulesConfig rules, ShopOffer offer, int bought) {
         if (bought < 0) throw new IllegalArgumentException("Negative purchase count");
+        if (offer.flatPrice()) return amount(rules, offer.priceKey());
         return Math.multiplyExact(amount(rules, offer.priceKey()), 1 << Math.min(bought, 30));
     }
 

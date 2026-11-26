@@ -161,9 +161,22 @@ public final class FullCheckpointRegression implements ModInitializer {
             super.tick();
         }
 
+        boolean currentRoundPublished() {
+            if (FullCheckpointRuntime.publishing(server)) return false;
+            var directory = root.resolve("hardrush/full-checkpoints");
+            try {
+                if (!Files.exists(directory.resolve("latest"))) return false;
+                var manifest = new java.util.Properties();
+                try (var in = Files.newInputStream(directory.resolve(Files.readString(directory.resolve("latest")).strip()).resolve("complete.properties"))) {
+                    manifest.load(in);
+                }
+                return round().roundId().toString().equals(manifest.getProperty("round"));
+            } catch (Exception error) { throw new IllegalStateException(error); }
+        }
+
         java.nio.file.Path publishOnline() {
             FullCheckpointRuntime.close(server);
-            FullCheckpointRuntime.tick(server, session, worlds, profiles);
+            FullCheckpointRuntime.checkpointNow(server, session, worlds, profiles);
             FullCheckpointRuntime.awaitPublished(server);
             try { return root.resolve("hardrush/full-checkpoints").resolve(Files.readString(root.resolve("hardrush/full-checkpoints/latest")).strip()); }
             catch (Exception error) { throw new IllegalStateException(error); }
@@ -183,6 +196,8 @@ public final class FullCheckpointRegression implements ModInitializer {
             login(a); assemble(a);
             act("finish native preparation", () -> advance(31));
             waitFor("human admitted", () -> idle() && round().phase() == RoundPhase.RUNNING && !PlayerProfiles.isLocked(a.player));
+            // The production schedule, not the seam below: the round's first point lands once the arrival has settled.
+            waitFor("automatic first point after the arrival settles", this::currentRoundPublished);
             act("write inventory XP advancement effects and Nether position", () -> {
                 state(a, 0);
                 a.player.inventoryMenu.setCarried(new ItemStack(Items.EMERALD, 3));
@@ -190,14 +205,14 @@ public final class FullCheckpointRegression implements ModInitializer {
                 LobbyWorld.open(server).holdingLevel().save(null, true, false);
             });
             waitFor("all profile and SQLite writes drained", () -> session.canSaveFullCheckpoint() && profiles.readyForFullCheckpoint(round()));
-            act("publish actual full native checkpoint", () -> {
+            act("publish forced full native checkpoint", () -> {
                 FullCheckpointRuntime.close(server);
-                FullCheckpointRuntime.tick(server, session, worlds, profiles);
+                FullCheckpointRuntime.checkpointNow(server, session, worlds, profiles);
                 FullCheckpointRuntime.awaitPublished(server);
                 try {
                     var saved = root.resolve("hardrush/full-checkpoints").resolve(Files.readString(root.resolve("hardrush/full-checkpoints/latest")).strip());
                     expected = SqliteRoundStore.inspectLatest(saved.resolve("data/" + dev.hardrush.storage.RoundStoragePaths.DATABASE)).orElseThrow();
-                    require(expected.roundId().equals(round().roundId()), "actual automatic checkpoint belongs to current round");
+                    require(expected.roundId().equals(round().roundId()), "forced checkpoint belongs to current round");
                     require(expected.version() == round().version(), "new full checkpoint, not an older admission checkpoint");
                 } catch (Exception error) { throw new IllegalStateException(error); }
             });

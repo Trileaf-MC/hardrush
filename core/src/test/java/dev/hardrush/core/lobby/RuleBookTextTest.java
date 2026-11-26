@@ -31,6 +31,8 @@ class RuleBookTextTest {
         assertTrue(revival.contains("拿在手上阵亡时原地复生，消耗 1 个"));
         assertTrue(revival.contains("营地北侧的祭坛站上金块 4 秒复生，可先用怪物币在女巫处买复生补给"));
         assertTrue(revival.contains("持续 90 秒"), "The blessing is 90 seconds before any longer one is bought");
+        var coins = page(hardcore, "怪物币");
+        assertTrue(coins.contains("药水出击时自己喝，药水盲盒喝下才揭晓；亡灵喝伤害药水会回血"), "The witch's potions are drunk");
         assertEquals(hardcore.indexOf(totem) + 1, hardcore.indexOf(revival));
         assertFalse(hardcore.stream().anyMatch(page -> page.contains("击杀一名人类获得")), "The old kill reward is gone");
         var normal = pages(GameMode.NORMAL);
@@ -68,6 +70,11 @@ class RuleBookTextTest {
         assertTrue(page(pages(GameMode.HARDCORE), "复生").contains("图腾之力庇护"));
     }
 
+    @Test void leavingMidFightCountsAsDeathOnlyInHardcore() {
+        assertTrue(page(pages(GameMode.HARDCORE), "离线与救场").contains("人类离线时保留资格，但被玩家打中后 5 秒内断线算作阵亡。"));
+        assertTrue(page(pages(GameMode.NORMAL), "离线与救场").contains("人类离线时保留资格。所有人类都离线时"));
+    }
+
     @Test void deathByAMonsterKeepsBelongingsAndTheStarsSetLocksAndSlots() {
         var hardcore = pages(GameMode.HARDCORE);
         assertTrue(page(hardcore, "阵亡").contains("被怪物玩家杀死时，身上的东西和经验都不掉落"));
@@ -78,7 +85,7 @@ class RuleBookTextTest {
     }
 
     @Test void theHuntPageTellsBothSidesAboutTheLandingOmen() {
-        assertTrue(page(pages(GameMode.HARDCORE), "追猎").contains("落地时目标会听到一声洞穴音"));
+        assertTrue(page(pages(GameMode.HARDCORE), "追猎").contains("僵尸和骷髅落地时，目标会听到一声洞穴音；苦力怕悄无声息"));
     }
 
     @Test void theCompassHasItsOwnPageWithTheRoundsChannelAndRest() {

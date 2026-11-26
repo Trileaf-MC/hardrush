@@ -26,7 +26,9 @@ public final class RuleBookText {
         pages.add("HardRush\n\n人类击败末影龙即通关，对末影龙打出最后一击的人类是胜者。\n\n本轮模式：" + (hardcore ? "极限挑战" : "普通模式"));
         pages.add("开局与加入\n\n开局前走进集结区即准备，走出即取消。\n\n挑战开始后，在集结区站 4 秒可以空手中途加入，落在远离出生点的荒野。"
                 + (LateShelter.enabled(rules) ? "落地后 " + LateShelter.duration(rules) + "内怪物无法追猎你，离线不计时。" : ""));
-        pages.add("离线与救场\n\n人类离线时保留资格。所有人类都离线时等待 " + seconds(RoundEngine.reconnectMillis(rules))
+        pages.add("离线与救场\n\n人类离线时保留资格"
+                + (hardcore ? "，但被玩家打中后 " + dev.hardrush.core.round.CombatDeparture.windowSeconds() + " 秒内断线算作阵亡" : "")
+                + "。所有人类都离线时等待 " + seconds(RoundEngine.reconnectMillis(rules))
                 + " 秒，期间有人重连、复生或中途加入就继续，否则本轮结束。");
         pages.add("黄昏契约\n\n开局后到第一次日落前，玩家之间不能互相伤害。"
                 + (hardcore ? "\n\n日落后，人类被人类击杀时会掉落 1 个复生图腾。" : ""));
@@ -35,7 +37,7 @@ public final class RuleBookText {
         } else {
             pages.add("阵亡\n\n极限挑战中阵亡后回到营地，可以到庭院的角色展位选择僵尸、骷髅或苦力怕，化身怪物追猎人类。\n\n"
                     + "被怪物玩家杀死时，身上的东西和经验都不掉落，从祭坛复生时原样带回。");
-            pages.add("追猎\n\n右键庭院里的目标模型，开始寻找目标附近的出击位置，再次右键取消。落地时目标会听到一声洞穴音。\n\n"
+            pages.add("追猎\n\n右键庭院里的目标模型，开始寻找目标附近的出击位置，再次右键取消。僵尸和骷髅落地时，目标会听到一声洞穴音；苦力怕悄无声息。\n\n"
                     + "出击后右键回响碎片，边走边引导 " + seconds(RoundEngine.returnChannelMillis(rules))
                     + " 秒返回营地，本次物资暂存到下次。");
             pages.add("追迹罗盘\n\n追迹罗盘的指针指向你的目标，发光时右键，边走边引导 " + seconds(RoundEngine.retrackChannelMillis(rules))
@@ -55,7 +57,8 @@ public final class RuleBookText {
                     + decimalSeconds(RoundEngine.digMillis(rules)) + " 秒。不掉落。门、装着东西的方块、矿石和黑曜石这类太硬的方块挖不动。苦力怕挖不动，但爆炸能炸开方块。");
             pages.add("破石而出\n\n出击找不到能走到人类身边的落点时，怪物会藏进人类旁边的石头里，挖开墙破石而出。");
             if (MonsterCoins.enabled(rules)) pages.add("怪物币\n\n伤害人类、被人类击杀都能获得怪物币；击杀二星以上的人类，或逼他用掉图腾，还有一笔赏金。\n\n"
-                    + "怪物币可以在女巫处购买出击增强，试炼钥匙可以在宝库开出一次性装备。拿到复生图腾后，女巫改卖复生补给。");
+                    + "怪物币可以在女巫处购买出击增强。药水出击时自己喝，药水盲盒喝下才揭晓；亡灵喝伤害药水会回血。"
+                    + "试炼钥匙可以在宝库开出一次性装备。拿到复生图腾后，女巫改卖复生补给。");
             if (dev.hardrush.core.round.Bounty.enabled(rules)) pages.add("悬赏\n\n速通推进得越远，悬赏星级越高，击杀怪物玩家也会加一点；每条命重新计算。\n\n"
                     + "星级越高，能同时追他的怪物越多，怪物出击带得越好、三连射冷却越短，打他也越赚：★★★★★ 是 ★☆☆☆☆ 的 " + multiplier(rules)
                     + " 倍。头戴不祥旗帜的是头号悬赏。");

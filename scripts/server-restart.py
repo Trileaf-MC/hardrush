@@ -154,8 +154,8 @@ def read_snapshot_header(payload):
     if number('>I') != 0x48525331:
         raise RuntimeError('Unsupported round snapshot format')
     schema = number('>i')
-    # Schemas 1-14 share this header prefix; later fields (participants, wallets, loose totems, threats, hunt locks, witch records) are not read here.
-    if not 1 <= schema <= 14:
+    # Schemas 1-18 share this header prefix (RoundSnapshotCodec.encode); later fields are not read here.
+    if not 1 <= schema <= 18:
         raise RuntimeError('Unsupported round snapshot schema')
     result = {'schema': schema, 'roundId': str(uuid.UUID(bytes=take(16))), 'sequence': number('>q'),
               'seed': number('>q'), 'version': number('>q'), 'rules': text(131072),

@@ -2,6 +2,7 @@ package dev.hardrush.player;
 
 import dev.hardrush.HardRushProperties;
 import dev.hardrush.core.config.GameMode;
+import dev.hardrush.core.round.Participant;
 import dev.hardrush.core.round.RoundSnapshot;
 import dev.hardrush.core.round.RoundPhase;
 import dev.hardrush.core.round.ParticipantRole;
@@ -934,14 +935,19 @@ public final class PlayerProfiles implements AutoCloseable {
         return revive(player, round, () -> new dev.hardrush.world.NativeScatter.Arrival(spawnLevel, spawn, 0));
     }
 
-    /** {@code arrival} is resolved only after the committed identity has been checked. */
+    /**
+     * {@code arrival} is resolved only after the committed identity has been checked. The body is either the camp body
+     * the revival was committed from, or, after a disconnect or restart in between, the reconnected one whose profile
+     * still holds that camp body ({@link #revivalBodyPending}).
+     */
     public boolean revive(ServerPlayer player, RoundSnapshot round, Supplier<dev.hardrush.world.NativeScatter.Arrival> arrival) {
         requireMainThread();
         var entry = players.get(player.getUUID());
         var participant = round.participants().get(player.getUUID());
-        if (closed || entry == null || entry.player != player || !entry.monsterLobbyInitialized
+        if (closed || entry == null || entry.player != player
+                || !entry.monsterLobbyInitialized && !revivalBodyPending(player, round)
                 || !isReady(player.getUUID(), round) || participant == null
-                || participant.role() != ParticipantRole.HUMAN_ACTIVE || round.phase() != RoundPhase.RUNNING) return false;
+                || participant.role() != ParticipantRole.HUMAN_ACTIVE || !humansMayEnter(round)) return false;
         var landing = arrival.get();
         var spawnLevel = landing.level();
         var spawn = landing.position();
@@ -1012,6 +1018,38 @@ public final class PlayerProfiles implements AutoCloseable {
                     }));
             return true;
         } catch (RuntimeException error) { fail(entry, error); moveToLobby(player); return false; }
+    }
+
+    /**
+     * An altar revival committed, but its body was never built: the player left (or the server stopped) between the
+     * commit and {@link #revive}, so the profile still holds the camp body of the life the revival ended. Its new life
+     * enters through {@link #revive} like the revival it is, never through {@link #admit}, which would refuse the
+     * previous life's body. The round record and the profile journal are both durable, so this holds across a restart.
+     */
+    public boolean revivalBodyPending(ServerPlayer player, RoundSnapshot round) {
+        var entry = players.get(player.getUUID());
+        var participant = round.participants().get(player.getUUID());
+        return !closed && entry != null && entry.player == player && !entry.admitted && !entry.fresh
+                && !entry.awaitingRespawn && entry.resume != null && participant != null
+                && isReady(player.getUUID(), round) && campBodyOfRevivedLife(entry.resume, round, participant);
+    }
+
+    /**
+     * {@code body} is the camp body {@code participant}'s current life was revived from at the altar. Only a hardcore
+     * revival turns a life into the next human one, and every human body stands in a round world, so the previous
+     * life saved anywhere else is that camp body. It holds nothing of the round, only what {@link #revive} keeps.
+     */
+    private static boolean campBodyOfRevivedLife(CompoundTag body, RoundSnapshot round, Participant participant) {
+        return round.rules().mode() == GameMode.HARDCORE && participant.role() == ParticipantRole.HUMAN_ACTIVE
+                && participant.lifeSequence() > 1
+                && body.getIntOr("hardrush_life_sequence", 0) == participant.lifeSequence() - 1
+                && !inRoundWorld(body, round);
+    }
+
+    private static boolean inRoundWorld(CompoundTag body, RoundSnapshot round) {
+        String dimension = body.getStringOr("Dimension", "");
+        return java.util.List.of("overworld", "nether", "end").stream().anyMatch(name ->
+                dimension.equals(dev.hardrush.world.RoundWorldPaths.identifier(round.roundId(), name)));
     }
 
     /**
@@ -1240,12 +1278,10 @@ public final class PlayerProfiles implements AutoCloseable {
             var body = decode(saved.snapshot());
             requireSnapshotGeneration(body, target);
             if (saved.transition().phase() != ProfileJournal.Phase.VERIFIED) throw new IOException("保存点玩家档案未完成核验");
-            if (participant.role() == ParticipantRole.HUMAN_ACTIVE) {
+            // A revival whose body was not built yet is restored with the camp body; its reconnect builds the body.
+            if (participant.role() == ParticipantRole.HUMAN_ACTIVE && !campBodyOfRevivedLife(body, round, participant)) {
                 if (body.getIntOr("hardrush_life_sequence", 0) != participant.lifeSequence()) throw new IOException("保存点人类生命序号不一致");
-                String dimension = body.getStringOr("Dimension", "");
-                boolean valid = java.util.List.of("overworld", "nether", "end").stream().anyMatch(name ->
-                        dimension.equals(dev.hardrush.world.RoundWorldPaths.identifier(round.roundId(), name)));
-                if (!valid) throw new IOException("保存点人类位置不属于本轮世界");
+                if (!inRoundWorld(body, round)) throw new IOException("保存点人类位置不属于本轮世界");
             }
         }
     }
@@ -1500,7 +1536,8 @@ public final class PlayerProfiles implements AutoCloseable {
                         : !humansMayEnter(round)) || participant == null
                 || participant.role() != ParticipantRole.HUMAN_ACTIVE
                 || entry.player != player || !generation(round).equals(entry.target)) return false;
-        if (celebration && (entry.fresh || entry.awaitingRespawn)) return false;
+        // A revival whose body was never built has no round body to gather at the pool; it stays in camp like a fresh one.
+        if (celebration && (entry.fresh || entry.awaitingRespawn || revivalBodyPending(player, round))) return false;
         if (entry.admitted) return true;
         if (entry.awaitingRespawn) return confirmRespawn(player, round);
         try {

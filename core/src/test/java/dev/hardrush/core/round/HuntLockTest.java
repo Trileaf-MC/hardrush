@@ -125,6 +125,7 @@ class HuntLockTest {
         now[0] = 20_000_000_000L;
         accept(engine, engine.proposePersonalHunt(UUID.randomUUID(),
                 new PersonalHuntRequest(round, monster, 1, 3, MonsterRole.ZOMBIE, other, 1), 3));
+        accept(engine, engine.proposeMonsterLanded(UUID.randomUUID(), round, monster, 1, 4));
         accept(engine, engine.proposeDeathBatch(UUID.randomUUID(), round,
                 List.of(new RoundDeath(monster, 1, 4, Optional.empty(), Optional.of(sword(killer)), true)), null));
         assertEquals(LOCK, engine.committed().participants().get(monster).huntLockNanos(killer));
@@ -231,6 +232,7 @@ class HuntLockTest {
         for (var p : players.values()) accept(engine, engine.proposeOnline(UUID.randomUUID(), p.id(), p.name(), true));
         accept(engine, engine.proposePersonalHunt(UUID.randomUUID(),
                 new PersonalHuntRequest(round, monster, 1, 2, MonsterRole.ZOMBIE, quarry, 1), 2));
+        accept(engine, engine.proposeMonsterLanded(UUID.randomUUID(), round, monster, 1, 3));
         return engine;
     }
 
