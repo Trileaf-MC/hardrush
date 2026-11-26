@@ -438,6 +438,9 @@ public final class RoundRuntime {
                         participant.monsterDeploymentSequence(), CombatRuntime.currentBatch(player.level()).orElse(null), killCredit,
                         false, drop);
                 drop.ifPresent(token -> dev.hardrush.revival.TotemDrops.captured(player, round.roundId(), token, captured));
+                // A monster back in the camp learns what its cloud or slimes did; the totem would otherwise come from nowhere.
+                if (captured) killCredit.ifPresent(credit -> dev.hardrush.monster.MonsterLegacy.killed(
+                        player.level().getServer(), credit, player, drop.isEmpty()));
                 // Nothing lies where a life that kept its belongings fell, so there is nothing to point back at. The mark is
                 // taken whatever the capture says, so a later death of the same body never reads it.
                 boolean kept = KEPT.remove(player);

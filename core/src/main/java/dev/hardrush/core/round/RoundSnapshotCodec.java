@@ -134,7 +134,9 @@ public final class RoundSnapshotCodec {
         if (count < 0 || count > ShopOffer.values().length) throw new IOException("Invalid revival supply count");
         var supply = new java.util.EnumMap<ShopOffer, Integer>(ShopOffer.class);
         for (int i = 0; i < count; i++) {
-            if (supply.put(ShopOffer.fromId(readText(in, 128)), in.readInt()) != null) throw new IOException("Duplicate revival supply");
+            String id = readText(in, 128); int value = in.readInt();
+            if (ShopOffer.retired(id)) continue;
+            if (supply.put(ShopOffer.fromId(id), value) != null) throw new IOException("Duplicate revival supply");
         }
         try { return new WitchRecord(seen, life, supply, landed); }
         catch (IllegalArgumentException invalid) { throw new IOException("Invalid witch record", invalid); }
@@ -371,7 +373,9 @@ public final class RoundSnapshotCodec {
             if (size < 0 || size > ShopOffer.values().length) throw new IOException("Invalid offer count");
             var values = new java.util.EnumMap<ShopOffer, Integer>(ShopOffer.class);
             for (int i = 0; i < size; i++) {
-                if (values.put(ShopOffer.fromId(readText(in, 128)), in.readInt()) != null) throw new IOException("Duplicate offer");
+                String id = readText(in, 128); int value = in.readInt();
+                if (ShopOffer.retired(id)) continue;
+                if (values.put(ShopOffer.fromId(id), value) != null) throw new IOException("Duplicate offer");
             }
             counts.add(values);
         }
@@ -408,7 +412,9 @@ public final class RoundSnapshotCodec {
             int size = in.readInt();
             if (size < 0 || size > ShopOffer.values().length) throw new IOException("Invalid parked goods count");
             for (int i = 0; i < size; i++) {
-                if (parkedGoods.put(ShopOffer.fromId(readText(in, 128)), in.readInt()) != null) throw new IOException("Duplicate parked goods");
+                String id = readText(in, 128); int value = in.readInt();
+                if (ShopOffer.retired(id)) continue;
+                if (parkedGoods.put(ShopOffer.fromId(id), value) != null) throw new IOException("Duplicate parked goods");
             }
         }
         return new MonsterWallet(coins, chosen, counts.get(0), counts.get(1), counts.get(2),

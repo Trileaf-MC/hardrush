@@ -45,7 +45,10 @@ public final class CombatRuntime {
         @Override void close();
     }
     private record Binding(RoundAccess rounds, Consumer<CombatEvent> events) {}
-    private record Cause(ServerLevel level, UUID roundId, Optional<CombatOrigin> origin, UUID batchId) {}
+    /** {@code effect}: a lingering effect ticking on its victim, whose sourceless magic damage is that origin's hit. */
+    private record Cause(ServerLevel level, UUID roundId, Optional<CombatOrigin> origin, UUID batchId, boolean effect) {
+        Cause(ServerLevel level, UUID roundId, Optional<CombatOrigin> origin, UUID batchId) { this(level, roundId, origin, batchId, false); }
+    }
     private static final Map<MinecraftServer, Binding> BINDINGS = new IdentityHashMap<>();
     private static final ThreadLocal<Deque<Cause>> CAUSES = ThreadLocal.withInitial(ArrayDeque::new);
     private static final Map<MinecraftServer, Long> SEQUENCES = new IdentityHashMap<>();
@@ -177,14 +180,39 @@ public final class CombatRuntime {
         var origin = direct != null ? originOf(direct) : parent == null ? Optional.<CombatOrigin>empty() : parent.origin;
         return push(level, origin, parent == null ? null : parent.batchId);
     }
+    /**
+     * One tick of an effect a monster's lingering cloud put on {@code origin}'s victim: a poison tick has no source of its
+     * own, so it is that cloud's hit (docs/plan/女巫药水与药水盲盒.md §5).
+     */
+    public static Scope effectTick(ServerLevel level, Optional<CombatOrigin> origin) {
+        if (origin.isEmpty()) return Scope.NONE;
+        var parent = current(level);
+        var round = round(level);
+        if (round.isEmpty()) return Scope.NONE;
+        var standing = dev.hardrush.monster.MonsterLegacy.standing(level.getServer(), origin);
+        if (standing.isEmpty()) return Scope.NONE;
+        return push(level, new Cause(level, round.get(), standing, parent == null ? UUID.randomUUID() : parent.batchId, true));
+    }
+    /**
+     * Remembers {@code origin} as the last attack on {@code victim} without damage, as {@link #creditHit} does for a human:
+     * a monster's posthumous gust that throws a human off a ledge.
+     */
+    public static void creditOrigin(ServerLevel level, ServerPlayer victim, CombatOrigin origin) {
+        var memory = CREDITS.get(level.getServer());
+        if (memory == null || !victim.isAlive() || round(level).filter(origin.roundId()::equals).isEmpty()) return;
+        memory.hurt(victim.getUUID(), origin, level.getServer().getTickCount());
+    }
     public static Scope damage(ServerLevel level, DamageSource source) {
         var parent = current(level);
-        return push(level, resolve(level, source), parent == null ? null : parent.batchId);
+        return push(level, dev.hardrush.monster.MonsterLegacy.standing(level.getServer(), resolve(level, source)),
+                parent == null ? null : parent.batchId);
     }
     private static Scope push(ServerLevel level, Optional<CombatOrigin> origin, UUID batch) {
         var round = round(level);
         if (round.isEmpty()) return () -> {};
-        var cause = new Cause(level, round.get(), origin, batch == null ? UUID.randomUUID() : batch);
+        return push(level, new Cause(level, round.get(), origin, batch == null ? UUID.randomUUID() : batch));
+    }
+    private static Scope push(ServerLevel level, Cause cause) {
         CAUSES.get().push(cause);
         return () -> {
             var stack = CAUSES.get();
@@ -208,6 +236,10 @@ public final class CombatRuntime {
         if (monster.isPresent()) return monster;
         if (direct instanceof Projectile || direct instanceof PrimedTnt
                 || direct instanceof net.minecraft.world.entity.boss.enderdragon.EndCrystal) return originOf(direct);
+        if (direct == null && source.getEntity() == null) {
+            var cause = current(level);
+            if (cause != null && cause.effect) return cause.origin;
+        }
         if (source.is(DamageTypeTags.IS_EXPLOSION)) {
             var cause = current(level);
             return cause == null ? Optional.empty() : cause.origin;
@@ -275,7 +307,10 @@ public final class CombatRuntime {
         if (origin.isEmpty() || !origin.get().roundId().equals(round.get())
                 || origin.get().actor().identity() != dev.hardrush.core.round.ParticipantRole.MONSTER_DEPLOYED) return;
         switch (origin.get().kind()) {
-            case MELEE, ARROW, CREEPER, SUMMON -> { if (incomingDamage > 0) binding.rounds.playerDamaged(level, victim, origin.get(), incomingDamage); }
+            case MELEE, ARROW, CREEPER, SUMMON -> {
+                if (incomingDamage > 0) binding.rounds.playerDamaged(level, victim, origin.get(), incomingDamage);
+                if (actualDamage > 0) dev.hardrush.monster.MonsterLegacy.damaged(level, victim, origin.get());
+            }
             default -> {}
         }
     }
@@ -287,7 +322,8 @@ public final class CombatRuntime {
     public static Optional<CombatOrigin> killCredit(ServerLevel level, ServerPlayer victim, DamageSource source) {
         var memory = CREDITS.get(level.getServer());
         if (memory == null || round(level).isEmpty()) return Optional.empty();
-        return memory.died(victim.getUUID(), lethalCredit(level, source), level.getServer().getTickCount());
+        return dev.hardrush.monster.MonsterLegacy.standing(level.getServer(),
+                memory.died(victim.getUUID(), lethalCredit(level, source), level.getServer().getTickCount()));
     }
     /**
      * The credit {@link #killCredit(ServerLevel, ServerPlayer, DamageSource)} would resolve for this lethal hit right now,
@@ -296,11 +332,14 @@ public final class CombatRuntime {
     public static Optional<CombatOrigin> peekKillCredit(ServerLevel level, ServerPlayer victim, DamageSource source) {
         var memory = CREDITS.get(level.getServer());
         if (memory == null || round(level).isEmpty()) return Optional.empty();
-        return memory.peek(victim.getUUID(), lethalCredit(level, source), level.getServer().getTickCount());
+        return dev.hardrush.monster.MonsterLegacy.standing(level.getServer(),
+                memory.peek(victim.getUUID(), lethalCredit(level, source), level.getServer().getTickCount()));
     }
     private static Optional<CombatOrigin> lethalCredit(ServerLevel level, DamageSource source) {
         var cause = current(level);
-        return killCredit(source, cause == null ? resolve(level, source) : cause.origin);
+        // A lapsed leftover's lethal hit yields to the remembered hits, as a sourceless death would.
+        return dev.hardrush.monster.MonsterLegacy.standing(level.getServer(),
+                killCredit(source, cause == null ? resolve(level, source) : cause.origin));
     }
     /**
      * A revival totem has just saved {@code victim} inside the hit being taken. The pop restores health and grants

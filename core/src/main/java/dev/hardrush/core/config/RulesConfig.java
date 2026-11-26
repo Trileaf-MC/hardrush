@@ -69,6 +69,10 @@ public record RulesConfig(
             // Numeric equality must not create different leaderboard groups.
             copy.put(key, value == 0 ? 0.0 : value);
         });
+        for (var box : java.util.List.of("negative", "common", "rare", "epic")) {
+            Double min = copy.get("coin.potionBox." + box + "MinSeconds"), max = copy.get("coin.potionBox." + box + "MaxSeconds");
+            if (min != null && max != null && min > max) throw new IllegalArgumentException("盲盒最短时长不能大于最长时长: " + box);
+        }
         Double summonMin = copy.get("zombie.summonMinDistance");
         Double summonMax = copy.get("zombie.summonMaxDistance");
         if (summonMin != null && summonMax != null && summonMin > summonMax) {
@@ -79,7 +83,8 @@ public record RulesConfig(
             String limitKey = "coin.limit." + key.substring("coin.price.".length());
             Double limit = copy.get(limitKey);
             // The highest price must still fit the trade's two payment slots, one native emerald stack each.
-            if (limit == null || value * (flatPricedLimit(limitKey) ? 1 : Math.pow(2, limit - 1)) > 128) {
+            boolean flat = offerLimitedBy(limitKey).filter(dev.hardrush.core.round.ShopOffer::flatPrice).isPresent();
+            if (limit == null || value * (flat ? 1 : Math.pow(2, limit - 1)) > 128) {
                 throw new IllegalArgumentException("怪物币最高价不能超过 128，且需配置购买上限: " + key);
             }
         });
@@ -162,16 +167,35 @@ public record RulesConfig(
             Map.entry("coin.headBounty.star4", 150.0), Map.entry("coin.headBounty.star5", 250.0),
             Map.entry("coin.damageCapPerHuman", 20.0),
             Map.entry("coin.arrowsPerBundle", 4.0),
+            // Witch potions and blind boxes (docs/plan/女巫药水与药水盲盒.md); the turtle master keeps its native 20 seconds.
             Map.entry("coin.potion.swiftnessSeconds", 180.0),
             Map.entry("coin.potion.fireResistanceSeconds", 180.0),
-            Map.entry("coin.potion.regenerationSeconds", 45.0),
+            Map.entry("coin.potion.absorptionSeconds", 120.0),
+            Map.entry("coin.potion.resistanceSeconds", 90.0),
+            Map.entry("coin.potion.poisonSeconds", 45.0),
+            Map.entry("coin.potionBox.negativePermille", 150.0),
+            Map.entry("coin.potionBox.negativeMinSeconds", 20.0), Map.entry("coin.potionBox.negativeMaxSeconds", 45.0),
+            Map.entry("coin.potionBox.commonLevelTwoPermille", 100.0),
+            Map.entry("coin.potionBox.commonMinSeconds", 45.0), Map.entry("coin.potionBox.commonMaxSeconds", 90.0),
+            Map.entry("coin.potionBox.rareLevelTwoPermille", 300.0),
+            Map.entry("coin.potionBox.rareMinSeconds", 60.0), Map.entry("coin.potionBox.rareMaxSeconds", 120.0),
+            Map.entry("coin.potionBox.epicLevelTwoPermille", 500.0),
+            Map.entry("coin.potionBox.epicMinSeconds", 90.0), Map.entry("coin.potionBox.epicMaxSeconds", 180.0),
             Map.entry("coin.price.adultEgg", 8.0), Map.entry("coin.limit.adultEgg", 3.0),
             Map.entry("coin.price.babyEgg", 20.0), Map.entry("coin.limit.babyEgg", 2.0),
             // 25 doubles to 100 on the third box; a fourth would pass the trade's 128-coin ceiling.
             Map.entry("coin.price.monsterBox", 25.0), Map.entry("coin.limit.monsterBox", 3.0),
             Map.entry("coin.price.swiftness", 10.0), Map.entry("coin.limit.swiftness", 1.0),
-            Map.entry("coin.price.fireResistance", 6.0), Map.entry("coin.limit.fireResistance", 1.0),
-            Map.entry("coin.price.regeneration", 8.0), Map.entry("coin.limit.regeneration", 1.0),
+            Map.entry("coin.price.fireResistance", 5.0), Map.entry("coin.limit.fireResistance", 1.0),
+            // Every bottle at the base price: the doubling ladder skips it (ShopOffer.flatPrice).
+            Map.entry("coin.price.instantHealth", 4.0), Map.entry("coin.limit.instantHealth", 2.0),
+            Map.entry("coin.price.absorption", 12.0), Map.entry("coin.limit.absorption", 1.0),
+            Map.entry("coin.price.resistance", 12.0), Map.entry("coin.limit.resistance", 1.0),
+            Map.entry("coin.price.turtleMaster", 12.0), Map.entry("coin.limit.turtleMaster", 1.0),
+            Map.entry("coin.price.poison", 8.0), Map.entry("coin.limit.poison", 1.0),
+            Map.entry("coin.price.commonPotionBox", 8.0), Map.entry("coin.limit.commonPotionBox", 3.0),
+            Map.entry("coin.price.rarePotionBox", 18.0), Map.entry("coin.limit.rarePotionBox", 2.0),
+            Map.entry("coin.price.epicPotionBox", 35.0), Map.entry("coin.limit.epicPotionBox", 1.0),
             Map.entry("coin.price.slownessArrows", 8.0), Map.entry("coin.limit.slownessArrows", 2.0),
             Map.entry("coin.price.poisonArrows", 10.0), Map.entry("coin.limit.poisonArrows", 2.0),
             Map.entry("coin.price.charged", 40.0), Map.entry("coin.limit.charged", 1.0),
@@ -217,7 +241,9 @@ public record RulesConfig(
     private static boolean retiredKey(String key) {
         return key.startsWith("coin.bounty.") || key.startsWith("coin.survival.") || key.equals("bounty.floor")
                 || key.startsWith("bounty.") && key.endsWith("Ratio") || key.equals("bounty.huntedPoints")
-                || key.equals("coin.killedByHuman") || key.equals("skeleton.burstCooldownMillis");
+                || key.equals("coin.killedByHuman") || key.equals("skeleton.burstCooldownMillis")
+                || key.equals("coin.price.regeneration") || key.equals("coin.limit.regeneration")
+                || key.equals("coin.potion.regenerationSeconds");
     }
 
     /** Worth runs from level 10 to 30, one level per damage point; a slain body sprays 10 experience per level and leaves a book from level 15. */
@@ -269,7 +295,9 @@ public record RulesConfig(
             // Revision 6 (docs/plan/怪物盲盒.md): the monster box arrives; eggs and soulcatcher tiers cost a little more.
             Map.of("coin.price.adultEgg", Map.entry(6.0, 8.0),
                     "coin.price.babyEgg", Map.entry(16.0, 20.0),
-                    "coin.price.soulcatcherTier", Map.entry(30.0, 32.0)));
+                    "coin.price.soulcatcherTier", Map.entry(30.0, 32.0)),
+            // Revision 7 (docs/plan/女巫药水与药水盲盒.md): fire resistance becomes a cheap staple.
+            Map.of("coin.price.fireResistance", Map.entry(6.0, 5.0)));
     private static final int DEFAULTS_REVISION = 1 + RETUNED_DEFAULTS.size();
 
     private int defaultsRevision() {
@@ -434,8 +462,10 @@ public record RulesConfig(
     private static void validateCombatValue(String key, double value) {
         // An immediate re-hunt after a deliberate return is the default, not a misconfiguration.
         if (value == 0 && key.equals("monster.returnCooldownMillis")) return;
-        if (value == 0 && !key.endsWith("armor") && !key.endsWith("Resistance")) {
-            throw new IllegalArgumentException("战斗参数必须为正数（护甲／抗性可为零）: " + key);
+        // A blind box chance of zero turns that draw off (docs/plan/女巫药水与药水盲盒.md §3.3).
+        boolean chance = key.startsWith("coin.potionBox.") && key.endsWith("Permille");
+        if (value == 0 && !key.endsWith("armor") && !key.endsWith("Resistance") && !chance) {
+            throw new IllegalArgumentException("战斗参数必须为正数（护甲／抗性／盲盒概率可为零）: " + key);
         }
         if ((key.endsWith("Health") || key.endsWith("Damage") || key.endsWith("Attribute")
                 || key.endsWith("Distance") || key.endsWith("Strength")) && value <= 0) {
@@ -465,7 +495,7 @@ public record RulesConfig(
             throw new IllegalArgumentException("悬赏倍率必须在 1 与 100 之间: " + key);
         }
         // The doubling ladder caps how far a price may climb; flat-priced vault keys are bounded by the camp's gear instead.
-        if (flatPricedLimit(key)) {
+        if (offerLimitedBy(key).filter(dev.hardrush.core.round.ShopOffer::key).isPresent()) {
             int gear = dev.hardrush.core.round.MonsterWallet.MAX_GEAR;
             if (value > gear) throw new IllegalArgumentException("钥匙限购不能超过营地装备上限 " + gear + ": " + key);
         } else if (key.startsWith("coin.limit.") && value > 8) throw new IllegalArgumentException("单次出场购买上限不能超过 8: " + key);
@@ -474,14 +504,18 @@ public record RulesConfig(
                 && value > 1) throw new IllegalArgumentException("只交付一次的复生补给限购只能为 1: " + key);
         if (key.equals("coin.limit.longerBlessing") && value > LONGER_BLESSING_STEPS)
             throw new IllegalArgumentException("延长庇护的档数不能超过上限能容纳的 " + LONGER_BLESSING_STEPS + " 档: " + key);
+        if (key.startsWith("coin.potionBox.") && key.endsWith("Permille") && value > 1000)
+            throw new IllegalArgumentException("盲盒概率以千分比表示，不能超过 1000: " + key);
+        if (key.startsWith("coin.potionBox.") && key.endsWith("Seconds") && value > dev.hardrush.core.round.PotionBox.MAX_SECONDS)
+            throw new IllegalArgumentException("盲盒效果时长不能超过 " + dev.hardrush.core.round.PotionBox.MAX_SECONDS + " 秒: " + key);
         if (key.equals("zombie.summonMaxDistance") && value > 30_000_000) {
             throw new IllegalArgumentException("召唤距离超出有效世界范围");
         }
     }
 
-    private static boolean flatPricedLimit(String key) {
-        for (var offer : dev.hardrush.core.round.ShopOffer.values()) if (offer.flatPrice() && offer.limitKey().equals(key)) return true;
-        return false;
+    private static java.util.Optional<dev.hardrush.core.round.ShopOffer> offerLimitedBy(String key) {
+        for (var offer : dev.hardrush.core.round.ShopOffer.values()) if (offer.limitKey().equals(key)) return java.util.Optional.of(offer);
+        return java.util.Optional.empty();
     }
 
     private static String escape(String value) {

@@ -13,7 +13,7 @@ import net.minecraft.world.item.Items;
 /** Every drowned holds the sea's trident, and a deliberate return parks the form it was turned into; in-process bodies without a client. */
 public final class MonsterSeaGameTest {
     @GameTest(maxTicks=200)
-    public void aSeaRisenDrownedParksAsADrownedWithItsTrident(GameTestHelper test) {
+    public void aSeaRisenDrownedParksAsADrownedWithItsTridentAndTimedEffects(GameTestHelper test) {
         var p = MonsterRoleGameTest.actor(test);
         try {
             MonsterRoles.select(p, "zombie");
@@ -24,7 +24,7 @@ public final class MonsterSeaGameTest {
                     "The risen drowned holds its bound trident");
             test.assertValueEqual(countPurpose(p, "return"), 1, "The rest of the kit is untouched");
             p.addEffect(new MobEffectInstance(MobEffects.SPEED, 1200, 1));
-            p.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 1200));
+            p.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 1200));
             var parked = MonsterParking.capture(p);
             var body = MonsterParking.decode(p, parked, dev.hardrush.core.round.MonsterRole.ZOMBIE).orElseThrow();
             test.assertValueEqual(body.form(), MonsterForm.DROWNED, "The form the sea gave is parked");
@@ -33,10 +33,11 @@ public final class MonsterSeaGameTest {
                     "The drowned's trident parks with it");
             test.assertTrue(body.items().values().stream().anyMatch(stack -> MonsterItems.purpose(stack).equals("baby_egg")
                     && stack.is(Items.DROWNED_SPAWN_EGG)), "Remaining starting eggs park as drowned eggs");
-            test.assertValueEqual(body.effects().size(), 1, "Only the witch's paid effects are parked");
-            var speed = body.effects().getFirst();
-            test.assertTrue(speed.is(MobEffects.SPEED) && speed.getAmplifier() == 1 && speed.getDuration() > 1100,
-                    "A paid effect keeps its strength and remaining time");
+            // Every timed effect parks, the bad with the good (docs/plan/女巫药水与药水盲盒.md §1); the body's own night vision never does.
+            test.assertValueEqual(body.effects().size(), 2, "Every timed effect is parked");
+            var speed = body.effects().stream().filter(effect -> effect.is(MobEffects.SPEED)).findFirst().orElseThrow();
+            test.assertTrue(speed.getAmplifier() == 1 && speed.getDuration() > 1100, "A parked effect keeps its strength and remaining time");
+            test.assertTrue(body.effects().stream().anyMatch(effect -> effect.is(MobEffects.SLOWNESS)), "A harmful effect parks too");
             MonsterRoles.riseFromSea(p);
             test.assertValueEqual(countPurpose(p, MonsterRoles.SEA_TRIDENT), 1, "A drowned rising from the sea again gets no second trident");
         } finally { MonsterRoleGameTest.remove(p); }

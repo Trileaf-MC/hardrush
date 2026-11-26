@@ -12,10 +12,19 @@ public enum ShopOffer {
     BABY_EGG("babyEgg", "幼年僵尸刷怪蛋", Kind.CARRIED, MonsterRole.ZOMBIE),
     // What it lets out depends on the soulcatcher's tier (docs/plan/怪物盲盒.md); rounds without a soulcatcher never stock it.
     MONSTER_BOX("monsterBox", "怪物盲盒", Kind.CARRIED, MonsterRole.ZOMBIE),
+    // Witch potions (docs/plan/女巫药水与药水盲盒.md) ride the sortie as bound bottles the monster drinks itself.
     SWIFTNESS("swiftness", "迅捷药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     FIRE_RESISTANCE("fireResistance", "抗火药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
-    // Native undead ignore regeneration, so the witch only brews it for creepers.
-    REGENERATION("regeneration", "再生药水", Kind.CARRIED, MonsterRole.CREEPER),
+    // Native undead heal from harming, so the undead get a potion of harming and the creeper one of healing.
+    INSTANT_HEALTH("instantHealth", "伤害／治疗药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    ABSORPTION("absorption", "伤害吸收药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    RESISTANCE("resistance", "抗性提升药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    TURTLE_MASTER("turtleMaster", "神龟药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    // The creeper is poisoned too, and its explosion turns the poison into a lingering cloud.
+    POISON("poison", "剧毒药水", Kind.CARRIED, MonsterRole.CREEPER),
+    COMMON_POTION_BOX("commonPotionBox", "普通药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    RARE_POTION_BOX("rarePotionBox", "稀有药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    EPIC_POTION_BOX("epicPotionBox", "史诗药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     SLOWNESS_ARROWS("slownessArrows", "缓慢药箭", Kind.CARRIED, MonsterRole.SKELETON),
     POISON_ARROWS("poisonArrows", "剧毒药箭", Kind.CARRIED, MonsterRole.SKELETON),
     CHARGED("charged", "带电出击", Kind.CARRIED, MonsterRole.CREEPER),
@@ -67,14 +76,34 @@ public enum ShopOffer {
      */
     public boolean keptUntilUsed() { return this == CHARGED; }
     /**
-     * Vault keys keep one price however many are bought: each opens a single random piece, so the camp's gear cap,
-     * not a rising price, is what bounds them.
+     * Every purchase costs the base price: the doubling ladder skips it. Vault keys each open a single random piece, so
+     * the camp's gear cap, not a rising price, bounds them; a potion of harming or healing is a staple bought by the bottle.
      */
-    public boolean flatPrice() { return key(); }
+    public boolean flatPrice() { return key() || this == INSTANT_HEALTH; }
     /** Whether a sortie as {@code role} carries it; revival supplies never ride a sortie. */
     public boolean sellableTo(MonsterRole role) { return !revival() && roles.contains(role); }
+    /** A bottle the witch brews, drunk by the monster itself on its next sortie (docs/plan/女巫药水与药水盲盒.md). */
+    public boolean potion() {
+        return switch (this) {
+            case SWIFTNESS, FIRE_RESISTANCE, INSTANT_HEALTH, ABSORPTION, RESISTANCE, TURTLE_MASTER, POISON,
+                 COMMON_POTION_BOX, RARE_POTION_BOX, EPIC_POTION_BOX -> true;
+            default -> false;
+        };
+    }
+    /** The blind box this offer is, or empty for every other offer. */
+    public java.util.Optional<PotionBox> potionBox() {
+        return switch (this) {
+            case COMMON_POTION_BOX -> java.util.Optional.of(PotionBox.COMMON);
+            case RARE_POTION_BOX -> java.util.Optional.of(PotionBox.RARE);
+            case EPIC_POTION_BOX -> java.util.Optional.of(PotionBox.EPIC);
+            default -> java.util.Optional.empty();
+        };
+    }
     public String priceKey() { return "coin.price." + id; }
     public String limitKey() { return "coin.limit." + id; }
+
+    /** Offers taken off the shelf; a stored count of one is dropped when an older round is read. */
+    public static boolean retired(String id) { return id.equals("regeneration"); }
 
     public static ShopOffer fromId(String id) {
         for (var offer : values()) if (offer.id.equals(id)) return offer;

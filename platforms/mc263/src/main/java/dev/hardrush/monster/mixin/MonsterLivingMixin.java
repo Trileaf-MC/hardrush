@@ -17,15 +17,25 @@ public abstract class MonsterLivingMixin {
         if ((Object)this instanceof ServerPlayer player
                 && MonsterRoles.currentForm(player) == dev.hardrush.monster.MonsterForm.CREEPER) callback.setReturnValue(false);
     }
+    @Inject(method="addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z", at=@At("HEAD"), cancellable=true)
+    private void ownSight(MobEffectInstance effect, net.minecraft.world.entity.Entity source, CallbackInfoReturnable<Boolean> callback) {
+        if ((Object)this instanceof ServerPlayer player && MonsterRoles.refusesSight(player, effect)) callback.setReturnValue(false);
+    }
     @Inject(method="canBreatheUnderwater", at=@At("HEAD"), cancellable=true)
     private void undeadBreathing(CallbackInfoReturnable<Boolean> callback) {
         if ((Object)this instanceof ServerPlayer player && MonsterRoles.isUndead(player)) callback.setReturnValue(true);
     }
     @Inject(method="releaseUsingItem", at=@At("HEAD"), cancellable=true)
     private void roleBow(CallbackInfo callback) {
-        if ((Object)this instanceof ServerPlayer player && MonsterRoles.isMonster(player)) {
+        // A witch potion is let go of natively, like anyone's.
+        if ((Object)this instanceof ServerPlayer player && MonsterRoles.isMonster(player)
+                && !dev.hardrush.monster.MonsterPotions.drinking(player)) {
             MonsterRoles.releaseUsingItem(player); callback.cancel();
         }
+    }
+    @Inject(method="completeUsingItem", at=@At("HEAD"))
+    private void witchPotion(CallbackInfo callback) {
+        if ((Object)this instanceof ServerPlayer player && MonsterRoles.isMonster(player)) dev.hardrush.monster.MonsterPotions.finishing(player);
     }
     @Inject(method="isInvertedHealAndHarm", at=@At("HEAD"), cancellable=true)
     private void undeadHealing(CallbackInfoReturnable<Boolean> callback) {
