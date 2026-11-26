@@ -76,10 +76,11 @@ public record RulesConfig(
         }
         copy.forEach((key, value) -> {
             if (!key.startsWith("coin.price.")) return;
-            Double limit = copy.get("coin.limit." + key.substring("coin.price.".length()));
-            // A doubled price must still fit the trade's two payment slots, one native emerald stack each.
-            if (limit == null || value * Math.pow(2, limit - 1) > 128) {
-                throw new IllegalArgumentException("怪物币价格翻倍后不能超过 128，且需配置购买上限: " + key);
+            String limitKey = "coin.limit." + key.substring("coin.price.".length());
+            Double limit = copy.get(limitKey);
+            // The highest price must still fit the trade's two payment slots, one native emerald stack each.
+            if (limit == null || value * (flatPricedLimit(limitKey) ? 1 : Math.pow(2, limit - 1)) > 128) {
+                throw new IllegalArgumentException("怪物币最高价不能超过 128，且需配置购买上限: " + key);
             }
         });
         if (copy.keySet().stream().anyMatch(key -> key.startsWith("worth."))) {
@@ -174,8 +175,9 @@ public record RulesConfig(
             Map.entry("coin.price.slownessArrows", 8.0), Map.entry("coin.limit.slownessArrows", 2.0),
             Map.entry("coin.price.poisonArrows", 10.0), Map.entry("coin.limit.poisonArrows", 2.0),
             Map.entry("coin.price.charged", 40.0), Map.entry("coin.limit.charged", 1.0),
-            Map.entry("coin.price.trialKey", 5.0), Map.entry("coin.limit.trialKey", 2.0),
-            Map.entry("coin.price.ominousKey", 12.0), Map.entry("coin.limit.ominousKey", 1.0),
+            // Keys keep one price; the limit matches the camp's gear cap (MonsterWallet.MAX_GEAR), so coins bound them.
+            Map.entry("coin.price.trialKey", 3.0), Map.entry("coin.limit.trialKey", 16.0),
+            Map.entry("coin.price.ominousKey", 8.0), Map.entry("coin.limit.ominousKey", 16.0),
             // 32 is the highest base whose third step (128) still fits the trade's two payment slots.
             Map.entry("coin.price.soulcatcherTier", 32.0), Map.entry("coin.limit.soulcatcherTier", 3.0),
             Map.entry("coin.price.soulcatcherCapacity", 20.0), Map.entry("coin.limit.soulcatcherCapacity", 3.0),
@@ -261,7 +263,10 @@ public record RulesConfig(
             // Revision 4 (docs/plan/悬赏分档与追猎强度.md): kills score well below milestones; a tighter volley.
             Map.of("bounty.killPoints", Map.entry(3.0, 2.0),
                     "skeleton.burstIntervalMillis", Map.entry(300.0, 200.0)),
-            // Revision 5 (docs/plan/怪物盲盒.md): the monster box arrives; eggs and soulcatcher tiers cost a little more.
+            // Revision 5 (issue #88): vault keys are cheaper, flat-priced and bought as often as the camp holds gear.
+            Map.of("coin.price.trialKey", Map.entry(5.0, 3.0), "coin.limit.trialKey", Map.entry(2.0, 16.0),
+                    "coin.price.ominousKey", Map.entry(12.0, 8.0), "coin.limit.ominousKey", Map.entry(1.0, 16.0)),
+            // Revision 6 (docs/plan/怪物盲盒.md): the monster box arrives; eggs and soulcatcher tiers cost a little more.
             Map.of("coin.price.adultEgg", Map.entry(6.0, 8.0),
                     "coin.price.babyEgg", Map.entry(16.0, 20.0),
                     "coin.price.soulcatcherTier", Map.entry(30.0, 32.0)));
@@ -459,7 +464,11 @@ public record RulesConfig(
         if (key.startsWith("bounty.") && key.endsWith("Multiplier") && (value < 1 || value > 100)) {
             throw new IllegalArgumentException("悬赏倍率必须在 1 与 100 之间: " + key);
         }
-        if (key.startsWith("coin.limit.") && value > 8) throw new IllegalArgumentException("单次出场购买上限不能超过 8: " + key);
+        // The doubling ladder caps how far a price may climb; flat-priced vault keys are bounded by the camp's gear instead.
+        if (flatPricedLimit(key)) {
+            int gear = dev.hardrush.core.round.MonsterWallet.MAX_GEAR;
+            if (value > gear) throw new IllegalArgumentException("钥匙限购不能超过营地装备上限 " + gear + ": " + key);
+        } else if (key.startsWith("coin.limit.") && value > 8) throw new IllegalArgumentException("单次出场购买上限不能超过 8: " + key);
         // Revival supplies delivered once per life: a second purchase would be paid for and never handed out.
         if (java.util.Set.of("coin.limit.bonusChest", "coin.limit.ironBucket", "coin.limit.ironPickaxe", "coin.limit.shield").contains(key)
                 && value > 1) throw new IllegalArgumentException("只交付一次的复生补给限购只能为 1: " + key);
@@ -468,6 +477,11 @@ public record RulesConfig(
         if (key.equals("zombie.summonMaxDistance") && value > 30_000_000) {
             throw new IllegalArgumentException("召唤距离超出有效世界范围");
         }
+    }
+
+    private static boolean flatPricedLimit(String key) {
+        for (var offer : dev.hardrush.core.round.ShopOffer.values()) if (offer.flatPrice() && offer.limitKey().equals(key)) return true;
+        return false;
     }
 
     private static String escape(String value) {

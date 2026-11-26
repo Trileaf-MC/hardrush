@@ -80,6 +80,7 @@ public final class LobbyRuntimeGameTest {
         test.assertTrue(HardRushProperties.competitionEnabled(), "The dedicated run requires the production runtime");
         var f = new Fixture(test);
         TestTeardown.atEnd(test, () -> {
+            if (f.committing != null) f.releaseCommits();
             f.monster.client.close();
             f.target.client.close();
             FROZEN_SUMMON_OWNERS.remove(f.monster.profile.id());
@@ -160,6 +161,14 @@ public final class LobbyRuntimeGameTest {
                     f.spawnEgg(2, -2);
                     f.test.assertValueEqual(f.summons(), baby ? 2 : 1, "The formal outing owns one companion per egg it hatched");
                     f.test.assertFalse(f.monster.participant().monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON), "Egg use does not create retired cooldown state");
+                    // Turned by the water mid-sortie with a full inventory of world loot: no trident this time, but the
+                    // drowned form and its eggs park with the body and the resume tops the trident up (#83).
+                    for (int i = 0; i < 36; i++) if (f.monster.player.getInventory().getItem(i).isEmpty())
+                        f.monster.player.getInventory().setItem(i, new ItemStack(Items.COBBLESTONE));
+                    MonsterRoles.convert(f.monster.player, dev.hardrush.monster.MonsterForm.DROWNED);
+                    for (int i = 0; i < f.monster.player.getInventory().getContainerSize(); i++)
+                        f.test.assertFalse(dev.hardrush.monster.MonsterItems.matches(f.monster.player, f.monster.player.getInventory().getItem(i), MonsterRoles.SEA_TRIDENT),
+                                "A full inventory gets no trident at the conversion");
                     f.monster.useReturn();
                     f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "Using the echo shard begins a return channel");
                     f.monster.move(f.monster.player.position().add(.2, 0, 0));
@@ -185,12 +194,27 @@ public final class LobbyRuntimeGameTest {
                     // behind (a repeated online report no longer writes, #35). Its commit callback is held, so the
                     // write stays in flight however fast the IO finishes.
                     f.holdCommits();
+                    boolean held = false;
                     try {
                         f.clock.addAndGet(TimeUnit.SECONDS.toNanos(1));
                         f.session.tick();
                         f.test.assertTrue(f.session.mutationPending(), "The mature return channel competes with a real SQLite write");
                         LobbyRuntime.tick(f.server);
                         f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "A mature return channel waits while the write is in flight");
+                        held = true;
+                    } finally { if (!held) f.releaseCommits(); }
+                })
+                // Only the admission write is let through: once the channel ends, the return's own commit stays held.
+                .thenWaitUntil(() -> {
+                    if (LobbyRuntime.channeling(f.monster.player)) f.passHeldCommits();
+                    f.await(!LobbyRuntime.channeling(f.monster.player) && f.session.mutationPending(), "The finished return channel commits its return");
+                })
+                .thenExecute(() -> {
+                    try {
+                        f.test.assertValueEqual(f.monster.participant().role(), ParticipantRole.MONSTER_DEPLOYED, "The return has not committed yet");
+                        f.monster.useReturn();
+                        f.test.assertFalse(LobbyRuntime.channeling(f.monster.player),
+                                "Pressing the shard again while the return commits starts no second channel");
                     } finally { f.releaseCommits(); }
                 })
                 .thenWaitUntil(() -> f.await(f.monsterReady(false), "Completed return channel durably enters lobby"))
@@ -209,17 +233,31 @@ public final class LobbyRuntimeGameTest {
                 .thenWaitUntil(() -> f.await(f.deployed(2), "The paused sortie resumes at once"))
                 .thenExecute(() -> {
                     var inventory = f.monster.player.getInventory();
-                    f.test.assertTrue(MonsterRoles.nativeModel(f.monster.player).getType() == EntityTypes.ZOMBIE, "The resumed body keeps its form");
-                    f.test.assertTrue(inventory.getItem(1).isEmpty(), "The spent baby egg is not handed out again");
-                    // The tier's own eggs plus the one bought, less the one hatched before the return.
-                    f.test.assertValueEqual(inventory.getItem(2).getCount(),
+                    f.test.assertTrue(MonsterRoles.nativeModel(f.monster.player).getType() == EntityTypes.DROWNED,
+                            "The resumed body keeps the drowned form the water gave it");
+                    f.test.assertFalse(dev.hardrush.monster.MonsterItems.matches(f.monster.player, inventory.getItem(1), "baby_egg"),
+                            "The spent baby egg is not handed out again");
+                    int tridents = 0, adultEggs = 0;
+                    for (int i = 0; i < inventory.getContainerSize(); i++) {
+                        var stack = inventory.getItem(i);
+                        if (dev.hardrush.monster.MonsterItems.matches(f.monster.player, stack, MonsterRoles.SEA_TRIDENT)) tridents++;
+                        f.test.assertFalse(stack.is(Items.ZOMBIE_SPAWN_EGG), "A resumed drowned carries no zombie egg");
+                        if (dev.hardrush.monster.MonsterItems.matches(f.monster.player, stack, "adult_egg")) adultEggs += stack.getCount();
+                    }
+                    f.test.assertValueEqual(tridents, 1, "A drowned that parked without its trident takes exactly one on resuming");
+                    // The tier's own eggs plus the one bought, less the one hatched before the return. At one star that
+                    // leaves none, so the empty hand took the trident at conversion and it comes back in that slot.
+                    f.test.assertValueEqual(adultEggs,
                             dev.hardrush.core.round.HuntPressure.starterAdultEggs(f.monster.participant().sortie().tier()),
-                            "The remaining adult eggs come back in their slot");
+                            "The remaining adult eggs come back");
+                    f.test.assertTrue(dev.hardrush.monster.MonsterItems.matches(f.monster.player, f.monster.player.getMainHandItem(), MonsterRoles.SEA_TRIDENT),
+                            "The world loot stayed behind, so the topped-up trident takes the empty hand");
                     f.test.assertTrue(inventory.getItem(7).is(Items.ECHO_SHARD) && dev.hardrush.monster.MonsterItems.owned(f.monster.player, inventory.getItem(7)),
                             "Parked bound items are rebound to the resumed deployment");
                     f.test.assertValueEqual(f.worldSwords(), 1, "The world sword stayed where the monster returned and is not parked");
                     // The ticking monster body would pick the sword up again the next time it stands beside it.
                     f.discardWorldSwords();
+                    for (var loot : f.level.getEntitiesOfClass(ItemEntity.class, f.worldGearDrops, item -> item.getItem().is(Items.COBBLESTONE))) loot.discard();
                     f.test.assertTrue(f.monster.player.getHealth() < f.monster.player.getMaxHealth(), "The resumed body keeps the camp body's health");
                     f.monster.useReturn();
                     f.ageReturnChannel();
@@ -438,8 +476,22 @@ public final class LobbyRuntimeGameTest {
                             } finally { f.level.getChunkAt(floor).setBlockState(floor, original, 2); }
                         }
                         hunter.command("hardrush revive");
-                    })
-                    .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RUNNING && hunter.participant().role() == ParticipantRole.HUMAN_ACTIVE
+                    });
+            if (iteration == 0) {
+                // #72: the player leaves at "正在复生……", so the revival commits while its body still stands in camp and
+                // is never built. The reconnect must build the new life's body, supplies and blessing included, as the
+                // revival it is; the checks below are the ones every revival passes.
+                final var campLife = new java.util.concurrent.atomic.AtomicInteger();
+                sequence.thenWaitUntil(() -> f.await(dev.hardrush.lobby.RevivalAltar.channeling(hunter.player), "The rite starts on the altar"))
+                        .thenExecute(() -> { campLife.set(hunter.participant().lifeSequence()); f.holdCommits(); })
+                        .thenWaitUntil(() -> f.await(dev.hardrush.lobby.RevivalAltar.submitting(hunter.player), "The rite submits its revival"))
+                        .thenExecute(() -> { hunter.disconnect(); f.releaseCommits(); })
+                        .thenWaitUntil(() -> f.await(hunter.participant().role() == ParticipantRole.HUMAN_ACTIVE
+                                && hunter.participant().lifeSequence() == campLife.get() + 1 && !hunter.participant().connected()
+                                && !f.session.mutationPending(), "The revival commits while its player is away"));
+                hunter.login(sequence);
+            }
+            sequence.thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RUNNING && hunter.participant().role() == ParticipantRole.HUMAN_ACTIVE
                             && hunter.participant().online() && !PlayerProfiles.isLocked(hunter.player)
                             && f.profiles.isReady(hunter.profile.id(), f.round()) && !f.session.mutationPending()
                             && !dev.hardrush.lobby.RevivalAltar.arriving(f.server, hunter.profile.id()), "Cycle exactly one revival unlocks an empty human " + iteration))
@@ -630,6 +682,12 @@ public final class LobbyRuntimeGameTest {
                 heldCommits.clear();
             }
             released.forEach(committing::execute);
+        }
+        /** Applies the commits held so far; later ones are still held. */
+        void passHeldCommits() {
+            List<Runnable> passed;
+            synchronized (commitGate) { passed = List.copyOf(heldCommits); heldCommits.clear(); }
+            passed.forEach(committing::execute);
         }
         RoundSnapshot round() { return RoundRuntime.snapshot(server).orElseThrow(); }
         void await(boolean condition, String message) {

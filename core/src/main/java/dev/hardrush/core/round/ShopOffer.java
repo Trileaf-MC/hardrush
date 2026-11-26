@@ -66,6 +66,11 @@ public enum ShopOffer {
      * only when a sortie carrying it is used up by the monster's death.
      */
     public boolean keptUntilUsed() { return this == CHARGED; }
+    /**
+     * Vault keys keep one price however many are bought: each opens a single random piece, so the camp's gear cap,
+     * not a rising price, is what bounds them.
+     */
+    public boolean flatPrice() { return key(); }
     /** Whether a sortie as {@code role} carries it; revival supplies never ride a sortie. */
     public boolean sellableTo(MonsterRole role) { return !revival() && roles.contains(role); }
     public String priceKey() { return "coin.price." + id; }

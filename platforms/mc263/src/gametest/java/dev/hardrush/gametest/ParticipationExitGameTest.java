@@ -147,11 +147,12 @@ public final class ParticipationExitGameTest {
                     test.assertTrue(f.a.player.getCamera() == f.b.player, "The order wraps around");
                     f.a.player.connection.handlePlayerInput(new ServerboundPlayerInputPacket(new Input(false, false, false, false, false, false, false)));
                     test.assertValueEqual(execute(f.server.createCommandSourceStack(), "gamemode spectator CampHumanA"), 0, "An observer is never granted free flight");
-                    // Riding a competitor's camera, a private line would be a callout the watched side never sees.
+                    // Riding a camera seals the body, never the conversation (#86).
                     test.assertTrue(PlayerProfiles.sealed(f.a.player)
-                            && dev.hardrush.player.SealedCommands.refusal(f.a.player, "tell CampHumanB hi").isPresent()
-                            && dev.hardrush.player.SealedCommands.refusal(f.a.player, "tm hi").isPresent()
-                            && dev.hardrush.player.SealedCommands.refusal(f.a.player, "me cheers").isEmpty(), "An observer whispers to nobody, but public speech stays");
+                            && dev.hardrush.player.SealedCommands.refusal(f.a.player, "tell CampHumanB hi").isEmpty()
+                            && dev.hardrush.player.SealedCommands.refusal(f.a.player, "tm hi").isEmpty()
+                            && dev.hardrush.player.SealedCommands.refusal(f.a.player, "me cheers").isEmpty()
+                            && dev.hardrush.player.SealedCommands.refusal(f.a.player, "trigger anything").isPresent(), "An observer still talks, publicly or privately");
                 })
                 .thenWaitUntil(() -> f.await(dev.hardrush.observe.Observation.audience(f.b.player) == 1, "Watched human counts the camera"))
                 .thenExecute(() -> {

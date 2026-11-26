@@ -30,7 +30,7 @@ class MonsterCoinsTest {
     }
 
     @Test void campCoinTransfersPreserveOrdersAndAllowGiftsBeforeRevival() {
-        var wallet = chosen(90).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 5);
+        var wallet = chosen(90).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3);
         var engine = engine(humanParticipant(), deployedMonster().withWallet(wallet));
         accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, monster, 1, 3));
         accept(engine, engine.proposeAdminGrantRevival(UUID.randomUUID(), round, monster, 1, 0, 1));
@@ -75,6 +75,31 @@ class MonsterCoinsTest {
         assertEquals(8, next.nextPrice(RULES, ShopOffer.ADULT_EGG));
     }
 
+    @Test void vaultKeysKeepOnePriceUpToTheCampGearCap() {
+        var wallet = chosen(500);
+        assertEquals(MonsterWallet.MAX_GEAR, MonsterCoins.limit(RULES, ShopOffer.TRIAL_KEY));
+        assertEquals(MonsterWallet.MAX_GEAR, MonsterCoins.limit(RULES, ShopOffer.OMINOUS_KEY));
+        for (int i = 0; i < MonsterWallet.MAX_GEAR; i++) {
+            assertEquals(3, wallet.nextPrice(RULES, ShopOffer.TRIAL_KEY));
+            wallet = wallet.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3);
+        }
+        assertTrue(wallet.soldOut(RULES, ShopOffer.TRIAL_KEY));
+        assertEquals(500 - 3 * MonsterWallet.MAX_GEAR, wallet.coins());
+        for (int i = 0; i < 3; i++) wallet = wallet.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.OMINOUS_KEY, 8);
+        assertEquals(8, wallet.nextPrice(RULES, ShopOffer.OMINOUS_KEY));
+        assertEquals(3 * MonsterWallet.MAX_GEAR + 3 * 8, MonsterCoins.refund(RULES, ShopOffer.TRIAL_KEY, 16, 16)
+                + MonsterCoins.refund(RULES, ShopOffer.OMINOUS_KEY, 3, 3));
+    }
+
+    @Test void onlyFlatPricedKeysMayBeBoughtBeyondTheDoublingLadderCap() {
+        var keys = new TreeMap<>(RULES.combatValues());
+        keys.put("coin.limit.ominousKey", (double) MonsterWallet.MAX_GEAR + 1);
+        assertThrows(IllegalArgumentException.class, () -> rules(keys));
+        var eggs = new TreeMap<>(RULES.combatValues());
+        eggs.put("coin.limit.adultEgg", 9.0);
+        assertThrows(IllegalArgumentException.class, () -> rules(eggs));
+    }
+
     @Test void purchasesRequireAChosenRoleASellableOfferTheShownPriceAndEnoughCoins() {
         var unchosen = MonsterWallet.EMPTY.credit(50);
         assertThrows(IllegalStateException.class, () -> unchosen.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 8));
@@ -89,28 +114,29 @@ class MonsterCoinsTest {
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 8)
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 16)
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.SWIFTNESS, 10)
-                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 5);
+                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3);
         var skeleton = wallet.chooseRole(RULES, MonsterRole.SKELETON);
-        assertEquals(100 - 10 - 5, skeleton.coins());
+        assertEquals(100 - 10 - 3, skeleton.coins());
         assertEquals(0, skeleton.ordered(ShopOffer.ADULT_EGG));
         assertEquals(1, skeleton.ordered(ShopOffer.SWIFTNESS));
         assertEquals(1, skeleton.ordered(ShopOffer.TRIAL_KEY));
         var creeper = skeleton.chooseRole(RULES, MonsterRole.CREEPER);
         assertEquals(90, creeper.coins());
-        assertEquals(5, creeper.nextPrice(RULES, ShopOffer.TRIAL_KEY));
+        assertEquals(3, creeper.nextPrice(RULES, ShopOffer.TRIAL_KEY));
     }
 
     @Test void deploymentFreezesTheKitRefundsUnopenedKeysAndCancellationRestoresIt() {
         var wallet = chosen(200)
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.BABY_EGG, 20)
-                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 5)
-                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 10)
+                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3)
+                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3)
                 .openVault(ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.HEAD, Set.of(MonsterRole.ZOMBIE, MonsterRole.SKELETON), "helmet")
                 .openVault(ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.MAINHAND, Set.of(MonsterRole.SKELETON), "bow");
-        assertEquals(200 - 20 - 5 - 10, wallet.coins());
-        wallet = wallet.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.OMINOUS_KEY, 12);
+        assertEquals(200 - 20 - 3 - 3, wallet.coins());
+        wallet = wallet.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.OMINOUS_KEY, 8)
+                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.OMINOUS_KEY, 8);
         var deployed = wallet.deploy(RULES, MonsterRole.ZOMBIE);
-        assertEquals(165, deployed.coins(), "the unopened ominous key is refunded");
+        assertEquals(174, deployed.coins(), "unopened ominous keys are refunded at the price paid");
         assertEquals(1, deployed.carried(ShopOffer.BABY_EGG));
         assertEquals(List.of("helmet"), deployed.activeGear().stream().map(MonsterWallet.GearPiece::item).toList());
         assertEquals(List.of("bow"), deployed.gear().stream().map(MonsterWallet.GearPiece::item).toList());
@@ -250,7 +276,7 @@ class MonsterCoinsTest {
     }
 
     @Test void snapshotsRoundTripTheWallet() {
-        var wallet = chosen(80).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 5)
+        var wallet = chosen(80).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3)
                 .openVault(ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.CHEST, Set.of(MonsterRole.ZOMBIE), "{id:\"chest\"}")
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 8)
                 .creditDamage(human, 1_234, 1500, 20_000);
@@ -312,9 +338,13 @@ class MonsterCoinsTest {
         values.put("coin.price.ominousKey", 40.0);
         // Chosen by an operator after revision 2: a later migration must not replay revision 2 over it.
         values.put("monster.deployCooldownMillis", 30_000.0);
+        values.put("coin.limit.trialKey", 2.0);
+        values.put("coin.limit.ominousKey", 1.0);
         var next = RulesConfig.decode(rules(values).encode()).forNewRound();
-        assertEquals(5.0, next.combatValues().get("coin.price.trialKey"));
-        assertEquals(12.0, next.combatValues().get("coin.price.ominousKey"));
+        assertEquals(3.0, next.combatValues().get("coin.price.trialKey"));
+        assertEquals(8.0, next.combatValues().get("coin.price.ominousKey"));
+        assertEquals(16.0, next.combatValues().get("coin.limit.trialKey"));
+        assertEquals(16.0, next.combatValues().get("coin.limit.ominousKey"));
         assertEquals(30_000.0, next.combatValues().get("monster.deployCooldownMillis"));
         assertEquals(RULES.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY), next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
 
@@ -324,7 +354,16 @@ class MonsterCoinsTest {
         var legacy = rules(values).forNewRound();
         assertNull(legacy.combatValues().get("coin.killedByHuman"), "Retired: the killer's stars decide it");
         assertEquals(20.0, legacy.combatValues().get("coin.price.trialKey"));
-        assertEquals(12.0, legacy.combatValues().get("coin.price.ominousKey"));
+        assertEquals(8.0, legacy.combatValues().get("coin.price.ominousKey"));
+
+        var operator = new TreeMap<>(RULES.combatValues());
+        operator.put(RulesConfig.DEFAULTS_REVISION_KEY, 4.0);
+        operator.put("coin.price.ominousKey", 10.0); // an operator's own key price and limit survive revision 5
+        operator.put("coin.limit.ominousKey", 3.0);
+        var kept = rules(operator).forNewRound();
+        assertEquals(10.0, kept.combatValues().get("coin.price.ominousKey"));
+        assertEquals(3.0, kept.combatValues().get("coin.limit.ominousKey"));
+        assertEquals(3.0, kept.combatValues().get("coin.price.trialKey"));
         assertEquals(legacy, legacy.forNewRound(), "Migrated rules are stable");
     }
 
@@ -338,20 +377,31 @@ class MonsterCoinsTest {
                 .buy(RULES, MonsterRole.SKELETON, ShopOffer.MONSTER_BOX, 25));
     }
 
-    @Test void revisionFiveRaisesEggAndSoulcatcherPricesStillOnTheOldDefaults() {
+    @Test void revisionSixRaisesEggAndSoulcatcherPricesStillOnTheOldDefaults() {
+        // Already on revision 5 (the key prices): only revision 6 may run, and it must still run.
         var values = new TreeMap<>(RULES.combatValues());
-        values.put(RulesConfig.DEFAULTS_REVISION_KEY, 4.0);
+        values.put(RulesConfig.DEFAULTS_REVISION_KEY, 5.0);
         values.put("coin.price.adultEgg", 6.0);
         values.put("coin.price.babyEgg", 18.0); // an operator's own price is kept
         values.put("coin.price.soulcatcherTier", 30.0);
+        values.put("coin.price.trialKey", 5.0); // chosen after revision 5, so revision 5 never replays over it
         values.remove("coin.price.monsterBox"); values.remove("coin.limit.monsterBox");
         var next = rules(values).forNewRound();
         assertEquals(8.0, next.combatValues().get("coin.price.adultEgg"));
         assertEquals(18.0, next.combatValues().get("coin.price.babyEgg"));
         assertEquals(32.0, next.combatValues().get("coin.price.soulcatcherTier"));
+        assertEquals(5.0, next.combatValues().get("coin.price.trialKey"));
         assertEquals(25.0, next.combatValues().get("coin.price.monsterBox"));
         assertEquals(3.0, next.combatValues().get("coin.limit.monsterBox"));
-        assertEquals(5.0, next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+        assertEquals(6.0, next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+
+        // From revision 4 both steps run in order.
+        values.put(RulesConfig.DEFAULTS_REVISION_KEY, 4.0);
+        values.put("coin.price.adultEgg", 6.0);
+        var both = rules(values).forNewRound();
+        assertEquals(3.0, both.combatValues().get("coin.price.trialKey"));
+        assertEquals(8.0, both.combatValues().get("coin.price.adultEgg"));
+        assertEquals(6.0, both.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
     }
 
     private static RulesConfig rules(Map<String, Double> values) {
