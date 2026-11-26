@@ -164,8 +164,10 @@ public record RulesConfig(
             Map.entry("coin.potion.swiftnessSeconds", 180.0),
             Map.entry("coin.potion.fireResistanceSeconds", 180.0),
             Map.entry("coin.potion.regenerationSeconds", 45.0),
-            Map.entry("coin.price.adultEgg", 6.0), Map.entry("coin.limit.adultEgg", 3.0),
-            Map.entry("coin.price.babyEgg", 16.0), Map.entry("coin.limit.babyEgg", 2.0),
+            Map.entry("coin.price.adultEgg", 8.0), Map.entry("coin.limit.adultEgg", 3.0),
+            Map.entry("coin.price.babyEgg", 20.0), Map.entry("coin.limit.babyEgg", 2.0),
+            // 25 doubles to 100 on the third box; a fourth would pass the trade's 128-coin ceiling.
+            Map.entry("coin.price.monsterBox", 25.0), Map.entry("coin.limit.monsterBox", 3.0),
             Map.entry("coin.price.swiftness", 10.0), Map.entry("coin.limit.swiftness", 1.0),
             Map.entry("coin.price.fireResistance", 6.0), Map.entry("coin.limit.fireResistance", 1.0),
             Map.entry("coin.price.regeneration", 8.0), Map.entry("coin.limit.regeneration", 1.0),
@@ -174,7 +176,8 @@ public record RulesConfig(
             Map.entry("coin.price.charged", 40.0), Map.entry("coin.limit.charged", 1.0),
             Map.entry("coin.price.trialKey", 5.0), Map.entry("coin.limit.trialKey", 2.0),
             Map.entry("coin.price.ominousKey", 12.0), Map.entry("coin.limit.ominousKey", 1.0),
-            Map.entry("coin.price.soulcatcherTier", 30.0), Map.entry("coin.limit.soulcatcherTier", 3.0),
+            // 32 is the highest base whose third step (128) still fits the trade's two payment slots.
+            Map.entry("coin.price.soulcatcherTier", 32.0), Map.entry("coin.limit.soulcatcherTier", 3.0),
             Map.entry("coin.price.soulcatcherCapacity", 20.0), Map.entry("coin.limit.soulcatcherCapacity", 3.0),
             // Revival supplies (docs/plan/复生补给与女巫说明.md); the doubling ladder applies to repeat purchases.
             Map.entry("coin.price.bonusChest", 30.0), Map.entry("coin.limit.bonusChest", 1.0),
@@ -257,7 +260,11 @@ public record RulesConfig(
                     "coin.price.ominousKey", Map.entry(40.0, 12.0)),
             // Revision 4 (docs/plan/悬赏分档与追猎强度.md): kills score well below milestones; a tighter volley.
             Map.of("bounty.killPoints", Map.entry(3.0, 2.0),
-                    "skeleton.burstIntervalMillis", Map.entry(300.0, 200.0)));
+                    "skeleton.burstIntervalMillis", Map.entry(300.0, 200.0)),
+            // Revision 5 (docs/plan/怪物盲盒.md): the monster box arrives; eggs and soulcatcher tiers cost a little more.
+            Map.of("coin.price.adultEgg", Map.entry(6.0, 8.0),
+                    "coin.price.babyEgg", Map.entry(16.0, 20.0),
+                    "coin.price.soulcatcherTier", Map.entry(30.0, 32.0)));
     private static final int DEFAULTS_REVISION = 1 + RETUNED_DEFAULTS.size();
 
     private int defaultsRevision() {

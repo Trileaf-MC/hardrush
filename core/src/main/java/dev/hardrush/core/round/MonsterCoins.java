@@ -55,9 +55,13 @@ public final class MonsterCoins {
 
     public static boolean soulcatcher(RulesConfig rules) { return rules.combatValues().containsKey(SOULCATCHER_CAPACITY); }
 
-    /** Rounds saved before an offer existed have neither its price nor its limit, and the witch never stocks it. */
+    /**
+     * Rounds saved before an offer existed have neither its price nor its limit, and the witch never stocks it. The
+     * monster box draws by the soulcatcher's tier, so a round without a soulcatcher does not stock it either.
+     */
     public static boolean offered(RulesConfig rules, ShopOffer offer) {
-        return rules.combatValues().containsKey(offer.priceKey()) && rules.combatValues().containsKey(offer.limitKey());
+        return rules.combatValues().containsKey(offer.priceKey()) && rules.combatValues().containsKey(offer.limitKey())
+                && (offer != ShopOffer.MONSTER_BOX || soulcatcher(rules));
     }
 
     public static int limit(RulesConfig rules, ShopOffer offer) { return amount(rules, offer.limitKey()); }

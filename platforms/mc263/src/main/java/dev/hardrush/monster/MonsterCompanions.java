@@ -197,9 +197,24 @@ public final class MonsterCompanions {
 
     /** Positions {@code mob} at the landing like a native egg; false when the spot is unloaded, protected or obstructed. */
     public static boolean place(ServerPlayer player, Mob mob, Landing landing) {
+        return placeAnyway(player, mob, landing) && safeBox(player.level(), mob, mob.getBoundingBox());
+    }
+
+    /** Whether a creature may land here at all: loaded, inside the world border and outside protected levels. */
+    public static boolean landable(ServerPlayer player, Landing landing) {
         var level = player.level();
         var pos = landing.pos();
-        if (!loaded(level, pos) || !level.getWorldBorder().isWithinBounds(pos) || ProtectionRuntime.protectedLevel(level)) return false;
+        return loaded(level, pos) && level.getWorldBorder().isWithinBounds(pos) && !ProtectionRuntime.protectedLevel(level);
+    }
+
+    /**
+     * Positions {@code mob} at the landing like a native egg, which never asks whether the body fits; false only when
+     * the spot is not {@linkplain #landable landable}.
+     */
+    public static boolean placeAnyway(ServerPlayer player, Mob mob, Landing landing) {
+        var level = player.level();
+        var pos = landing.pos();
+        if (!landable(player, landing)) return false;
         double offset = 0;
         if (landing.moveDown()) {
             mob.setPos(pos.getX() + .5, pos.getY() + 1, pos.getZ() + .5);
@@ -208,7 +223,7 @@ public final class MonsterCompanions {
         mob.snapTo(pos.getX() + .5, pos.getY() + offset, pos.getZ() + .5,
                 Mth.wrapDegrees(level.getRandom().nextFloat() * 360), 0);
         mob.yHeadRot = mob.getYRot(); mob.yBodyRot = mob.getYRot();
-        return safeBox(level, mob, mob.getBoundingBox());
+        return true;
     }
 
     private static boolean usableEgg(ServerPlayer player, ItemStack stack) {

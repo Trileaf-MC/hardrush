@@ -126,7 +126,7 @@ public final class MonsterSoulcatcher {
     }
 
     /** Tier and capacity this deployment's soulcatcher has, from the round's rules and the witch's upgrades. */
-    private static int tier(ServerPlayer player) {
+    static int tier(ServerPlayer player) {
         return Math.min(TIERS - 1, MonsterRoundRuntime.sortieKit(player).bought(ShopOffer.SOULCATCHER_TIER));
     }
     private static int capacity(ServerPlayer player) {
