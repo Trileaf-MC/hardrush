@@ -25,8 +25,9 @@ public final class MonsterParking {
     /**
      * Slot {@code -1} is the cursor; it rejoins the inventory on resume. {@code tier} is the tier the sortie's own
      * goods were issued for, 0 for a body parked before tiers; resuming onto a weaker human takes back what exceeds it.
+     * {@code absorption} is what was left of the yellow hearts: a resumed absorption effect must not refill them.
      */
-    public record Body(MonsterRole role, MonsterForm form, boolean charged, float health, int selected,
+    public record Body(MonsterRole role, MonsterForm form, boolean charged, float health, float absorption, int selected,
                        Map<Integer, ItemStack> items, java.util.List<MobEffectInstance> effects, int tier) {}
     /**
      * Names bodies parked before every timed effect was kept; those bodies only ever held the witch's three old effects.
@@ -66,6 +67,7 @@ public final class MonsterParking {
         body.addProperty("form", form.name());
         body.addProperty("charged", form == MonsterForm.CREEPER && MonsterCreeper.charged(player));
         body.addProperty("health", player.getHealth());
+        body.addProperty("absorption", player.getAbsorptionAmount());
         body.addProperty("selected", inventory.getSelectedSlot());
         body.addProperty("tier", MonsterRoundRuntime.sortieTier(player));
         body.add("items", items);
@@ -99,7 +101,7 @@ public final class MonsterParking {
                 if (!stack.isEmpty()) items.put(entry.get("slot").getAsInt(), stack);
             }
             return Optional.of(new Body(role, form, body.get("charged").getAsBoolean(), body.get("health").getAsFloat(),
-                    body.get("selected").getAsInt(), items, java.util.List.copyOf(effects), body.has("tier") ? body.get("tier").getAsInt() : 0));
+                    body.has("absorption") ? body.get("absorption").getAsFloat() : 0, body.get("selected").getAsInt(), items, java.util.List.copyOf(effects), body.has("tier") ? body.get("tier").getAsInt() : 0));
         } catch (RuntimeException damaged) {
             return Optional.empty();
         }

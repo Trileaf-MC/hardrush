@@ -271,6 +271,8 @@ public final class MonsterRoles {
         if (role.form == MonsterForm.DROWNED) seaTrident(player, false);
         if (body.charged()) MonsterCreeper.charge(player);
         for (var effect : body.effects()) player.addEffect(effect);
+        // A resumed absorption effect would natively refill its hearts; only what was left of them comes back.
+        player.setAbsorptionAmount(Math.min(player.getAbsorptionAmount(), body.absorption()));
         player.setHealth(Math.max(1, Math.min(role.health, player.getMaxHealth())));
         if (role.form.zombie()) {
             addEggs(player, role, true, kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG));

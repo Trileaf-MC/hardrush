@@ -96,13 +96,14 @@ public final class MonsterPotionsGameTest {
                     MonsterRoles.select(skeleton, "skeleton");
                     skeleton.addEffect(new MobEffectInstance(MobEffects.GLOWING, 400));
                     skeleton.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 2400, 2));
-                    skeleton.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, -1));
+                    skeleton.setAbsorptionAmount(3);
                     var body = MonsterParking.decode(skeleton, MonsterParking.capture(skeleton), MonsterRole.SKELETON).orElseThrow();
                     test.assertTrue(body.effects().stream().anyMatch(effect -> effect.is(MobEffects.GLOWING)), "A bad effect is parked too");
                     test.assertTrue(body.effects().stream().anyMatch(effect -> effect.is(MobEffects.ABSORPTION) && effect.getAmplifier() == 2),
                             "A witch potion's effect keeps its level");
                     test.assertFalse(body.effects().stream().anyMatch(effect -> effect.is(MobEffects.NIGHT_VISION)),
                             "An endless effect is no potion's and is not parked");
+                    test.assertValueEqual(body.absorption(), 3.0F, "Only what is left of the yellow hearts parks, never a refill");
                     cleanup.run();
                 }))
                 .thenSucceed();
