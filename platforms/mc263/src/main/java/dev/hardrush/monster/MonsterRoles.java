@@ -257,6 +257,9 @@ public final class MonsterRoles {
         }
         if (role.form.zombie()) refreshSoulcatcher(player);
         if (body.selected() >= 0 && body.selected() < 9) inventory.setSelectedSlot(body.selected());
+        // A drowned that parked without its trident (a full inventory at the conversion, or a trident worn out in melee)
+        // takes it now: world items are never parked, so the resumed body nearly always has room.
+        if (role.form == MonsterForm.DROWNED) seaTrident(player, false);
         if (body.charged()) MonsterCreeper.charge(player);
         for (var effect : body.effects()) player.addEffect(effect);
         player.setHealth(Math.max(1, Math.min(role.health, player.getMaxHealth())));
@@ -623,7 +626,7 @@ public final class MonsterRoles {
      * spawned one only sometimes; here the form is the weapon, so a player never has to tell the two ways apart.
      * {@code intoHand}: a sortie that just rose from the sea takes it into its hand, moving what it held aside;
      * one converted mid-sortie keeps what it is using and finds the trident in the first free slot, hotbar first.
-     * A full inventory gets none this time; it is never dropped.
+     * A full inventory gets none this time; it is never dropped, and the next resume of the parked drowned tops it up.
      */
     private static void seaTrident(ServerPlayer player, boolean intoHand) {
         var inventory = player.getInventory();

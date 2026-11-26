@@ -157,8 +157,14 @@ public final class LobbyRuntimeGameTest {
                     f.spawnEgg(2, -2);
                     f.test.assertValueEqual(f.summons(), baby ? 2 : 1, "The formal outing owns one companion per egg it hatched");
                     f.test.assertFalse(f.monster.participant().monsterSkillReadyAtMillis().containsKey(MonsterSkill.ZOMBIE_SUMMON), "Egg use does not create retired cooldown state");
-                    // Turned by the water mid-sortie: the drowned form, its eggs and its trident all park with the body (#83).
+                    // Turned by the water mid-sortie with a full inventory of world loot: no trident this time, but the
+                    // drowned form and its eggs park with the body and the resume tops the trident up (#83).
+                    for (int i = 0; i < 36; i++) if (f.monster.player.getInventory().getItem(i).isEmpty())
+                        f.monster.player.getInventory().setItem(i, new ItemStack(Items.COBBLESTONE));
                     MonsterRoles.convert(f.monster.player, dev.hardrush.monster.MonsterForm.DROWNED);
+                    for (int i = 0; i < f.monster.player.getInventory().getContainerSize(); i++)
+                        f.test.assertFalse(dev.hardrush.monster.MonsterItems.matches(f.monster.player, f.monster.player.getInventory().getItem(i), MonsterRoles.SEA_TRIDENT),
+                                "A full inventory gets no trident at the conversion");
                     f.monster.useReturn();
                     f.test.assertTrue(LobbyRuntime.channeling(f.monster.player), "Using the echo shard begins a return channel");
                     f.monster.move(f.monster.player.position().add(.2, 0, 0));
@@ -219,19 +225,20 @@ public final class LobbyRuntimeGameTest {
                         f.test.assertFalse(stack.is(Items.ZOMBIE_SPAWN_EGG), "A resumed drowned carries no zombie egg");
                         if (dev.hardrush.monster.MonsterItems.matches(f.monster.player, stack, "adult_egg")) adultEggs += stack.getCount();
                     }
-                    f.test.assertValueEqual(tridents, 1, "The drowned's bound trident parks and is rebound to the resumed deployment");
+                    f.test.assertValueEqual(tridents, 1, "A drowned that parked without its trident takes exactly one on resuming");
                     // The tier's own eggs plus the one bought, less the one hatched before the return. At one star that
                     // leaves none, so the empty hand took the trident at conversion and it comes back in that slot.
                     f.test.assertValueEqual(adultEggs,
                             dev.hardrush.core.round.HuntPressure.starterAdultEggs(f.monster.participant().sortie().tier()),
                             "The remaining adult eggs come back");
-                    if (adultEggs == 0) f.test.assertTrue(dev.hardrush.monster.MonsterItems.matches(f.monster.player, inventory.getItem(2), MonsterRoles.SEA_TRIDENT),
-                            "The trident returns to the slot it was parked in");
+                    f.test.assertTrue(dev.hardrush.monster.MonsterItems.matches(f.monster.player, f.monster.player.getMainHandItem(), MonsterRoles.SEA_TRIDENT),
+                            "The world loot stayed behind, so the topped-up trident takes the empty hand");
                     f.test.assertTrue(inventory.getItem(7).is(Items.ECHO_SHARD) && dev.hardrush.monster.MonsterItems.owned(f.monster.player, inventory.getItem(7)),
                             "Parked bound items are rebound to the resumed deployment");
                     f.test.assertValueEqual(f.worldSwords(), 1, "The world sword stayed where the monster returned and is not parked");
                     // The ticking monster body would pick the sword up again the next time it stands beside it.
                     f.discardWorldSwords();
+                    for (var loot : f.level.getEntitiesOfClass(ItemEntity.class, f.worldGearDrops, item -> item.getItem().is(Items.COBBLESTONE))) loot.discard();
                     f.test.assertTrue(f.monster.player.getHealth() < f.monster.player.getMaxHealth(), "The resumed body keeps the camp body's health");
                     f.monster.useReturn();
                     f.ageReturnChannel();
