@@ -510,6 +510,8 @@ public final class LobbyRuntime {
                     if (!MonsterRoles.isMonster(d.player) || MonsterRoles.nativeModel(d.player) == null)
                         throw new IllegalStateException("已提交出场未能应用原生怪物角色");
                     boolean risen = d.search.result().submerged() && d.identity.kind() == MonsterRole.ZOMBIE;
+                    // A parked drowned resuming at sea already is one; only a zombie turns as it rises.
+                    boolean turned = risen && MonsterRoles.currentForm(d.player) == dev.hardrush.monster.MonsterForm.ZOMBIE;
                     if (risen) MonsterRoles.riseFromSea(d.player);
                     b.pending.remove(id, d); b.committing.remove(id);
                     dev.hardrush.hunt.HuntBossBars.deployed(d.player, committed, d.identity);
@@ -519,7 +521,7 @@ public final class LobbyRuntime {
                     sound(d.player, true);
                     String quarry = Notices.key(d.targetPlayer.getScoreboardName());
                     if (burrowed) { burrowed(d.player); return; }
-                    Notices.hint(d.player, risen ? "已化身溺尸，从水下出击"
+                    Notices.hint(d.player, risen ? (turned ? "已化身溺尸，从水下出击" : "已从水下出击")
                             : d.search.result().fallback()
                             ? "已出击：去 " + quarry + " 的路被切断，这是能到的最近处" : "已出击，" + quarry + " 就在附近"); return;
                 }
