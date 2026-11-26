@@ -34,7 +34,26 @@ public final class FullCheckpointRuntime {
         thread.setDaemon(true);
         return thread;
     });
-    private record Schedule(UUID round, long nextNanos) {}
+    /**
+     * The round's next point: it may take its barrier from {@code dueNanos} on. {@code settling} marks that it has been
+     * due and writable since {@code settlingSinceNanos}; the settle limit counts only that time, so a point that was
+     * due while nobody could be saved (a death screen, a building body) never fires at the instant that ends.
+     */
+    record Schedule(UUID round, long dueNanos, boolean settling, long settlingSinceNanos) {
+        static Schedule due(UUID round, long dueNanos) { return new Schedule(round, dueNanos, false, 0); }
+    }
+    enum Decision { WAIT, SETTLED, FORCED }
+    /**
+     * A point waits at most this long for {@link #settled} once it is due and writable; then it takes its barrier
+     * anyway, so constant exploration (elytra, several players spreading out) can delay a point but never skip it.
+     */
+    static final long SETTLE_LIMIT_NANOS = TimeUnit.SECONDS.toNanos(60);
+    /**
+     * Holders the barrier may still wait on when it starts. Near players these are the edge of a view distance that is
+     * already mostly generated; an isolated far landing is excluded separately because one holder there is a whole
+     * generation pyramid.
+     */
+    static final int SETTLED_CHUNKS = 8;
     private FullCheckpointRuntime() {}
 
     public static boolean saving(MinecraftServer server) { return SAVING.contains(server) || RecoveryRuntime.busy(server); }
@@ -58,18 +77,83 @@ public final class FullCheckpointRuntime {
         PUBLISHING.remove(server); SCHEDULES.remove(server); SAVING.remove(server); FULL_COPY.remove(server);
     }
 
+    /**
+     * A round's first point falls due as soon as it can be written, later ones one interval after the previous
+     * barrier. A due point still waits until {@link #settled}: vanilla's flushing save stops the server thread for
+     * every chunk still generating, which right after the opening teleport froze the server for seconds.
+     */
     public static void tick(MinecraftServer server, RoundSession session, RoundWorldBundle worlds, PlayerProfiles profiles) {
-        long interval = HardRushProperties.fullCheckpointIntervalSeconds();
+        long interval = interval();
         if (interval == 0) return;
-        if (interval < 1 || interval > 3600) interval = HardRushProperties.DEFAULT_FULL_CHECKPOINT_INTERVAL_SECONDS;
-        if (publishing(server)) return;
-        var round = session.snapshot().orElse(null);
-        if (round == null || round.phase() != RoundPhase.RUNNING || worlds == null || !worlds.ready()
-                || !session.canSaveFullCheckpoint() || !profiles.readyForFullCheckpoint(round)) return;
         long now = System.nanoTime();
+        var round = session.snapshot().orElse(null);
         var schedule = SCHEDULES.get(server);
-        if (schedule != null && schedule.round().equals(round.roundId()) && now - schedule.nextNanos() < 0) return;
-        SCHEDULES.put(server, new Schedule(round.roundId(), now + TimeUnit.SECONDS.toNanos(interval)));
+        if (round != null && (schedule == null || !schedule.round().equals(round.roundId()))) schedule = Schedule.due(round.roundId(), now);
+        if (schedule == null) return;
+        boolean eligible = eligible(server, session, worlds, profiles);
+        schedule = advance(schedule, now, eligible);
+        SCHEDULES.put(server, schedule);
+        if (!eligible) return;
+        var decision = decide(schedule, now, () -> settled(server, worlds));
+        if (decision == Decision.WAIT) return;
+        barrier(server, session, worlds, profiles, now, interval, now - schedule.dueNanos(), decision == Decision.FORCED);
+    }
+
+    /** Test seam: takes the barrier now if a point could be written, without waiting for arrivals to settle. */
+    public static void checkpointNow(MinecraftServer server, RoundSession session, RoundWorldBundle worlds, PlayerProfiles profiles) {
+        long interval = interval();
+        if (interval == 0 || !eligible(server, session, worlds, profiles)) return;
+        barrier(server, session, worlds, profiles, System.nanoTime(), interval, 0, false);
+    }
+
+    /** Starts settling when a due point becomes writable; a point that stops being writable starts over next time. */
+    static Schedule advance(Schedule schedule, long nowNanos, boolean eligible) {
+        if (!eligible || nowNanos - schedule.dueNanos() < 0) return schedule.settling() ? Schedule.due(schedule.round(), schedule.dueNanos()) : schedule;
+        return schedule.settling() ? schedule : new Schedule(schedule.round(), schedule.dueNanos(), true, nowNanos);
+    }
+
+    /** Whether a settling point takes its barrier now; {@code settled} is probed only when the limit has not run out. */
+    static Decision decide(Schedule schedule, long nowNanos, java.util.function.BooleanSupplier settled) {
+        if (!schedule.settling()) return Decision.WAIT;
+        if (nowNanos - schedule.settlingSinceNanos() >= SETTLE_LIMIT_NANOS) return Decision.FORCED;
+        return settled.getAsBoolean() ? Decision.SETTLED : Decision.WAIT;
+    }
+
+    /**
+     * Every player in a round world has closed its loading screen, no far landing is generating, and the flushing save
+     * would wait on no more than {@link #SETTLED_CHUNKS} chunks. The loading-screen gate covers a dimension change,
+     * whose view distance generates only once the client arrives; a client that never reports loaded (no timeout,
+     * unlike vanilla's {@code hasClientLoaded}) holds every point for the full settle limit.
+     */
+    private static boolean settled(MinecraftServer server, RoundWorldBundle worlds) {
+        for (var player : server.getPlayerList().getPlayers())
+            if (RoundWorldBundle.owns(player.level()) && !dev.hardrush.player.ClientLevelLoad.loaded(player)) return false;
+        if (dev.hardrush.world.FarLandings.loading(server)) return false;
+        try { return worlds.checkpointWaiting(SETTLED_CHUNKS) <= SETTLED_CHUNKS; }
+        catch (RuntimeException error) {
+            // Only timing depends on the probe; the barrier itself still verifies the worlds and reports failures.
+            LOGGER.warn("保存点无法判断区块生成是否空闲，按时保存：{}", error.getMessage(), error);
+            return true;
+        }
+    }
+
+    private static long interval() {
+        long interval = HardRushProperties.fullCheckpointIntervalSeconds();
+        if (interval == 0) return 0;
+        return interval < 1 || interval > 3600 ? HardRushProperties.DEFAULT_FULL_CHECKPOINT_INTERVAL_SECONDS : interval;
+    }
+
+    private static boolean eligible(MinecraftServer server, RoundSession session, RoundWorldBundle worlds, PlayerProfiles profiles) {
+        if (publishing(server)) return false;
+        var round = session.snapshot().orElse(null);
+        return round != null && round.phase() == RoundPhase.RUNNING && worlds != null && worlds.ready()
+                && session.canSaveFullCheckpoint() && profiles.readyForFullCheckpoint(round);
+    }
+
+    private static void barrier(MinecraftServer server, RoundSession session, RoundWorldBundle worlds, PlayerProfiles profiles,
+                                long now, long interval, long deferredNanos, boolean forced) {
+        var round = session.snapshot().orElseThrow();
+        SCHEDULES.put(server, Schedule.due(round.roundId(), now + TimeUnit.SECONDS.toNanos(interval)));
         if (!session.beginFullCheckpoint()) return;
         SAVING.add(server);
         FullCheckpoint checkpoint = null;
@@ -85,6 +169,8 @@ public final class FullCheckpointRuntime {
             var export = session.exportFullCheckpointAsync(checkpoint.database(pending));
             exported = export.written();
             var snapshot = export.snapshot();
+            int unsaved = worlds.checkpointUnsaved();
+            int waiting = worlds.checkpointWaiting(SETTLED_CHUNKS);
             long flushStarted = System.nanoTime();
             worlds.saveForCheckpoint();
             server.getPlayerList().saveAll();
@@ -95,9 +181,10 @@ public final class FullCheckpointRuntime {
             }
             var staged = checkpoint.stage(pending, snapshot, System.nanoTime() + TimeUnit.SECONDS.toNanos(10), !FULL_COPY.contains(server));
             var bodies = profiles.captureFullCheckpointBodies(snapshot);
-            LOGGER.info("Checkpoint barrier {} ms (native save {} ms); copied {} files ({} KiB), reusing {} unchanged",
+            LOGGER.info("Checkpoint barrier {} ms (native save {} ms: {} unsaved chunks, {} generating); deferred {} ms{}; copied {} files ({} KiB), reusing {} unchanged",
                     TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - now), TimeUnit.NANOSECONDS.toMillis(flushed - flushStarted),
-                    staged.copied(), staged.copiedBytes() / 1024, staged.reused());
+                    unsaved, waiting > SETTLED_CHUNKS ? ">" + SETTLED_CHUNKS : waiting, TimeUnit.NANOSECONDS.toMillis(deferredNanos),
+                    forced ? " (settle limit reached)" : "", staged.copied(), staged.copiedBytes() / 1024, staged.reused());
             var writer = checkpoint;
             long handedOff = System.nanoTime();
             PUBLISHING.put(server, exported.orTimeout(60, TimeUnit.SECONDS).thenRunAsync(() -> {

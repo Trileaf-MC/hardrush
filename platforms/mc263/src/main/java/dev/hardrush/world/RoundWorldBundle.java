@@ -443,6 +443,25 @@ public final class RoundWorldBundle implements AutoCloseable {
         for (var handle : handles.values()) CheckpointFlush.save(handle.asLevel());
     }
 
+    /** Chunks of the three dimensions that {@link #saveForCheckpoint()} would wait for right now, counted up to {@code limit + 1}. */
+    public int checkpointWaiting(int limit) {
+        requireMainThread(server);
+        int waiting = 0;
+        for (var handle : handles.values()) {
+            waiting += CheckpointFlush.waiting(handle.asLevel(), limit - waiting);
+            if (waiting > limit) break;
+        }
+        return waiting;
+    }
+
+    /** Loaded chunks of the three dimensions that {@link #saveForCheckpoint()} still has to serialize. */
+    public int checkpointUnsaved() {
+        requireMainThread(server);
+        int unsaved = 0;
+        for (var handle : handles.values()) unsaved += CheckpointFlush.unsaved(handle.asLevel());
+        return unsaved;
+    }
+
     /**
      * Starts a verified save/unload on the main thread after evacuation. Call tick() until the
      * completion finishes: Fantasy unload is queued and does not close native region IO itself.

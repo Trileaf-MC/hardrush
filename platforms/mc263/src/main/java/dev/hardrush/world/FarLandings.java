@@ -116,6 +116,15 @@ public final class FarLandings {
         return Optional.of(s.captions.remove(player.getUUID()).text());
     }
 
+    /**
+     * A landing chunk is being generated. One isolated landing is a whole generation pyramid far from every player,
+     * so a flushing save must not start while it is pending (see FullCheckpointRuntime).
+     */
+    public static boolean loading(MinecraftServer server) {
+        var s = SERVICES.get(server);
+        return s != null && s.load != null;
+    }
+
     /** Test seam: landings prepared and not yet reserved. */
     public static int prepared(MinecraftServer server) {
         var s = SERVICES.get(server);
