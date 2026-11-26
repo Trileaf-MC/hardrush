@@ -506,6 +506,8 @@ public final class LobbyRuntime {
                 // leaves a sealed, empty pocket behind; like every dug block, it is deliberately never refilled.
                 if (burrowed) dev.hardrush.hunt.HuntBurrows.carve(d.level, landing, d.player);
                 if (b.profiles.deployMonster(d.player, committed, d.level, landing, d.search.yaw(d.targetPlayer.position()))) {
+                    // Until this commits, a disconnect cancels the sortie instead of spending it.
+                    b.session.monsterLanded(d.identity.round(), id, d.identity.hunterLife(), d.sortie + 1);
                     MonsterRoles.select(d.player, d.identity.kind().name().toLowerCase(Locale.ROOT));
                     if (!MonsterRoles.isMonster(d.player) || MonsterRoles.nativeModel(d.player) == null)
                         throw new IllegalStateException("已提交出场未能应用原生怪物角色");
