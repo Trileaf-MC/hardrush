@@ -26,8 +26,11 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.AbstractWindCharge;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerExplosion;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * What a monster's potions leave behind (docs/plan/女巫药水与药水盲盒.md §5): a creeper's lingering cloud, the slimes
@@ -40,6 +43,10 @@ public final class MonsterLegacy {
     private static final String OWNER = "hardrush.legacy-owner=";
     private static final String KIND = "hardrush.legacy-kind=";
     private static final int HINT_INTERVAL_TICKS = 60;
+    /** A push below a tenth of a block per tick is a breeze, not a throw. */
+    private static final double MIN_PUSH_SQR = 0.01;
+    /** The players the gust being set off right now has pushed; main thread only. */
+    private static final ThreadLocal<Map<Player, Vec3>> GUSTS = new ThreadLocal<>();
 
     /** What is left behind, with how the death message names it and how the owner hears of it. */
     public enum Kind {
@@ -106,27 +113,37 @@ public final class MonsterLegacy {
     }
 
     /**
-     * Native wind charged: a burst of gust strength 3–5 at mid-body. It deals no damage, so every human it may throw is
-     * remembered as hit by the monster, as vanilla remembers a punch: a fall in the next seconds is its kill.
+     * Native wind charged: a burst of gust strength 3–5 at mid-body. It deals no damage, so every human it actually threw
+     * is remembered as hit by the monster, as vanilla remembers a punch: a fall in the next seconds is its kill. Who was
+     * thrown is vanilla's own answer ({@link ServerExplosion#getHitPlayers}), distance and cover included; a human out of
+     * reach or behind a wall is never credited.
      */
     private static void gust(ServerLevel level, ServerPlayer player, Mob model) {
         double x = player.getX(), y = player.getY() + player.getBbHeight() / 2.0, z = player.getZ();
         float strength = 3.0F + player.getRandom().nextFloat() * 2.0F;
         var origin = CombatRuntime.originOf(model).flatMap(parent -> child(parent, parent.kind(), UUID.randomUUID()));
         remember(level.getServer(), origin, player.getUUID(), Kind.GUST);
-        origin.ifPresent(credit -> {
-            for (var human : level.getEntitiesOfClass(ServerPlayer.class, player.getBoundingBox().inflate(strength * 2.0))) {
-                if (human != player && !MonsterRoles.isMonster(human) && MonsterRoles.legalTarget(player.getUUID(), level, human)) {
-                    CombatRuntime.creditOrigin(level, human, credit);
-                    // A harmless entry, as a punch would leave: a fall that follows reads "while escaping" the monster.
-                    human.getCombatTracker().recordDamage(level.damageSources().mobAttack(model), 0);
-                }
-            }
-        });
         model.snapTo(player.position());
-        level.explode(model, null, AbstractWindCharge.EXPLOSION_DAMAGE_CALCULATOR, x, y, z, strength, false,
-                Level.ExplosionInteraction.TRIGGER, ParticleTypes.GUST_EMITTER_SMALL, ParticleTypes.GUST_EMITTER_LARGE,
-                WeightedList.of(), SoundEvents.BREEZE_WIND_CHARGE_BURST);
+        var thrown = new HashMap<Player, Vec3>();
+        GUSTS.set(thrown);
+        try {
+            level.explode(model, null, AbstractWindCharge.EXPLOSION_DAMAGE_CALCULATOR, x, y, z, strength, false,
+                    Level.ExplosionInteraction.TRIGGER, ParticleTypes.GUST_EMITTER_SMALL, ParticleTypes.GUST_EMITTER_LARGE,
+                    WeightedList.of(), SoundEvents.BREEZE_WIND_CHARGE_BURST);
+        } finally { GUSTS.remove(); }
+        origin.ifPresent(credit -> thrown.forEach((thrownPlayer, push) -> {
+            if (!(thrownPlayer instanceof ServerPlayer human) || push.lengthSqr() < MIN_PUSH_SQR || human == player
+                    || MonsterRoles.isMonster(human) || !MonsterRoles.legalTarget(player.getUUID(), level, human)) return;
+            CombatRuntime.creditOrigin(level, human, credit);
+            // A harmless entry, as a punch would leave: a fall that follows reads "while escaping" the monster.
+            human.getCombatTracker().recordDamage(level.damageSources().mobAttack(model), 0);
+        }));
+    }
+
+    /** Called as any explosion ends: a gust being set off here collects the players it pushed. */
+    public static void exploded(ServerExplosion explosion) {
+        var thrown = GUSTS.get();
+        if (thrown != null) thrown.putAll(explosion.getHitPlayers());
     }
 
     /** Silverfish of infested crawling out of a hurt monster player; the native spawn is otherwise untouched. */

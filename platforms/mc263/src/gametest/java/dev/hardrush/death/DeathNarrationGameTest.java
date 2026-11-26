@@ -157,6 +157,11 @@ public final class DeathNarrationGameTest {
                 var zombie = monster(EntityTypes.ZOMBIE, f.owner);
                 var thrown = f.players.get(1);
                 thrown.teleportTo(f.center.x + 2, f.center.y, f.center.z);
+                // Within the gust's reach but behind a wall: vanilla never throws it, so it is never the monster's.
+                var sheltered = f.players.get(2);
+                for (int dz = -8; dz <= 8; dz++) for (int y = 0; y < 5; y++)
+                    f.level.setBlockAndUpdate(BlockPos.containing(f.center).offset(4, y, dz), Blocks.STONE.defaultBlockState());
+                sheltered.teleportTo(f.center.x + 5.5, f.center.y, f.center.z);
                 for (var effect : List.of(net.minecraft.world.effect.MobEffects.OOZING, net.minecraft.world.effect.MobEffects.WEAVING,
                         net.minecraft.world.effect.MobEffects.WIND_CHARGED))
                     f.owner.addEffect(new net.minecraft.world.effect.MobEffectInstance(effect, 600));
@@ -173,6 +178,10 @@ public final class DeathNarrationGameTest {
                 test.assertTrue(webs, "Weaving leaves its cobwebs where the monster fell");
                 test.assertFalse(f.owner.hasEffect(net.minecraft.world.effect.MobEffects.OOZING), "Death effects happen once");
 
+                test.assertTrue(CombatRuntime.peekKillCredit(f.level, sheltered, f.level.damageSources().fall()).isEmpty(),
+                        "A human the gust never moved owes it nothing");
+                test.assertTrue(CombatRuntime.peekKillCredit(f.level, thrown, f.level.damageSources().fall()).isPresent(),
+                        "The human it threw would be its kill");
                 thrown.fallDistance = 20;
                 thrown.hurtServer(f.level, f.level.damageSources().fall(), 1000);
                 var message = f.death(1);
