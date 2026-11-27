@@ -98,12 +98,16 @@ public final class MonsterRoleGameTest {
     }
 
     /** The real death path: a skeleton player another player recently hurt drops its native loot where it stands. */
-    @GameTest(maxTicks=40)
+    @GameTest(maxTicks=200)
     public void slainMonsterDropsNativeLootOnlyAfterAnotherPlayersHit(GameTestHelper test) {
         var hit=actor(test);
         var unhurt=actor(test);
         var human=actor(test);
         var level=test.getLevel();
+        // In a full batch a fresh arena may not tick entities yet: drops added there could not be found, and the
+        // control group would pass for nothing.
+        test.startSequence().thenWaitUntil(()->test.assertTrue(level.isPositionEntityTicking(hit.blockPosition())
+                && level.isPositionEntityTicking(unhurt.blockPosition()),"Both arenas tick entities")).thenExecute(()->{
         try {
             MonsterRoles.select(hit,"skeleton");
             MonsterRoles.select(unhurt,"skeleton");
@@ -129,34 +133,37 @@ public final class MonsterRoleGameTest {
                 for(var item:level.getEntitiesOfClass(ItemEntity.class,body.getBoundingBox().inflate(3)))item.discard();
             remove(hit); remove(unhurt); remove(human);
         }
-        test.succeed();
+        }).thenSucceed();
     }
 
     /** Issue #106: a known roll leaves exactly its iron and one stack per brewing material at the body. */
-    @GameTest(maxTicks=40)
+    @GameTest(maxTicks=200)
     public void rolledSpoilsLeaveTheirIronAndBrewingMaterialsAtTheBody(GameTestHelper test) {
         var body=actor(test);
         var level=test.getLevel();
-        try {
-            // Spoils only ever leave a monster's body.
-            MonsterRoles.select(body,"zombie");
-            for(var item:level.getEntitiesOfClass(ItemEntity.class,body.getBoundingBox().inflate(3)))item.discard();
-            var brewing=new java.util.EnumMap<dev.hardrush.core.round.MonsterSpoils.Material,Integer>(dev.hardrush.core.round.MonsterSpoils.Material.class);
-            brewing.put(dev.hardrush.core.round.MonsterSpoils.Material.NETHER_WART,2);
-            brewing.put(dev.hardrush.core.round.MonsterSpoils.Material.GLASS_BOTTLE,6);
-            brewing.put(dev.hardrush.core.round.MonsterSpoils.Material.GHAST_TEAR,1);
-            dev.hardrush.monster.MonsterWorthRewards.leave(level,body,new dev.hardrush.core.round.MonsterSpoils.Spoils(0,0,4,brewing));
-            var dropped=level.getEntitiesOfClass(ItemEntity.class,body.getBoundingBox().inflate(3));
-            java.util.function.ToIntFunction<net.minecraft.world.item.Item> count=item->dropped.stream()
-                    .filter(entity->entity.getItem().is(item)).mapToInt(entity->entity.getItem().getCount()).sum();
-            test.assertValueEqual(count.applyAsInt(Items.IRON_INGOT),4,"The rolled iron drops");
-            test.assertValueEqual(count.applyAsInt(Items.NETHER_WART),2,"The rolled nether wart drops");
-            test.assertValueEqual(count.applyAsInt(Items.GLASS_BOTTLE),6,"The rolled glass bottles drop");
-            test.assertValueEqual(count.applyAsInt(Items.GHAST_TEAR),1,"The rolled ghast tear drops");
-            test.assertValueEqual(dropped.size(),4,"Nothing else drops: no book below its level, one stack per kind");
-            dropped.forEach(ItemEntity::discard);
-        } finally { remove(body); }
-        test.succeed();
+        // Spoils only ever leave a monster's body.
+        MonsterRoles.select(body,"zombie");
+        // In a full batch the fresh arena may not tick entities yet, and items added there cannot be found.
+        test.startSequence().thenWaitUntil(()->test.assertTrue(level.isPositionEntityTicking(body.blockPosition()),"The arena ticks entities"))
+            .thenExecute(()->{
+                try {
+                    for(var item:level.getEntitiesOfClass(ItemEntity.class,body.getBoundingBox().inflate(3)))item.discard();
+                    var brewing=new java.util.EnumMap<dev.hardrush.core.round.MonsterSpoils.Material,Integer>(dev.hardrush.core.round.MonsterSpoils.Material.class);
+                    brewing.put(dev.hardrush.core.round.MonsterSpoils.Material.NETHER_WART,2);
+                    brewing.put(dev.hardrush.core.round.MonsterSpoils.Material.GLASS_BOTTLE,6);
+                    brewing.put(dev.hardrush.core.round.MonsterSpoils.Material.GHAST_TEAR,1);
+                    dev.hardrush.monster.MonsterWorthRewards.leave(level,body,new dev.hardrush.core.round.MonsterSpoils.Spoils(0,0,4,brewing));
+                    var dropped=level.getEntitiesOfClass(ItemEntity.class,body.getBoundingBox().inflate(3));
+                    java.util.function.ToIntFunction<net.minecraft.world.item.Item> count=item->dropped.stream()
+                            .filter(entity->entity.getItem().is(item)).mapToInt(entity->entity.getItem().getCount()).sum();
+                    test.assertValueEqual(count.applyAsInt(Items.IRON_INGOT),4,"The rolled iron drops");
+                    test.assertValueEqual(count.applyAsInt(Items.NETHER_WART),2,"The rolled nether wart drops");
+                    test.assertValueEqual(count.applyAsInt(Items.GLASS_BOTTLE),6,"The rolled glass bottles drop");
+                    test.assertValueEqual(count.applyAsInt(Items.GHAST_TEAR),1,"The rolled ghast tear drops");
+                    test.assertValueEqual(dropped.size(),4,"Nothing else drops: no book below its level, one stack per kind");
+                    dropped.forEach(ItemEntity::discard);
+                } finally { remove(body); }
+            }).thenSucceed();
     }
 
     private static void assertNativeLoot(GameTestHelper test,ServerPlayer monster,MonsterForm form,net.minecraft.world.damagesource.DamageSource source,
