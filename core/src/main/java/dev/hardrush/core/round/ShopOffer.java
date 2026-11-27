@@ -5,14 +5,19 @@ import java.util.Set;
 
 /**
  * Witch merchant offers. Prices and limits come from the round's immutable rules; a round that
- * predates an offer simply does not stock it.
+ * predates an offer simply does not stock it. Declaration order is the witch's shelf order, and the camp backpack's:
+ * the native trading screen shows seven offers before it scrolls. Stored rounds name offers by id, never by ordinal.
  */
 public enum ShopOffer {
     ADULT_EGG("adultEgg", "成年僵尸刷怪蛋", Kind.CARRIED, MonsterRole.ZOMBIE),
     BABY_EGG("babyEgg", "幼年僵尸刷怪蛋", Kind.CARRIED, MonsterRole.ZOMBIE),
     // What it lets out depends on the soulcatcher's tier (docs/plan/怪物盲盒.md); rounds without a soulcatcher never stock it.
     MONSTER_BOX("monsterBox", "怪物盲盒", Kind.CARRIED, MonsterRole.ZOMBIE),
-    // Witch potions (docs/plan/女巫药水与药水盲盒.md) ride the sortie as bound bottles the monster drinks itself.
+    // Witch potions (docs/plan/女巫药水与药水盲盒.md) ride the sortie as bound bottles the monster drinks itself; the blind
+    // boxes lead them so that every form sees them on the trading screen's first page.
+    COMMON_POTION_BOX("commonPotionBox", "普通药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    RARE_POTION_BOX("rarePotionBox", "稀有药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    EPIC_POTION_BOX("epicPotionBox", "史诗药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     SWIFTNESS("swiftness", "迅捷药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     FIRE_RESISTANCE("fireResistance", "抗火药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     // Native undead heal from harming, so the undead get a potion of harming and the creeper one of healing.
@@ -22,9 +27,6 @@ public enum ShopOffer {
     TURTLE_MASTER("turtleMaster", "神龟药水", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     // The creeper is poisoned too, and its explosion turns the poison into a lingering cloud.
     POISON("poison", "剧毒药水", Kind.CARRIED, MonsterRole.CREEPER),
-    COMMON_POTION_BOX("commonPotionBox", "普通药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
-    RARE_POTION_BOX("rarePotionBox", "稀有药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
-    EPIC_POTION_BOX("epicPotionBox", "史诗药水盲盒", Kind.CARRIED, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     SLOWNESS_ARROWS("slownessArrows", "缓慢药箭", Kind.CARRIED, MonsterRole.SKELETON),
     POISON_ARROWS("poisonArrows", "剧毒药箭", Kind.CARRIED, MonsterRole.SKELETON),
     CHARGED("charged", "带电出击", Kind.CARRIED, MonsterRole.CREEPER),
@@ -39,6 +41,7 @@ public enum ShopOffer {
     IRON_BUCKET("ironBucket", "铁桶", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     OAK_LOGS("oakLogs", "橡木原木 ×5", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     IRON_PICKAXE("ironPickaxe", "铁镐", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    COAL("coal", "煤炭 ×8", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     SHIELD("shield", "盾牌", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     // A bell rung near monster players makes them glow (docs/plan/钟声显形.md); vanilla never crafts one.
     BELL("bell", "钟", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
@@ -78,8 +81,9 @@ public enum ShopOffer {
     /**
      * Every purchase costs the base price: the doubling ladder skips it. Vault keys each open a single random piece, so
      * the camp's gear cap, not a rising price, bounds them; a potion of harming or healing is a staple bought by the bottle.
+     * Bread and coal are staples of the revived life, and each longer blessing adds the same time as the last.
      */
-    public boolean flatPrice() { return key() || this == INSTANT_HEALTH; }
+    public boolean flatPrice() { return key() || this == INSTANT_HEALTH || this == BREAD || this == COAL || this == LONGER_BLESSING; }
     /** Whether a sortie as {@code role} carries it; revival supplies never ride a sortie. */
     public boolean sellableTo(MonsterRole role) { return !revival() && roles.contains(role); }
     /** A bottle the witch brews, drunk by the monster itself on its next sortie (docs/plan/女巫药水与药水盲盒.md). */

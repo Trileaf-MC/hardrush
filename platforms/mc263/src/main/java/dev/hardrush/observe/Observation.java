@@ -158,7 +158,7 @@ public final class Observation {
         return humans;
     }
 
-    /** The courtyard's append-only slots, then anyone else this round knows. */
+    /** The courtyard seats in display order, then anyone else this round knows. */
     private static List<UUID> order(MinecraftServer server, RoundSnapshot r) {
         var order = new LinkedHashSet<>(LobbyRuntime.courtyardOrder(server));
         order.addAll(r.participants().keySet());

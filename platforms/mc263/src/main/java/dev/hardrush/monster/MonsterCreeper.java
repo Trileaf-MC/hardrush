@@ -2,6 +2,7 @@ package dev.hardrush.monster;
 
 import dev.hardrush.core.api.DamagePort.AttackKind;
 import dev.hardrush.core.config.RulesConfig;
+import dev.hardrush.core.round.PotionBox;
 import dev.hardrush.disguise.MonsterDisguise;
 import dev.hardrush.monster.mixin.CreeperPoweredAccessor;
 import dev.hardrush.combat.CombatOriginHolder;
@@ -315,7 +316,7 @@ public final class MonsterCreeper {
         cloud.setRadiusPerTick(-cloud.getRadius() / cloud.getDuration());
         cloud.setOwner(player);
         MonsterClouds.bind(cloud, player.getUUID());
-        for (var effect : effects) cloud.addEffect(new MobEffectInstance(effect));
+        for (var effect : effects) cloud.addEffect(cloudEffect(effect));
         // Capture before killing the owner. Later life, role and connection changes must
         // not make a lingering cloud adopt a new actor or lose its original permission.
         MonsterCombatRuntime.source(model).ifPresent(source -> ((MonsterSourceHolder)cloud).hardrush$stampMonsterSource(source));
@@ -324,6 +325,17 @@ public final class MonsterCreeper {
         ((CombatOriginHolder)cloud).hardrush$sealCombatOrigin(origin);
         MonsterLegacy.cloud(player, origin);
         player.level().addFreshEntity(cloud);
+    }
+
+    /**
+     * What goes into the cloud for one of the body's effects. Native scaling skips an infinite duration
+     * ({@code MobEffectInstance.mapDuration}), which would leave humans with a parting gift for good, so an infinite
+     * effect enters as the longest a potion lasts and the cloud's quarter scale makes it a minute and a quarter.
+     */
+    private static MobEffectInstance cloudEffect(MobEffectInstance effect) {
+        if (!effect.isInfiniteDuration()) return new MobEffectInstance(effect);
+        return new MobEffectInstance(effect.getEffect(), PotionBox.MAX_SECONDS * 20, effect.getAmplifier(),
+                effect.isAmbient(), effect.isVisible(), effect.showIcon());
     }
 
     /** Inside {@link #explode}: the body's own detonation is killing it. */

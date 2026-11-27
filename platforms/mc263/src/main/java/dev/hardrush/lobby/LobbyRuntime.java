@@ -86,7 +86,8 @@ public final class LobbyRuntime {
         final Map<UUID, Deployment> resumptions = new HashMap<>();
         final Map<UUID, Deployment> pending = new HashMap<>();
         final Map<UUID, Refund> refunds = new HashMap<>();
-        final LinkedHashMap<UUID, GameProfile> slots = new LinkedHashMap<>();
+        /** Courtyard seats in display-slot order; see {@link #seat}. */
+        final ArrayList<GameProfile> slots = new ArrayList<>();
         final Map<UUID, Integer> deadAt = new HashMap<>();
         final Map<UUID, Display> displays = new HashMap<>();
         /** Display copies of each human's worn gear, read every {@link #GEAR_TICKS} ticks. */
@@ -901,10 +902,10 @@ public final class LobbyRuntime {
                 net.minecraft.sounds.SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(), 0.3f, 1.2f,
                 player.getRandom().nextLong()));
     }
-    /** The courtyard's append-only slot order; observers cycle through players in the same order. */
+    /** The courtyard seats in display order; observers cycle through players in the same order. */
     public static List<UUID> courtyardOrder(MinecraftServer server) {
         var b = BINDINGS.get(server);
-        return b == null ? List.of() : List.copyOf(b.slots.keySet());
+        return b == null ? List.of() : b.slots.stream().map(GameProfile::id).toList();
     }
     /** A sortie being committed or compensated; a camp body must not leave for a camera meanwhile. */
     public static boolean submitting(ServerPlayer player) {
@@ -1106,6 +1107,30 @@ public final class LobbyRuntime {
         sound(player, false);
         return false;
     }
+    /** Seats humans on the courtyard's display slots ({@link dev.hardrush.core.lobby.CourtyardSeats}). */
+    private static void seat(MinecraftServer server, Binding b, RoundSnapshot r) {
+        var profiles = new HashMap<UUID, GameProfile>();
+        for (var slot : b.slots) profiles.put(slot.id(), slot);
+        var humans = r.participants().values().stream()
+                .filter(p -> p.lifeSequence() > 0 && p.role() == ParticipantRole.HUMAN_ACTIVE).toList();
+        for (var p : humans) profiles.putIfAbsent(p.id(), new GameProfile(p.id(), p.name()));
+        var before = b.slots.stream().map(GameProfile::id).toList();
+        var after = dev.hardrush.core.lobby.CourtyardSeats.seat(before, humans.stream().map(Participant::id).toList(),
+                holder -> vacant(server, b, r, holder));
+        before.stream().filter(id -> !after.contains(id)).forEach(b.deadAt::remove);
+        b.slots.clear();
+        for (var id : after) {
+            var player = server.getPlayerList().getPlayer(id);
+            b.slots.add(player != null ? player.getGameProfile() : profiles.get(id));
+        }
+    }
+    private static boolean vacant(MinecraftServer server, Binding b, RoundSnapshot r, UUID holder) {
+        var p = r.participants().get(holder);
+        if (p == null) return true;
+        if (p.role() == ParticipantRole.HUMAN_ACTIVE) return false;
+        var died = b.deadAt.get(holder);
+        return died != null && server.getTickCount() - died >= DEAD_MODEL_TICKS;
+    }
     private static void updateDisplays(MinecraftServer server, Binding b) {
         var r = b.session.snapshot().orElse(null); if (r == null) return;
         var projections = LobbyInteractions.get(server).orElseThrow().projections();
@@ -1113,20 +1138,18 @@ public final class LobbyRuntime {
             if (!b.displays.isEmpty()) projections.clear();
             b.displays.clear(); return;
         }
-        // Append only. Dead/offline slots are never recycled, including after a revival.
-        r.participants().values().stream().filter(p -> p.lifeSequence() > 0).forEach(p -> {
-            var player = server.getPlayerList().getPlayer(p.id());
-            if (player != null) b.slots.put(p.id(), player.getGameProfile());
-            else b.slots.putIfAbsent(p.id(), new GameProfile(p.id(), p.name()));
-        });
+        seat(server, b, r);
         var targets = new ArrayList<LobbyProjections.Target>();
-        for (var slot : b.slots.entrySet()) {
-            var p = r.participants().get(slot.getKey()); if (p == null) continue;
+        for (var slot : b.slots) {
+            var p = r.participants().get(slot.id());
+            // Defensive: rounds never drop participants (a withdrawn or disqualified human falls through the non-human
+            // branch below); should a holder ever vanish from the snapshot, it keeps its hole so nobody after it shifts.
+            if (p == null) { targets.add(new LobbyProjections.Target(slot, 1, LobbyProjections.State.EMPTY)); continue; }
             var player = server.getPlayerList().getPlayer(p.id());
             LobbyProjections.State state;
             if (p.role() != ParticipantRole.HUMAN_ACTIVE) {
                 int died = b.deadAt.computeIfAbsent(p.id(), ignored -> server.getTickCount());
-                state = server.getTickCount() - died < 40 ? LobbyProjections.State.DEAD : LobbyProjections.State.EMPTY;
+                state = server.getTickCount() - died < DEAD_MODEL_TICKS ? LobbyProjections.State.DEAD : LobbyProjections.State.EMPTY;
             } else {
                 b.deadAt.remove(p.id());
                 state = player == null ? LobbyProjections.State.AWAY
@@ -1142,7 +1165,7 @@ public final class LobbyRuntime {
                 if (state == LobbyProjections.State.AVAILABLE && LateShelter.sheltered(r.rules(), live(b, p)))
                     state = LobbyProjections.State.SHELTERED;
             }
-            targets.add(new LobbyProjections.Target(slot.getValue(), p.lifeSequence(), state));
+            targets.add(new LobbyProjections.Target(slot, p.lifeSequence(), state));
         }
         // Defeat locks count down in live server time; the committed round only moves at commits.
         var live = b.session.view().orElse(r);
@@ -1167,7 +1190,9 @@ public final class LobbyRuntime {
             var seen = seenBy(lived, looks, hunters, live.rules(), standings);
             // Only who stands where rebuilds the page; names, stars, glow and gear change on the standing models.
             if (old == null || old.player != observer || old.connection != observer.connection || !old.targets.equals(targets) || view.isEmpty()) {
-                int page = view.map(LobbyProjections.View::page).orElse(0);
+                // Dropped trailing seats can take the observer's page away; it then lands on the new last page.
+                int page = Math.min(view.map(LobbyProjections.View::page).orElse(0), LobbyProjections.pages(targets.size(),
+                        dev.hardrush.world.LobbyWorld.open(server).plan().displayCapacity()) - 1);
                 projections.show(observer, r.roundId(), targets, seen, page, (actor, selected) -> beginDeployment(actor, b, selected),
                         (actor, selected) -> dev.hardrush.observe.Observation.watch(actor, selected.target()));
                 b.displays.put(observer.getUUID(), new Display(observer, observer.connection, List.copyOf(targets)));
@@ -1264,6 +1289,8 @@ public final class LobbyRuntime {
         return remaining > 0 ? Optional.of(LateShelter.clock(remaining)) : Optional.empty();
     }
     private static final int GEAR_TICKS = 10;
+    /** How long a fallen human's model stays in its seat before the seat is free for another human. */
+    private static final int DEAD_MODEL_TICKS = 40;
 
     /**
      * What each huntable model shows: name, bounty stars and whereabouts, the human's worn gear, and for the top

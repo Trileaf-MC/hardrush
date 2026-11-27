@@ -422,7 +422,8 @@ public final class LobbyRuntimeGameTest {
                 steps.add(reply -> f.session.requestMonsterCoinPickup(f.round().roundId(), hunter.profile.id(), hunter.participant().lifeSequence(),
                         hunter.participant().monsterDeploymentSequence(), 200, reply));
                 for (var offer : java.util.List.of(dev.hardrush.core.round.ShopOffer.BONUS_CHEST, dev.hardrush.core.round.ShopOffer.LONGER_BLESSING,
-                        dev.hardrush.core.round.ShopOffer.OAK_LOGS, dev.hardrush.core.round.ShopOffer.SHIELD))
+                        dev.hardrush.core.round.ShopOffer.OAK_LOGS, dev.hardrush.core.round.ShopOffer.COAL,
+                        dev.hardrush.core.round.ShopOffer.SHIELD))
                     steps.add(reply -> f.session.requestShopPurchase(f.round().roundId(), hunter.profile.id(), hunter.participant().lifeSequence(),
                             hunter.participant().monsterDeploymentSequence(), offer,
                             hunter.participant().wallet().nextPrice(f.round().rules(), offer), reply));
@@ -435,7 +436,7 @@ public final class LobbyRuntimeGameTest {
                 }
                 sequence.thenExecute(() -> {
                     var order = hunter.participant().wallet().order();
-                    f.test.assertValueEqual(order.size(), 4, "Four revival supplies wait for the revival: " + order);
+                    f.test.assertValueEqual(order.size(), 5, "Five revival supplies wait for the revival: " + order);
                     var refused = new java.util.concurrent.atomic.AtomicReference<dev.hardrush.round.RoundSession.Reply>();
                     f.session.requestShopPurchase(f.round().roundId(), hunter.profile.id(), hunter.participant().lifeSequence(),
                             hunter.participant().monsterDeploymentSequence(), dev.hardrush.core.round.ShopOffer.SWIFTNESS, 10, refused::set);
@@ -446,8 +447,9 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertTrue(dev.hardrush.lobby.MonsterShop.isShop(hunter.player), "The guide was already read: the shop opens at once");
                     var offers = ((net.minecraft.world.inventory.MerchantMenu) hunter.player.containerMenu).getOffers();
                     var sold = offers.stream().map(offer -> offer.getResult().getItem()).toList();
-                    f.test.assertValueEqual(sold.size(), 8, "Eight revival supplies on the shelf, the bell among them: " + sold);
-                    f.test.assertTrue(sold.contains(Items.BELL), "The witch sells the bell as a revival supply");
+                    f.test.assertValueEqual(sold.size(), 9, "Nine revival supplies on the shelf, the bell among them: " + sold);
+                    f.test.assertTrue(sold.contains(Items.BELL) && sold.contains(Items.COAL),
+                            "The witch sells the bell and coal as revival supplies");
                     f.test.assertFalse(sold.contains(Items.ZOMBIE_SPAWN_EGG), "No sortie goods for a totem holder");
                     f.test.assertTrue(sold.contains(Items.CHEST) && sold.contains(Items.SHIELD), "The shelf holds the bonus chest and the shield");
                     hunter.player.closeContainer();
@@ -536,7 +538,7 @@ public final class LobbyRuntimeGameTest {
                         var compasses = java.util.stream.IntStream.range(0, inventory.getContainerSize()).filter(i -> FallenCompass.is(inventory.getItem(i))).toArray();
                         // What the previous life kept, and in the first cycle what it bought from the witch; never role controls.
                         var expected = new java.util.HashMap<>(kept.getOrDefault(hunter.profile.id(), java.util.Map.of()));
-                        if (iteration == 0) { expected.merge(Items.OAK_LOG, 5, Integer::sum); expected.merge(Items.SHIELD, 1, Integer::sum); }
+                        if (iteration == 0) { expected.merge(Items.OAK_LOG, 5, Integer::sum); expected.merge(Items.COAL, 8, Integer::sum); expected.merge(Items.SHIELD, 1, Integer::sum); }
                         f.test.assertValueEqual(carried(inventory), expected, "Revival brings back exactly the kept belongings and the bought supplies");
                         if (iteration == 0) f.test.assertTrue(hunter.player.getOffhandItem().is(Items.SHIELD), "The bought shield waits in the off hand");
                         if (iteration > 0) {

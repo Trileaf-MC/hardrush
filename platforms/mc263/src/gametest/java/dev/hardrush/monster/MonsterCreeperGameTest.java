@@ -247,6 +247,43 @@ public final class MonsterCreeperGameTest {
         });
     }
 
+    /** docs/plan/女巫药水与药水盲盒.md 9.3: native scaling skips an infinite duration, so a parting gift enters the cloud as 5:00. */
+    @GameTest(maxTicks = 200)
+    public void anEndlessPartingGiftEntersTheCloudAsFiveMinutesAndHumansGetAQuarter(GameTestHelper test) {
+        var f = new Fixture(test, 2);
+        test.runAfterDelay(80, () -> {
+            try (var ignored = f.installCombat()) {
+                MonsterRoles.select(f.owner, "creeper");
+                MonsterPotions.apply(f.owner, MonsterRole.CREEPER,
+                        new PotionBox.Dose(PotionBrew.INFESTED, PotionBrew.Grade.EPIC, 0, PotionBox.UNTIL_DEATH));
+                f.owner.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 800));
+                test.assertTrue(f.owner.getEffect(MobEffects.INFESTED).isInfiniteDuration(), "The parting gift is endless on the body");
+                test.assertTrue(f.owner.getEffect(MobEffects.NIGHT_VISION) != null
+                        && MonsterRoles.intrinsic(f.owner.getEffect(MobEffects.NIGHT_VISION)), "The body still sees in the dark");
+                var survivor = f.players.get(1);
+                survivor.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000); survivor.setHealth(1000);
+                survivor.teleportTo(f.center.x, f.center.y, f.center.z + 8);
+                MonsterCreeper.use(f.owner, InteractionHand.MAIN_HAND);
+                for (int tick = 0; tick < 30; tick++) MonsterCreeper.tick(f.owner);
+                test.assertFalse(f.owner.isAlive(), "The held fuse ends the body");
+                var clouds = f.level.getEntitiesOfClass(AreaEffectCloud.class, f.owner.getBoundingBox().inflate(5));
+                test.assertValueEqual(clouds.size(), 1, "The blast leaves one cloud");
+                var cloud = clouds.getFirst();
+                f.participants.put(f.owner.getUUID(), f.participants.get(f.owner.getUUID())
+                        .withRole(ParticipantRole.HUMAN_ACTIVE).withSession("revived-offline", false));
+                survivor.teleportTo(f.center.x, f.center.y, f.center.z);
+                survivor.damageCooldownTime = 0; survivor.setInvulnerableTime(0);
+                for (int tick = 0; tick < 10; tick++) { cloud.tickCount++; cloud.tick(); }
+                var gift = survivor.getEffect(MobEffects.INFESTED);
+                test.assertTrue(gift != null && !gift.isInfiniteDuration(), "A human never keeps a parting gift for good");
+                test.assertValueEqual(gift.getDuration(), PotionBox.MAX_SECONDS * 20 / 4, "A quarter of five minutes: one and a quarter");
+                test.assertValueEqual(survivor.getEffect(MobEffects.SLOWNESS).getDuration(), 200, "A timed effect is copied as it was");
+                test.assertFalse(survivor.hasEffect(MobEffects.NIGHT_VISION), "The body's own night vision never rides the cloud");
+            } finally { f.close(); }
+            test.succeed();
+        });
+    }
+
     @GameTest(maxTicks = 200)
     public void chargedBlastKeepsNativeHeadsCloudSourceAndOneDeathBatch(GameTestHelper test) {
         var f = new Fixture(test, 3);
