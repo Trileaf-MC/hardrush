@@ -1,6 +1,7 @@
 package dev.hardrush.lobby.workshop;
 
 import dev.hardrush.core.lobby.plan.Box;
+import dev.hardrush.core.lobby.plan.BuildManifest;
 import dev.hardrush.core.lobby.plan.Cell;
 import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.lobby.plan.Point;
@@ -15,6 +16,8 @@ import dev.hardrush.lobby.pack.PreparedPack;
 import dev.hardrush.lobby.pack.SanitizeMode;
 import dev.hardrush.lobby.pack.TileKey;
 import dev.hardrush.lobby.pack.TileSanitizer;
+import dev.hardrush.lobby.pack.imports.BuildManifestJson;
+import dev.hardrush.lobby.pack.imports.BuildManifestPlacer;
 import dev.hardrush.lobby.pack.imports.ImportLimits;
 import dev.hardrush.lobby.pack.imports.ImportedStructure;
 import dev.hardrush.lobby.pack.imports.StructureImports;
@@ -73,11 +76,19 @@ final class DraftImport {
 
     /**
      * A building file (design 19.2): converted, upgraded from its own data version and sanitized like a pack.
-     * {@code origin} picks where the building's minimum corner goes, knowing its size.
+     * {@code origin} picks where the building's minimum corner goes, knowing its size. A building manifest beside the
+     * file (design “建筑清单与大厅包构建” 1) adds its steps after the tiles; without one nothing changes.
      */
     static Loader structure(Path file, int maxSize, Function<ImportedStructure, Cell> origin) {
         return () -> {
+            // The manifest is small: a mistake in it fails before the building is read.
+            var manifest = BuildManifestJson.readBesides(file).orElse(null);
+            var mistake = "建筑清单 " + BuildManifestJson.besides(file).getFileName() + " 有误：";
             var structure = StructureImports.read(file, new ImportLimits(maxSize, PackTiles.currentDataVersion()));
+            if (manifest != null) {
+                var outside = manifest.horizontalProblem(structure.sizeX(), structure.sizeZ());
+                if (outside.isPresent()) throw new PackException(mistake + outside.get());
+            }
             var at = origin.apply(structure);
             var placed = structure.placedAt(at.x(), at.y(), at.z());
             var tiles = new ArrayList<Map.Entry<TileKey, CompoundTag>>();
@@ -88,8 +99,61 @@ final class DraftImport {
             }
             TileSanitizer.checkTotals(tiles.stream().map(Map.Entry::getValue).toList());
             var bounds = new Box(at, at.offset(structure.sizeX() - 1, structure.sizeY() - 1, structure.sizeZ() - 1));
-            return tiles(tiles, bounds, null, null, structure.notes());
+            var blocks = tiles(tiles, bounds, null, null, structure.notes());
+            return manifest == null ? blocks : manifested(blocks, tiles.stream().map(Map.Entry::getKey).toList(), manifest, at, mistake);
         };
+    }
+
+    /**
+     * {@code blocks} followed by the manifest's steps (design 1.6): one shape update per tile when asked, then one step
+     * that spawns the markers and writes the signs. The first step checks the manifest against the world's height, so
+     * nothing is placed when that fails. Entry is the first central landing's cell.
+     */
+    private static Content manifested(Content blocks, List<TileKey> keys, BuildManifest manifest, Cell placedMin, String mistake) {
+        int tiles = blocks.steps(), shapes = manifest.updateShapes() ? keys.size() : 0;
+        var central = manifest.markers().stream().filter(m -> m.spec().function() == LobbyFunction.LANDING_CENTRAL).findFirst().orElse(null);
+        return new Content() {
+            int removed;
+            BuildManifestPlacer.Applied applied;
+
+            public Box bounds() { return blocks.bounds(); }
+            public int steps() { return tiles + shapes + 1; }
+            public void place(ServerLevel level, int index) {
+                if (index == 0) {
+                    var high = manifest.heightProblem(placedMin, level.getMinY(), level.getMaxY());
+                    if (high.isPresent()) throw new IllegalStateException(mistake + high.get());
+                }
+                if (index < tiles) blocks.place(level, index);
+                else if (index < tiles + shapes) {
+                    var tile = keys.get(index - tiles).box();
+                    var region = intersection(tile, blocks.bounds());
+                    if (region != null) removed += BuildManifestPlacer.updateShapes(level, region);
+                } else applied = BuildManifestPlacer.apply(level, manifest, placedMin);
+            }
+            /** Read once placing finished; by then the height check has passed, so the cell is in the world. */
+            public Point entry() {
+                if (central == null) return null;
+                var c = manifest.toWorld(central.at(), placedMin);
+                return new Point(c.x() + .5, c.y(), c.z() + .5, central.yaw());
+            }
+            public Cell center() { return blocks.center(); }
+            /** Complete once the last step ran, which is when the import reads them. */
+            public List<String> notes() {
+                var notes = new ArrayList<>(blocks.notes());
+                if (removed > 0) notes.add("形状更新移除了 " + removed + " 个失去支撑的方块");
+                if (applied != null) {
+                    notes.addAll(applied.notes());
+                    notes.add("已按清单放置 " + applied.markers() + " 个标记、写了 " + applied.signs() + " 块告示牌");
+                }
+                return notes;
+            }
+        };
+    }
+
+    private static Box intersection(Box a, Box b) {
+        var min = new Cell(Math.max(a.min().x(), b.min().x()), Math.max(a.min().y(), b.min().y()), Math.max(a.min().z(), b.min().z()));
+        var max = new Cell(Math.min(a.max().x(), b.max().x()), Math.min(a.max().y(), b.max().y()), Math.min(a.max().z(), b.max().z()));
+        return min.x() > max.x() || min.y() > max.y() || min.z() > max.z() ? null : new Box(min, max);
     }
 
     /** A new structure-file draft: centred horizontally on the origin, bottom face at Y 64 (design 19.2). */

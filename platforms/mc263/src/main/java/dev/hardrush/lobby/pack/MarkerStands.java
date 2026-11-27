@@ -41,6 +41,16 @@ public final class MarkerStands {
         return stand;
     }
 
+    /**
+     * A click, block or text marker binding {@code target} (design 4.4 item 3): in the cell above when that is air, else
+     * in the block's own cell. Either way {@link #target} resolves back to {@code target}.
+     */
+    public static ArmorStand spawnOn(ServerLevel level, MarkerSpec spec, net.minecraft.core.BlockPos target, float yaw) {
+        var above = target.above();
+        var cell = level.getBlockState(above).isAir() ? above : target;
+        return spawn(level, spec, cell.getX() + .5, cell.getY(), cell.getZ() + .5, yaw);
+    }
+
     /** An armor stand item that vanilla places as this marker. */
     public static ItemStack item(MarkerSpec spec) {
         var stack = new ItemStack(Items.ARMOR_STAND);
