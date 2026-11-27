@@ -3,7 +3,6 @@ package dev.hardrush.hunt;
 import dev.hardrush.core.round.ParticipantRole;
 import dev.hardrush.core.round.RoundEngine;
 import dev.hardrush.core.round.RoundSnapshot;
-import dev.hardrush.monster.MonsterForm;
 import dev.hardrush.monster.MonsterItems;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.round.RoundRuntime;
@@ -26,7 +25,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -157,13 +155,8 @@ public final class HuntRetracks {
     private static void announce(ServerPlayer hunter, ServerPlayer target) {
         if (target.level() != hunter.level() || target.distanceToSqr(hunter) > ANNOUNCE_DISTANCE * ANNOUNCE_DISTANCE) return;
         var form = MonsterRoles.currentForm(hunter);
-        if (form == null || form == MonsterForm.CREEPER) return;
-        var sound = switch (form) {
-            case ZOMBIE -> SoundEvents.ZOMBIE_AMBIENT; case DROWNED -> SoundEvents.DROWNED_AMBIENT;
-            case SKELETON -> SoundEvents.SKELETON_AMBIENT; case STRAY -> SoundEvents.STRAY_AMBIENT;
-            case CREEPER -> throw new IllegalStateException();
-        };
-        hunter.level().playSound(null, hunter.getX(), hunter.getY(), hunter.getZ(), sound, SoundSource.HOSTILE, 1, 1);
+        if (form == null || form.ambientSound == null) return;
+        hunter.level().playSound(null, hunter.getX(), hunter.getY(), hunter.getZ(), form.ambientSound, SoundSource.HOSTILE, 1, 1);
     }
     /** Glints while a press would start a retrack: {@code ready}, and no rest or channel overlay on the compass. */
     private static void light(ServerPlayer hunter, boolean ready) {

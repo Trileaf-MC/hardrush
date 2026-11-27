@@ -1,0 +1,373 @@
+package dev.hardrush.monster;
+
+import dev.hardrush.core.round.MonsterRole;
+import dev.hardrush.gametest.MonsterRoleGameTest;
+import dev.hardrush.monster.mixin.MonsterSkeletonAccessor;
+import java.util.List;
+import java.util.function.Consumer;
+import dev.hardrush.gametest.TestTeardown;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.commands.FillBiomeCommand;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.block.Blocks;
+import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Difficulty;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.level.GameType;
+
+/** The landing variants of docs/plan/怪物环境变种.md: husk, zombified piglin, bogged and parched bodies; in-process, without a client. */
+public final class MonsterHabitatGameTest {
+    @GameTest(maxTicks=200)
+    public void everyNewZombieVariantTakesItsEggsAndParksAsItself(GameTestHelper test) {
+        for (var form : List.of(MonsterForm.HUSK, MonsterForm.ZOMBIFIED_PIGLIN)) {
+            var p = MonsterRoleGameTest.actor(test);
+            try {
+                MonsterRoles.select(p, "zombie");
+                float health = p.getMaxHealth();
+                MonsterRoleGameTest.withEggs(p);
+                MonsterRoles.convert(p, form);
+                test.assertValueEqual(MonsterRoles.currentForm(p), form, "The body turns: " + form);
+                test.assertValueEqual(MonsterRoles.nativeModel(p).getType(), form.type, "The native model is the variant: " + form);
+                test.assertValueEqual(p.getMaxHealth(), health, "A zombie variant keeps the zombie's health: " + form);
+                test.assertValueEqual(eggs(p, form.egg), 2, "Both eggs hatch the variant: " + form);
+                assertParks(test, p, form, MonsterRole.ZOMBIE);
+            } finally { MonsterRoleGameTest.remove(p); }
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
+    public void boggedAndParchedNameTheirBowAndPayWithAFifthOfTheirHealth(GameTestHelper test) {
+        for (var form : List.of(MonsterForm.BOGGED, MonsterForm.PARCHED)) {
+            var p = MonsterRoleGameTest.actor(test);
+            try {
+                MonsterRoles.select(p, "skeleton");
+                float health = p.getMaxHealth();
+                MonsterRoles.convert(p, form);
+                test.assertValueEqual(MonsterRoles.currentForm(p), form, "The body turns: " + form);
+                test.assertValueEqual(MonsterRoles.nativeModel(p).getType(), form.type, "The native model is the variant: " + form);
+                test.assertTrue(Math.abs(p.getMaxHealth() - health * .8f) < 1e-4, "Four fifths of the skeleton's health: " + form);
+                test.assertTrue(p.getHealth() <= p.getMaxHealth(), "Health never exceeds the new maximum: " + form);
+                test.assertValueEqual(MonsterBowDisplay.bowName(form), form == MonsterForm.BOGGED ? "沼骸之弓" : "焦骸之弓", "The bow is named after it");
+                assertParks(test, p, form, MonsterRole.SKELETON);
+            } finally { MonsterRoleGameTest.remove(p); }
+        }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
+    public void aHuskSoaksBackIntoAZombieAndOnIntoADrowned(GameTestHelper test) {
+        var p = MonsterRoleGameTest.actor(test);
+        try {
+            MonsterRoles.select(p, "zombie");
+            MonsterRoleGameTest.withEggs(p);
+            MonsterRoles.convert(p, MonsterForm.HUSK);
+            test.assertValueEqual(eggs(p, Items.HUSK_SPAWN_EGG), 2, "Husk eggs");
+            test.assertValueEqual(MonsterForm.HUSK.conversion().into(), MonsterForm.ZOMBIE, "Water turns a husk back into a zombie");
+            MonsterRoles.convert(p, MonsterForm.HUSK.conversion().into());
+            test.assertValueEqual(MonsterRoles.currentForm(p), MonsterForm.ZOMBIE, "First a zombie");
+            test.assertValueEqual(eggs(p, Items.ZOMBIE_SPAWN_EGG), 2, "Zombie eggs again");
+            MonsterRoles.convert(p, MonsterForm.ZOMBIE.conversion().into());
+            test.assertValueEqual(MonsterRoles.currentForm(p), MonsterForm.DROWNED, "Then a drowned");
+            test.assertValueEqual(eggs(p, Items.DROWNED_SPAWN_EGG), 2, "Drowned eggs");
+            test.assertTrue(MonsterForm.ZOMBIFIED_PIGLIN.conversion() == null, "A zombified piglin never soaks into anything");
+        } finally { MonsterRoleGameTest.remove(p); }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=300)
+    public void anEmptyHandedHuskStarvesWhatItHits(GameTestHelper test) {
+        var husk = MonsterRoleGameTest.actor(test); var human = MonsterRoleGameTest.actor(test);
+        human.teleportTo(husk.getX(), husk.getY(), husk.getZ() + 1.0);
+        MonsterRoles.select(husk, "zombie");
+        MonsterRoles.convert(husk, MonsterForm.HUSK);
+        MonsterRoleGameTest.emptyHanded(husk);
+        human.setGameMode(GameType.SURVIVAL);
+        // A freshly placed player is natively invulnerable for a while.
+        test.runAfterDelay(80, () -> {
+            try {
+                float before = human.getHealth();
+                test.assertTrue(MonsterRoles.attack(husk, human), "The husk's native melee lands");
+                test.assertTrue(human.getHealth() < before, "It hurts");
+                // Husk.doHurtTarget: 140 ticks of hunger per whole point of regional difficulty.
+                var level = husk.level();
+                int ticks = 140 * (int) level.getCurrentDifficultyAt(husk.blockPosition()).getEffectiveDifficulty();
+                var hunger = human.getEffect(MobEffects.HUNGER);
+                if (ticks > 0) test.assertTrue(hunger != null && hunger.getDuration() <= ticks && hunger.getDuration() > ticks - 5,
+                        "Hunger for the native duration: " + ticks + ", got " + hunger);
+                else test.assertTrue(hunger == null, "No regional difficulty, no hunger (difficulty " + level.getDifficulty() + ")");
+            } finally { MonsterRoleGameTest.remove(husk); MonsterRoleGameTest.remove(human); }
+            test.succeed();
+        });
+    }
+
+    @GameTest(maxTicks=300)
+    public void aStrayArrowSlowsForTenSeconds(GameTestHelper test) {
+        shootOnce(test, MonsterForm.STRAY, p -> {}, (p, arrow) -> assertOwnEffect(test, arrow, MonsterForm.STRAY, 200), null);
+    }
+
+    @GameTest(maxTicks=300)
+    public void aParchedArrowWeakensForTenSecondsAndRestsLonger(GameTestHelper test) {
+        shootOnce(test, MonsterForm.PARCHED, p -> {}, (p, arrow) -> assertOwnEffect(test, arrow, MonsterForm.PARCHED, 200), 50);
+    }
+
+    @GameTest(maxTicks=300)
+    public void aBoggedArrowPoisonsForVanillasFiveSecondsAndRestsLonger(GameTestHelper test) {
+        shootOnce(test, MonsterForm.BOGGED, p -> {}, (p, arrow) -> assertOwnEffect(test, arrow, MonsterForm.BOGGED, 100), 50);
+    }
+
+    @GameTest(maxTicks=300)
+    public void aStrayKeepsBoughtSlownessArrowsAndShootsTheOthers(GameTestHelper test) {
+        shootOnce(test, MonsterForm.STRAY, MonsterHabitatGameTest::buyArrows, (p, arrow) -> {
+            test.assertValueEqual(count(p, Potions.SLOWNESS), 3, "The stray's own arrows slow already; the bought slowness arrows stay");
+            test.assertValueEqual(count(p, Potions.POISON), 2, "A bought poison arrow is spent");
+            var contents = arrow.getPickupItemStackOrigin().get(DataComponents.POTION_CONTENTS);
+            test.assertTrue(contents.potion().isPresent() && contents.potion().get().is(Potions.POISON), "The bought potion is the arrow's own");
+            assertOwnEffect(test, arrow, MonsterForm.STRAY, 200);
+            setCount(p, Potions.POISON, 0);
+            test.assertTrue(MonsterRoles.selectedArrow(p).is(Items.ARROW), "Only slowness arrows left: the stray shoots its plain arrow");
+        }, null);
+    }
+
+    @GameTest(maxTicks=200)
+    public void eachBodyPassesOverOnlyTheBoughtArrowsItsOwnAlreadyMatch(GameTestHelper test) {
+        var p = MonsterRoleGameTest.actor(test);
+        try {
+            MonsterRoles.select(p, "skeleton");
+            buyArrows(p);
+            test.assertTrue(isTipped(MonsterRoles.selectedArrow(p), Potions.SLOWNESS), "A skeleton shoots the first bought arrow");
+            MonsterRoles.convert(p, MonsterForm.BOGGED);
+            test.assertTrue(isTipped(MonsterRoles.selectedArrow(p), Potions.SLOWNESS), "A bogged shoots slowness arrows");
+            setCount(p, Potions.SLOWNESS, 0);
+            test.assertTrue(MonsterRoles.selectedArrow(p).is(Items.ARROW), "A bogged passes over poison arrows");
+            test.assertValueEqual(count(p, Potions.POISON), 3, "They stay in the backpack");
+        } finally { MonsterRoleGameTest.remove(p); }
+        var q = MonsterRoleGameTest.actor(test);
+        try {
+            MonsterRoles.select(q, "skeleton");
+            MonsterRoles.convert(q, MonsterForm.PARCHED);
+            buyArrows(q);
+            test.assertTrue(isTipped(MonsterRoles.selectedArrow(q), Potions.SLOWNESS), "A parched's weakness matches no bought arrow");
+        } finally { MonsterRoleGameTest.remove(q); }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
+    public void theLandingSiteReadsFromTheWorldAndSettlesABody(GameTestHelper test) {
+        var p = MonsterRoleGameTest.actor(test);
+        try {
+            var site = MonsterHabitat.at(test.getLevel(), p.blockPosition(), false);
+            test.assertTrue(!site.nether(), "The test level is no nether");
+            // Its biome and sky depend on the test world; what it gives must agree with the pure table.
+            test.assertValueEqual(MonsterHabitat.settle(MonsterForm.CREEPER, site), MonsterForm.CREEPER, "A creeper never changes");
+            MonsterRoles.select(p, "zombie");
+            test.assertTrue(MonsterRoles.settle(p, true), "A zombie landing under water changes form");
+            test.assertValueEqual(MonsterRoles.currentForm(p), MonsterForm.DROWNED, "into a drowned");
+            test.assertTrue(!MonsterRoles.settle(p, true), "A drowned landing under water again stays one");
+            MonsterRoles.select(p, "creeper");
+            test.assertTrue(!MonsterRoles.settle(p, true), "A creeper never changes");
+        } finally { MonsterRoleGameTest.remove(p); }
+        test.succeed();
+    }
+
+    /**
+     * The site reads the real biome, precipitation and sky at the feet, and settles a body by them. The biome is
+     * repainted ({@code FillBiomeCommand.fill}, what /fillbiome runs) only around this actor's own arena, which no
+     * other actor shares, and painted back at the end.
+     */
+    @GameTest(maxTicks=300)
+    public void theLandingSiteReadsTheRealBiomeAndSkyAndSettlesByThem(GameTestHelper test) {
+        var p = MonsterRoleGameTest.actor(test);
+        var level = test.getLevel();
+        var feet = p.blockPosition();
+        // BiomeManager fuzzes a lookup into a neighbouring quart, so the paint reaches two quarts around the feet.
+        var from = feet.offset(-8, -8, -8); var to = feet.offset(8, 8, 8);
+        var original = level.getBiome(feet);
+        var roof = feet.above(3);
+        var biomes = level.registryAccess().lookupOrThrow(Registries.BIOME);
+        // Already that biome throws "no biome entries were changed", which is just as good.
+        Consumer<ResourceKey<Biome>> paint = biome -> {
+            FillBiomeCommand.fill(level, from, to, biomes.getOrThrow(biome));
+            test.assertTrue(level.getBiome(feet).is(biome), "The biome is painted: " + biome);
+        };
+        TestTeardown.atEnd(test, () -> {
+            level.setBlockAndUpdate(roof, Blocks.AIR.defaultBlockState());
+            FillBiomeCommand.fill(level, from, to, original);
+            MonsterRoleGameTest.remove(p);
+        });
+        test.startSequence().thenExecute(() -> {
+            paint.accept(Biomes.DESERT);
+            var site = MonsterHabitat.at(level, feet, false);
+            test.assertTrue(site.hosts(EntityTypes.HUSK) && site.hosts(EntityTypes.PARCHED), "A desert spawns husks and parched: " + site.natives());
+            test.assertTrue(site.openSky() && !site.snowing() && !site.nether(), "Open sky, no snow: " + site);
+            assertSettles(test, p, "zombie", MonsterForm.HUSK);
+            assertSettles(test, p, "skeleton", MonsterForm.PARCHED);
+            assertDeploys(test, p, "zombie", MonsterForm.HUSK);
+            assertDeploys(test, p, "skeleton", MonsterForm.PARCHED);
+
+            // A zombified piglin belongs to the nether: landing in the desert it is a zombie again, so a husk.
+            MonsterRoles.select(p, "zombie");
+            MonsterRoleGameTest.withEggs(p);
+            MonsterRoles.convert(p, MonsterForm.ZOMBIFIED_PIGLIN);
+            test.assertTrue(p.fireImmune() && carries(p, MonsterRoles.PIGLIN_SWORD), "A zombified piglin, sword and all");
+            test.assertTrue(MonsterRoles.settle(p, false), "Landing outside the nether turns a zombified piglin");
+            test.assertValueEqual(MonsterRoles.currentForm(p), MonsterForm.HUSK, "back into a zombie, which the open desert makes a husk");
+            test.assertFalse(p.fireImmune(), "Out of the piglin body fire hurts again");
+            test.assertFalse(carries(p, MonsterRoles.PIGLIN_SWORD), "The sword stays with the piglin");
+            test.assertTrue(p.getInventory().getItem(2).is(Items.HUSK_SPAWN_EGG), "Its eggs hatch husks now");
+            MonsterRoles.convert(p, MonsterForm.ZOMBIFIED_PIGLIN);
+            test.assertTrue(MonsterRoles.settle(p, false, true), "A retrack's landing turns it as well");
+            test.assertValueEqual(MonsterRoles.currentForm(p), MonsterForm.HUSK, "into the desert's husk");
+            // Sky light follows a block change on the light engine's own schedule, later under a loaded suite: wait for it.
+            level.setBlockAndUpdate(roof, Blocks.STONE.defaultBlockState());
+        }).thenWaitUntil(() -> test.assertTrue(!level.canSeeSky(feet), "The roof's shadow reaches the feet")).thenExecute(() -> {
+            var site = MonsterHabitat.at(level, feet, false);
+            test.assertTrue(!site.openSky(), "A roof hides the sky");
+            assertSettles(test, p, "zombie", MonsterForm.ZOMBIE);
+            assertSettles(test, p, "skeleton", MonsterForm.SKELETON);
+
+            paint.accept(Biomes.SWAMP);
+            site = MonsterHabitat.at(level, feet, false);
+            test.assertTrue(site.hosts(EntityTypes.BOGGED) && !site.hosts(EntityTypes.HUSK), "A swamp spawns bogged: " + site.natives());
+            assertSettles(test, p, "skeleton", MonsterForm.BOGGED);
+            assertSettles(test, p, "zombie", MonsterForm.ZOMBIE);
+
+            paint.accept(Biomes.SNOWY_PLAINS);
+            site = MonsterHabitat.at(level, feet, false);
+            test.assertTrue(site.snowing() && !site.openSky(), "Snow falls on snowy plains, the roof still on: " + site);
+            assertSettles(test, p, "skeleton", MonsterForm.SKELETON);
+            level.setBlockAndUpdate(roof, Blocks.AIR.defaultBlockState());
+        }).thenWaitUntil(() -> test.assertTrue(level.canSeeSky(feet), "Sky light is back at the feet")).thenExecute(() -> {
+            var site = MonsterHabitat.at(level, feet, false);
+            test.assertTrue(site.snowing() && site.openSky(), "Under the open snowy sky: " + site);
+            assertSettles(test, p, "skeleton", MonsterForm.STRAY);
+            assertSettles(test, p, "zombie", MonsterForm.ZOMBIE);
+        }).thenSucceed();
+    }
+    /** A sortie of {@code role} deployed where {@code p} stands binds as {@code expected} straight away. */
+    private static void assertDeploys(GameTestHelper test, ServerPlayer p, String role, MonsterForm expected) {
+        // Out of the role first: a sortie's deployment binds a fresh body.
+        MonsterRoles.clear(p);
+        test.assertValueEqual(MonsterRoles.deploy(p, role, false), expected != expected.baseForm(), "Whether the site turns the " + role);
+        test.assertValueEqual(MonsterRoles.currentForm(p), expected, "The " + role + " deploys as " + expected);
+        test.assertValueEqual(MonsterRoles.nativeModel(p).getType(), expected.type, "Its native model is the " + expected + "'s");
+        if (expected.egg != null) for (int i = 0; i < p.getInventory().getContainerSize(); i++) {
+            var stack = p.getInventory().getItem(i);
+            if (MonsterForm.hatching(stack) != null) test.assertTrue(stack.is(expected.egg), "Its eggs hatch its species: " + stack);
+        }
+    }
+    private static boolean carries(ServerPlayer p, String purpose) {
+        for (int i = 0; i < p.getInventory().getContainerSize(); i++) if (MonsterItems.matches(p, p.getInventory().getItem(i), purpose)) return true;
+        return false;
+    }
+    /** A fresh {@code role} body landing where {@code p} stands lands as {@code expected}. */
+    private static void assertSettles(GameTestHelper test, ServerPlayer p, String role, MonsterForm expected) {
+        MonsterRoles.select(p, role);
+        test.assertValueEqual(MonsterRoles.currentForm(p), expected.baseForm(), "A fresh " + role);
+        test.assertValueEqual(MonsterRoles.settle(p, false), expected != expected.baseForm(), "Whether the landing turns the " + role);
+        test.assertValueEqual(MonsterRoles.currentForm(p), expected, "The " + role + " lands as " + expected);
+    }
+
+    @GameTest
+    public void everyFormWearsASkinOfItsOwn(GameTestHelper test) {
+        var seen = new java.util.HashSet<String>();
+        for (var form : MonsterForm.values())
+            test.assertTrue(seen.add(textures(form.id())), "Every form has its own pinned skin (monster-skins.json): " + form);
+        test.succeed();
+    }
+    private static String textures(String kind) {
+        return dev.hardrush.disguise.MonsterSkin.head(kind).partialProfile().properties().get("textures").iterator().next().value();
+    }
+
+    /** Draws the bow of a fresh {@code form} body made ready by {@code setup}, looses one arrow and hands it to {@code check}; with {@code hardRest}, checks the native rest. */
+    private static void shootOnce(GameTestHelper test, MonsterForm form, Consumer<ServerPlayer> setup, java.util.function.BiConsumer<ServerPlayer, AbstractArrow> check, Integer hardRest) {
+        var p = MonsterRoleGameTest.actor(test);
+        Runnable cleanup = () -> {
+            for (var arrow : p.level().getEntitiesOfClass(AbstractArrow.class, p.getBoundingBox().inflate(80))) if (arrow.getOwner() == p) arrow.discard();
+            MonsterRoleGameTest.remove(p);
+        };
+        try {
+            MonsterRoles.select(p, "skeleton");
+            MonsterRoles.convert(p, form);
+            setup.accept(p);
+            p.getInventory().setSelectedSlot(0);
+            test.assertTrue(MonsterRoles.useControl(p, InteractionHand.MAIN_HAND), "The bow draws");
+        } catch (RuntimeException | AssertionError error) { cleanup.run(); throw error; }
+        test.runAfterDelay(21, () -> {
+            int rest;
+            try {
+                p.releaseUsingItem();
+                var arrows = p.level().getEntitiesOfClass(AbstractArrow.class, p.getBoundingBox().inflate(5)).stream().filter(a -> a.getOwner() == p).toList();
+                test.assertValueEqual(arrows.size(), 1, "One arrow");
+                check.accept(p, arrows.getFirst());
+                var model = (MonsterSkeletonAccessor) MonsterRoles.nativeModel(p);
+                boolean hard = p.level().getDifficulty() == Difficulty.HARD;
+                rest = hard ? model.hardrush$getHardAttackInterval() : model.hardrush$getAttackInterval();
+                if (hardRest != null) test.assertValueEqual(rest, hard ? hardRest : 70, "Bogged and parched rest 50/70 ticks natively");
+            } catch (RuntimeException | AssertionError error) { cleanup.run(); throw error; }
+            test.runAfterDelay(rest - 3, () -> {
+                try { test.assertTrue(!MonsterRoles.useControl(p, InteractionHand.MAIN_HAND), "The bow rests the native interval"); }
+                catch (RuntimeException | AssertionError error) { cleanup.run(); throw error; }
+                test.runAfterDelay(6, () -> {
+                    try { test.assertTrue(MonsterRoles.useControl(p, InteractionHand.MAIN_HAND), "Then it draws again"); }
+                    finally { cleanup.run(); }
+                    test.succeed();
+                });
+            });
+        });
+    }
+
+    private static void assertOwnEffect(GameTestHelper test, AbstractArrow arrow, MonsterForm form, int ticks) {
+        var own = form.arrowEffect();
+        var contents = arrow.getPickupItemStackOrigin().getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY);
+        var effects = contents.customEffects().stream().filter(effect -> effect.is(own.effect())).toList();
+        test.assertValueEqual(effects.size(), 1, "The form's own effect is on the arrow once: " + form);
+        test.assertValueEqual(effects.getFirst().getDuration(), ticks, "Its duration: " + form);
+    }
+
+    private static void assertParks(GameTestHelper test, ServerPlayer p, MonsterForm form, MonsterRole role) {
+        var parked = MonsterParking.capture(p);
+        var body = MonsterParking.decode(p, parked, role).orElseThrow();
+        test.assertValueEqual(body.form(), form, "The variant parks as itself: " + form);
+        test.assertValueEqual(MonsterParking.describe(parked).orElseThrow(), form.label, "The camp names the parked " + form);
+    }
+
+    private static void buyArrows(ServerPlayer p) {
+        p.getInventory().setItem(9, MonsterItems.bind(p, PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.SLOWNESS).copyWithCount(3), MonsterRoles.SHOP_ARROW));
+        p.getInventory().setItem(10, MonsterItems.bind(p, PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.POISON).copyWithCount(3), MonsterRoles.SHOP_ARROW));
+    }
+    private static boolean isTipped(ItemStack stack, net.minecraft.core.Holder<Potion> potion) {
+        var contents = stack.get(DataComponents.POTION_CONTENTS);
+        return stack.is(Items.TIPPED_ARROW) && contents != null && contents.is(potion);
+    }
+    private static int count(ServerPlayer p, net.minecraft.core.Holder<Potion> potion) {
+        int count = 0;
+        for (int i = 0; i < p.getInventory().getContainerSize(); i++) if (isTipped(p.getInventory().getItem(i), potion)) count += p.getInventory().getItem(i).getCount();
+        return count;
+    }
+    private static void setCount(ServerPlayer p, net.minecraft.core.Holder<Potion> potion, int count) {
+        for (int i = 0; i < p.getInventory().getContainerSize(); i++) if (isTipped(p.getInventory().getItem(i), potion)) p.getInventory().getItem(i).setCount(count);
+    }
+    private static int eggs(ServerPlayer p, Item egg) {
+        int count = 0;
+        for (int i = 0; i < p.getInventory().getContainerSize(); i++) {
+            var stack = p.getInventory().getItem(i);
+            if (stack.is(egg) && (MonsterItems.matches(p, stack, MonsterCompanions.BABY_EGG) || MonsterItems.matches(p, stack, MonsterCompanions.ADULT_EGG))) count += stack.getCount();
+        }
+        return count;
+    }
+}
