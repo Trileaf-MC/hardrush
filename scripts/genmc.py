@@ -10,7 +10,14 @@ writes `build.schem` (Sponge v3) and records the build's minimum corner as `orig
     scripts/genmc.py resume                 adopt a resumeKey read from stdin (after pairing through the MCP tools)
     scripts/genmc.py status
     scripts/genmc.py call <tool> [json|@file] [--out FILE] [--image FILE] [--limit N]
+    scripts/genmc.py docs [article] [--query WORDS]     the genMC knowledge base (agent-guide, agent-tools, …)
+    scripts/genmc.py upload <gmv1.json> --label TEXT [--merge]
     scripts/genmc.py export lobby-packs/<id>
+
+`call` reaches the studio's tools (build_*); names starting with genmc_ go to the relay itself. `upload` sends blocks
+computed locally (GMV1 JSON: {"format":"gmv1","palette":[ids],"parts":[paths],"runs":[[x,y,z,length,palette,part],…]}),
+the way to build when the studio's program sandbox will not start, and the natural one when a generator script is the
+pack's source.
 
 Only the standard library is used. The resume key lives in .local/genmc/session.json (not version-controlled).
 """
@@ -28,8 +35,11 @@ ROOT = Path(__file__).resolve().parent.parent
 SESSION = ROOT / ".local/genmc/session.json"
 ENDPOINT = "https://genmc.app/api/mcp"
 # Minecraft 26.3. The importer refuses files newer than the server and upgrades older ones.
+GAME_VERSION = "26.3"
 DATA_VERSION = 5023
-MAX_AXIS = 512  # hardrush.lobby.maxSize tops out here; anything larger cannot be a lobby
+# The server's default hardrush.lobby.maxSize. A lobby meant to ship with the mod has to fit the default.
+MAX_AXIS = 256
+CHUNK_CHARS = 500_000  # build_upload_chunk takes up to 600,000 characters a piece
 
 
 class Relay:
@@ -183,6 +193,21 @@ def schematic(blocks):
     return gzip.compress(nbt(root), mtime=0), lo, (w, h, l)
 
 
+def manifest_text(manifest):
+    """Indented like a hand-written manifest: one marker or sign per line, coordinates on one line."""
+    lines = ["{"]
+    keys = list(manifest)
+    for k, key in enumerate(keys):
+        value, comma = manifest[key], "," if k < len(keys) - 1 else ""
+        if isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+            lines.append(f"  {json.dumps(key)}: [")
+            lines += [f"    {json.dumps(item, ensure_ascii=False)}{',' if i < len(value) - 1 else ''}" for i, item in enumerate(value)]
+            lines.append(f"  ]{comma}")
+        else:
+            lines.append(f"  {json.dumps(key)}: {json.dumps(value, ensure_ascii=False)}{comma}")
+    return "\n".join(lines) + "\n}\n"
+
+
 # --- commands ---------------------------------------------------------------------------------------------------------
 
 def cmd_pair(args):
@@ -211,7 +236,13 @@ def cmd_status(args):
 def cmd_call(args):
     raw = args.input or "{}"
     arguments = json.loads(Path(raw[1:]).read_text() if raw.startswith("@") else raw)
-    blocks = Relay().studio(args.tool, arguments)
+    relay = Relay()
+    if args.tool.startswith("genmc_"):
+        if args.tool in ("genmc_status", "genmc_call"):
+            arguments.setdefault("resumeKey", resume_key())
+        blocks = relay.tool(args.tool, arguments)
+    else:
+        blocks = relay.studio(args.tool, arguments)
     text = text_of(blocks)
     if args.out:
         Path(args.out).write_text(text)
@@ -226,11 +257,55 @@ def cmd_call(args):
         print(f"（返回了 {len(images)} 张图片，用 --image FILE 保存第一张）")
 
 
+def cmd_docs(args):
+    arguments = {"query": args.query} if args.query else {"article": args.article} if args.article else {}
+    text = text_of(Relay().tool("genmc_docs", arguments))
+    print(text if len(text) <= args.limit else text[:args.limit] + f"\n…（共 {len(text)} 字符，用 --limit 调大）")
+
+
+def guards(relay):
+    """The revisions every mutation must carry, read fresh."""
+    state = as_json(relay.studio("build_get_state", {}), "build_get_state")
+    return {"expectedProjectId": state["projectId"], "expectedRevision": state["revision"],
+            "expectedContextRevision": state["contextRevision"]}
+
+
+def cmd_upload(args):
+    import uuid
+    source = json.loads(Path(args.file).read_text())
+    if source.get("format") != "gmv1":
+        sys.exit('上传文件必须是 {"format": "gmv1", "palette": […], "parts": […], "runs": […]}')
+    payload = base64.b64encode(gzip.compress(json.dumps(source, separators=(",", ":")).encode())).decode()
+    pieces = [payload[i:i + CHUNK_CHARS] for i in range(0, len(payload), CHUNK_CHARS)]
+    if len(pieces) > 64:
+        sys.exit(f"建筑太大：需要 {len(pieces)} 段，genMC 一次上传最多 64 段")
+    relay = Relay()
+    upload_id = str(uuid.uuid4())
+    for index, piece in enumerate(pieces):
+        relay.studio("build_upload_chunk", {"uploadId": upload_id, "index": index, "total": len(pieces), "data": piece})
+    arguments = {"uploadId": upload_id, "label": args.label, "mode": "merge" if args.merge else "replace", **guards(relay)}
+    text = text_of(relay.studio("build_import_upload", arguments))
+    print(text if len(text) <= 1500 else text[:1500] + "\n…")
+
+
+def check_game_version(relay):
+    """genMC names blocks for one Minecraft release; the .schem claims DATA_VERSION, so the two must match."""
+    try:
+        listed = json.loads(text_of(relay.studio("build_list_blocks", {"query": "stone", "limit": 1})))
+    except ValueError:
+        return
+    version = listed.get("version") if isinstance(listed, dict) else None
+    if version and str(version) != GAME_VERSION:
+        sys.exit(f"genMC 的方块目录是 Minecraft {version}，而本脚本按 {GAME_VERSION}（数据版本 {DATA_VERSION}）写文件；"
+                 "先更新 scripts/genmc.py 里的 GAME_VERSION 和 DATA_VERSION")
+
+
 def cmd_export(args):
     target = Path(args.pack)
     if not re.fullmatch(r"[a-z0-9_-]{1,32}", target.name):
         sys.exit(f"目录名（包 id）必须是 [a-z0-9_-]{{1,32}}：{target.name}")
     relay = Relay()
+    check_game_version(relay)
     state = as_json(relay.studio("build_get_state", {}), "build_get_state")
     exported = as_json(relay.studio("build_export", {"format": "json", "expectedRevision": state["revision"]}), "build_export")
     build = json.loads(exported["text"])["build"]
@@ -244,7 +319,7 @@ def cmd_export(args):
     manifest = json.loads(manifest_path.read_text()) if manifest_path.is_file() else {
         "format": 1, "update_shapes": True, "markers": [], "signs": []}
     manifest["origin"] = lo
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+    manifest_path.write_text(manifest_text(manifest))
     print(json.dumps({"schem": str(target / "build.schem"), "blocks": len(build["blocks"]), "size": size,
                       "origin": lo, "revision": state["revision"], "project": state.get("projectId")}, ensure_ascii=False))
 
@@ -259,6 +334,13 @@ def main():
     call.add_argument("tool"); call.add_argument("input", nargs="?")
     call.add_argument("--out"); call.add_argument("--image"); call.add_argument("--limit", type=int, default=6000)
     call.set_defaults(run=cmd_call)
+    docs = sub.add_parser("docs")
+    docs.add_argument("article", nargs="?"); docs.add_argument("--query"); docs.add_argument("--limit", type=int, default=20000)
+    docs.set_defaults(run=cmd_docs)
+    upload = sub.add_parser("upload")
+    upload.add_argument("file"); upload.add_argument("--label", required=True)
+    upload.add_argument("--merge", action="store_true", help="place over the current build instead of replacing it")
+    upload.set_defaults(run=cmd_upload)
     export = sub.add_parser("export"); export.add_argument("pack"); export.set_defaults(run=cmd_export)
     args = parser.parse_args()
     args.run(args)
