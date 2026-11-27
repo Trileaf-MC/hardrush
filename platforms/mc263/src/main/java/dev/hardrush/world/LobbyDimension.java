@@ -83,16 +83,27 @@ public final class LobbyDimension {
      * camp's posts would decay to dirt) and no nether portals.
      */
     public static RuntimeLevelHandle open(MinecraftServer server, ResourceKey<Level> key) {
-        var config = new RuntimeLevelConfig().setSeed(0).setGenerator(new VoidChunkGenerator(server, Biomes.PLAINS)).setFlat(true)
+        var existing = server.getLevel(key);
+        if (existing != null && !(existing instanceof LobbyLevel)) throw new IllegalStateException("大厅／工坊维度已被其他世界占用：" + key.identifier());
+        return Fantasy.get(server).getOrOpenPersistentLevel(key.identifier(), config(server));
+    }
+
+    /**
+     * A throwaway dimension with the same configuration, under a random key no lobby or draft uses; deleted with its
+     * handle. For building a pack without a draft (“建筑清单与大厅包构建” 2.3).
+     */
+    public static RuntimeLevelHandle openTemporary(MinecraftServer server) {
+        return Fantasy.get(server).openTemporaryLevel(config(server));
+    }
+
+    private static RuntimeLevelConfig config(MinecraftServer server) {
+        return new RuntimeLevelConfig().setSeed(0).setGenerator(new VoidChunkGenerator(server, Biomes.PLAINS)).setFlat(true)
                 .setDimensionType(BuiltinDimensionTypes.OVERWORLD).setDifficulty(Difficulty.PEACEFUL)
                 .setMirrorOverworldGameRules(false).setShouldTickTime(false)
                 .setGameRule(GameRules.SPAWN_MOBS, false).setGameRule(GameRules.ADVANCE_WEATHER, false)
                 .setGameRule(GameRules.RANDOM_TICK_SPEED, 0)
                 .setGameRule(GameRules.ALLOW_ENTERING_NETHER_USING_PORTALS, false)
                 .setLevelConstructor(LobbyLevel::new);
-        var existing = server.getLevel(key);
-        if (existing != null && !(existing instanceof LobbyLevel)) throw new IllegalStateException("大厅／工坊维度已被其他世界占用：" + key.identifier());
-        return Fantasy.get(server).getOrOpenPersistentLevel(key.identifier(), config);
     }
 
     /** Where vanilla respawns and joins land in this dimension. */

@@ -11,7 +11,8 @@ import net.minecraft.nbt.Tag;
  * The single gate between a pack (from anyone) and a world. Works on structure template NBT that the DataFixer has
  * already brought to this game's version, before {@code StructureTemplate.load}; edits the tag in place.
  * <p>
- * Template layout ({@code StructureTemplate.save}): {@code palette} (one list of {@code {Name, Properties}}) or
+ * Template layout ({@code StructureTemplate.save}): {@code palette} (one list of {@code {id, properties}}, already
+ * renamed from the pre-26.3 {@code {Name, Properties}} by {@link PackTiles#upgrade}) or
  * {@code palettes} (several lists sharing indices); {@code blocks} of {@code {pos, state, nbt?}} where {@code state}
  * indexes the palette and {@code nbt} is the block entity; {@code entities} of {@code {pos, blockPos, nbt}}.
  */
@@ -113,7 +114,7 @@ public final class TileSanitizer {
             var names = new HashMap<Integer, String>();
             for (var palette : palettes) {
                 for (int i = 0; i < size; i++) {
-                    var name = namespaced(palette.getCompoundOrEmpty(i).getStringOr("Name", "minecraft:air"));
+                    var name = namespaced(PackTiles.blockName(palette.getCompoundOrEmpty(i)));
                     names.putIfAbsent(i, name);
                     if (BANNED_BLOCKS.contains(name)) banned.putIfAbsent(i, name);
                 }
@@ -133,13 +134,25 @@ public final class TileSanitizer {
             }
         }
 
+        private static boolean holdsSomething(Tag removed) {
+            return switch (removed) {
+                case null -> false;
+                case ListTag list -> !list.isEmpty();
+                case CompoundTag compound -> !compound.isEmpty();
+                case net.minecraft.nbt.StringTag(String value) -> !value.isEmpty();
+                default -> true;
+            };
+        }
+
         void blockEntity(CompoundTag nbt, String blockName) {
             boolean cleared = false;
-            for (var key : CONTENTS) cleared |= nbt.remove(key) != null;
+            // Only real contents count: a campfire or an empty chest always carries an empty item list.
+            for (var key : CONTENTS) cleared |= holdsSomething(nbt.remove(key));
             for (var key : LIVING_STATE) nbt.remove(key);
             var id = namespaced(nbt.getStringOr("id", ""));
             if (id.equals("minecraft:vault") || "minecraft:vault".equals(blockName)) {
-                for (var key : VAULT_STATE) cleared |= nbt.remove(key) != null;
+                // Not counted as an emptied container: every lobby has vaults, and builders put nothing in them.
+                for (var key : VAULT_STATE) nbt.remove(key);
             }
             if (cleared) clearedContainers++;
             // 26.3 signs carry an op flag that lets click events run commands and resolve selectors.

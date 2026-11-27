@@ -16,6 +16,8 @@ public final class TestProperties {
     public static final String HUMAN_ENTRY = "hardrush.test.humanEntry";
     public static final String IDENTITY_RUNTIME = "hardrush.test.identityRuntime";
     public static final String LOBBY_ADMIN = "hardrush.test.lobbyAdmin";
+    /** Absolute path of a lobby pack source directory to build (scripts/lobby-pack.py). */
+    public static final String LOBBY_PACK = "hardrush.test.lobbyPack";
     public static final String LOBBY_FOUNDATION = "hardrush.test.lobbyFoundation";
     public static final String LOBBY_MOVEMENT = "hardrush.test.lobbyMovement";
     public static final String LOBBY_RUNTIME = "hardrush.test.lobbyRuntime";

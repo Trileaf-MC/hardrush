@@ -89,6 +89,7 @@ final class WorkshopMenu {
                     var label = (entry.kind() == ImportFolder.Kind.SAVE ? "存档：" : "建筑文件：") + entry.name();
                     var lore = entry.kind() == ImportFolder.Kind.SAVE
                             ? List.of("复制这个存档主世界的区块，坐标不变", "不清洗；发布后安装时才清洗")
+                            : entry.hasManifest() ? List.of("水平居中放在 (0, 64, 0)，底面在 Y 64", "只导入方块和方块实体", "带建筑清单")
                             : List.of("水平居中放在 (0, 64, 0)，底面在 Y 64", "只导入方块和方块实体");
                     out.add(owner ? new Button(entry.kind() == ImportFolder.Kind.SAVE ? Items.GRASS_BLOCK : Items.STRUCTURE_BLOCK,
                             label, "create-import", entry.name(), lore) : Button.disabled(label, "需要 4 级管理员权限"));

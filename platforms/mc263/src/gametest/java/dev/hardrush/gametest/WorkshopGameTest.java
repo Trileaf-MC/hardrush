@@ -220,6 +220,7 @@ public final class WorkshopGameTest {
                     workshop(f).leave(f.a.player, null);
                 });
         WorkshopToolSteps.run(test, f, sequence);
+        WorkshopManifestSteps.run(test, f, sequence);
         sequence.thenExecute(() -> f.a.disconnect());
         f.a.login(sequence);
         sequence.thenExecute(() -> {

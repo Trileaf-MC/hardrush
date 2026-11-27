@@ -216,6 +216,85 @@ public final class SampleFiles {
         return new Sample(root, spongeExpected());
     }
 
+    // ---- a building with a manifest (design “建筑清单与大厅包构建” 1.7) ----
+
+    /** As external tools export fences: no connection properties set. */
+    public static final String LOOSE_FENCE = "minecraft:oak_fence[east=false,north=false,south=false,waterlogged=false,west=false]";
+    public static final int MANIFEST_W = 7, MANIFEST_H = 3, MANIFEST_L = 5;
+    /** Where the building's minimum corner is in {@link #MANIFEST}'s frame. */
+    public static final Cell MANIFEST_ORIGIN = new Cell(10, 0, 20);
+
+    /**
+     * A 7×3×5 Sponge v2 building, local coordinates: a stone floor with a 2×2 lime wool patch at x 0–1, z 0–1; three
+     * loose oak fences at (2–4, 1, 4); a gold block at (3, 1, 1); tinted glass at (6, 1, 3) under stone; an oak sign
+     * at (5, 1, 1); a torch floating at (6, 2, 0).
+     */
+    public static Sample manifestBuilding() {
+        var states = new LinkedHashMap<Cell, String>();
+        for (int z = 0; z < MANIFEST_L; z++) for (int x = 0; x < MANIFEST_W; x++)
+            states.put(new Cell(x, 0, z), x < 2 && z < 2 ? "minecraft:lime_wool" : STONE);
+        for (int x = 2; x <= 4; x++) states.put(new Cell(x, 1, 4), LOOSE_FENCE);
+        states.put(new Cell(3, 1, 1), GOLD);
+        states.put(new Cell(6, 1, 3), "minecraft:tinted_glass");
+        states.put(new Cell(6, 2, 3), STONE);
+        states.put(new Cell(5, 1, 1), SIGN);
+        states.put(new Cell(6, 2, 0), "minecraft:torch");
+        var entities = Map.of(new Cell(5, 1, 1), signEntity("before"));
+        var palette = new CompoundTag();
+        palette.putInt("minecraft:air", 0);
+        var ids = new int[MANIFEST_W * MANIFEST_H * MANIFEST_L];
+        for (var entry : states.entrySet()) {
+            var c = entry.getKey();
+            if (!palette.contains(entry.getValue())) palette.putInt(entry.getValue(), palette.size());
+            ids[c.x() + c.z() * MANIFEST_W + c.y() * MANIFEST_W * MANIFEST_L] = palette.getIntOr(entry.getValue(), 0);
+        }
+        var blockEntities = new ListTag();
+        for (var entry : entities.entrySet()) {
+            var tag = entry.getValue().copy();
+            tag.remove("id");
+            tag.putString("Id", entry.getValue().getStringOr("id", ""));
+            tag.putIntArray("Pos", new int[]{entry.getKey().x(), entry.getKey().y(), entry.getKey().z()});
+            blockEntities.add(tag);
+        }
+        var root = new CompoundTag();
+        root.putInt("Version", 2);
+        root.putInt("DataVersion", DATA_VERSION);
+        root.putShort("Width", (short) MANIFEST_W);
+        root.putShort("Height", (short) MANIFEST_H);
+        root.putShort("Length", (short) MANIFEST_L);
+        root.put("Palette", palette);
+        root.putInt("PaletteMax", palette.size());
+        root.putByteArray("BlockData", varints(ids));
+        root.put("BlockEntities", blockEntities);
+        return new Sample(root, new Expected(MANIFEST_W, MANIFEST_H, MANIFEST_L, states, entities));
+    }
+
+    /**
+     * The manifest for {@link #manifestBuilding()}, one marker of every binding form, in a frame where the building's
+     * minimum corner is {@link #MANIFEST_ORIGIN}: manifest cell = local cell + (10, 0, 20). The second sign entry names
+     * the gold block, which is not a sign.
+     */
+    public static final String MANIFEST = """
+            {
+              "format": 1,
+              "origin": [10, 0, 20],
+              "update_shapes": true,
+              "markers": [
+                {"function": "assembly", "as": "zone", "shape": "flood", "at": [10, 0, 20]},
+                {"function": "courtyard", "as": "zone", "shape": "box", "at": [15, 1, 23], "box": [1, 1, 1]},
+                {"function": "landing_central", "as": "point", "at": [13, 1, 22], "yaw": 180},
+                {"function": "role_zombie", "as": "model", "at": [11, 1, 23], "yaw": 90},
+                {"function": "rules", "as": "click", "at": [13, 1, 21]},
+                {"function": "altar_light", "as": "block", "at": [16, 1, 23]},
+                {"function": "status", "as": "text", "at": [15, 1, 21]}
+              ],
+              "signs": [
+                {"at": [15, 1, 21], "front": ["清单写的字", "第二行"], "back": []},
+                {"at": [13, 1, 21], "front": ["不是告示牌"]}
+              ]
+            }
+            """;
+
     // ---- .litematic ----
 
     private static final List<String> A_PALETTE = List.of("minecraft:air", STONE, STAIRS, SIGN, GOLD);

@@ -39,6 +39,34 @@ final class TileSanitizerTest {
         }
     }
 
+    /** A tile that spells its palette the pre-26.3 way must not slip a banned block past the list. */
+    @Test void bannedBlocksAreFoundInTheOldPaletteSpellingToo() {
+        for (boolean canonicalised : new boolean[] {false, true}) {
+            var tile = tile();
+            var palette = new ListTag();
+            var stone = new CompoundTag(); stone.putString("Name", "minecraft:stone");
+            var spawner = new CompoundTag(); spawner.putString("Name", "minecraft:spawner");
+            var facing = new CompoundTag(); facing.putString("facing", "north");
+            var command = new CompoundTag(); command.putString("Name", "minecraft:command_block"); command.put("Properties", facing);
+            palette.add(stone); palette.add(spawner); palette.add(command);
+            tile.put("palette", palette);
+            var blocks = new ListTag();
+            blocks.add(block(0, 0, 0, 0, null));
+            blocks.add(block(1, 0, 0, 1, null));
+            blocks.add(block(2, 0, 0, 2, null));
+            tile.put("blocks", blocks);
+            if (canonicalised) {
+                PackTiles.canonicalPalettes(tile);
+                assertEquals("minecraft:command_block", palette.getCompoundOrEmpty(2).getStringOr("id", ""));
+                assertEquals("north", palette.getCompoundOrEmpty(2).getCompoundOrEmpty("properties").getStringOr("facing", ""));
+                assertFalse(palette.getCompoundOrEmpty(2).contains("Name") || palette.getCompoundOrEmpty(2).contains("Properties"));
+            }
+            var report = TileSanitizer.sanitize(tile, SanitizeMode.INSTALL);
+            assertEquals(Set.of("minecraft:command_block", "minecraft:spawner"), report.removedIds());
+            assertEquals(1, tile.getListOrEmpty("blocks").size());
+        }
+    }
+
     @Test void signsLoseClickEventsSelectorsAndTheOpFlag() {
         var tile = tile();
         tile.getListOrEmpty("palette").add(state("minecraft:oak_sign"));
@@ -137,7 +165,8 @@ final class TileSanitizerTest {
         blocks.add(block(2, 1, 0, 3, hive));
 
         var report = TileSanitizer.sanitize(tile, SanitizeMode.DRAFT);
-        assertEquals(2, report.clearedContainers());
+        // The chest only (its loot table): a vault losing its state is not an emptied container.
+        assertEquals(1, report.clearedContainers());
         var c = blocks.getCompoundOrEmpty(1).getCompoundOrEmpty("nbt");
         assertFalse(c.contains("Items") || c.contains("LootTable"));
         assertFalse(c.getCompoundOrEmpty("CustomName").contains("hover_event"));
@@ -146,6 +175,21 @@ final class TileSanitizerTest {
         assertEquals(Set.of("id"), v.keySet());
         var h = blocks.getCompoundOrEmpty(3).getCompoundOrEmpty("nbt");
         assertEquals(Set.of("id"), h.keySet());
+    }
+
+    /** A campfire always stores an (empty) item list; stripping it is not worth a warning. */
+    @Test void emptyItemListsAreNotCountedAsEmptiedContainers() {
+        var tile = tile();
+        tile.getListOrEmpty("palette").add(state("minecraft:campfire"));
+        var campfire = new CompoundTag();
+        campfire.putString("id", "minecraft:campfire");
+        campfire.put("Items", new ListTag());
+        var blocks = tile.getListOrEmpty("blocks");
+        blocks.add(block(0, 1, 0, 1, campfire));
+
+        var report = TileSanitizer.sanitize(tile, SanitizeMode.INSTALL);
+        assertEquals(0, report.clearedContainers());
+        assertFalse(blocks.getCompoundOrEmpty(blocks.size() - 1).getCompoundOrEmpty("nbt").contains("Items"));
     }
 
     @Test void onlyDecorationEntitiesSurviveWithTrimmedItems() {

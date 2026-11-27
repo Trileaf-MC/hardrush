@@ -85,6 +85,7 @@
       "dev.hardrush.lobby.pack.PackRoundTripGameTest",
       "dev.hardrush.lobby.pack.LobbyInstallGameTest",
       "dev.hardrush.gametest.LobbyAdminGameTest",
+      "dev.hardrush.lobby.workshop.LobbyPackBuildGameTest",
       "dev.hardrush.gametest.TestClientsGameTest",
       "dev.hardrush.gametest.GameTestHarnessGameTest"
     ],

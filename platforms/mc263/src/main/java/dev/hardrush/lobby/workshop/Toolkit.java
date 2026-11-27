@@ -297,13 +297,9 @@ public final class Toolkit {
 
     // ---- Spawning ------------------------------------------------------------------------------------------------
 
-    /** A marker for {@code spec} on {@code target}: in the cell above when it is free, else in the block's own cell. */
+    /** A marker for {@code spec} on {@code target}, facing the builder; {@link MarkerStands#spawnOn} picks the cell. */
     static ArmorStand bindBlock(ServerPlayer player, BlockPos target, MarkerSpec spec) {
-        var level = (ServerLevel) player.level();
-        var above = target.above();
-        var cell = level.getBlockState(above).isAir() ? above : target;
-        float yaw = facing(player);
-        return MarkerStands.spawn(level, spec, cell.getX() + .5, cell.getY(), cell.getZ() + .5, yaw);
+        return MarkerStands.spawnOn((ServerLevel) player.level(), spec, target, facing(player));
     }
 
     /** An interaction box standing on {@code target}, tagged as a click trigger for {@code function}. */

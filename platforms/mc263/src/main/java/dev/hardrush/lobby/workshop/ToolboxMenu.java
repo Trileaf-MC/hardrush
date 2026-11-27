@@ -112,7 +112,8 @@ final class ToolboxMenu {
                 var files = workshop.importEntries().stream().filter(e -> e.kind() == ImportFolder.Kind.STRUCTURE).toList();
                 if (files.isEmpty()) out.add(new Button(Items.PAPER, "import 目录里没有建筑文件", "info", "",
                         List.of("把 .nbt、.schem、.litematic 放进", "世界目录/hardrush/workshop/import/")));
-                for (var e : files) out.add(new Button(Items.PAPER, e.name(), "paste-pick", e.name(), List.of("贴到我这里：水平居中，底面在脚下")));
+                for (var e : files) out.add(new Button(Items.PAPER, e.name(), "paste-pick", e.name(),
+                        e.hasManifest() ? List.of("贴到我这里：水平居中，底面在脚下", "带建筑清单") : List.of("贴到我这里：水平居中，底面在脚下")));
                 out.add(new Button(Items.ARROW, "返回", "back", ""));
             }
             case PASTE_CONFIRM -> {

@@ -473,12 +473,36 @@ loom.runs.named('gameTest') {
     }
 }
 
-// A single production runtime suite owns each JVM; every launch receives a new directory.
+// Every -Phardrush<Suite>=true switch that selects a dedicated GameTest suite, in one place: a new suite goes into
+// exactly one of these two lists. A single production runtime suite owns each JVM; every launch receives a new directory.
 def isolatedSuites = ['hardrushParticipationExit', 'hardrushAdminSpectator', 'hardrushTenRounds', 'hardrushCelebration', 'hardrushStorageReserve', 'hardrushRecovery',
     'hardrushIdentityRuntime', 'hardrushLobbyRuntime', 'hardrushLobbyMovement', 'hardrushLobbyFoundation', 'hardrushHumanEntry', 'hardrushPersonalHunt', 'hardrushCreeperUnlock', 'hardrushFullFlow', 'hardrushStabilization',
     'hardrushLobbyAdmin', 'hardrushWorkshop']
 if (isolatedSuites.count { providers.gradleProperty(it).orNull == 'true' } > 1)
     throw new GradleException('Production runtime suites must use separate isolated JVMs')
+// The other suites: fixtures filtered in the default fresh storage, and runtimes with their own storage that are not part
+// of the check above.
+def otherSuites = ['hardrushDuskPact', 'hardrushRevivalTotems', 'hardrushTotemDrops', 'hardrushTotemSave', 'hardrushTotemTab',
+    'hardrushCombatDeparture']
+def allSuites = isolatedSuites + otherSuites
+
+// Headless lobby pack build (docs/plan/建筑清单与大厅包构建.md 2), started by scripts/lobby-pack.py with the source
+// directory's absolute path. It needs no competition runtime and owns its JVM; without the property its test does nothing.
+def lobbyPackRunDir = rootProject.file(".local/lobby-pack/${UUID.randomUUID()}")
+loom.runs.named('gameTest') {
+    def lobbyPack = providers.gradleProperty('hardrushLobbyPack').orNull
+    if (lobbyPack != null) {
+        if ((allSuites + 'hardrushCompetition').any { providers.gradleProperty(it).orNull == 'true' }
+                || providers.gradleProperty('hardrushGameTestFilter').isPresent())
+            throw new GradleException('The lobby pack build runs alone, without -PhardrushCompetition=true or any other suite')
+        def source = new File(lobbyPack)
+        if (!source.isAbsolute() || !source.isDirectory())
+            throw new GradleException("-PhardrushLobbyPack must be the absolute path of a lobby pack source directory: ${lobbyPack}")
+        vmArg "-Dhardrush.test.lobbyPack=${source.toPath().normalize()}"
+        vmArg '-Dfabric-api.gametest.filter=hardrush-gametest:lobby_pack_build_game_test*'
+        runDir lobbyPackRunDir.absolutePath
+    }
+}
 def participationExitRunDir = rootProject.file(".local/participation-exit/${UUID.randomUUID()}")
 loom.runs.named('gameTest') {
     if (providers.gradleProperty('hardrushParticipationExit').orNull == 'true') {

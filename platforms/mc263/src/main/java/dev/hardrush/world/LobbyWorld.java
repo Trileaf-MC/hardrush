@@ -82,6 +82,7 @@ public final class LobbyWorld {
                 var current = storage.readCurrent();
                 // Never clean up around a record we could not read: it may name the lobby we would delete.
                 int highest = storage.cleanup(root, current.map(c -> OptionalInt.of(c.seq())).orElse(OptionalInt.empty()), loaded);
+                dev.hardrush.lobby.pack.BundledPacks.release(storage.packs());
                 return new Startup(current, highest);
             } catch (IOException e) {
                 throw new UncheckedIOException(e);

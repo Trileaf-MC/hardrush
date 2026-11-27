@@ -1,5 +1,6 @@
 package dev.hardrush.lobby.workshop;
 
+import dev.hardrush.lobby.pack.imports.BuildManifestJson;
 import dev.hardrush.world.RoundWorldPaths;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,7 +22,12 @@ final class ImportFolder {
     private static final List<String> STRUCTURES = List.of(".nbt", ".schem", ".litematic");
 
     enum Kind { SAVE, STRUCTURE }
-    record Entry(String name, Path path, Kind kind) {}
+    record Entry(String name, Path path, Kind kind) {
+        /** A building file with a building manifest beside it (design “建筑清单与大厅包构建” 1.6). */
+        boolean hasManifest() {
+            return kind == Kind.STRUCTURE && Files.exists(BuildManifestJson.besides(path), LinkOption.NOFOLLOW_LINKS);
+        }
+    }
 
     private final Path root;
 

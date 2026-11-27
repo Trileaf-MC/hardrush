@@ -1,6 +1,7 @@
 package dev.hardrush.lobby.workshop;
 
 import dev.hardrush.core.lobby.plan.Box;
+import dev.hardrush.core.lobby.plan.BuildManifest;
 import dev.hardrush.core.lobby.plan.Cell;
 import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.lobby.plan.Point;
@@ -15,8 +16,12 @@ import dev.hardrush.lobby.pack.PreparedPack;
 import dev.hardrush.lobby.pack.SanitizeMode;
 import dev.hardrush.lobby.pack.TileKey;
 import dev.hardrush.lobby.pack.TileSanitizer;
+import dev.hardrush.lobby.pack.imports.BuildManifestJson;
+import dev.hardrush.lobby.pack.imports.BuildManifestPlacer;
+import dev.hardrush.lobby.pack.imports.ImportIssue;
 import dev.hardrush.lobby.pack.imports.ImportLimits;
 import dev.hardrush.lobby.pack.imports.ImportedStructure;
+import dev.hardrush.lobby.pack.imports.PaletteCheck;
 import dev.hardrush.lobby.pack.imports.StructureImports;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -45,14 +50,34 @@ final class DraftImport {
         /** Chunks under this box are loaded before placing. */
         Box bounds();
         int steps();
-        /** Places step {@code index}; chunks are loaded. */
-        void place(ServerLevel level, int index);
+        /** Places step {@code index}; chunks are loaded. A {@link PackException} rejects the content (see {@link Rejected}). */
+        void place(ServerLevel level, int index) throws PackException;
         /** Where builders should arrive, if the content knows. */
         default Point entry() { return null; }
         /** The build range's new centre (x, z), if the content is not around the origin. */
         default Cell center() { return null; }
-        /** What the operator should know about the conversion. */
-        default List<String> notes() { return List.of(); }
+        /** What the operator should know about the conversion, other than {@link #issues}. */
+        default List<String> remarks() { return List.of(); }
+        /**
+         * What the import found wrong without failing, for the headless build to sort by kind; complete once the last
+         * step ran. Never classify by {@link #notes}' text.
+         */
+        default List<ImportIssue> issues() { return List.of(); }
+        /** The completion notice's lines: {@link #remarks}, then each issue's message. */
+        default List<String> notes() {
+            var notes = new ArrayList<>(remarks());
+            for (var issue : issues()) notes.add(issue.message());
+            return notes;
+        }
+    }
+
+    /**
+     * The import failed because the content is wrong (a {@link PackException}: a damaged or oversized building file, a
+     * mistake in its manifest), not because the import itself broke (timeouts, a dimension that would not open). The
+     * headless build reports the former in the pack's report and treats anything else as a tooling failure.
+     */
+    static final class Rejected extends IllegalStateException {
+        Rejected(PackException cause) { super(cause.getMessage(), cause); }
     }
 
     /** Produces the content on the IO thread. */
@@ -67,28 +92,83 @@ final class DraftImport {
             var central = pack.plan().points(LobbyFunction.LANDING_CENTRAL);
             var bounds = pack.manifest().bounds();
             // Packs keep absolute coordinates, so the range follows the lobby rather than the origin.
-            return tiles(new ArrayList<>(pack.tiles().entrySet()), bounds, central.isEmpty() ? null : central.getFirst(), horizontalCenter(bounds), List.of());
+            return tiles(new ArrayList<>(pack.tiles().entrySet()), bounds, central.isEmpty() ? null : central.getFirst(), horizontalCenter(bounds), List.of(), List.of());
         };
     }
 
     /**
      * A building file (design 19.2): converted, upgraded from its own data version and sanitized like a pack.
-     * {@code origin} picks where the building's minimum corner goes, knowing its size.
+     * {@code origin} picks where the building's minimum corner goes, knowing its size. A building manifest beside the
+     * file (design “建筑清单与大厅包构建” 1) adds its steps after the tiles; without one nothing changes.
      */
     static Loader structure(Path file, int maxSize, Function<ImportedStructure, Cell> origin) {
         return () -> {
+            // The manifest is small: a mistake in it fails before the building is read.
+            var manifest = BuildManifestJson.readBesides(file).orElse(null);
+            var mistake = "建筑清单 " + BuildManifestJson.besides(file).getFileName() + " 有误：";
             var structure = StructureImports.read(file, new ImportLimits(maxSize, PackTiles.currentDataVersion()));
+            if (manifest != null) {
+                var outside = manifest.horizontalProblem(structure.sizeX(), structure.sizeZ());
+                if (outside.isPresent()) throw new PackException(mistake + outside.get());
+            }
             var at = origin.apply(structure);
             var placed = structure.placedAt(at.x(), at.y(), at.z());
             var tiles = new ArrayList<Map.Entry<TileKey, CompoundTag>>();
-            for (var entry : placed.entrySet()) {
-                var tile = PackTiles.upgrade(entry.getValue(), structure.dataVersion());
-                TileSanitizer.sanitize(tile, SanitizeMode.DRAFT);
-                tiles.add(Map.entry(entry.getKey(), tile));
-            }
+            for (var entry : placed.entrySet()) tiles.add(Map.entry(entry.getKey(), PackTiles.upgrade(entry.getValue(), structure.dataVersion())));
+            // After the DataFixer, before anything is placed: what vanilla would quietly turn into air.
+            var unknown = PaletteCheck.unknownStates(tiles.stream().map(Map.Entry::getValue).toList());
+            for (var tile : tiles) TileSanitizer.sanitize(tile.getValue(), SanitizeMode.DRAFT);
             TileSanitizer.checkTotals(tiles.stream().map(Map.Entry::getValue).toList());
             var bounds = new Box(at, at.offset(structure.sizeX() - 1, structure.sizeY() - 1, structure.sizeZ() - 1));
-            return tiles(tiles, bounds, null, null, structure.notes());
+            var blocks = tiles(tiles, bounds, null, null, structure.notes(), unknown);
+            return manifest == null ? blocks : manifested(blocks, tiles, manifest, at, mistake);
+        };
+    }
+
+    /**
+     * {@code blocks} followed by the manifest's steps (design 1.6): one shape update per tile when asked, over the cells
+     * that tile placed, then one step that spawns the markers and writes the signs. The first step checks the manifest
+     * against the world's height, so nothing is placed when that fails. Entry is the first central landing's cell.
+     */
+    private static Content manifested(Content blocks, List<Map.Entry<TileKey, CompoundTag>> placed, BuildManifest manifest, Cell placedMin, String mistake) {
+        int tiles = blocks.steps(), shapes = manifest.updateShapes() ? placed.size() : 0;
+        var central = manifest.markers().stream().filter(m -> m.spec().function() == LobbyFunction.LANDING_CENTRAL).findFirst().orElse(null);
+        return new Content() {
+            int removed;
+            BuildManifestPlacer.Applied applied;
+
+            public Box bounds() { return blocks.bounds(); }
+            public int steps() { return tiles + shapes + 1; }
+            public void place(ServerLevel level, int index) throws PackException {
+                if (index == 0) {
+                    var high = manifest.heightProblem(placedMin, level.getMinY(), level.getMaxY());
+                    if (high.isPresent()) throw new PackException(mistake + high.get());
+                }
+                if (index < tiles) blocks.place(level, index);
+                else if (index < tiles + shapes) {
+                    var tile = placed.get(index - tiles);
+                    removed += BuildManifestPlacer.updateShapes(level, tile.getKey(), tile.getValue(), blocks.bounds());
+                } else applied = BuildManifestPlacer.apply(level, manifest, placedMin);
+            }
+            /** Read once placing finished; by then the height check has passed, so the cell is in the world. */
+            public Point entry() {
+                if (central == null) return null;
+                var c = manifest.toWorld(central.at(), placedMin);
+                return new Point(c.x() + .5, c.y(), c.z() + .5, central.yaw());
+            }
+            public Cell center() { return blocks.center(); }
+            /** Complete once the last step ran, which is when the import reads them. */
+            public List<String> remarks() {
+                var remarks = new ArrayList<>(blocks.remarks());
+                if (removed > 0) remarks.add("形状更新移除了 " + removed + " 个失去支撑的方块");
+                if (applied != null) remarks.add("已按清单放置 " + applied.markers() + " 个标记、写了 " + applied.signs() + " 块告示牌");
+                return remarks;
+            }
+            public List<ImportIssue> issues() {
+                var issues = new ArrayList<>(blocks.issues());
+                if (applied != null) issues.addAll(applied.issues());
+                return issues;
+            }
         };
     }
 
@@ -110,7 +190,7 @@ final class DraftImport {
                 (int) Math.floorDiv((long) bounds.min().z() + bounds.max().z() + 1, 2));
     }
 
-    private static Content tiles(List<Map.Entry<TileKey, CompoundTag>> tiles, Box bounds, Point entry, Cell center, List<String> notes) {
+    private static Content tiles(List<Map.Entry<TileKey, CompoundTag>> tiles, Box bounds, Point entry, Cell center, List<String> remarks, List<ImportIssue> issues) {
         return new Content() {
             public Box bounds() { return bounds; }
             public int steps() { return tiles.size(); }
@@ -120,7 +200,8 @@ final class DraftImport {
             }
             public Point entry() { return entry; }
             public Cell center() { return center; }
-            public List<String> notes() { return notes; }
+            public List<String> remarks() { return remarks; }
+            public List<ImportIssue> issues() { return issues; }
         };
     }
 
@@ -153,7 +234,7 @@ final class DraftImport {
                 public void place(ServerLevel level, int index) { throw new IllegalStateException("saves place nothing"); }
                 public Point entry() { return new Point(spawn.x() + .5, spawn.y(), spawn.z() + .5, 0); }
                 public Cell center() { return spawn; }
-                public List<String> notes() { return copied.notes(); }
+                public List<String> remarks() { return copied.notes(); }
             };
         };
     }
@@ -188,7 +269,7 @@ final class DraftImport {
         });
     }
 
-    /** Advances one step; true once the draft's world is complete. Throws when the import failed. */
+    /** Advances one step; true once the draft's world is complete. Throws when the import failed: {@link Rejected} when the content is wrong. */
     boolean tick() {
         // Reading may copy gigabytes of a save; the world steps after it get the install's limit.
         long limit = stage == Stage.READING ? READ_TIMEOUT_NANOS : LobbyInstall.TIMEOUT_NANOS;
@@ -206,8 +287,10 @@ final class DraftImport {
             }
             case LOADING -> { if (chunks.tick()) stage = Stage.PLACING; }
             case PLACING -> {
-                if (placed < content.steps()) content.place(level, placed++);
-                else stage = Stage.SETTLING;
+                if (placed < content.steps()) {
+                    try { content.place(level, placed++); }
+                    catch (PackException e) { throw new Rejected(e); }
+                } else stage = Stage.SETTLING;
             }
             case SETTLING -> {
                 if (!chunks.tick()) return false;
@@ -245,6 +328,7 @@ final class DraftImport {
         catch (CompletionException e) {
             var cause = e.getCause();
             while ((cause instanceof CompletionException || cause instanceof UncheckedIOException) && cause.getCause() != null) cause = cause.getCause();
+            if (cause instanceof PackException rejected) throw new Rejected(rejected);
             throw new IllegalStateException(cause.getMessage() == null ? cause.toString() : cause.getMessage(), cause);
         }
     }
