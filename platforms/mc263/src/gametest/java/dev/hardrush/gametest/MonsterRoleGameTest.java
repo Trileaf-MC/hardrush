@@ -739,8 +739,8 @@ public final class MonsterRoleGameTest {
      * tests of egg mechanics hand it one baby egg in slot 1 and one adult egg in slot 2, the way a zombie used to start.
      */
     public static void withEggs(ServerPlayer player) {
-        player.getInventory().setItem(1, dev.hardrush.monster.MonsterCompanions.egg(player, true, false));
-        player.getInventory().setItem(2, dev.hardrush.monster.MonsterCompanions.egg(player, false, false));
+        player.getInventory().setItem(1, dev.hardrush.monster.MonsterCompanions.egg(player, true, MonsterForm.ZOMBIE));
+        player.getInventory().setItem(2, dev.hardrush.monster.MonsterCompanions.egg(player, false, MonsterForm.ZOMBIE));
     }
 
     public static void emptyHanded(ServerPlayer player) {

@@ -38,8 +38,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -134,19 +132,21 @@ public final class MonsterCompanions {
     static final String BABY_EGG = "baby_egg", ADULT_EGG = "adult_egg";
     private static final String EGG_USAGE = "右键方块或水面，放出一只随从";
 
-    public static ItemStack egg(ServerPlayer player, boolean baby, boolean drowned) {
-        var stack = new ItemStack(drowned ? Items.DROWNED_SPAWN_EGG : Items.ZOMBIE_SPAWN_EGG);
+    /** {@code form} must be a zombie-line form: the egg hatches its species. */
+    public static ItemStack egg(ServerPlayer player, boolean baby, MonsterForm form) {
+        if (form.egg == null) throw new IllegalArgumentException("No companion egg for " + form);
+        var stack = new ItemStack(form.egg);
         var entityData = new CompoundTag();
         entityData.putBoolean("IsBaby", baby);
-        stack.set(DataComponents.ENTITY_DATA, TypedEntityData.of(drowned ? EntityTypes.DROWNED : EntityTypes.ZOMBIE, entityData));
-        dev.hardrush.notice.ItemText.name(stack, (baby ? "幼年" : "成年") + (drowned ? "溺尸" : "僵尸") + "刷怪蛋");
+        stack.set(DataComponents.ENTITY_DATA, TypedEntityData.of(form.type, entityData));
+        dev.hardrush.notice.ItemText.name(stack, (baby ? "幼年" : "成年") + form.label + "刷怪蛋");
         dev.hardrush.notice.ItemText.lore(stack, EGG_USAGE, "随从跟着你作战 · 本次出击结束时消失");
         return MonsterItems.bind(player, stack, baby ? BABY_EGG : ADULT_EGG);
     }
 
     /** The role's spawn eggs' usage, also the first line of their description. */
     public static java.util.Optional<String> heldHint(ServerPlayer player, ItemStack stack) {
-        return (stack.is(Items.ZOMBIE_SPAWN_EGG) || stack.is(Items.DROWNED_SPAWN_EGG)) && ownEgg(player, stack)
+        return MonsterForm.hatching(stack) != null && ownEgg(player, stack)
                 ? java.util.Optional.of(EGG_USAGE) : java.util.Optional.empty();
     }
 
@@ -228,7 +228,7 @@ public final class MonsterCompanions {
 
     private static boolean usableEgg(ServerPlayer player, ItemStack stack) {
         return player.isAlive() && MonsterRoundRuntime.canAct(player) && !MonsterRoles.binding(player).isEmpty()
-                && (stack.is(Items.ZOMBIE_SPAWN_EGG) || stack.is(Items.DROWNED_SPAWN_EGG))
+                && MonsterForm.hatching(stack) != null
                 && ownEgg(player, stack);
     }
 
@@ -236,9 +236,7 @@ public final class MonsterCompanions {
         var level = player.level();
         var pos = landing.pos();
         boolean baby = MonsterItems.matches(player, stack, BABY_EGG);
-        EntityType<? extends Zombie> type = stack.is(Items.DROWNED_SPAWN_EGG) ? EntityTypes.DROWNED : EntityTypes.ZOMBIE;
-        Zombie zombie = type.create(level, EntitySpawnReason.SPAWN_ITEM_USE);
-        if (zombie == null) return false;
+        if (!(MonsterForm.hatching(stack).type.create(level, EntitySpawnReason.SPAWN_ITEM_USE) instanceof Zombie zombie)) return false;
         zombie.setBaby(baby);
         if (!place(player, zombie, landing)) { zombie.discard(); return false; }
         var difficulty = level.getCurrentDifficultyAt(zombie.blockPosition());

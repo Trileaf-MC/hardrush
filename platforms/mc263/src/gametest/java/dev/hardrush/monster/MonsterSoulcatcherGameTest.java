@@ -172,7 +172,7 @@ public final class MonsterSoulcatcherGameTest {
                 test.assertValueEqual(eggs(owner, "adult_egg"), before, "It returns to the adult egg");
                 test.assertTrue(contents(owner).isEmpty(), "A hatched zombie never takes a bag place");
 
-                rival.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(rival, false, false));
+                rival.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(rival, false, MonsterForm.ZOMBIE));
                 test.assertTrue(MonsterCompanions.useOn(rival, InteractionHand.MAIN_HAND, hit(rival.blockPosition().west(2).below())), "Rival hatch");
                 var foreign = owned(rival).getFirst();
                 test.assertTrue(!MonsterSoulcatcher.capture(owner, InteractionHand.MAIN_HAND, foreign), "Another monster's companion is refused");

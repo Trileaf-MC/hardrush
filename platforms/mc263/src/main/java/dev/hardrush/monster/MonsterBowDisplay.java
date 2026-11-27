@@ -46,14 +46,8 @@ public final class MonsterBowDisplay {
         }
     }
 
-    /** Null for forms without a bow skill; an added form must choose here before it compiles. */
-    public static String bowName(MonsterForm form) {
-        return switch (form) {
-            case SKELETON -> "骷髅之弓";
-            case STRAY -> "流浪者之弓";
-            case ZOMBIE, DROWNED, CREEPER -> null;
-        };
-    }
+    /** Null for forms without a bow skill. */
+    public static String bowName(MonsterForm form) { return form.bowName; }
 
     static Look look(MonsterForm form, long remainingMillis, long cooldownMillis) {
         if (remainingMillis <= 0 || cooldownMillis <= 0) return new Look(bowName(form), true, 0);

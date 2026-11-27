@@ -72,7 +72,7 @@ public final class MonsterCompanionGameTest {
         test.runAfterDelay(80, () -> {
             try {
                 MonsterRoles.select(player, "zombie");
-                var egg = MonsterCompanions.egg(player, false, false);
+                var egg = MonsterCompanions.egg(player, false, dev.hardrush.monster.MonsterForm.ZOMBIE);
                 player.setItemInHand(InteractionHand.MAIN_HAND, egg);
                 var spawner = player.blockPosition().east(2);
                 player.level().setBlockAndUpdate(spawner, Blocks.SPAWNER.defaultBlockState());
@@ -96,7 +96,7 @@ public final class MonsterCompanionGameTest {
             var water = owner.blockPosition().east(2);
             try {
                 MonsterRoles.select(owner, "zombie");
-                var egg = MonsterCompanions.egg(owner, false, true);
+                var egg = MonsterCompanions.egg(owner, false, dev.hardrush.monster.MonsterForm.DROWNED);
                 owner.setItemInHand(InteractionHand.MAIN_HAND, egg);
                 owner.setXRot(-90);
                 test.assertTrue(!MonsterCompanions.use(owner, InteractionHand.MAIN_HAND), "Ordinary air never spawns a companion");
@@ -443,7 +443,7 @@ public final class MonsterCompanionGameTest {
 
     private static Zombie summon(GameTestHelper test, ServerPlayer owner, boolean baby, boolean drowned) {
         var floor = owner.blockPosition().east(2).below();
-        owner.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(owner, baby, drowned));
+        owner.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(owner, baby, drowned ? dev.hardrush.monster.MonsterForm.DROWNED : dev.hardrush.monster.MonsterForm.ZOMBIE));
         long before = owner.level().getEntitiesOfClass(Zombie.class, owner.getBoundingBox().inflate(8)).stream()
                 .filter(zombie -> owner.getUUID().equals(MonsterCompanions.owner(zombie))).count();
         test.assertTrue(MonsterCompanions.useOn(owner, InteractionHand.MAIN_HAND, hit(floor)), "Bound egg spawns on a safe floor");
