@@ -894,6 +894,17 @@ public final class RoundEngine {
                 player.withWallet(player.wallet().openVault(before.rules(), key, slot, roles, item)));
     }
 
+    /** A camp monster put a piece of its vault gear on; it is worn in the camp and on the next sortie. */
+    public RoundTransition proposeGearWorn(UUID eventId, UUID roundId, UUID playerId, int expectedLifeSequence,
+            int expectedDeploymentSequence, int serial) {
+        RoundSnapshot before = capture();
+        Participant player = requireCampMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
+        boolean wearable = player.wallet().gear().stream()
+                .anyMatch(piece -> piece.serial() == serial && piece.wearableBy(player.monsterRole()));
+        if (!wearable) throw new IllegalStateException("当前角色穿不上这件装备。");
+        return monsterProposal(eventId, "GEAR_WORN", before, player.withWallet(player.wallet().wearGear(serial)));
+    }
+
     private static Participant requireCampMonster(RoundSnapshot before, UUID roundId, UUID playerId,
             int expectedLifeSequence, int expectedDeploymentSequence) {
         if (!MonsterCoins.enabled(before.rules())) throw new IllegalStateException("本轮没有开放怪物币商店。");

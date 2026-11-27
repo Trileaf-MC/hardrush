@@ -125,6 +125,28 @@ class MonsterCoinsTest {
         assertEquals(3, creeper.nextPrice(RULES, ShopOffer.TRIAL_KEY));
     }
 
+    @Test void wearingAPieceMakesItTheNewestOfItsSlotAndSurvivesDeploymentAndCancellation() {
+        var wallet = chosen(200)
+                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3)
+                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3)
+                .openVault(RULES, ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.HEAD, Set.of(MonsterRole.ZOMBIE), "iron")
+                .openVault(RULES, ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.HEAD, Set.of(MonsterRole.ZOMBIE), "gold");
+        var worn = wallet.wearGear(0);
+        assertEquals(3, worn.nextGearSerial());
+        assertEquals(List.of("gold", "iron"), worn.gear().stream().map(MonsterWallet.GearPiece::item).toList());
+        assertEquals(2, worn.gear().get(1).serial(), "the chosen piece is now the newest helmet");
+        assertEquals(wallet.gear().get(0).paid(), worn.gear().get(1).paid(), "its price still counts as investment");
+        var deployed = worn.deploy(RULES, MonsterRole.ZOMBIE);
+        var newest = deployed.activeGear().stream().max(java.util.Comparator.comparingInt(MonsterWallet.GearPiece::serial)).orElseThrow();
+        assertEquals("iron", newest.item());
+        var cancelled = deployed.cancelDeploy(RULES);
+        assertEquals("iron", cancelled.gear().get(cancelled.gear().size() - 1).item());
+        assertThrows(IllegalStateException.class, () -> wallet.wearGear(9));
+        var sword = chosen(10).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3)
+                .openVault(RULES, ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.MAINHAND, Set.of(MonsterRole.ZOMBIE), "sword");
+        assertThrows(IllegalArgumentException.class, () -> sword.wearGear(0));
+    }
+
     @Test void deploymentFreezesTheKitRefundsUnopenedKeysAndCancellationRestoresIt() {
         var wallet = chosen(200)
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.BABY_EGG, 20)

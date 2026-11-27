@@ -250,7 +250,10 @@ public abstract class PlayerIsolationNetworkMixin {
         if (!locked && !CombatRuntime.competitionFrozen(player.level())) return;
         // Only a generated written book can be used while other item/gameplay input stays sealed.
         if (!WrittenBookPort.isHistoryBook(player.getItemInHand(packet.hand()))
-                || locked && !RoundRuntime.lobbyBookReady(player)) ci.cancel();
+                || locked && !RoundRuntime.lobbyBookReady(player)) {
+            dev.hardrush.lobby.CampKit.refusedUse(player, packet.hand());
+            ci.cancel();
+        }
     }
 
     @Inject(method = "handleClientCommand", at = @At("HEAD"), cancellable = true)

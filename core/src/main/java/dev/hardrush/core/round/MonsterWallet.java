@@ -19,7 +19,8 @@ import java.util.UUID;
  *                     upgrades stay here for the whole monster life and are never queued in {@code order}
  * @param order        paid goods waiting for the next sortie, including unopened vault keys
  * @param active       consumables frozen by the current deployment
- * @param gear         vault results waiting for a role that can wear them
+ * @param gear         vault results waiting for a role that can wear them; of each slot's pieces the one with the
+ *                     newest serial is worn (see {@link #wearGear})
  * @param activeGear   vault results carried by the current deployment
  * @param sortieDamage per-human damage credit of the current or most recently ended deployment
  * @param parked       the platform's encoded body of a sortie paused by a deliberate return, empty when
@@ -48,7 +49,8 @@ public record MonsterWallet(int coins, boolean roleChosen,
 
     /**
      * {@code item} is the platform's encoded native stack; core never interprets it. {@code paid} is the whole coins
-     * the key that opened it cost, counted as investment by the sortie that wears it.
+     * the key that opened it cost, counted as investment by the sortie that wears it. {@code serial} is unique within
+     * the wallet and orders the pieces by when they were opened or last put on.
      */
     public record GearPiece(int serial, GearSlot slot, Set<MonsterRole> roles, String item, int paid) {
         public GearPiece {
@@ -243,6 +245,21 @@ public record MonsterWallet(int coins, boolean roleChosen,
         // Keys are always flat-priced (ShopOffer#flatPrice), so the piece's price does not depend on which key opened it.
         newGear.add(new GearPiece(nextGearSerial, slot, roles, item, MonsterCoins.price(rules, key, 0)));
         return with(coins, roleChosen, bought, add(order, key, -1), active, newGear, activeGear,
+                Math.addExact(nextGearSerial, 1), sortieDamage);
+    }
+
+    /**
+     * The camp monster put {@code serial} on: of each slot's pieces the newest serial is the one worn, in the camp and
+     * on the next sortie, so the chosen piece takes the next serial and becomes that newest.
+     */
+    public MonsterWallet wearGear(int serial) {
+        var newGear = new ArrayList<>(gear);
+        var chosen = newGear.stream().filter(piece -> piece.serial() == serial).findFirst()
+                .orElseThrow(() -> new IllegalStateException("营地里没有这件装备。"));
+        if (chosen.slot() == GearSlot.MAINHAND) throw new IllegalArgumentException("Only armour is worn");
+        newGear.remove(chosen);
+        newGear.add(new GearPiece(nextGearSerial, chosen.slot(), chosen.roles(), chosen.item(), chosen.paid()));
+        return with(coins, roleChosen, bought, order, active, newGear, activeGear,
                 Math.addExact(nextGearSerial, 1), sortieDamage);
     }
 
