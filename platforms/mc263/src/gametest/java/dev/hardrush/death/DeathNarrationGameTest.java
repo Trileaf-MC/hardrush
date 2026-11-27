@@ -164,7 +164,9 @@ public final class DeathNarrationGameTest {
                 sheltered.teleportTo(f.center.x + 5.5, f.center.y, f.center.z);
                 for (var effect : List.of(net.minecraft.world.effect.MobEffects.OOZING, net.minecraft.world.effect.MobEffects.WEAVING,
                         net.minecraft.world.effect.MobEffects.WIND_CHARGED))
-                    f.owner.addEffect(new net.minecraft.world.effect.MobEffectInstance(effect, 600));
+                    // As a blind box gives them: lasting until death (docs/plan/女巫药水与药水盲盒.md 9.3).
+                    f.owner.addEffect(new net.minecraft.world.effect.MobEffectInstance(effect,
+                            net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION, 0));
                 f.owner.hurtServer(f.level, f.level.damageSources().playerAttack(f.players.get(2)), 1000);
                 test.assertFalse(f.owner.isAlive(), "The monster falls");
                 var slimes = f.level.getEntitiesOfClass(net.minecraft.world.entity.monster.cubemob.Slime.class,

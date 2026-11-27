@@ -189,6 +189,9 @@ public final class LobbyRuntimeGameTest {
                     f.monster.keys(false);
                     f.voluntaryReturnBody = f.monster.player;
                     f.monster.player.setHealth(2);
+                    // A parting gift lasts until death (docs/plan/女巫药水与药水盲盒.md 9.3) and parks with the body.
+                    f.monster.player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.OOZING,
+                            net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION, 0));
                     f.monster.useReturn();
                     f.ageReturnChannel();
                     // The session's own once-a-second admission write is the real SQLite transaction the channel waits
@@ -221,6 +224,7 @@ public final class LobbyRuntimeGameTest {
                 .thenWaitUntil(() -> f.await(f.monsterReady(false), "Completed return channel durably enters lobby"))
                 .thenExecute(() -> {
                     f.assertLobby(false);
+                    f.test.assertFalse(f.monster.player.hasEffect(net.minecraft.world.effect.MobEffects.OOZING), "The camp body does not carry the parked parting gift");
                     f.test.assertTrue(f.monster.player == f.voluntaryReturnBody,
                             "Successful voluntary return preserves the same native player body instead of accepting an incidental defeat");
                     f.test.assertValueEqual(f.worldSwords(), 1, "The picked-up world sword returns exactly once on leaving the body");
@@ -262,6 +266,10 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertFalse(carried, "The world sword is not parked with the body");
                     f.test.assertValueEqual(f.worldSwords(), 1, "The world sword stayed where the monster returned");
                     f.test.assertTrue(f.monster.player.getHealth() < f.monster.player.getMaxHealth(), "The resumed body keeps the camp body's health");
+                    var gift = f.monster.player.getEffect(net.minecraft.world.effect.MobEffects.OOZING);
+                    f.test.assertTrue(gift != null && gift.isInfiniteDuration(), "The parked parting gift is back, still lasting until death");
+                    // Spent here so a later death in this test does not ooze slimes into its counts.
+                    f.monster.player.removeEffect(net.minecraft.world.effect.MobEffects.OOZING);
                     f.monster.useReturn();
                     f.ageReturnChannel();
                 })

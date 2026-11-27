@@ -113,6 +113,13 @@ class PotionBoxTest {
         }
         assertEquals(300, PotionBox.MAX_SECONDS);
         assertEquals(120, PotionBrew.INVISIBILITY_MAX_SECONDS);
+        // The 2026-11-27 defaults, pinned so a retune is a deliberate edit here too.
+        assertEquals(java.util.List.of(90.0, 180.0, 120.0, 240.0, 180.0, 300.0), java.util.stream.Stream.of(
+                "common", "rare", "epic").flatMap(box -> java.util.stream.Stream.of(
+                        RULES.combatValues().get("coin.potionBox." + box + "MinSeconds"),
+                        RULES.combatValues().get("coin.potionBox." + box + "MaxSeconds"))).toList());
+        assertEquals(java.util.List.of(300.0, 300.0, 300.0, 180.0, 45.0), java.util.stream.Stream.of("swiftness", "fireResistance",
+                "absorption", "resistance", "poison").map(name -> RULES.combatValues().get("coin.potion." + name + "Seconds")).toList());
     }
 
     @Test void partingGiftsLastUntilDeathAndSpendNoSecondsRoll() {
@@ -144,7 +151,7 @@ class PotionBoxTest {
                     @Override public long nextLong() { throw new AssertionError("unscripted draw"); }
                     @Override public int nextInt(int bound) {
                         if (first) { first = false; bounds.add(bound); return pinned; }
-                        return 0; // the rest of the box: first of each pool, no level II, shortest time
+                        return 0; // the rest of the box: first of each pool, level II where it applies, shortest time
                     }
                 };
                 // The first draw of an epic box is its epic pick, so the pinned roll lands on the weighted pick.
