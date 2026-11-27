@@ -2,3 +2,6 @@
 # <resource under /hardrush/lobby/> <file name in the library>
 # Maintained by scripts/lobby-pack.py bundle, except the default camp.
 default.hrlobby default-v1.hrlobby
+bundled/end-islands-v1.hrlobby end-islands-v1.hrlobby
+bundled/chinese-garden-v1.hrlobby chinese-garden-v1.hrlobby
+bundled/viking-fjord-v1.hrlobby viking-fjord-v1.hrlobby
