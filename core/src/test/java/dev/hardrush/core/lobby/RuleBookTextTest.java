@@ -96,14 +96,14 @@ class RuleBookTextTest {
 
     @Test void paidCreepersGetTheirOwnPageWithTheRoundsPrice() {
         var encoded = RulesConfig.defaults().encode();
-        var custom = RulesConfig.decode(encoded.replace("combat.coin.creeperUnlock=40.0", "combat.coin.creeperUnlock=" + Integer.MAX_VALUE));
+        var custom = RulesConfig.decode(encoded.replace("combat.coin.creeperUnlock=35.0", "combat.coin.creeperUnlock=" + Integer.MAX_VALUE));
         var paidPage = page(RuleBookText.pages(custom), "苦力怕解锁");
         assertTrue(paidPage.contains("付 " + Integer.MAX_VALUE + " 怪物币解锁"));
         assertTrue(paidPage.contains("只追三星以上的人类"));
         assertTrue(wrappedLines(paidPage) <= 14);
         assertTrue(page(RuleBookText.pages(custom), "角色").endsWith("\n\n苦力怕按住引爆器（打火石）引爆，也能用它点燃原版苦力怕。"));
 
-        var legacy = RulesConfig.decode(encoded.replace("combat.coin.creeperUnlock=40.0\n", ""));
+        var legacy = RulesConfig.decode(encoded.replace("combat.coin.creeperUnlock=35.0\n", ""));
         assertTrue(RuleBookText.pages(legacy).stream().noneMatch(text -> text.startsWith("苦力怕解锁")));
     }
 

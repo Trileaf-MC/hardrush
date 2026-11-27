@@ -208,8 +208,7 @@ public final class CampKit {
             wants.add(new Want(key, offer.key() ? tagged(stack, key, "手持右键庭院的宝库，开出一件装备", List.of())
                     : tagged(stack, key, sellable(offer.roles(), p.monsterRole()) ? "下次出击时自动带上"
                             : "以 " + Notices.key(roles(offer.roles())) + " 出击时才会带上",
-                            List.of("已购 ×" + Notices.key(entry.getValue()) + " · " + (offer.keptUntilUsed()
-                                    ? "出击中倒下才算用掉，返回营地、换角色都保留" : "出击结束时用剩的作废，返回营地则随身暂存")))));
+                            List.of("已购 ×" + Notices.key(entry.getValue()) + " · 出击结束时用剩的作废，返回营地则随身暂存"))));
         }
         // Each slot shows the newest wearable piece on the body, the one last put on; the rest wait in the backpack.
         var worn = EnumSet.noneOf(EquipmentSlot.class);

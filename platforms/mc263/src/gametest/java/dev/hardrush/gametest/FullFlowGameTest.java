@@ -223,7 +223,7 @@ public final class FullFlowGameTest {
                     HuntInputFixtures.role(f.target.player, "creeper");
                 })
                 .thenWaitUntil(() -> f.await(f.target.participant().monsterRole() == MonsterRole.CREEPER
-                        && f.target.participant().wallet().creeperTicket() && CampTransferFixtures.actionsReady(f.session), "Paid creeper booth saved"))
+                        && f.target.participant().wallet().creeperTicket().unlocked() && CampTransferFixtures.actionsReady(f.session), "Paid creeper booth saved"))
                 .thenExecute(() -> f.clock.addAndGet(RoundEngine.deployCooldownNanos(f.round().rules())))
                 .thenWaitUntil(() -> f.await(f.target.participant().monsterCooldownNanos() == 0
                         && CampTransferFixtures.actionsReady(f.session), "Creeper deployment cooldown elapsed"))

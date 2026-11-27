@@ -88,7 +88,6 @@ public final class MonsterShop {
             }
             case SLOWNESS_ARROWS -> PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.SLOWNESS).copyWithCount(arrows);
             case POISON_ARROWS -> PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.POISON).copyWithCount(arrows);
-            case CHARGED -> new ItemStack(Items.CREEPER_HEAD);
             case TRIAL_KEY -> new ItemStack(Items.TRIAL_KEY);
             case OMINOUS_KEY -> new ItemStack(Items.OMINOUS_TRIAL_KEY);
             case SOULCATCHER_TIER -> new ItemStack(Items.DYED_BUNDLE.pick(SOULCATCHER_COLORS[Math.min(owned + 1, 3)]));
@@ -126,7 +125,6 @@ public final class MonsterShop {
             case MONSTER_BOX -> "下次出击多带 1 个怪物盲盒 · 升级拘魂袋，它能开出更疯狂的东西";
             case SLOWNESS_ARROWS -> "下次出击时带上，射一箭消耗一支";
             case POISON_ARROWS -> "下次出击时带上，射一箭消耗一支";
-            case CHARGED -> "下次出击成为闪电苦力怕，爆炸威力翻倍";
             case TRIAL_KEY -> "在庭院的试炼宝库开出一件装备";
             case OMINOUS_KEY -> "在庭院的不祥宝库开出一件装备，奖池更好";
             case SOULCATCHER_TIER -> SOULCATCHER_STEPS[Math.min(owned, SOULCATCHER_STEPS.length - 1)];

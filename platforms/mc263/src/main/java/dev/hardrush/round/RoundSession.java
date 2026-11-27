@@ -1233,6 +1233,42 @@ public final class RoundSession implements AutoCloseable {
                 reply, "怪物角色已保存；维度由追猎目标决定。");
     }
 
+    /** Pays the creeper booth to charge this camp creeper's unlocked ticket at {@code expectedPrice}. */
+    public void requestCreeperCharge(UUID round, UUID player, int life, int sortie, int expectedPrice, Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeCreeperCharge(UUID.randomUUID(), round, player, life, sortie, expectedPrice),
+                reply, "苦力怕已带电。");
+    }
+
+    /**
+     * Lightning struck a deployed paid creeper. Queued fire-and-forget like a milestone: a creeper whose ticket is no
+     * longer plain, or whose sortie has moved on, by the time the event applies settles as a plain checkpoint.
+     */
+    public void creeperStruck(UUID roundId, UUID playerId, int life, int sortie) {
+        var key = playerId + "/" + life + "/" + sortie;
+        if (engine == null || stopping || state != State.OPEN || competitionLocked() || queuedStrikes.contains(key)
+                || !engine.committed().roundId().equals(roundId) || !chargeable(projected(), roundId, playerId, life, sortie)) return;
+        queuedStrikes.add(key);
+        if (!enqueueAt(clock.nanoTime(), e -> {
+            queuedStrikes.remove(key);
+            return chargeable(e.committed(), roundId, playerId, life, sortie)
+                    ? e.proposeCreeperStruck(UUID.randomUUID(), roundId, playerId, life, sortie)
+                    : e.proposeCheckpoint(UUID.randomUUID(), false);
+        })) queuedStrikes.remove(key);
+    }
+
+    // Lightning strikes waiting in the event queue, so repeated bolts on one sortie queue a single upgrade.
+    private final java.util.Set<String> queuedStrikes = new java.util.HashSet<>();
+
+    private static boolean chargeable(RoundSnapshot round, UUID roundId, UUID playerId, int life, int sortie) {
+        var player = round.participants().get(playerId);
+        return round.roundId().equals(roundId) && dev.hardrush.core.round.MonsterCoins.creeperPaid(round.rules())
+                && (round.phase() == RoundPhase.RUNNING || round.phase() == RoundPhase.RESCUE)
+                && player != null && player.role() == ParticipantRole.MONSTER_DEPLOYED && player.online()
+                && player.monsterRole() == MonsterRole.CREEPER
+                && player.lifeSequence() == life && player.monsterDeploymentSequence() == sortie
+                && player.wallet().creeperTicket() == dev.hardrush.core.round.CreeperTicket.PLAIN;
+    }
+
     public void requestPersonalHunt(dev.hardrush.core.hunt.PersonalHuntRequest request, int sortie, Consumer<Reply> reply) {
         requestAction(() -> engine.proposePersonalHunt(UUID.randomUUID(), request, sortie), reply, "个人追猎出场身份已保存。");
     }
