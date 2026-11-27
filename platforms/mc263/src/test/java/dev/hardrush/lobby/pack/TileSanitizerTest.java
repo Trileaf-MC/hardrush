@@ -165,7 +165,7 @@ final class TileSanitizerTest {
         blocks.add(block(2, 1, 0, 3, hive));
 
         var report = TileSanitizer.sanitize(tile, SanitizeMode.DRAFT);
-        // The chest only: a vault losing its state is not an emptied container.
+        // The chest only (its loot table): a vault losing its state is not an emptied container.
         assertEquals(1, report.clearedContainers());
         var c = blocks.getCompoundOrEmpty(1).getCompoundOrEmpty("nbt");
         assertFalse(c.contains("Items") || c.contains("LootTable"));
@@ -175,6 +175,21 @@ final class TileSanitizerTest {
         assertEquals(Set.of("id"), v.keySet());
         var h = blocks.getCompoundOrEmpty(3).getCompoundOrEmpty("nbt");
         assertEquals(Set.of("id"), h.keySet());
+    }
+
+    /** A campfire always stores an (empty) item list; stripping it is not worth a warning. */
+    @Test void emptyItemListsAreNotCountedAsEmptiedContainers() {
+        var tile = tile();
+        tile.getListOrEmpty("palette").add(state("minecraft:campfire"));
+        var campfire = new CompoundTag();
+        campfire.putString("id", "minecraft:campfire");
+        campfire.put("Items", new ListTag());
+        var blocks = tile.getListOrEmpty("blocks");
+        blocks.add(block(0, 1, 0, 1, campfire));
+
+        var report = TileSanitizer.sanitize(tile, SanitizeMode.INSTALL);
+        assertEquals(0, report.clearedContainers());
+        assertFalse(blocks.getCompoundOrEmpty(blocks.size() - 1).getCompoundOrEmpty("nbt").contains("Items"));
     }
 
     @Test void onlyDecorationEntitiesSurviveWithTrimmedItems() {

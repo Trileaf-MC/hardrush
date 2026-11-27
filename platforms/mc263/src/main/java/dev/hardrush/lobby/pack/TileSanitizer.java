@@ -134,9 +134,20 @@ public final class TileSanitizer {
             }
         }
 
+        private static boolean holdsSomething(Tag removed) {
+            return switch (removed) {
+                case null -> false;
+                case ListTag list -> !list.isEmpty();
+                case CompoundTag compound -> !compound.isEmpty();
+                case net.minecraft.nbt.StringTag(String value) -> !value.isEmpty();
+                default -> true;
+            };
+        }
+
         void blockEntity(CompoundTag nbt, String blockName) {
             boolean cleared = false;
-            for (var key : CONTENTS) cleared |= nbt.remove(key) != null;
+            // Only real contents count: a campfire or an empty chest always carries an empty item list.
+            for (var key : CONTENTS) cleared |= holdsSomething(nbt.remove(key));
             for (var key : LIVING_STATE) nbt.remove(key);
             var id = namespaced(nbt.getStringOr("id", ""));
             if (id.equals("minecraft:vault") || "minecraft:vault".equals(blockName)) {
