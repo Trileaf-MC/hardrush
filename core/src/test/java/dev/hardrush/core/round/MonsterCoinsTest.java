@@ -418,7 +418,7 @@ class MonsterCoinsTest {
         assertEquals(25.0, next.combatValues().get("coin.price.bread"));
         assertEquals(20.0, next.combatValues().get("coin.price.coal"));
         assertEquals(3.0, next.combatValues().get("coin.limit.coal"));
-        assertEquals(8.0, next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+        assertEquals(RULES.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY), next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
     }
 
     @Test void longerBlessingsBreadAndCoalKeepOnePrice() {

@@ -168,19 +168,19 @@ public record RulesConfig(
             Map.entry("coin.damageCapPerHuman", 20.0),
             Map.entry("coin.arrowsPerBundle", 4.0),
             // Witch potions and blind boxes (docs/plan/女巫药水与药水盲盒.md); the turtle master keeps its native 20 seconds.
-            Map.entry("coin.potion.swiftnessSeconds", 180.0),
-            Map.entry("coin.potion.fireResistanceSeconds", 180.0),
-            Map.entry("coin.potion.absorptionSeconds", 120.0),
-            Map.entry("coin.potion.resistanceSeconds", 90.0),
+            Map.entry("coin.potion.swiftnessSeconds", 300.0),
+            Map.entry("coin.potion.fireResistanceSeconds", 300.0),
+            Map.entry("coin.potion.absorptionSeconds", 300.0),
+            Map.entry("coin.potion.resistanceSeconds", 180.0),
             Map.entry("coin.potion.poisonSeconds", 45.0),
             Map.entry("coin.potionBox.negativePermille", 150.0),
             Map.entry("coin.potionBox.negativeMinSeconds", 20.0), Map.entry("coin.potionBox.negativeMaxSeconds", 45.0),
             Map.entry("coin.potionBox.commonLevelTwoPermille", 100.0),
-            Map.entry("coin.potionBox.commonMinSeconds", 45.0), Map.entry("coin.potionBox.commonMaxSeconds", 90.0),
+            Map.entry("coin.potionBox.commonMinSeconds", 90.0), Map.entry("coin.potionBox.commonMaxSeconds", 180.0),
             Map.entry("coin.potionBox.rareLevelTwoPermille", 300.0),
-            Map.entry("coin.potionBox.rareMinSeconds", 60.0), Map.entry("coin.potionBox.rareMaxSeconds", 120.0),
+            Map.entry("coin.potionBox.rareMinSeconds", 120.0), Map.entry("coin.potionBox.rareMaxSeconds", 240.0),
             Map.entry("coin.potionBox.epicLevelTwoPermille", 500.0),
-            Map.entry("coin.potionBox.epicMinSeconds", 90.0), Map.entry("coin.potionBox.epicMaxSeconds", 180.0),
+            Map.entry("coin.potionBox.epicMinSeconds", 180.0), Map.entry("coin.potionBox.epicMaxSeconds", 300.0),
             Map.entry("coin.price.adultEgg", 8.0), Map.entry("coin.limit.adultEgg", 3.0),
             Map.entry("coin.price.babyEgg", 20.0), Map.entry("coin.limit.babyEgg", 2.0),
             // 25 doubles to 100 on the third box; a fourth would pass the trade's 128-coin ceiling.
@@ -302,7 +302,19 @@ public record RulesConfig(
             // Revision 8 (docs/plan/复生补给与女巫说明.md): a cheaper bell and bread, a slightly dearer bonus chest.
             Map.of("coin.price.bonusChest", Map.entry(30.0, 35.0),
                     "coin.price.bell", Map.entry(45.0, 15.0),
-                    "coin.price.bread", Map.entry(30.0, 20.0)));
+                    "coin.price.bread", Map.entry(30.0, 20.0)),
+            // Revision 9 (docs/plan/女巫药水与药水盲盒.md 第 9 节): buffs last longer. A blind box's range moves only when both
+            // of its ends still sit on the old defaults (see migrateStep), so an operator's edit never leaves min above max.
+            Map.ofEntries(Map.entry("coin.potion.swiftnessSeconds", Map.entry(180.0, 300.0)),
+                    Map.entry("coin.potion.fireResistanceSeconds", Map.entry(180.0, 300.0)),
+                    Map.entry("coin.potion.absorptionSeconds", Map.entry(120.0, 300.0)),
+                    Map.entry("coin.potion.resistanceSeconds", Map.entry(90.0, 180.0)),
+                    Map.entry("coin.potionBox.commonMinSeconds", Map.entry(45.0, 90.0)),
+                    Map.entry("coin.potionBox.commonMaxSeconds", Map.entry(90.0, 180.0)),
+                    Map.entry("coin.potionBox.rareMinSeconds", Map.entry(60.0, 120.0)),
+                    Map.entry("coin.potionBox.rareMaxSeconds", Map.entry(120.0, 240.0)),
+                    Map.entry("coin.potionBox.epicMinSeconds", Map.entry(90.0, 180.0)),
+                    Map.entry("coin.potionBox.epicMaxSeconds", Map.entry(180.0, 300.0))));
     private static final int DEFAULTS_REVISION = 1 + RETUNED_DEFAULTS.size();
 
     private int defaultsRevision() {
@@ -324,7 +336,7 @@ public record RulesConfig(
         values.keySet().removeIf(RulesConfig::retiredKey);
         if (!current) {
             for (int revision = Math.max(defaultsRevision(), 1) + 1; revision <= DEFAULTS_REVISION; revision++) {
-                RETUNED_DEFAULTS.get(revision - 2).forEach((key, change) -> values.replace(key, change.getKey(), change.getValue()));
+                migrateStep(values, RETUNED_DEFAULTS.get(revision - 2));
             }
             values.put(DEFAULTS_REVISION_KEY, (double) DEFAULTS_REVISION);
         }
@@ -334,6 +346,30 @@ public record RulesConfig(
         SORTIE_DEFAULTS.forEach(values::putIfAbsent);
         return new RulesConfig(schemaVersion, mode, minecraftVersion, difficulty, generationRule, values,
                 startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
+    }
+
+    /**
+     * Applies one revision's retuned defaults. A blind box's {@code ...MinSeconds}/{@code ...MaxSeconds} pair moves
+     * together or not at all: moving only one end to a new default could leave the minimum above the maximum an
+     * operator set, and such rules refuse to load.
+     */
+    private static void migrateStep(TreeMap<String, Double> values, Map<String, Map.Entry<Double, Double>> step) {
+        var before = Map.copyOf(values);
+        step.forEach((key, change) -> {
+            String partner = rangePartner(key);
+            if (partner != null) {
+                var partnerChange = step.get(partner);
+                if (partnerChange != null && !partnerChange.getKey().equals(before.get(partner))) return;
+            }
+            values.replace(key, change.getKey(), change.getValue());
+        });
+    }
+
+    private static String rangePartner(String key) {
+        if (!key.startsWith("coin.potionBox.")) return null;
+        if (key.endsWith("MinSeconds")) return key.substring(0, key.length() - "MinSeconds".length()) + "MaxSeconds";
+        if (key.endsWith("MaxSeconds")) return key.substring(0, key.length() - "MaxSeconds".length()) + "MinSeconds";
+        return null;
     }
 
     /** Schema 1 is the byte-for-byte historical voting rule; schema 2 is personal direct hunt. */

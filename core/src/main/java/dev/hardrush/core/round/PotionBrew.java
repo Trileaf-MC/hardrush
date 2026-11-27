@@ -51,8 +51,8 @@ public enum PotionBrew {
         Roles(Set<MonsterRole> roles) { this.roles = roles; }
     }
 
-    /** Native invisibility for a whole minute is already strong; the turtle master keeps its native 20 seconds. */
-    public static final int INVISIBILITY_MAX_SECONDS = 60;
+    /** Native invisibility for two minutes is already strong; the turtle master keeps its native 20 seconds. */
+    public static final int INVISIBILITY_MAX_SECONDS = 120;
     public static final int TURTLE_MASTER_SECONDS = 20;
 
     private final Grade grade;
@@ -69,6 +69,10 @@ public enum PotionBrew {
     /** Whether a level II exists that does more; negatives are always level I. */
     public boolean leveled() { return leveled; }
     public boolean instant() { return this == MENDING || this == WOUNDING; }
+    /** The four parting gifts last until the monster dies: native effects of infinite duration, so no duration is drawn. */
+    public boolean untilDeath() { return this == WEAVING || this == OOZING || this == INFESTED || this == WIND_CHARGED; }
+    /** Odds within a pool: invisibility is drawn twice as often, the rest once. */
+    public int weight() { return this == INVISIBILITY ? 2 : 1; }
     public boolean drawableBy(MonsterRole role) { return roles.roles.contains(role); }
     /** The native potion's name for this form, e.g. 伤害药水 for an undead drinking {@link #MENDING}. */
     public String potionName(MonsterRole role) { return role == MonsterRole.CREEPER ? creeperName : undeadName; }

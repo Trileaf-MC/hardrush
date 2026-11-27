@@ -13,8 +13,8 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * The body a deliberate return parks in the round record: lightning charge, health, every timed effect
- * with its remaining time, the form the environment turned it into (drowned, stray) and the sortie's own bound
+ * The body a deliberate return parks in the round record: lightning charge, health, every effect it drank or was hit
+ * with, with its remaining time (a parting gift's infinite one included), the form the environment turned it into (drowned, stray) and the sortie's own bound
  * items in their slots, a drowned's trident among them. Spent starting goods are never replenished. World items
  * are never parked; they settle where the monster left.
  */
@@ -46,7 +46,8 @@ public final class MonsterParking {
         }
         var effects = new JsonArray();
         for (var active : player.getActiveEffects()) {
-            if (active.isInfiniteDuration()) continue;
+            // Only the body's own night vision stays behind; a parting gift lasts until death and parks like the rest.
+            if (MonsterRoles.intrinsic(active)) continue;
             MobEffectInstance.CODEC.encodeStart(registries.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), active)
                     .result().ifPresent(encoded -> {
                         var entry = new JsonObject();

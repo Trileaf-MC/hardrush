@@ -157,7 +157,8 @@ public final class MonsterPotions {
 
     /** One drawn dose, as the native potion of that name would act on this form. */
     static void apply(ServerPlayer player, MonsterRole role, PotionBox.Dose dose) {
-        int ticks = dose.seconds() * 20, level = dose.level();
+        // A parting gift lasts until the monster dies: the native infinite duration, so the HUD shows its infinity sign.
+        int ticks = dose.seconds() == PotionBox.UNTIL_DEATH ? MobEffectInstance.INFINITE_DURATION : dose.seconds() * 20, level = dose.level();
         switch (dose.brew()) {
             case MENDING -> player.heal(4 << level);
             // The native healing a zombie drinks, or harming a creeper drinks: six damage of magic, and it may kill.

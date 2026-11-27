@@ -20,8 +20,10 @@ public enum PotionBox {
     public static final String NEGATIVE_PERMILLE = "coin.potionBox.negativePermille";
     public static final String NEGATIVE_MIN_SECONDS = "coin.potionBox.negativeMinSeconds";
     public static final String NEGATIVE_MAX_SECONDS = "coin.potionBox.negativeMaxSeconds";
-    /** No drawn effect lasts longer. */
-    public static final int MAX_SECONDS = 180;
+    /** No drawn effect with a duration lasts longer. */
+    public static final int MAX_SECONDS = 300;
+    /** A dose's {@code seconds} for an effect that lasts until the monster dies ({@link PotionBrew#untilDeath()}). */
+    public static final int UNTIL_DEATH = -1;
 
     private final String id;
     private final List<PotionBrew.Grade> pools;
@@ -33,12 +35,16 @@ public enum PotionBox {
     public String minSecondsKey() { return "coin.potionBox." + id + "MinSeconds"; }
     public String maxSecondsKey() { return "coin.potionBox." + id + "MaxSeconds"; }
 
-    /** One drawn effect: {@code level} 0 is I and 1 is II; {@code seconds} is 0 for an instant effect. */
+    /**
+     * One drawn effect: {@code level} 0 is I and 1 is II; {@code seconds} is 0 for an instant effect and
+     * {@link #UNTIL_DEATH} for a parting gift.
+     */
     public record Dose(PotionBrew brew, PotionBrew.Grade grade, int level, int seconds) {
         public Dose {
             Objects.requireNonNull(brew); Objects.requireNonNull(grade);
-            if (level < 0 || level > 1 || seconds < 0 || seconds > MAX_SECONDS) throw new IllegalArgumentException("Invalid dose");
+            if (level < 0 || level > 1 || seconds < UNTIL_DEATH || seconds > MAX_SECONDS) throw new IllegalArgumentException("Invalid dose");
             if (brew.instant() != (seconds == 0)) throw new IllegalArgumentException("Instant effects have no duration");
+            if (brew.untilDeath() != (seconds == UNTIL_DEATH)) throw new IllegalArgumentException("Parting gifts last until death, nothing else does");
         }
     }
 
@@ -61,13 +67,13 @@ public enum PotionBox {
             var grade = pools.get(i);
             if (grade == PotionBrew.Grade.COMMON && random.nextInt(1000) < MonsterCoins.amount(rules, NEGATIVE_PERMILLE)) {
                 var brew = pick(PotionBrew.Grade.NEGATIVE, role, random);
-                doses.add(new Dose(brew, PotionBrew.Grade.NEGATIVE, 0, brew.instant() ? 0 : seconds(brew, random,
+                doses.add(new Dose(brew, PotionBrew.Grade.NEGATIVE, 0, seconds(brew, random,
                         MonsterCoins.amount(rules, NEGATIVE_MIN_SECONDS), MonsterCoins.amount(rules, NEGATIVE_MAX_SECONDS))));
                 continue;
             }
             var brew = pick(grade, role, random);
             int level = brew.leveled() && random.nextInt(1000) < MonsterCoins.amount(rules, levelTwoKey()) ? 1 : 0;
-            doses.add(new Dose(brew, grade, level, brew.instant() ? 0 : seconds(brew, random,
+            doses.add(new Dose(brew, grade, level, seconds(brew, random,
                     MonsterCoins.amount(rules, minSecondsKey()), MonsterCoins.amount(rules, maxSecondsKey()))));
         }
         return List.copyOf(doses);
@@ -75,10 +81,18 @@ public enum PotionBox {
 
     private static PotionBrew pick(PotionBrew.Grade grade, MonsterRole role, RandomGenerator random) {
         var pool = PotionBrew.pool(grade, role);
-        return pool.get(random.nextInt(pool.size()));
+        int roll = random.nextInt(pool.stream().mapToInt(PotionBrew::weight).sum());
+        for (var brew : pool) {
+            roll -= brew.weight();
+            if (roll < 0) return brew;
+        }
+        throw new IllegalStateException("Weighted pick ran past its pool");
     }
 
+    /** Instant effects have none and parting gifts last until death; both skip the random source. */
     private static int seconds(PotionBrew brew, RandomGenerator random, int min, int max) {
+        if (brew.instant()) return 0;
+        if (brew.untilDeath()) return UNTIL_DEATH;
         if (brew.fixedSeconds() > 0) return brew.fixedSeconds();
         int seconds = min + random.nextInt(max - min + 1);
         return Math.min(Math.min(seconds, MAX_SECONDS), brew.maxSeconds());

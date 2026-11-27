@@ -2,6 +2,8 @@ package dev.hardrush.monster;
 
 import dev.hardrush.core.config.RulesConfig;
 import dev.hardrush.core.round.MonsterRole;
+import dev.hardrush.core.round.PotionBox;
+import dev.hardrush.core.round.PotionBrew;
 import dev.hardrush.core.round.ShopOffer;
 import dev.hardrush.gametest.MonsterRoleGameTest;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -104,6 +106,34 @@ public final class MonsterPotionsGameTest {
                     test.assertFalse(body.effects().stream().anyMatch(effect -> effect.is(MobEffects.NIGHT_VISION)),
                             "An endless effect is no potion's and is not parked");
                     test.assertValueEqual(body.absorption(), 3.0F, "Only what is left of the yellow hearts parks, never a refill");
+                    cleanup.run();
+                }))
+                .thenSucceed();
+    }
+
+    /** docs/plan/女巫药水与药水盲盒.md 9.3: a parting gift is endless, parks with the body and is back on the next sortie. */
+    @GameTest(maxTicks = 400)
+    public void aPartingGiftLastsUntilDeathAndSurvivesAReturn(GameTestHelper test) {
+        var zombie = MonsterRoleGameTest.actor(test);
+        Runnable cleanup = () -> MonsterRoleGameTest.remove(zombie);
+        test.startSequence()
+                .thenIdle(80)
+                .thenExecute(guarded(cleanup, () -> {
+                    MonsterRoles.select(zombie, "zombie");
+                    test.assertTrue(zombie.getEffect(MobEffects.NIGHT_VISION) != null
+                            && MonsterRoles.intrinsic(zombie.getEffect(MobEffects.NIGHT_VISION)), "The body sees in the dark before parking");
+                    MonsterPotions.apply(zombie, MonsterRole.ZOMBIE,
+                            new PotionBox.Dose(PotionBrew.OOZING, PotionBrew.Grade.EPIC, 0, PotionBox.UNTIL_DEATH));
+                    var drunk = zombie.getEffect(MobEffects.OOZING);
+                    test.assertTrue(drunk != null && drunk.isInfiniteDuration() && drunk.getAmplifier() == 0, "A parting gift is endless, level I");
+                    var body = MonsterParking.decode(zombie, MonsterParking.capture(zombie), MonsterRole.ZOMBIE).orElseThrow();
+                    var parked = body.effects().stream().filter(effect -> effect.is(MobEffects.OOZING)).findFirst().orElse(null);
+                    test.assertTrue(parked != null && parked.isInfiniteDuration(), "An endless parting gift parks and decodes as endless");
+                    test.assertFalse(body.effects().stream().anyMatch(effect -> effect.is(MobEffects.NIGHT_VISION)),
+                            "The body's own night vision stays out of the parking, endless as it is");
+                    zombie.removeAllEffects();
+                    zombie.addEffect(parked);
+                    test.assertTrue(zombie.getEffect(MobEffects.OOZING).isInfiniteDuration(), "A resumed parting gift is still endless");
                     cleanup.run();
                 }))
                 .thenSucceed();
