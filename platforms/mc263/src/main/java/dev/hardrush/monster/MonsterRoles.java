@@ -12,6 +12,7 @@ import dev.hardrush.protection.ProtectionRuntime;
 import dev.hardrush.hunt.HuntRetracks;
 import dev.hardrush.notice.ItemText;
 import dev.hardrush.notice.Notices;
+import dev.hardrush.player.NativeArmorSwap;
 import java.util.*;
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -136,6 +137,13 @@ public final class MonsterRoles {
             if (MonsterClicks.answered(owner, step)) return InteractionResult.FAIL;
             if (MonsterSoulcatcher.holds(owner, hand)) {
                 MonsterClicks.answer(owner, step); MonsterSoulcatcher.releaseInLiquid(owner, hand); return InteractionResult.CONSUME;
+            }
+            // Armour goes on with a right click as it would for anyone; a creeper wears none.
+            if (NativeArmorSwap.predicted(owner.getItemInHand(hand))) {
+                if (currentForm(owner) != MonsterForm.CREEPER && MonsterRoundRuntime.canAct(owner) && NativeArmorSwap.swap(owner, hand))
+                    repairLoadout(owner);
+                else NativeArmorSwap.refuse(owner, hand);
+                return InteractionResult.CONSUME;
             }
             if (channelControl(owner, hand)) MonsterClicks.answer(owner, step);
             useControl(owner, hand); return InteractionResult.CONSUME;

@@ -1209,6 +1209,12 @@ public final class RoundSession implements AutoCloseable {
                 lifeSequence, deploymentSequence, key, slot, roles, item), reply, "宝库已开启。");
     }
 
+    public void requestGearWorn(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence, int serial,
+            Consumer<Reply> reply) {
+        requestAction(() -> engine.proposeGearWorn(UUID.randomUUID(), roundId, playerId,
+                lifeSequence, deploymentSequence, serial), reply, "已换上这件装备。");
+    }
+
     public void requestMonsterSelection(UUID roundId, UUID playerId, int lifeSequence, int deploymentSequence,
             MonsterRole role, MonsterDimension dimension, Consumer<Reply> reply) {
         requestAction(() -> engine.proposeMonsterSelection(UUID.randomUUID(), roundId, playerId,

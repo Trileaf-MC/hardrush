@@ -9,6 +9,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
+import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
 import net.minecraft.network.protocol.game.ClientboundSetCameraPacket;
@@ -245,9 +246,14 @@ public final class MonsterAppearanceGameTest {
             var ownerSkins = new java.util.HashSet<String>();
             for (String kind : List.of("zombie", "skeleton", "creeper")) {
                 owned.clearPackets();
+                watched.clearPackets();
                 MonsterDisguise.apply(owner, kind);
                 test.assertTrue(owned.packets().stream().noneMatch(p -> p instanceof ClientboundRespawnPacket),
                     "Owner skin refresh waits for the tick's end");
+                var othersTab = tabRefresh(test, watched, owner);
+                var othersTextures = othersTab.profile().properties().get("textures");
+                test.assertTrue(othersTextures.size() == 1 && othersTextures.iterator().next().signature() != null,
+                    "Other players get the form skin as a signed TAB head right away");
                 MonsterDisguise.tick(server);
                 test.assertTrue(owner.getGameProfile() == profile, "Authenticated profile object is unchanged");
                 test.assertValueEqual(owner.getId(), id, "No server-side respawn or replacement player");
@@ -268,9 +274,11 @@ public final class MonsterAppearanceGameTest {
                 test.assertValueEqual(selfEntry.profileId(), profile.id(), "Cosmetic profile preserves UUID");
                 test.assertValueEqual(selfEntry.profile().name(), profile.name(), "Cosmetic profile preserves name");
                 var textures = selfEntry.profile().properties().get("textures");
-                test.assertTrue(textures.size() == 1 && textures.iterator().next().signature() == null,
-                    "One unsigned owner-only skin property");
+                test.assertTrue(textures.size() == 1 && textures.iterator().next().signature() != null,
+                    "One signed skin property; vanilla ignores unsigned skins of other players");
                 test.assertTrue(ownerSkins.add(textures.iterator().next().value()), "Each monster kind has its own owner skin");
+                test.assertValueEqual(othersTextures.iterator().next(), textures.iterator().next(),
+                    "Others' TAB head shows the owner's own form skin");
                 test.assertValueEqual(owned.packets().stream().filter(p -> p instanceof ClientboundRespawnPacket r
                     && r.dataToKeep() == ClientboundRespawnPacket.KEEP_ALL_DATA
                     && r.commonPlayerSpawnInfo().dimension().equals(owner.level().dimension())).count(), 1L,
@@ -296,7 +304,11 @@ public final class MonsterAppearanceGameTest {
                 var copy = (ClientboundBundlePacket) MonsterDisguise.rewrite(observer, nested);
                 test.assertTrue(copy != nested, "Bundled tracking packets get an independent copy");
                 var originalInfo = ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(owner, observer));
-                test.assertTrue(MonsterDisguise.rewrite(observer, originalInfo) == originalInfo, "Owner skin does not leak to another observer");
+                var joinInfo = (ClientboundPlayerInfoUpdatePacket) MonsterDisguise.rewrite(observer, originalInfo);
+                test.assertValueEqual(joinInfo.entries().get(0).profile().properties().get("textures").iterator().next(),
+                    textures.iterator().next(), "A joining observer's TAB lists the owner with the form skin");
+                test.assertValueEqual(joinInfo.entries().get(1).profile(), originalInfo.entries().get(1).profile(),
+                    "Undisguised players keep their authenticated skin");
                 var attributes = new ClientboundUpdateAttributesPacket(owner.getId(), owner.getAttributes().getSyncableAttributes());
                 var displayed = (ClientboundUpdateAttributesPacket) MonsterDisguise.rewrite(observer, attributes);
                 var speed = displayed.getValues().stream().filter(a -> a.attribute().equals(Attributes.MOVEMENT_SPEED)).findFirst().orElseThrow();
@@ -306,7 +318,15 @@ public final class MonsterAppearanceGameTest {
                 MonsterDisguise.tick(server);
                 test.assertValueEqual(owned.packets().size(), sent, "Repeated apply is idempotent");
             }
+            watched.clearPackets();
             MonsterDisguise.clear(owner);
+            test.assertValueEqual(tabRefresh(test, watched, owner).profile(), profile, "Clear restores others' TAB head");
+            var seen = received(watched);
+            int respawned = java.util.stream.IntStream.range(0, seen.size()).filter(i -> seen.get(i) instanceof ClientboundAddEntityPacket add
+                && add.getId() == owner.getId() && add.getType() == EntityTypes.PLAYER).findFirst().orElse(seen.size());
+            int restoredTab = java.util.stream.IntStream.range(0, seen.size()).filter(i -> seen.get(i) instanceof ClientboundPlayerInfoUpdatePacket)
+                .findFirst().orElseThrow();
+            test.assertTrue(restoredTab < respawned, "TAB entry is restored before the player entity reappears, which caches it");
             test.assertTrue(MonsterDisguise.rewrite(observer, spawn(owner)).getClass() == ClientboundAddEntityPacket.class,
                 "Clear removes observer mapping");
             test.assertValueEqual(((ClientboundAddEntityPacket) MonsterDisguise.rewrite(observer, spawn(owner))).getType(), EntityTypes.PLAYER,
@@ -352,6 +372,35 @@ public final class MonsterAppearanceGameTest {
             server.getPlayerList().remove(player);
         }
         test.succeed();
+    }
+
+    /** The owner's re-added TAB entry on another client; vanilla only adds an absent entry, so removal comes first. */
+    private static ClientboundPlayerInfoUpdatePacket.Entry tabRefresh(GameTestHelper test, TestClient capture, ServerPlayer owner) {
+        var seen = received(capture);
+        int removed = java.util.stream.IntStream.range(0, seen.size()).filter(i -> seen.get(i) instanceof ClientboundPlayerInfoRemovePacket remove
+            && remove.profileIds().contains(owner.getUUID())).reduce((a, b) -> b).orElseThrow();
+        var added = seen.subList(removed, seen.size()).stream().filter(p -> p instanceof ClientboundPlayerInfoUpdatePacket info
+                && info.actions().contains(ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER))
+            .map(p -> (ClientboundPlayerInfoUpdatePacket) p).findFirst().orElseThrow();
+        test.assertValueEqual(added.entries().size(), 1, "Only the owner's TAB entry is replaced");
+        var entry = added.entries().getFirst();
+        test.assertValueEqual(entry.profileId(), owner.getUUID(), "TAB refresh targets the owner");
+        var native_ = ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(owner)).entries().getFirst();
+        test.assertValueEqual(added.actions(), ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(owner)).actions(),
+            "Re-added entry carries every native initializing action");
+        test.assertTrue(entry.listed() == native_.listed() && entry.listOrder() == native_.listOrder()
+            && java.util.Objects.equals(entry.chatSession(), native_.chatSession()),
+            "Re-added entry keeps the native listing, order and chat session");
+        return entry;
+    }
+
+    private static List<Packet<?>> received(TestClient capture) {
+        var flat = new ArrayList<Packet<?>>();
+        for (var packet : capture.packets()) {
+            if (packet instanceof ClientboundBundlePacket bundle) bundle.subPackets().forEach(flat::add);
+            else flat.add(packet);
+        }
+        return flat;
     }
 
     private static String ownerTextures(TestClient capture) {

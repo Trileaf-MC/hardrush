@@ -29,7 +29,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
-import dev.hardrush.disguise.OwnerSkin;
+import dev.hardrush.disguise.MonsterSkin;
 
 /**
  * 女巫的碎碎念 (docs/plan/复生补给与女巫说明.md 3): a native multi-page dialog the witch shows each player once per
@@ -155,7 +155,7 @@ public final class WitchGuide {
 
     private static MutableComponent span(WitchGuideText.Span span) {
         return switch (span) {
-            case WitchGuideText.Face face -> Component.object(new PlayerSprite(OwnerSkin.head(face.head().name().toLowerCase(Locale.ROOT)), true));
+            case WitchGuideText.Face face -> Component.object(new PlayerSprite(MonsterSkin.head(face.head().name().toLowerCase(Locale.ROOT)), true));
             case WitchGuideText.Words words -> {
                 var text = Component.literal(words.text());
                 yield switch (words.look()) {

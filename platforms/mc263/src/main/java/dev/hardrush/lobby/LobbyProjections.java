@@ -117,7 +117,7 @@ public final class LobbyProjections {
             var slot = slots.get(index % capacity);
             model.setPos(LobbyWorld.position(slot)); model.setYRot(slot.yaw()); model.setYHeadRot(slot.yaw());
             model.setNoGravity(true); model.setSilent(true);
-            // Authenticated profile is never taken from OwnerSkin's rewritten player-info packets.
+            // Authenticated profile is never taken from MonsterSkin's rewritten player-info packets.
             model.setComponent(DataComponents.PROFILE, ResolvableProfile.createResolved(target.originalProfile));
             model.setCustomNameVisible(true);
             var look = lookOf(looks, target);
