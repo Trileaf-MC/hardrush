@@ -151,6 +151,14 @@ public final class MonsterCompanions {
                 ? java.util.Optional.of(EGG_USAGE) : java.util.Optional.empty();
     }
 
+    /** Still carries one of its own baby spawn eggs, anywhere in the inventory or the off hand. */
+    public static boolean holdsBabyEgg(ServerPlayer player) {
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++)
+            if (MonsterItems.matches(player, inventory.getItem(slot), BABY_EGG)) return true;
+        return false;
+    }
+
     private static boolean ownEgg(ServerPlayer player, ItemStack stack) {
         return MonsterItems.matches(player, stack, BABY_EGG) || MonsterItems.matches(player, stack, ADULT_EGG);
     }
