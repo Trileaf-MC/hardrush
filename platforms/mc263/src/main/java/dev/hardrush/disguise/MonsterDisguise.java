@@ -34,7 +34,8 @@ import net.minecraft.world.phys.Vec3;
  * Observer-only monster appearance. The server player is the sole movement and
  * combat entity; the unregistered mob is only a metadata template. The owner
  * receives native player packets and a temporary skin themed after the form, never
- * a self mob, invisibility flag, private team, or camera replacement.
+ * a self mob, invisibility flag, private team, or camera replacement. Every player's
+ * TAB list shows that skin as the owner's head.
  *
  * <p>Selection survives vanilla respawn, dimension transfer and reconnect within
  * this server session. The future race controller owns durable identity and calls
@@ -66,10 +67,11 @@ public final class MonsterDisguise {
             return status(player);
         }
         if (previous != null) unbind(previous);
-        OwnerSkin.cancelRestore(player);
+        MonsterSkin.cancelRestore(player);
         Selection selection = new Selection(kind, type);
         SELECTED.put(player.getUUID(), selection);
         bind(player, selection);
+        if (previous == null || !previous.kind.equals(kind)) MonsterSkin.showToOthers(player, kind);
         // Each form has its own owner skin, so a conversion refreshes it too. The
         // refresh waits for this tick's end: a zombie rising from the sea is bound
         // and converted in one tick and must reset the owner's client only once.
@@ -82,13 +84,15 @@ public final class MonsterDisguise {
         Selection selection = SELECTED.remove(player.getUUID());
         if (selection == null) return;
         unbind(selection);
+        // Before the player entity reappears: clients cache the TAB entry's skin on it.
+        MonsterSkin.showToOthers(player, null);
         for (ServerPlayer observer : PlayerLookup.tracking(player)) refreshObserver(observer, player, null);
-        OwnerSkin.restore(player);
+        MonsterSkin.restore(player);
     }
 
     public static void onDisconnect(ServerPlayer player) {
         requireMainThread(player);
-        OwnerSkin.onDisconnect(player);
+        MonsterSkin.onDisconnect(player);
         Selection selection = SELECTED.get(player.getUUID());
         if (selection != null) {
             unbind(selection);
@@ -104,19 +108,19 @@ public final class MonsterDisguise {
             bind(player, selection);
             selection.skinRefreshPending = true;
         }
-        OwnerSkin.onJoin(player);
+        MonsterSkin.onJoin(player);
     }
 
     public static void stop(MinecraftServer server) {
         if (!server.isSameThread()) throw new IllegalStateException("Disguise operations require the server thread");
         SELECTED.clear();
         BY_ENTITY.clear();
-        OwnerSkin.stop();
+        MonsterSkin.stop();
     }
 
     public static void tick(MinecraftServer server) {
         if (!server.isSameThread()) throw new IllegalStateException("Disguise operations require the server thread");
-        OwnerSkin.tick(server);
+        MonsterSkin.tick(server);
         for (var entry : SELECTED.entrySet()) {
             Selection selection = entry.getValue();
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
@@ -188,12 +192,16 @@ public final class MonsterDisguise {
                 return new ClientboundSetEquipmentPacket(state.realId,state.equipment);
             }
         }
-        Selection own = SELECTED.get(observer.getUUID());
-        return OwnerSkin.rewrite(observer, packet, own == null ? null : own.kind);
+        return MonsterSkin.rewrite(observer, packet, MonsterDisguise::kindOf);
+    }
+
+    private static String kindOf(UUID player) {
+        Selection selection = SELECTED.get(player);
+        return selection == null ? null : selection.kind;
     }
 
     public static boolean captureCosmeticBatch(ServerPlayer player, Packet<?> packet) {
-        return OwnerSkin.capture(player, packet);
+        return MonsterSkin.capture(player, packet);
     }
 
     public static void refreshEquipment(ServerPlayer player) {
@@ -258,8 +266,8 @@ public final class MonsterDisguise {
     }
 
     private static void refreshSkinIfSafe(ServerPlayer player, Selection selection) {
-        if (selection.skinRefreshPending && OwnerSkin.canRefresh(player)) {
-            OwnerSkin.apply(player, selection.kind);
+        if (selection.skinRefreshPending && MonsterSkin.canRefresh(player)) {
+            MonsterSkin.apply(player, selection.kind);
             selection.skinRefreshPending = false;
         }
     }

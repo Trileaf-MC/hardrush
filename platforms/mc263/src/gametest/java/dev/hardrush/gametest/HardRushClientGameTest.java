@@ -24,7 +24,7 @@ import net.minecraft.world.phys.EntityHitResult;
 
 /** Exercises actual server packets with an isolated Fabric test client. */
 public final class HardRushClientGameTest implements FabricClientGameTest {
-    // Client texture ids are SHA-1 of the texture hash as UTF-16LE (SkinManager.TextureCache), from owner-skins.json.
+    // Client texture ids are SHA-1 of the texture hash as UTF-16LE (SkinManager.TextureCache), from monster-skins.json.
     private static final java.util.Map<String, String> OWNER_SKIN_TEXTURES = java.util.Map.of(
         "zombie", "minecraft:skins/8ee56fd13fe2ee6ad6a0412ac3318a8c46c9bae7",
         "skeleton", "minecraft:skins/1590d4073c6067fef751aad9c77a6a104c9ac2f3",

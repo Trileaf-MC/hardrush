@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
@@ -26,14 +27,18 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.PositionMoveRotation;
 
-/** Per-owner cosmetic profile; never modifies authenticated identity or properties. */
-final class OwnerSkin {
+/**
+ * Skin themed after each monster form, carried only by outgoing player-info packets; never
+ * modifies the authenticated identity or properties. The owner sees it on their own player
+ * model, and every player sees it as the owner's TAB head.
+ */
+final class MonsterSkin {
     private static final Map<String, Property> SKINS = loadSkins();
     private static final Map<UUID, Boolean> RESTORE_PENDING = new ConcurrentHashMap<>();
     private static final java.util.Set<UUID> OVERRIDDEN = ConcurrentHashMap.newKeySet();
     private static final ThreadLocal<Batch> BATCH = new ThreadLocal<>();
 
-    private OwnerSkin() {}
+    private MonsterSkin() {}
 
     static boolean canRefresh(ServerPlayer player) {
         return player.isAlive() && player.getCamera() == player && !player.isUsingItem()
@@ -75,18 +80,44 @@ final class OwnerSkin {
         }
     }
 
-    /** {@code kind} is the owner's monster form, or null when the owner is not disguised. */
-    static Packet<?> rewrite(ServerPlayer owner, Packet<?> packet, String kind) {
-        if (kind == null || !(packet instanceof ClientboundPlayerInfoUpdatePacket info)
+    /**
+     * Gives every disguised player's entry in an ADD_PLAYER packet the skin of their form.
+     * {@code kindOf} maps a profile id to its monster form, or null when it is not disguised.
+     */
+    static Packet<?> rewrite(ServerPlayer recipient, Packet<?> packet, Function<UUID, String> kindOf) {
+        if (!(packet instanceof ClientboundPlayerInfoUpdatePacket info)
                 || !info.actions().contains(ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER)) return packet;
-        Property skin = skin(kind);
-        var entries = info.entries().stream().map(entry -> entry.profileId().equals(owner.getUUID())
-            ? withSkin(entry, skin) : entry).toList();
-        if (entries.equals(info.entries())) return packet;
-        OVERRIDDEN.add(owner.getUUID());
+        boolean changed = false;
+        var entries = new java.util.ArrayList<ClientboundPlayerInfoUpdatePacket.Entry>(info.entries().size());
+        for (var entry : info.entries()) {
+            String kind = kindOf.apply(entry.profileId());
+            if (kind == null) { entries.add(entry); continue; }
+            entries.add(withSkin(entry, skin(kind)));
+            changed = true;
+            if (entry.profileId().equals(recipient.getUUID())) OVERRIDDEN.add(recipient.getUUID());
+        }
+        if (!changed) return packet;
         var replacement = new ClientboundPlayerInfoUpdatePacket(info.actions().clone(), List.of());
-        ((PlayerInfoPacketAccessor) replacement).hardrush$entries(entries);
+        ((PlayerInfoPacketAccessor) replacement).hardrush$entries(List.copyOf(entries));
         return replacement;
+    }
+
+    /**
+     * Re-adds {@code player}'s TAB entry on every other client with the skin of {@code kind}, or
+     * the authenticated one when null. Vanilla only adds an entry that is absent, so it is removed
+     * first; both go in one bundle, so the list never shows the player missing. Clients cache the
+     * entry on a player entity, so this must precede re-spawning {@code player} as a player.
+     */
+    static void showToOthers(ServerPlayer player, String kind) {
+        Packet<?> info = ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(player));
+        if (kind != null) info = rewrite(player, info, id -> id.equals(player.getUUID()) ? kind : null);
+        @SuppressWarnings("unchecked")
+        var refresh = new ClientboundBundlePacket(List.of(
+            new ClientboundPlayerInfoRemovePacket(List.of(player.getUUID())),
+            (Packet<? super ClientGamePacketListener>) info));
+        for (ServerPlayer other : player.level().getServer().getPlayerList().getPlayers()) {
+            if (other != player) MonsterDisguise.sendRaw(other, refresh);
+        }
     }
 
     private static ClientboundPlayerInfoUpdatePacket.Entry withSkin(ClientboundPlayerInfoUpdatePacket.Entry entry, Property skin) {
@@ -106,7 +137,8 @@ final class OwnerSkin {
         BATCH.set(batch);
         try {
         var info = ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(player));
-        if (kind != null) info = (ClientboundPlayerInfoUpdatePacket) rewrite(player, info, kind);
+        if (kind != null) info = (ClientboundPlayerInfoUpdatePacket) rewrite(player, info,
+            id -> id.equals(player.getUUID()) ? kind : null);
         MonsterDisguise.sendRaw(player, new ClientboundPlayerInfoRemovePacket(List.of(player.getUUID())));
         MonsterDisguise.sendRaw(player, info);
         // LocalPlayer caches PlayerInfo in 26.3. This replaces only the client's
@@ -146,22 +178,26 @@ final class OwnerSkin {
 
     private static Property skin(String kind) {
         Property skin = SKINS.get(kind);
-        if (skin == null) throw new IllegalArgumentException("No owner skin for monster form " + kind);
+        if (skin == null) throw new IllegalArgumentException("No skin for monster form " + kind);
         return skin;
     }
 
     private static Map<String, Property> loadSkins() {
-        try (var input = OwnerSkin.class.getResourceAsStream("/hardrush/owner-skins.json")) {
-            if (input == null) throw new IllegalStateException("Missing pinned owner skin texture properties");
+        try (var input = MonsterSkin.class.getResourceAsStream("/hardrush/monster-skins.json")) {
+            if (input == null) throw new IllegalStateException("Missing pinned monster skin texture properties");
             var skins = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8))
                 .getAsJsonObject().getAsJsonObject("skins");
             var loaded = new java.util.HashMap<String, Property>();
-            // Native local skins allow unsigned textures. This owner-only
-            // cosmetic property neither changes auth nor asserts another
-            // account's signature. Other players never receive it.
-            for (var entry : skins.entrySet()) loaded.put(entry.getKey(),
-                new Property("textures", entry.getValue().getAsJsonObject().get("value").getAsString()));
+            // Vanilla renders another player's skin only when Mojang signed it
+            // (PlayerInfo.createSkinLookup requires a secure skin for anyone but
+            // the local player), so TAB heads need the pinned signature. It signs
+            // the texture payload only; the authenticated profile is unchanged.
+            for (var entry : skins.entrySet()) {
+                var skin = entry.getValue().getAsJsonObject();
+                loaded.put(entry.getKey(), new Property("textures",
+                    skin.get("value").getAsString(), skin.get("signature").getAsString()));
+            }
             return Map.copyOf(loaded);
-        } catch (java.io.IOException failure) { throw new IllegalStateException("Cannot read owner skin texture properties", failure); }
+        } catch (java.io.IOException failure) { throw new IllegalStateException("Cannot read monster skin texture properties", failure); }
     }
 }
