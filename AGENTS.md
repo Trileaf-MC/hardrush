@@ -90,6 +90,8 @@ case3: 僵尸玩家的增强玩法
 
 在开发和测试期间，我允许你自动同意 Minecraft 的 EULA 而无需找我授权。  
 
+修改 README.md 或者 AGENTS.md 之前必须经过我的明确授权。
+
 ## 原版机制查询
 
 如果开发内容涉及用到 minecraft 原版机制/数值/行为等，务必使用 [.agents/skills/minecraft-knowledge/SKILL.md](.agents/skills/minecraft-knowledge/SKILL.md) 来核实对应知识，而不是靠幻觉猜测。
