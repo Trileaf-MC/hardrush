@@ -42,6 +42,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.*;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.*;
@@ -349,7 +350,7 @@ public final class MonsterRoles {
     private static ItemStack returnShard(ServerPlayer player, Role role) {
         return MonsterItems.bind(player, ItemText.lore(ItemText.name(new ItemStack(Items.ECHO_SHARD), "返回营地"),
                 returnUsage(role), "受伤或动手会打断，走路不打断",
-                "本次的物资、增益和身价会暂存，下次以同一角色出击时带上 · 溺尸、流浪者形态也会保留"), RETURN_SHARD);
+                "本次的物资、增益和身价会暂存，下次以同一角色出击时带上 · 溺尸、尸壳等化身形态也会保留"), RETURN_SHARD);
     }
     /** A plain compass: {@link HuntRetracks} points its needle at the quarry the way vanilla points one at the world spawn. */
     private static ItemStack trackingCompass(ServerPlayer player, Role role) {
@@ -379,7 +380,7 @@ public final class MonsterRoles {
                 dev.hardrush.core.round.ShopOffer.POISON_ARROWS, net.minecraft.world.item.alchemy.Potions.POISON).entrySet()) {
             int count = kit.carried(entry.getKey()) * arrows;
             if (count > 0) player.getInventory().add(MonsterItems.bind(player, net.minecraft.world.item.alchemy.PotionContents
-                    .createItemStack(Items.TIPPED_ARROW, entry.getValue()).copyWithCount(count), "shop_arrow"));
+                    .createItemStack(Items.TIPPED_ARROW, entry.getValue()).copyWithCount(count), SHOP_ARROW));
         }
         // Witch potions are drunk by the monster itself (docs/plan/女巫药水与药水盲盒.md).
         MonsterPotions.give(player, kit, rules, form.role);
@@ -631,15 +632,20 @@ public final class MonsterRoles {
             + Notices.key(MonsterNativeWeapons.TRIDENT_INTERVAL_TICKS / 20) + " 秒一次";
 
     /**
-     * A zombie deployed under water rises as a drowned at once, without the conversion: it never was a land
-     * zombie here. It has just arrived holding nothing it is using, so its trident goes straight into its hand.
-     * A parked drowned resuming at sea already is one and keeps the trident it parked.
+     * The body just put down at its current position lands as the form the site gives ({@link MonsterHabitat}),
+     * without the conversion: it never was the other species here. It has just arrived holding nothing it is
+     * using, so a form weapon goes straight into its hand. A body that already is the right form keeps it, and
+     * one that parked without its weapon takes it now.
+     * @param submerged the landing is under water ({@code SafeDeployment.Result.submerged()})
+     * @return whether the body changed form
      */
-    public static void riseFromSea(ServerPlayer player) {
+    public static boolean settle(ServerPlayer player, boolean submerged) {
         var role = ROLES.get(player.getUUID());
-        if (role == null || !role.form.zombie()) return;
-        if (role.form == MonsterForm.ZOMBIE) convert(player, MonsterForm.DROWNED, true);
-        else { formWeapon(player, role.form, true); repairLoadout(player); }
+        if (role == null || !(player.level() instanceof ServerLevel level)) return false;
+        var form = MonsterHabitat.settle(role.form, MonsterHabitat.at(level, player.blockPosition(), submerged));
+        if (form != role.form) { convert(player, form, true); return true; }
+        if (form.weapon != null) { formWeapon(player, form, true); repairLoadout(player); }
+        return false;
     }
     /** The environment turns the body: water makes a zombie a drowned, powder snow a skeleton a stray. */
     public static void convert(ServerPlayer player, MonsterForm form) { convert(player, form, false); }
@@ -922,24 +928,55 @@ public final class MonsterRoles {
         role.nextBurstAt = System.nanoTime() + role.millis("skeleton.burstIntervalMillis") * 1_000_000L;
     }
     public static ItemStack selectedArrow(ServerPlayer player) {
-        if (player.getOffhandItem().is(ItemTags.ARROWS)) return player.getOffhandItem();
-        for (int i = 0; i < 36; i++) if (player.getInventory().getItem(i).is(ItemTags.ARROWS)) return player.getInventory().getItem(i);
+        if (shootable(player, player.getOffhandItem())) return player.getOffhandItem();
+        for (int i = 0; i < 36; i++) if (shootable(player, player.getInventory().getItem(i))) return player.getInventory().getItem(i);
         return new ItemStack(Items.ARROW);
     }
+    /**
+     * Arrows the body would loose: a bought tipped arrow whose potion the form's own arrows already carry adds
+     * nothing, so a stray keeps its slowness arrows and a bogged its poison arrows in the backpack, unspent.
+     */
+    private static boolean shootable(ServerPlayer player, ItemStack stack) {
+        if (!stack.is(ItemTags.ARROWS)) return false;
+        var form = currentForm(player);
+        var own = form == null ? null : form.arrowEffect();
+        if (own == null || !MonsterItems.matches(player, stack, SHOP_ARROW)) return true;
+        var potion = stack.getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY).potion();
+        return potion.isEmpty() || potion.get().value().getEffects().stream().noneMatch(effect -> effect.is(own.effect()));
+    }
+    /**
+     * Caps the form's own effect on {@code arrow} (§3): a player's stray or parched would otherwise slow or weaken
+     * for vanilla's thirty seconds. The potion of a bought tipped arrow is its own and is left as it is.
+     */
+    private static void capOwnEffect(AbstractArrow arrow, MonsterForm.ArrowEffect own) {
+        var stack = arrow.getPickupItemStackOrigin();
+        var contents = stack.get(DataComponents.POTION_CONTENTS);
+        if (contents == null) return;
+        var effects = contents.customEffects().stream().map(effect -> effect.is(own.effect()) && effect.getDuration() > own.maxTicks()
+                ? new MobEffectInstance(own.effect(), own.maxTicks(), effect.getAmplifier(), effect.isAmbient(), effect.isVisible(), effect.showIcon())
+                : effect).toList();
+        stack.set(DataComponents.POTION_CONTENTS, new PotionContents(contents.potion(), contents.customColor(), effects, contents.customName()));
+    }
+    /** Purpose of the tipped arrows bought from the witch: real ammunition, unlike the endless plain arrow. */
+    static final String SHOP_ARROW = "shop_arrow";
     private static void shoot(ServerPlayer player, Role role, ItemStack weapon) {
         if (weapon.isEmpty()) return;
         syncNativeContext(player, role);
         var ammunition = selectedArrow(player);
-        AbstractArrow arrow = ((MonsterSkeletonAccessor) role.model).hardrush$getArrow(ammunition, 1, weapon);
+        var skeleton = (MonsterSkeletonAccessor) role.model;
+        AbstractArrow arrow = skeleton.hardrush$getArrow(ammunition, 1, weapon);
+        if (role.form.arrowEffect() != null) capOwnEffect(arrow, role.form.arrowEffect());
         // Bought tipped arrows are real ammunition; any other arrow stays an unlimited native template.
-        if (MonsterItems.matches(player, ammunition, "shop_arrow")) ammunition.shrink(1);
+        if (MonsterItems.matches(player, ammunition, SHOP_ARROW)) ammunition.shrink(1);
         arrow.setOwner(player); MonsterCombatRuntime.stampSource(arrow, player);
         arrow.entityTags().add(SHOT_OWNER + player.getUUID()); arrow.entityTags().add(SHOT_BINDING + role.binding);
         arrow.entityTags().add(SHOT_FORM + role.form.id());
         arrow.pickup = AbstractArrow.Pickup.DISALLOWED; arrow.setCritArrow(false);
         Vec3 aim = player.getLookAngle();
         Projectile.spawnProjectileUsingShoot(arrow, player.level(), weapon, aim.x, aim.y, aim.z, 1.6f, 14 - player.level().getDifficulty().getId() * 4);
-        role.nextBowTick = player.level().getServer().getTickCount() + (player.level().getDifficulty() == net.minecraft.world.Difficulty.HARD ? 20 : 40);
+        // The native model's own rest between shots (AbstractSkeleton.reassessWeaponGoal): bogged and parched are slower.
+        role.nextBowTick = player.level().getServer().getTickCount() + (player.level().getDifficulty() == net.minecraft.world.Difficulty.HARD
+                ? skeleton.hardrush$getHardAttackInterval() : skeleton.hardrush$getAttackInterval());
         role.arrowsFired++;
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.SKELETON_SHOOT, SoundSource.HOSTILE, 1, 1);
     }

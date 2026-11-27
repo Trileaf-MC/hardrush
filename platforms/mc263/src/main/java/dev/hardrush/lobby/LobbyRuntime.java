@@ -530,10 +530,10 @@ public final class LobbyRuntime {
                     MonsterRoles.select(d.player, d.identity.kind().name().toLowerCase(Locale.ROOT));
                     if (!MonsterRoles.isMonster(d.player) || MonsterRoles.nativeModel(d.player) == null)
                         throw new IllegalStateException("已提交出场未能应用原生怪物角色");
-                    boolean risen = d.search.result().submerged() && d.identity.kind() == MonsterRole.ZOMBIE;
-                    // A parked drowned resuming at sea already is one; only a zombie turns as it rises.
-                    boolean turned = risen && MonsterRoles.currentForm(d.player) == dev.hardrush.monster.MonsterForm.ZOMBIE;
-                    if (risen) MonsterRoles.riseFromSea(d.player);
+                    boolean submerged = d.search.result().submerged();
+                    boolean risen = submerged && d.identity.kind() == MonsterRole.ZOMBIE;
+                    // The landing site decides the species; a parked variant resuming keeps what it was (MonsterHabitat).
+                    boolean turned = MonsterRoles.settle(d.player, submerged);
                     b.pending.remove(id, d); b.committing.remove(id);
                     dev.hardrush.hunt.HuntBossBars.deployed(d.player, committed, d.identity);
                     HuntRetracks.arrived(d.player, d.targetPlayer, burrowed);
@@ -542,7 +542,9 @@ public final class LobbyRuntime {
                     sound(d.player, true);
                     String quarry = Notices.key(d.targetPlayer.getScoreboardName());
                     if (burrowed) { burrowed(d.player); return; }
-                    Notices.hint(d.player, risen ? (turned ? "已化身溺尸，从水下出击" : "已从水下出击")
+                    String form = MonsterRoles.currentForm(d.player).label;
+                    Notices.hint(d.player, turned ? (risen ? "已化身" + form + "，从水下出击" : "已化身" + form + "出击")
+                            : risen ? "已从水下出击"
                             : d.search.result().fallback()
                             ? "已出击：去 " + quarry + " 的路被切断，这是能到的最近处" : "已出击，" + quarry + " 就在附近"); return;
                 }
@@ -792,13 +794,16 @@ public final class LobbyRuntime {
         if (!r.player.teleportTo(level, landing.x, landing.y, landing.z, java.util.Set.of(), r.search.yaw(target.position()), 0, true)) {
             Notices.hint(r.player, "落点失效，循迹取消"); sound(r.player, false); return;
         }
+        boolean turned = MonsterRoles.settle(r.player, result.submerged());
         HuntRetracks.retracked(r.player, target, result.burrowed());
         // Followers stay where they are while it hides: there is no room around a burrow but the quarry's tunnel.
         if (!result.burrowed()) MonsterCompanions.regroup(r.player);
         ChannelEffects.departed(r.player, fromLevel, from, true);
         sound(r.player, true);
+        String cut = "去 " + Notices.key(target.getScoreboardName()) + " 的路被切断，这是能到的最近处";
         if (result.burrowed()) burrowed(r.player);
-        else if (result.fallback()) Notices.hint(r.player, "去 " + Notices.key(target.getScoreboardName()) + " 的路被切断，这是能到的最近处");
+        else if (turned) Notices.hint(r.player, "已化身" + MonsterRoles.currentForm(r.player).label + (result.fallback() ? " · " + cut : ""));
+        else if (result.fallback()) Notices.hint(r.player, cut);
     }
     /** Landed hidden in a burrow: how to get out, which only the hands can do. */
     private static void burrowed(ServerPlayer hunter) {

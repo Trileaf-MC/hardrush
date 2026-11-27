@@ -18,7 +18,7 @@ public final class MonsterSeaGameTest {
         try {
             MonsterRoles.select(p, "zombie");
             MonsterRoleGameTest.withEggs(p);
-            MonsterRoles.riseFromSea(p);
+            MonsterRoles.settle(p, true);
             test.assertValueEqual(MonsterRoles.currentForm(p), MonsterForm.DROWNED, "A sea deployment is a drowned at once");
             test.assertTrue(MonsterItems.matches(p, p.getMainHandItem(), MonsterRoles.SEA_TRIDENT) && p.getMainHandItem().is(Items.TRIDENT),
                     "The risen drowned holds its bound trident");
@@ -38,7 +38,7 @@ public final class MonsterSeaGameTest {
             var speed = body.effects().stream().filter(effect -> effect.is(MobEffects.SPEED)).findFirst().orElseThrow();
             test.assertTrue(speed.getAmplifier() == 1 && speed.getDuration() > 1100, "A parked effect keeps its strength and remaining time");
             test.assertTrue(body.effects().stream().anyMatch(effect -> effect.is(MobEffects.SLOWNESS)), "A harmful effect parks too");
-            MonsterRoles.riseFromSea(p);
+            MonsterRoles.settle(p, true);
             test.assertValueEqual(countPurpose(p, MonsterRoles.SEA_TRIDENT), 1, "A drowned rising from the sea again gets no second trident");
         } finally { MonsterRoleGameTest.remove(p); }
         test.succeed();
