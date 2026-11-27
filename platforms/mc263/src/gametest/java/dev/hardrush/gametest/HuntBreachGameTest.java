@@ -214,6 +214,33 @@ public final class HuntBreachGameTest {
         test.succeed();
     }
 
+    /**
+     * Sealed in rock under open ground: the rock's top, seven blocks up, is wide but unreachable; the tunnel's own far
+     * end, five or six blocks back on the quarry's level, is walkable. Without breaches that end is the near landing.
+     */
+    @GameTest(maxTicks = 300)
+    public void anUnreachableTopAboveDoesNotCrowdOutTheNearLanding(GameTestHelper test) {
+        var f = new Fixture(test, 60);
+        boolean griefing = f.level.getGameRules().get(GameRules.MOB_GRIEFING);
+        try (var ignored = f.unprotected()) {
+            f.ground(32);
+            f.tunnel(7);
+            test.assertTrue(f.level.getBlockState(f.feet.above(7)).isAir() && f.is(f.feet.above(6), Blocks.STONE),
+                    "The rock's top is open ground seven blocks over the quarry");
+            f.level.getGameRules().set(GameRules.MOB_GRIEFING, false, f.level.getServer());
+            var clock = new AtomicLong();
+            var result = complete(f.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(f.target), clock), clock);
+            test.assertValueEqual(result.landing(), SafeDeployment.Landing.NEAR, "A near landing, not the fallback: " + result);
+            var spot = BlockPos.containing(result.position());
+            test.assertTrue(spot.getY() == f.feet.getY() && spot.getZ() == f.feet.getZ()
+                    && spot.getX() <= f.feet.getX() - 5 && spot.getX() >= f.feet.getX() - 6, "At the tunnel's far end: " + spot);
+            test.assertTrue(clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS, "Taken before the fallback is due: " + clock.get());
+        } finally {
+            f.level.getGameRules().set(GameRules.MOB_GRIEFING, griefing, f.level.getServer());
+        }
+        test.succeed();
+    }
+
     /** Without mob griefing no breach of any kind is offered: nobody could dig through. */
     @GameTest(maxTicks = 400)
     public void withoutMobGriefingNoBreachOfAnyKind(GameTestHelper test) {

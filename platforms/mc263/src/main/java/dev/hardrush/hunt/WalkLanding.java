@@ -13,6 +13,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -77,7 +78,7 @@ final class WalkLanding implements LandingStrategy {
     @Override
     public boolean revalidate(Candidate candidate, Vec3 target, List<Vec3> humans) {
         double radius = candidate.landing == SafeDeployment.Landing.WALK ? SafeDeployment.MAX_PATH + 4 : SafeDeployment.FALLBACK_RADIUS;
-        return SafeDeployment.allowed(level, candidate.point, target, humans, radius)
+        return SafeDeployment.allowed(level, candidate.point, target, humans, radius, SafeDeployment.MIN_HUMAN_DISTANCE)
                 && SafeDeployment.canDeployAt(level, player, candidate.point);
     }
 
@@ -86,8 +87,18 @@ final class WalkLanding implements LandingStrategy {
         var quarry = sweep.quarry;
         int x = Mth.floor(quarry.position().x + Math.cos(angle) * radius);
         int z = Mth.floor(quarry.position().z + Math.sin(angle) * radius);
-        if (level.getChunkSource().getChunkNow(x >> 4, z >> 4) == null) return;
-        int qy = Mth.floor(quarry.position().y);
+        for (var floor : floors(sweep, x, z, SafeDeployment.FLOORS_PER_COLUMN))
+            sweep.offer(list, seen, Vec3.atBottomCenterOf(floor), false, SafeDeployment.FALLBACK_RADIUS);
+    }
+
+    /**
+     * The at most {@code limit} floors of column {@code (x, z)} nearest the quarry's height, from eight blocks above it
+     * to twenty-four below: open cells with room to stand over something solid. None in a chunk not loaded yet.
+     */
+    static List<BlockPos> floors(Sweep sweep, int x, int z, int limit) {
+        var level = sweep.level;
+        if (level.getChunkSource().getChunkNow(x >> 4, z >> 4) == null) return List.of();
+        int qy = Mth.floor(sweep.quarry.position().y);
         int top = Math.min(qy + 8, level.getMaxY() - 2), bottom = Math.max(qy - 24, level.getMinY() + 1);
         var floors = new ArrayList<BlockPos>();
         var cursor = new BlockPos.MutableBlockPos();
@@ -96,22 +107,32 @@ final class WalkLanding implements LandingStrategy {
             if (sweep.empty(cursor) && sweep.empty(cursor.above()) && !sweep.empty(cursor.below())) floors.add(cursor.immutable());
         }
         floors.sort(Comparator.comparingInt(pos -> Math.abs(pos.getY() - qy)));
-        for (int i = 0; i < Math.min(SafeDeployment.FLOORS_PER_COLUMN, floors.size()); i++)
-            sweep.offer(list, seen, Vec3.atBottomCenterOf(floors.get(i)), false, SafeDeployment.FALLBACK_RADIUS);
+        return floors.subList(0, Math.min(limit, floors.size()));
+    }
+
+    /**
+     * How far the quarry is from a landing it reaches: the length of a vanilla walk within {@link SafeDeployment#MAX_PATH},
+     * or for a skeleton the sight line within bow range, whichever is shorter; infinite when neither reaches it.
+     */
+    static double reach(Sweep sweep, Vec3 point, Path path) {
+        var quarry = sweep.quarry;
+        double length = path != null && path.canReach() ? SafeDeployment.length(path) : Double.POSITIVE_INFINITY;
+        var eye = point.add(0, sweep.player.getEyeHeight(), 0);
+        boolean sight = sweep.kind == MonsterRole.SKELETON && eye.distanceTo(quarry.eye()) <= SafeDeployment.SKELETON_SIGHT
+                && sweep.clear(eye, quarry.eye());
+        if (length <= SafeDeployment.MAX_PATH + EPSILON || sight) return Math.min(length, eye.distanceTo(quarry.eye()));
+        return Double.POSITIVE_INFINITY;
     }
 
     private void judge(Sweep sweep, Candidate candidate) {
         if (!SafeDeployment.canDeployAt(level, player, candidate.point)) return;
         sweep.judged();
-        var quarry = sweep.quarry;
         var path = sweep.path(candidate.point);
         double length = path != null && path.canReach() ? SafeDeployment.length(path) : Double.POSITIVE_INFINITY;
-        var eye = candidate.point.add(0, player.getEyeHeight(), 0);
-        boolean sight = sweep.kind == MonsterRole.SKELETON && eye.distanceTo(quarry.eye()) <= SafeDeployment.SKELETON_SIGHT
-                && sweep.clear(eye, quarry.eye());
-        if (length <= SafeDeployment.MAX_PATH + EPSILON || sight) {
+        double reach = reach(sweep, candidate.point, path);
+        if (Double.isFinite(reach)) {
             candidate.landing = SafeDeployment.Landing.WALK;
-            candidate.score = ambush(sweep, candidate, Math.min(length, eye.distanceTo(quarry.eye())));
+            candidate.score = ambush(sweep, candidate, reach);
             if (best == null || candidate.score > best.score) best = candidate;
         } else if (path != null) {
             // Closest walkable spot: a reachable long walk counts as no gap at all.

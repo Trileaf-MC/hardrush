@@ -137,6 +137,51 @@ public final class SafeDeploymentGameTest {
         test.succeed();
     }
 
+    /** A floating nine-by-nine platform: nowhere eight blocks off, so the monster lands in a corner, five blocks or more away. */
+    @GameTest(maxTicks=300)
+    public void aSmallPlatformIsLandedOnInItsFarCorner(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 242);
+        try (var ignored = fixture.empty()) {
+            fixture.platform(4);
+            var other = fixture.target.add(-3, 0, -3);
+            var humans = List.of(fixture.target, other);
+            var clock = new AtomicLong();
+            var search = fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target), humans, clock);
+            var result = complete(search, clock);
+            test.assertValueEqual(result.status(), SafeDeployment.Status.FOUND, "A small platform still yields a landing");
+            test.assertValueEqual(result.landing(), SafeDeployment.Landing.NEAR, "The landing is a near one: " + result);
+            test.assertTrue(!result.fallback() && !result.breached() && !result.burrowed(), "Neither a fallback nor a breach");
+            test.assertTrue(clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS, "Taken at once: " + clock.get());
+            var spot = BlockPos.containing(result.position());
+            test.assertTrue(spot.getY() == fixture.feet.getY() && (Math.abs(spot.getX() - fixture.feet.getX()) == 4
+                    || Math.abs(spot.getZ() - fixture.feet.getZ()) == 4), "On the platform's rim: " + spot);
+            for (var human : humans)
+                test.assertTrue(result.position().distanceTo(human) >= SafeDeployment.NEAR_HUMAN_DISTANCE - 1e-6,
+                        "No landing without a wall is closer than five blocks to a human: " + result.position().distanceTo(human));
+            test.assertTrue(search.revalidate(fixture.target, humans), "Unchanged terrain passes departure revalidation");
+            test.assertFalse(search.revalidate(fixture.target, List.of(fixture.target, result.position().add(4.9, 0, 0))),
+                    "A human closer than five blocks revokes it");
+        }
+        test.succeed();
+    }
+
+    /** A floating seven-by-seven platform: even its corners are under five blocks away, so there is no near landing. */
+    @GameTest(maxTicks=300)
+    public void aTinyPlatformHasNoNearLanding(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 244);
+        try (var ignored = fixture.empty()) {
+            fixture.platform(3);
+            var clock = new AtomicLong();
+            var search = fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target), List.of(fixture.target), clock);
+            for (int i = 0; i < 90 && clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS - TICK; i++) { search.tick(); clock.addAndGet(TICK); }
+            test.assertValueEqual(search.result().status(), SafeDeployment.Status.PENDING, "Nothing at all within five seconds");
+            test.assertTrue(search.result().landing() != SafeDeployment.Landing.NEAR, "Never a near landing");
+            var result = complete(search, clock);
+            test.assertTrue(result.landing() != SafeDeployment.Landing.NEAR, "Never a near landing: " + result);
+        }
+        test.succeed();
+    }
+
     @GameTest(maxTicks=200)
     public void actualPlayerBoxAllowsPartialBlocksAndShortCeilingsButRejectsWalls(GameTestHelper test) {
         var fixture = new Fixture(test, test.getLevel(), 224);
@@ -352,6 +397,13 @@ public final class SafeDeploymentGameTest {
                 level.setBlock(point.below(depth + 1), Blocks.STONE.defaultBlockState(), 2);
                 for (int y=0; y<4; y++) level.setBlock(point.above(y), Blocks.AIR.defaultBlockState(), 2);
             }
+        }
+        /** A stone platform {@code 2 * half + 1} wide under the quarry's feet, floating in air with nothing below for 25 blocks. */
+        void platform(int half) {
+            for (int x=-33; x<=33; x++) for (int z=-33; z<=33; z++) for (int y=-25; y<=9; y++)
+                level.setBlock(feet.offset(x, y, z), Blocks.AIR.defaultBlockState(), 2);
+            for (int x=-half; x<=half; x++) for (int z=-half; z<=half; z++)
+                level.setBlock(feet.offset(x, -1, z), Blocks.STONE.defaultBlockState(), 2);
         }
         void firstLanding(java.util.function.IntBinaryOperator height, int clearance) {
             var center = samples().getFirst();

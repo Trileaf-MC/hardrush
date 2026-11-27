@@ -87,7 +87,7 @@ final class Sweep {
     /** Queues a landing unless its block was already offered this sweep or it is out of bounds for the quarry and humans. */
     boolean offer(List<Candidate> list, Set<BlockPos> seen, Vec3 point, boolean trail, double radius) {
         if (!seen.add(BlockPos.containing(point))
-                || !SafeDeployment.allowed(level, point, quarry.position(), humans, radius)) return false;
+                || !SafeDeployment.allowed(level, point, quarry.position(), humans, radius, SafeDeployment.MIN_HUMAN_DISTANCE)) return false;
         list.add(new Candidate(point, trail));
         return true;
     }

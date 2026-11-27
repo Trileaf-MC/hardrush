@@ -50,7 +50,8 @@ final class SeaLanding implements LandingStrategy {
 
     @Override
     public boolean revalidate(Candidate candidate, Vec3 target, List<Vec3> humans) {
-        return SafeDeployment.allowed(level, candidate.point, target, humans, SafeDeployment.SEA_RADIUS + 4)
+        return SafeDeployment.allowed(level, candidate.point, target, humans, SafeDeployment.SEA_RADIUS + 4,
+                SafeDeployment.MIN_HUMAN_DISTANCE)
                 && SafeDeployment.canSubmergeAt(level, player, candidate.point);
     }
 

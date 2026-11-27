@@ -26,11 +26,20 @@ import net.minecraft.world.phys.Vec3;
 /**
  * A server-thread, read-only ambush search. No ticket, chunk request or terrain edit is used.
  * Each sweep tries its {@link LandingStrategy landing strategies} in order: at sea {@link SeaLanding}; on land
- * {@link WalkLanding}, then {@link BreachLanding}. Vanilla walking pathfinding (no building, wooden doors open, safe
+ * {@link WalkLanding}, then {@link BreachLanding}, then {@link NearLanding}. Vanilla walking pathfinding (no building, wooden doors open, safe
  * drops only) decides who can actually be reached within a short walk, and a score picks the best ambush among them.
  */
 public final class SafeDeployment {
     public static final int MIN_HUMAN_DISTANCE = 8;
+    /**
+     * A near landing, on open ground too small for {@link #MIN_HUMAN_DISTANCE}, keeps this far from every human: no
+     * landing without a wall in between is ever closer.
+     */
+    public static final int NEAR_HUMAN_DISTANCE = 5;
+    /** Near landings are looked for in the columns this far (horizontally) around the quarry, the farthest few judged. */
+    static final int NEAR_RADIUS = 8, NEAR_CANDIDATES = 12;
+    /** A near landing stands on the quarry's own level: at most this many blocks above or below its feet. */
+    static final int NEAR_RISE = 4;
     public static final int MAX_PATH = 24;
     public static final int IDEAL_PATH = 14;
     /** Vanilla skeleton bow range ({@code RangedBowAttackGoal(..., 15.0F)}). */
@@ -81,7 +90,8 @@ public final class SafeDeployment {
      * walking could reach, after five seconds. {@code SEA}: under water, where a zombie rises as a drowned.
      * {@code BURROW}: inside a pocket of ground one dig away from the quarry, hollowed out only at departure
      * ({@link HuntBurrows#carve}). {@code BREACH}: in the open air one dig away, behind a wall or on a roof.
-     * {@code NEAR} is not produced yet.
+     * {@code NEAR}: on open ground within walking reach but only {@link #NEAR_HUMAN_DISTANCE} from every human, when
+     * nothing else turned up.
      */
     public enum Landing { WALK, NEAR, FALLBACK, SEA, BURROW, BREACH }
     /**
@@ -159,8 +169,9 @@ public final class SafeDeployment {
     /**
      * Times the search, paces its sweeps and drives each sweep's strategies in order. A sweep's first strategy begins
      * in the sweep's first tick; every later one begins in a tick of its own, after the one before it completed, and is
-     * judged from the next tick on. A walk, sea or breach landing is taken the moment its strategy completes; only the
-     * far fallback waits until the search is five seconds old.
+     * judged from the next tick on. A later strategy only runs when the earlier ones of its sweep found nothing. A walk,
+     * sea, breach or near landing is taken the moment its strategy completes; only the far fallback waits until the
+     * search is five seconds old.
      */
     public static final class Search {
         private final ServerLevel level;
@@ -173,6 +184,7 @@ public final class SafeDeployment {
         private final SeaLanding sea;
         private final WalkLanding walk;
         private final BreachLanding breach;
+        private final NearLanding near;
         private Quarry quarry;
         private List<Vec3> humans;
         private Status status = Status.PENDING;
@@ -212,6 +224,7 @@ public final class SafeDeployment {
             sea = new SeaLanding(level, player);
             walk = new WalkLanding(level, player);
             breach = new BreachLanding(level, player);
+            near = new NearLanding(level, player);
         }
         public Result result() {
             return found == null ? new Result(status, null, candidates, null, false, false)
@@ -268,7 +281,7 @@ public final class SafeDeployment {
         private void begin(long now) {
             sweepStarted = now; best = null; bestBy = null; closest = null;
             sweep = new Sweep(level, player, kind, quarry, humans, random, clock, walker, () -> candidates++);
-            stages = sweep.quarry.atSea() ? List.of(sea) : List.of(walk, breach);
+            stages = sweep.quarry.atSea() ? List.of(sea) : List.of(walk, breach, near);
             stage = 0; begun = false;
         }
 
@@ -331,13 +344,13 @@ public final class SafeDeployment {
         return null;
     }
 
-    /** Within {@code radius} of the quarry, not under a ceiling it is beneath, and at least {@link #MIN_HUMAN_DISTANCE} from every human. */
-    static boolean allowed(ServerLevel level, Vec3 point, Vec3 target, List<Vec3> humans, double radius) {
+    /** Within {@code radius} of the quarry, not under a ceiling it is beneath, and at least {@code nearest} from every human. */
+    static boolean allowed(ServerLevel level, Vec3 point, Vec3 target, List<Vec3> humans, double radius, double nearest) {
         if (point.distanceToSqr(target) > radius * radius || ProtectionRuntime.protectedLevel(level)) return false;
         // Above a ceiling (the Nether bedrock roof) only when the quarry is up there too.
         int ceiling = level.getMinY() + level.dimensionType().logicalHeight();
         if (target.y < ceiling && point.y >= ceiling) return false;
-        for (var human : humans) if (point.distanceToSqr(human) < MIN_HUMAN_DISTANCE * MIN_HUMAN_DISTANCE) return false;
+        for (var human : humans) if (point.distanceToSqr(human) < nearest * nearest) return false;
         return true;
     }
 

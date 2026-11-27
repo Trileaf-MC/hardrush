@@ -159,7 +159,7 @@ public final class HuntBurrowGameTest {
     }
 
     @GameTest(maxTicks = 300)
-    public void aBurrowWinsBeforeTheClosestWalkIsDue(GameTestHelper test) {
+    public void aBurrowOrTheTunnelsFarEndBeatsTheClosestWalk(GameTestHelper test) {
         var f = new Fixture(test, test.getLevel(), 60, Blocks.STONE);
         boolean griefing = f.level.getGameRules().get(GameRules.MOB_GRIEFING);
         try (var ignored = f.unprotected()) {
@@ -169,8 +169,11 @@ public final class HuntBurrowGameTest {
             f.level.getGameRules().set(GameRules.MOB_GRIEFING, false, f.level.getServer());
             var plainClock = new AtomicLong();
             var plain = complete(f.search(MonsterRole.ZOMBIE, f.digging(new Vec3(1, 0, 0)), List.of(f.target), plainClock), plainClock);
-            test.assertTrue(plain.status() == SafeDeployment.Status.FOUND && plain.fallback() && !plain.burrowed(),
-                    "Without burrows the closest walk is admitted at five seconds");
+            // Without burrows the tunnel's far end, five or six blocks back, is walked from: no wall between, so a near landing.
+            test.assertTrue(plain.status() == SafeDeployment.Status.FOUND && plain.landing() == SafeDeployment.Landing.NEAR
+                    && !plain.fallback() && !plain.burrowed(), "Without burrows the tunnel's far end is a near landing: " + plain);
+            test.assertTrue(plain.position().distanceTo(f.target) >= SafeDeployment.NEAR_HUMAN_DISTANCE - 1e-6, "Five blocks off or more");
+            test.assertTrue(plainClock.get() < SafeDeployment.FALLBACK_AFTER_NANOS, "Taken before the fallback is due: " + plainClock.get());
             f.level.getGameRules().set(GameRules.MOB_GRIEFING, true, f.level.getServer());
             var clock = new AtomicLong();
             var result = complete(f.search(MonsterRole.ZOMBIE, f.digging(new Vec3(1, 0, 0)), List.of(f.target), clock), clock);
