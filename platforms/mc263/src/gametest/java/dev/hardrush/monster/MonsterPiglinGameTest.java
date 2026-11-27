@@ -288,7 +288,11 @@ public final class MonsterPiglinGameTest {
             test.assertTrue(piglin[0].getTarget() == null && wild[0].getTarget() == null, "Within four seconds the piglin player calls no one again");
         }).thenIdle(MonsterPiglinAnger.ALERT_INTERVAL_TICKS - 30).thenExecute(() -> {
             test.assertTrue(owner.hurtServer(level, human.damageSources().playerAttack(human), 1), "The human strikes once more");
-            test.assertTrue(piglin[0].getTarget() == human && wild[0].getTarget() == human, "After the rest it calls them again");
+            test.assertTrue(piglin[0].getTarget() == human && wild[0].getTarget() == human, "After the rest it calls them again; companion="
+                    + piglin[0].getTarget() + " alive=" + piglin[0].isAlive() + " wild=" + wild[0].getTarget() + " alive=" + wild[0].isAlive()
+                    + " sight=" + owner.hasLineOfSight(human) + " legal=" + MonsterRoles.legalTarget(owner.getUUID(), (net.minecraft.server.level.ServerLevel) level, human)
+                    + " form=" + MonsterRoles.currentForm(owner) + " owner=" + owner.position() + " human=" + human.position() + " wildAt=" + wild[0].position()
+                    + " tick=" + level.getServer().getTickCount());
             calm(piglin[0], wild[0]);
             test.assertTrue(piglin[0].hurtServer(level, human.damageSources().playerAttack(human), 1), "The human strikes the companion");
         }).thenIdle(10).thenExecute(() -> {
