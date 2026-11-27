@@ -453,8 +453,8 @@ public final class MonsterRoles {
     /**
      * An effect arriving on a body that already carries the same one of its own adds nothing, and the native merge
      * would still copy its visibility onto the body's own, which then no longer reads as {@linkplain #intrinsic
-     * intrinsic}: a cloud would hand it out and leaving the body would keep it. So the body refuses it: night vision
-     * on any body, a witch's fire resistance on a zombified piglin.
+     * intrinsic}: a cloud would hand it out and leaving the body would keep it. So the body refuses it: a witch's
+     * night vision on any body.
      */
     public static boolean refusesForeignEffect(ServerPlayer player, MobEffectInstance effect) {
         if (!isMonster(player)) return false;
@@ -496,6 +496,8 @@ public final class MonsterRoles {
     public static MonsterForm form(UUID playerId) { var role = ROLES.get(playerId); return role == null ? null : role.form; }
     public static MonsterForm currentForm(ServerPlayer player) { var role = ROLES.get(player.getUUID()); return role == null ? null : role.form; }
     public static String binding(ServerPlayer player) { var role = ROLES.get(player.getUUID()); return role == null ? "" : role.binding; }
+    /** Whether the body is natively fire immune, as its form's species is ({@link MonsterForm#fireImmune}); a hot path. */
+    public static boolean fireImmune(ServerPlayer player) { var form = currentForm(player); return form != null && form.fireImmune; }
     public static boolean isUndead(ServerPlayer player) { var form = currentForm(player); return form != null && form != MonsterForm.CREEPER; }
     public static Mob nativeModel(ServerPlayer player) { var role = ROLES.get(player.getUUID()); return role == null ? null : role.model; }
     public static boolean isNativeBody(Entity entity) { return entity != null && entity.entityTags().contains(NATIVE_BODY); }
@@ -616,7 +618,7 @@ public final class MonsterRoles {
         var role = ROLES.get(player.getUUID());
         if (role == null || role.model == null || !player.isAlive()) return;
         syncNativeContext(player, role);
-        // Daylight immunity is an intentional role rule; real fire and lava remain harmful.
+        // Daylight immunity is an intentional role rule; real fire and lava remain harmful unless the species is fire immune.
         var conversion = role.form.conversion();
         boolean exposed = conversion != null && conversion.exposed().test(player);
         // Keep 26.3 ConversionTracker boundaries, with shorter player-only phase durations.
@@ -706,6 +708,14 @@ public final class MonsterRoles {
         for (int i = 1; i <= 4; i++)
             if (MonsterItems.matches(player, player.inventoryMenu.slots.get(i).getItem(), weapon.purpose())) player.inventoryMenu.slots.get(i).set(ItemStack.EMPTY);
     }
+    /** Whether {@code player} carries a bound copy of {@code weapon} anywhere {@link #dropFormWeapon} looks. */
+    private static boolean carriesFormWeapon(ServerPlayer player, MonsterForm.Weapon weapon) {
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) if (MonsterItems.matches(player, inventory.getItem(i), weapon.purpose())) return true;
+        if (MonsterItems.matches(player, player.containerMenu.getCarried(), weapon.purpose())) return true;
+        for (int i = 1; i <= 4; i++) if (MonsterItems.matches(player, player.inventoryMenu.slots.get(i).getItem(), weapon.purpose())) return true;
+        return false;
+    }
     /**
      * A form with its own {@link MonsterForm.Weapon} holds one bound copy of it, however it became that form: every
      * drowned holds one bound trident. Vanilla gives a converted drowned none and a spawned one only sometimes; here
@@ -717,9 +727,8 @@ public final class MonsterRoles {
     private static void formWeapon(ServerPlayer player, MonsterForm form, boolean intoHand) {
         var weapon = form.weapon;
         if (weapon == null) return;
+        if (carriesFormWeapon(player, weapon)) return;
         var inventory = player.getInventory();
-        if (MonsterItems.matches(player, player.containerMenu.getCarried(), weapon.purpose())) return;
-        for (int i = 0; i < inventory.getContainerSize(); i++) if (MonsterItems.matches(player, inventory.getItem(i), weapon.purpose())) return;
         var item = MonsterItems.bind(player, weapon.item().get(), weapon.purpose());
         int slot = inventory.getSelectedSlot();
         var held = inventory.getItem(slot);

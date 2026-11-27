@@ -540,13 +540,8 @@ public final class LobbyRuntime {
                     if (b.omens.landed(d.targetPlayer.getUUID(), d.identity.kind(), b.searchClock.getAsLong() / 1_000_000))
                         dev.hardrush.hunt.HuntOmen.play(d.targetPlayer);
                     sound(d.player, true);
-                    String quarry = Notices.key(d.targetPlayer.getScoreboardName());
-                    if (burrowed) { burrowed(d.player); return; }
-                    String form = MonsterRoles.currentForm(d.player).label;
-                    Notices.hint(d.player, turned ? (risen ? "已化身" + form + "，从水下出击" : "已化身" + form + "出击")
-                            : risen ? "已从水下出击"
-                            : d.search.result().fallback()
-                            ? "已出击：去 " + quarry + " 的路被切断，这是能到的最近处" : "已出击，" + quarry + " 就在附近"); return;
+                    if (burrowed) { burrowed(d.player, turned); return; }
+                    Notices.hint(d.player, landed(d.player, true, turned, risen, d.search.result().fallback(), d.targetPlayer)); return;
                 }
                 if (b.profiles.failure(id).isPresent()) {
                     b.session.adapterFailure("追猎档案应用失败", new IllegalStateException(b.profiles.failure(id).orElseThrow()));
@@ -794,23 +789,41 @@ public final class LobbyRuntime {
         if (!r.player.teleportTo(level, landing.x, landing.y, landing.z, java.util.Set.of(), r.search.yaw(target.position()), 0, true)) {
             Notices.hint(r.player, "落点失效，循迹取消"); sound(r.player, false); return;
         }
-        boolean turned = MonsterRoles.settle(r.player, result.submerged());
+        // A retrack into water keeps the body as it is (docs/plan/追猎出场与重新循迹.md): the water converts it natively
+        // from here on. Every other site still decides the species as a sortie's landing does.
+        boolean turned = MonsterRoles.settle(r.player, false);
         HuntRetracks.retracked(r.player, target, result.burrowed());
         // Followers stay where they are while it hides: there is no room around a burrow but the quarry's tunnel.
         if (!result.burrowed()) MonsterCompanions.regroup(r.player);
         ChannelEffects.departed(r.player, fromLevel, from, true);
         sound(r.player, true);
-        String cut = "去 " + Notices.key(target.getScoreboardName()) + " 的路被切断，这是能到的最近处";
-        if (result.burrowed()) burrowed(r.player);
-        else if (turned) Notices.hint(r.player, "已化身" + MonsterRoles.currentForm(r.player).label + (result.fallback() ? " · " + cut : ""));
-        else if (result.fallback()) Notices.hint(r.player, cut);
+        if (result.burrowed()) { burrowed(r.player, turned); return; }
+        var hint = landed(r.player, false, turned, false, result.fallback(), target);
+        if (hint != null) Notices.hint(r.player, hint);
     }
-    /** Landed hidden in a burrow: how to get out, which only the hands can do. */
-    private static void burrowed(ServerPlayer hunter) {
+    /**
+     * What a monster just put down beside its quarry is told: the body it landed as, when the site changed it, and
+     * whether the way to the quarry was cut. Null when a retrack has nothing to say.
+     * @param sortie a sortie's landing, rather than a retrack's
+     * @param turned the landing changed the body's form ({@link MonsterRoles#settle})
+     * @param risen a zombie-line sortie rising from under water
+     */
+    private static String landed(ServerPlayer hunter, boolean sortie, boolean turned, boolean risen, boolean fallback, ServerPlayer quarry) {
+        String cut = "去 " + Notices.key(quarry.getScoreboardName()) + " 的路被切断，这是能到的最近处";
+        if (turned) {
+            String form = "已化身" + MonsterRoles.currentForm(hunter).label;
+            return (!sortie ? form : risen ? form + "，从水下出击" : form + "出击") + (fallback ? " · " + cut : "");
+        }
+        if (!sortie) return fallback ? cut : null;
+        return risen ? "已从水下出击" : fallback ? "已出击：" + cut : "已出击，" + Notices.key(quarry.getScoreboardName()) + " 就在附近";
+    }
+    /** Landed hidden in a burrow: how to get out, which only the hands can do; and the body it hid as, if new. */
+    private static void burrowed(ServerPlayer hunter, boolean turned) {
         dev.hardrush.hunt.HuntBurrows.entered(hunter, hunter.position());
-        Notices.hint(hunter, MonsterRoles.currentForm(hunter) == dev.hardrush.monster.MonsterForm.CREEPER
+        var form = MonsterRoles.currentForm(hunter);
+        Notices.hint(hunter, (turned ? "已化身" + form.label + " · " : "") + (form == dev.hardrush.monster.MonsterForm.CREEPER
                 ? "你藏进了石头里 · 苦力怕挖不动，等人挖到你再引爆"
-                : "你藏进了石头里 · 挖开前面的墙，破石而出");
+                : "你藏进了石头里 · 挖开前面的墙，破石而出"));
     }
     /**
      * Breaks a return or retrack channel, or the retrack's search that follows it.

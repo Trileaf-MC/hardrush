@@ -5,6 +5,14 @@ import dev.hardrush.gametest.MonsterRoleGameTest;
 import dev.hardrush.monster.mixin.MonsterSkeletonAccessor;
 import java.util.List;
 import java.util.function.Consumer;
+import dev.hardrush.gametest.TestTeardown;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.commands.FillBiomeCommand;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.block.Blocks;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -174,6 +182,71 @@ public final class MonsterHabitatGameTest {
             test.assertTrue(!MonsterRoles.settle(p, true), "A creeper never changes");
         } finally { MonsterRoleGameTest.remove(p); }
         test.succeed();
+    }
+
+    /**
+     * The site reads the real biome, precipitation and sky at the feet, and settles a body by them. The biome is
+     * repainted ({@code FillBiomeCommand.fill}, what /fillbiome runs) only around this actor's own arena, which no
+     * other actor shares, and painted back at the end.
+     */
+    @GameTest(maxTicks=300)
+    public void theLandingSiteReadsTheRealBiomeAndSkyAndSettlesByThem(GameTestHelper test) {
+        var p = MonsterRoleGameTest.actor(test);
+        var level = test.getLevel();
+        var feet = p.blockPosition();
+        // BiomeManager fuzzes a lookup into a neighbouring quart, so the paint reaches two quarts around the feet.
+        var from = feet.offset(-8, -8, -8); var to = feet.offset(8, 8, 8);
+        var original = level.getBiome(feet);
+        var roof = feet.above(3);
+        var biomes = level.registryAccess().lookupOrThrow(Registries.BIOME);
+        // Already that biome throws "no biome entries were changed", which is just as good.
+        Consumer<ResourceKey<Biome>> paint = biome -> {
+            FillBiomeCommand.fill(level, from, to, biomes.getOrThrow(biome));
+            test.assertTrue(level.getBiome(feet).is(biome), "The biome is painted: " + biome);
+        };
+        TestTeardown.atEnd(test, () -> {
+            level.setBlockAndUpdate(roof, Blocks.AIR.defaultBlockState());
+            FillBiomeCommand.fill(level, from, to, original);
+            MonsterRoleGameTest.remove(p);
+        });
+        test.startSequence().thenExecute(() -> {
+            paint.accept(Biomes.DESERT);
+            var site = MonsterHabitat.at(level, feet, false);
+            test.assertTrue(site.hosts(EntityTypes.HUSK) && site.hosts(EntityTypes.PARCHED), "A desert spawns husks and parched: " + site.natives());
+            test.assertTrue(site.openSky() && !site.snowing() && !site.nether(), "Open sky, no snow: " + site);
+            assertSettles(test, p, "zombie", MonsterForm.HUSK);
+            assertSettles(test, p, "skeleton", MonsterForm.PARCHED);
+            level.setBlockAndUpdate(roof, Blocks.STONE.defaultBlockState());
+        }).thenIdle(5).thenExecute(() -> {
+            var site = MonsterHabitat.at(level, feet, false);
+            test.assertTrue(!site.openSky(), "A roof hides the sky");
+            assertSettles(test, p, "zombie", MonsterForm.ZOMBIE);
+            assertSettles(test, p, "skeleton", MonsterForm.SKELETON);
+
+            paint.accept(Biomes.SWAMP);
+            site = MonsterHabitat.at(level, feet, false);
+            test.assertTrue(site.hosts(EntityTypes.BOGGED) && !site.hosts(EntityTypes.HUSK), "A swamp spawns bogged: " + site.natives());
+            assertSettles(test, p, "skeleton", MonsterForm.BOGGED);
+            assertSettles(test, p, "zombie", MonsterForm.ZOMBIE);
+
+            paint.accept(Biomes.SNOWY_PLAINS);
+            site = MonsterHabitat.at(level, feet, false);
+            test.assertTrue(site.snowing() && !site.openSky(), "Snow falls on snowy plains, the roof still on: " + site);
+            assertSettles(test, p, "skeleton", MonsterForm.SKELETON);
+            level.setBlockAndUpdate(roof, Blocks.AIR.defaultBlockState());
+        }).thenIdle(5).thenExecute(() -> {
+            var site = MonsterHabitat.at(level, feet, false);
+            test.assertTrue(site.snowing() && site.openSky(), "Under the open snowy sky: " + site);
+            assertSettles(test, p, "skeleton", MonsterForm.STRAY);
+            assertSettles(test, p, "zombie", MonsterForm.ZOMBIE);
+        }).thenSucceed();
+    }
+    /** A fresh {@code role} body landing where {@code p} stands lands as {@code expected}. */
+    private static void assertSettles(GameTestHelper test, ServerPlayer p, String role, MonsterForm expected) {
+        MonsterRoles.select(p, role);
+        test.assertValueEqual(MonsterRoles.currentForm(p), expected.baseForm(), "A fresh " + role);
+        test.assertValueEqual(MonsterRoles.settle(p, false), expected != expected.baseForm(), "Whether the landing turns the " + role);
+        test.assertValueEqual(MonsterRoles.currentForm(p), expected, "The " + role + " lands as " + expected);
     }
 
     @GameTest

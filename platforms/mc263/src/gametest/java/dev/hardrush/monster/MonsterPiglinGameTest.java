@@ -18,6 +18,10 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.projectile.arrow.Arrow;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
@@ -41,7 +45,7 @@ public final class MonsterPiglinGameTest {
     private static final int SPAWN_INVULNERABILITY = 80;
 
     @GameTest(maxTicks=400)
-    public void aZombieLandingInTheNetherTakesUpAnUnbreakableSwordAndFireproofing(GameTestHelper test) {
+    public void aZombieLandingInTheNetherTakesUpAnUnbreakableSwordAndFireImmunity(GameTestHelper test) {
         var p = MonsterRoleGameTest.actor(test);
         TestTeardown.atEnd(test, () -> MonsterRoleGameTest.remove(p));
         var overworld = p.level(); var position = p.position();
@@ -62,12 +66,20 @@ public final class MonsterPiglinGameTest {
             assertFireproof(test, p, "Landed in the nether");
             test.assertTrue(!MonsterRoles.settle(p, false), "Landing again changes nothing");
             test.assertValueEqual(countPurpose(p, MonsterRoles.PIGLIN_SWORD), 1, "and gives no second sword");
+            // A sword left in the crafting grid of an open inventory is still the body's one sword.
+            var inGrid = p.getMainHandItem().copy();
+            p.getInventory().setItem(p.getInventory().getSelectedSlot(), ItemStack.EMPTY);
+            p.inventoryMenu.slots.get(1).set(inGrid);
+            test.assertTrue(!MonsterRoles.settle(p, false), "Landing with the sword in the grid changes nothing");
+            test.assertValueEqual(countPurpose(p, MonsterRoles.PIGLIN_SWORD), 1, "and gives no second sword beside the grid's");
+            p.inventoryMenu.slots.get(1).set(ItemStack.EMPTY);
+            p.getInventory().setItem(p.getInventory().getSelectedSlot(), inGrid);
             p.teleportTo(overworld, position.x, position.y, position.z, Set.of(), 0, 0, true);
             MonsterRoles.tick(overworld.getServer());
             assertFireproof(test, p, "Rebinding in another dimension");
 
             MonsterRoles.convert(p, MonsterForm.DROWNED);
-            test.assertFalse(p.hasEffect(MobEffects.FIRE_RESISTANCE), "A drowned burns again");
+            test.assertFalse(p.fireImmune(), "A drowned burns again");
             test.assertTrue(p.getEffect(MobEffects.NIGHT_VISION) != null && MonsterRoles.intrinsic(p.getEffect(MobEffects.NIGHT_VISION)),
                     "It still sees in the dark");
             test.assertValueEqual(countPurpose(p, MonsterRoles.PIGLIN_SWORD), 0, "The piglin's sword went with the piglin");
@@ -87,45 +99,56 @@ public final class MonsterPiglinGameTest {
             p.clearFire();
         }).thenIdle(25).thenExecute(() -> {
             MonsterRoles.convert(p, MonsterForm.ZOMBIFIED_PIGLIN);
+            assertFireproof(test, p, "Converted");
             float health = p.getHealth();
             for (var source : List.of(p.damageSources().inFire(), p.damageSources().onFire(), p.damageSources().lava(), p.damageSources().hotFloor()))
                 test.assertFalse(p.hurtServer(level, source, 4), "Fire and lava do no harm: " + source.getMsgId());
             test.assertValueEqual(p.getHealth(), health, "Not a heart lost to fire or lava");
+            p.lavaIgnite();
+            test.assertTrue(p.getRemainingFireTicks() <= 0, "Lava lights no fire on it");
+            // A fire block or burning arrow sets the fire unconditionally; the native tick puts it out at once.
+            p.igniteForSeconds(8);
+            test.assertFalse(p.isOnFire(), "It never reads as burning");
+        }).thenIdle(3).thenExecute(() -> {
+            test.assertTrue(p.getRemainingFireTicks() <= 0, "The fire is out within a tick, so no one sees it burn");
+            test.assertFalse(p.hasEffect(MobEffects.FIRE_RESISTANCE), "Still no potion effect behind it");
             MonsterRoles.convert(p, MonsterForm.DROWNED);
+            test.assertFalse(p.fireImmune(), "Out of the piglin body it is no longer immune");
             test.assertTrue(p.hurtServer(level, p.damageSources().inFire(), 1), "Out of the piglin body fire hurts again");
+            p.igniteForSeconds(8);
+            test.assertTrue(p.isOnFire(), "and it can burn again");
             p.clearFire();
         }).thenSucceed();
     }
 
     @GameTest(maxTicks=200)
-    public void theBodyRefusesForeignFireResistanceAndParksWithoutItsOwn(GameTestHelper test) {
+    public void aPiglinBodyDrinksFireResistanceAsItsOwnPotionAndParksIt(GameTestHelper test) {
         var p = MonsterRoleGameTest.actor(test);
         try {
             MonsterRoles.select(p, "zombie");
             MonsterRoles.convert(p, MonsterForm.ZOMBIFIED_PIGLIN);
             assertFireproof(test, p, "Converted");
             test.assertTrue(countPurpose(p, MonsterRoles.PIGLIN_SWORD) == 1, "A converted zombified piglin carries its sword");
-            test.assertFalse(p.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 6000)), "A witch's fire resistance adds nothing");
             MonsterPotions.apply(p, MonsterRole.ZOMBIE, new dev.hardrush.core.round.PotionBox.Dose(
                     dev.hardrush.core.round.PotionBrew.FIRE_RESISTANCE, dev.hardrush.core.round.PotionBrew.Grade.COMMON, 0, 300));
-            assertFireproof(test, p, "After foreign fire resistance");
+            var drunk = p.getEffect(MobEffects.FIRE_RESISTANCE);
+            test.assertTrue(drunk != null && !drunk.isInfiniteDuration() && !MonsterRoles.intrinsic(drunk),
+                    "A witch's fire resistance is not refused: it is a timed potion of its own");
+            assertFireproof(test, p, "After drinking fire resistance");
             p.addEffect(new MobEffectInstance(MobEffects.SPEED, 1200));
 
             var body = MonsterParking.decode(p, MonsterParking.capture(p), MonsterRole.ZOMBIE).orElseThrow();
             test.assertValueEqual(body.form(), MonsterForm.ZOMBIFIED_PIGLIN, "The piglin parks as itself");
-            test.assertFalse(body.effects().stream().anyMatch(effect -> effect.is(MobEffects.FIRE_RESISTANCE) || effect.is(MobEffects.NIGHT_VISION)),
-                    "The body's own effects stay out of the parking; the next bind gives them afresh");
+            test.assertFalse(body.effects().stream().anyMatch(effect -> effect.is(MobEffects.NIGHT_VISION)),
+                    "The body's own night vision stays out of the parking; the next bind gives it afresh");
+            test.assertTrue(body.effects().stream().anyMatch(effect -> effect.is(MobEffects.FIRE_RESISTANCE)), "The drunk fire resistance parks");
             test.assertTrue(body.effects().stream().anyMatch(effect -> effect.is(MobEffects.SPEED)), "Timed effects park");
             var parkedSword = body.items().values().stream().filter(stack -> MonsterItems.purpose(stack).equals(MonsterRoles.PIGLIN_SWORD)).toList();
             test.assertValueEqual(parkedSword.size(), 1, "The sword parks with the body");
             test.assertTrue(parkedSword.getFirst().has(DataComponents.UNBREAKABLE), "still unbreakable");
 
-            // A creeper's cloud copies only what is not the body's own (MonsterCreeper.spawnCloud).
-            test.assertFalse(p.getActiveEffects().stream().filter(effect -> !MonsterRoles.intrinsic(effect))
-                    .anyMatch(effect -> effect.is(MobEffects.FIRE_RESISTANCE)), "Nothing but the body's own fire resistance is on it");
             MonsterRoles.clear(p);
-            test.assertFalse(p.hasEffect(MobEffects.FIRE_RESISTANCE), "Leaving the body takes the fire resistance away");
-            test.assertTrue(p.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 1200)), "A human drinks fire resistance as anyone");
+            test.assertFalse(p.fireImmune(), "Leaving the body takes the immunity away");
         } finally { MonsterRoleGameTest.remove(p); }
         test.succeed();
     }
@@ -160,7 +183,15 @@ public final class MonsterPiglinGameTest {
             float before = cows.get(1).getHealth();
             test.assertTrue(MonsterRoles.attack(p, cows.get(1)), "The empty-handed hit lands");
             lost[1] = before - cows.get(1).getHealth();
-            test.assertTrue(lost[0] > lost[1] && lost[1] > 0, "The golden sword adds to the zombie's base damage: " + lost[0] + " vs " + lost[1]);
+            // The body hits with the zombie's configured base (3 by default), not the native zombified piglin's 5.
+            double base = MonsterRoles.nativeModel(p).getAttribute(Attributes.ATTACK_DAMAGE).getBaseValue();
+            test.assertValueEqual(base, dev.hardrush.core.config.RulesConfig.defaults().combatValues().get("zombie.baseMeleeDamage"),
+                    "The model's base attack is the zombie rule's");
+            test.assertTrue(Math.abs(lost[1] - base) < 1e-4, "The empty hand deals the base: " + lost[1]);
+            double sword = new ItemStack(Items.GOLDEN_SWORD).getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY)
+                    .compute(Attributes.ATTACK_DAMAGE, 0, EquipmentSlot.MAINHAND);
+            test.assertTrue(sword > 0 && Math.abs(lost[0] - lost[1] - sword) < 1e-4,
+                    "The golden sword adds exactly its own attack bonus " + sword + ": " + lost[0] + " vs " + lost[1]);
         }).thenSucceed();
     }
 
@@ -280,8 +311,20 @@ public final class MonsterPiglinGameTest {
             test.assertTrue(piglin[0].getTarget() == null && wild[0].getTarget() == null, "A fellow monster's hit calls no one");
             for (int y = 0; y < 3; y++) for (int dz = -2; dz <= 2; dz++) level.setBlockAndUpdate(wall[0].offset(0, y, dz), Blocks.AIR.defaultBlockState());
         }).thenIdle(15).thenExecute(() -> {
-            test.assertTrue(other.hurtServer(level, human.damageSources().playerAttack(human), 1), "In sight, the human strikes");
-            test.assertTrue(wild[0].getTarget() == human, "Neither refusal spent the call");
+            test.assertTrue(other.hasLineOfSight(human), "In sight again");
+            // The companion the human struck before may have taken it back up natively; the wild one is still calm.
+            test.assertTrue(wild[0].getTarget() == null, "Nothing has called the wild piglin yet");
+            // Thorns names the wearer, though it is the piglin player that struck: it calls no one.
+            MonsterPiglinAnger.provoked(other, human.damageSources().thorns(human));
+            test.assertTrue(wild[0].getTarget() == null, "The human's thorns call no one");
+            human.getAbilities().invulnerable = true;
+            MonsterPiglinAnger.provoked(other, human.damageSources().playerAttack(human));
+            test.assertTrue(wild[0].getTarget() == null, "A human no monster may target is set on by no one");
+            human.getAbilities().invulnerable = false;
+            var arrow = new Arrow(level, human, new ItemStack(Items.ARROW), null);
+            spawned.add(arrow);
+            MonsterPiglinAnger.provoked(other, human.damageSources().arrow(arrow, human));
+            test.assertTrue(wild[0].getTarget() == human, "The human's arrow calls them; none of the refusals spent the call");
 
             MonsterRoles.clear(owner);
         }).thenIdle(2).thenExecute(() -> {
@@ -318,12 +361,12 @@ public final class MonsterPiglinGameTest {
         MonsterRoles.repairLoadout(p);
     }
 
+    /** Natively fire immune, as the species is; no potion effect of its own stands for it. */
     private static void assertFireproof(GameTestHelper test, ServerPlayer p, String when) {
-        var effect = p.getEffect(MobEffects.FIRE_RESISTANCE);
-        test.assertTrue(effect != null && effect.isInfiniteDuration(), when + ": endless fire resistance");
-        test.assertFalse(effect.isVisible() || effect.isAmbient(), when + ": no particles that would expose the player");
-        test.assertTrue(effect.showIcon(), when + ": the icon tells the monster itself");
-        test.assertTrue(MonsterRoles.intrinsic(effect), when + ": it reads as the body's own");
+        test.assertTrue(p.fireImmune(), when + ": natively fire immune");
+        test.assertFalse(p.isOnFire(), when + ": never burning");
+        var own = p.getEffect(MobEffects.FIRE_RESISTANCE);
+        test.assertTrue(own == null || !MonsterRoles.intrinsic(own), when + ": no fire resistance of the body's own");
     }
 
     private static int countPurpose(ServerPlayer p, String purpose) {
@@ -331,6 +374,7 @@ public final class MonsterPiglinGameTest {
         for (int i = 0; i < p.getInventory().getContainerSize(); i++)
             if (MonsterItems.matches(p, p.getInventory().getItem(i), purpose)) count += p.getInventory().getItem(i).getCount();
         if (MonsterItems.matches(p, p.containerMenu.getCarried(), purpose)) count += p.containerMenu.getCarried().getCount();
+        for (int i = 1; i <= 4; i++) if (MonsterItems.matches(p, p.inventoryMenu.slots.get(i).getItem(), purpose)) count += p.inventoryMenu.slots.get(i).getItem().getCount();
         return count;
     }
 }

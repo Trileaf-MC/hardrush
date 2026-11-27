@@ -55,9 +55,8 @@ public enum MonsterForm {
             null, SoundEvents.CREEPER_HURT, SoundEvents.CREEPER_DEATH, null, null, null, 1);
 
     static {
-        // Every body sees in the dark (docs/plan/怪物夜视.md); a zombified piglin is also fire immune (EntityType.fireImmune).
+        // Every body sees in the dark (docs/plan/怪物夜视.md).
         for (var form : values()) form.ownEffects = List.of(MobEffects.NIGHT_VISION);
-        ZOMBIFIED_PIGLIN.ownEffects = List.of(MobEffects.NIGHT_VISION, MobEffects.FIRE_RESISTANCE);
 
         Predicate<ServerPlayer> soaked = player -> player.isEyeInFluid(FluidTags.WATER);
         ZOMBIE.conversion = new Conversion(soaked, DROWNED, SoundEvents.ZOMBIE_CONVERTED_TO_DROWNED, "泡在水里会慢慢化身溺尸");
@@ -114,6 +113,12 @@ public enum MonsterForm {
     public final Weapon weapon;
     /** Multiplies the role's configured max health. */
     public final double maxHealthScale;
+    /**
+     * The native species never catches fire nor takes fire, lava or magma damage ({@code EntityType.fireImmune}): the
+     * body is immune the same native way ({@code MonsterFireImmuneMixin}), not through a potion effect, so it never
+     * burns visibly and a fire resistance it drinks stays its own.
+     */
+    public final boolean fireImmune;
     private Conversion conversion;
     private Landing landing;
     private ArrowEffect arrowEffect;
@@ -123,7 +128,7 @@ public enum MonsterForm {
                 SoundEvent hurtSound, SoundEvent deathSound, String bowName, Item egg, Weapon weapon, double maxHealthScale) {
         this.role = role; this.type = type; this.label = label; this.base = base; this.ambientSound = ambientSound;
         this.hurtSound = hurtSound; this.deathSound = deathSound; this.bowName = bowName; this.egg = egg;
-        this.weapon = weapon; this.maxHealthScale = maxHealthScale;
+        this.weapon = weapon; this.maxHealthScale = maxHealthScale; this.fireImmune = type.fireImmune();
     }
     public boolean zombie() { return role == MonsterRole.ZOMBIE; }
     public boolean skeleton() { return role == MonsterRole.SKELETON; }

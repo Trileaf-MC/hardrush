@@ -9,9 +9,11 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.phys.AABB;
 
 /**
@@ -42,7 +44,7 @@ public final class MonsterPiglinAnger {
     /** {@code player} just took real damage from {@code source}. */
     static void provoked(ServerPlayer player, DamageSource source) {
         // Arrows and thrown projectiles name their shooter; only a human's hit counts, never a fellow monster's.
-        if (MonsterRoles.currentForm(player) != MonsterForm.ZOMBIFIED_PIGLIN || !(source.getEntity() instanceof ServerPlayer human)
+        if (MonsterRoles.currentForm(player) != MonsterForm.ZOMBIFIED_PIGLIN || !struck(source) || !(source.getEntity() instanceof ServerPlayer human)
                 || MonsterRoles.isMonster(human) || !(player.level() instanceof ServerLevel level) || !player.isAlive()
                 || ProtectionRuntime.protectedEntity(player) || !MonsterRoles.legalTarget(player.getUUID(), level, human)
                 || !player.hasLineOfSight(human)) return;
@@ -57,5 +59,14 @@ public final class MonsterPiglinAnger {
         var area = AABB.unitCubeFromLowerCorner(player.position()).inflate(within, ALERT_RANGE_Y, within);
         for (var piglin : level.getEntitiesOfClass(ZombifiedPiglin.class, area, EntitySelector.NO_SPECTATORS))
             if (piglin.getTarget() == null && !piglin.isAlliedTo(human)) piglin.setTarget(human);
+    }
+
+    /**
+     * Whether {@code source} is its attacker's own doing: a blow it dealt itself or a projectile it loosed. Thorns
+     * also names the thorns wearer as both its direct and causing entity, yet it is the piglin player that struck;
+     * counting it would let the monster call the whole horde onto a human who never raised a hand.
+     */
+    private static boolean struck(DamageSource source) {
+        return source.isDirect() ? !source.is(DamageTypes.THORNS) : source.getDirectEntity() instanceof Projectile;
     }
 }
