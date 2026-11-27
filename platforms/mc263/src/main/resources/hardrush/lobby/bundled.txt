@@ -1,0 +1,4 @@
+# Packs shipped in the mod jar and released into hardrush/lobby/packs/ on startup, one per line:
+# <resource under /hardrush/lobby/> <file name in the library>
+# Maintained by scripts/lobby-pack.py bundle, except the default camp.
+default.hrlobby default-v1.hrlobby

@@ -3,6 +3,7 @@
 
     python3 scripts/lobby-pack.py build <id | source directory>
     python3 scripts/lobby-pack.py sample <new source directory>
+    python3 scripts/lobby-pack.py bundle <id>
 
 An id means lobby-packs/<id>; a path is used as given (its directory name is still the pack id). The source holds
 lobby.json, exactly one build.schem / build.litematic / build.nbt and usually build.hardrush.json. A GameTest suite
@@ -13,6 +14,10 @@ in .local/server/eula.txt; this script never accepts it.
 
 `sample` writes a minimal source directory with every lobby function bound, for trying the build or for importing
 build.schem with build.hardrush.json in the workshop by hand. It builds with no problems at all.
+
+`bundle` builds lobby-packs/<id> and, when it has no errors, ships the result with the mod: the pack goes into the
+jar's resources and into the index the server releases into its pack library on startup (docs/plan/自带大厅包.md).
+An older shipped version of the same id is replaced. The copied pack and the index are meant to be committed.
 
 Exit codes: 0 built, 1 the pack has errors, 2 the source directory (or sample target) is wrong, 3 the tooling failed.
 """
@@ -355,6 +360,42 @@ def sample(target):
     return 0
 
 
+BUNDLED = ROOT / 'platforms/mc263/src/main/resources/hardrush/lobby'
+
+
+def bundle(target):
+    if not ID.fullmatch(target):
+        print('bundle 只接受 lobby-packs/ 下的包 id', file=sys.stderr)
+        return 2
+    code = build(target)
+    if code != 0:
+        return code
+    source = ROOT / 'lobby-packs' / target
+    packs = sorted((source / 'out').glob('*.hrlobby'))
+    if len(packs) != 1:
+        print(f'构建应当只产出一个包，实际有 {len(packs)} 个', file=sys.stderr)
+        return 3
+    pack = packs[0]
+    shipped = BUNDLED / 'bundled'
+    shipped.mkdir(parents=True, exist_ok=True)
+    index = BUNDLED / 'bundled.txt'
+    kept = []
+    for line in index.read_text(encoding='utf-8').splitlines():
+        parts = line.split()
+        # Drop the versions of this id that are shipped now; everything else, comments included, stays as it is.
+        if len(parts) == 2 and not line.startswith('#') and re.fullmatch(re.escape(target) + r'-v[0-9]+\.hrlobby', parts[1]):
+            old = BUNDLED / parts[0]
+            if old.is_file() and old.parent == shipped:
+                old.unlink()
+            continue
+        kept.append(line)
+    (shipped / pack.name).write_bytes(pack.read_bytes())
+    kept.append(f'bundled/{pack.name} {pack.name}')
+    index.write_text('\n'.join(kept) + '\n', encoding='utf-8')
+    print(f'已随模组打包：{(shipped / pack.name).relative_to(ROOT)}，并登记到 {index.relative_to(ROOT)}。两者都要提交。')
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -362,9 +403,13 @@ def main():
     command.add_argument('target', help='包 id（lobby-packs/<id>）或源目录路径')
     command = commands.add_parser('sample', help='生成一个功能齐全的最小样例源目录')
     command.add_argument('target', help='新目录的路径，目录名就是包 id；已存在时必须是空目录')
+    command = commands.add_parser('bundle', help='构建 lobby-packs/<id> 并把产物随模组打包')
+    command.add_argument('target', help='包 id')
     args = parser.parse_args()
     if args.command == 'build':
         return build(args.target)
+    if args.command == 'bundle':
+        return bundle(args.target)
     if args.command == 'sample':
         return sample(args.target)
     return 2
