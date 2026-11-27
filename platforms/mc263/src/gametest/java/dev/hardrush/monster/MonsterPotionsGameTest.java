@@ -141,6 +141,40 @@ public final class MonsterPotionsGameTest {
                 .thenSucceed();
     }
 
+    /**
+     * docs/plan/女巫药水与药水盲盒.md 9.3: leaving the body for good carries no endless effect along, even on an exit that
+     * skips the camp's cleanup (the celebration's way back to the lobby suspends the body); timed effects are left alone.
+     */
+    @GameTest(maxTicks = 300)
+    public void leavingTheBodyDropsEveryEndlessEffect(GameTestHelper test) {
+        var suspended = MonsterRoleGameTest.actor(test);
+        var cleared = MonsterRoleGameTest.actor(test);
+        Runnable cleanup = () -> { MonsterRoleGameTest.remove(suspended); MonsterRoleGameTest.remove(cleared); };
+        test.startSequence()
+                .thenIdle(80)
+                .thenExecute(guarded(cleanup, () -> {
+                    cleared.teleportTo(suspended.getX(), suspended.getY(), suspended.getZ() + 6);
+                    for (var player : java.util.List.of(suspended, cleared)) {
+                        MonsterRoles.select(player, "zombie");
+                        MonsterPotions.apply(player, MonsterRole.ZOMBIE,
+                                new PotionBox.Dose(PotionBrew.INFESTED, PotionBrew.Grade.EPIC, 0, PotionBox.UNTIL_DEATH));
+                        player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 600));
+                        test.assertTrue(player.getEffect(MobEffects.INFESTED).isInfiniteDuration()
+                                && MonsterRoles.intrinsic(player.getEffect(MobEffects.NIGHT_VISION)), "The body carries a gift and its own sight");
+                    }
+                    MonsterRoles.suspend(suspended);
+                    MonsterRoles.clear(cleared);
+                    for (var player : java.util.List.of(suspended, cleared)) {
+                        test.assertFalse(MonsterRoles.isMonster(player), "The body is left");
+                        test.assertFalse(player.getActiveEffects().stream().anyMatch(MobEffectInstance::isInfiniteDuration),
+                                "No endless effect leaves with the player: " + player.getActiveEffects());
+                        test.assertTrue(player.hasEffect(MobEffects.SLOWNESS), "A timed effect runs out on its own and is kept");
+                    }
+                    cleanup.run();
+                }))
+                .thenSucceed();
+    }
+
     /** A body that already sees in the dark refuses more night vision, so its own keeps reading as its own (#95). */
     @GameTest(maxTicks = 200)
     public void aMonsterRefusesNightVisionOnTopOfItsOwn(GameTestHelper test) {

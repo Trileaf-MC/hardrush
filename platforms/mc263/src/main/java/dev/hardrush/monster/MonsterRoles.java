@@ -402,6 +402,7 @@ public final class MonsterRoles {
         settleInventory(player, role, dead);
         ROLES.remove(player.getUUID());
         restoreOriginal(player, role);
+        dropEndlessEffects(player);
         if (dead) player.setHealth(0);
         MonsterDisguise.clear(player); MonsterBowDisplay.clear(player);
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player);
@@ -416,6 +417,7 @@ public final class MonsterRoles {
         stopActions(player); MonsterCompanions.clearOwner(player);
         ROLES.remove(player.getUUID());
         restoreOriginal(player, role);
+        dropEndlessEffects(player);
         if (dead) player.setHealth(0);
         MonsterDisguise.clear(player); MonsterBowDisplay.clear(player);
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player);
@@ -445,6 +447,16 @@ public final class MonsterRoles {
         if (!effect.is(MobEffects.NIGHT_VISION) || !isMonster(player)) return false;
         var own = player.getEffect(MobEffects.NIGHT_VISION);
         return own != null && intrinsic(own);
+    }
+
+    /**
+     * Leaving the monster body for good never carries an endless effect along (docs/plan/怪物夜视.md §3): a parting gift
+     * lasts until death, and a return parks it before this runs. {@link #onDisconnect} drops nothing itself: in a round
+     * the disconnect ends the sortie first, through the lobby's {@code clear}, so the gift is dropped there.
+     */
+    private static void dropEndlessEffects(ServerPlayer player) {
+        for (var effect : List.copyOf(player.getActiveEffects()))
+            if (effect.isInfiniteDuration()) player.removeEffect(effect.getEffect());
     }
 
     private static void restoreOriginal(ServerPlayer player, Role role) {
