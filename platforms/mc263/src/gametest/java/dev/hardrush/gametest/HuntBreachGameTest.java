@@ -241,6 +241,59 @@ public final class HuntBreachGameTest {
         test.succeed();
     }
 
+    /**
+     * A retrack from right outside the hut's far wall: the breach behind the other wall is no closer, so the hunter stays
+     * and keeps digging. From thirty blocks off, or from another dimension, it goes.
+     */
+    @GameTest(maxTicks = 300)
+    public void aRetrackNoCloserThanTheHunterLeavesItWhereItIs(GameTestHelper test) {
+        var f = new Fixture(test, 70);
+        try (var ignored = f.unprotected()) {
+            f.hut(Blocks.OAK_PLANKS);
+            var clock = new AtomicLong();
+            var search = f.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(f.target), clock);
+            var result = complete(search, clock);
+            test.assertTrue(result.breached(), "The hut is breached: " + result);
+            var digging = f.target.add(-5, 0, 0);
+            test.assertTrue(digging.distanceTo(f.target) <= result.position().distanceTo(f.target), "The hunter is as close as the breach");
+            test.assertFalse(search.improves(f.level, digging, f.target), "No closer: the hunter stays at its own wall");
+            test.assertTrue(search.improves(f.level, f.target.add(-30, 0, 0), f.target), "From thirty blocks off it goes");
+            var nether = f.level.getServer().getLevel(net.minecraft.world.level.Level.NETHER);
+            test.assertTrue(search.improves(nether, digging, f.target), "From another dimension it goes");
+        }
+        test.succeed();
+    }
+
+    /**
+     * Five blocks off but sealed in rock, the hunter is nearer in a straight line yet cannot walk: a walk from eight or
+     * nine blocks still takes it there. Once it could walk the five blocks itself, it stays.
+     */
+    @GameTest(maxTicks = 300)
+    public void aRetrackStillFreesAHunterThatCannotWalkToTheQuarry(GameTestHelper test) {
+        var f = new Fixture(test, 60);
+        try (var ignored = f.unprotected()) {
+            f.ground(32);
+            // The rock goes up before any search: this arena's chunks do not tick, so a later block change would not
+            // invalidate the level's cached path types (vanilla only sends block updates to ticking chunks).
+            var sealed = f.target.add(5, 0, 0);
+            var cell = BlockPos.containing(sealed);
+            f.fill(cell.offset(-1, 0, -1), cell.offset(1, 2, 1), Blocks.STONE);
+            f.fill(cell, cell.above(), Blocks.AIR);
+            var clock = new AtomicLong();
+            var search = f.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(f.target), clock);
+            var result = complete(search, clock);
+            test.assertTrue(result.status() == SafeDeployment.Status.FOUND && result.landing() == SafeDeployment.Landing.WALK,
+                    "Open ground yields a walk: " + result.landing() + " " + result);
+            test.assertTrue(sealed.distanceTo(f.target) < result.position().distanceTo(f.target),
+                    "The hunter is nearer than the walk: " + result.position().distanceTo(f.target));
+            test.assertTrue(search.improves(f.level, sealed, f.target), "Sealed in rock it cannot walk, so the walk frees it");
+            var free = f.target.add(0, 0, 5);
+            test.assertFalse(search.improves(f.level, free, f.target), "Free to walk the five blocks itself, it stays");
+            test.assertTrue(search.improves(f.level, f.target.add(30, 0, 0), f.target), "From thirty blocks off it goes");
+        }
+        test.succeed();
+    }
+
     /** Without mob griefing no breach of any kind is offered: nobody could dig through. */
     @GameTest(maxTicks = 400)
     public void withoutMobGriefingNoBreachOfAnyKind(GameTestHelper test) {

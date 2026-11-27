@@ -287,6 +287,35 @@ public final class SafeDeployment {
         }
         public boolean revalidate() { return revalidate(quarry.position(), humans); }
 
+        /**
+         * Whether moving a hunter already out in the world to the found landing brings it any closer: always from another
+         * dimension or from farther away. From as close or closer, only when the landing is one walking reaches the quarry
+         * from ({@code WALK} or {@code NEAR}) while the hunter, where it stands, cannot walk to the quarry within
+         * {@link #MAX_PATH} blocks: nearer in a straight line, but with rock in between. A hunter that cannot be walked
+         * from at all (no floor under its body, sealed in) cannot walk there. Uses this search's own pathfinding agent once.
+         */
+        public boolean improves(ServerLevel hunterLevel, Vec3 hunter, Vec3 target) {
+            if (status != Status.FOUND || hunterLevel != level) return true;
+            if (hunter.distanceTo(target) > found.point.distanceTo(target)) return true;
+            if (found.landing != Landing.WALK && found.landing != Landing.NEAR) return false;
+            return !walks(hunter, target);
+        }
+
+        private boolean walks(Vec3 hunter, Vec3 target) {
+            var center = BlockPos.containing(target);
+            int reach = FALLBACK_RADIUS + FALLBACK_PATH + 8;
+            var region = new PathNavigationRegion(level, center.offset(-reach, -reach, -reach), center.offset(reach, reach, reach));
+            // Vanilla starts the walk from the body's own cell (WalkNodeEvaluator.getStart), so that cell and the one
+            // above must be open and the one below solid; otherwise this hunter cannot be walked from at all.
+            var body = BlockPos.containing(hunter.x, hunter.y + .5, hunter.z);
+            for (var cell : new BlockPos[]{body, body.above()})
+                if (!region.getBlockState(cell).getCollisionShape(region, cell).isEmpty()) return false;
+            var floor = body.below();
+            if (region.getBlockState(floor).getCollisionShape(region, floor).isEmpty()) return false;
+            var path = walker.path(region, ground(region, target), hunter);
+            return path != null && path.canReach() && length(path) <= MAX_PATH + EPSILON;
+        }
+
         /** Facing the quarry, so the monster knows which way to go the moment it lands. */
         public float yaw(Vec3 target) {
             var point = found == null ? target : found.point;

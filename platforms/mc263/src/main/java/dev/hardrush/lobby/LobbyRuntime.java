@@ -789,6 +789,10 @@ public final class LobbyRuntime {
         }
         var landing = result.position();
         var from = r.player.position(); var fromLevel = (ServerLevel) r.player.level();
+        // Already digging beside the quarry: a landing no closer would only take it away from its wall.
+        if (!r.search.improves(fromLevel, from, target.position())) {
+            Notices.hint(r.player, "你已经在离 " + Notices.key(target.getScoreboardName()) + " 最近的位置"); sound(r.player, false); return;
+        }
         if (result.burrowed()) dev.hardrush.hunt.HuntBurrows.carve(level, landing, r.player);
         if (!r.player.teleportTo(level, landing.x, landing.y, landing.z, java.util.Set.of(), r.search.yaw(target.position()), 0, true)) {
             Notices.hint(r.player, "落点失效，循迹取消"); sound(r.player, false); return;
