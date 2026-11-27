@@ -41,6 +41,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
@@ -311,7 +312,7 @@ public final class MonsterCompanions {
         if (!MonsterRoundRuntime.canAct(player) || !target.isAlive() || target == player
                 || !MonsterRoles.legalTarget(player.getUUID(), player.level(), target)) return;
         for (Mob mob : companions(player.level().getServer())) {
-            if (activeOwner(mob) != player || mob.level() != target.level() || !mob.isAlive() || mob == target) continue;
+            if (activeOwner(mob) != player || !takesOrders(mob) || mob.level() != target.level() || !mob.isAlive() || mob == target) continue;
             replaceTag(mob, COMMAND, target.getUUID().toString());
             if (allowedTarget(mob, target) && !MonsterCombatRuntime.reject(mob, target)) mob.setTarget(target);
             else replaceTag(mob, COMMAND, null);
@@ -329,8 +330,14 @@ public final class MonsterCompanions {
         access.hardrush$goalSelector().removeAllGoals(goal -> goal instanceof CompanionFollowGoal);
         access.hardrush$targetSelector().removeAllGoals(goal -> goal instanceof CompanionCommandGoal);
         if (follower(mob)) access.hardrush$goalSelector().addGoal(4, new CompanionFollowGoal(mob));
-        access.hardrush$targetSelector().addGoal(0, new CompanionCommandGoal(mob));
+        if (takesOrders(mob)) access.hardrush$targetSelector().addGoal(0, new CompanionCommandGoal(mob));
     }
+
+    /**
+     * A neutral species keeps its own temper as a companion (docs/plan/怪物环境变种.md §4): a zombified piglin follows
+     * its owner but joins no fight it was ordered into; only someone who provokes it, or a provoked kin, sets it off.
+     */
+    static boolean takesOrders(Mob mob) { return !(mob instanceof NeutralMob); }
 
     /**
      * Companions that travel after their owner on foot. A drowned's native navigation is amphibious rather

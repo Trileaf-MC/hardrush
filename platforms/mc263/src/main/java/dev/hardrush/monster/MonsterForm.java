@@ -2,13 +2,16 @@ package dev.hardrush.monster;
 
 import dev.hardrush.core.round.MonsterRole;
 import dev.hardrush.notice.ItemText;
+import java.util.List;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.util.Unit;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
@@ -30,10 +33,12 @@ public enum MonsterForm {
             SoundEvents.ZOMBIE_AMBIENT, SoundEvents.ZOMBIE_HURT, SoundEvents.ZOMBIE_DEATH, null, Items.ZOMBIE_SPAWN_EGG, null, 1),
     DROWNED(MonsterRole.ZOMBIE, EntityTypes.DROWNED, "溺尸", false,
             SoundEvents.DROWNED_AMBIENT, SoundEvents.DROWNED_HURT, SoundEvents.DROWNED_DEATH, null, Items.DROWNED_SPAWN_EGG,
-            new Weapon(MonsterRoles.SEA_TRIDENT, () -> ItemText.lore(new ItemStack(Items.TRIDENT), MonsterRoles.TRIDENT_USAGE)), 1),
+            new Weapon(MonsterRoles.SEA_TRIDENT, () -> ItemText.lore(new ItemStack(Items.TRIDENT), MonsterRoles.TRIDENT_USAGE),
+                    MonsterRoles.TRIDENT_USAGE), 1),
+    // ZombifiedPiglin.populateDefaultEquipmentSlots: the golden sword; unbreakable, as a native mob never wears its weapon out.
     ZOMBIFIED_PIGLIN(MonsterRole.ZOMBIE, EntityTypes.ZOMBIFIED_PIGLIN, "僵尸猪灵", false,
             SoundEvents.ZOMBIFIED_PIGLIN_AMBIENT, SoundEvents.ZOMBIFIED_PIGLIN_HURT, SoundEvents.ZOMBIFIED_PIGLIN_DEATH, null,
-            Items.ZOMBIFIED_PIGLIN_SPAWN_EGG, null, 1),
+            Items.ZOMBIFIED_PIGLIN_SPAWN_EGG, new Weapon(MonsterRoles.PIGLIN_SWORD, MonsterForm::piglinSword, null), 1),
     HUSK(MonsterRole.ZOMBIE, EntityTypes.HUSK, "尸壳", false,
             SoundEvents.HUSK_AMBIENT, SoundEvents.HUSK_HURT, SoundEvents.HUSK_DEATH, null, Items.HUSK_SPAWN_EGG, null, 1),
     SKELETON(MonsterRole.SKELETON, EntityTypes.SKELETON, "骷髅", true,
@@ -50,6 +55,10 @@ public enum MonsterForm {
             null, SoundEvents.CREEPER_HURT, SoundEvents.CREEPER_DEATH, null, null, null, 1);
 
     static {
+        // Every body sees in the dark (docs/plan/怪物夜视.md); a zombified piglin is also fire immune (EntityType.fireImmune).
+        for (var form : values()) form.ownEffects = List.of(MobEffects.NIGHT_VISION);
+        ZOMBIFIED_PIGLIN.ownEffects = List.of(MobEffects.NIGHT_VISION, MobEffects.FIRE_RESISTANCE);
+
         Predicate<ServerPlayer> soaked = player -> player.isEyeInFluid(FluidTags.WATER);
         ZOMBIE.conversion = new Conversion(soaked, DROWNED, SoundEvents.ZOMBIE_CONVERTED_TO_DROWNED, "泡在水里会慢慢化身溺尸");
         // Husk.convertsToWhenDrowning: a husk soaks back into a zombie first, which soaks on into a drowned.
@@ -75,8 +84,11 @@ public enum MonsterForm {
 
     /** Native conversion: while {@code exposed}, the body slowly turns {@code into}; the first soak of a round shows {@code hint}. */
     public record Conversion(Predicate<ServerPlayer> exposed, MonsterForm into, SoundEvent sound, String hint) {}
-    /** A weapon the form always carries, bound under {@code purpose}; {@code item} makes a fresh unbound one. */
-    public record Weapon(String purpose, Supplier<ItemStack> item) {}
+    /**
+     * A weapon the form always carries, bound under {@code purpose}; {@code item} makes a fresh unbound one.
+     * {@code hint} is its action-bar usage while held, null when it needs none.
+     */
+    public record Weapon(String purpose, Supplier<ItemStack> item, String hint) {}
     /**
      * A landing site where the role's body lands as this form. {@code overridesVariant}: it also turns a body that
      * already is another variant; otherwise only the role's base form is turned.
@@ -105,6 +117,7 @@ public enum MonsterForm {
     private Conversion conversion;
     private Landing landing;
     private ArrowEffect arrowEffect;
+    private List<Holder<MobEffect>> ownEffects;
 
     MonsterForm(MonsterRole role, EntityType<? extends Mob> type, String label, boolean base, SoundEvent ambientSound,
                 SoundEvent hurtSound, SoundEvent deathSound, String bowName, Item egg, Weapon weapon, double maxHealthScale) {
@@ -121,6 +134,28 @@ public enum MonsterForm {
     public Landing landing() { return landing; }
     /** Null when the form's arrows carry nothing of their own. */
     public ArrowEffect arrowEffect() { return arrowEffect; }
+    /**
+     * The effects this body carries of its own for as long as it is this form: infinite, without particles, with
+     * an icon ({@link MonsterRoles#intrinsic}). Leaving the form, or the body, takes them away.
+     */
+    public List<Holder<MobEffect>> ownEffects() { return ownEffects; }
+    /** Whether {@code effect} is of a kind this form carries of its own. */
+    public boolean carries(Holder<MobEffect> effect) { return ownEffects.stream().anyMatch(effect::equals); }
+    /** Whether some form carries {@code effect} of its own. */
+    public static boolean anyCarries(Holder<MobEffect> effect) {
+        for (var form : values()) if (form.carries(effect)) return true;
+        return false;
+    }
+    /** The form whose {@link Weapon} {@code stack} is, bound to {@code player}'s sortie; null for anything else. */
+    public static MonsterForm wielding(ServerPlayer player, ItemStack stack) {
+        for (var form : values()) if (form.weapon != null && MonsterItems.matches(player, stack, form.weapon.purpose())) return form;
+        return null;
+    }
+    private static ItemStack piglinSword() {
+        var sword = new ItemStack(Items.GOLDEN_SWORD);
+        sword.set(DataComponents.UNBREAKABLE, Unit.INSTANCE);
+        return ItemText.lore(sword, "僵尸猪灵的金剑 · 不会损坏");
+    }
     /** The selectable form of this form's role: a husk's is the zombie. */
     public MonsterForm baseForm() {
         for (var form : values()) if (form.role == role && form.base) return form;

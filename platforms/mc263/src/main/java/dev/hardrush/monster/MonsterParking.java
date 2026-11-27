@@ -46,7 +46,8 @@ public final class MonsterParking {
         }
         var effects = new JsonArray();
         for (var active : player.getActiveEffects()) {
-            // Only the body's own night vision stays behind; a parting gift lasts until death and parks like the rest.
+            // Only the body's own effects (night vision, a zombified piglin's fire resistance) stay behind; the next bind
+            // gives them afresh. A parting gift lasts until death and parks like the rest.
             if (MonsterRoles.intrinsic(active)) continue;
             MobEffectInstance.CODEC.encodeStart(registries.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), active)
                     .result().ifPresent(encoded -> {

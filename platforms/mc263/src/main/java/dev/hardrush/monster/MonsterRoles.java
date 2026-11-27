@@ -68,6 +68,7 @@ public final class MonsterRoles {
 
     public static void initialize() {
         MonsterCompanions.initialize();
+        MonsterPiglinAnger.initialize();
         AttackEntityCallback.EVENT.register((p, level, hand, target, hit) -> {
             if (!(p instanceof ServerPlayer owner) || !isMonster(owner)) return InteractionResult.PASS;
             attack(owner, target); return InteractionResult.FAIL;
@@ -434,28 +435,37 @@ public final class MonsterRoles {
     }
 
     /**
-     * Native monsters hunt by sight line, not light (docs/plan/怪物夜视.md): every bound body sees in the dark all
-     * sortie long. Infinite so it never flickers, without particles so it never tells a player from a native mob.
+     * One of the body's {@linkplain MonsterForm#ownEffects own effects}: native monsters hunt by sight line, not light
+     * (docs/plan/怪物夜视.md), and a zombified piglin does not burn. Infinite so it never flickers, without particles so
+     * it never tells a player from a native mob, with an icon so the monster itself knows.
      */
-    static MobEffectInstance nightVision() {
-        return new MobEffectInstance(MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false, true);
+    static MobEffectInstance ownEffect(Holder<net.minecraft.world.effect.MobEffect> effect) {
+        return new MobEffectInstance(effect, MobEffectInstance.INFINITE_DURATION, 0, false, false, true);
     }
     /**
-     * Whether {@code effect} is the body's own night vision rather than something it drank or was hit with. Only
-     * the body keeps it: a creeper's lingering cloud must not copy it, and leaving the body removes only this one.
+     * Whether {@code effect} is one the body carries of its own rather than something it drank or was hit with. Only
+     * the body keeps it: a creeper's lingering cloud must not copy it, a return never parks it, and leaving the body,
+     * or the form that carries it, removes only this one.
      */
     public static boolean intrinsic(MobEffectInstance effect) {
-        return effect.is(MobEffects.NIGHT_VISION) && effect.isInfiniteDuration() && !effect.isVisible();
+        return effect.isInfiniteDuration() && !effect.isVisible() && MonsterForm.anyCarries(effect.getEffect());
     }
     /**
-     * Night vision arriving on a body that already sees in the dark adds nothing, and the native merge would still copy
-     * its visibility onto the body's own, which then no longer reads as {@linkplain #intrinsic intrinsic}: a cloud
-     * would hand it out and leaving the body would keep it. So the body refuses it.
+     * An effect arriving on a body that already carries the same one of its own adds nothing, and the native merge
+     * would still copy its visibility onto the body's own, which then no longer reads as {@linkplain #intrinsic
+     * intrinsic}: a cloud would hand it out and leaving the body would keep it. So the body refuses it: night vision
+     * on any body, a witch's fire resistance on a zombified piglin.
      */
-    public static boolean refusesSight(ServerPlayer player, MobEffectInstance effect) {
-        if (!effect.is(MobEffects.NIGHT_VISION) || !isMonster(player)) return false;
-        var own = player.getEffect(MobEffects.NIGHT_VISION);
+    public static boolean refusesForeignEffect(ServerPlayer player, MobEffectInstance effect) {
+        if (!isMonster(player)) return false;
+        var own = player.getEffect(effect.getEffect());
         return own != null && intrinsic(own);
+    }
+    /** The body takes the own effects of {@code form} and gives up those of the form it was before. */
+    private static void wearOwnEffects(ServerPlayer player, MonsterForm form) {
+        for (var effect : List.copyOf(player.getActiveEffects()))
+            if (intrinsic(effect) && !form.carries(effect.getEffect())) player.removeEffect(effect.getEffect());
+        for (var effect : form.ownEffects()) player.addEffect(ownEffect(effect));
     }
 
     /**
@@ -476,8 +486,7 @@ public final class MonsterRoles {
         for (int slot = 1; slot <= 4; slot++) player.inventoryMenu.slots.get(slot).set(role.crafting.get(slot - 1).copy());
         player.inventoryMenu.setCarried(role.carried.copy());
         ((MonsterLivingAccessor) player).hardrush$detectEquipmentUpdates();
-        var vision = player.getEffect(MobEffects.NIGHT_VISION);
-        if (vision != null && intrinsic(vision)) player.removeEffect(MobEffects.NIGHT_VISION);
+        for (var effect : List.copyOf(player.getActiveEffects())) if (intrinsic(effect)) player.removeEffect(effect.getEffect());
         player.setGameMode(role.gameMode); player.getFoodData().setFoodLevel(role.food);
         player.getFoodData().setSaturation(role.saturation); player.setHealth(Math.min(role.health, player.getMaxHealth()));
     }
@@ -532,14 +541,18 @@ public final class MonsterRoles {
         for (var slot : EquipmentSlot.VALUES) {
             if (slot.getType() != EquipmentSlot.Type.HUMANOID_ARMOR && slot.getType() != EquipmentSlot.Type.HAND) continue;
             var stack = player.getItemBySlot(slot);
+            // A form weapon drops like the native mob's spawned weapon (a drowned's trident, a zombified piglin's sword).
+            boolean formWeapon = MonsterForm.wielding(player, stack) != null;
             if (stack.isEmpty() || !MonsterItems.matches(player, stack, "gear") && !MonsterItems.matches(player, stack, SPAWN_GEAR)
-                    && !MonsterItems.matches(player, stack, SEA_TRIDENT)
+                    && !formWeapon
                     || EnchantmentHelper.has(stack, EnchantmentEffectComponents.PREVENT_EQUIPMENT_DROP)) continue;
             float chance = SPAWNED_EQUIPMENT_DROP_CHANCE;
             if (source.getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker)
                 chance = EnchantmentHelper.processEquipmentDropChance(player.level(), attacker, source, chance);
             if (random.nextFloat() >= chance) continue;
             var dropped = MonsterItems.unbind(stack.copy());
+            // Dropped, it is the native item again: its sortie usage and unbreakability stay with the body.
+            if (formWeapon) { dropped.remove(DataComponents.UNBREAKABLE); dropped.remove(DataComponents.LORE); }
             if (dropped.isDamageableItem()) dropped.setDamageValue(dropped.getMaxDamage()
                     - random.nextInt(1 + random.nextInt(Math.max(dropped.getMaxDamage() - 3, 1))));
             player.spawnAtLocation(player.level(), dropped);
@@ -623,6 +636,8 @@ public final class MonsterRoles {
     }
     /** Purpose of the bound trident every drowned holds; it parks and resumes with the drowned it belongs to. */
     public static final String SEA_TRIDENT = "sea_trident";
+    /** Purpose of the bound golden sword every zombified piglin holds; it parks and resumes like the drowned's trident. */
+    public static final String PIGLIN_SWORD = "piglin_sword";
     /** Armour and weapons a sortie spawned with by its tier, unlike vault gear, which coins bought. */
     public static final String SPAWN_GEAR = "spawn_gear";
     /** Purpose of the echo shard that channels the return to camp. */
@@ -653,7 +668,11 @@ public final class MonsterRoles {
         var role = ROLES.get(player.getUUID());
         if (role == null || role.form.role != form.role || role.form == form) return;
         var turning = role.form.conversion();
+        var leaving = role.form;
         stopActions(player); role.form = form; role.exposure = 0; role.conversion = -1;
+        // The old species' weapon goes with it: a zombified piglin soaked into a drowned trades its sword for a trident.
+        if (leaving.weapon != null && (form.weapon == null || !form.weapon.purpose().equals(leaving.weapon.purpose())))
+            dropFormWeapon(player, leaving.weapon);
         float health = player.getHealth();
         bind(player, role, false); player.setHealth(Math.min(health, player.getMaxHealth()));
         if (form.egg != null) {
@@ -677,6 +696,15 @@ public final class MonsterRoles {
             // The native conversion sound and the changed eggs and model say it; no chat line.
         }
         repairLoadout(player);
+    }
+    /** Removes every bound copy of {@code weapon}: inventory, worn and held slots, cursor and crafting grid. */
+    private static void dropFormWeapon(ServerPlayer player, MonsterForm.Weapon weapon) {
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++)
+            if (MonsterItems.matches(player, inventory.getItem(i), weapon.purpose())) inventory.setItem(i, ItemStack.EMPTY);
+        if (MonsterItems.matches(player, player.containerMenu.getCarried(), weapon.purpose())) player.containerMenu.setCarried(ItemStack.EMPTY);
+        for (int i = 1; i <= 4; i++)
+            if (MonsterItems.matches(player, player.inventoryMenu.slots.get(i).getItem(), weapon.purpose())) player.inventoryMenu.slots.get(i).set(ItemStack.EMPTY);
     }
     /**
      * A form with its own {@link MonsterForm.Weapon} holds one bound copy of it, however it became that form: every
@@ -1105,7 +1133,7 @@ public final class MonsterRoles {
         else if (!Float.isNaN(resumedHealth)) player.setHealth(Math.min(resumedHealth, player.getMaxHealth()));
         role.disconnectedHealth = Float.NaN;
         player.getFoodData().setFoodLevel(6); player.getFoodData().setSaturation(0);
-        player.addEffect(nightVision());
+        wearOwnEffects(player, role.form);
         MonsterDisguise.apply(player, role.form.id());
         if (role.model instanceof Creeper creeper) MonsterCreeper.bindModel(player, creeper);
         player.level().getServer().getPlayerList().sendAllPlayerInfo(player); MonsterAiIdentity.changed(player);
@@ -1135,8 +1163,8 @@ public final class MonsterRoles {
                     : dev.hardrush.lobby.LobbyRuntime.channeling(player) ? "正在循迹"
                     : HuntRetracks.quarry(player).isEmpty() ? "目标已离线或阵亡，罗盘失去了指向"
                     : HuntRetracks.resting(player) ? "罗盘冷却中" : "目标暂时无法循迹");
-        if (stack.is(Items.TRIDENT) && MonsterItems.matches(player, stack, SEA_TRIDENT)) return Optional.of(TRIDENT_USAGE);
-        return Optional.empty();
+        var wielding = MonsterForm.wielding(player, stack);
+        return wielding == null ? Optional.empty() : Optional.ofNullable(wielding.weapon.hint());
     }
     private static String retrackUsage(Role role) {
         return "发光时右键，引导 " + Notices.key(retrackChannelSeconds(role)) + " 秒循迹到目标附近，可以边走边引导";
