@@ -39,6 +39,7 @@ public enum ShopOffer {
     IRON_BUCKET("ironBucket", "铁桶", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     OAK_LOGS("oakLogs", "橡木原木 ×5", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     IRON_PICKAXE("ironPickaxe", "铁镐", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
+    COAL("coal", "煤炭 ×8", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     SHIELD("shield", "盾牌", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
     // A bell rung near monster players makes them glow (docs/plan/钟声显形.md); vanilla never crafts one.
     BELL("bell", "钟", Kind.REVIVAL, MonsterRole.ZOMBIE, MonsterRole.SKELETON, MonsterRole.CREEPER),
@@ -78,8 +79,9 @@ public enum ShopOffer {
     /**
      * Every purchase costs the base price: the doubling ladder skips it. Vault keys each open a single random piece, so
      * the camp's gear cap, not a rising price, bounds them; a potion of harming or healing is a staple bought by the bottle.
+     * Bread and coal are staples of the revived life, and each longer blessing adds the same time as the last.
      */
-    public boolean flatPrice() { return key() || this == INSTANT_HEALTH; }
+    public boolean flatPrice() { return key() || this == INSTANT_HEALTH || this == BREAD || this == COAL || this == LONGER_BLESSING; }
     /** Whether a sortie as {@code role} carries it; revival supplies never ride a sortie. */
     public boolean sellableTo(MonsterRole role) { return !revival() && roles.contains(role); }
     /** A bottle the witch brews, drunk by the monster itself on its next sortie (docs/plan/女巫药水与药水盲盒.md). */

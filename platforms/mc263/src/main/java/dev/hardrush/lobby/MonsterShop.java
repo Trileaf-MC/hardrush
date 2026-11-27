@@ -95,12 +95,7 @@ public final class MonsterShop {
             case SOULCATCHER_CAPACITY -> new ItemStack(Items.BUNDLE);
             case BONUS_CHEST -> new ItemStack(Items.CHEST);
             case LONGER_BLESSING -> new ItemStack(Items.ENCHANTED_GOLDEN_APPLE);
-            case IRON_BUCKET -> new ItemStack(Items.BUCKET);
-            case OAK_LOGS -> new ItemStack(Items.OAK_LOG, 5);
-            case IRON_PICKAXE -> new ItemStack(Items.IRON_PICKAXE);
-            case SHIELD -> new ItemStack(Items.SHIELD);
-            case BELL -> new ItemStack(Items.BELL);
-            case BREAD -> new ItemStack(Items.BREAD, 8);
+            case IRON_BUCKET, OAK_LOGS, COAL, IRON_PICKAXE, SHIELD, BELL, BREAD -> dev.hardrush.revival.RevivalSupplies.bundle(offer);
             default -> throw new IllegalArgumentException("A witch potion is brewed by MonsterPotions: " + offer);
         };
         stack.set(DataComponents.CUSTOM_NAME, name(offer, role));
@@ -141,7 +136,7 @@ public final class MonsterShop {
                     + dev.hardrush.core.round.WitchRecord.BLESSING_STEP_MILLIS * owned) + " → " + clock(Math.min(
                     dev.hardrush.core.round.WitchRecord.MAX_BLESSING_MILLIS, dev.hardrush.core.round.WitchRecord.BLESSING_MILLIS
                     + dev.hardrush.core.round.WitchRecord.BLESSING_STEP_MILLIS * (owned + 1)));
-            case IRON_BUCKET, OAK_LOGS, IRON_PICKAXE, BREAD -> "复生时放进背包";
+            case IRON_BUCKET, OAK_LOGS, COAL, IRON_PICKAXE, BREAD -> "复生时放进背包";
             case BELL -> "复生时放进背包 · 敲响后，附近的怪物玩家发光";
             case SHIELD -> "复生时放进副手";
             default -> throw new IllegalArgumentException("A witch potion is described above: " + offer);

@@ -393,8 +393,8 @@ class MonsterCoinsTest {
         assertEquals(5.0, next.combatValues().get("coin.price.trialKey"));
         assertEquals(25.0, next.combatValues().get("coin.price.monsterBox"));
         assertEquals(3.0, next.combatValues().get("coin.limit.monsterBox"));
-        // Revision 7 (the witch's potions) follows and leaves these prices alone.
-        assertEquals(7.0, next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+        // The later revisions follow and leave these prices alone.
+        assertEquals(RULES.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY), next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
 
         // From revision 4 both steps run in order.
         values.put(RulesConfig.DEFAULTS_REVISION_KEY, 4.0);
@@ -402,7 +402,35 @@ class MonsterCoinsTest {
         var both = rules(values).forNewRound();
         assertEquals(3.0, both.combatValues().get("coin.price.trialKey"));
         assertEquals(8.0, both.combatValues().get("coin.price.adultEgg"));
-        assertEquals(7.0, both.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+        assertEquals(RULES.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY), both.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+    }
+
+    @Test void revisionEightRetunesTheSupplyShelfStillOnTheOldDefaults() {
+        var values = new TreeMap<>(RULES.combatValues());
+        values.put(RulesConfig.DEFAULTS_REVISION_KEY, 7.0);
+        values.put("coin.price.bonusChest", 30.0);
+        values.put("coin.price.bell", 45.0);
+        values.put("coin.price.bread", 25.0); // an operator's own price is kept
+        values.remove("coin.price.coal"); values.remove("coin.limit.coal");
+        var next = rules(values).forNewRound();
+        assertEquals(35.0, next.combatValues().get("coin.price.bonusChest"));
+        assertEquals(15.0, next.combatValues().get("coin.price.bell"));
+        assertEquals(25.0, next.combatValues().get("coin.price.bread"));
+        assertEquals(20.0, next.combatValues().get("coin.price.coal"));
+        assertEquals(3.0, next.combatValues().get("coin.limit.coal"));
+        assertEquals(8.0, next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+    }
+
+    @Test void longerBlessingsBreadAndCoalKeepOnePrice() {
+        var wallet = MonsterWallet.EMPTY.credit(300);
+        for (var entry : Map.of(ShopOffer.LONGER_BLESSING, 30, ShopOffer.BREAD, 20, ShopOffer.COAL, 20).entrySet()) {
+            var offer = entry.getKey();
+            for (int bought = 0; bought < 3; bought++) wallet = wallet.buy(RULES, MonsterRole.ZOMBIE, offer, entry.getValue());
+            assertTrue(wallet.soldOut(RULES, offer), offer + " is sold three times");
+        }
+        assertEquals(300 - 3 * (30 + 20 + 20), wallet.coins());
+        assertEquals(20, wallet.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.OAK_LOGS, 10).nextPrice(RULES, ShopOffer.OAK_LOGS),
+                "Other repeatable supplies still double");
     }
 
     private static RulesConfig rules(Map<String, Double> values) {
@@ -437,31 +465,31 @@ class MonsterCoinsTest {
     @Test void aTotemHolderIsSoldRevivalSuppliesAndNothingElse() {
         var engine = totemHolder(400);
         assertFalse(engine.committed().participants().get(human).wallet().roleChosen(), "No role is needed for supplies");
-        buy(engine, ShopOffer.BONUS_CHEST, 30);
+        buy(engine, ShopOffer.BONUS_CHEST, 35);
         buy(engine, ShopOffer.LONGER_BLESSING, 30);
-        buy(engine, ShopOffer.LONGER_BLESSING, 60);
-        buy(engine, ShopOffer.LONGER_BLESSING, 120);
+        buy(engine, ShopOffer.LONGER_BLESSING, 30);
+        buy(engine, ShopOffer.LONGER_BLESSING, 30);
         assertThrows(IllegalStateException.class, () -> engine.proposeShopPurchase(UUID.randomUUID(), round, human, 1, 0,
-                ShopOffer.LONGER_BLESSING, 240), "Five minutes is the cap");
+                ShopOffer.LONGER_BLESSING, 30), "Five minutes is the cap");
         assertThrows(IllegalStateException.class, () -> engine.proposeShopPurchase(UUID.randomUUID(), round, human, 1, 0,
-                ShopOffer.BONUS_CHEST, 60), "One bonus chest");
+                ShopOffer.BONUS_CHEST, 70), "One bonus chest");
         var sortieGoods = assertThrows(Refusal.Exception.class, () -> engine.proposeShopPurchase(UUID.randomUUID(), round, human, 1, 0,
                 ShopOffer.SWIFTNESS, 10));
         assertEquals(Refusal.REVIVAL_FIRST, sortieGoods.refusal());
-        assertEquals(400 + 6 - 30 - 30 - 60 - 120, engine.committed().participants().get(human).wallet().coins());
+        assertEquals(400 + 6 - 35 - 3 * 30, engine.committed().participants().get(human).wallet().coins());
     }
 
     @Test void aMonsterWithoutATotemIsNeverSoldRevivalSupplies() {
         var engine = engine(humanParticipant(), deployedMonster().withWallet(chosen(100)));
         accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, monster, 1, 3));
-        assertThrows(IllegalStateException.class, () -> engine.proposeShopPurchase(UUID.randomUUID(), round, monster, 1, 3, ShopOffer.BREAD, 30));
+        assertThrows(IllegalStateException.class, () -> engine.proposeShopPurchase(UUID.randomUUID(), round, monster, 1, 3, ShopOffer.BREAD, 20));
     }
 
     @Test void revivalCarriesTheSuppliesIntoTheNewLifeUntilTheyLand() {
         var engine = totemHolder(400);
-        buy(engine, ShopOffer.BREAD, 30);
-        buy(engine, ShopOffer.BREAD, 60);
-        buy(engine, ShopOffer.BONUS_CHEST, 30);
+        buy(engine, ShopOffer.BREAD, 20);
+        buy(engine, ShopOffer.BREAD, 20);
+        buy(engine, ShopOffer.BONUS_CHEST, 35);
         buy(engine, ShopOffer.LONGER_BLESSING, 30);
         accept(engine, engine.proposeAdmissionRevival(UUID.randomUUID(), round, human, 1, 0));
         var revived = engine.committed().participants().get(human);
@@ -525,10 +553,10 @@ class MonsterCoinsTest {
     }
 
     @Test void deployingNeverCarriesRevivalSupplies() {
-        var wallet = MonsterWallet.EMPTY.credit(100).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.BREAD, 30).chooseRole(RULES, MonsterRole.ZOMBIE);
+        var wallet = MonsterWallet.EMPTY.credit(100).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.BREAD, 20).chooseRole(RULES, MonsterRole.ZOMBIE);
         assertEquals(0, wallet.ordered(ShopOffer.BREAD), "A role choice never keeps goods no sortie can carry");
         assertEquals(100, wallet.coins());
-        var kept = MonsterWallet.EMPTY.credit(100).chooseRole(RULES, MonsterRole.ZOMBIE).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.BREAD, 30)
+        var kept = MonsterWallet.EMPTY.credit(100).chooseRole(RULES, MonsterRole.ZOMBIE).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.BREAD, 20)
                 .deploy(RULES, MonsterRole.ZOMBIE);
         assertEquals(0, kept.carried(ShopOffer.BREAD));
         assertEquals(1, kept.ordered(ShopOffer.BREAD));

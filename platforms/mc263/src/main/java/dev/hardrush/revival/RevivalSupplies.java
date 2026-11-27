@@ -36,22 +36,30 @@ public final class RevivalSupplies {
      * body stands in the wild (the body is still in camp here).
      */
     public static void fill(ServerPlayer player, Participant life, java.util.List<ItemStack> leftovers) {
-        var supply = life.witch().supplyOf(life.lifeSequence());
-        for (var entry : supply.entrySet()) {
-            int count = entry.getValue();
-            switch (entry.getKey()) {
-                case SHIELD -> {
-                    if (player.getItemBySlot(EquipmentSlot.OFFHAND).isEmpty()) player.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
-                    else give(player, new ItemStack(Items.SHIELD), leftovers);
-                }
-                case IRON_BUCKET -> give(player, new ItemStack(Items.BUCKET, count), leftovers);
-                case IRON_PICKAXE -> give(player, new ItemStack(Items.IRON_PICKAXE, count), leftovers);
-                case BELL -> give(player, new ItemStack(Items.BELL, count), leftovers);
-                case OAK_LOGS -> give(player, new ItemStack(Items.OAK_LOG, 5 * count), leftovers);
-                case BREAD -> give(player, new ItemStack(Items.BREAD, 8 * count), leftovers);
-                default -> {} // Landing supplies wait for the landing.
-            }
+        for (var entry : life.witch().supplyOf(life.lifeSequence()).entrySet()) {
+            var offer = entry.getKey();
+            // Landing supplies wait for the landing.
+            if (offer.landing()) continue;
+            var stack = bundle(offer);
+            stack.setCount(stack.getCount() * entry.getValue());
+            if (offer == ShopOffer.SHIELD && player.getItemBySlot(EquipmentSlot.OFFHAND).isEmpty())
+                player.setItemSlot(EquipmentSlot.OFFHAND, stack);
+            else give(player, stack, leftovers);
         }
+    }
+
+    /** What one purchase of a carried supply puts into the revived body; the witch's shelf shows the same stack. */
+    public static ItemStack bundle(ShopOffer offer) {
+        return switch (offer) {
+            case IRON_BUCKET -> new ItemStack(Items.BUCKET);
+            case OAK_LOGS -> new ItemStack(Items.OAK_LOG, 5);
+            case COAL -> new ItemStack(Items.COAL, 8);
+            case IRON_PICKAXE -> new ItemStack(Items.IRON_PICKAXE);
+            case SHIELD -> new ItemStack(Items.SHIELD);
+            case BELL -> new ItemStack(Items.BELL);
+            case BREAD -> new ItemStack(Items.BREAD, 8);
+            default -> throw new IllegalArgumentException("Not a carried revival supply: " + offer);
+        };
     }
 
     /**
@@ -102,8 +110,7 @@ public final class RevivalSupplies {
         for (var stack : chest.removeAllItems()) give(player, stack, null);
     }
 
-    /** Into the backpack; whatever does not fit falls at the player's feet. */
-    /** What does not fit joins {@code leftovers}, or drops at the body's feet when there is no list. */
+    /** Into the backpack; what does not fit joins {@code leftovers}, or drops at the body's feet when there is no list. */
     private static void give(ServerPlayer player, ItemStack stack, java.util.List<ItemStack> leftovers) {
         if (stack.isEmpty()) return;
         // A partial fit still answers true and leaves the rest in the stack.

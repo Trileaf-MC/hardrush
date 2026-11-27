@@ -152,7 +152,7 @@ public record RulesConfig(
             (double) (dev.hardrush.core.round.WitchRecord.MAX_BLESSING_MILLIS - dev.hardrush.core.round.WitchRecord.BLESSING_MILLIS)
                     / dev.hardrush.core.round.WitchRecord.BLESSING_STEP_MILLIS);
 
-    /** Monster coin economy; each offer's price doubles per purchase within one sortie. */
+    /** Monster coin economy; an offer's price doubles per purchase within one sortie unless it is flat-priced. */
     private static final Map<String, Double> COIN_DEFAULTS = Map.ofEntries(
             Map.entry("coin.starter", 6.0),
             // One creeper sortie ticket, see docs/plan/苦力怕付费解锁.md.
@@ -205,15 +205,16 @@ public record RulesConfig(
             // 32 is the highest base whose third step (128) still fits the trade's two payment slots.
             Map.entry("coin.price.soulcatcherTier", 32.0), Map.entry("coin.limit.soulcatcherTier", 3.0),
             Map.entry("coin.price.soulcatcherCapacity", 20.0), Map.entry("coin.limit.soulcatcherCapacity", 3.0),
-            // Revival supplies (docs/plan/复生补给与女巫说明.md); the doubling ladder applies to repeat purchases.
-            Map.entry("coin.price.bonusChest", 30.0), Map.entry("coin.limit.bonusChest", 1.0),
+            // Revival supplies (docs/plan/复生补给与女巫说明.md); longer blessings, bread and coal keep one price (ShopOffer.flatPrice).
+            Map.entry("coin.price.bonusChest", 35.0), Map.entry("coin.limit.bonusChest", 1.0),
             Map.entry("coin.price.longerBlessing", 30.0), Map.entry("coin.limit.longerBlessing", 3.0),
             Map.entry("coin.price.ironBucket", 15.0), Map.entry("coin.limit.ironBucket", 1.0),
             Map.entry("coin.price.oakLogs", 10.0), Map.entry("coin.limit.oakLogs", 3.0),
             Map.entry("coin.price.ironPickaxe", 35.0), Map.entry("coin.limit.ironPickaxe", 1.0),
             Map.entry("coin.price.shield", 35.0), Map.entry("coin.limit.shield", 1.0),
-            Map.entry("coin.price.bell", 45.0), Map.entry("coin.limit.bell", 1.0),
-            Map.entry("coin.price.bread", 30.0), Map.entry("coin.limit.bread", 3.0));
+            Map.entry("coin.price.bell", 15.0), Map.entry("coin.limit.bell", 1.0),
+            Map.entry("coin.price.bread", 20.0), Map.entry("coin.limit.bread", 3.0),
+            Map.entry("coin.price.coal", 20.0), Map.entry("coin.limit.coal", 3.0));
 
     /**
      * Absolute bounty (docs/plan/悬赏分档与追猎强度.md): killing a monster player scores 2, milestones dominate.
@@ -297,7 +298,11 @@ public record RulesConfig(
                     "coin.price.babyEgg", Map.entry(16.0, 20.0),
                     "coin.price.soulcatcherTier", Map.entry(30.0, 32.0)),
             // Revision 7 (docs/plan/女巫药水与药水盲盒.md): fire resistance becomes a cheap staple.
-            Map.of("coin.price.fireResistance", Map.entry(6.0, 5.0)));
+            Map.of("coin.price.fireResistance", Map.entry(6.0, 5.0)),
+            // Revision 8 (docs/plan/复生补给与女巫说明.md): a cheaper bell and bread, a slightly dearer bonus chest.
+            Map.of("coin.price.bonusChest", Map.entry(30.0, 35.0),
+                    "coin.price.bell", Map.entry(45.0, 15.0),
+                    "coin.price.bread", Map.entry(30.0, 20.0)));
     private static final int DEFAULTS_REVISION = 1 + RETUNED_DEFAULTS.size();
 
     private int defaultsRevision() {
