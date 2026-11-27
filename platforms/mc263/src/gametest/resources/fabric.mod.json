@@ -70,6 +70,7 @@
       "dev.hardrush.monster.MonsterInventoryFormGameTest",
       "dev.hardrush.monster.MonsterSeaGameTest",
       "dev.hardrush.monster.MonsterBellGameTest",
+      "dev.hardrush.monster.MonsterGaitGameTest",
       "dev.hardrush.monster.MonsterNightVisionGameTest",
       "dev.hardrush.monster.MonsterPotionsGameTest",
       "dev.hardrush.lobby.HeldItemHintsGameTest",
