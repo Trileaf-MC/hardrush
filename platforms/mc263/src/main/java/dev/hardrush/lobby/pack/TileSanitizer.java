@@ -139,7 +139,8 @@ public final class TileSanitizer {
             for (var key : LIVING_STATE) nbt.remove(key);
             var id = namespaced(nbt.getStringOr("id", ""));
             if (id.equals("minecraft:vault") || "minecraft:vault".equals(blockName)) {
-                for (var key : VAULT_STATE) cleared |= nbt.remove(key) != null;
+                // Not counted as an emptied container: every lobby has vaults, and builders put nothing in them.
+                for (var key : VAULT_STATE) nbt.remove(key);
             }
             if (cleared) clearedContainers++;
             // 26.3 signs carry an op flag that lets click events run commands and resolve selectors.

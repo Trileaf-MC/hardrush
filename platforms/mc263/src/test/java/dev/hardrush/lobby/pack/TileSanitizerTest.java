@@ -165,7 +165,8 @@ final class TileSanitizerTest {
         blocks.add(block(2, 1, 0, 3, hive));
 
         var report = TileSanitizer.sanitize(tile, SanitizeMode.DRAFT);
-        assertEquals(2, report.clearedContainers());
+        // The chest only: a vault losing its state is not an emptied container.
+        assertEquals(1, report.clearedContainers());
         var c = blocks.getCompoundOrEmpty(1).getCompoundOrEmpty("nbt");
         assertFalse(c.contains("Items") || c.contains("LootTable"));
         assertFalse(c.getCompoundOrEmpty("CustomName").contains("hover_event"));
