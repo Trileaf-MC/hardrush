@@ -155,8 +155,9 @@ public final class LobbyRuntimeGameTest {
                     f.assertFixedControlsStayOnDropPacket();
                     f.equipWorldSword();
                     f.test.assertFalse(MonsterRoles.summon(f.monster.player), "Historical summon action remains retired");
-                    // No baby egg comes with a sortie any more (docs/plan/悬赏分档与追猎强度.md §5.2); only a bought one would sit in slot 1.
-                    boolean baby = !f.monster.player.getInventory().getItem(1).isEmpty();
+                    // No baby egg comes with a sortie any more (docs/plan/悬赏分档与追猎强度.md §5.2); only a bought one would sit in
+                    // slot 1. Ask the item itself: when native spawn gear fills an earlier slot, the world sword lands in slot 1.
+                    boolean baby = dev.hardrush.monster.MonsterItems.matches(f.monster.player, f.monster.player.getInventory().getItem(1), "baby_egg");
                     if (baby) f.spawnEgg(1, 2);
                     f.spawnEgg(2, -2);
                     f.test.assertValueEqual(f.summons(), baby ? 2 : 1, "The formal outing owns one companion per egg it hatched");
@@ -228,6 +229,9 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertValueEqual(f.monster.participant().monsterCooldownNanos(), 0L, "A deliberate return pauses the sortie without a deploy wait");
                     f.test.assertTrue(f.monster.participant().wallet().hasParkedBody(), "The paused sortie parks its body in the round record");
                     f.test.assertTrue(f.monster.player.getHealth() < f.monster.player.getMaxHealth(), "The camp body keeps the wounds it returned with");
+                    // The resumed body lands 8-24 blocks from the human, often right beside this loot, and would natively
+                    // pick it up again while the deployment settles. Pinned, it stays on the floor until the cycles clear it.
+                    f.pinWorldGear();
                     f.monster.hunt(f.target.profile.id());
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(2), "The paused sortie resumes at once"))
@@ -254,10 +258,9 @@ public final class LobbyRuntimeGameTest {
                             "The world loot stayed behind, so the topped-up trident takes the empty hand");
                     f.test.assertTrue(inventory.getItem(7).is(Items.ECHO_SHARD) && dev.hardrush.monster.MonsterItems.owned(f.monster.player, inventory.getItem(7)),
                             "Parked bound items are rebound to the resumed deployment");
-                    f.test.assertValueEqual(f.worldSwords(), 1, "The world sword stayed where the monster returned and is not parked");
-                    // The ticking monster body would pick the sword up again the next time it stands beside it.
-                    f.discardWorldSwords();
-                    for (var loot : f.level.getEntitiesOfClass(ItemEntity.class, f.worldGearDrops, item -> item.getItem().is(Items.COBBLESTONE))) loot.discard();
+                    boolean carried = java.util.stream.IntStream.range(0, inventory.getContainerSize()).anyMatch(i -> inventory.getItem(i).is(Items.DIAMOND_SWORD));
+                    f.test.assertFalse(carried, "The world sword is not parked with the body");
+                    f.test.assertValueEqual(f.worldSwords(), 1, "The world sword stayed where the monster returned");
                     f.test.assertTrue(f.monster.player.getHealth() < f.monster.player.getMaxHealth(), "The resumed body keeps the camp body's health");
                     f.monster.useReturn();
                     f.ageReturnChannel();
@@ -341,6 +344,9 @@ public final class LobbyRuntimeGameTest {
                     f.test.assertTrue(f.monster.participant().monsterCooldownNanos() > 0, "Outside reconnect retains its deploy wait");
                     f.assertSkillCooldowns();
                     f.assertStored();
+                    // The cycles below start on a clean floor: a hunter's body natively picks up loot it lands on, the
+                    // defeat's signed book say, and drops it beside its prey when the kill recalls it.
+                    f.clearArenaLoot();
                 });
         // What each prey carried when a monster player killed it: its next human life gets exactly that back, with its
         // experience, and no 遗落之地 compass, since nothing lies where it fell (docs/plan/悬赏分档与追猎强度.md §1).
@@ -802,6 +808,13 @@ public final class LobbyRuntimeGameTest {
                 humanDropEntities.addAll(level.getEntitiesOfClass(ItemEntity.class, humanDrops).stream()
                         .filter(item -> item.getItem().is(Items.DIAMOND)).toList());
                 test.assertValueEqual(diamonds(), 3, "Native human death drops the original inventory exactly once");
+                // Sorties land 8-24 blocks from the human, which can be right on this loot: a monster body would natively
+                // pick it up. The checks below count it on the floor, so it stays there.
+                level.getEntitiesOfClass(ItemEntity.class, humanDrops).forEach(ItemEntity::setNeverPickUp);
+                // The floor revival totem this life released would pay a hunting monster that touches it a revival
+                // charge, outside native pickup. This suite counts charges exactly; floor totems have their own tests.
+                level.getEntitiesOfClass(ItemEntity.class, humanDrops, item -> dev.hardrush.revival.RevivalTotems.is(item.getItem()))
+                        .forEach(ItemEntity::discard);
             }
             dead.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
             test.assertTrue(monster.current() == dead && dead.connection.player == dead && dead.isDeadOrDying(), "Early native respawn cannot bypass SQLite identity commit");
@@ -991,9 +1004,14 @@ public final class LobbyRuntimeGameTest {
             test.assertTrue(dev.hardrush.monster.MonsterCompanions.useOn(monster.player,net.minecraft.world.InteractionHand.MAIN_HAND,hit), "Bound egg spawns at a safe block");
             test.assertValueEqual(monster.player.getInventory().getItem(slot).getCount(), before - 1, "Successful egg use consumes exactly one charge");
         }
-        void restoreSummonRing() { }
-        void discardWorldSwords() {
-            level.getEntitiesOfClass(ItemEntity.class, worldGearDrops, item -> item.getItem().is(Items.DIAMOND_SWORD)).forEach(ItemEntity::discard);
+        /** Every loose item left in the arena: the cycles must not inherit what earlier steps dropped. */
+        void clearArenaLoot() {
+            level.getEntitiesOfClass(ItemEntity.class, new AABB(BlockPos.containing(anchor)).inflate(150)).forEach(ItemEntity::discard);
+            humanDropEntities.clear();
+        }
+        /** World loot the monster left behind stays on the floor: no body picks it up again. */
+        void pinWorldGear() {
+            level.getEntitiesOfClass(ItemEntity.class, worldGearDrops).forEach(ItemEntity::setNeverPickUp);
         }
         int worldSwords() {
             return level.getEntitiesOfClass(ItemEntity.class, worldGearDrops).stream().map(ItemEntity::getItem)
