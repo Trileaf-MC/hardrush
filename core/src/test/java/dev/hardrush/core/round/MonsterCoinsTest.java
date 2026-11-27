@@ -130,8 +130,8 @@ class MonsterCoinsTest {
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.BABY_EGG, 20)
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3)
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3)
-                .openVault(ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.HEAD, Set.of(MonsterRole.ZOMBIE, MonsterRole.SKELETON), "helmet")
-                .openVault(ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.MAINHAND, Set.of(MonsterRole.SKELETON), "bow");
+                .openVault(RULES, ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.HEAD, Set.of(MonsterRole.ZOMBIE, MonsterRole.SKELETON), "helmet")
+                .openVault(RULES, ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.MAINHAND, Set.of(MonsterRole.SKELETON), "bow");
         assertEquals(200 - 20 - 3 - 3, wallet.coins());
         wallet = wallet.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.OMINOUS_KEY, 8)
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.OMINOUS_KEY, 8);
@@ -140,7 +140,7 @@ class MonsterCoinsTest {
         assertEquals(1, deployed.carried(ShopOffer.BABY_EGG));
         assertEquals(List.of("helmet"), deployed.activeGear().stream().map(MonsterWallet.GearPiece::item).toList());
         assertEquals(List.of("bow"), deployed.gear().stream().map(MonsterWallet.GearPiece::item).toList());
-        var cancelled = deployed.cancelDeploy();
+        var cancelled = deployed.cancelDeploy(RULES);
         assertEquals(1, cancelled.ordered(ShopOffer.BABY_EGG));
         assertEquals(List.of("helmet", "bow"), cancelled.gear().stream().map(MonsterWallet.GearPiece::item).toList());
         var ended = deployed.endSortie();
@@ -277,13 +277,15 @@ class MonsterCoinsTest {
 
     @Test void snapshotsRoundTripTheWallet() {
         var wallet = chosen(80).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.TRIAL_KEY, 3)
-                .openVault(ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.CHEST, Set.of(MonsterRole.ZOMBIE), "{id:\"chest\"}")
+                .openVault(RULES, ShopOffer.TRIAL_KEY, MonsterWallet.GearSlot.CHEST, Set.of(MonsterRole.ZOMBIE), "{id:\"chest\"}")
                 .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 8)
                 .creditDamage(human, 1_234, 1500, 20_000);
         var player = deployedMonster().withWallet(wallet.deploy(RULES, MonsterRole.ZOMBIE));
         var snapshot = new RoundSnapshot(round, 1, 2, 3, RULES, RoundPhase.RUNNING, PauseReason.NONE, 0, 0,
                 Map.of(monster, player), false, false, null);
         assertEquals(snapshot, RoundSnapshotCodec.decode(RoundSnapshotCodec.encode(snapshot)));
+        assertEquals(11_000, player.wallet().sortieInvestment(), "the key's price on the chest plus the egg");
+        assertEquals(3, player.wallet().activeGear().getFirst().paid());
     }
 
     @Test void pricesMustFitTwoEmeraldStacksAfterDoubling() {

@@ -61,7 +61,7 @@ class RoundSnapshotCodecMigrationTest {
         assertEquals(3, active.lifeSequence());
         assertTrue(active.monsterSkillReadyAtMillis().isEmpty());
         byte[] upgraded = RoundSnapshotCodec.encode(migrated);
-        assertEquals(18, ByteBuffer.wrap(upgraded).getInt(4));
+        assertEquals(19, ByteBuffer.wrap(upgraded).getInt(4));
         assertEquals(migrated, RoundSnapshotCodec.decode(upgraded));
     }
 
@@ -170,11 +170,75 @@ class RoundSnapshotCodecMigrationTest {
 
         var paid = withTotems(Map.of(), wallet.credit(40).unlockCreeper(40));
         byte[] encoded = RoundSnapshotCodec.encode(paid);
-        assertEquals(18, ByteBuffer.wrap(encoded).getInt(4));
+        assertEquals(19, ByteBuffer.wrap(encoded).getInt(4));
         var decoded = RoundSnapshotCodec.decode(encoded);
         assertEquals(paid, decoded);
         assertTrue(decoded.participants().get(VICTIM).wallet().creeperTicket());
     }
+
+    @Test void schemaEighteenReadsNoInvestmentAndNineteenKeepsIt() {
+        var piece = new MonsterWallet.GearPiece(0, MonsterWallet.GearSlot.HEAD, java.util.Set.of(MonsterRole.ZOMBIE), "helmet", 3);
+        var wallet = new MonsterWallet(15, true, Map.of(), Map.of(), Map.of(), List.of(piece), List.of(), 1, Map.of(),
+                "parked-body", false, Map.of(), 12_345);
+        byte[] v19 = RoundSnapshotCodec.encode(withTotems(Map.of(), wallet));
+        assertEquals(19, ByteBuffer.wrap(v19).getInt(4));
+        var decoded = RoundSnapshotCodec.decode(v19).participants().get(VICTIM).wallet();
+        assertEquals(wallet, decoded);
+        assertEquals(12_345, decoded.sortieInvestment());
+        assertEquals(3, decoded.gear().getFirst().paid());
+
+        var migrated = RoundSnapshotCodec.decode(asSchemaEighteen(v19)).participants().get(VICTIM).wallet();
+        assertEquals(0, migrated.sortieInvestment());
+        assertEquals(0, migrated.gear().getFirst().paid());
+        assertEquals(new MonsterWallet(15, true, Map.of(), Map.of(), Map.of(),
+                List.of(new MonsterWallet.GearPiece(0, MonsterWallet.GearSlot.HEAD, java.util.Set.of(MonsterRole.ZOMBIE), "helmet")),
+                List.of(), 1, Map.of(), "parked-body", false, Map.of()), migrated);
+    }
+
+    /** The current encoding rewritten in the schema-18 layout: no key price after each gear item, no sortie investment. */
+    private static byte[] asSchemaEighteen(byte[] v19) {
+        var in = ByteBuffer.wrap(v19);
+        var out = new ByteArrayOutputStream();
+        copy(in, out, 4 + 4 + 16 + 8 + 8 + 8);
+        for (int i = 0; i < 3; i++) copyText(in, out); // Rules, phase, pause reason.
+        copy(in, out, 8 + 8 + 1 + 1);
+        for (int participants = copyInt(in, out); participants > 0; participants--) {
+            copy(in, out, 16); copyText(in, out); copyText(in, out);
+            copy(in, out, 1 + 1 + 8 + 8 + 4 + 4);
+            copyText(in, out); copyText(in, out);
+            copy(in, out, 8 + 4);
+            for (int skills = copyInt(in, out); skills > 0; skills--) { copyText(in, out); copy(in, out, 8); }
+            copy(in, out, 4 + 1 + 4);
+            for (int map = 0; map < 3; map++) for (int n = copyInt(in, out); n > 0; n--) { copyText(in, out); copy(in, out, 4); }
+            for (int list = 0; list < 2; list++) for (int n = copyInt(in, out); n > 0; n--) {
+                copy(in, out, 4); copyText(in, out); copy(in, out, 4); copyText(in, out);
+                in.getInt(); // The key's price.
+            }
+            for (int n = copyInt(in, out); n > 0; n--) copy(in, out, 16 + 8 + 8 + 4);
+            copyText(in, out); copy(in, out, 1);
+            for (int n = copyInt(in, out); n > 0; n--) { copyText(in, out); copy(in, out, 4); }
+            in.getLong(); // The sortie investment.
+            copy(in, out, 8);
+        }
+        copy(in, out, in.remaining());
+        byte[] v18 = out.toByteArray();
+        ByteBuffer.wrap(v18).putInt(4, 18);
+        return v18;
+    }
+
+    private static void copy(ByteBuffer in, ByteArrayOutputStream out, int length) {
+        byte[] bytes = new byte[length];
+        in.get(bytes);
+        out.writeBytes(bytes);
+    }
+
+    private static int copyInt(ByteBuffer in, ByteArrayOutputStream out) {
+        int value = in.getInt(in.position());
+        copy(in, out, 4);
+        return value;
+    }
+
+    private static void copyText(ByteBuffer in, ByteArrayOutputStream out) { copy(in, out, copyInt(in, out)); }
 
     /** The schema-16 layout for these fixtures: simple wallets, optional loose totems, and empty trailing tables. */
     private static byte[] schemaSixteenFixture(RoundSnapshot snapshot) throws Exception {
@@ -258,11 +322,13 @@ class RoundSnapshotCodecMigrationTest {
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
         assertEquals(snapshot, RoundSnapshotCodec.decode(bytes));
         assertEquals(new Sortie(java.util.Optional.of(KILLER), 3, true), RoundSnapshotCodec.decode(bytes).participants().get(VICTIM).sortie());
+        byte[] v18 = asSchemaEighteen(bytes);
+        assertEquals(snapshot, RoundSnapshotCodec.decode(v18));
         // Schema 17 wrote no landing flag: an outing out on its quarry then reads as landed.
-        int landingAt = bytes.length - ADMIN_TAIL - 1;
-        byte[] v17 = new byte[bytes.length - 1];
-        System.arraycopy(bytes, 0, v17, 0, landingAt);
-        System.arraycopy(bytes, landingAt + 1, v17, landingAt, bytes.length - landingAt - 1);
+        int landingAt = v18.length - ADMIN_TAIL - 1;
+        byte[] v17 = new byte[v18.length - 1];
+        System.arraycopy(v18, 0, v17, 0, landingAt);
+        System.arraycopy(v18, landingAt + 1, v17, landingAt, v18.length - landingAt - 1);
         ByteBuffer.wrap(v17).putInt(4, 17);
         assertEquals(new Sortie(java.util.Optional.of(KILLER), 3), RoundSnapshotCodec.decode(v17).participants().get(VICTIM).sortie());
         // Name the human as the hunter instead: a human is never out on a hunt.
@@ -330,7 +396,7 @@ class RoundSnapshotCodecMigrationTest {
         totems.put(unclaimed, new LooseTotem(VICTIM, 3, LooseTotem.Source.UNCLAIMED, java.util.Optional.empty(), 900_000));
         var snapshot = withTotems(totems);
         byte[] bytes = RoundSnapshotCodec.encode(snapshot);
-        assertEquals(18, ByteBuffer.wrap(bytes).getInt(4));
+        assertEquals(19, ByteBuffer.wrap(bytes).getInt(4));
         var decoded = RoundSnapshotCodec.decode(bytes);
         assertEquals(snapshot, decoded);
         assertEquals(List.of(low, high, unclaimed), List.copyOf(decoded.looseTotems().keySet()), "Encoded sorted by token");
@@ -357,7 +423,7 @@ class RoundSnapshotCodecMigrationTest {
         var migrated = RoundSnapshotCodec.decode(v9);
         assertTrue(migrated.looseTotems().isEmpty());
         assertEquals(withTotems(Map.of()), migrated);
-        assertEquals(18, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
+        assertEquals(19, ByteBuffer.wrap(RoundSnapshotCodec.encode(migrated)).getInt(4));
         assertTrue(RoundSnapshotCodec.decode(schemaOneFixtureUnchecked()).looseTotems().isEmpty());
     }
 

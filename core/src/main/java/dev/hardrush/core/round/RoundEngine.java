@@ -702,7 +702,7 @@ public final class RoundEngine {
                 ParticipantRole.MONSTER_DEPLOYED);
         // A personal hunt the platform already put down has been used; only its ordinary ends settle it.
         if (player.quarry().isPresent() && !player.sortie().landing()) throw new IllegalStateException("出击已经落地，不能取消。");
-        return monsterProposal(eventId, "MONSTER_DEPLOY_CANCELLED", before, neverLanded(player));
+        return monsterProposal(eventId, "MONSTER_DEPLOY_CANCELLED", before, neverLanded(before.rules(), player));
     }
 
     /**
@@ -891,7 +891,7 @@ public final class RoundEngine {
         Participant player = requireCampMonster(before, roundId, playerId, expectedLifeSequence, expectedDeploymentSequence);
         if (!key.sellableTo(player.monsterRole())) throw new IllegalStateException("当前角色不能使用宝库。");
         return monsterProposal(eventId, "VAULT_OPEN_" + key.name(), before,
-                player.withWallet(player.wallet().openVault(key, slot, roles, item)));
+                player.withWallet(player.wallet().openVault(before.rules(), key, slot, roles, item)));
     }
 
     private static Participant requireCampMonster(RoundSnapshot before, UUID roundId, UUID playerId,
@@ -936,7 +936,7 @@ public final class RoundEngine {
      * sortie that never {@linkplain Sortie#landing landed} is cancelled instead, whatever ended it.
      */
     private static Participant endSortie(RulesConfig rules, Participant player, long cooldown, boolean spendTicket) {
-        if (player.role() == ParticipantRole.MONSTER_DEPLOYED && player.sortie().landing()) return neverLanded(player);
+        if (player.role() == ParticipantRole.MONSTER_DEPLOYED && player.sortie().landing()) return neverLanded(rules, player);
         var lobby = player.monsterLobby(cooldown);
         if (player.role() != ParticipantRole.MONSTER_DEPLOYED) return lobby;
         // A sortie not used up (a disconnect) hands its paid creeper state back to the camp.
@@ -946,8 +946,8 @@ public final class RoundEngine {
     }
 
     /** An outing that never opened: everything it froze, the creeper's ticket included, returns with no wait. */
-    private static Participant neverLanded(Participant player) {
-        return player.monsterLobby(0).withWallet(player.wallet().cancelDeploy());
+    private static Participant neverLanded(RulesConfig rules, Participant player) {
+        return player.monsterLobby(0).withWallet(player.wallet().cancelDeploy(rules));
     }
 
     private static Participant unlockCreeper(RoundSnapshot before, Participant player, MonsterRole role) {

@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 18;
+    private static final int SCHEMA = 19;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -346,6 +346,7 @@ public final class RoundSnapshotCodec {
                 int roles = 0;
                 for (var role : piece.roles()) roles |= 1 << role.ordinal();
                 out.writeInt(roles); writeText(out, piece.item());
+                out.writeInt(piece.paid());
             }
         }
         out.writeInt(wallet.sortieDamage().size());
@@ -361,6 +362,7 @@ public final class RoundSnapshotCodec {
             Integer count = wallet.parkedGoods().get(offer);
             if (count != null) { writeText(out, offer.id()); out.writeInt(count); }
         }
+        out.writeLong(wallet.sortieInvestment());
     }
 
     private static MonsterWallet readWallet(DataInputStream in, int schema) throws IOException {
@@ -390,7 +392,10 @@ public final class RoundSnapshotCodec {
                 int mask = in.readInt();
                 var roles = java.util.EnumSet.noneOf(MonsterRole.class);
                 for (var role : MonsterRole.values()) if ((mask & 1 << role.ordinal()) != 0) roles.add(role);
-                pieces.add(new MonsterWallet.GearPiece(pieceSerial, slot, roles, readText(in, MonsterWallet.MAX_GEAR_TEXT * 4)));
+                String item = readText(in, MonsterWallet.MAX_GEAR_TEXT * 4);
+                // Keys' prices are first recorded on the gear they open in schema 19.
+                int paid = schema >= 19 ? in.readInt() : 0;
+                pieces.add(new MonsterWallet.GearPiece(pieceSerial, slot, roles, item, paid));
             }
             gear.add(pieces);
         }
@@ -417,8 +422,10 @@ public final class RoundSnapshotCodec {
                 if (parkedGoods.put(ShopOffer.fromId(id), value) != null) throw new IOException("Duplicate parked goods");
             }
         }
+        // Sortie investment (kill spoils) first appears in schema 19.
+        long investment = schema >= 19 ? in.readLong() : 0;
         return new MonsterWallet(coins, chosen, counts.get(0), counts.get(1), counts.get(2),
-                gear.get(0), gear.get(1), serial, damage, parked, creeperTicket, parkedGoods);
+                gear.get(0), gear.get(1), serial, damage, parked, creeperTicket, parkedGoods, investment);
     }
 
     private static void writeUuid(DataOutputStream out, UUID id) throws IOException {

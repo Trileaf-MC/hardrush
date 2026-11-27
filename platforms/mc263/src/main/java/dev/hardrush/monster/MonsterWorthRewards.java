@@ -1,5 +1,6 @@
 package dev.hardrush.monster;
 
+import dev.hardrush.core.round.MonsterSpoils;
 import dev.hardrush.core.round.MonsterWorth;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -19,16 +20,19 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * A monster slain with a player's recent help sprays experience for its worth like the dragon's
- * death, and a worthy one leaves an enchanted book naming whose body it came from. While deployed,
- * the monster's own experience bar shows the worth's level, which is the book's enchanting level.
+ * A monster slain with a player's recent help drops its native form's loot, sprays experience for its worth like the
+ * dragon's death, and leaves what {@link MonsterSpoils} rolls for that worth: a book naming whose body it came from,
+ * iron and brewing materials. This class only turns the rolled spoils into the world; the amounts are core's. While
+ * deployed, the monster's own experience bar shows the worth's level, which is the book's enchanting level.
  * All callbacks run on the server thread.
  */
 public final class MonsterWorthRewards {
@@ -44,18 +48,55 @@ public final class MonsterWorthRewards {
 
     private MonsterWorthRewards() {}
 
-    /** Called from the cancelled native death loot, while the body is still this sortie's. */
-    public static void slain(ServerPlayer player) {
+    /**
+     * Called from the cancelled native death loot, while the body is still this sortie's. A death no other player took
+     * part in, or a creeper's own blast, leaves nothing; the native loot drops whether or not the round has worth.
+     */
+    public static void slain(ServerPlayer player, DamageSource source) {
+        // A creeper spent in its own blast leaves nothing, like a native creeper that explodes. MonsterCreeper.explode
+        // marks the body detonating before its fatal hurtServer, so the flag holds while this death loot runs; litBy is
+        // put only around a fuse a human lit (explode's forced path and disconnected), and such a death still pays.
+        if (MonsterCreeper.detonating(player) && MonsterCreeper.litBy(player).isEmpty()) return;
         if (!MonsterRoles.recentlyHurtByOtherPlayer(player)) return;
+        MonsterNativeLoot.drop(player, source);
         var worth = MonsterRoundRuntime.worth(player);
         var rules = MonsterRoundRuntime.rules(player);
         if (worth.isEmpty() || rules.isEmpty() || !(player.level() instanceof ServerLevel level)) return;
-        int milliLevels = worth.getAsInt();
+        leave(level, player, MonsterSpoils.roll(rules.get(), worth.getAsInt(), bound -> player.getRandom().nextInt(bound)));
+    }
+
+    /**
+     * Turns rolled spoils into the world at the body: the experience fountain, the signed book, iron and each brewing
+     * material as one stack. Public only so GameTests can check the items a known roll leaves.
+     */
+    public static void leave(ServerLevel level, ServerPlayer player, MonsterSpoils.Spoils spoils) {
         var server = level.getServer();
-        FOUNTAINS.computeIfAbsent(server, ignored -> new ArrayList<>()).add(new Fountain(level, player.position(),
-                waves(MonsterWorth.experience(rules.get(), milliLevels)), server.getTickCount()));
-        int cost = MonsterWorth.bookLevel(rules.get(), milliLevels);
-        if (cost > 0) player.spawnAtLocation(level, signedBook(level, player.getScoreboardName(), player.getRandom(), cost));
+        if (spoils.experience() > 0) FOUNTAINS.computeIfAbsent(server, ignored -> new ArrayList<>()).add(new Fountain(level,
+                player.position(), waves(spoils.experience()), server.getTickCount()));
+        if (spoils.bookLevel() > 0) {
+            player.spawnAtLocation(level, signedBook(level, player.getScoreboardName(), player.getRandom(), spoils.bookLevel()));
+        }
+        if (spoils.ironIngots() > 0) player.spawnAtLocation(level, new ItemStack(Items.IRON_INGOT, spoils.ironIngots()));
+        spoils.brewing().forEach((material, count) -> player.spawnAtLocation(level, new ItemStack(item(material), count)));
+    }
+
+    /** The native item of each brewing material; a switch so a new material cannot be forgotten here. */
+    public static Item item(MonsterSpoils.Material material) {
+        return switch (material) {
+            case NETHER_WART -> Items.NETHER_WART;
+            case GLASS_BOTTLE -> Items.GLASS_BOTTLE;
+            case MAGMA_CREAM -> Items.MAGMA_CREAM;
+            case GLISTERING_MELON_SLICE -> Items.GLISTERING_MELON_SLICE;
+            case GOLDEN_CARROT -> Items.GOLDEN_CARROT;
+            case RABBIT_FOOT -> Items.RABBIT_FOOT;
+            case PUFFERFISH -> Items.PUFFERFISH;
+            case FERMENTED_SPIDER_EYE -> Items.FERMENTED_SPIDER_EYE;
+            case GHAST_TEAR -> Items.GHAST_TEAR;
+            case PHANTOM_MEMBRANE -> Items.PHANTOM_MEMBRANE;
+            case BREEZE_ROD -> Items.BREEZE_ROD;
+            case GLOWSTONE_DUST -> Items.GLOWSTONE_DUST;
+            case REDSTONE -> Items.REDSTONE;
+        };
     }
 
     /** Equal waves share four fifths of the experience; the last wave takes the rest. */
@@ -121,7 +162,7 @@ public final class MonsterWorthRewards {
         float progress = MonsterWorth.progress(milliLevels);
         if (player.experienceLevel == level && player.experienceProgress == progress) return;
         int before = player.experienceLevel;
-        player.totalExperience = MonsterWorth.experience(rules.get(), milliLevels);
+        player.totalExperience = MonsterSpoils.experience(rules.get(), milliLevels);
         player.experienceLevel = level;
         player.experienceProgress = progress;
         // ServerPlayer.doTick only resends the bar when the total changes; the fill can move alone.

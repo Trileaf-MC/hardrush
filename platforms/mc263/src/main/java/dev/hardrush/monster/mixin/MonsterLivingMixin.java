@@ -60,7 +60,7 @@ public abstract class MonsterLivingMixin {
         var entity=(LivingEntity)(Object)this;
         if (MonsterRoles.isMonster(entity)) {
             MonsterRoles.dropRoleEquipment((ServerPlayer)entity,source);
-            dev.hardrush.monster.MonsterWorthRewards.slain((ServerPlayer)entity);
+            dev.hardrush.monster.MonsterWorthRewards.slain((ServerPlayer)entity,source);
             callback.cancel();
         } else if (dev.hardrush.monster.MonsterCompanions.isDismissing(entity)) callback.cancel();
     }

@@ -390,8 +390,9 @@ public final class LobbyRuntimeGameTest {
                                 + ", sourceRejected=" + dev.hardrush.combat.MonsterCombatRuntime.reject(MonsterRoles.nativeModel(hunter.player), prey.player)
                                 + ", actor=" + MonsterRoles.status(hunter.player));
                         f.test.assertTrue(prey.player.isDeadOrDying(), "Actual native attack creates the lethal event");
-                        f.test.assertTrue(prey.player.level().getEntitiesOfClass(ItemEntity.class, prey.player.getBoundingBox().inflate(4)).isEmpty(),
-                                "A human a monster player killed spills nothing");
+                        var spilled = prey.player.level().getEntitiesOfClass(ItemEntity.class, prey.player.getBoundingBox().inflate(4));
+                        f.test.assertTrue(spilled.isEmpty(), "A human a monster player killed spills nothing: "
+                                + spilled.stream().map(item -> item.getItem().toString()).toList());
                     })
                     .thenWaitUntil(() -> f.await(f.round().phase() == RoundPhase.RESCUE && hunter.participant().revivalEntitled()
                             && prey.current() != null && prey.current().isAlive() && prey.current().level() == LobbyWorld.open(f.server).holdingLevel()
@@ -783,7 +784,7 @@ public final class LobbyRuntimeGameTest {
                 test.assertTrue(worthBeforeDefeat >= 10_000, "A deployed body is worth at least the base level");
                 test.assertValueEqual(dead.experienceLevel, dev.hardrush.core.round.MonsterWorth.level(worthBeforeDefeat),
                         "The monster's experience bar shows its worth's level");
-                test.assertValueEqual(dead.totalExperience, dev.hardrush.core.round.MonsterWorth.experience(round().rules(), worthBeforeDefeat),
+                test.assertValueEqual(dead.totalExperience, dev.hardrush.core.round.MonsterSpoils.experience(round().rules(), worthBeforeDefeat),
                         "The bar's total is the experience the body would spray");
                 dead.setInvulnerableTime(0);
                 dead.damageCooldownTime = 0;
@@ -805,7 +806,7 @@ public final class LobbyRuntimeGameTest {
             dead.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
             test.assertTrue(monster.current() == dead && dead.connection.player == dead && dead.isDeadOrDying(), "Early native respawn cannot bypass SQLite identity commit");
         }
-        /** The fall death after a human's hit sprays the worth; only a worth of level 15 adds the signed book. */
+        /** The fall death after a human's hit sprays the worth and its iron; only a worth of level 15 adds the signed book. */
         void assertWorthReward() {
             var around = new AABB(defeatPosition, defeatPosition).inflate(8);
             test.assertFalse(level.getEntitiesOfClass(net.minecraft.world.entity.ExperienceOrb.class, around).isEmpty(),
@@ -813,8 +814,31 @@ public final class LobbyRuntimeGameTest {
             long books = level.getEntitiesOfClass(ItemEntity.class, around).stream()
                     .filter(item -> item.getItem().is(Items.ENCHANTED_BOOK)
                             && item.getItem().getHoverName().getString().equals("从 LobbyMonster 身上找到的书")).count();
-            boolean worthy = dev.hardrush.core.round.MonsterWorth.bookLevel(round().rules(), worthBeforeDefeat) > 0;
+            boolean worthy = dev.hardrush.core.round.MonsterSpoils.bookLevel(round().rules(), worthBeforeDefeat) > 0;
             test.assertValueEqual(books, worthy ? 1L : 0L, "Exactly one signed book drops, and only from a worthy body");
+            // Iron does not depend on the random draws; one more may come from the zombie's native 2.5% rare drop.
+            int iron = dev.hardrush.core.round.MonsterSpoils.roll(round().rules(), worthBeforeDefeat, bound -> 0).ironIngots();
+            int ingots = count(around, Items.IRON_INGOT);
+            test.assertTrue(iron > 0 && ingots >= iron && ingots <= iron + 1,
+                    "The body drops a worth's iron, plus at most the native rare ingot: " + ingots + " for " + iron);
+            // The zombie's native loot never yields these, so the brewing base counts exactly.
+            int worthLevel = dev.hardrush.core.round.MonsterWorth.level(worthBeforeDefeat);
+            int bases = (worthLevel >= 12 ? 1 : 0) + (worthLevel >= 30 ? 1 : 0);
+            test.assertValueEqual(count(around, Items.NETHER_WART), bases, "A nether wart per brewing base the worth reached");
+            test.assertValueEqual(count(around, Items.GLASS_BOTTLE), 3 * bases, "Three glass bottles per brewing base");
+            // The body's spoils would otherwise lie where later cycles kill humans and expect nothing on the ground.
+            // Only what a zombie body can leave: its native loot, the book, iron and brewing materials; the test's own
+            // world items (such as the sword a return leaves behind) stay.
+            var spoilKinds = new java.util.HashSet<Item>(List.of(Items.ROTTEN_FLESH, Items.CARROT, Items.POTATO, Items.BAKED_POTATO,
+                    Items.ENCHANTED_BOOK, Items.IRON_INGOT));
+            for (var material : dev.hardrush.core.round.MonsterSpoils.Material.values())
+                spoilKinds.add(dev.hardrush.monster.MonsterWorthRewards.item(material));
+            level.getEntitiesOfClass(ItemEntity.class, around, item -> spoilKinds.contains(item.getItem().getItem())
+                    && !humanDropEntities.contains(item)).forEach(ItemEntity::discard);
+        }
+        private int count(AABB area, Item kind) {
+            return level.getEntitiesOfClass(ItemEntity.class, area).stream()
+                    .filter(item -> item.getItem().is(kind)).mapToInt(item -> item.getItem().getCount()).sum();
         }
         boolean monsterReady(boolean replacementRequired) {
             var current = monster.current();

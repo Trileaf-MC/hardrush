@@ -40,18 +40,71 @@ class MonsterWorthTest {
         assertEquals(0, MonsterWorth.progress(30_000));
     }
 
-    @Test void theBodySpraysTenExperiencePerWholeLevel() {
-        assertEquals(100, MonsterWorth.experience(RULES, 10_000));
-        assertEquals(100, MonsterWorth.experience(RULES, 10_999));
-        assertEquals(300, MonsterWorth.experience(RULES, 30_000));
+    @Test void investmentAddsALevelPerFiveCoinsBesideBaseAndDamageUnderTheCap() {
+        assertEquals(15_000, MonsterWorth.milliLevels(RULES, invested(25_000)));
+        // Below a whole level the investment fills the bar: 3 coins are three fifths of a level.
+        assertEquals(10_600, MonsterWorth.milliLevels(RULES, invested(3_000)));
+        assertEquals(10_001, MonsterWorth.milliLevels(RULES, invested(5)));
+        var both = invested(25_000).creditDamage(human, 6_000, 1000, 20_000);
+        assertEquals(21_000, MonsterWorth.milliLevels(RULES, both));
+        // Base, investment and damage together still stop at level 30.
+        assertEquals(30_000, MonsterWorth.milliLevels(RULES, invested(80_000).creditDamage(human, 10_000, 1000, 20_000)));
+        assertEquals(30_000, MonsterWorth.milliLevels(RULES, invested(Long.MAX_VALUE / 2)));
     }
 
-    @Test void fromLevelFifteenTheBookIsEnchantedAtTheBarLevel() {
-        assertEquals(0, MonsterWorth.bookLevel(RULES, 10_000));
-        assertEquals(0, MonsterWorth.bookLevel(RULES, 14_999));
-        assertEquals(15, MonsterWorth.bookLevel(RULES, 15_000));
-        assertEquals(22, MonsterWorth.bookLevel(RULES, 22_500));
-        assertEquals(30, MonsterWorth.bookLevel(RULES, 30_000));
+    @Test void roundsSavedBeforeSpoilsCountNoInvestment() {
+        assertTrue(MonsterWorth.spoilsEnabled(RULES));
+        assertFalse(MonsterWorth.spoilsEnabled(RULES.withMode(GameMode.NORMAL)));
+        var legacy = withoutSpoils();
+        assertTrue(MonsterWorth.enabled(legacy));
+        assertFalse(MonsterWorth.spoilsEnabled(legacy));
+        assertEquals(10_000, MonsterWorth.milliLevels(legacy, invested(25_000)));
+        var spoils = MonsterSpoils.roll(legacy, 30_000, bound -> 0);
+        assertEquals(0, spoils.ironIngots());
+        assertTrue(spoils.brewing().isEmpty());
+        assertEquals(300, spoils.experience());
+        assertEquals(30, spoils.bookLevel());
+    }
+
+    @Test void spoilsRulesComeAllOrNoneAndInRange() {
+        for (var key : List.of(MonsterWorth.COINS_PER_LEVEL, MonsterWorth.PERMANENT_PERMILLE, MonsterWorth.LEVELS_PER_IRON)) {
+            var partial = new TreeMap<>(RULES.combatValues());
+            partial.remove(key);
+            assertThrows(IllegalArgumentException.class, () -> rules(partial), key);
+        }
+        for (var bad : List.of(Map.entry(MonsterWorth.COINS_PER_LEVEL, 0.0), Map.entry(MonsterWorth.LEVELS_PER_IRON, 0.0),
+                Map.entry(MonsterWorth.PERMANENT_PERMILLE, 1001.0), Map.entry(MonsterWorth.COINS_PER_LEVEL, 2.5))) {
+            var values = new TreeMap<>(RULES.combatValues());
+            values.put(bad.getKey(), bad.getValue());
+            assertThrows(IllegalArgumentException.class, () -> rules(values), bad.toString());
+        }
+        var free = new TreeMap<>(RULES.combatValues());
+        free.put(MonsterWorth.PERMANENT_PERMILLE, 0.0);
+        assertEquals(0.0, rules(free).combatValues().get(MonsterWorth.PERMANENT_PERMILLE));
+        // Spoils cannot stand without worth itself.
+        var orphan = new TreeMap<>(RULES.combatValues());
+        orphan.remove(MonsterWorth.BOOK_MIN_LEVEL);
+        assertThrows(IllegalArgumentException.class, () -> rules(orphan));
+    }
+
+    @Test void pendingRulesGainTheSpoilsDefaults() {
+        var restored = withoutSpoils().withEconomyDefaults();
+        assertEquals(5.0, restored.combatValues().get(MonsterWorth.COINS_PER_LEVEL));
+        assertEquals(100.0, restored.combatValues().get(MonsterWorth.PERMANENT_PERMILLE));
+        assertEquals(7.0, restored.combatValues().get(MonsterWorth.LEVELS_PER_IRON));
+        assertTrue(MonsterWorth.spoilsEnabled(restored));
+        assertSame(RULES, RULES.withEconomyDefaults());
+    }
+
+    static RulesConfig withoutSpoils() {
+        var values = new TreeMap<>(RULES.combatValues());
+        values.keySet().removeAll(List.of(MonsterWorth.COINS_PER_LEVEL, MonsterWorth.PERMANENT_PERMILLE, MonsterWorth.LEVELS_PER_IRON));
+        return rules(values);
+    }
+
+    private static MonsterWallet invested(long milliCoins) {
+        return new MonsterWallet(0, false, Map.of(), Map.of(), Map.of(), List.of(), List.of(), 0, Map.of(), "", false,
+                Map.of(), milliCoins);
     }
 
     @Test void projectedCreditMatchesWhatTheEngineCommits() {
@@ -87,7 +140,7 @@ class MonsterWorthTest {
         assertThrows(IllegalArgumentException.class, () -> rules(inverted));
     }
 
-    private static RulesConfig rules(Map<String, Double> values) {
+    static RulesConfig rules(Map<String, Double> values) {
         return new RulesConfig(RULES.schemaVersion(), GameMode.HARDCORE, RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(),
                 RULES.successCelebrationMillis(), RULES.failureDisplayMillis());

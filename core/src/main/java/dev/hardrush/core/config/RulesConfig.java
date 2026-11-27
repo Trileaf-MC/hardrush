@@ -95,6 +95,15 @@ public record RulesConfig(
             if (copy.get("worth.baseLevel") > copy.get("worth.maxLevel")) {
                 throw new IllegalArgumentException("身价基础等级不能超过身价上限");
             }
+            // Rounds saved before kill spoils carry none of these keys and keep their old rewards.
+            long spoils = SPOILS_DEFAULTS.keySet().stream().filter(copy::containsKey).count();
+            if (spoils != 0 && spoils != SPOILS_DEFAULTS.size()) {
+                throw new IllegalArgumentException("击杀奖励参数必须完整配置: " + SPOILS_DEFAULTS.keySet());
+            }
+            if (spoils != 0 && (copy.get("worth.coinsPerLevel") < 1 || copy.get("worth.levelsPerIron") < 1
+                    || copy.get("worth.permanentPermille") > 1000)) {
+                throw new IllegalArgumentException("身价投入折算需至少 1 币一级、至少 1 级一个铁锭，永久升级按不超过千分之一千计入");
+            }
         }
         if (copy.keySet().stream().anyMatch(key -> key.startsWith("bounty.") && !retiredKey(key))) {
             if (!copy.keySet().containsAll(BOUNTY_CORE_KEYS)) {
@@ -256,6 +265,16 @@ public record RulesConfig(
             Map.entry("worth.bookMinLevel", 15.0));
 
     /**
+     * Kill spoils (issue #106): every 5 coins a sortie carries adds a level, round-long upgrades count a tenth of what
+     * they cost, and a slain body drops an iron ingot per 7 levels. Kept apart from {@link #WORTH_DEFAULTS} so rounds
+     * saved before spoils, which have worth but none of these keys, still validate.
+     */
+    private static final Map<String, Double> SPOILS_DEFAULTS = Map.of(
+            "worth.coinsPerLevel", 5.0,
+            "worth.permanentPermille", 100.0,
+            "worth.levelsPerIron", 7.0);
+
+    /**
      * A deliberate return pauses the sortie, so hunting again may follow at once; a defeat only locks the human
      * who won it (docs/plan/击败锁定与怪物平衡.md). The tracking compass channels five seconds and rests ten after each landing. Natural ground is dug no slower than
      * bare-handed stone (7.5 seconds); a block whose bare-handed time exceeds 30 seconds is too hard to dig.
@@ -333,6 +352,7 @@ public record RulesConfig(
         boolean current = defaultsRevision() >= DEFAULTS_REVISION;
         if (current && COIN_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && WORTH_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
+                && SPOILS_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && SORTIE_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && BOUNTY_DEFAULTS.keySet().stream().allMatch(combatValues::containsKey)
                 && combatValues.keySet().stream().noneMatch(RulesConfig::retiredKey)) return this;
@@ -347,6 +367,7 @@ public record RulesConfig(
         BOUNTY_DEFAULTS.forEach(values::putIfAbsent);
         COIN_DEFAULTS.forEach(values::putIfAbsent);
         WORTH_DEFAULTS.forEach(values::putIfAbsent);
+        SPOILS_DEFAULTS.forEach(values::putIfAbsent);
         SORTIE_DEFAULTS.forEach(values::putIfAbsent);
         return new RulesConfig(schemaVersion, mode, minecraftVersion, difficulty, generationRule, values,
                 startCountdownMillis, successCelebrationMillis, failureDisplayMillis);
@@ -509,7 +530,9 @@ public record RulesConfig(
         if (value == 0 && key.equals("monster.returnCooldownMillis")) return;
         // A blind box chance of zero turns that draw off (docs/plan/女巫药水与药水盲盒.md §3.3).
         boolean chance = key.startsWith("coin.potionBox.") && key.endsWith("Permille");
-        if (value == 0 && !key.endsWith("armor") && !key.endsWith("Resistance") && !chance) {
+        // Round-long upgrades may count nothing toward worth.
+        boolean share = key.equals("worth.permanentPermille");
+        if (value == 0 && !key.endsWith("armor") && !key.endsWith("Resistance") && !chance && !share) {
             throw new IllegalArgumentException("战斗参数必须为正数（护甲／抗性／盲盒概率可为零）: " + key);
         }
         if ((key.endsWith("Health") || key.endsWith("Damage") || key.endsWith("Attribute")
