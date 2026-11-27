@@ -103,8 +103,8 @@ class MonsterWorthTest {
     }
 
     private static MonsterWallet invested(long milliCoins) {
-        return new MonsterWallet(0, false, Map.of(), Map.of(), Map.of(), List.of(), List.of(), 0, Map.of(), "", false,
-                Map.of(), milliCoins);
+        return new MonsterWallet(0, false, Map.of(), Map.of(), Map.of(), List.of(), List.of(), 0, Map.of(), "",
+                CreeperTicket.NONE, milliCoins);
     }
 
     @Test void projectedCreditMatchesWhatTheEngineCommits() {

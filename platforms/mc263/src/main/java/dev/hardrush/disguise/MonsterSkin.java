@@ -32,7 +32,7 @@ import net.minecraft.world.entity.PositionMoveRotation;
  * modifies the authenticated identity or properties. The owner sees it on their own player
  * model, and every player sees it as the owner's TAB head.
  */
-final class MonsterSkin {
+public final class MonsterSkin {
     private static final Map<String, Property> SKINS = loadSkins();
     private static final Map<UUID, Boolean> RESTORE_PENDING = new ConcurrentHashMap<>();
     private static final java.util.Set<UUID> OVERRIDDEN = ConcurrentHashMap.newKeySet();
@@ -175,6 +175,16 @@ final class MonsterSkin {
     }
 
     private record Batch(ServerPlayer player, java.util.List<Packet<? super ClientGamePacketListener>> packets) {}
+
+    /**
+     * A profile wearing the monster form's skin, for drawing its head in text (the witch's guide). It names no real
+     * account. Text heads would accept an unsigned texture; the player list needs the pinned signature.
+     */
+    public static net.minecraft.world.item.component.ResolvableProfile head(String kind) {
+        var properties = ImmutableMultimap.<String, Property>of("textures", skin(kind));
+        var id = UUID.nameUUIDFromBytes(("hardrush:head:" + kind).getBytes(StandardCharsets.UTF_8));
+        return net.minecraft.world.item.component.ResolvableProfile.createResolved(new GameProfile(id, kind, new PropertyMap(properties)));
+    }
 
     private static Property skin(String kind) {
         Property skin = SKINS.get(kind);

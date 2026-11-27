@@ -73,6 +73,7 @@
       "dev.hardrush.monster.MonsterNightVisionGameTest",
       "dev.hardrush.monster.MonsterPotionsGameTest",
       "dev.hardrush.lobby.HeldItemHintsGameTest",
+      "dev.hardrush.lobby.WitchGuideGameTest",
       "dev.hardrush.revival.RevivalTotemGameTest",
       "dev.hardrush.revival.TotemDropGameTest",
       "dev.hardrush.revival.TotemSaveGameTest",

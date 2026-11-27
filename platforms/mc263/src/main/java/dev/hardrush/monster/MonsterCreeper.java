@@ -42,12 +42,15 @@ public final class MonsterCreeper {
     private static final RulesConfig DEFAULTS = RulesConfig.defaults();
     static final String IGNITER = "igniter";
     private static final String IGNITER_USAGE = "按住右键引爆 · 中途松开取消";
+    private static final String IGNITER_CHARGED = "已带电 · 爆炸威力翻倍";
+    /** Observers see the native charge layer; the owner, on a player model, gets a few sparks of its own. */
+    private static final int SPARK_TICKS = 8;
 
     private MonsterCreeper() {}
 
     public static ItemStack createIgniter(ServerPlayer player) {
-        var stack = dev.hardrush.notice.ItemText.lore(dev.hardrush.notice.ItemText.name(new ItemStack(Items.FLINT_AND_STEEL), "引爆器"),
-                IGNITER_USAGE, "也能点燃原版苦力怕");
+        var stack = dev.hardrush.notice.ItemText.name(new ItemStack(Items.FLINT_AND_STEEL), "引爆器");
+        showCharge(stack, charged(player));
         // Native clients must enter item-use mode and send RELEASE_USE_ITEM. A consumable
         // without food, effects, animation or slowdown is only the input transport. In adventure mode a native
         // client never uses a flint and steel on the block it aims at, so it goes on to use the item.
@@ -56,6 +59,30 @@ public final class MonsterCreeper {
         stack.set(DataComponents.USE_EFFECTS, new UseEffects(false, false, 1f));
         MonsterItems.bind(player, stack, IGNITER);
         return stack;
+    }
+
+    /** A charged body's igniter glints and says so, whether the charge was paid for or struck by lightning. */
+    private static void showCharge(ItemStack igniter, boolean charged) {
+        if (charged) {
+            dev.hardrush.notice.ItemText.lore(igniter, IGNITER_USAGE, IGNITER_CHARGED, "也能点燃原版苦力怕");
+            igniter.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+        } else {
+            dev.hardrush.notice.ItemText.lore(igniter, IGNITER_USAGE, "也能点燃原版苦力怕");
+            igniter.remove(DataComponents.ENCHANTMENT_GLINT_OVERRIDE);
+        }
+    }
+
+    /** The first moment this body is charged: its igniter changes with it, and the owner's skin follows. */
+    private static void becomeCharged(ServerPlayer player, State state) {
+        if (state.charged) return;
+        state.charged = true;
+        state.model.getEntityData().set(CreeperPoweredAccessor.hardrush$poweredData(), true);
+        MonsterDisguise.setCreeperState(player, state.direction, true);
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            var stack = inventory.getItem(slot);
+            if (stack.is(Items.FLINT_AND_STEEL) && MonsterItems.matches(player, stack, IGNITER)) showCharge(stack, true);
+        }
     }
 
     /** The igniter's usage, also the first line of its description. */
@@ -176,6 +203,11 @@ public final class MonsterCreeper {
             return;
         }
         if (state.exploding) return;
+        if (state.charged && player.tickCount % SPARK_TICKS == 0) {
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket(
+                    net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, false, false,
+                    player.getX(), player.getY() + .9, player.getZ(), .3f, .5f, .3f, .05f, 2));
+        }
         boolean held = player.isUsingItem()
                 && MonsterItems.matches(player, player.getUseItem(), IGNITER)
                 && MonsterItems.matches(player, player.getItemInHand(player.getUsedItemHand()), IGNITER);
@@ -204,10 +236,9 @@ public final class MonsterCreeper {
     /** Entity.thunderHit has already applied native lightning damage and fire exactly once. */
     public static void onLightning(ServerPlayer player) {
         if (!available(player)) return;
-        State state = state(player);
-        state.charged = true;
-        state.model.getEntityData().set(CreeperPoweredAccessor.hardrush$poweredData(), true);
-        MonsterDisguise.setCreeperState(player, state.direction, true);
+        becomeCharged(player, state(player));
+        // A paid ticket keeps the charge beyond this body, as one bought at the booth would.
+        dev.hardrush.lobby.LobbyRuntime.creeperStruck(player);
     }
 
     public static boolean charged(ServerPlayer player) {
@@ -219,9 +250,13 @@ public final class MonsterCreeper {
     public static void charge(ServerPlayer player) {
         if (!(MonsterRoles.nativeModel(player) instanceof Creeper)) return;
         State state = state(player);
-        state.charged = true;
-        state.model.getEntityData().set(CreeperPoweredAccessor.hardrush$poweredData(), true);
-        MonsterDisguise.setCreeperState(player, state.direction, true);
+        if (state.charged) return;
+        becomeCharged(player, state);
+        // A bought charge arrives with the body: only its owner hears the strike that a natural one would have made.
+        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                Holder.direct(SoundEvents.LIGHTNING_BOLT_IMPACT), SoundSource.WEATHER, player.getX(), player.getY(), player.getZ(),
+                1f, .7f, player.getRandom().nextLong()));
+        dev.hardrush.notice.Notices.hint(player, "已带电 · 爆炸威力翻倍");
     }
 
     public static boolean isUsingIgniter(ServerPlayer player) {

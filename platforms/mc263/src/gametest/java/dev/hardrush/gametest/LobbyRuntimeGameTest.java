@@ -328,7 +328,7 @@ public final class LobbyRuntimeGameTest {
         preparePaidCreeper(sequence, () -> f.session, f.monster.profile.id(), f.target.profile.id(), f::await);
         sequence.thenExecute(() -> HuntInputFixtures.role(f.monster.player, "creeper"))
                 .thenWaitUntil(() -> f.await(f.monster.participant().monsterRole() == MonsterRole.CREEPER
-                        && f.monster.participant().wallet().creeperTicket() && CampTransferFixtures.actionsReady(f.session),
+                        && f.monster.participant().wallet().creeperTicket().unlocked() && CampTransferFixtures.actionsReady(f.session),
                         "Paid creeper selection keeps both skill deadlines"))
                 // The defeat locked the quarry for 120 seconds at one star. The later milestones do not shorten that lock.
                 .thenExecute(() -> f.clock.addAndGet(TimeUnit.SECONDS.toNanos(121)))

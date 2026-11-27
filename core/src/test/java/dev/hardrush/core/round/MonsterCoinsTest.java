@@ -105,7 +105,7 @@ class MonsterCoinsTest {
         assertThrows(IllegalStateException.class, () -> unchosen.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 8));
         var wallet = chosen(5);
         assertThrows(IllegalStateException.class, () -> wallet.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 8));
-        assertThrows(IllegalStateException.class, () -> chosen(50).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.CHARGED, 40));
+        assertThrows(IllegalStateException.class, () -> chosen(50).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.POISON, 8));
         assertThrows(IllegalStateException.class, () -> chosen(50).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 16));
     }
 
@@ -369,6 +369,35 @@ class MonsterCoinsTest {
         assertEquals(legacy, legacy.forNewRound(), "Migrated rules are stable");
     }
 
+    @Test void theCreeperBoothSellsTheUnlockAndTheChargeAndTheWitchNoLongerSellsAChargedSortie() {
+        assertEquals(35, MonsterCoins.creeperUnlockPrice(RULES));
+        assertEquals(40, MonsterCoins.creeperChargePrice(RULES));
+        assertTrue(MonsterCoins.creeperChargeable(RULES));
+        assertFalse(RULES.combatValues().containsKey("coin.price.charged"));
+        assertFalse(RULES.combatValues().containsKey("coin.limit.charged"));
+        assertTrue(ShopOffer.retired("charged"));
+        assertThrows(IllegalArgumentException.class, () -> ShopOffer.fromId("charged"));
+    }
+
+    @Test void revisionElevenRetiresTheWitchsChargeAndCheapensAnUnlockStillOnTheOldDefault() {
+        var values = new TreeMap<>(RULES.combatValues());
+        values.put(RulesConfig.DEFAULTS_REVISION_KEY, 10.0);
+        values.put("coin.creeperUnlock", 40.0);
+        values.remove(MonsterCoins.CREEPER_CHARGE);
+        values.put("coin.price.charged", 40.0); values.put("coin.limit.charged", 1.0);
+        var stored = rules(values);
+        assertFalse(MonsterCoins.creeperChargeable(stored), "a round saved before the booth's charge cannot charge");
+        var next = stored.forNewRound();
+        assertEquals(35.0, next.combatValues().get("coin.creeperUnlock"));
+        assertEquals(40.0, next.combatValues().get(MonsterCoins.CREEPER_CHARGE));
+        assertFalse(next.combatValues().containsKey("coin.price.charged"));
+        assertFalse(next.combatValues().containsKey("coin.limit.charged"));
+        assertEquals(RULES.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY), next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+
+        values.put("coin.creeperUnlock", 50.0); // an operator's own price is kept
+        assertEquals(50.0, rules(values).forNewRound().combatValues().get("coin.creeperUnlock"));
+    }
+
     @Test void monsterBoxesDoubleToAHundredAndOnlyZombiesBuyThem() {
         var wallet = chosen(200);
         for (int price : new int[] {25, 50, 100}) wallet = wallet.buy(RULES, MonsterRole.ZOMBIE, ShopOffer.MONSTER_BOX, price);
@@ -433,7 +462,7 @@ class MonsterCoinsTest {
         assertEquals(5.0, next.combatValues().get("coin.price.commonPotionBox"));
         assertEquals(15.0, next.combatValues().get("coin.price.rarePotionBox"));
         assertEquals(25.0, next.combatValues().get("coin.price.epicPotionBox"));
-        assertEquals(10.0, next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+        assertEquals(RULES.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY), next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
     }
 
     @Test void blindBoxesLeadTheWitchPotionsOnTheShelf() {

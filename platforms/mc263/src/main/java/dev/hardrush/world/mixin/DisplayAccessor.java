@@ -8,5 +8,6 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(Display.class)
 public interface DisplayAccessor {
     @Invoker("setTransformation") void hardrush$setTransformation(Transformation transformation);
-    @Invoker("setBillboardConstraints") void hardrush$setBillboardConstraints(Display.BillboardConstraints billboard);
+    @Invoker("setTransformationInterpolationDuration") void hardrush$setTransformationInterpolationDuration(int ticks);
+    @Invoker("setTransformationInterpolationDelay") void hardrush$setTransformationInterpolationDelay(int ticks);
 }

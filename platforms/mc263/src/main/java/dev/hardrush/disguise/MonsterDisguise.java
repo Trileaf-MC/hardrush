@@ -71,7 +71,7 @@ public final class MonsterDisguise {
         Selection selection = new Selection(kind, type);
         SELECTED.put(player.getUUID(), selection);
         bind(player, selection);
-        if (previous == null || !previous.kind.equals(kind)) MonsterSkin.showToOthers(player, kind);
+        if (previous == null || !previous.skin().equals(selection.skin())) MonsterSkin.showToOthers(player, selection.skin());
         // Each form has its own owner skin, so a conversion refreshes it too. The
         // refresh waits for this tick's end: a zombie rising from the sea is bound
         // and converted in one tick and must reset the owner's client only once.
@@ -197,7 +197,7 @@ public final class MonsterDisguise {
 
     private static String kindOf(UUID player) {
         Selection selection = SELECTED.get(player);
-        return selection == null ? null : selection.kind;
+        return selection == null ? null : selection.skin();
     }
 
     public static boolean captureCosmeticBatch(ServerPlayer player, Packet<?> packet) {
@@ -236,6 +236,12 @@ public final class MonsterDisguise {
     public static void setCreeperState(ServerPlayer player, int direction, boolean charged) {
         Selection selection = SELECTED.get(player.getUUID());
         if (selection == null || selection.state == null || !(selection.state.model instanceof net.minecraft.world.entity.monster.Creeper creeper)) return;
+        // Observers see the native charge layer; the owner's player model gets a skin that carries it.
+        if (selection.charged != charged) {
+            selection.charged = charged;
+            selection.skinRefreshPending = true;
+            MonsterSkin.showToOthers(player, selection.skin());
+        }
         creeper.setSwellDir(direction);
         creeper.getEntityData().set(dev.hardrush.monster.mixin.CreeperPoweredAccessor.hardrush$poweredData(), charged);
         selection.state.updateModel();
@@ -267,7 +273,7 @@ public final class MonsterDisguise {
 
     private static void refreshSkinIfSafe(ServerPlayer player, Selection selection) {
         if (selection.skinRefreshPending && MonsterSkin.canRefresh(player)) {
-            MonsterSkin.apply(player, selection.kind);
+            MonsterSkin.apply(player, selection.skin());
             selection.skinRefreshPending = false;
         }
     }
@@ -312,6 +318,10 @@ public final class MonsterDisguise {
         final EntityType<? extends Mob> type;
         State state;
         boolean skinRefreshPending;
+        /** Only a creeper is ever charged; see {@link #setCreeperState}. */
+        boolean charged;
+        /** Key of the form's skin in {@code monster-skins.json}. */
+        String skin() { return charged ? kind + "_charged" : kind; }
         Selection(String kind, EntityType<? extends Mob> type) { this.kind = kind; this.type = type; }
     }
 

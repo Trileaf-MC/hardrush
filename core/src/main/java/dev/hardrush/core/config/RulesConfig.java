@@ -164,8 +164,9 @@ public record RulesConfig(
     /** Monster coin economy; an offer's price doubles per purchase within one sortie unless it is flat-priced. */
     private static final Map<String, Double> COIN_DEFAULTS = Map.ofEntries(
             Map.entry("coin.starter", 6.0),
-            // One creeper sortie ticket, see docs/plan/苦力怕付费解锁.md.
-            Map.entry("coin.creeperUnlock", 40.0),
+            // One creeper sortie ticket, see docs/plan/苦力怕付费解锁.md, and the charge that powers it.
+            Map.entry("coin.creeperUnlock", 35.0),
+            Map.entry("coin.creeperCharge", 40.0),
             // Coins for a monster a human killed, by the killer's stars; bought back as sortie upgrades.
             Map.entry("coin.killedByHuman.star1", 8.0), Map.entry("coin.killedByHuman.star2", 10.0),
             Map.entry("coin.killedByHuman.star3", 13.0), Map.entry("coin.killedByHuman.star4", 16.0),
@@ -207,7 +208,6 @@ public record RulesConfig(
             Map.entry("coin.price.epicPotionBox", 25.0), Map.entry("coin.limit.epicPotionBox", 1.0),
             Map.entry("coin.price.slownessArrows", 8.0), Map.entry("coin.limit.slownessArrows", 2.0),
             Map.entry("coin.price.poisonArrows", 10.0), Map.entry("coin.limit.poisonArrows", 2.0),
-            Map.entry("coin.price.charged", 40.0), Map.entry("coin.limit.charged", 1.0),
             // Keys keep one price; the limit matches the camp's gear cap (MonsterWallet.MAX_GEAR), so coins bound them.
             Map.entry("coin.price.trialKey", 3.0), Map.entry("coin.limit.trialKey", 16.0),
             Map.entry("coin.price.ominousKey", 8.0), Map.entry("coin.limit.ominousKey", 16.0),
@@ -253,7 +253,9 @@ public record RulesConfig(
                 || key.startsWith("bounty.") && key.endsWith("Ratio") || key.equals("bounty.huntedPoints")
                 || key.equals("coin.killedByHuman") || key.equals("skeleton.burstCooldownMillis")
                 || key.equals("coin.price.regeneration") || key.equals("coin.limit.regeneration")
-                || key.equals("coin.potion.regenerationSeconds");
+                || key.equals("coin.potion.regenerationSeconds")
+                // The witch's charged sortie became the creeper booth's charge (coin.creeperCharge).
+                || key.equals("coin.price.charged") || key.equals("coin.limit.charged");
     }
 
     /** Worth runs from level 10 to 30, one level per damage point; a slain body sprays 10 experience per level and leaves a book from level 15. */
@@ -337,7 +339,9 @@ public record RulesConfig(
             // Revision 10 (docs/plan/女巫药水与药水盲盒.md): cheaper blind boxes, priced below the fixed bottles they gamble on.
             Map.of("coin.price.commonPotionBox", Map.entry(8.0, 5.0),
                     "coin.price.rarePotionBox", Map.entry(18.0, 12.0),
-                    "coin.price.epicPotionBox", Map.entry(35.0, 25.0)));
+                    "coin.price.epicPotionBox", Map.entry(35.0, 25.0)),
+            // Revision 11: the creeper's charge moved from the witch to its booth, and the plain unlock got cheaper.
+            Map.of("coin.creeperUnlock", Map.entry(40.0, 35.0)));
     private static final int DEFAULTS_REVISION = 1 + RETUNED_DEFAULTS.size();
 
     private int defaultsRevision() {

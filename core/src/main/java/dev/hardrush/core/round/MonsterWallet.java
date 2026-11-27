@@ -24,10 +24,8 @@ import java.util.UUID;
  * @param sortieDamage per-human damage credit of the current or most recently ended deployment
  * @param parked       the platform's encoded body of a sortie paused by a deliberate return, empty when
  *                     none; a resumed deployment keeps it until the sortie parks again or ends
- * @param creeperTicket one paid creeper sortie; spent when the sortie truly ends and kept on a deliberate
- *                      return, a cancelled deployment or a change of role
- * @param parkedGoods  goods {@linkplain ShopOffer#keptUntilUsed kept until used} that the parked body holds; they go
- *                     back to {@code order} if that pause is given up rather than resumed
+ * @param creeperTicket one paid creeper sortie and its grade; spent when the sortie truly ends and kept, grade and
+ *                      all, on a deliberate return, a cancelled deployment, a disconnect or a change of role
  * @param sortieInvestment milli-coins actually paid for what the current or most recently ended deployment carries
  *                     (issue #106), so a round-long upgrade's tenth is exact; like {@code sortieDamage} it is reset
  *                     only by the next fresh deployment, so a slain body's worth can still read it
@@ -35,8 +33,8 @@ import java.util.UUID;
 public record MonsterWallet(int coins, boolean roleChosen,
                             Map<ShopOffer, Integer> bought, Map<ShopOffer, Integer> order,
                             Map<ShopOffer, Integer> active, List<GearPiece> gear, List<GearPiece> activeGear,
-                            int nextGearSerial, Map<UUID, DamageCredit> sortieDamage, String parked, boolean creeperTicket,
-                            Map<ShopOffer, Integer> parkedGoods, long sortieInvestment) {
+                            int nextGearSerial, Map<UUID, DamageCredit> sortieDamage, String parked, CreeperTicket creeperTicket,
+                            long sortieInvestment) {
     public static final int MAX_GEAR = 16;
     public static final int MAX_GEAR_TEXT = 8192;
     public static final int MAX_DAMAGE_VICTIMS = 256;
@@ -75,10 +73,10 @@ public record MonsterWallet(int coins, boolean roleChosen,
     }
 
     public MonsterWallet {
-        bought = counts(bought); order = counts(order); active = counts(active); parkedGoods = counts(parkedGoods);
+        bought = counts(bought); order = counts(order); active = counts(active);
         gear = List.copyOf(gear); activeGear = List.copyOf(activeGear);
         sortieDamage = Map.copyOf(sortieDamage);
-        Objects.requireNonNull(parked);
+        Objects.requireNonNull(parked); Objects.requireNonNull(creeperTicket);
         if (coins < 0 || nextGearSerial < 0 || gear.size() + activeGear.size() > MAX_GEAR
                 || sortieDamage.size() > MAX_DAMAGE_VICTIMS || parked.length() > MAX_PARKED_TEXT || sortieInvestment < 0) {
             throw new IllegalArgumentException("Invalid monster wallet");
@@ -92,23 +90,14 @@ public record MonsterWallet(int coins, boolean roleChosen,
     public MonsterWallet(int coins, boolean roleChosen, Map<ShopOffer, Integer> bought, Map<ShopOffer, Integer> order,
                          Map<ShopOffer, Integer> active, List<GearPiece> gear, List<GearPiece> activeGear,
                          int nextGearSerial, Map<UUID, DamageCredit> sortieDamage) {
-        this(coins, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage, "", false, Map.of(), 0);
+        this(coins, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage, "", CreeperTicket.NONE, 0);
     }
 
     /** A wallet without a paid creeper ticket. */
     public MonsterWallet(int coins, boolean roleChosen, Map<ShopOffer, Integer> bought, Map<ShopOffer, Integer> order,
                          Map<ShopOffer, Integer> active, List<GearPiece> gear, List<GearPiece> activeGear,
                          int nextGearSerial, Map<UUID, DamageCredit> sortieDamage, String parked) {
-        this(coins, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage, parked, false, Map.of(), 0);
-    }
-
-    /** A wallet whose sortie counts no investment, as stored before kill spoils. */
-    public MonsterWallet(int coins, boolean roleChosen, Map<ShopOffer, Integer> bought, Map<ShopOffer, Integer> order,
-                         Map<ShopOffer, Integer> active, List<GearPiece> gear, List<GearPiece> activeGear,
-                         int nextGearSerial, Map<UUID, DamageCredit> sortieDamage, String parked, boolean creeperTicket,
-                         Map<ShopOffer, Integer> parkedGoods) {
-        this(coins, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage, parked,
-                creeperTicket, parkedGoods, 0);
+        this(coins, roleChosen, bought, order, active, gear, activeGear, nextGearSerial, sortieDamage, parked, CreeperTicket.NONE, 0);
     }
 
     private static Map<ShopOffer, Integer> counts(Map<ShopOffer, Integer> source) {
@@ -131,17 +120,22 @@ public record MonsterWallet(int coins, boolean roleChosen,
                                List<GearPiece> newGear, List<GearPiece> newActiveGear, int serial,
                                Map<UUID, DamageCredit> damage) {
         return new MonsterWallet(newCoins, chosen, newBought, newOrder, newActive, newGear, newActiveGear,
-                serial, damage, parked, creeperTicket, parkedGoods, sortieInvestment);
+                serial, damage, parked, creeperTicket, sortieInvestment);
     }
 
     private MonsterWallet withParked(String body) {
         return new MonsterWallet(coins, roleChosen, bought, order, active, gear, activeGear,
-                nextGearSerial, sortieDamage, body, creeperTicket, parkedGoods, sortieInvestment);
+                nextGearSerial, sortieDamage, body, creeperTicket, sortieInvestment);
     }
 
     private MonsterWallet withInvestment(long investment) {
         return new MonsterWallet(coins, roleChosen, bought, order, active, gear, activeGear,
-                nextGearSerial, sortieDamage, parked, creeperTicket, parkedGoods, investment);
+                nextGearSerial, sortieDamage, parked, creeperTicket, investment);
+    }
+
+    private MonsterWallet withTicket(int newCoins, CreeperTicket ticket, long investment) {
+        return new MonsterWallet(newCoins, roleChosen, bought, order, active, gear, activeGear,
+                nextGearSerial, sortieDamage, parked, ticket, investment);
     }
 
     public MonsterWallet credit(int amount) {
@@ -164,17 +158,34 @@ public record MonsterWallet(int coins, boolean roleChosen,
     }
 
     public MonsterWallet unlockCreeper(int price) {
-        if (creeperTicket) throw new IllegalStateException("已经持有苦力怕出击资格。");
+        if (creeperTicket.unlocked()) throw new IllegalStateException("已经持有苦力怕出击资格。");
         if (price < 0) throw new IllegalArgumentException("苦力怕解锁价格不能为负数。");
         if (coins < price) throw new Refusal.Exception(Refusal.NOT_ENOUGH_COINS, "怪物币不足：需要 " + price + "，现有 " + coins + "。");
-        return new MonsterWallet(coins - price, roleChosen, bought, order, active, gear, activeGear,
-                nextGearSerial, sortieDamage, parked, true, parkedGoods, sortieInvestment);
+        return withTicket(coins - price, CreeperTicket.PLAIN, sortieInvestment);
+    }
+
+    /**
+     * Pays to charge an unlocked creeper ticket. Bought while a creeper sortie is paused, the charge rides the parked
+     * body's resumption, which counts no {@linkplain #onceInvestment once-per-sortie investment}: it is counted now.
+     */
+    public MonsterWallet chargeCreeper(RulesConfig rules, int price) {
+        if (!creeperTicket.unlocked()) throw new IllegalStateException("请先解锁苦力怕。");
+        if (creeperTicket.charged()) throw new IllegalStateException("苦力怕已经带电。");
+        if (price < 0) throw new IllegalArgumentException("苦力怕带电价格不能为负数。");
+        if (coins < price) throw new Refusal.Exception(Refusal.NOT_ENOUGH_COINS, "怪物币不足：需要 " + price + "，现有 " + coins + "。");
+        long investment = hasParkedBody() && MonsterWorth.spoilsEnabled(rules)
+                ? Math.addExact(sortieInvestment, Math.multiplyExact(price, 1000L)) : sortieInvestment;
+        return withTicket(coins - price, CreeperTicket.CHARGED, investment);
+    }
+
+    /** Lightning charges an unlocked creeper for free, as it powers a native one; any other ticket is unchanged. */
+    public MonsterWallet struckByLightning() {
+        return creeperTicket == CreeperTicket.PLAIN ? withTicket(coins, CreeperTicket.CHARGED, sortieInvestment) : this;
     }
 
     public MonsterWallet useCreeperTicket() {
-        if (!creeperTicket) return this;
-        return new MonsterWallet(coins, roleChosen, bought, order, active, gear, activeGear,
-                nextGearSerial, sortieDamage, parked, false, parkedGoods, sortieInvestment);
+        if (creeperTicket == CreeperTicket.NONE) return this;
+        return withTicket(coins, CreeperTicket.NONE, sortieInvestment);
     }
 
     public int nextPrice(RulesConfig rules, ShopOffer offer) {
@@ -211,8 +222,7 @@ public record MonsterWallet(int coins, boolean roleChosen,
      * play they are never refunded here: they go with the revival, or expire with the round.
      */
     public MonsterWallet chooseRole(RulesConfig rules, MonsterRole role) {
-        // A charge for the creeper waits in the camp through any role, like the creeper's own ticket.
-        var wallet = refund(rules, offer -> !offer.sellableTo(role) && !offer.keptUntilUsed());
+        var wallet = refund(rules, offer -> !offer.sellableTo(role));
         return wallet.with(wallet.coins, true, wallet.bought, wallet.order, active, gear, activeGear,
                 nextGearSerial, sortieDamage);
     }
@@ -288,11 +298,19 @@ public record MonsterWallet(int coins, boolean roleChosen,
         return milli;
     }
 
-    /** Milli-coins counted once per fresh sortie: the creeper's unlock and a share of the role's round-long upgrades. */
+    /**
+     * Milli-coins counted once per fresh sortie: the creeper's unlock and charge, and a share of the role's round-long
+     * upgrades.
+     */
     private long onceInvestment(RulesConfig rules, MonsterRole role) {
         long milli = 0;
-        if (role == MonsterRole.CREEPER && creeperTicket && MonsterCoins.creeperPaid(rules)) {
+        if (role == MonsterRole.CREEPER && creeperTicket.unlocked() && MonsterCoins.creeperPaid(rules)) {
             milli = Math.multiplyExact(MonsterCoins.creeperUnlockPrice(rules), 1000L);
+            // A charge from lightning counts at the booth's price too, on purpose: worth reflects the threat a charged
+            // creeper is, not what its owner happened to pay for the charge.
+            if (creeperTicket.charged() && MonsterCoins.creeperChargeable(rules)) {
+                milli = Math.addExact(milli, Math.multiplyExact(MonsterCoins.creeperChargePrice(rules), 1000L));
+            }
         }
         int permille = MonsterWorth.amount(rules, MonsterWorth.PERMANENT_PERMILLE);
         for (var offer : ShopOffer.values()) {
@@ -327,27 +345,8 @@ public record MonsterWallet(int coins, boolean roleChosen,
      */
     public MonsterWallet park(String body) {
         if (Objects.requireNonNull(body).isEmpty()) throw new IllegalArgumentException("Empty parked body");
-        // The body now holds what this deployment carried; goods kept until used are remembered beside it.
-        var held = new EnumMap<ShopOffer, Integer>(ShopOffer.class); held.putAll(parkedGoods);
-        active.forEach((offer, count) -> { if (offer.keptUntilUsed()) held.merge(offer, count, Integer::sum); });
         return new MonsterWallet(coins, roleChosen, bought, order, Map.of(), gear, List.of(),
-                nextGearSerial, sortieDamage, body, creeperTicket, held, sortieInvestment);
-    }
-
-    /**
-     * A sortie that ends without being used up (a disconnect, a return without a parked body, or a pause given up for
-     * another role): goods {@linkplain ShopOffer#keptUntilUsed kept until used} that it carried, or that its parked
-     * body holds, go back to the camp's order. Call before {@link #endSortie()}.
-     */
-    public MonsterWallet keepUnspent() {
-        var newOrder = new EnumMap<ShopOffer, Integer>(ShopOffer.class); newOrder.putAll(order);
-        var newActive = new EnumMap<ShopOffer, Integer>(ShopOffer.class);
-        active.forEach((offer, count) -> {
-            if (offer.keptUntilUsed()) newOrder.merge(offer, count, Integer::sum); else newActive.put(offer, count);
-        });
-        parkedGoods.forEach((offer, count) -> newOrder.merge(offer, count, Integer::sum));
-        return new MonsterWallet(coins, roleChosen, bought, newOrder, newActive, gear, activeGear,
-                nextGearSerial, sortieDamage, parked, creeperTicket, Map.of(), sortieInvestment);
+                nextGearSerial, sortieDamage, body, creeperTicket, sortieInvestment);
     }
 
     /**
@@ -360,7 +359,7 @@ public record MonsterWallet(int coins, boolean roleChosen,
         var waiting = new EnumMap<ShopOffer, Integer>(ShopOffer.class);
         bought.forEach((offer, count) -> { if (order.containsKey(offer) || offer.permanent()) waiting.put(offer, count); });
         return new MonsterWallet(coins, roleChosen, waiting, order, Map.of(), gear, List.of(), nextGearSerial, sortieDamage,
-                "", creeperTicket, Map.of(), sortieInvestment);
+                "", creeperTicket, sortieInvestment);
     }
 
     /**

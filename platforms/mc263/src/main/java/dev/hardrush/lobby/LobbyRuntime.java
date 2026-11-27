@@ -334,8 +334,22 @@ public final class LobbyRuntime {
         if (round == null || !MonsterCoins.creeperPaid(round.rules())) return LobbyRoleModels.CreeperBooth.NATIVE;
         var p = round.participants().get(viewer.getUUID());
         if (p == null || p.role().isExcluded()) return LobbyRoleModels.CreeperBooth.NATIVE;
-        var state = p.wallet().creeperTicket() ? LobbyRoleModels.CreeperState.UNLOCKED : LobbyRoleModels.CreeperState.LOCKED;
-        return new LobbyRoleModels.CreeperBooth(state, MonsterCoins.creeperUnlockPrice(round.rules()));
+        return switch (p.wallet().creeperTicket()) {
+            case NONE -> new LobbyRoleModels.CreeperBooth(LobbyRoleModels.CreeperState.LOCKED, MonsterCoins.creeperUnlockPrice(round.rules()));
+            case PLAIN -> new LobbyRoleModels.CreeperBooth(LobbyRoleModels.CreeperState.UNLOCKED,
+                    MonsterCoins.creeperChargeable(round.rules()) ? MonsterCoins.creeperChargePrice(round.rules()) : 0);
+            case CHARGED -> new LobbyRoleModels.CreeperBooth(LobbyRoleModels.CreeperState.CHARGED, 0);
+        };
+    }
+    /**
+     * Real lightning struck a deployed creeper player: a paid ticket becomes a charged one, as if bought at the booth
+     * (docs/plan/苦力怕付费解锁.md §7.1). The session drops the event when there is no plain ticket to raise.
+     */
+    public static void creeperStruck(ServerPlayer player) {
+        var b = BINDINGS.get(player.level().getServer());
+        var round = b == null ? null : b.session.snapshot().orElse(null);
+        var p = round == null ? null : round.participants().get(player.getUUID());
+        if (p != null) b.session.creeperStruck(round.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence());
     }
     /**
      * Why this camp creeper may not set out after {@code target} (docs/plan/苦力怕付费解锁.md): its ticket is spent, or the
@@ -343,7 +357,7 @@ public final class LobbyRuntime {
      */
     private static Optional<String> creeperRefusal(RoundSnapshot round, Participant p, UUID target) {
         if (!paidCreeper(round.rules(), p)) return Optional.empty();
-        if (!p.wallet().creeperTicket())
+        if (!p.wallet().creeperTicket().unlocked())
             return Optional.of("苦力怕的出击资格已用掉 · 回苦力怕展位付 " + MonsterCoins.creeperUnlockPrice(round.rules()) + " 怪物币解锁");
         var quarry = round.participants().get(target);
         if (quarry != null && quarry.role() == ParticipantRole.HUMAN_ACTIVE
@@ -647,7 +661,10 @@ public final class LobbyRuntime {
             Notices.refuse(player, "现在不能返回营地"); return;
         }
         // Holding the item, or right-clicking again, neither restarts nor repeats a running or finished channel.
-        if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id()) || b.returning.contains(p.id())) return;
+        var running = b.channels.get(p.id());
+        if (running != null && !running.retrack() || b.returning.contains(p.id())) return;
+        // A retrack's channel or its landing search gives way to the shard: the compass is not rested.
+        supersede(player, b);
         var round = b.session.view().orElseThrow();
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), false));
@@ -686,13 +703,15 @@ public final class LobbyRuntime {
         if (p.role() != ParticipantRole.MONSTER_DEPLOYED || MonsterRoles.isIgniting(player) || MonsterRoles.performingSkill(player)) {
             Notices.refuse(player, "现在不能循迹"); return false;
         }
-        if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) return true;
+        if (retracking(b, p.id())) return true;
         if (b.returning.contains(p.id())) return false;
         // The native cooldown overlay on the compass already says it is not ready.
         if (player.getCooldowns().isOnCooldown(compass)) return false;
         if (retrackTarget(b, player).isEmpty()) {
             Notices.refuse(player, "罗盘失去了指向：" + quarryName(player) + " 已离线、阵亡或不在挑战世界"); return false;
         }
+        // Only a compass that would really set out takes over a running return; a dark one leaves it be.
+        supersede(player, b);
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), true));
         ChannelEffects.start(player, true, channelNanos(r, true));
@@ -706,7 +725,24 @@ public final class LobbyRuntime {
     /** Whether a press on the compass would start a retrack now, apart from its rest: what its glint shows. */
     public static boolean retrackReady(ServerPlayer hunter) {
         var b = BINDINGS.get(hunter.level().getServer());
-        return b != null && !channeling(hunter) && retrackTarget(b, hunter).isPresent();
+        return b != null && !retracking(b, hunter.getUUID()) && retrackTarget(b, hunter).isPresent();
+    }
+    /** The compass's own channel, or the landing search after it, is under way. */
+    private static boolean retracking(Binding b, UUID player) {
+        var channel = b.channels.get(player);
+        return b.retracks.containsKey(player) || channel != null && channel.retrack();
+    }
+    /**
+     * The other control takes over: the running channel, or a retrack's search, fizzles out as it would when broken,
+     * but this is the monster's own choice, so no failure note sounds and the notice names the switch.
+     */
+    private static void supersede(ServerPlayer player, Binding b) {
+        var channel = b.channels.remove(player.getUUID());
+        var retrack = b.retracks.remove(player.getUUID());
+        if (channel == null && retrack == null) return;
+        boolean tracking = channel == null || channel.retrack();
+        ChannelEffects.interrupted(player, tracking);
+        Notices.hint(player, tracking ? "已取消循迹，改为返回营地" : "已取消返回营地，改为循迹");
     }
     private static void beginRetrackSearch(Binding b, Channel ch, dev.hardrush.core.round.Participant p) {
         var target = HuntRetracks.quarry(ch.player).orElse(null);
@@ -1046,10 +1082,44 @@ public final class LobbyRuntime {
         }
         if (role != null && revivalFirst(player, r, p)) return;
         if (role == null) return;
-        boolean unlocking = role == MonsterRole.CREEPER && MonsterCoins.creeperPaid(r.rules()) && !p.wallet().creeperTicket();
-        int price = unlocking ? MonsterCoins.creeperUnlockPrice(r.rules()) : 0;
+        boolean unlocking = role == MonsterRole.CREEPER && MonsterCoins.creeperPaid(r.rules()) && !p.wallet().creeperTicket().unlocked();
+        // A second payment at the booth calls lightning down on a creeper already let out (§7); any other role's
+        // click on it only picks the creeper again.
+        boolean charging = role == MonsterRole.CREEPER && !unlocking && p.monsterRole() == MonsterRole.CREEPER
+                && MonsterCoins.creeperChargeable(r.rules()) && p.wallet().creeperTicket() == dev.hardrush.core.round.CreeperTicket.PLAIN;
+        int price = unlocking ? MonsterCoins.creeperUnlockPrice(r.rules()) : charging ? MonsterCoins.creeperChargePrice(r.rules()) : 0;
+        if (charging) {
+            if (p.wallet().coins() < price) {
+                Notices.refuse(player, chargePrice(price, p));
+                LobbyInteractions.get(player.level().getServer()).orElseThrow().roleModels().hiss(player);
+                return;
+            }
+            if (entry == Entry.UNPRICED) {
+                CreeperUnlockDialog.show(player, new CreeperUnlockDialog.Offer(UUID.randomUUID(), r.roundId(), price,
+                        player.position(), player.level().getServer().getTickCount(), true), p.wallet().coins(), Optional.empty());
+                return;
+            }
+            if (entry == Entry.CONFIRMED && (offer == null || !offer.charge() || !offer.round().equals(r.roundId()) || offer.price() != price
+                    || player.position().distanceToSqr(offer.at()) > CreeperUnlockDialog.REACH * CreeperUnlockDialog.REACH)) {
+                Notices.refuse(player, "价格或位置已变化，请重新右键苦力怕展位"); return;
+            }
+            b.committing.add(p.id());
+            b.session.requestCreeperCharge(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), price, reply -> {
+                b.committing.remove(p.id());
+                if (!current(player, b)) return;
+                var after = b.session.snapshot().filter(round -> round.roundId().equals(r.roundId()))
+                        .map(round -> round.participants().get(p.id())).orElse(p);
+                if (reply.success()) Notices.hint(player, "苦力怕已带电 · 爆炸威力翻倍");
+                else Replies.refuse(player, reply, "现在不能引雷", chargePrice(price, after));
+            });
+            return;
+        }
         if (unlocking) {
-            if (p.wallet().coins() < price) { Notices.refuse(player, creeperPrice(price, p)); return; }
+            if (p.wallet().coins() < price) {
+                Notices.refuse(player, creeperPrice(price, p));
+                LobbyInteractions.get(player.level().getServer()).orElseThrow().roleModels().hiss(player);
+                return;
+            }
             boolean hasQuarry = r.participants().values().stream().anyMatch(q -> q.online() && q.role() == ParticipantRole.HUMAN_ACTIVE
                     && Bounty.stars(r.rules(), Bounty.threat(r.rules(), q)) >= HuntPressure.CREEPER_MIN_STARS);
             if (!hasQuarry) { Notices.refuse(player, Replies.CREEPER_NO_QUARRY); return; }
@@ -1060,10 +1130,10 @@ public final class LobbyRuntime {
                         ? Optional.of(dev.hardrush.monster.MonsterParking.describe(p.wallet().parked()).orElse(kindName(p.monsterRole())))
                         : Optional.<String>empty();
                 CreeperUnlockDialog.show(player, new CreeperUnlockDialog.Offer(UUID.randomUUID(), r.roundId(), price,
-                        player.position(), player.level().getServer().getTickCount()), p.wallet().coins(), discarded);
+                        player.position(), player.level().getServer().getTickCount(), false), p.wallet().coins(), discarded);
                 return;
             }
-            if (entry == Entry.CONFIRMED && (offer == null || !offer.round().equals(r.roundId()) || offer.price() != price
+            if (entry == Entry.CONFIRMED && (offer == null || offer.charge() || !offer.round().equals(r.roundId()) || offer.price() != price
                     || player.position().distanceToSqr(offer.at()) > CreeperUnlockDialog.REACH * CreeperUnlockDialog.REACH)) {
                 Notices.refuse(player, "价格或位置已变化，请重新右键苦力怕展位"); return;
             }
@@ -1081,11 +1151,14 @@ public final class LobbyRuntime {
             var after = b.session.snapshot().filter(round -> round.roundId().equals(r.roundId()))
                     .map(round -> round.participants().get(p.id())).orElse(p);
             if (reply.success()) {
-                if (unlocking && after.wallet().creeperTicket()) Notices.hint(player, "苦力怕已解锁 · 右键三星以上的人类出击");
+                if (unlocking && after.wallet().creeperTicket().unlocked()) Notices.hint(player, "苦力怕已解锁 · 右键三星以上的人类出击");
                 else sound(player, true);
             } else if (unlocking) Replies.refuse(player, reply, "现在不能选择角色", creeperPrice(price, after));
             else Replies.refuse(player, reply, "现在不能选择角色");
         });
+    }
+    private static String chargePrice(int price, Participant p) {
+        return "引雷需要 " + price + " 怪物币，现有 " + p.wallet().coins();
     }
     private static String creeperPrice(int price, Participant p) {
         return "解锁苦力怕需要 " + price + " 怪物币，现有 " + p.wallet().coins();
@@ -1181,8 +1254,8 @@ public final class LobbyRuntime {
             if (identity != null && identity.role() == ParticipantRole.MONSTER_LOBBY) {
                 boolean cooling = identity.monsterCooldownNanos() > 0;
                 if (Boolean.TRUE.equals(b.cooling.put(identity.id(), cooling)) && !cooling) {
-                    if (paidCreeper(r.rules(), identity) && !identity.wallet().creeperTicket())
-                        Notices.hint(observer, "出击冷却结束 · 苦力怕要先回石像解锁");
+                    if (paidCreeper(r.rules(), identity) && !identity.wallet().creeperTicket().unlocked())
+                        Notices.hint(observer, "出击冷却结束 · 苦力怕要先回展位解锁");
                     else { Notices.hint(observer, "可以再次出击了"); sound(observer, true); }
                 }
             }
@@ -1239,8 +1312,8 @@ public final class LobbyRuntime {
                                 : available.stream().allMatch(id -> lived.huntLockNanos(id) > 0)
                                 ? available.stream().min(java.util.Comparator.comparingLong(lived::huntLockNanos)) : Optional.<UUID>empty();
                         if (inCamp(observer)) {
-                            String guidance = creeper && !p.wallet().creeperTicket()
-                                    ? "苦力怕未解锁 · 右键苦力怕石像，花 " + MonsterCoins.creeperUnlockPrice(r.rules()) + " 怪物币解锁"
+                            String guidance = creeper && !p.wallet().creeperTicket().unlocked()
+                                    ? "苦力怕未解锁 · 右键笼中的苦力怕，花 " + MonsterCoins.creeperUnlockPrice(r.rules()) + " 怪物币解锁"
                                     : available.isEmpty() ? (creeper ? "苦力怕只追三星以上 · 暂无可追的人类" : "暂无可追猎的人类")
                                     : Notices.key(kindName(p.monsterRole())) + (p.monsterCooldownNanos() > 0
                                     ? " · 出击冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"
@@ -1253,7 +1326,7 @@ public final class LobbyRuntime {
                             long locked = lived == null ? 0 : lived.huntLockNanos(selected.target());
                             hints.offer("hunt-target", dev.hardrush.core.lobby.LobbyHints.Priority.TARGET,
                                     Notices.key(r.participants().get(selected.target()).name())
-                                            + (creeper && !p.wallet().creeperTicket() ? " · 先回苦力怕石像解锁"
+                                            + (creeper && !p.wallet().creeperTicket().unlocked() ? " · 先回苦力怕展位解锁"
                                             : creeper && belowCreeperStars(standings, selected.target()) ? " · 苦力怕只追三星以上"
                                             : projections.sheltered(observer, selected) ? " · " + LateShelter.NAME
                                             : p.monsterCooldownNanos() > 0 ? " · 冷却 " + Notices.key(seconds(p.monsterCooldownNanos())) + " 秒"

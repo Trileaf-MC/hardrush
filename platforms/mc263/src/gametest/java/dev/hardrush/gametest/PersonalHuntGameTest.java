@@ -172,7 +172,7 @@ public final class PersonalHuntGameTest {
         // A creeper's blast kills its own body in the same call. The surviving bystander must still see the bar.
         s.thenExecute(() -> f.d.role("creeper"))
                 .thenWaitUntil(() -> f.await(CampTransferFixtures.actionsReady(f.session) && f.d.participant().monsterRole()==MonsterRole.CREEPER
-                        && f.d.participant().wallet().creeperTicket() && f.d.participant().monsterCooldownNanos()==0, "paid creeper role for blast bar"))
+                        && f.d.participant().wallet().creeperTicket().unlocked() && f.d.participant().monsterCooldownNanos()==0, "paid creeper role for blast bar"))
                 .thenExecute(() -> {
                     f.move(f.a, 0); f.move(f.b, 0);
                     f.b.player.teleportTo(f.levels[0], f.anchor[0].x + 10, f.anchor[0].y, f.anchor[0].z, Set.of(), 0,0,true);
@@ -245,6 +245,14 @@ public final class PersonalHuntGameTest {
                     test.assertTrue(f.spawnSent(f.a).map(pos -> !pos.equals(quarry)).orElse(true), "The quarry's own compass keeps the world spawn");
                     test.assertTrue(LobbyRuntime.useRetrack(f.c.player, compass), "A lit compass starts the channel right beside its quarry");
                     test.assertFalse(LobbyRuntime.retrackReady(f.c.player), "A running channel is not ready for another press");
+                    var shard = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ECHO_SHARD);
+                    test.assertTrue(LobbyRuntime.useReturn(f.c.player), "The echo shard takes over a running retrack");
+                    test.assertTrue(f.c.player.getCooldowns().isOnCooldown(shard)
+                            && !dev.hardrush.hunt.HuntRetracks.resting(f.c.player), "The return channels and the given-up compass is ready, not rested");
+                    test.assertTrue(LobbyRuntime.retrackReady(f.c.player), "A compass glints again while the return channels");
+                    test.assertTrue(LobbyRuntime.useRetrack(f.c.player, compass), "The compass takes the channel back from the return");
+                    test.assertTrue(!f.c.player.getCooldowns().isOnCooldown(shard) && dev.hardrush.hunt.HuntRetracks.resting(f.c.player),
+                            "The retrack channels again and the return is gone");
                     LobbyRuntime.interruptChannel(f.c.player, "攻击");
                     test.assertFalse(dev.hardrush.hunt.HuntRetracks.resting(f.c.player), "A broken channel leaves the compass ready");
                     f.c.player.teleportTo(f.a.player.level(), f.a.player.getX()+60, f.a.player.getY(), f.a.player.getZ(), Set.of(),0,0,true);
