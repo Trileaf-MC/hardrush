@@ -113,7 +113,7 @@ public final class TileSanitizer {
             var names = new HashMap<Integer, String>();
             for (var palette : palettes) {
                 for (int i = 0; i < size; i++) {
-                    var name = namespaced(palette.getCompoundOrEmpty(i).getStringOr("Name", "minecraft:air"));
+                    var name = namespaced(PackTiles.blockName(palette.getCompoundOrEmpty(i)));
                     names.putIfAbsent(i, name);
                     if (BANNED_BLOCKS.contains(name)) banned.putIfAbsent(i, name);
                 }

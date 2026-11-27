@@ -66,9 +66,10 @@ final class PackFixtures {
         for (int v : values) list.add(IntTag.valueOf(v));
         return list;
     }
+    /** A palette entry as 26.3 writes it ({@code id}; before 26.3 the field was {@code Name}). */
     static CompoundTag state(String name) {
         var s = new CompoundTag();
-        s.putString("Name", name);
+        s.putString("id", name);
         return s;
     }
     static CompoundTag block(int x, int y, int z, int state, CompoundTag nbt) {
