@@ -471,6 +471,7 @@ public final class MonsterRoles {
     private static void restoreOriginal(ServerPlayer player, Role role) {
         player.stopUsingItem();
         for (var entry : role.originalAttributes.entrySet()) player.getAttribute(entry.getKey()).setBaseValue(entry.getValue());
+        MonsterGait.clear(player);
         for (int slot = 0; slot < role.inventory.size(); slot++) player.getInventory().setItem(slot, role.inventory.get(slot).copy());
         player.getInventory().setSelectedSlot(role.selectedSlot);
         for (int slot = 1; slot <= 4; slot++) player.inventoryMenu.slots.get(slot).set(role.crafting.get(slot - 1).copy());
@@ -730,6 +731,7 @@ public final class MonsterRoles {
                 MonsterCreeper.cancelInput(player); player.stopUsingItem(); continue;
             }
             ensureBound(player, role);
+            MonsterGait.update(player, role.model.getAttribute(Attributes.MOVEMENT_SPEED).getBaseValue());
             player.setSprinting(false);
             if (player.gameMode.getGameModeForPlayer() != GameType.ADVENTURE) {
                 MonsterMining.clear(player);
@@ -1069,6 +1071,9 @@ public final class MonsterRoles {
         for (var attribute : CONTROLLED) {
             var instance = player.getAttribute(attribute);
             if (attribute.equals(Attributes.MOVEMENT_SPEED)) {
+                // A native mob moves by attribute²: MoveControl feeds its speed in as forward input too. A player's input
+                // is 1.0, so the body walks as the native monster on attribute² (docs/plan/怪物移速换算.md); MonsterGait
+                // squares the modifiers on top.
                 double speed = role.model.getAttribute(attribute).getBaseValue(); instance.setBaseValue(speed * speed);
             } else if (attribute.equals(Attributes.ATTACK_SPEED)) instance.setBaseValue(1);
             else if (role.model.getAttributes().hasAttribute(attribute)) instance.setBaseValue(role.model.getAttribute(attribute).getBaseValue());
