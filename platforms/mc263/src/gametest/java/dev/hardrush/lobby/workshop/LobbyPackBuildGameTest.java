@@ -50,7 +50,8 @@ import xyz.nucleoid.fantasy.RuntimeLevelHandle;
  * {@link PackBuild} that publishing uses, over the range such a draft would have. Writes {@code out/report.json} and,
  * without errors, {@code out/<id>-v<version>.hrlobby}, read back as an install would. Runs only with
  * {@link TestProperties#LOBBY_PACK} ({@code scripts/lobby-pack.py build}); a pack with acceptance errors is a
- * finished build, so the test fails only when the tooling itself breaks (no dimension, chunks never load).
+ * finished build, so the test fails only when the tooling itself breaks (no dimension, chunks never load, the import
+ * times out): only a {@link DraftImport.Rejected} import is the pack's own problem.
  */
 public final class LobbyPackBuildGameTest {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -109,7 +110,7 @@ public final class LobbyPackBuildGameTest {
                 open();
                 importing = new DraftImport(null, DraftImport.structure(building, maxSize, DraftImport::centredOnOrigin), handle::asLevel);
             } catch (SourceException e) {
-                problems.add(problem(Severity.ERROR, "SOURCE", null, e.getMessage(), null));
+                problems.add(problem(Severity.ERROR, "SOURCE", null, e.getMessage(), null, null));
                 finish();
             }
         }
@@ -123,18 +124,22 @@ public final class LobbyPackBuildGameTest {
                 }
                 case IMPORTING -> {
                     boolean done;
+                    // Anything else the import throws is the tooling breaking, and fails the test.
                     try { done = importing.tick(); }
-                    catch (RuntimeException e) {
-                        problems.add(problem(Severity.ERROR, "IMPORT", null, e.getMessage() == null ? e.toString() : e.getMessage(), null));
+                    catch (DraftImport.Rejected e) {
+                        problems.add(problem(Severity.ERROR, "IMPORT", null, e.getMessage() == null ? e.toString() : e.getMessage(), null, null));
                         finish();
                         return true;
                     }
                     if (!done) return false;
                     var content = importing.content();
-                    notes.addAll(content.notes());
+                    notes.addAll(content.remarks());
                     structureMin = content.bounds().min();
                     try { manifestOrigin = BuildManifestJson.readBesides(building).map(BuildManifest::origin).orElse(new Cell(0, 0, 0)); }
                     catch (PackException e) { throw new IllegalStateException("建筑清单导入后读不回来", e); }
+                    for (var issue : content.issues())
+                        problems.add(problem(issue.kind().failsBuild() ? Severity.ERROR : Severity.WARNING, issue.kind().name(), null,
+                                issue.message(), issue.world(), issue.manifest()));
                     build = new PackBuild(handle.asLevel(), range, OptionalInt.empty(), maxSize);
                     stage = Stage.PACKING;
                 }
@@ -145,12 +150,18 @@ public final class LobbyPackBuildGameTest {
                     switch (build.stage()) {
                         case CAPTURED -> {
                             hold.close();
+                            report(build);
+                            // An import issue that fails the build (unknown blocks) leaves the scan clean but the pack wrong.
+                            if (hasErrors()) {
+                                finish();
+                                return true;
+                            }
                             write(build.captured());
                         }
                         case FAILED -> {
                             hold.close();
                             report(build);
-                            if (build.limit() != null) problems.add(problem(Severity.ERROR, "LIMIT", null, build.limit(), null));
+                            if (build.limit() != null) problems.add(problem(Severity.ERROR, "LIMIT", null, build.limit(), null, null));
                             finish();
                             return true;
                         }
@@ -162,7 +173,7 @@ public final class LobbyPackBuildGameTest {
                     try { pack = writing.join(); }
                     catch (RuntimeException e) {
                         var cause = e.getCause() == null ? e : e.getCause();
-                        problems.add(problem(Severity.ERROR, "PACK", null, cause.getMessage() == null ? cause.toString() : cause.getMessage(), null));
+                        problems.add(problem(Severity.ERROR, "PACK", null, cause.getMessage() == null ? cause.toString() : cause.getMessage(), null, null));
                     }
                     finish();
                     return true;
@@ -257,12 +268,11 @@ public final class LobbyPackBuildGameTest {
         /** Every acceptance problem of the build: the scan's errors and warnings, then what installing will strip. */
         private void report(PackBuild build) {
             if (build.scan() != null) bounds = build.scan().contentBounds();
-            for (var p : build.problems()) problems.add(problem(p.severity(), p.kind().name(), p.function() == null ? null : p.function().id(), p.message(), p.where()));
+            for (var p : build.problems()) problems.add(problem(p.severity(), p.kind().name(), p.function() == null ? null : p.function().id(), p.message(), p.where(), null));
         }
 
         /** Writes and reads back the pack on another thread (2.3 steps 3–4); a pack that does not read back is removed. */
         private void write(PackBuild.Captured captured) {
-            report(build);
             var created = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
             var manifest = captured.manifest(id, name, authors, version, created);
             var target = out.resolve(manifest.fileName());
@@ -283,25 +293,27 @@ public final class LobbyPackBuildGameTest {
             });
         }
 
-        private JsonObject problem(Severity severity, String kind, String function, String message, Cell where) {
+        /** {@code manifest} is the cell in the manifest's frame when known; otherwise it is worked out from {@code where}. */
+        private JsonObject problem(Severity severity, String kind, String function, String message, Cell where, Cell manifest) {
             var o = new JsonObject();
             o.addProperty("severity", severity == Severity.ERROR ? "error" : "warning");
             o.addProperty("kind", kind);
             if (function != null) o.addProperty("function", function);
             o.addProperty("message", message);
-            if (where != null) {
-                o.add("world", cell(where));
-                if (structureMin != null)
-                    o.add("manifest", cell(new Cell(where.x() - structureMin.x() + manifestOrigin.x(), where.y() - structureMin.y() + manifestOrigin.y(),
-                            where.z() - structureMin.z() + manifestOrigin.z())));
-            }
+            if (where != null) o.add("world", cell(where));
+            if (manifest == null && where != null && structureMin != null)
+                manifest = new Cell(where.x() - structureMin.x() + manifestOrigin.x(), where.y() - structureMin.y() + manifestOrigin.y(),
+                        where.z() - structureMin.z() + manifestOrigin.z());
+            if (manifest != null) o.add("manifest", cell(manifest));
             return o;
         }
+
+        private boolean hasErrors() { return problems.stream().anyMatch(p -> p.get("severity").getAsString().equals("error")); }
 
         /** Writes the report (2.4) atomically; a pack without errors was written and read back, or it is an error itself. */
         private void finish() {
             stage = Stage.DONE;
-            ok = pack != null && problems.stream().noneMatch(p -> p.get("severity").getAsString().equals("error"));
+            ok = pack != null && !hasErrors();
             var json = new JsonObject();
             json.addProperty("ok", ok);
             if (pack == null) json.add("pack", JsonNull.INSTANCE); else json.addProperty("pack", pack);

@@ -13,6 +13,7 @@ import dev.hardrush.core.lobby.plan.MarkerSpec;
 import dev.hardrush.core.lobby.plan.MarkerTags;
 import dev.hardrush.lobby.pack.MarkerScan;
 import dev.hardrush.lobby.pack.MarkerStands;
+import dev.hardrush.lobby.pack.PackPlacer;
 import dev.hardrush.lobby.pack.imports.SampleFiles;
 import dev.hardrush.lobby.workshop.Workshop;
 import java.io.IOException;
@@ -35,14 +36,16 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.FenceBlock;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignTextSlot;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.AABB;
 
 /**
  * Building manifests (design “建筑清单与大厅包构建” 1.7), appended to {@link WorkshopGameTest}'s sequence after
  * {@link WorkshopToolSteps}: a broken manifest discards its draft with the reason, a good one brings every binding form,
- * connected fences and sign text into a new draft, and a paste with {@code update_shapes} off leaves the fences loose.
- * Operator A starts and ends at level 2, outside any draft.
+ * connected fences and sign text into a new draft, a paste with {@code update_shapes} off leaves the fences loose, and a
+ * paste with it on over blocks already in the draft updates only what it placed. Operator A starts and ends at level 2,
+ * outside any draft.
  */
 final class WorkshopManifestSteps {
     /** {@link dev.hardrush.lobby.workshop.DraftImport#centredOnOrigin} for the sample building. */
@@ -50,11 +53,23 @@ final class WorkshopManifestSteps {
     /** Where A stands to paste: the pasted building's minimum corner is then {@link #PASTED}. */
     private static final BlockPos PASTE_AT = new BlockPos(40, 64, 0);
     private static final Cell PASTED = new Cell(PASTE_AT.getX() - SampleFiles.MANIFEST_W / 2, PASTE_AT.getY(), PASTE_AT.getZ() - SampleFiles.MANIFEST_L / 2);
+    /** The second paste, over blocks that were there first: its minimum corner is {@link #JOINED}. */
+    private static final BlockPos JOIN_AT = new BlockPos(-40, 64, 0);
+    private static final Cell JOINED = new Cell(JOIN_AT.getX() - SampleFiles.MANIFEST_W / 2, JOIN_AT.getY(), JOIN_AT.getZ() - SampleFiles.MANIFEST_L / 2);
+    /**
+     * Already in the draft where the building has air: a fence a builder left in a state the shape update would “fix”
+     * (north, with nothing there, and not joined to the pasted fence beside it), and a torch floating over air.
+     */
+    private static final BlockState OLD_FENCE = Blocks.OAK_FENCE.defaultBlockState().setValue(FenceBlock.NORTH, true);
+    private static final Cell OLD_FENCE_AT = new Cell(1, 1, 4), OLD_TORCH_AT = new Cell(1, 2, 2);
 
     private static final String PASTE_MANIFEST = """
             {"format": 1, "update_shapes": false,
              "markers": [{"function": "page_next", "as": "click", "at": [3, 1, 1]}],
              "signs": [{"at": [5, 1, 1], "front": ["贴入"]}]}
+            """;
+    private static final String JOINED_MANIFEST = """
+            {"format": 1, "update_shapes": true}
             """;
     private static final String BROKEN_MANIFEST = """
             {"format": 1, "markers": [{"function": "lectern", "as": "click", "at": [0, 0, 0]}]}
@@ -77,6 +92,8 @@ final class WorkshopManifestSteps {
                         Files.writeString(folder.resolve("camp.hardrush.json"), SampleFiles.MANIFEST);
                         SampleFiles.write(folder, "loose.schem", building);
                         Files.writeString(folder.resolve("loose.hardrush.json"), PASTE_MANIFEST);
+                        SampleFiles.write(folder, "joined.schem", building);
+                        Files.writeString(folder.resolve("joined.hardrush.json"), JOINED_MANIFEST);
                         SampleFiles.write(folder, "broken.schem", building);
                         Files.writeString(folder.resolve("broken.hardrush.json"), BROKEN_MANIFEST);
                     } catch (IOException e) { throw new UncheckedIOException(e); }
@@ -171,8 +188,36 @@ final class WorkshopManifestSteps {
                     var sign = (SignBlockEntity) level.getBlockEntity(pos(local(PASTED, 5, 1, 1)));
                     test.assertValueEqual(lines(sign, SignTextSlot.FRONT), List.of("贴入", "", "", ""), "The pasted sign reads its manifest");
                     test.assertValueEqual(lines(sign, SignTextSlot.BACK).getFirst(), "", "A side the manifest leaves out keeps what the file had");
+                    // Design 1.4: with update_shapes, a paste updates the cells it placed and nothing that was there.
+                    force(f, s.camp, JOINED, true);
+                    level.setBlock(pos(local(JOINED, OLD_FENCE_AT.x(), OLD_FENCE_AT.y(), OLD_FENCE_AT.z())), OLD_FENCE, PackPlacer.FLAGS);
+                    level.setBlock(pos(local(JOINED, OLD_TORCH_AT.x(), OLD_TORCH_AT.y(), OLD_TORCH_AT.z())), Blocks.TORCH.defaultBlockState(), PackPlacer.FLAGS);
+                    f.a.player.teleportTo(level, JOIN_AT.getX() + .5, JOIN_AT.getY(), JOIN_AT.getZ() + .5, Set.of(), 0, 0, true);
+                    f.a.acknowledge();
+                    f.a.client.clearPackets();
+                    var pasting = workshop(f).paste(f.a.player, "joined.schem");
+                    check(test, pasting.isEmpty(), "Pasting over existing blocks starts: " + pasting);
+                })
+                .thenWaitUntil(() -> f.await(chat(f).stream().anyMatch(l -> l.contains("建筑已贴入") || l.contains("贴入建筑失败")), "The paste over existing blocks finishes"))
+                .thenWaitUntil(() -> f.await(settled(f, s.camp, JOINED), "The building pasted over existing blocks is loaded"))
+                .thenExecute(() -> {
+                    var done = chat(f).stream().filter(l -> l.contains("建筑已贴入") || l.contains("贴入建筑失败")).findFirst().orElse("");
+                    check(test, done.contains("形状更新移除了 1 个失去支撑的方块"), "Only the building's own floating torch is removed: " + done);
+                    var level = draft(f, s.camp);
+                    var fence = level.getBlockState(pos(local(JOINED, OLD_FENCE_AT.x(), OLD_FENCE_AT.y(), OLD_FENCE_AT.z())));
+                    test.assertValueEqual(fence, OLD_FENCE, "The fence that was there keeps its odd state");
+                    check(test, level.getBlockState(pos(local(JOINED, OLD_TORCH_AT.x(), OLD_TORCH_AT.y(), OLD_TORCH_AT.z()))).is(Blocks.TORCH),
+                            "The floating torch that was there is not removed");
+                    check(test, level.getBlockState(pos(local(JOINED, 6, 2, 0))).isAir(), "The building's own floating torch is removed");
+                    // The pasted fences join each other, and the westmost joins the old fence beside it.
+                    for (int x = 2; x <= 4; x++) {
+                        var state = level.getBlockState(pos(local(JOINED, x, 1, 4)));
+                        check(test, state.is(Blocks.OAK_FENCE) && state.getValue(FenceBlock.WEST) && state.getValue(FenceBlock.EAST) == (x < 4)
+                                && !state.getValue(FenceBlock.NORTH) && !state.getValue(FenceBlock.SOUTH), "Pasted fence " + x + " connections: " + state);
+                    }
                     force(f, s.camp, PLACED, false);
                     force(f, s.camp, PASTED, false);
+                    force(f, s.camp, JOINED, false);
                     workshop(f).leave(f.a.player, null);
                 });
     }

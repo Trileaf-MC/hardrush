@@ -11,7 +11,8 @@ import net.minecraft.nbt.Tag;
  * The single gate between a pack (from anyone) and a world. Works on structure template NBT that the DataFixer has
  * already brought to this game's version, before {@code StructureTemplate.load}; edits the tag in place.
  * <p>
- * Template layout ({@code StructureTemplate.save}): {@code palette} (one list of {@code {Name, Properties}}) or
+ * Template layout ({@code StructureTemplate.save}): {@code palette} (one list of {@code {id, properties}}, already
+ * renamed from the pre-26.3 {@code {Name, Properties}} by {@link PackTiles#upgrade}) or
  * {@code palettes} (several lists sharing indices); {@code blocks} of {@code {pos, state, nbt?}} where {@code state}
  * indexes the palette and {@code nbt} is the block entity; {@code entities} of {@code {pos, blockPos, nbt}}.
  */

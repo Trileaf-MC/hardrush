@@ -9,8 +9,8 @@ import net.minecraft.nbt.CompoundTag;
 
 /**
  * A block state as a template palette entry, with a canonical key for deduplication. Written in the pre-26.3 spelling
- * ({@code {Name, Properties}}), which the DataFixer understands for old files; {@link PackTiles#upgrade} renames it for
- * files already at this game's version.
+ * ({@code {Name, Properties}}), which the DataFixer understands for files from before the rename;
+ * {@link PackTiles#upgrade} renames it itself for files from the rename on, before and after the DataFixer.
  */
 final class StateEntry {
     private static final Set<String> SKIPPED = Set.of(

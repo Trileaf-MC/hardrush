@@ -16,9 +16,19 @@ public final class PackTiles {
 
     public static int currentDataVersion() { return SharedConstants.getCurrentVersion().dataVersion().version(); }
 
-    /** Runs the structure DataFixer from {@code fromDataVersion} to this game's version and stamps the result. */
+    /**
+     * The data version whose DataFixer ({@code BlockStateFieldNamesFix}) renamed palette entries' {@code Name} and
+     * {@code Properties} to {@code id} and {@code properties}. Vanilla's own constant,
+     * {@code NbtUtils.BLOCK_STATE_ID_PROPERTIES_RENAME_VERSION} (5006 in 26.3), is private.
+     */
+    static final int PALETTE_RENAME_VERSION = 5006;
+
+    /** Runs the structure DataFixer from {@code fromDataVersion} to this game's version and stamps the result; may edit {@code tile}. */
     public static CompoundTag upgrade(CompoundTag tile, int fromDataVersion) {
         int current = currentDataVersion();
+        // Fixes after the rename read the new names; a tile written in the old spelling at such a version (a building
+        // file converted by imports) is renamed first, or those fixes would not see its palette.
+        if (fromDataVersion >= PALETTE_RENAME_VERSION) canonicalPalettes(tile);
         var upgraded = fromDataVersion >= current ? tile
                 : DataFixTypes.STRUCTURE.update(DataFixers.getDataFixer(), tile, fromDataVersion, current);
         canonicalPalettes(upgraded);
@@ -27,10 +37,10 @@ public final class PackTiles {
 
     /**
      * Palette entries were {@code {Name, Properties}} until 26.3 renamed them to {@code {id, properties}}; the game now
-     * reads only the new names and treats anything else as air. The DataFixer renames them on the way up, but a tile
-     * that claims this game's version while still spelling them the old way (a building file converted by
-     * {@code imports}, a hand-made pack) skips the DataFixer. Renaming here means everything after
-     * {@link #upgrade} (the sanitizer's block list above all) sees one spelling.
+     * reads only the new names and treats anything else as air. The DataFixer renames them on the way up from before
+     * {@link #PALETTE_RENAME_VERSION}, but a tile that claims a later version while still spelling them the old way (a
+     * building file converted by {@code imports}, a hand-made pack) gets no rename from it. Renaming here means the
+     * fixes and everything after {@link #upgrade} (the sanitizer's block list above all) see one spelling.
      */
     static void canonicalPalettes(CompoundTag tile) {
         tile.getList("palette").ifPresent(PackTiles::canonicalPalette);
@@ -40,8 +50,8 @@ public final class PackTiles {
     private static void canonicalPalette(ListTag palette) {
         for (var tag : palette) {
             if (!(tag instanceof CompoundTag entry)) continue;
-            rename(entry, "Name", "id");
-            rename(entry, "Properties", "properties");
+            rename(entry, NbtUtils.LEGACY_BLOCK_STATE_ID_TAG, "id");
+            rename(entry, NbtUtils.LEGACY_BLOCKSTATE_PROPERTY_TAG, "properties");
         }
     }
 
