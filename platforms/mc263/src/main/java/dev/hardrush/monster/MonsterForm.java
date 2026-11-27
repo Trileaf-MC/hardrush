@@ -66,14 +66,16 @@ public enum MonsterForm {
                 SoundEvents.SKELETON_CONVERTED_TO_STRAY, "陷在细雪里会慢慢化身流浪者");
 
         // Where vanilla would have spawned the variant instead (natural_mob_spawns and SpawnPlacements).
-        // Only water outranks a variant the body already is: a husk cannot fight under water.
-        DROWNED.landing = new Landing(MonsterHabitat.Site::submerged, true);
-        ZOMBIFIED_PIGLIN.landing = new Landing(MonsterHabitat.Site::nether, false);
-        HUSK.landing = new Landing(site -> site.openSky() && site.hosts(EntityTypes.HUSK), false);
-        STRAY.landing = new Landing(site -> site.snowing() && site.openSky(), false);
-        PARCHED.landing = new Landing(site -> site.openSky() && site.hosts(EntityTypes.PARCHED), false);
+        // Only water outranks a variant the body already is: a husk cannot fight under water. A retrack into water
+        // keeps the body as it is and lets the water convert it natively (docs/plan/追猎出场与重新循迹.md).
+        DROWNED.landing = new Landing(MonsterHabitat.Site::submerged, true, false);
+        ZOMBIFIED_PIGLIN.landing = new Landing(MonsterHabitat.Site::nether, false, true);
+        // The land variants spawn on land only: no landing under water makes one.
+        HUSK.landing = new Landing(site -> !site.submerged() && site.openSky() && site.hosts(EntityTypes.HUSK), false, true);
+        STRAY.landing = new Landing(site -> !site.submerged() && site.snowing() && site.openSky(), false, true);
+        PARCHED.landing = new Landing(site -> !site.submerged() && site.openSky() && site.hosts(EntityTypes.PARCHED), false, true);
         // Monster.checkMonsterSpawnRules: a bogged needs no sky.
-        BOGGED.landing = new Landing(site -> site.hosts(EntityTypes.BOGGED), false);
+        BOGGED.landing = new Landing(site -> !site.submerged() && site.hosts(EntityTypes.BOGGED), false, true);
 
         // Vanilla's own arrow effects (Stray/Bogged/Parched.getArrow), capped for a player's arrows (§3).
         STRAY.arrowEffect = new ArrowEffect(MobEffects.SLOWNESS, 200);
@@ -90,9 +92,10 @@ public enum MonsterForm {
     public record Weapon(String purpose, Supplier<ItemStack> item, String hint) {}
     /**
      * A landing site where the role's body lands as this form. {@code overridesVariant}: it also turns a body that
-     * already is another variant; otherwise only the role's base form is turned.
+     * already is another variant; otherwise only the role's base form is turned. {@code onRetrack}: a retrack's
+     * landing turns the body too, not only a sortie's.
      */
-    public record Landing(Predicate<MonsterHabitat.Site> where, boolean overridesVariant) {}
+    public record Landing(Predicate<MonsterHabitat.Site> where, boolean overridesVariant, boolean onRetrack) {}
     /** The effect the native model puts on its arrows, and the longest a player's arrow carries it. */
     public record ArrowEffect(Holder<MobEffect> effect, int maxTicks) {}
 

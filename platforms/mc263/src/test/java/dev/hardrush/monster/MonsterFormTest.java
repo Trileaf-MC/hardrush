@@ -105,6 +105,25 @@ class MonsterFormTest {
         assertEquals(MonsterForm.SKELETON, MonsterHabitat.settle(MonsterForm.SKELETON, land(PLAINS, true)));
     }
 
+    @Test void aRetrackIntoWaterRisesAsNoDrowned() {
+        var sea = new Site(true, false, false, true, Set.of());
+        assertEquals(MonsterForm.ZOMBIE, MonsterHabitat.settle(MonsterForm.ZOMBIE, sea, true));
+        assertEquals(MonsterForm.HUSK, MonsterHabitat.settle(MonsterForm.HUSK, sea, true), "The water converts it natively from here");
+        assertEquals(MonsterForm.HUSK, MonsterHabitat.settle(MonsterForm.ZOMBIE, land(DESERT, true), true), "Land variants still apply");
+    }
+
+    @Test void noLandVariantComesFromUnderWater() {
+        var desertWater = new Site(true, false, false, true, DESERT);
+        var snowyWater = new Site(true, false, true, true, PLAINS);
+        var swampWater = new Site(true, false, false, true, SWAMP);
+        for (boolean retrack : new boolean[] {false, true}) {
+            assertEquals(MonsterForm.SKELETON, MonsterHabitat.settle(MonsterForm.SKELETON, desertWater, retrack));
+            assertEquals(MonsterForm.SKELETON, MonsterHabitat.settle(MonsterForm.SKELETON, snowyWater, retrack));
+            assertEquals(MonsterForm.SKELETON, MonsterHabitat.settle(MonsterForm.SKELETON, swampWater, retrack));
+        }
+        assertEquals(MonsterForm.ZOMBIE, MonsterHabitat.settle(MonsterForm.ZOMBIE, desertWater, true), "A zombie retracked into desert water");
+    }
+
     @Test void aCreeperNeverTurns() {
         for (var site : java.util.List.of(new Site(true, true, true, true, DESERT), land(SWAMP, true), land(DESERT, true)))
             assertEquals(MonsterForm.CREEPER, MonsterHabitat.settle(MonsterForm.CREEPER, site));

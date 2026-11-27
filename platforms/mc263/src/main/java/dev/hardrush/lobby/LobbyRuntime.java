@@ -788,9 +788,9 @@ public final class LobbyRuntime {
         if (!r.player.teleportTo(level, landing.x, landing.y, landing.z, java.util.Set.of(), r.search.yaw(target.position()), 0, true)) {
             Notices.hint(r.player, "落点失效，循迹取消"); sound(r.player, false); return;
         }
-        // A retrack into water keeps the body as it is (docs/plan/追猎出场与重新循迹.md): the water converts it natively
-        // from here on. Every other site still decides the species as a sortie's landing does.
-        boolean turned = MonsterRoles.settle(r.player, false);
+        // A retrack into water does not rise as a drowned (docs/plan/追猎出场与重新循迹.md): the water converts it natively
+        // from here on. Every other landing still decides the species as a sortie's does.
+        boolean turned = MonsterRoles.settle(r.player, result.submerged(), true);
         HuntRetracks.retracked(r.player, target, result.burrowed());
         // Followers stay where they are while it hides: there is no room around a burrow but the quarry's tunnel.
         if (!result.burrowed()) MonsterCompanions.regroup(r.player);

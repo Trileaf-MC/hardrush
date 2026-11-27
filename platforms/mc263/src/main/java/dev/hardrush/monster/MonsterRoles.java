@@ -687,10 +687,15 @@ public final class MonsterRoles {
      * @param submerged the landing is under water ({@code SafeDeployment.Result.submerged()})
      * @return whether the body changed form
      */
-    public static boolean settle(ServerPlayer player, boolean submerged) {
+    public static boolean settle(ServerPlayer player, boolean submerged) { return settle(player, submerged, false); }
+    /**
+     * {@link #settle(ServerPlayer, boolean)} for a sortie's landing or, with {@code retrack}, a retrack's
+     * ({@link MonsterHabitat#settle(MonsterForm, MonsterHabitat.Site, boolean)}).
+     */
+    public static boolean settle(ServerPlayer player, boolean submerged, boolean retrack) {
         var role = ROLES.get(player.getUUID());
         if (role == null || !(player.level() instanceof ServerLevel level)) return false;
-        var form = MonsterHabitat.settle(role.form, MonsterHabitat.at(level, player.blockPosition(), submerged));
+        var form = MonsterHabitat.settle(role.form, MonsterHabitat.at(level, player.blockPosition(), submerged), retrack);
         if (form != role.form) { convert(player, form, true); return true; }
         if (form.weapon != null) { formWeapon(player, form, true); repairLoadout(player); }
         return false;
