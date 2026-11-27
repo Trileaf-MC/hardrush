@@ -8,6 +8,7 @@
     "MonsterLivingAccessor",
     "MonsterEnchantmentMixin",
     "MonsterPlayerMixin",
+    "MonsterFireImmuneMixin",
     "NativeCreeperAccessor",
     "MonsterInventoryMixin",
     "MonsterMiningGameModeMixin",

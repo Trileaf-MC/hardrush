@@ -48,7 +48,7 @@ class RuleBookTextTest {
         assertTrue(dig.contains("石头、泥土、下界岩这类天然方块最长 7.5 秒") && dig.contains("不掉落"), dig);
         assertTrue(dig.contains("门、装着东西的方块、矿石和黑曜石这类太硬的方块挖不动"), dig);
         assertTrue(dig.contains("苦力怕挖不动，但爆炸能炸开方块"), dig);
-        assertTrue(page(hardcore, "破石而出").contains("藏进人类旁边的石头里，挖开墙破石而出"));
+        assertTrue(page(hardcore, "破壁出击").contains("墙后、屋顶上，或者藏进旁边的石头里，挖开一格就到人类身边"));
         assertTrue(page(hardcore, "角色").contains("困难难度下能敲开木门") && !page(hardcore, "角色").contains("空手敲开"),
                 page(hardcore, "角色"));
         var values = new java.util.TreeMap<>(RulesConfig.defaults().combatValues());
@@ -58,7 +58,7 @@ class RuleBookTextTest {
                 values, rules.startCountdownMillis(), rules.successCelebrationMillis(), rules.failureDisplayMillis());
         assertTrue(page(RuleBookText.pages(rules), "挖掘").contains("最长 3 秒"));
         assertNull(page(pages(GameMode.NORMAL), "挖掘"));
-        assertNull(page(pages(GameMode.NORMAL), "破石而出"));
+        assertNull(page(pages(GameMode.NORMAL), "破壁出击"));
     }
 
     @Test void entryPageNamesTheLateShelterOnlyWhenMonstersHuntAndRevivalPageTheBlessing() {
@@ -86,6 +86,16 @@ class RuleBookTextTest {
 
     @Test void theHuntPageTellsBothSidesAboutTheLandingOmen() {
         assertTrue(page(pages(GameMode.HARDCORE), "追猎").contains("僵尸和骷髅落地时，目标会听到一声洞穴音；苦力怕悄无声息"));
+    }
+
+    @Test void theAvatarPageFollowsTheRolesAndOnlyHardcoreHasIt() {
+        var hardcore = pages(GameMode.HARDCORE);
+        var avatar = page(hardcore, "化身");
+        assertNotNull(avatar);
+        assertTrue(avatar.contains("出击落在哪里，就化身当地的怪物") && avatar.contains("下界是僵尸猪灵") && avatar.contains("沼泽是沼骸"), avatar);
+        assertTrue(avatar.contains("僵尸猪灵不怕火和熔岩") && avatar.contains("落到下界以外就变回僵尸") && avatar.contains("附近的都会围上来"), avatar);
+        assertEquals(hardcore.indexOf(page(hardcore, "角色")) + 1, hardcore.indexOf(avatar), "Right after the roles page");
+        assertNull(page(pages(GameMode.NORMAL), "化身"));
     }
 
     @Test void theCompassHasItsOwnPageWithTheRoundsChannelAndRest() {

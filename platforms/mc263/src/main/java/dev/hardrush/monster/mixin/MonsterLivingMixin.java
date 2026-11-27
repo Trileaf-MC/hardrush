@@ -18,8 +18,8 @@ public abstract class MonsterLivingMixin {
                 && MonsterRoles.currentForm(player) == dev.hardrush.monster.MonsterForm.CREEPER) callback.setReturnValue(false);
     }
     @Inject(method="addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z", at=@At("HEAD"), cancellable=true)
-    private void ownSight(MobEffectInstance effect, net.minecraft.world.entity.Entity source, CallbackInfoReturnable<Boolean> callback) {
-        if ((Object)this instanceof ServerPlayer player && MonsterRoles.refusesSight(player, effect)) callback.setReturnValue(false);
+    private void ownEffects(MobEffectInstance effect, net.minecraft.world.entity.Entity source, CallbackInfoReturnable<Boolean> callback) {
+        if ((Object)this instanceof ServerPlayer player && MonsterRoles.refusesForeignEffect(player, effect)) callback.setReturnValue(false);
     }
     @Inject(method="canBreatheUnderwater", at=@At("HEAD"), cancellable=true)
     private void undeadBreathing(CallbackInfoReturnable<Boolean> callback) {

@@ -338,7 +338,7 @@ public final class MonsterCreeper {
     }
 
     private static void spawnCloud(ServerPlayer player, Creeper model) {
-        // The body's own night vision is not a potion: copied, it would hand humans infinite sight, and a cloud
+        // The body's own effects are no potion: copied, night vision would hand humans infinite sight, and a cloud
         // after every blast would tell a player creeper from a native one, which carries no effects.
         var effects = player.getActiveEffects().stream().filter(effect -> !MonsterRoles.intrinsic(effect)).toList();
         if (effects.isEmpty()) return;

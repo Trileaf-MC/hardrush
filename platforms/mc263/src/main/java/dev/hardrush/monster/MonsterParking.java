@@ -46,7 +46,8 @@ public final class MonsterParking {
         }
         var effects = new JsonArray();
         for (var active : player.getActiveEffects()) {
-            // Only the body's own night vision stays behind; a parting gift lasts until death and parks like the rest.
+            // Only the body's own effects (night vision) stay behind; the next bind
+            // gives them afresh. A parting gift lasts until death and parks like the rest.
             if (MonsterRoles.intrinsic(active)) continue;
             MobEffectInstance.CODEC.encodeStart(registries.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), active)
                     .result().ifPresent(encoded -> {
@@ -100,9 +101,7 @@ public final class MonsterParking {
         if (text.isEmpty()) return Optional.empty();
         try {
             var body = JsonParser.parseString(text).getAsJsonObject();
-            var name = switch (MonsterForm.valueOf(body.get("form").getAsString())) {
-                case ZOMBIE -> "僵尸"; case DROWNED -> "溺尸"; case SKELETON -> "骷髅"; case STRAY -> "流浪者"; case CREEPER -> "苦力怕";
-            };
+            var name = MonsterForm.valueOf(body.get("form").getAsString()).label;
             return Optional.of(body.get("charged").getAsBoolean() ? "带电" + name : name);
         } catch (RuntimeException damaged) { return Optional.empty(); }
     }

@@ -186,8 +186,14 @@ public final class MonsterSkin {
         return net.minecraft.world.item.component.ResolvableProfile.createResolved(new GameProfile(id, kind, new PropertyMap(properties)));
     }
 
+    /**
+     * Every form has a pinned skin of its own today. One added without it (a skin needs a signed upload, see
+     * monster-skins.json) wears its role's base form's until then rather than failing.
+     */
     private static Property skin(String kind) {
         Property skin = SKINS.get(kind);
+        var form = dev.hardrush.monster.MonsterForm.byId(kind);
+        if (skin == null && form != null) skin = SKINS.get(form.baseForm().id());
         if (skin == null) throw new IllegalArgumentException("No skin for monster form " + kind);
         return skin;
     }

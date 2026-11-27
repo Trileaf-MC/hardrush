@@ -51,15 +51,8 @@ public final class MonsterDisguise {
     public static String apply(ServerPlayer player, String requestedType) {
         requireMainThread(player);
         String kind = requestedType.toLowerCase(Locale.ROOT);
-        EntityType<? extends Mob> type = switch (kind) {
-            case "zombie" -> EntityTypes.ZOMBIE;
-            case "drowned" -> EntityTypes.DROWNED;
-            case "stray" -> EntityTypes.STRAY;
-            case "skeleton" -> EntityTypes.SKELETON;
-            case "creeper" -> EntityTypes.CREEPER;
-            default -> null;
-        };
-        if (type == null) return "拒绝：只接受 zombie、skeleton、creeper。";
+        var form = dev.hardrush.monster.MonsterForm.byId(kind);
+        if (form == null) return "拒绝：只接受 zombie、skeleton、creeper。";
         if (!player.isAlive() || player.isSpectator()) return "拒绝：请在存活、非旁观时设置怪物外观。";
         Selection previous = SELECTED.get(player.getUUID());
         if (previous != null && previous.kind.equals(kind) && previous.state != null
@@ -68,7 +61,7 @@ public final class MonsterDisguise {
         }
         if (previous != null) unbind(previous);
         MonsterSkin.cancelRestore(player);
-        Selection selection = new Selection(kind, type);
+        Selection selection = new Selection(kind, form.type);
         SELECTED.put(player.getUUID(), selection);
         bind(player, selection);
         if (previous == null || !previous.skin().equals(selection.skin())) MonsterSkin.showToOthers(player, selection.skin());

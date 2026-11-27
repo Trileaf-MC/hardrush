@@ -63,7 +63,7 @@ public final class MonsterSkillsGameTest {
             try (var ignored = f.installCombat()) {
                 MonsterRoles.select(f.owner, "zombie");
                 for (boolean baby : List.of(true, false)) {
-                    f.owner.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(f.owner, baby, false));
+                    f.owner.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(f.owner, baby, MonsterForm.ZOMBIE));
                     var floor = f.owner.blockPosition().offset(baby ? 2 : -2, -1, 0);
                     test.assertTrue(MonsterCompanions.useOn(f.owner, InteractionHand.MAIN_HAND,
                             new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(floor).add(0, .5, 0),
@@ -151,7 +151,7 @@ public final class MonsterSkillsGameTest {
                 f.target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000); f.target.setHealth(1000);
                 MonsterRoles.select(f.owner, "zombie");
                 for (boolean baby : List.of(true, false)) {
-                    f.owner.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(f.owner, baby, false));
+                    f.owner.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(f.owner, baby, MonsterForm.ZOMBIE));
                     var floor = f.owner.blockPosition().offset(baby ? 2 : -2, -1, 0);
                     test.assertTrue(MonsterCompanions.useOn(f.owner, InteractionHand.MAIN_HAND,
                             new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(floor).add(0, .5, 0),

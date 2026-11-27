@@ -72,7 +72,7 @@ public final class MonsterCompanionGameTest {
         test.runAfterDelay(80, () -> {
             try {
                 MonsterRoles.select(player, "zombie");
-                var egg = MonsterCompanions.egg(player, false, false);
+                var egg = MonsterCompanions.egg(player, false, dev.hardrush.monster.MonsterForm.ZOMBIE);
                 player.setItemInHand(InteractionHand.MAIN_HAND, egg);
                 var spawner = player.blockPosition().east(2);
                 player.level().setBlockAndUpdate(spawner, Blocks.SPAWNER.defaultBlockState());
@@ -96,7 +96,7 @@ public final class MonsterCompanionGameTest {
             var water = owner.blockPosition().east(2);
             try {
                 MonsterRoles.select(owner, "zombie");
-                var egg = MonsterCompanions.egg(owner, false, true);
+                var egg = MonsterCompanions.egg(owner, false, dev.hardrush.monster.MonsterForm.DROWNED);
                 owner.setItemInHand(InteractionHand.MAIN_HAND, egg);
                 owner.setXRot(-90);
                 test.assertTrue(!MonsterCompanions.use(owner, InteractionHand.MAIN_HAND), "Ordinary air never spawns a companion");
@@ -316,6 +316,45 @@ public final class MonsterCompanionGameTest {
         });
     }
 
+    /**
+     * A baby zombie fits a passage one block high: sent after a quarry at the far end of a six-block crawlway, it goes
+     * through and reaches it. Regression only (no code makes it so); the quarry waits in a small two-high chamber.
+     */
+    @GameTest(maxTicks = 400)
+    public void aBabyZombieFollowsThroughACrawlway(GameTestHelper test) {
+        var owner = MonsterRoleGameTest.actor(test);
+        var level = owner.level();
+        var origin = owner.blockPosition();
+        var cow = EntityTypes.COW.create(level, EntitySpawnReason.COMMAND);
+        TestTeardown.atEnd(test, () -> {
+            cow.discard();
+            for (var pos : BlockPos.betweenClosed(origin.offset(3, 0, -2), origin.offset(12, 2, 2)))
+                level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
+            clean(owner);
+        });
+        Zombie[] baby = new Zombie[1];
+        test.startSequence().thenIdle(80)
+                .thenExecute(() -> {
+                    // Rock east of the arena: a crawlway x+3..x+8 one block high, then a chamber x+9..x+10 two high.
+                    for (var pos : BlockPos.betweenClosed(origin.offset(3, -1, -2), origin.offset(12, 2, 2)))
+                        level.setBlockAndUpdate(pos, Blocks.STONE.defaultBlockState());
+                    for (int x = 3; x <= 8; x++) level.setBlockAndUpdate(origin.offset(x, 0, 0), Blocks.AIR.defaultBlockState());
+                    for (int x = 9; x <= 10; x++) for (int y = 0; y < 2; y++) level.setBlockAndUpdate(origin.offset(x, y, 0), Blocks.AIR.defaultBlockState());
+                    cow.snapTo(origin.getX() + 10.5, origin.getY(), origin.getZ() + .5, -90, 0);
+                    cow.setNoAi(true);
+                    level.addFreshEntity(cow);
+                    MonsterRoles.select(owner, "zombie");
+                    baby[0] = summon(test, owner, true, false);
+                    test.assertTrue(baby[0].isBaby(), "A baby zombie companion");
+                    MonsterCompanions.onOwnerAttack(owner, cow);
+                    test.assertTrue(baby[0].getTarget() == cow, "The owner's order sends it after the quarry");
+                })
+                .thenWaitUntil(() -> test.assertTrue(baby[0].isAlive() && (baby[0].distanceTo(cow) <= 1.5 || cow.getHealth() < cow.getMaxHealth()),
+                        "The baby zombie comes through the crawlway to the quarry: at " + baby[0].position()))
+                .thenExecute(() -> test.assertTrue(baby[0].getX() > origin.getX() + 3, "It went into the rock, through the crawlway"))
+                .thenSucceed();
+    }
+
     /** A retrack lands the owner far away; every follower comes along before its old chunks can unload. */
     @GameTest(maxTicks = 200)
     public void retrackRegroupsFollowersBesideOwner(GameTestHelper test) {
@@ -443,7 +482,7 @@ public final class MonsterCompanionGameTest {
 
     private static Zombie summon(GameTestHelper test, ServerPlayer owner, boolean baby, boolean drowned) {
         var floor = owner.blockPosition().east(2).below();
-        owner.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(owner, baby, drowned));
+        owner.setItemInHand(InteractionHand.MAIN_HAND, MonsterCompanions.egg(owner, baby, drowned ? dev.hardrush.monster.MonsterForm.DROWNED : dev.hardrush.monster.MonsterForm.ZOMBIE));
         long before = owner.level().getEntitiesOfClass(Zombie.class, owner.getBoundingBox().inflate(8)).stream()
                 .filter(zombie -> owner.getUUID().equals(MonsterCompanions.owner(zombie))).count();
         test.assertTrue(MonsterCompanions.useOn(owner, InteractionHand.MAIN_HAND, hit(floor)), "Bound egg spawns on a safe floor");

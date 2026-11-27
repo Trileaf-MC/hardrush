@@ -5,6 +5,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.server.level.ServerLevel;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -17,12 +18,17 @@ public abstract class SummonTargetMixin {
         if (owner!=null && target!=null && mob.level() instanceof ServerLevel level
                 && (!MonsterCompanions.allowedTarget(mob,target) || MonsterCombatRuntime.reject(mob,target))) callback.cancel();
     }
+    /** Set while an invalid target is being dropped: a species whose setTarget reads getTarget (ZombifiedPiglin) re-enters here. */
+    @Unique private boolean hardrush$forgetting;
     @Inject(method="getTarget", at=@At("RETURN"), cancellable=true)
     private void forgetInvalid(CallbackInfoReturnable<LivingEntity> callback) {
         var mob=(Mob)(Object)this; var owner=MonsterCompanions.owner(mob); var target=callback.getReturnValue();
         if (owner!=null && target!=null && mob.level() instanceof ServerLevel level
                 && (!MonsterCompanions.allowedTarget(mob,target) || MonsterCombatRuntime.reject(mob,target))) {
-            mob.setTarget(null); callback.setReturnValue(null);
+            callback.setReturnValue(null);
+            if (hardrush$forgetting) return;
+            hardrush$forgetting=true;
+            try { mob.setTarget(null); } finally { hardrush$forgetting=false; }
         }
     }
 }
