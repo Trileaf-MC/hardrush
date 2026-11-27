@@ -108,7 +108,6 @@ public final class MonsterPiglinGameTest {
             test.assertTrue(p.getRemainingFireTicks() <= 0, "Lava lights no fire on it");
             // A fire block or burning arrow sets the fire unconditionally; the native tick puts it out at once.
             p.igniteForSeconds(8);
-            test.assertFalse(p.isOnFire(), "It never reads as burning");
         }).thenIdle(3).thenExecute(() -> {
             test.assertTrue(p.getRemainingFireTicks() <= 0, "The fire is out within a tick, so no one sees it burn");
             test.assertFalse(p.hasEffect(MobEffects.FIRE_RESISTANCE), "Still no potion effect behind it");
@@ -226,11 +225,13 @@ public final class MonsterPiglinGameTest {
 
     /**
      * Companions keep the piglin's temper, and a human striking the piglin player provokes every zombified piglin
-     * around, wild ones included. One sequence: concurrent piglin fixtures would hear each other's calls.
+     * around, wild ones included. One sequence: concurrent piglin fixtures would hear each other's calls. For the same
+     * reason it plays in a secluded arena: the call reaches 35 blocks, beyond the shared row's 24-block spacing, where a
+     * neighbouring test's human striking its own piglin player would set these calm piglins on that human.
      */
     @GameTest(maxTicks=600)
     public void zombifiedPiglinsAreNeutralUntilAHumanProvokesOne(GameTestHelper test) {
-        var owner = MonsterRoleGameTest.actor(test);
+        var owner = MonsterRoleGameTest.secludedActor(test);
         var human = MonsterRoleGameTest.actor(test);
         var other = MonsterRoleGameTest.actor(test);
         var monster = MonsterRoleGameTest.actor(test);
@@ -365,10 +366,13 @@ public final class MonsterPiglinGameTest {
         MonsterRoles.repairLoadout(p);
     }
 
-    /** Natively fire immune, as the species is; no potion effect of its own stands for it. */
+    /**
+     * Natively fire immune, as the species is; no potion effect of its own stands for it. {@code isOnFire} reads false for
+     * anything fire immune, so the remaining fire, which the native tick sends to clients as the on-fire flag, is checked.
+     */
     private static void assertFireproof(GameTestHelper test, ServerPlayer p, String when) {
         test.assertTrue(p.fireImmune(), when + ": natively fire immune");
-        test.assertFalse(p.isOnFire(), when + ": never burning");
+        test.assertTrue(p.getRemainingFireTicks() <= 0, when + ": never burning");
         var own = p.getEffect(MobEffects.FIRE_RESISTANCE);
         test.assertTrue(own == null || !MonsterRoles.intrinsic(own), when + ": no fire resistance of the body's own");
     }

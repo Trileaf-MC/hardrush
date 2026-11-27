@@ -38,6 +38,7 @@ import net.minecraft.world.phys.Vec3;
 /** Exercises real role hooks/packets and native combat; transport is simulated. */
 public final class MonsterRoleGameTest {
     private static final java.util.concurrent.atomic.AtomicInteger ARENA = new java.util.concurrent.atomic.AtomicInteger();
+    private static final java.util.concurrent.atomic.AtomicInteger SECLUDED = new java.util.concurrent.atomic.AtomicInteger();
     private static final java.util.Map<java.util.UUID,TestClient> CLIENTS=new java.util.HashMap<>();
     private record ForcedChunk(net.minecraft.server.level.ServerLevel level,net.minecraft.world.level.ChunkPos pos) {}
     private static final java.util.Map<java.util.UUID,List<ForcedChunk>> FORCED=new java.util.HashMap<>();
@@ -749,18 +750,23 @@ public final class MonsterRoleGameTest {
         MonsterRoles.repairLoadout(player);
     }
 
-    public static ServerPlayer actor(GameTestHelper test) {
-        int center=1000+ARENA.getAndIncrement()*24;
+    public static ServerPlayer actor(GameTestHelper test) { return actor(test,1000+ARENA.getAndIncrement()*24,0); }
+    /**
+     * An actor in an arena of its own, far beyond every other: for fixtures whose mobs answer calls from 35 blocks
+     * around (zombified piglins), which in the shared 24-block row would hear the neighbouring tests' calls.
+     */
+    public static ServerPlayer secludedActor(GameTestHelper test) { return actor(test,1000+SECLUDED.getAndIncrement()*128,4096); }
+    private static ServerPlayer actor(GameTestHelper test,int center,int centerZ) {
         var server=test.getLevel().getServer();
-        var profile=new GameProfile(java.util.UUID.randomUUID(),"HRRole"+center);
+        var profile=new GameProfile(java.util.UUID.randomUUID(),"HRRole"+center+(centerZ==0?"":"s"));
         var client=new TestClient(server,profile);
         var player=client.place(test.getLevel());
         CLIENTS.put(player.getUUID(),client);
         for(int dx=-6;dx<=6;dx++)for(int dz=-6;dz<=6;dz++) {
-            test.getLevel().setBlockAndUpdate(new BlockPos(center+dx,149,dz),Blocks.SMOOTH_STONE.defaultBlockState());
-            for(int y=150;y<=154;y++)test.getLevel().setBlockAndUpdate(new BlockPos(center+dx,y,dz),Blocks.AIR.defaultBlockState());
+            test.getLevel().setBlockAndUpdate(new BlockPos(center+dx,149,centerZ+dz),Blocks.SMOOTH_STONE.defaultBlockState());
+            for(int y=150;y<=154;y++)test.getLevel().setBlockAndUpdate(new BlockPos(center+dx,y,centerZ+dz),Blocks.AIR.defaultBlockState());
         }
-        player.teleportTo(center+.5,150,.5);
+        player.teleportTo(center+.5,150,centerZ+.5);
         var forced=new java.util.ArrayList<ForcedChunk>();
         for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++) {
             var chunk=new net.minecraft.world.level.ChunkPos((player.getBlockX()>>4)+dx,(player.getBlockZ()>>4)+dz);
