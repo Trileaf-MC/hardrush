@@ -64,11 +64,11 @@ public final class WitchGuide {
         if (!action.startsWith("page/")) return;
         int page;
         try { page = Integer.parseInt(action.substring("page/".length())); } catch (NumberFormatException ignored) { return; }
-        if (page >= 0 && page < pages(player).size()) page(player, page);
+        if (page >= 0 && page < WitchGuideText.PAGES.size()) page(player, page);
     }
 
     private static void page(ServerPlayer player, int index) {
-        var pages = pages(player);
+        var pages = WitchGuideText.PAGES;
         boolean last = index == pages.size() - 1;
         var buttons = new ArrayList<ActionButton>();
         if (index > 0) buttons.add(button("上一页", "page/" + (index - 1)));
@@ -79,12 +79,6 @@ public final class WitchGuide {
                 last ? DialogAction.CLOSE : DialogAction.WAIT_FOR_RESPONSE, List.of(new PlainMessage(body(pages.get(index)), WIDTH)), List.of());
         var dialog = new MultiActionDialog(common, buttons, Optional.empty(), buttons.size());
         player.connection.send(new ClientboundShowDialogPacket(Holder.direct(dialog)));
-    }
-
-    /** The current round's wording; between rounds the guide reads as written. */
-    private static List<List<WitchGuideText.Line>> pages(ServerPlayer player) {
-        return dev.hardrush.round.RoundRuntime.snapshot(player.level().getServer())
-                .map(round -> WitchGuideText.pages(round.rules())).orElse(WitchGuideText.PAGES);
     }
 
     private static ActionButton button(String label, String action) {
@@ -100,6 +94,7 @@ public final class WitchGuide {
             switch (line.look()) {
                 case PLAIN -> {}
                 case BOLD -> text.withStyle(ChatFormatting.BOLD);
+                case KEY -> text.withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD, ChatFormatting.UNDERLINE);
                 case ASIDE -> text.withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC);
             }
             out.append(text);
