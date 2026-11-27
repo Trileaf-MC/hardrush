@@ -77,7 +77,10 @@ public abstract class ProtectionNetworkMixin {
     @Inject(method="handleUseItem", at=@At("HEAD"), cancellable=true)
     private void item(ServerboundUseItemPacket packet, CallbackInfo ci) {
         if (mainThread() && ProtectionRuntime.protectedEntity(player)
-                && !WrittenBookPort.isHistoryBook(player.getItemInHand(packet.hand()))) ci.cancel();
+                && !WrittenBookPort.isHistoryBook(player.getItemInHand(packet.hand()))) {
+            dev.hardrush.lobby.CampKit.refusedUse(player, packet.hand());
+            ci.cancel();
+        }
     }
     @Inject(method="handleInteract", at=@At("HEAD"), cancellable=true)
     private void entity(ServerboundInteractPacket packet, CallbackInfo ci) {

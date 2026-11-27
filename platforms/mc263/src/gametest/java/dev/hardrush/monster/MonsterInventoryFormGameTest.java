@@ -272,6 +272,27 @@ public final class MonsterInventoryFormGameTest {
     }
 
     @GameTest(maxTicks=200)
+    public void rightClickSwapsArmorNativelyExceptForACreeper(GameTestHelper test) {
+        var p=MonsterRoleGameTest.actor(test);
+        var hand=net.minecraft.world.InteractionHand.MAIN_HAND;
+        try {
+            MonsterRoles.select(p,"zombie");
+            p.setItemSlot(EquipmentSlot.HEAD,MonsterItems.bind(p,new ItemStack(Items.IRON_HELMET),"gear"));
+            p.getInventory().setItem(4,MonsterItems.bind(p,new ItemStack(Items.GOLDEN_HELMET),"gear")); p.getInventory().setSelectedSlot(4);
+            MonsterRoles.repairLoadout(p);
+            p.gameMode.useItem(p,p.level(),p.getMainHandItem(),hand);
+            test.assertTrue(p.getItemBySlot(EquipmentSlot.HEAD).is(Items.GOLDEN_HELMET) && p.getMainHandItem().is(Items.IRON_HELMET)
+                    && MonsterItems.owned(p,p.getMainHandItem()),"A right click swaps the spare helmet on and keeps the old one");
+            test.assertTrue(MonsterRoles.nativeModel(p).getItemBySlot(EquipmentSlot.HEAD).is(Items.GOLDEN_HELMET),"The native model wears it at once");
+            MonsterRoles.select(p,"creeper");
+            p.getInventory().setItem(4,new ItemStack(Items.GOLDEN_HELMET)); p.getInventory().setSelectedSlot(4);
+            p.gameMode.useItem(p,p.level(),p.getMainHandItem(),hand);
+            test.assertTrue(p.getItemBySlot(EquipmentSlot.HEAD).isEmpty() && p.getMainHandItem().is(Items.GOLDEN_HELMET),"A creeper puts no armour on");
+        } finally { cleanup(p); MonsterRoleGameTest.remove(p); }
+        test.succeed();
+    }
+
+    @GameTest(maxTicks=200)
     public void worldDragCollectAndBoundArmorKeepNativeInventorySemantics(GameTestHelper test) {
         var p=MonsterRoleGameTest.actor(test);
         try {

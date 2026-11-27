@@ -31,12 +31,18 @@ public final class CampKit {
     private static final String KEY = "hardrush_camp_kit";
     private static final String COIN = "hardrush_monster_coin";
     private static final String USAGE = "hardrush_camp_kit_usage";
+    /** Key prefix of a vault piece's projection, followed by its wallet serial. */
+    private static final String GEAR = "gear:";
     private static final String COIN_USAGE = "在庭院右键女巫，购买出击增强";
     /** Coins beyond three stacks are still counted; the lore names the true total. */
     public static final int MAX_SHOWN_COINS = 3 * 64;
     private static final Map<MinecraftServer, CampAccess> INSTANCES = new IdentityHashMap<>();
     /** Players watching a vault animation; their new gear appears when it flies into the backpack. */
     private static final Set<UUID> HELD = new HashSet<>();
+    /** Players whose newly put-on vault piece is being committed as the worn one; their arrangement stays meanwhile. */
+    private static final Set<UUID> WEARING = new HashSet<>();
+    /** What the projection last wore on each body: only a different piece in that slot is the player's own choice. */
+    private static final Map<ServerPlayer, Map<EquipmentSlot, String>> PROJECTED_WORN = new WeakHashMap<>();
 
     private CampKit() {}
 
@@ -115,8 +121,49 @@ public final class CampKit {
             if (HELD.contains(player.getUUID())) continue;
             var p = r == null ? null : r.participants().get(player.getUUID());
             boolean shown = p != null && MonsterCoins.enabled(r.rules()) && access.eligible(player);
-            converge(player, shown ? desired(player, r.rules(), p) : List.of());
+            var wants = shown ? desired(player, r.rules(), p) : List.<Want>of();
+            if (!shown || !wear(access, player, r, p, wants)) converge(player, wants);
         }
+    }
+
+    /**
+     * The server refused a sealed or protected body's item use. A camp monster's vault piece still goes on natively, in
+     * place of the one worn, and the choice is recorded on the next tick like any other way of putting it on; any other
+     * armour swap the client predicted is undone.
+     */
+    public static void refusedUse(ServerPlayer player, net.minecraft.world.InteractionHand hand) {
+        var stack = player.getItemInHand(hand);
+        var access = INSTANCES.get(player.level().getServer());
+        if (access != null && is(stack) && tag(stack).startsWith(GEAR) && access.eligible(player)
+                && dev.hardrush.player.NativeArmorSwap.swap(player, hand)) return;
+        dev.hardrush.player.NativeArmorSwap.refuse(player, hand);
+    }
+
+    /**
+     * Native equipping (a right click, a drag or a shift click onto the armour slot) of another piece the role can
+     * wear there makes that piece the worn one in the wallet, instead of the projection taking it off again. True while
+     * a choice waits to commit: converging then would undo it.
+     */
+    private static boolean wear(CampAccess access, ServerPlayer player, dev.hardrush.core.round.RoundSnapshot r, Participant p,
+                                List<Want> wants) {
+        if (WEARING.contains(player.getUUID())) return true;
+        var projected = PROJECTED_WORN.get(player);
+        if (projected == null) return false;
+        for (var want : wants) {
+            if (want.fits == null || want.slot == want.fits || !want.key.equals(tag(player.getItemBySlot(want.fits)))) continue;
+            // A newer vault piece replaces the one the projection itself put on; that one is no choice.
+            if (want.key.equals(projected.get(want.fits))) continue;
+            if (access.busy(p.id()) || access.session().mutationPending()) return true;
+            WEARING.add(player.getUUID());
+            int serial = Integer.parseInt(want.key.substring(GEAR.length()));
+            access.session().requestGearWorn(r.roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(), serial, reply -> {
+                WEARING.remove(player.getUUID());
+                if (!reply.success()) Notices.hint(player, dev.hardrush.notice.Replies.text(reply, "没能换上这件装备"));
+                refresh(player);
+            });
+            return true;
+        }
+        return false;
     }
 
     /** Immediately re-project after a purchase or vault opening, even with the shop menu open. */
@@ -128,7 +175,13 @@ public final class CampKit {
         if (p != null && MonsterCoins.enabled(r.rules()) && access.eligible(player)) converge(player, desired(player, r.rules(), p));
     }
 
-    private record Want(String key, ItemStack stack, EquipmentSlot slot) {}
+    /**
+     * @param slot where the projection wears the stack, or null for the backpack
+     * @param fits the armour slot the current role may wear this vault piece in, or null
+     */
+    private record Want(String key, ItemStack stack, EquipmentSlot slot, EquipmentSlot fits) {
+        Want(String key, ItemStack stack) { this(key, stack, null, null); }
+    }
 
     private static List<Want> desired(ServerPlayer player, dev.hardrush.core.config.RulesConfig rules, Participant p) {
         var wallet = p.wallet();
@@ -139,7 +192,7 @@ public final class CampKit {
             var coins = coin(shown);
             ItemText.lore(coins, COIN_USAGE, "共 " + Notices.key(available) + " 枚",
                     "丢出可送给其他怪物 · 落地 5 分钟无人拾取即作废", "本轮结束时清空");
-            wants.add(new Want("coin", coins, null));
+            wants.add(new Want("coin", coins));
         }
         for (var entry : wallet.order().entrySet()) {
             var offer = entry.getKey();
@@ -149,15 +202,15 @@ public final class CampKit {
             if (offer.revival()) {
                 wants.add(new Want(key, tagged(stack, key, offer.landing() ? "落地时生效"
                         : offer == dev.hardrush.core.round.ShopOffer.SHIELD ? "复生时放进副手" : "复生时放进背包",
-                        List.of("已购 ×" + Notices.key(entry.getValue()) + " · 复生后可用")), null));
+                        List.of("已购 ×" + Notices.key(entry.getValue()) + " · 复生后可用"))));
                 continue;
             }
             wants.add(new Want(key, offer.key() ? tagged(stack, key, "手持右键庭院的宝库，开出一件装备", List.of())
                     : tagged(stack, key, sellable(offer.roles(), p.monsterRole()) ? "下次出击时自动带上"
                             : "以 " + Notices.key(roles(offer.roles())) + " 出击时才会带上",
-                            List.of("已购 ×" + Notices.key(entry.getValue()) + " · 出击结束时用剩的作废，返回营地则随身暂存")), null));
+                            List.of("已购 ×" + Notices.key(entry.getValue()) + " · 出击结束时用剩的作废，返回营地则随身暂存"))));
         }
-        // Each slot shows the newest wearable piece on the body; the rest wait in the backpack.
+        // Each slot shows the newest wearable piece on the body, the one last put on; the rest wait in the backpack.
         var worn = EnumSet.noneOf(EquipmentSlot.class);
         var gear = new ArrayList<>(wallet.gear());
         gear.sort(Comparator.comparingInt(MonsterWallet.GearPiece::serial).reversed());
@@ -165,11 +218,12 @@ public final class CampKit {
             var stack = MonsterGacha.decode(player.level().registryAccess(), piece.item());
             if (stack.isEmpty()) continue;
             var slot = MonsterGacha.equipmentSlot(piece.slot());
-            boolean wear = piece.wearableBy(p.monsterRole()) && slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR && worn.add(slot);
-            String key = "gear:" + piece.serial();
+            var fits = piece.wearableBy(p.monsterRole()) && slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR ? slot : null;
+            boolean wear = fits != null && worn.add(slot);
+            String key = GEAR + piece.serial();
             String verb = slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR ? "穿上" : "带上";
             wants.add(new Want(key, tagged(stack, key, piece.wearableBy(p.monsterRole()) ? "下次出击时" + verb + "，只用一次"
-                    : "以 " + Notices.key(roles(piece.roles())) + " 出击时才会" + verb, List.of()), wear ? slot : null));
+                    : "以 " + Notices.key(roles(piece.roles())) + " 出击时才会" + verb, List.of()), wear ? slot : null, fits));
         }
         return wants;
     }
@@ -198,6 +252,9 @@ public final class CampKit {
             expected.put(want.key, want.stack.getCount());
             if (want.slot != null && !want.key.equals(tag(player.getItemBySlot(want.slot)))) matches = false;
         }
+        var worn = new EnumMap<EquipmentSlot, String>(EquipmentSlot.class);
+        for (var want : wants) if (want.slot != null) worn.put(want.slot, want.key);
+        PROJECTED_WORN.put(player, worn);
         if (matches && expected.equals(present)) return;
         for (int i = 0; i < inventory.getContainerSize(); i++) if (is(inventory.getItem(i))) inventory.setItem(i, ItemStack.EMPTY);
         for (int i = 0; i < craft.getContainerSize(); i++) if (is(craft.getItem(i))) craft.setItem(i, ItemStack.EMPTY);

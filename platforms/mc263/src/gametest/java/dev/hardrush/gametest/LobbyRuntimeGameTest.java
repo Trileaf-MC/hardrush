@@ -139,8 +139,9 @@ public final class LobbyRuntimeGameTest {
                 .thenExecute(f::buyAdultEggFromWitch)
                 .thenWaitUntil(() -> f.await(f.monster.participant().wallet().ordered(dev.hardrush.core.round.ShopOffer.ADULT_EGG) == 1
                         && !f.session.mutationPending(), "The witch purchase commits durably"))
-                .thenExecute(() -> {
-                    f.assertWitchPurchase();
+                .thenExecute(f::assertWitchPurchase);
+        CampGearFixtures.wearOlderHelmetInCamp(sequence, f, f.monster);
+        sequence.thenExecute(() -> {
                     f.monster.hunt(f.target.profile.id());
                     f.test.assertValueEqual(f.monster.participant().role(), ParticipantRole.MONSTER_LOBBY, "Early deploy cannot bypass the first deploy wait");
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(45));
@@ -149,6 +150,7 @@ public final class LobbyRuntimeGameTest {
                 .thenWaitUntil(() -> f.await(f.deployed(1), "First formal safe deployment"))
                 .thenExecute(() -> {
                     f.assertDeployment(1);
+                    CampGearFixtures.assertSortieWearsChoice(f, f.monster);
                     f.test.assertValueEqual(f.monster.player.getInventory().getItem(2).getCount(),
                             dev.hardrush.core.round.HuntPressure.starterAdultEggs(f.monster.participant().sortie().tier()) + 1,
                             "The bought adult egg joins the eggs the tier brings");
@@ -908,7 +910,9 @@ public final class LobbyRuntimeGameTest {
                 int tier = monster.participant().sortie().tier();
                 var kit = monster.participant().wallet();
                 var adult = monster.player.getInventory().getItem(2);
-                test.assertTrue(kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG) > 0 || monster.player.getInventory().getItem(1).isEmpty(),
+                // Ask the item itself: a spare vault piece may fill the slot when native spawn gear takes the first one.
+                test.assertTrue(kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG) > 0
+                        || !dev.hardrush.monster.MonsterItems.matches(monster.player, monster.player.getInventory().getItem(1), "baby_egg"),
                         "A zombie sortie brings no baby egg of its own");
                 int expected = dev.hardrush.core.round.HuntPressure.starterAdultEggs(tier) + kit.carried(dev.hardrush.core.round.ShopOffer.ADULT_EGG);
                 test.assertTrue(expected == 0 ? adult.isEmpty() : adult.is(Items.ZOMBIE_SPAWN_EGG) && adult.getCount() == expected,
