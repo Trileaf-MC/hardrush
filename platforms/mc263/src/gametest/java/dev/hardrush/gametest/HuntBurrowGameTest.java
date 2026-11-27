@@ -1,6 +1,7 @@
 package dev.hardrush.gametest;
 
 import dev.hardrush.core.round.MonsterRole;
+import dev.hardrush.hunt.BreachLanding;
 import dev.hardrush.hunt.HuntBurrows;
 import dev.hardrush.hunt.SafeDeployment;
 import java.util.List;
@@ -99,11 +100,11 @@ public final class HuntBurrowGameTest {
                 f.level.setBlock(c.pos(), previous, 2);
             }
             test.assertTrue(f.burrow(point, exit), "Restored terrain is a burrow again");
-            test.assertFalse(SafeDeployment.canBurrowAt(f.level, f.hunter, point, exit, f.target.add(-9, 0, 0), List.of()),
+            test.assertFalse(BreachLanding.canBreachAt(f.level, f.hunter, point, exit, f.target.add(-9, 0, 0), List.of()),
                     "More than ten blocks from the quarry is too far");
-            test.assertFalse(SafeDeployment.canBurrowAt(f.level, f.hunter, point, exit, f.target, List.of(point.add(0, 0, 1.9))),
+            test.assertFalse(BreachLanding.canBreachAt(f.level, f.hunter, point, exit, f.target, List.of(point.add(0, 0, 1.9))),
                     "Closer than two blocks to any human is too near");
-            test.assertFalse(SafeDeployment.canBurrowAt(f.level, f.hunter, point, f.feet.west(), f.target, List.of()),
+            test.assertFalse(BreachLanding.canBreachAt(f.level, f.hunter, point, f.feet.west(), f.target, List.of()),
                     "The wall is exactly one block thick");
             try (var protectedZone = f.protectedLevel()) {
                 test.assertFalse(f.burrow(point, exit), "Protected levels are never dug");
@@ -246,7 +247,7 @@ public final class HuntBurrowGameTest {
             }
         }
         boolean is(BlockPos pos, Block block) { return level.getBlockState(pos).is(block); }
-        boolean burrow(Vec3 point, BlockPos exit) { return SafeDeployment.canBurrowAt(level, hunter, point, exit, target, List.of(target)); }
+        boolean burrow(Vec3 point, BlockPos exit) { return BreachLanding.canBreachAt(level, hunter, point, exit, target, List.of(target)); }
         SafeDeployment.Quarry digging(Vec3 heading) {
             return new SafeDeployment.Quarry(target, target.add(0, 1.62, 0), -90, Vec3.ZERO, List.of(), false, Vec3.ZERO, heading);
         }
