@@ -647,7 +647,10 @@ public final class LobbyRuntime {
             Notices.refuse(player, "现在不能返回营地"); return;
         }
         // Holding the item, or right-clicking again, neither restarts nor repeats a running or finished channel.
-        if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id()) || b.returning.contains(p.id())) return;
+        var running = b.channels.get(p.id());
+        if (running != null && !running.retrack() || b.returning.contains(p.id())) return;
+        // A retrack's channel or its landing search gives way to the shard: the compass is not rested.
+        supersede(player, b);
         var round = b.session.view().orElseThrow();
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), false));
@@ -686,13 +689,15 @@ public final class LobbyRuntime {
         if (p.role() != ParticipantRole.MONSTER_DEPLOYED || MonsterRoles.isIgniting(player) || MonsterRoles.performingSkill(player)) {
             Notices.refuse(player, "现在不能循迹"); return false;
         }
-        if (b.channels.containsKey(p.id()) || b.retracks.containsKey(p.id())) return true;
+        if (retracking(b, p.id())) return true;
         if (b.returning.contains(p.id())) return false;
         // The native cooldown overlay on the compass already says it is not ready.
         if (player.getCooldowns().isOnCooldown(compass)) return false;
         if (retrackTarget(b, player).isEmpty()) {
             Notices.refuse(player, "罗盘失去了指向：" + quarryName(player) + " 已离线、阵亡或不在挑战世界"); return false;
         }
+        // Only a compass that would really set out takes over a running return; a dark one leaves it be.
+        supersede(player, b);
         b.channels.put(p.id(), new Channel(player, (ServerLevel) player.level(), System.nanoTime(),
                 p.lifeSequence(), p.monsterDeploymentSequence(), true));
         ChannelEffects.start(player, true, channelNanos(r, true));
@@ -706,7 +711,24 @@ public final class LobbyRuntime {
     /** Whether a press on the compass would start a retrack now, apart from its rest: what its glint shows. */
     public static boolean retrackReady(ServerPlayer hunter) {
         var b = BINDINGS.get(hunter.level().getServer());
-        return b != null && !channeling(hunter) && retrackTarget(b, hunter).isPresent();
+        return b != null && !retracking(b, hunter.getUUID()) && retrackTarget(b, hunter).isPresent();
+    }
+    /** The compass's own channel, or the landing search after it, is under way. */
+    private static boolean retracking(Binding b, UUID player) {
+        var channel = b.channels.get(player);
+        return b.retracks.containsKey(player) || channel != null && channel.retrack();
+    }
+    /**
+     * The other control takes over: the running channel, or a retrack's search, fizzles out as it would when broken,
+     * but this is the monster's own choice, so no failure note sounds and the notice names the switch.
+     */
+    private static void supersede(ServerPlayer player, Binding b) {
+        var channel = b.channels.remove(player.getUUID());
+        var retrack = b.retracks.remove(player.getUUID());
+        if (channel == null && retrack == null) return;
+        boolean tracking = channel == null || channel.retrack();
+        ChannelEffects.interrupted(player, tracking);
+        Notices.hint(player, tracking ? "已取消循迹，改为返回营地" : "已取消返回营地，改为循迹");
     }
     private static void beginRetrackSearch(Binding b, Channel ch, dev.hardrush.core.round.Participant p) {
         var target = HuntRetracks.quarry(ch.player).orElse(null);
