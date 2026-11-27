@@ -250,15 +250,10 @@ public final class MonsterHabitatGameTest {
     }
 
     @GameTest
-    public void aFormWithoutItsOwnSkinWearsItsRolesBaseSkin(GameTestHelper test) {
+    public void everyFormWearsASkinOfItsOwn(GameTestHelper test) {
+        var seen = new java.util.HashSet<String>();
         for (var form : MonsterForm.values())
-            test.assertTrue(textures(form.id()) != null, "Every form has a skin to wear: " + form);
-        // None of the four has a signed skin yet (monster-skins.json); each wears its role's base skin until one is added.
-        test.assertValueEqual(textures("husk"), textures("zombie"), "A husk wears the zombie skin");
-        test.assertValueEqual(textures("zombified_piglin"), textures("zombie"), "A zombified piglin wears the zombie skin");
-        test.assertValueEqual(textures("bogged"), textures("skeleton"), "A bogged wears the skeleton skin");
-        test.assertValueEqual(textures("parched"), textures("skeleton"), "A parched wears the skeleton skin");
-        test.assertTrue(!textures("drowned").equals(textures("zombie")), "A form with its own skin still wears it");
+            test.assertTrue(seen.add(textures(form.id())), "Every form has its own pinned skin (monster-skins.json): " + form);
         test.succeed();
     }
     private static String textures(String kind) {

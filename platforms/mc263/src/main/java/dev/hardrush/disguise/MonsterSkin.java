@@ -187,8 +187,8 @@ public final class MonsterSkin {
     }
 
     /**
-     * A form without a pinned skin of its own yet (it needs a signed upload, see monster-skins.json) wears its
-     * role's base form's: a husk looks like a zombie on its own model and TAB head until one is added.
+     * Every form has a pinned skin of its own today. One added without it (a skin needs a signed upload, see
+     * monster-skins.json) wears its role's base form's until then rather than failing.
      */
     private static Property skin(String kind) {
         Property skin = SKINS.get(kind);

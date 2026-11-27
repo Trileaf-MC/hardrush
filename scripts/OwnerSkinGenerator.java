@@ -9,8 +9,9 @@ import java.util.zip.ZipFile;
 import javax.imageio.ImageIO;
 
 /**
- * Builds owner-only player skins for monster forms from the vanilla mob textures: the skeleton, and the
- * charged creeper a creeper player sees itself as once it carries a lightning charge.
+ * Builds owner-only player skins for monster forms from the vanilla mob textures: the skeleton and its bogged
+ * and parched variants, the husk, the zombified piglin, and the charged creeper a creeper player sees itself as
+ * once it carries a lightning charge.
  *
  * <p>The vanilla client forces the player's base skin layer opaque
  * ({@code SkinTextureDownloader.processLegacySkin -> setNoAlpha}); transparent pixels keep
@@ -25,6 +26,11 @@ import javax.imageio.ImageIO;
  * streaks of the charge texture on the jacket, sleeves and trousers. Those outer layers stand off the body
  * like the native charge layer does, and the sleeve is what the owner sees in first person. The head's outer
  * layer stays clear so the face reads as a plain creeper.
+ *
+ * <p>A bogged or parched is the skeleton built the same way from its own bones, with its moss or rags repeated on
+ * the outer layers. A husk's texture already is a player's but for the left limbs, which the zombie model mirrors
+ * from the right ones. A zombified piglin's head is ten pixels wide: the player's eight keep its middle, and the
+ * snout's face goes on the hat layer, which stands off the head as the snout does.
  *
  * <p>The vanilla texture is read from the local client JAR and the result is written under
  * {@code .local/}; derived Mojang art is not committed. The uploaded result is pinned in
@@ -47,6 +53,11 @@ public final class OwnerSkinGenerator {
     private static final String VANILLA_SKELETON = "assets/minecraft/textures/entity/skeleton/skeleton.png";
     private static final String VANILLA_CREEPER = "assets/minecraft/textures/entity/creeper/creeper.png";
     private static final String VANILLA_CHARGE = "assets/minecraft/textures/entity/creeper/creeper_armor.png";
+    private static final String VANILLA_BOGGED = "assets/minecraft/textures/entity/skeleton/bogged.png";
+    private static final String VANILLA_BOGGED_OVERLAY = "assets/minecraft/textures/entity/skeleton/bogged_overlay.png";
+    private static final String VANILLA_PARCHED = "assets/minecraft/textures/entity/skeleton/parched.png";
+    private static final String VANILLA_HUSK = "assets/minecraft/textures/entity/zombie/husk.png";
+    private static final String VANILLA_ZOMBIFIED_PIGLIN = "assets/minecraft/textures/entity/piglin/zombified_piglin.png";
     /** Green level of the charge texture's darkest streak that is still drawn, and of one drawn at full strength. */
     private static final int CHARGE_FAINT = 58, CHARGE_FULL = 200;
     /** How far a drawn streak is lifted toward white; the native layer is additive, a skin layer is not. */
@@ -90,6 +101,10 @@ public final class OwnerSkinGenerator {
     private static final Box CREEPER_HEAD = new Box(0, 0, 8, 8, 8);
     private static final Box CREEPER_BODY = new Box(16, 16, 8, 12, 4);
     private static final Box CREEPER_LEG = new Box(0, 16, 4, 6, 4);
+    private static final Box HAT = new Box(32, 0, 8, 8, 8);
+    // Vanilla piglin (64x64): a 10x8x8 head with a 4x4x1 snout; body and limbs are the player's.
+    private static final Box PIGLIN_HEAD = new Box(0, 0, 10, 8, 8);
+    private static final Box PIGLIN_SNOUT = new Box(31, 1, 4, 4, 1);
     private static final List<Box> BASE_BOXES = List.of(HEAD, BODY, RIGHT_ARM, LEFT_ARM, RIGHT_LEG, LEFT_LEG);
 
     public static void main(String[] args) throws IOException {
@@ -135,8 +150,14 @@ public final class OwnerSkinGenerator {
             write(out.resolve("skeleton.png"), skeleton(texture(zip, VANILLA_SKELETON)), true);
             write(out.resolve("creeper_charged.png"),
                 chargedCreeper(texture(zip, VANILLA_CREEPER), texture(zip, VANILLA_CHARGE)), false);
+            write(out.resolve("bogged.png"), dressedSkeleton(texture(zip, VANILLA_BOGGED), texture(zip, VANILLA_BOGGED_OVERLAY)), false);
+            // The parched keeps its rags in the lower half of its own 64x64 texture, laid out like the upper.
+            BufferedImage parched = texture(zip, VANILLA_PARCHED);
+            write(out.resolve("parched.png"), dressedSkeleton(parched.getSubimage(0, 0, 64, 32), parched.getSubimage(0, 32, 64, 32)), false);
+            write(out.resolve("husk.png"), husk(texture(zip, VANILLA_HUSK)), false);
+            write(out.resolve("zombified_piglin.png"), zombifiedPiglin(texture(zip, VANILLA_ZOMBIFIED_PIGLIN)), false);
         }
-        System.out.println("wrote skeleton.png and creeper_charged.png to " + out + " from " + jar);
+        System.out.println("wrote skeleton, creeper_charged, bogged, parched, husk and zombified_piglin skins to " + out + " from " + jar);
     }
 
     private static BufferedImage texture(ZipFile zip, String name) throws IOException {
@@ -182,6 +203,90 @@ public final class OwnerSkinGenerator {
         thinLimb(vanilla, SKELETON_ARM, skin, LEFT_ARM, true);
         thinLimb(vanilla, SKELETON_LEG, skin, RIGHT_LEG, false);
         thinLimb(vanilla, SKELETON_LEG, skin, LEFT_LEG, true);
+        return skin;
+    }
+
+    /** A skeleton variant: its own bones as {@link #skeleton}, and what it wears on the outer layers. */
+    static BufferedImage dressedSkeleton(BufferedImage bones, BufferedImage worn) {
+        BufferedImage skin = skeleton(bones);
+        if (worn.getWidth() != 64 || worn.getHeight() != 32) throw new IllegalStateException("Expected a 64x32 skeleton overlay");
+        wear(worn, SKELETON_HEAD, skin, HAT, false);
+        wear(worn, SKELETON_BODY, skin, JACKET, false);
+        wear(worn, SKELETON_ARM, skin, RIGHT_SLEEVE, false);
+        wear(worn, SKELETON_ARM, skin, LEFT_SLEEVE, true);
+        wear(worn, SKELETON_LEG, skin, RIGHT_TROUSER, false);
+        wear(worn, SKELETON_LEG, skin, LEFT_TROUSER, true);
+        return skin;
+    }
+
+    /** The painted pixels of an overlay box, centred on the player's outer box; what it leaves clear stays as it is. */
+    private static void wear(BufferedImage from, Box source, BufferedImage to, Box target, boolean mirror) {
+        int[][] sourceFaces = source.faces();
+        int[][] targetFaces = target.faces();
+        for (int face = 0; face < 6; face++) {
+            int[] s = sourceFaces[mirror ? mirroredFace(face) : face];
+            int[] t = targetFaces[face];
+            int offsetX = (t[2] - s[2]) / 2;
+            int offsetY = (t[3] - s[3]) / 2;
+            for (int y = 0; y < s[3]; y++) {
+                for (int x = 0; x < s[2]; x++) {
+                    int pixel = from.getRGB(s[0] + (mirror ? s[2] - 1 - x : x), s[1] + y);
+                    if (opaque(pixel)) to.setRGB(t[0] + offsetX + x, t[1] + offsetY + y, pixel);
+                }
+            }
+        }
+    }
+
+    /** The zombie model draws its left limbs mirrored from the right ones; a player skin carries them itself. */
+    static BufferedImage husk(BufferedImage vanilla) {
+        if (vanilla.getWidth() != 64 || vanilla.getHeight() != 64) throw new IllegalStateException("Expected the 64x64 vanilla husk texture");
+        var skin = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        for (Box box : List.of(HEAD, BODY, RIGHT_ARM, RIGHT_LEG)) copyFilled(vanilla, box, skin, box);
+        mirrored(vanilla, RIGHT_ARM, skin, LEFT_ARM);
+        mirrored(vanilla, RIGHT_LEG, skin, LEFT_LEG);
+        return skin;
+    }
+
+    private static void mirrored(BufferedImage from, Box source, BufferedImage to, Box target) {
+        int[][] sourceFaces = source.faces();
+        int[][] targetFaces = target.faces();
+        for (int face = 0; face < 6; face++) {
+            int[] s = sourceFaces[mirroredFace(face)];
+            int[] t = targetFaces[face];
+            for (int y = 0; y < t[3]; y++) {
+                for (int x = 0; x < t[2]; x++) {
+                    int pixel = from.getRGB(s[0] + s[2] - 1 - x, s[1] + y);
+                    to.setRGB(t[0] + x, t[1] + y, opaque(pixel) ? pixel : cavity(y, t[3]));
+                }
+            }
+        }
+    }
+
+    static BufferedImage zombifiedPiglin(BufferedImage vanilla) {
+        if (vanilla.getWidth() != 64 || vanilla.getHeight() != 64) throw new IllegalStateException("Expected the 64x64 vanilla zombified piglin texture");
+        var skin = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        int[][] wide = PIGLIN_HEAD.faces();
+        int[][] head = HEAD.faces();
+        for (int face = 0; face < 6; face++) {
+            // The two side faces are the player's width; the others lose a column at each edge.
+            int skip = (wide[face][2] - head[face][2]) / 2;
+            for (int y = 0; y < head[face][3]; y++) {
+                for (int x = 0; x < head[face][2]; x++) {
+                    int pixel = vanilla.getRGB(wide[face][0] + skip + x, wide[face][1] + y);
+                    skin.setRGB(head[face][0] + x, head[face][1] + y, opaque(pixel) ? pixel : cavity(y, head[face][3]));
+                }
+            }
+        }
+        int[] snout = PIGLIN_SNOUT.faces()[3];
+        int[] hatFront = HAT.faces()[3];
+        for (int y = 0; y < snout[3]; y++) {
+            for (int x = 0; x < snout[2]; x++) {
+                int pixel = vanilla.getRGB(snout[0] + x, snout[1] + y);
+                if (opaque(pixel)) skin.setRGB(hatFront[0] + 2 + x, hatFront[1] + 4 + y, pixel);
+            }
+        }
+        for (Box box : List.of(BODY, RIGHT_ARM, LEFT_ARM, RIGHT_LEG, LEFT_LEG)) copyFilled(vanilla, box, skin, box);
+        for (Box box : List.of(JACKET, RIGHT_SLEEVE, LEFT_SLEEVE, RIGHT_TROUSER, LEFT_TROUSER)) wear(vanilla, box, skin, box, false);
         return skin;
     }
 
@@ -294,7 +399,9 @@ public final class OwnerSkinGenerator {
                     boolean inside = sx >= 0 && sx < s[2] && sy >= 0 && sy < s[3];
                     int cx = clamp(sx, s[2]);
                     if (mirror) cx = s[2] - 1 - cx;
-                    int pixel = from.getRGB(s[0] + cx, s[1] + clamp(sy, s[3])) | 0xFF000000;
+                    int pixel = from.getRGB(s[0] + cx, s[1] + clamp(sy, s[3]));
+                    // A variant leaves some limb ends unpainted; forced opaque they would show as black.
+                    if (!opaque(pixel)) pixel = cavity(y, t[3]);
                     to.setRGB(t[0] + x, t[1] + y, inside ? pixel : shade(pixel, LIMB_SHADE));
                 }
             }
