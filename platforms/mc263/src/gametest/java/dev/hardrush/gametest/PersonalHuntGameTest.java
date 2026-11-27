@@ -403,8 +403,13 @@ public final class PersonalHuntGameTest {
                     f.refresh(); HuntInputFixtures.click(f.b.player, f.oldModel, InteractionHand.MAIN_HAND);
                     test.assertTrue(f.searches().isEmpty(), "Old model cannot chase revived life");
                 });
-        // Only these AWAY roster entries are pre-admitted fixtures, never claimed as native players.
-        for(int i=0;i<18;i++) {
+        // Only these AWAY roster entries are pre-admitted fixtures, never claimed as native players. Once every fallen
+        // model has faded only humans hold seats; with A the fixtures overflow one page.
+        s.thenWaitUntil(() -> f.await(LobbyRuntime.courtyardOrder(f.server).stream()
+                        .allMatch(id -> f.round().participants().get(id).role()==ParticipantRole.HUMAN_ACTIVE),"fallen models faded and their seats dropped"))
+                .thenExecute(() -> { f.seatsBefore=LobbyRuntime.courtyardOrder(f.server);
+                    test.assertTrue(f.seatsBefore.contains(f.a.id()),"A is still seated"); });
+        for(int i=0;i<Fixture.FIXTURES;i++) {
             final int slot=i;
             s.thenExecute(() -> { f.reply.set(null); f.session.requestJoin(UUID.randomUUID(),"AwayFixture"+slot,f.reply::set); })
                     .thenWaitUntil(() -> f.await(f.reply.get()!=null && f.reply.get().success() && f.idle(),"offline display fixture "+slot));
@@ -444,7 +449,8 @@ public final class PersonalHuntGameTest {
         final AtomicReference<RoundSession.Reply> reply = new AtomicReference<>();
         final ServerLevel[] levels = new ServerLevel[3]; final Vec3[] anchor = new Vec3[3];
         RoundSession session; PlayerProfiles profiles; RoundWorldBundle worlds;
-        boolean hold; String stage; int refunds, oldModel, faultSortie, stageAt, restoringShows; long started; Object originalAttempt, oldAttempt;
+        boolean hold; String stage; int refunds, oldModel, faultSortie, stageAt, restoringShows; long started; Object originalAttempt, oldAttempt; List<UUID> seatsBefore;
+        static final int FIXTURES=21;
         ServerPlayer oldBody;
         java.util.concurrent.CompletableFuture<Void> ioTask;
         Fixture(GameTestHelper test) {
@@ -644,6 +650,11 @@ public final class PersonalHuntGameTest {
             refresh(); var projections=LobbyInteractions.get(server).orElseThrow().projections();
             var beforeC=projections.view(c.player).orElseThrow(); var beforeD=projections.view(d.player).orElseThrow();
             test.assertValueEqual(beforeC.pages(),2,"Production roster has two pages without a participant cap");
+            // The fallen humans' seats are reused or dropped once their models fade; none lingers as a stale hole.
+            var seats=LobbyRuntime.courtyardOrder(server);
+            test.assertTrue(seats.stream().allMatch(id -> round().participants().get(id).role()==ParticipantRole.HUMAN_ACTIVE),"Every seat holds a human");
+            test.assertValueEqual(seats.size(),seatsBefore.size()+Fixture.FIXTURES,"Faded seats were dropped; fixtures only append");
+            for(int i=0;i<seatsBefore.size();i++) test.assertValueEqual(seats.get(i),seatsBefore.get(i),"A seated human keeps seat "+i);
             oldModel=model(c,a);
             HuntInputFixtures.role(c.player,"next"); c.client.acknowledge();
             var next=projections.view(c.player).orElseThrow();
@@ -654,7 +665,7 @@ public final class PersonalHuntGameTest {
             HuntInputFixtures.role(c.player,"previous"); c.client.acknowledge();
             test.assertValueEqual(projections.view(c.player).orElseThrow().page(),0,"Previous facility restores own page");
             test.assertTrue(model(c,a)!=oldModel,"Returning page uses fresh entity IDs");
-            test.assertValueEqual(server.getPlayerList().getPlayerCount(),4,"Eighteen offline fixture candidates never count as native connections");
+            test.assertValueEqual(server.getPlayerList().getPlayerCount(),4,"Offline fixture candidates never count as native connections");
         }
         void prepareFault() {
             if(!System.getProperty(TestProperties.PERSONAL_HUNT_FAULT,"adapter").equals("storage")) { ioTask=java.util.concurrent.CompletableFuture.completedFuture(null); return; }

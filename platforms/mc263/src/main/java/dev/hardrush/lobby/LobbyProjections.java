@@ -101,7 +101,7 @@ public final class LobbyProjections {
         // Slots are ordered by (y, z, x); a page holds one target per slot.
         var slots = LobbyWorld.open(observer.level().getServer()).plan().points(LobbyFunction.DISPLAY_SLOT);
         int capacity = slots.size();
-        int count = Math.max(1, (targets.size() + capacity - 1) / capacity);
+        int count = pages(targets.size(), capacity);
         if (page < 0 || page >= count) throw new IllegalArgumentException("Invalid page");
         var previous = pages.get(observer.getUUID());
         if (previous != null) remove(previous.owner); // invalidate even a replaced connection BEFORE any packet
@@ -144,6 +144,8 @@ public final class LobbyProjections {
         pages.put(observer.getUUID(), display);
         return view(observer).orElseThrow();
     }
+    /** How many pages {@code targets} span at {@code capacity} slots per page; never fewer than one. */
+    public static int pages(int targets, int capacity) { return Math.max(1, (targets + capacity - 1) / capacity); }
     /** Called by a registered NEXT/PREVIOUS facility; never changes another connection's page. */
     public Optional<View> turn(ServerPlayer observer, int delta) {
         router.requireThread();
