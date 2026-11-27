@@ -112,6 +112,32 @@ public final class SafeDeploymentGameTest {
         test.succeed();
     }
 
+    /** Up a ten-block pillar nothing reaches the quarry and every landing lies far below it: the search says it is up high. */
+    @GameTest(maxTicks=300)
+    public void aQuarryUpAPillarIsReportedElevated(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 226);
+        try (var ignored = fixture.empty()) {
+            fixture.flat(Blocks.STONE, 34);
+            for (int y = 0; y < 10; y++) fixture.level.setBlock(fixture.feet.above(y), Blocks.STONE.defaultBlockState(), 2);
+            var top = fixture.target.add(0, 10, 0);
+            var clock = new AtomicLong();
+            var search = fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(top), List.of(top), clock);
+            test.assertFalse(search.elevated(), "Nothing is known before a sweep completes");
+            for (int i = 0; i < 38 && !search.elevated(); i++) { search.tick(); clock.addAndGet(TICK); }
+            test.assertValueEqual(search.result().status(), SafeDeployment.Status.PENDING, "Still searching: the fallback is not due yet");
+            test.assertTrue(search.elevated(), "One sweep tells the quarry is up high");
+            var result = complete(search, clock);
+            test.assertTrue(result.fallback(), "The far fallback still answers at five seconds: " + result);
+
+            var groundClock = new AtomicLong();
+            var ground = fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target.add(12, 0, 0)),
+                    List.of(fixture.target.add(12, 0, 0)), groundClock);
+            test.assertValueEqual(complete(ground, groundClock).status(), SafeDeployment.Status.FOUND, "On flat ground a walk is found");
+            test.assertFalse(ground.elevated(), "A quarry on flat ground is not up high");
+        }
+        test.succeed();
+    }
+
     @GameTest(maxTicks=400)
     public void theNetherRoofIsOnlyUsedWhenTheQuarryIsAlreadyUpThere(GameTestHelper test) {
         var nether = new Fixture(test, test.getLevel().getServer().getLevel(Level.NETHER), 120);
@@ -125,7 +151,7 @@ public final class SafeDeploymentGameTest {
             for (int y = 0; y < 2; y++) nether.level.setBlock(nether.feet.above(y), Blocks.AIR.defaultBlockState(), 2);
             var clock = new AtomicLong();
             var below = complete(nether.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(nether.target), List.of(nether.target), clock), clock);
-            // Sealed in netherrack, the only way in is a burrow beside it; never the roof above.
+            // Sealed in netherrack, the only way in is a burrow beside or over it; never the roof above.
             test.assertValueEqual(below.status(), SafeDeployment.Status.FOUND, "A sealed quarry under the roof is reached by a burrow");
             test.assertTrue(below.burrowed() && below.position().y < 128, "A quarry under the roof never sends a monster onto it");
             var roof = nether.target.add(0, 8, 0);
@@ -133,6 +159,56 @@ public final class SafeDeploymentGameTest {
             var above = complete(nether.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(roof), List.of(roof), roofClock), roofClock);
             test.assertValueEqual(above.status(), SafeDeployment.Status.FOUND, "A quarry on the roof may be hunted on the roof");
             test.assertTrue(above.position().y >= 128, "The roof landing stands on the bedrock roof");
+        }
+        test.succeed();
+    }
+
+    /** A floating nine-by-nine platform: nowhere eight blocks off, so the monster lands in a corner, five blocks or more away. */
+    @GameTest(maxTicks=300)
+    public void aSmallPlatformIsLandedOnInItsFarCorner(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 242);
+        try (var ignored = fixture.empty()) {
+            fixture.platform(4);
+            var other = fixture.target.add(-3, 0, -3);
+            var humans = List.of(fixture.target, other);
+            var clock = new AtomicLong();
+            var search = fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target), humans, clock);
+            var result = complete(search, clock);
+            test.assertValueEqual(result.status(), SafeDeployment.Status.FOUND, "A small platform still yields a landing");
+            test.assertValueEqual(result.landing(), SafeDeployment.Landing.NEAR, "The landing is a near one: " + result);
+            test.assertTrue(!result.fallback() && !result.breached() && !result.burrowed(), "Neither a fallback nor a breach");
+            // Never in the first sweep: the walk's random columns get a second draw before settling for five blocks.
+            test.assertTrue(clock.get() >= SafeDeployment.SWEEP_INTERVAL_NANOS && clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS,
+                    "Taken in the second sweep, before the fallback is due: " + clock.get());
+            var spot = BlockPos.containing(result.position());
+            test.assertTrue(spot.getY() == fixture.feet.getY() && (Math.abs(spot.getX() - fixture.feet.getX()) == 4
+                    || Math.abs(spot.getZ() - fixture.feet.getZ()) == 4), "On the platform's rim: " + spot);
+            for (var human : humans)
+                test.assertTrue(result.position().distanceTo(human) >= SafeDeployment.NEAR_HUMAN_DISTANCE - 1e-6,
+                        "No landing without a wall is closer than five blocks to a human: " + result.position().distanceTo(human));
+            test.assertTrue(search.revalidate(fixture.target, humans), "Unchanged terrain passes departure revalidation");
+            test.assertFalse(search.revalidate(fixture.target, List.of(fixture.target, result.position().add(4.9, 0, 0))),
+                    "A human closer than five blocks revokes it");
+        }
+        test.succeed();
+    }
+
+    /** A floating seven-by-seven platform: even its corners are under five blocks away, so there is no near landing. */
+    @GameTest(maxTicks=300)
+    public void aTinyPlatformHasNoNearLanding(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 244);
+        try (var ignored = fixture.empty()) {
+            fixture.platform(3);
+            var clock = new AtomicLong();
+            var search = fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target), List.of(fixture.target), clock);
+            // Two full sweeps run in these five seconds, the second one with its near stage; neither finds anything.
+            for (int i = 0; i < 100 && clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS; i++) {
+                search.tick(); clock.addAndGet(TICK);
+                test.assertValueEqual(search.result().status(), SafeDeployment.Status.PENDING, "Nothing at all within five seconds");
+            }
+            // Floating in the void there is no ground for a fallback either: nothing but the full wait's end.
+            var result = complete(search, clock);
+            test.assertValueEqual(result.status(), SafeDeployment.Status.FAILED, "No landing ever, near or otherwise: " + result);
         }
         test.succeed();
     }
@@ -214,10 +290,11 @@ public final class SafeDeploymentGameTest {
     }
 
     @GameTest(maxTicks=400)
-    public void atSeaOnlyAZombieRisesAndOnlyAgainstADriftingQuarry(GameTestHelper test) {
+    public void atSeaOnlyAZombieRisesBesideADrifterOrAheadOfARower(GameTestHelper test) {
         var fixture = new Fixture(test, test.getLevel(), 240);
         try (var ignored = fixture.empty()) {
-            fixture.sea(20, 12, 34);
+            // Water far enough east for a drowned to rise on a rowing quarry's course.
+            fixture.sea(36, 12, 40);
             var drifting = SafeDeployment.Quarry.afloat(fixture.target, new Vec3(.5, 0, 0));
             var clock = new AtomicLong();
             var search = fixture.search(MonsterRole.ZOMBIE, drifting, List.of(fixture.target), clock);
@@ -232,14 +309,21 @@ public final class SafeDeploymentGameTest {
             fixture.level.setBlock(BlockPos.containing(risen.position()).above(3), Blocks.STONE.defaultBlockState(), 2);
             test.assertFalse(search.revalidate(), "Losing the water cover revokes departure");
 
+            // Rowing east at eight blocks a second: the drowned rises two to three and a half seconds down its course.
+            var rower = SafeDeployment.Quarry.afloat(fixture.target, new Vec3(8, 0, 0));
             var rowingClock = new AtomicLong();
-            var rowing = complete(fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.afloat(fixture.target, new Vec3(8, 0, 0)),
-                    List.of(fixture.target), rowingClock), rowingClock);
-            test.assertValueEqual(rowing.status(), SafeDeployment.Status.FAILED, "A rowing quarry is never chased by a drowned");
-            test.assertValueEqual(rowing.candidates(), 0, "Nothing is inspected while it rows; the shore is not used either");
-            for (var kind : List.of(MonsterRole.SKELETON, MonsterRole.CREEPER)) {
+            var rowingSearch = fixture.search(MonsterRole.ZOMBIE, rower, List.of(fixture.target), rowingClock);
+            var rowing = complete(rowingSearch, rowingClock);
+            test.assertValueEqual(rowing.status(), SafeDeployment.Status.FOUND, "A rowing quarry is met ahead by a drowned");
+            test.assertTrue(rowing.submerged() && !rowing.fallback(), "The landing is under water: " + rowing);
+            var ahead = rowing.position().subtract(fixture.target).multiply(1, 0, 1);
+            test.assertTrue(ahead.length() >= 15 && ahead.length() <= 29, "Sixteen to twenty-eight blocks ahead: " + ahead.length());
+            test.assertTrue(ahead.normalize().dot(new Vec3(1, 0, 0)) >= .65, "On its course east: " + ahead);
+            test.assertTrue(SafeDeployment.canSubmergeAt(fixture.level, fixture.hunter, rowing.position()), "The whole body and two blocks above are water");
+            test.assertTrue(rowingSearch.revalidate(), "Unchanged water passes departure revalidation farther off than beside a drifter");
+            for (var kind : List.of(MonsterRole.SKELETON, MonsterRole.CREEPER)) for (var quarry : List.of(drifting, rower)) {
                 var waitClock = new AtomicLong();
-                var waiting = complete(fixture.search(kind, drifting, List.of(fixture.target), waitClock), waitClock);
+                var waiting = complete(fixture.search(kind, quarry, List.of(fixture.target), waitClock), waitClock);
                 test.assertValueEqual(waiting.status(), SafeDeployment.Status.FAILED, kind + " waits for the quarry to land instead of the shore");
                 test.assertValueEqual(waiting.candidates(), 0, kind + " inspects nothing at sea");
             }
@@ -352,6 +436,13 @@ public final class SafeDeploymentGameTest {
                 level.setBlock(point.below(depth + 1), Blocks.STONE.defaultBlockState(), 2);
                 for (int y=0; y<4; y++) level.setBlock(point.above(y), Blocks.AIR.defaultBlockState(), 2);
             }
+        }
+        /** A stone platform {@code 2 * half + 1} wide under the quarry's feet, floating in air with nothing below for 25 blocks. */
+        void platform(int half) {
+            for (int x=-33; x<=33; x++) for (int z=-33; z<=33; z++) for (int y=-25; y<=9; y++)
+                level.setBlock(feet.offset(x, y, z), Blocks.AIR.defaultBlockState(), 2);
+            for (int x=-half; x<=half; x++) for (int z=-half; z<=half; z++)
+                level.setBlock(feet.offset(x, -1, z), Blocks.STONE.defaultBlockState(), 2);
         }
         void firstLanding(java.util.function.IntBinaryOperator height, int clearance) {
             var center = samples().getFirst();

@@ -119,6 +119,19 @@ public final class Notices {
     }
 
     /**
+     * T1 shown right after the {@link #hint} just given: it waits behind that line (the same priority, a source that
+     * sorts after it) and takes the bar for its own three seconds once that one has faded.
+     */
+    public static void hintNext(ServerPlayer player, String markup) {
+        if (!online(player)) return;
+        var router = LobbyInteractions.get(player.level().getServer()).orElse(null);
+        if (router != null) {
+            router.hints(player).offerWhenUncovered("notice~next", LobbyHints.Priority.NOTICE, markup, 2 * HINT_MILLIS,
+                    () -> player.containerMenu != player.inventoryMenu);
+        } else player.connection.send(new ClientboundSetActionBarTextPacket(format(markup)));
+    }
+
+    /**
      * Takes back a T1 line the player has not seen through yet because a later answer superseded it (a refusal
      * followed by a successful retry under the same screen). A different line since then is left alone.
      */

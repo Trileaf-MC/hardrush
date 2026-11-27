@@ -48,7 +48,7 @@ class RuleBookTextTest {
         assertTrue(dig.contains("石头、泥土、下界岩这类天然方块最长 7.5 秒") && dig.contains("不掉落"), dig);
         assertTrue(dig.contains("门、装着东西的方块、矿石和黑曜石这类太硬的方块挖不动"), dig);
         assertTrue(dig.contains("苦力怕挖不动，但爆炸能炸开方块"), dig);
-        assertTrue(page(hardcore, "破石而出").contains("藏进人类旁边的石头里，挖开墙破石而出"));
+        assertTrue(page(hardcore, "破壁出击").contains("墙后、屋顶上，或者藏进旁边的石头里，挖开一格就到人类身边"));
         assertTrue(page(hardcore, "角色").contains("困难难度下能敲开木门") && !page(hardcore, "角色").contains("空手敲开"),
                 page(hardcore, "角色"));
         var values = new java.util.TreeMap<>(RulesConfig.defaults().combatValues());
@@ -58,7 +58,7 @@ class RuleBookTextTest {
                 values, rules.startCountdownMillis(), rules.successCelebrationMillis(), rules.failureDisplayMillis());
         assertTrue(page(RuleBookText.pages(rules), "挖掘").contains("最长 3 秒"));
         assertNull(page(pages(GameMode.NORMAL), "挖掘"));
-        assertNull(page(pages(GameMode.NORMAL), "破石而出"));
+        assertNull(page(pages(GameMode.NORMAL), "破壁出击"));
     }
 
     @Test void entryPageNamesTheLateShelterOnlyWhenMonstersHuntAndRevivalPageTheBlessing() {
