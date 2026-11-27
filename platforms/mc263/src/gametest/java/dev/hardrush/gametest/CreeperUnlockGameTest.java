@@ -2,6 +2,7 @@ package dev.hardrush.gametest;
 
 import dev.hardrush.core.lobby.plan.LobbyFunction;
 import dev.hardrush.core.round.Bounty;
+import dev.hardrush.core.round.CreeperTicket;
 import dev.hardrush.core.round.MonsterCoins;
 import dev.hardrush.core.round.MonsterRole;
 import dev.hardrush.core.round.RoundPhase;
@@ -17,8 +18,8 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 
 /** Isolated real-round test using client packets and the same native admission path as LobbyRuntimeGameTest. */
@@ -39,6 +40,8 @@ public final class CreeperUnlockGameTest {
         });
         var credit = new AtomicReference<RoundSession.Reply>();
         int[] lockedId = new int[1];
+        int[] unlockedAt = new int[1];
+        var cage = new java.util.ArrayList<Integer>();
         String[] glowTeam = new String[1];
         var sequence = test.startSequence().thenWaitUntil(() -> f.await(RoundRuntime.sessionState(f.server)
                 .filter(state -> state == RoundSession.State.OPEN).isPresent(), "Paid creeper bootstrap"))
@@ -55,7 +58,8 @@ public final class CreeperUnlockGameTest {
                     .thenWaitUntil(() -> f.await(peer.participant().ready() && !f.session.mutationPending(), "Ready " + peer.profile.name()));
         }
         sequence.thenExecute(() -> {
-                    booth(f, f.monster, EntityTypes.INTERACTION);
+                    booth(f, f.monster);
+                    test.assertFalse(cage(f).isEmpty(), "Without a ticket the booth is caged, before the first death too");
                     f.clock.addAndGet(TimeUnit.SECONDS.toNanos(31));
                 })
                 .thenWaitUntil(() -> f.await(f.humansReady() && !PlayerProfiles.isLocked(novice.player), "Three humans land"))
@@ -73,14 +77,18 @@ public final class CreeperUnlockGameTest {
                         "First death enters monster camp"))
                 .thenExecute(() -> {
                     f.monster.player = f.monster.current();
-                    lockedId[0] = booth(f, f.monster, EntityTypes.INTERACTION).getId();
+                    lockedId[0] = booth(f, f.monster).getId();
+                    cage.addAll(cage(f));
+                    test.assertTrue(!cage.isEmpty() && cage.stream().allMatch(id -> f.monster.client.packets(ClientboundAddEntityPacket.class).stream()
+                            .anyMatch(packet -> packet.getId() == id && packet.getType() == EntityTypes.BLOCK_DISPLAY)),
+                            "A locked booth cages its creeper in block displays");
                     HuntInputFixtures.role(f.monster.player, "creeper");
                     test.assertFalse(f.session.mutationPending(), "Insufficient coins are refused before a role write");
-                    test.assertTrue(hint(f).contains("解锁苦力怕需要 40 怪物币，现有 " + f.monster.participant().wallet().coins()),
+                    test.assertTrue(hint(f).contains("解锁苦力怕需要 35 怪物币，现有 " + f.monster.participant().wallet().coins()),
                             "The coin refusal shows the exact price and balance");
                     var p = f.monster.participant();
                     f.session.requestMonsterCoinPickup(f.round().roundId(), p.id(), p.lifeSequence(), p.monsterDeploymentSequence(),
-                            40, credit::set);
+                            75, credit::set);
                 })
                 .thenWaitUntil(() -> f.await(credit.get() != null && !f.session.mutationPending(), "Fixture coins credited"))
                 .thenExecute(() -> {
@@ -101,17 +109,20 @@ public final class CreeperUnlockGameTest {
                 .thenExecute(() -> {
                     test.assertValueEqual(Bounty.standing(f.round().rules(), f.round().participants(), novice.profile.id()).stars(),
                             1, "The second model is a one-star human");
-                    test.assertValueEqual(MonsterCoins.creeperUnlockPrice(f.round().rules()), 40, "Default price");
+                    test.assertValueEqual(MonsterCoins.creeperUnlockPrice(f.round().rules()), 35, "Default price");
                     HuntInputFixtures.role(f.monster.player, "creeper");
                 })
-                .thenWaitUntil(() -> f.await(f.monster.participant().wallet().creeperTicket() && !f.session.mutationPending(), "Native booth click buys a ticket"))
+                .thenWaitUntil(() -> f.await(f.monster.participant().wallet().creeperTicket().unlocked() && !f.session.mutationPending(), "Native booth click buys a ticket"))
                 .thenExecute(() -> {
                     var p = f.monster.participant();
                     test.assertValueEqual(p.monsterRole(), MonsterRole.CREEPER, "Payment also selects the creeper role");
-                    test.assertValueEqual(p.wallet().coins(), MonsterCoins.amount(f.round().rules(), MonsterCoins.STARTER),
-                            "Exactly forty coins were debited");
-                    var spawn = booth(f, f.monster, EntityTypes.CREEPER);
-                    test.assertTrue(spawn.getId() != lockedId[0] && removed(f, lockedId[0]), "The click ID moved from the removed Interaction to the creeper");
+                    test.assertValueEqual(p.wallet().coins(), MonsterCoins.amount(f.round().rules(), MonsterCoins.STARTER) + 40,
+                            "Exactly thirty-five coins were debited");
+                    var spawn = booth(f, f.monster);
+                    test.assertTrue(spawn.getId() == lockedId[0] && !removed(f, lockedId[0]), "Unlocking keeps the same creeper");
+                    test.assertTrue(cage(f).isEmpty(), "Unlocking opens the cage");
+                    test.assertTrue(cage.stream().anyMatch(id -> f.monster.client.packets(ClientboundSetEntityDataPacket.class).stream()
+                            .filter(packet -> packet.id() == id).count() == 2), "The cage pieces are sent their fall before removal");
                     var team = f.monster.client.packets(ClientboundSetPlayerTeamPacket.class).stream()
                             .filter(packet -> packet.getTeamAction() == ClientboundSetPlayerTeamPacket.Action.ADD
                                     && packet.getPlayers().contains(spawn.getUUID().toString()))
@@ -120,14 +131,37 @@ public final class CreeperUnlockGameTest {
                     test.assertFalse(novice.client.packets(ClientboundSetPlayerTeamPacket.class).stream()
                             .anyMatch(packet -> packet.getName().equals(team.getName())), "The other connection never gets this glow team");
 
+                    // The held click that unlocked repeats every 4 ticks; the booth is deaf to it for a moment.
+                    HuntInputFixtures.role(f.monster.player, "creeper");
+                    test.assertFalse(f.session.mutationPending(), "A click right after the unlock does not also pay for the charge");
+                    unlockedAt[0] = f.server.getTickCount();
+                })
+                .thenWaitUntil(() -> f.await(f.server.getTickCount() > unlockedAt[0] + 25, "The booth listens again"))
+                .thenExecute(() -> {
+                    test.assertValueEqual(f.monster.participant().wallet().creeperTicket(), CreeperTicket.PLAIN, "Still a plain ticket");
+                    test.assertValueEqual(MonsterCoins.creeperChargePrice(f.round().rules()), 40, "Default charge price");
+                    HuntInputFixtures.role(f.monster.player, "creeper");
+                })
+                .thenWaitUntil(() -> f.await(f.monster.participant().wallet().creeperTicket().charged() && !f.session.mutationPending(),
+                        "A second booth click calls the lightning down"))
+                .thenExecute(() -> {
+                    test.assertValueEqual(f.monster.participant().wallet().coins(), MonsterCoins.amount(f.round().rules(), MonsterCoins.STARTER),
+                            "Exactly forty more coins were debited");
+                    test.assertValueEqual(booth(f, f.monster).getId(), lockedId[0], "The charged booth is still the same creeper");
+                    test.assertTrue(bolts(f.monster) == 1 && bolts(novice) == 0, "Only the buyer is sent the lightning bolt");
+
                     f.monster.hunt(novice.profile.id());
                     assertRejected(f, "苦力怕只追三星以上的人类");
-                    test.assertTrue(f.monster.participant().wallet().creeperTicket(), "A one-star rejection keeps the ticket");
+                    test.assertTrue(f.monster.participant().wallet().creeperTicket().charged(), "A one-star rejection keeps the ticket");
                     f.monster.hunt(f.target.profile.id());
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(1), "Paid creeper hunts the three-star human"))
                 .thenExecute(() -> {
-                    test.assertTrue(f.monster.participant().wallet().creeperTicket(), "Landing keeps the ticket until the sortie ends");
+                    test.assertTrue(f.monster.participant().wallet().creeperTicket().charged(), "Landing keeps the ticket until the sortie ends");
+                    var body = f.monster.current();
+                    test.assertTrue(dev.hardrush.monster.MonsterCreeper.charged(body), "A charged ticket lands a charged creeper");
+                    test.assertTrue(body.getInventory().getItem(0).getOrDefault(
+                            net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE, false), "Its igniter glints");
                     LobbyInteractions.tick(f.server);
                     test.assertTrue(f.monster.client.packets(ClientboundSetPlayerTeamPacket.class).stream()
                             .anyMatch(packet -> packet.getName().equals(glowTeam[0])
@@ -138,8 +172,9 @@ public final class CreeperUnlockGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.monsterReady(false), "Voluntary return lands in camp"))
                 .thenExecute(() -> {
-                    test.assertTrue(f.monster.participant().wallet().creeperTicket(), "Voluntary return keeps the same ticket");
-                    booth(f, f.monster, EntityTypes.CREEPER);
+                    test.assertTrue(f.monster.participant().wallet().creeperTicket().charged(), "Voluntary return keeps the same charged ticket");
+                    test.assertTrue(cage(f).isEmpty(), "A kept ticket shows no cage on return");
+                    booth(f, f.monster);
                     f.monster.hunt(f.target.profile.id());
                 })
                 .thenWaitUntil(() -> f.await(f.deployed(2), "The same ticket resumes a second outing without payment"))
@@ -151,26 +186,36 @@ public final class CreeperUnlockGameTest {
                 .thenWaitUntil(() -> f.await(f.monsterReady(true), "Defeat returns a replacement to monster camp"))
                 .thenExecute(() -> {
                     f.monster.player = f.monster.current();
-                    test.assertFalse(f.monster.participant().wallet().creeperTicket(), "Defeat spends the ticket");
+                    test.assertFalse(f.monster.participant().wallet().creeperTicket().unlocked(), "Defeat spends the ticket");
                     test.assertValueEqual(f.monster.participant().monsterRole(), MonsterRole.CREEPER, "Defeat keeps the selected role");
-                    booth(f, f.monster, EntityTypes.INTERACTION);
+                    booth(f, f.monster);
+                    test.assertValueEqual(cage(f).size(), cage.size(), "A spent ticket cages the creeper again");
                 })
                 .thenWaitUntil(() -> f.await(hint(f).contains("苦力怕需重新解锁"), "Respawned creeper is told it must unlock again"))
                 .thenExecute(() -> {
                     f.monster.hunt(f.target.profile.id());
-                    assertRejected(f, "回苦力怕展位付 40 怪物币解锁");
+                    assertRejected(f, "回苦力怕展位付 35 怪物币解锁");
                     test.assertValueEqual(f.monster.participant().monsterDeploymentSequence(), 2, "The locked role cannot reserve a third sortie");
                 }).thenSucceed();
     }
 
-    private static ClientboundAddEntityPacket booth(LobbyRuntimeGameTest.Fixture f, LobbyRuntimeGameTest.Fixture.Peer viewer,
-                                                    EntityType<?> expected) {
+    /** The booth's clickable model as this viewer got it: a real creeper in every state. */
+    private static ClientboundAddEntityPacket booth(LobbyRuntimeGameTest.Fixture f, LobbyRuntimeGameTest.Fixture.Peer viewer) {
         LobbyInteractions.tick(f.server);
         int id = LobbyInteractions.get(f.server).orElseThrow().roleModels().view(viewer.player).get(LobbyFunction.ROLE_CREEPER).getFirst();
         var spawn = viewer.client.packets(ClientboundAddEntityPacket.class).stream().filter(packet -> packet.getId() == id)
                 .findFirst().orElseThrow();
-        f.test.assertTrue(spawn.getType() == expected, "The booth's clickable ID points to " + expected + ", got " + spawn.getType());
+        f.test.assertTrue(spawn.getType() == EntityTypes.CREEPER, "The booth's clickable ID points to a creeper, got " + spawn.getType());
         return spawn;
+    }
+
+    private static List<Integer> cage(LobbyRuntimeGameTest.Fixture f) {
+        return LobbyInteractions.get(f.server).orElseThrow().roleModels().cage(f.monster.player);
+    }
+
+    private static long bolts(LobbyRuntimeGameTest.Fixture.Peer viewer) {
+        return viewer.client.packets(ClientboundAddEntityPacket.class).stream()
+                .filter(packet -> packet.getType() == EntityTypes.LIGHTNING_BOLT).count();
     }
 
     private static boolean removed(LobbyRuntimeGameTest.Fixture f, int entity) {

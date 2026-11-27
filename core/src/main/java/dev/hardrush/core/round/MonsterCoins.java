@@ -7,6 +7,8 @@ import dev.hardrush.core.config.RulesConfig;
 public final class MonsterCoins {
     public static final String STARTER = "coin.starter";
     public static final String CREEPER_UNLOCK = "coin.creeperUnlock";
+    /** Paid at the creeper booth to charge an unlocked ticket ({@link CreeperTicket#CHARGED}). */
+    public static final String CREEPER_CHARGE = "coin.creeperCharge";
     /** Rounds saved before stars decided it paid this flat amount for every monster a human killed. */
     public static final String KILLED_BY_HUMAN = "coin.killedByHuman";
     public static final String KILLED_BY_HUMAN_PREFIX = "coin.killedByHuman.star";
@@ -33,6 +35,13 @@ public final class MonsterCoins {
     }
 
     public static int creeperUnlockPrice(RulesConfig rules) { return amount(rules, CREEPER_UNLOCK); }
+
+    /** Rounds saved before the booth sold a charge cannot charge a creeper there. */
+    public static boolean creeperChargeable(RulesConfig rules) {
+        return creeperPaid(rules) && rules.combatValues().containsKey(CREEPER_CHARGE);
+    }
+
+    public static int creeperChargePrice(RulesConfig rules) { return amount(rules, CREEPER_CHARGE); }
 
     public static int amount(RulesConfig rules, String key) {
         Double value = rules.combatValues().get(key);

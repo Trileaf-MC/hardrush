@@ -15,7 +15,7 @@ import java.util.UUID;
 /** Bounded, deterministic format. Schema upgrades must be explicit, never Java object deserialization. */
 public final class RoundSnapshotCodec {
     private static final int MAGIC = 0x48525331;
-    private static final int SCHEMA = 19;
+    private static final int SCHEMA = 20;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final int MAX_PARTICIPANTS = 10_000;
 
@@ -356,12 +356,7 @@ public final class RoundSnapshotCodec {
             out.writeInt(entry.getValue().paid());
         }
         writeText(out, wallet.parked());
-        out.writeBoolean(wallet.creeperTicket());
-        out.writeInt(wallet.parkedGoods().size());
-        for (var offer : ShopOffer.values()) {
-            Integer count = wallet.parkedGoods().get(offer);
-            if (count != null) { writeText(out, offer.id()); out.writeInt(count); }
-        }
+        out.writeByte(ticketCode(wallet.creeperTicket()));
         out.writeLong(wallet.sortieInvestment());
     }
 
@@ -370,12 +365,15 @@ public final class RoundSnapshotCodec {
         boolean chosen = in.readBoolean();
         int serial = in.readInt();
         var counts = new java.util.ArrayList<java.util.Map<ShopOffer, Integer>>();
+        // Schemas 17–19 sold the creeper's charge as a witch offer; it is now a grade of the ticket.
+        boolean heldCharge = false;
         for (int map = 0; map < 3; map++) {
             int size = in.readInt();
-            if (size < 0 || size > ShopOffer.values().length) throw new IOException("Invalid offer count");
+            if (size < 0 || size > ShopOffer.values().length + (schema < 20 ? 1 : 0)) throw new IOException("Invalid offer count");
             var values = new java.util.EnumMap<ShopOffer, Integer>(ShopOffer.class);
             for (int i = 0; i < size; i++) {
                 String id = readText(in, 128); int value = in.readInt();
+                if (schema < 20 && id.equals(ShopOffer.RETIRED_CHARGED) && value > 0) heldCharge = true;
                 if (ShopOffer.retired(id)) continue;
                 if (values.put(ShopOffer.fromId(id), value) != null) throw new IOException("Duplicate offer");
             }
@@ -410,22 +408,44 @@ public final class RoundSnapshotCodec {
         }
         // Schema 7 predates paused sorties: every stored return already ended its sortie.
         String parked = schema >= 8 ? readText(in, MonsterWallet.MAX_PARKED_TEXT * 4) : "";
-        // Paid creeper tickets first appear in schema 17.
-        boolean creeperTicket = schema >= 17 && in.readBoolean();
-        var parkedGoods = new java.util.EnumMap<ShopOffer, Integer>(ShopOffer.class);
-        if (schema >= 17) {
-            int size = in.readInt();
-            if (size < 0 || size > ShopOffer.values().length) throw new IOException("Invalid parked goods count");
-            for (int i = 0; i < size; i++) {
-                String id = readText(in, 128); int value = in.readInt();
-                if (ShopOffer.retired(id)) continue;
-                if (parkedGoods.put(ShopOffer.fromId(id), value) != null) throw new IOException("Duplicate parked goods");
+        CreeperTicket ticket;
+        if (schema >= 20) {
+            ticket = ticket(in.readByte());
+        } else {
+            // Paid creeper tickets first appear in schema 17 as a flag, beside the goods a parked body held.
+            boolean unlocked = schema >= 17 && in.readBoolean();
+            if (schema >= 17) {
+                int size = in.readInt();
+                if (size < 0 || size > ShopOffer.values().length + 1) throw new IOException("Invalid parked goods count");
+                var heldIds = new java.util.HashSet<String>();
+                for (int i = 0; i < size; i++) {
+                    String id = readText(in, 128); int value = in.readInt();
+                    if (!heldIds.add(id)) throw new IOException("Duplicate parked goods");
+                    if (id.equals(ShopOffer.RETIRED_CHARGED) && value > 0) heldCharge = true;
+                    else if (!ShopOffer.retired(id)) ShopOffer.fromId(id);
+                }
             }
+            // A charge paid for while the ticket was held becomes the ticket's grade; one without a ticket is dropped.
+            ticket = !unlocked ? CreeperTicket.NONE : heldCharge ? CreeperTicket.CHARGED : CreeperTicket.PLAIN;
         }
         // Sortie investment (kill spoils) first appears in schema 19.
         long investment = schema >= 19 ? in.readLong() : 0;
         return new MonsterWallet(coins, chosen, counts.get(0), counts.get(1), counts.get(2),
-                gear.get(0), gear.get(1), serial, damage, parked, creeperTicket, parkedGoods, investment);
+                gear.get(0), gear.get(1), serial, damage, parked, ticket, investment);
+    }
+
+    /** A creeper ticket's stable stored code, independent of the enum's declaration order. */
+    private static int ticketCode(CreeperTicket ticket) {
+        return switch (ticket) { case NONE -> 0; case PLAIN -> 1; case CHARGED -> 2; };
+    }
+
+    private static CreeperTicket ticket(int code) throws IOException {
+        return switch (code) {
+            case 0 -> CreeperTicket.NONE;
+            case 1 -> CreeperTicket.PLAIN;
+            case 2 -> CreeperTicket.CHARGED;
+            default -> throw new IOException("Invalid creeper ticket");
+        };
     }
 
     private static void writeUuid(DataOutputStream out, UUID id) throws IOException {

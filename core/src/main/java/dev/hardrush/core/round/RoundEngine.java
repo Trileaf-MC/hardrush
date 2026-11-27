@@ -548,6 +548,33 @@ public final class RoundEngine {
                 chooseRole(before.rules(), abandonPause(player, role).selectMonsterRole(role)));
     }
 
+    /**
+     * Pays the creeper booth to charge this monster's unlocked creeper ticket. Bought during a paused sortie, the
+     * parked body resumes charged.
+     */
+    public RoundTransition proposeCreeperCharge(UUID eventId, UUID roundId, UUID playerId, int life, int sortie,
+            int expectedPrice) {
+        RoundSnapshot before = capture();
+        var player = requireMonster(before, roundId, playerId, life, sortie, ParticipantRole.MONSTER_LOBBY);
+        requireNoRevival(before.rules(), player);
+        if (!MonsterCoins.creeperChargeable(before.rules())) throw new IllegalStateException("本轮不能给苦力怕带电。");
+        if (player.monsterRole() != MonsterRole.CREEPER) throw new IllegalStateException("请先选择苦力怕。");
+        int price = MonsterCoins.creeperChargePrice(before.rules());
+        if (price != expectedPrice) throw new IllegalStateException("价格已变化，请重新右键苦力怕展位。");
+        return monsterProposal(eventId, "CREEPER_CHARGE", before,
+                player.withWallet(player.wallet().chargeCreeper(before.rules(), price)));
+    }
+
+    /** Lightning struck a deployed paid creeper: its ticket is charged for free, as a native creeper's would be. */
+    public RoundTransition proposeCreeperStruck(UUID eventId, UUID roundId, UUID playerId, int life, int sortie) {
+        RoundSnapshot before = capture();
+        var player = requireMonster(before, roundId, playerId, life, sortie, ParticipantRole.MONSTER_DEPLOYED);
+        if (!MonsterCoins.creeperPaid(before.rules()) || player.monsterRole() != MonsterRole.CREEPER
+                || player.wallet().creeperTicket() != CreeperTicket.PLAIN)
+            throw new IllegalStateException("只有出击中、尚未带电的付费苦力怕会被雷劈带电。");
+        return monsterProposal(eventId, "CREEPER_STRUCK", before, player.withWallet(player.wallet().struckByLightning()));
+    }
+
     public RoundTransition proposePersonalHunt(UUID eventId, dev.hardrush.core.hunt.PersonalHuntRequest request, int sortie) {
         RoundSnapshot before = capture();
         if (before.rules().huntRule() != RulesConfig.HuntRule.PERSONAL_TARGET
@@ -689,7 +716,7 @@ public final class RoundEngine {
                 ParticipantRole.MONSTER_DEPLOYED);
         long cooldown = returnCooldownNanos(before.rules());
         var lobby = player.monsterLobby(cooldown);
-        var returned = parkedBody.isEmpty() ? lobby.withWallet(player.wallet().keepUnspent().endSortie())
+        var returned = parkedBody.isEmpty() ? lobby.withWallet(player.wallet().endSortie())
                 : lobby.withWallet(player.wallet().park(parkedBody)).withSortie(player.sortie());
         return monsterProposal(eventId, "MONSTER_RETURN", before, returned);
     }
@@ -924,7 +951,7 @@ public final class RoundEngine {
     /** Choosing another role gives up a paused sortie: its parked body could not become the new one. */
     private static Participant abandonPause(Participant player, MonsterRole role) {
         return player.wallet().hasParkedBody() && role != player.monsterRole()
-                ? player.withWallet(player.wallet().keepUnspent().endSortie()) : player;
+                ? player.withWallet(player.wallet().endSortie()) : player;
     }
 
     private static Participant endSortie(RulesConfig rules, Participant player, long cooldown) {
@@ -939,8 +966,8 @@ public final class RoundEngine {
         if (player.role() == ParticipantRole.MONSTER_DEPLOYED && player.sortie().landing()) return neverLanded(rules, player);
         var lobby = player.monsterLobby(cooldown);
         if (player.role() != ParticipantRole.MONSTER_DEPLOYED) return lobby;
-        // A sortie not used up (a disconnect) hands its paid creeper state back to the camp.
-        var wallet = (spendTicket ? player.wallet() : player.wallet().keepUnspent()).endSortie();
+        // A sortie not used up (a disconnect) keeps the paid creeper ticket, its charge included.
+        var wallet = player.wallet().endSortie();
         if (spendTicket && MonsterCoins.creeperPaid(rules) && player.monsterRole() == MonsterRole.CREEPER) wallet = wallet.useCreeperTicket();
         return lobby.withWallet(wallet);
     }
@@ -952,7 +979,7 @@ public final class RoundEngine {
 
     private static Participant unlockCreeper(RoundSnapshot before, Participant player, MonsterRole role) {
         var rules = before.rules();
-        if (!MonsterCoins.creeperPaid(rules) || role != MonsterRole.CREEPER || player.wallet().creeperTicket()) return player;
+        if (!MonsterCoins.creeperPaid(rules) || role != MonsterRole.CREEPER || player.wallet().creeperTicket().unlocked()) return player;
         boolean hasQuarry = Bounty.standings(rules, before.participants()).entrySet().stream().anyMatch(entry ->
                 entry.getValue().stars() >= HuntPressure.CREEPER_MIN_STARS && before.participants().get(entry.getKey()).online());
         if (!hasQuarry) throw new Refusal.Exception(Refusal.CREEPER_NO_QUARRY, "场上还没有三星以上的人类，苦力怕暂时无人可追。");
@@ -960,7 +987,7 @@ public final class RoundEngine {
     }
 
     private static void requireCreeperTicket(RulesConfig rules, Participant hunter) {
-        if (MonsterCoins.creeperPaid(rules) && hunter.monsterRole() == MonsterRole.CREEPER && !hunter.wallet().creeperTicket())
+        if (MonsterCoins.creeperPaid(rules) && hunter.monsterRole() == MonsterRole.CREEPER && !hunter.wallet().creeperTicket().unlocked())
             throw new Refusal.Exception(Refusal.CREEPER_LOCKED, "请先在展位解锁苦力怕出击资格。");
     }
 
