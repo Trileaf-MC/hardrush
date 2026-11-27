@@ -68,6 +68,8 @@ public final class MonsterPotionsGameTest {
                     zombie.setItemInHand(InteractionHand.MAIN_HAND, MonsterPotions.sortieBottle(zombie, ShopOffer.EPIC_POTION_BOX, RULES, MonsterRole.ZOMBIE));
                     zombie.setItemInHand(InteractionHand.OFF_HAND, MonsterPotions.sortieBottle(zombie, ShopOffer.COMMON_POTION_BOX, RULES, MonsterRole.ZOMBIE));
                     zombie.removeAllEffects();
+                    test.assertTrue(Boolean.TRUE.equals(zombie.getMainHandItem().get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE)),
+                            "A blind box glints like the monster box");
                     test.assertTrue(MonsterRoles.useControl(zombie, InteractionHand.OFF_HAND), "A box starts drinking");
                     zombie.releaseUsingItem();
                     test.assertFalse(zombie.isUsingItem(), "Letting go stops a witch potion as it would anyone's");

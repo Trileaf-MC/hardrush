@@ -48,6 +48,8 @@ public final class MonsterPotions {
             var stack = new ItemStack(Items.POTION);
             stack.set(DataComponents.POTION_CONTENTS, new PotionContents(Optional.empty(), Optional.of(color(box.get())), List.of(), Optional.empty()));
             stack.set(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.DEFAULT.withHidden(DataComponents.POTION_CONTENTS, true));
+            // The glint marks a blind box, as it marks the monster box, among the plain bottles beside it.
+            stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
             return stack;
         }
         return switch (offer) {

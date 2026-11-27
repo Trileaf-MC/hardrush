@@ -174,7 +174,7 @@ class PotionBoxTest {
         assertEquals(12, wallet.coins());
         assertTrue(wallet.soldOut(RULES, ShopOffer.INSTANT_HEALTH));
         assertEquals(4, MonsterCoins.refund(RULES, ShopOffer.INSTANT_HEALTH, 2, 1));
-        assertEquals(36, MonsterCoins.price(RULES, ShopOffer.RARE_POTION_BOX, 1));
+        assertEquals(24, MonsterCoins.price(RULES, ShopOffer.RARE_POTION_BOX, 1));
 
         var values = new TreeMap<>(RULES.combatValues());
         values.keySet().removeIf(key -> key.startsWith("coin.potionBox."));
@@ -239,7 +239,7 @@ class PotionBoxTest {
         assertEquals(300.0, migrated.combatValues().get("coin.potion.swiftnessSeconds"));
         assertEquals(180.0, migrated.combatValues().get("coin.potion.resistanceSeconds"));
         assertEquals(240.0, migrated.combatValues().get("coin.potionBox.rareMaxSeconds"));
-        assertEquals(9.0, migrated.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+        assertEquals(RULES.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY), migrated.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
         assertEquals(migrated, migrated.withEconomyDefaults(), "Migrated rules are stable");
     }
 

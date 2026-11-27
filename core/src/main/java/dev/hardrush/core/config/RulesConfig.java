@@ -193,9 +193,9 @@ public record RulesConfig(
             Map.entry("coin.price.resistance", 12.0), Map.entry("coin.limit.resistance", 1.0),
             Map.entry("coin.price.turtleMaster", 12.0), Map.entry("coin.limit.turtleMaster", 1.0),
             Map.entry("coin.price.poison", 8.0), Map.entry("coin.limit.poison", 1.0),
-            Map.entry("coin.price.commonPotionBox", 8.0), Map.entry("coin.limit.commonPotionBox", 3.0),
-            Map.entry("coin.price.rarePotionBox", 18.0), Map.entry("coin.limit.rarePotionBox", 2.0),
-            Map.entry("coin.price.epicPotionBox", 35.0), Map.entry("coin.limit.epicPotionBox", 1.0),
+            Map.entry("coin.price.commonPotionBox", 5.0), Map.entry("coin.limit.commonPotionBox", 3.0),
+            Map.entry("coin.price.rarePotionBox", 12.0), Map.entry("coin.limit.rarePotionBox", 2.0),
+            Map.entry("coin.price.epicPotionBox", 25.0), Map.entry("coin.limit.epicPotionBox", 1.0),
             Map.entry("coin.price.slownessArrows", 8.0), Map.entry("coin.limit.slownessArrows", 2.0),
             Map.entry("coin.price.poisonArrows", 10.0), Map.entry("coin.limit.poisonArrows", 2.0),
             Map.entry("coin.price.charged", 40.0), Map.entry("coin.limit.charged", 1.0),
@@ -314,7 +314,11 @@ public record RulesConfig(
                     Map.entry("coin.potionBox.rareMinSeconds", Map.entry(60.0, 120.0)),
                     Map.entry("coin.potionBox.rareMaxSeconds", Map.entry(120.0, 240.0)),
                     Map.entry("coin.potionBox.epicMinSeconds", Map.entry(90.0, 180.0)),
-                    Map.entry("coin.potionBox.epicMaxSeconds", Map.entry(180.0, 300.0))));
+                    Map.entry("coin.potionBox.epicMaxSeconds", Map.entry(180.0, 300.0))),
+            // Revision 10 (docs/plan/女巫药水与药水盲盒.md): cheaper blind boxes, priced below the fixed bottles they gamble on.
+            Map.of("coin.price.commonPotionBox", Map.entry(8.0, 5.0),
+                    "coin.price.rarePotionBox", Map.entry(18.0, 12.0),
+                    "coin.price.epicPotionBox", Map.entry(35.0, 25.0)));
     private static final int DEFAULTS_REVISION = 1 + RETUNED_DEFAULTS.size();
 
     private int defaultsRevision() {

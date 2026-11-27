@@ -421,6 +421,29 @@ class MonsterCoinsTest {
         assertEquals(RULES.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY), next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
     }
 
+    @Test void revisionTenCheapensBlindBoxesStillOnTheOldDefaults() {
+        var values = new TreeMap<>(RULES.combatValues());
+        values.put(RulesConfig.DEFAULTS_REVISION_KEY, 9.0);
+        values.put("coin.price.commonPotionBox", 8.0);
+        values.put("coin.price.rarePotionBox", 15.0); // an operator's own price is kept
+        values.put("coin.price.epicPotionBox", 35.0);
+        var next = rules(values).forNewRound();
+        assertEquals(5.0, next.combatValues().get("coin.price.commonPotionBox"));
+        assertEquals(15.0, next.combatValues().get("coin.price.rarePotionBox"));
+        assertEquals(25.0, next.combatValues().get("coin.price.epicPotionBox"));
+        assertEquals(10.0, next.combatValues().get(RulesConfig.DEFAULTS_REVISION_KEY));
+    }
+
+    @Test void blindBoxesLeadTheWitchPotionsOnTheShelf() {
+        var shelf = java.util.Arrays.asList(ShopOffer.values());
+        for (var box : List.of(ShopOffer.COMMON_POTION_BOX, ShopOffer.RARE_POTION_BOX, ShopOffer.EPIC_POTION_BOX))
+            assertTrue(shelf.indexOf(box) < shelf.indexOf(ShopOffer.SWIFTNESS), box + " comes before the fixed bottles");
+        for (var role : MonsterRole.values()) {
+            var sold = shelf.stream().filter(offer -> offer.sellableTo(role)).toList();
+            assertTrue(sold.indexOf(ShopOffer.EPIC_POTION_BOX) < 7, role + " sees every box before the trading screen scrolls");
+        }
+    }
+
     @Test void longerBlessingsBreadAndCoalKeepOnePrice() {
         var wallet = MonsterWallet.EMPTY.credit(300);
         for (var entry : Map.of(ShopOffer.LONGER_BLESSING, 30, ShopOffer.BREAD, 20, ShopOffer.COAL, 20).entrySet()) {
