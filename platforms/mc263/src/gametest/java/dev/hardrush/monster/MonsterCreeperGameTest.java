@@ -276,7 +276,7 @@ public final class MonsterCreeperGameTest {
                 for (int tick = 0; tick < 10; tick++) { cloud.tickCount++; cloud.tick(); }
                 var gift = survivor.getEffect(MobEffects.INFESTED);
                 test.assertTrue(gift != null && !gift.isInfiniteDuration(), "A human never keeps a parting gift for good");
-                test.assertValueEqual(gift.getDuration(), PotionBox.MAX_SECONDS * 20 / 4, "A quarter of five minutes: one and a quarter");
+                test.assertValueEqual(gift.getDuration(), 1500, "A quarter of five minutes: one and a quarter");
                 test.assertValueEqual(survivor.getEffect(MobEffects.SLOWNESS).getDuration(), 200, "A timed effect is copied as it was");
                 test.assertFalse(survivor.hasEffect(MobEffects.NIGHT_VISION), "The body's own night vision never rides the cloud");
             } finally { f.close(); }

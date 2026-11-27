@@ -54,6 +54,11 @@ public enum PotionBrew {
     /** Native invisibility for two minutes is already strong; the turtle master keeps its native 20 seconds. */
     public static final int INVISIBILITY_MAX_SECONDS = 120;
     public static final int TURTLE_MASTER_SECONDS = 20;
+    /**
+     * How long a parting gift counts as when a creeper's lingering cloud copies it (docs/plan/女巫药水与药水盲盒.md 9.3):
+     * native scaling leaves an infinite duration as it is, so the cloud would hand it to humans for good.
+     */
+    public static final int PARTING_GIFT_CLOUD_SECONDS = 300;
 
     private final Grade grade;
     private final String undeadName;
