@@ -30,7 +30,10 @@ final class BundledPacksTest {
         }
     }
 
-    @Test void releaseAddsMissingPacksAndKeepsTheOwnersFiles(@TempDir Path library) throws Exception {
+    @Test void releaseAddsMissingPacksAndKeepsTheOwnersFiles(@TempDir Path temporary) throws Exception {
+        Path library;
+        // World paths refuse symbolic links, and macOS keeps temporary directories behind one (/var).
+        library = temporary.toRealPath();
         var entries = BundledPacks.index();
         var first = entries.getFirst().fileName();
         Files.writeString(library.resolve(first), "the owner's own file", StandardCharsets.UTF_8);
