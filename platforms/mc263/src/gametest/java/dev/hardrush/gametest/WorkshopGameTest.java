@@ -189,7 +189,36 @@ public final class WorkshopGameTest {
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "The returned body prepares normally"))
                 .thenExecute(() -> { f.place(f.a, Landing.CENTRAL); })
                 .thenWaitUntil(() -> f.await(!f.ready(f.a) && f.idle(), "And steps out again"))
-                .thenExecute(() -> test.assertValueEqual(tables(f.a.player), 1, "The body back from the workshop carries the table again"));
+                .thenExecute(() -> {
+                    test.assertValueEqual(tables(f.a.player), 1, "The body back from the workshop carries the table again");
+                    test.assertTrue(workshop(f).enter(f.a.player, "draft2").isEmpty(), "Enter the blank draft");
+                    f.a.acknowledge();
+                    test.assertValueEqual(tables(f.a.player), 0, "No workshop table inside a draft");
+                    // A hotbar stack the tools push aside, and the checklist in hand.
+                    f.a.player.getInventory().setItem(0, new ItemStack(Items.DIAMOND_BLOCK, 64));
+                    f.a.player.getInventory().setSelectedSlot(Toolkit.CHECKLIST_SLOT);
+                    f.a.player.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, 0, 0, 0));
+                })
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    var inventory = f.a.player.getInventory();
+                    for (int i = 0; i < Toolkit.CHECKLIST_SLOT; i++)
+                        test.assertTrue(inventory.getItem(i).is(Items.ARMOR_STAND), "The checklist fills the free hotbar with missing markers: slot " + i + " " + inventory.getItem(i));
+                    test.assertTrue(inventory.getItem(1).getHoverName().getString().contains("集结区"),
+                            "…free slots first, in problem order: " + inventory.getItem(1).getHoverName().getString());
+                    test.assertValueEqual(inventory.countItem(Items.DIAMOND_BLOCK), 64, "The pushed-aside stack moved to the backpack");
+                    boolean ominous = false;
+                    for (int i = 9; i < 36; i++) {
+                        var state = inventory.getItem(i).get(net.minecraft.core.component.DataComponents.BLOCK_STATE);
+                        ominous |= inventory.getItem(i).is(Items.VAULT) && state != null && "true".equals(state.properties().get("ominous"));
+                    }
+                    test.assertTrue(ominous, "Missing vaults come with the vault block in the state they need");
+                    var checklist = inventory.getItem(Toolkit.CHECKLIST_SLOT).getHoverName().getString();
+                    test.assertTrue(checklist.contains("挡着发布"), "The checklist's name counts the blocking problems: " + checklist);
+                    var bar = dev.hardrush.notice.StatusBars.shown(f.a.player).map(b -> b.getName().getString()).orElse("");
+                    test.assertTrue(bar.contains("不能发布") && bar.contains("缺【集结区】"), "The status bar names what blocks publishing: " + bar);
+                    workshop(f).leave(f.a.player, null);
+                });
         WorkshopToolSteps.run(test, f, sequence);
         sequence.thenExecute(() -> f.a.disconnect());
         f.a.login(sequence);
@@ -306,8 +335,9 @@ public final class WorkshopGameTest {
         var inventory = f.a.player.getInventory();
         int items = 0;
         for (int i = 0; i < inventory.getContainerSize(); i++) if (!inventory.getItem(i).isEmpty()) items++;
-        test.assertTrue(items == 2 && Toolkit.kind(inventory.getItem(Toolkit.TOOLBOX_SLOT)).orElse("").equals("toolbox")
-                && Toolkit.kind(inventory.getItem(Toolkit.WAND_SLOT)).orElse("").equals("wand"), "…holding only the toolbox and the wand");
+        test.assertTrue(items == 3 && Toolkit.kind(inventory.getItem(Toolkit.TOOLBOX_SLOT)).orElse("").equals("toolbox")
+                && Toolkit.kind(inventory.getItem(Toolkit.CHECKLIST_SLOT)).orElse("").equals("checklist")
+                && Toolkit.kind(inventory.getItem(Toolkit.WAND_SLOT)).orElse("").equals("wand"), "…holding only the toolbox, the checklist and the wand");
     }
     /** Workshop tables on the body, the cursor included. */
     static int tables(ServerPlayer player) {

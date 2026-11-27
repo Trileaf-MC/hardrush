@@ -98,8 +98,8 @@ public final class Workshop {
     /** Building files being pasted into a draft, and who asked. */
     private final Map<String, DraftImport> pastes = new HashMap<>();
     private final Map<String, UUID> pasters = new HashMap<>();
-    /** Builders without their toolbox, and for how many ticks. */
-    private final Map<UUID, Integer> missingToolbox = new HashMap<>();
+    /** Builders without their toolbox or checklist, and for how many ticks. */
+    private final Map<Toolkit.Missing, Integer> missingTools = new HashMap<>();
 
     private Workshop(MinecraftServer server, PlayerProfiles profiles) {
         this.server = server;
@@ -321,7 +321,7 @@ public final class Workshop {
         var level = openLevel(draft);
         if (level == null) return Optional.of("草稿正在保存，稍后再试");
         if (!profiles.startBuilding(player, level, entryPoint(draft))) return Optional.of("现在不能进入工坊");
-        Toolkit.give(player);
+        Toolkit.give(player, checks.checklist(id));
         var updated = draft.withParticipant(player.getUUID(), player.getScoreboardName());
         if (updated != draft) { drafts.put(id, updated); persist(updated); }
         LOGGER.info("{} 进入草稿 {}", player.getScoreboardName(), id);
@@ -330,7 +330,7 @@ public final class Workshop {
 
     /** Sends a builder back to the lobby; {@code reason} is told to them when not null. */
     public void leave(ServerPlayer player, String reason) {
-        missingToolbox.remove(player.getUUID());
+        missingTools.keySet().removeIf(key -> key.player().equals(player.getUUID()));
         if (!profiles.stopBuilding(player)) return;
         if (reason != null) Notices.personal(player, reason);
     }
@@ -680,7 +680,7 @@ public final class Workshop {
                 leave(player, reason.get() + " · 已回到营地");
                 continue;
             }
-            if (PlayerProfiles.building(player)) Toolkit.keep(player, missingToolbox);
+            if (PlayerProfiles.building(player)) Toolkit.keep(player, missingTools, checks.checklist(draftId(key).orElse("")));
             // Nobody dies in a workshop; a fall into the void ends back at the entry.
             if (player.level().dimension().equals(key) && player.getY() < player.level().getMinY() - VOID_MARGIN) {
                 var draft = buildingIn(player).orElse(null);
