@@ -170,17 +170,38 @@ public final class MonsterRoles {
         });
     }
 
-    public static String select(ServerPlayer player, String requested) {
+    public static String select(ServerPlayer player, String requested) { return select(player, requested, null).message(); }
+
+    /**
+     * Selects the formal role for a sortie just put down at the player's position. The body binds once, already as
+     * the form the landing site gives ({@link MonsterHabitat}), never first as its base form and then again: each bind
+     * swaps the disguise and sends the skin and player info anew.
+     * @param submerged the landing is under water ({@code SafeDeployment.Result.submerged()})
+     * @return whether the site changed the body from what it would otherwise be, its base or its parked form
+     */
+    public static boolean deploy(ServerPlayer player, String requested, boolean submerged) {
+        var site = player.level() instanceof ServerLevel level ? MonsterHabitat.at(level, player.blockPosition(), submerged) : null;
+        var selected = select(player, requested, site);
+        // Already in the role (nothing was selected): the landing still decides its body.
+        return selected.bound() ? selected.turned() : settle(player, submerged);
+    }
+    /** What {@link #select(ServerPlayer, String, MonsterHabitat.Site)} did: {@code bound} unless it refused. */
+    private record Selected(String message, boolean bound, boolean turned) {
+        static Selected refused(String message) { return new Selected(message, false, false); }
+    }
+
+    /** {@code landing}: the site the sortie was just put down at, or null outside a sortie's landing. */
+    private static Selected select(ServerPlayer player, String requested, MonsterHabitat.Site landing) {
         requireThread(player);
         MonsterForm form;
         try { form = MonsterForm.valueOf(requested.toUpperCase(Locale.ROOT)); }
-        catch (IllegalArgumentException error) { return "拒绝：角色只能为 zombie、skeleton、creeper。"; }
-        if (!form.base) return "该形态需要通过环境转化。";
-        if (!MonsterRoundRuntime.canSelect(player, requested)) return "拒绝：角色必须与正式出场身份一致。";
-        if (!player.isAlive() || player.isSpectator()) return "拒绝：请在存活、非旁观时进入怪物角色。";
+        catch (IllegalArgumentException error) { return Selected.refused("拒绝：角色只能为 zombie、skeleton、creeper。"); }
+        if (!form.base) return Selected.refused("该形态需要通过环境转化。");
+        if (!MonsterRoundRuntime.canSelect(player, requested)) return Selected.refused("拒绝：角色必须与正式出场身份一致。");
+        if (!player.isAlive() || player.isSpectator()) return Selected.refused("拒绝：请在存活、非旁观时进入怪物角色。");
         Role role = ROLES.get(player.getUUID());
-        if (role != null && role.form.role == form.role && MonsterRoundRuntime.rules(player).isPresent()) return "已是正式出场角色。";
-        if (isIgniting(player)) return "膨胀期间不能切换角色。";
+        if (role != null && role.form.role == form.role && MonsterRoundRuntime.rules(player).isPresent()) return Selected.refused("已是正式出场角色。");
+        if (isIgniting(player)) return Selected.refused("膨胀期间不能切换角色。");
         if (role == null) {
             // Native close may spill cursor/crafting stacks when inventory is full; escrow only what remains.
             player.closeContainer();
@@ -196,11 +217,14 @@ public final class MonsterRoles {
         role.settled = false; role.exposure = 0; role.conversion = -1;
         var parked = MonsterParking.decode(player, MonsterRoundRuntime.parkedBody(player), form.role).orElse(null);
         if (parked != null) role.form = parked.form();
+        var unsettled = role.form;
+        if (landing != null) role.form = MonsterHabitat.settle(role.form, landing);
+        boolean turned = role.form != unsettled;
         bind(player, role, true);
         var kit = MonsterRoundRuntime.sortieKit(player);
         if (parked != null) {
-            resume(player, role, parked, kit);
-            return "已继续上次暂存的出场。" + status(player);
+            resume(player, role, parked, kit, landing != null);
+            return new Selected("已继续上次暂存的出场。" + status(player), true, turned);
         }
         // Vault gear takes its slot; the newest piece is worn and the rest are spares in the backpack.
         var bought = new java.util.EnumMap<EquipmentSlot, ItemStack>(EquipmentSlot.class);
@@ -223,8 +247,8 @@ public final class MonsterRoles {
             // Baby eggs only come from the witch; adult eggs by tier, bought ones on top.
             int baby = kit.carried(dev.hardrush.core.round.ShopOffer.BABY_EGG);
             int adult = dev.hardrush.core.round.HuntPressure.starterAdultEggs(tier) + kit.carried(dev.hardrush.core.round.ShopOffer.ADULT_EGG);
-            if (baby > 0) player.getInventory().setItem(1, MonsterCompanions.egg(player, true, form).copyWithCount(baby));
-            if (adult > 0) player.getInventory().setItem(2, MonsterCompanions.egg(player, false, form).copyWithCount(adult));
+            if (baby > 0) player.getInventory().setItem(1, MonsterCompanions.egg(player, true, role.form).copyWithCount(baby));
+            if (adult > 0) player.getInventory().setItem(2, MonsterCompanions.egg(player, false, role.form).copyWithCount(adult));
             if (MonsterSoulcatcher.enabled(player)) player.getInventory().setItem(3, MonsterSoulcatcher.bag(player));
         } else if (form == MonsterForm.CREEPER) player.getInventory().setItem(0, MonsterCreeper.createIgniter(player));
         // A skeleton's volley lives on its own sortie bow; MonsterBowDisplay explains it on that bow itself.
@@ -232,16 +256,20 @@ public final class MonsterRoles {
         player.getInventory().setItem(6, trackingCompass(player, role));
         player.getInventory().setSelectedSlot(0);
         applyPurchases(player, kit, form, spares);
+        // A body that lands as a form with a weapon of its own holds it at once.
+        formWeapon(player, role.form, true);
         repairLoadout(player);
-        return "已进入怪物角色；可整理背包与装备，出生物资仅限本次出场本人使用。" + status(player);
+        return new Selected("已进入怪物角色；可整理背包与装备，出生物资仅限本次出场本人使用。" + status(player), true, turned);
     }
 
     /**
      * A paused sortie resumes in the parked body: the same bound items in the same slots, rebound to
      * this deployment, its form, charge and the camp body's health. Goods bought during the pause
      * join it; new vault gear waits in the backpack instead of replacing what is worn.
+     * {@code landed}: the sortie was just put down, so a form weapon it lacks goes straight into its hand.
      */
-    private static void resume(ServerPlayer player, Role role, MonsterParking.Body body, dev.hardrush.core.round.MonsterWallet kit) {
+    private static void resume(ServerPlayer player, Role role, MonsterParking.Body body, dev.hardrush.core.round.MonsterWallet kit,
+                               boolean landed) {
         var inventory = player.getInventory();
         int tier = MonsterRoundRuntime.sortieTier(player);
         // Resumed onto a weaker human: what the sortie brought of its own beyond this tier goes back (§5.1).
@@ -278,9 +306,11 @@ public final class MonsterRoles {
         }
         if (role.form.zombie()) { refreshSoulcatcher(player); MonsterBox.refresh(player); }
         if (body.selected() >= 0 && body.selected() < 9) inventory.setSelectedSlot(body.selected());
+        // The landing may have changed the parked form: a parked zombified piglin resuming under water keeps no sword.
+        dropForeignWeapons(player, role.form);
         // A drowned that parked without its trident (a full inventory at the conversion, or a trident worn out in melee)
         // takes it now: world items are never parked, so the resumed body nearly always has room.
-        formWeapon(player, role.form, false);
+        formWeapon(player, role.form, landed);
         if (body.charged()) MonsterCreeper.charge(player);
         for (var effect : body.effects()) player.addEffect(effect);
         // A resumed absorption effect would natively refill its hearts; only what was left of them comes back.
@@ -671,11 +701,8 @@ public final class MonsterRoles {
         var role = ROLES.get(player.getUUID());
         if (role == null || role.form.role != form.role || role.form == form) return;
         var turning = role.form.conversion();
-        var leaving = role.form;
         stopActions(player); role.form = form; role.exposure = 0; role.conversion = -1;
-        // The old species' weapon goes with it: a zombified piglin soaked into a drowned trades its sword for a trident.
-        if (leaving.weapon != null && (form.weapon == null || !form.weapon.purpose().equals(leaving.weapon.purpose())))
-            dropFormWeapon(player, leaving.weapon);
+        dropForeignWeapons(player, form);
         float health = player.getHealth();
         bind(player, role, false); player.setHealth(Math.min(health, player.getMaxHealth()));
         if (form.egg != null) {
@@ -699,6 +726,15 @@ public final class MonsterRoles {
             // The native conversion sound and the changed eggs and model say it; no chat line.
         }
         repairLoadout(player);
+    }
+    /**
+     * The old species' weapon goes with it: a zombified piglin turned drowned trades its sword for a trident. Removes
+     * every form weapon but {@code form}'s own.
+     */
+    private static void dropForeignWeapons(ServerPlayer player, MonsterForm form) {
+        for (var other : MonsterForm.values())
+            if (other.weapon != null && (form.weapon == null || !form.weapon.purpose().equals(other.weapon.purpose())))
+                dropFormWeapon(player, other.weapon);
     }
     /** Removes every bound copy of {@code weapon}: inventory, worn and held slots, cursor and crafting grid. */
     private static void dropFormWeapon(ServerPlayer player, MonsterForm.Weapon weapon) {

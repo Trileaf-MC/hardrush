@@ -216,6 +216,9 @@ public final class MonsterHabitatGameTest {
             test.assertTrue(site.openSky() && !site.snowing() && !site.nether(), "Open sky, no snow: " + site);
             assertSettles(test, p, "zombie", MonsterForm.HUSK);
             assertSettles(test, p, "skeleton", MonsterForm.PARCHED);
+            assertDeploys(test, p, "zombie", MonsterForm.HUSK);
+            assertDeploys(test, p, "skeleton", MonsterForm.PARCHED);
+
             level.setBlockAndUpdate(roof, Blocks.STONE.defaultBlockState());
         }).thenIdle(5).thenExecute(() -> {
             var site = MonsterHabitat.at(level, feet, false);
@@ -240,6 +243,18 @@ public final class MonsterHabitatGameTest {
             assertSettles(test, p, "skeleton", MonsterForm.STRAY);
             assertSettles(test, p, "zombie", MonsterForm.ZOMBIE);
         }).thenSucceed();
+    }
+    /** A sortie of {@code role} deployed where {@code p} stands binds as {@code expected} straight away. */
+    private static void assertDeploys(GameTestHelper test, ServerPlayer p, String role, MonsterForm expected) {
+        // Out of the role first: a sortie's deployment binds a fresh body.
+        MonsterRoles.clear(p);
+        test.assertValueEqual(MonsterRoles.deploy(p, role, false), expected != expected.baseForm(), "Whether the site turns the " + role);
+        test.assertValueEqual(MonsterRoles.currentForm(p), expected, "The " + role + " deploys as " + expected);
+        test.assertValueEqual(MonsterRoles.nativeModel(p).getType(), expected.type, "Its native model is the " + expected + "'s");
+        if (expected.egg != null) for (int i = 0; i < p.getInventory().getContainerSize(); i++) {
+            var stack = p.getInventory().getItem(i);
+            if (MonsterForm.hatching(stack) != null) test.assertTrue(stack.is(expected.egg), "Its eggs hatch its species: " + stack);
+        }
     }
     /** A fresh {@code role} body landing where {@code p} stands lands as {@code expected}. */
     private static void assertSettles(GameTestHelper test, ServerPlayer p, String role, MonsterForm expected) {

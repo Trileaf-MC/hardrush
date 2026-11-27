@@ -527,13 +527,12 @@ public final class LobbyRuntime {
                 if (b.profiles.deployMonster(d.player, committed, d.level, landing, d.search.yaw(d.targetPlayer.position()))) {
                     // Until this commits, a disconnect cancels the sortie instead of spending it.
                     b.session.monsterLanded(d.identity.round(), id, d.identity.hunterLife(), d.sortie + 1);
-                    MonsterRoles.select(d.player, d.identity.kind().name().toLowerCase(Locale.ROOT));
+                    boolean submerged = d.search.result().submerged();
+                    // The landing site decides the species the body binds as (MonsterHabitat).
+                    boolean turned = MonsterRoles.deploy(d.player, d.identity.kind().name().toLowerCase(Locale.ROOT), submerged);
                     if (!MonsterRoles.isMonster(d.player) || MonsterRoles.nativeModel(d.player) == null)
                         throw new IllegalStateException("已提交出场未能应用原生怪物角色");
-                    boolean submerged = d.search.result().submerged();
                     boolean risen = submerged && d.identity.kind() == MonsterRole.ZOMBIE;
-                    // The landing site decides the species; a parked variant resuming keeps what it was (MonsterHabitat).
-                    boolean turned = MonsterRoles.settle(d.player, submerged);
                     b.pending.remove(id, d); b.committing.remove(id);
                     dev.hardrush.hunt.HuntBossBars.deployed(d.player, committed, d.identity);
                     HuntRetracks.arrived(d.player, d.targetPlayer, burrowed);
