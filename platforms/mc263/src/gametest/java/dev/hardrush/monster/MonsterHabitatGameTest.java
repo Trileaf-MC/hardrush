@@ -219,6 +219,19 @@ public final class MonsterHabitatGameTest {
             assertDeploys(test, p, "zombie", MonsterForm.HUSK);
             assertDeploys(test, p, "skeleton", MonsterForm.PARCHED);
 
+            // A zombified piglin belongs to the nether: landing in the desert it is a zombie again, so a husk.
+            MonsterRoles.select(p, "zombie");
+            MonsterRoleGameTest.withEggs(p);
+            MonsterRoles.convert(p, MonsterForm.ZOMBIFIED_PIGLIN);
+            test.assertTrue(p.fireImmune() && carries(p, MonsterRoles.PIGLIN_SWORD), "A zombified piglin, sword and all");
+            test.assertTrue(MonsterRoles.settle(p, false), "Landing outside the nether turns a zombified piglin");
+            test.assertValueEqual(MonsterRoles.currentForm(p), MonsterForm.HUSK, "back into a zombie, which the open desert makes a husk");
+            test.assertFalse(p.fireImmune(), "Out of the piglin body fire hurts again");
+            test.assertFalse(carries(p, MonsterRoles.PIGLIN_SWORD), "The sword stays with the piglin");
+            test.assertTrue(p.getInventory().getItem(2).is(Items.HUSK_SPAWN_EGG), "Its eggs hatch husks now");
+            MonsterRoles.convert(p, MonsterForm.ZOMBIFIED_PIGLIN);
+            test.assertTrue(MonsterRoles.settle(p, false, true), "A retrack's landing turns it as well");
+            test.assertValueEqual(MonsterRoles.currentForm(p), MonsterForm.HUSK, "into the desert's husk");
             level.setBlockAndUpdate(roof, Blocks.STONE.defaultBlockState());
         }).thenIdle(5).thenExecute(() -> {
             var site = MonsterHabitat.at(level, feet, false);
@@ -255,6 +268,10 @@ public final class MonsterHabitatGameTest {
             var stack = p.getInventory().getItem(i);
             if (MonsterForm.hatching(stack) != null) test.assertTrue(stack.is(expected.egg), "Its eggs hatch its species: " + stack);
         }
+    }
+    private static boolean carries(ServerPlayer p, String purpose) {
+        for (int i = 0; i < p.getInventory().getContainerSize(); i++) if (MonsterItems.matches(p, p.getInventory().getItem(i), purpose)) return true;
+        return false;
     }
     /** A fresh {@code role} body landing where {@code p} stands lands as {@code expected}. */
     private static void assertSettles(GameTestHelper test, ServerPlayer p, String role, MonsterForm expected) {

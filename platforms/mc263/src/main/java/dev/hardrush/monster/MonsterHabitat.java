@@ -46,13 +46,15 @@ public final class MonsterHabitat {
     public static MonsterForm settle(MonsterForm current, Site site) { return settle(current, site, false); }
 
     /**
-     * The form a body that is {@code current} lands as at {@code site}. A base form takes the first variant of its
-     * role that suits the site, in {@link MonsterForm} declaration order; a variant keeps itself for the rest of
-     * the sortie unless a landing that {@linkplain MonsterForm.Landing#overridesVariant overrides} it suits.
+     * The form a body that is {@code current} lands as at {@code site}. A variant that may not {@linkplain
+     * MonsterForm#staysAt stay} there lands as its base form. A base form takes the first variant of its role that
+     * suits the site, in {@link MonsterForm} declaration order; a variant keeps itself for the rest of the sortie
+     * unless a landing that {@linkplain MonsterForm.Landing#overridesVariant overrides} it suits.
      * @param retrack a retrack's landing, which takes only the landings {@linkplain MonsterForm.Landing#onRetrack
      *        made for it}
      */
     public static MonsterForm settle(MonsterForm current, Site site, boolean retrack) {
+        if (!current.staysAt(site)) current = current.baseForm();
         for (var form : MonsterForm.values()) {
             var landing = form.landing();
             if (form == current || form.role != current.role || landing == null || retrack && !landing.onRetrack()) continue;

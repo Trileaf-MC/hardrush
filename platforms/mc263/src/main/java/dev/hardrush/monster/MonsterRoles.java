@@ -306,7 +306,7 @@ public final class MonsterRoles {
         }
         if (role.form.zombie()) { refreshSoulcatcher(player); MonsterBox.refresh(player); }
         if (body.selected() >= 0 && body.selected() < 9) inventory.setSelectedSlot(body.selected());
-        // The landing may have changed the parked form: a parked zombified piglin resuming under water keeps no sword.
+        // The landing may have changed the parked form: a parked zombified piglin resuming outside the nether keeps no sword.
         dropForeignWeapons(player, role.form);
         // A drowned that parked without its trident (a full inventory at the conversion, or a trident worn out in melee)
         // takes it now: world items are never parked, so the resumed body nearly always has room.
@@ -733,8 +733,8 @@ public final class MonsterRoles {
         repairLoadout(player);
     }
     /**
-     * The old species' weapon goes with it: a zombified piglin turned drowned trades its sword for a trident. Removes
-     * every form weapon but {@code form}'s own.
+     * The old species' weapon goes with it: a zombified piglin turned drowned trades its sword for a trident, and one
+     * back in a zombie's body keeps no sword. Removes every form weapon but {@code form}'s own.
      */
     private static void dropForeignWeapons(ServerPlayer player, MonsterForm form) {
         for (var other : MonsterForm.values())

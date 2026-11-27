@@ -99,16 +99,26 @@ class MonsterFormTest {
     @Test void aVariantKeepsItselfAndPlainLandsChangeNothing() {
         assertEquals(MonsterForm.STRAY, MonsterHabitat.settle(MonsterForm.STRAY, land(DESERT, true)));
         assertEquals(MonsterForm.BOGGED, MonsterHabitat.settle(MonsterForm.BOGGED, new Site(false, false, true, true, DESERT)));
-        assertEquals(MonsterForm.ZOMBIFIED_PIGLIN, MonsterHabitat.settle(MonsterForm.ZOMBIFIED_PIGLIN, land(DESERT, true)));
         assertEquals(MonsterForm.DROWNED, MonsterHabitat.settle(MonsterForm.DROWNED, land(DESERT, true)), "A drowned ashore stays one");
         assertEquals(MonsterForm.ZOMBIE, MonsterHabitat.settle(MonsterForm.ZOMBIE, land(PLAINS, true)));
         assertEquals(MonsterForm.SKELETON, MonsterHabitat.settle(MonsterForm.SKELETON, land(PLAINS, true)));
+    }
+
+    @Test void aZombifiedPiglinIsAZombieAgainOnceItLandsOutsideTheNether() {
+        var nether = new Site(false, true, false, false, Set.of(EntityTypes.ZOMBIFIED_PIGLIN));
+        assertEquals(MonsterForm.ZOMBIFIED_PIGLIN, MonsterHabitat.settle(MonsterForm.ZOMBIFIED_PIGLIN, nether), "At home it stays one");
+        assertEquals(MonsterForm.ZOMBIE, MonsterHabitat.settle(MonsterForm.ZOMBIFIED_PIGLIN, land(PLAINS, true)));
+        assertEquals(MonsterForm.HUSK, MonsterHabitat.settle(MonsterForm.ZOMBIFIED_PIGLIN, land(DESERT, true)),
+                "Back as a zombie, the landing turns it like any zombie");
+        assertEquals(MonsterForm.ZOMBIE, MonsterHabitat.settle(MonsterForm.ZOMBIFIED_PIGLIN, land(PLAINS, true), true), "A retrack's landing too");
+        assertTrue(MonsterForm.HUSK.staysAt(land(PLAINS, true)) && MonsterForm.DROWNED.staysAt(nether), "Other variants keep themselves");
     }
 
     @Test void aRetrackIntoWaterRisesAsNoDrowned() {
         var sea = new Site(true, false, false, true, Set.of());
         assertEquals(MonsterForm.ZOMBIE, MonsterHabitat.settle(MonsterForm.ZOMBIE, sea, true));
         assertEquals(MonsterForm.HUSK, MonsterHabitat.settle(MonsterForm.HUSK, sea, true), "The water converts it natively from here");
+        assertEquals(MonsterForm.ZOMBIE, MonsterHabitat.settle(MonsterForm.ZOMBIFIED_PIGLIN, sea, true), "Out of the nether all the same");
         assertEquals(MonsterForm.HUSK, MonsterHabitat.settle(MonsterForm.ZOMBIE, land(DESERT, true), true), "Land variants still apply");
     }
 

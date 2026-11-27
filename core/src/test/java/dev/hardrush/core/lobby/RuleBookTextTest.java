@@ -92,8 +92,8 @@ class RuleBookTextTest {
         var hardcore = pages(GameMode.HARDCORE);
         var avatar = page(hardcore, "化身");
         assertNotNull(avatar);
-        assertTrue(avatar.contains("出击落在哪里，就化身当地的怪物") && avatar.contains("在下界是僵尸猪灵") && avatar.contains("在沼泽是沼骸"), avatar);
-        assertTrue(avatar.contains("僵尸猪灵不怕火和熔岩") && avatar.contains("附近的都会围上来"), avatar);
+        assertTrue(avatar.contains("出击落在哪里，就化身当地的怪物") && avatar.contains("下界是僵尸猪灵") && avatar.contains("沼泽是沼骸"), avatar);
+        assertTrue(avatar.contains("僵尸猪灵不怕火和熔岩") && avatar.contains("落到下界以外就变回僵尸") && avatar.contains("附近的都会围上来"), avatar);
         assertEquals(hardcore.indexOf(page(hardcore, "角色")) + 1, hardcore.indexOf(avatar), "Right after the roles page");
         assertNull(page(pages(GameMode.NORMAL), "化身"));
     }

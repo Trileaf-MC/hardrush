@@ -76,6 +76,8 @@ public enum MonsterForm {
         PARCHED.landing = new Landing(site -> !site.submerged() && site.openSky() && site.hosts(EntityTypes.PARCHED), false, true);
         // Monster.checkMonsterSpawnRules: a bogged needs no sky.
         BOGGED.landing = new Landing(site -> !site.submerged() && site.hosts(EntityTypes.BOGGED), false, true);
+        // A zombified piglin belongs to the nether: landing anywhere else, the body is a zombie again (§1).
+        ZOMBIFIED_PIGLIN.homeland = MonsterHabitat.Site::nether;
 
         // Vanilla's own arrow effects (Stray/Bogged/Parched.getArrow), capped for a player's arrows (§3).
         STRAY.arrowEffect = new ArrowEffect(MobEffects.SLOWNESS, 200);
@@ -124,6 +126,7 @@ public enum MonsterForm {
     public final boolean fireImmune;
     private Conversion conversion;
     private Landing landing;
+    private Predicate<MonsterHabitat.Site> homeland;
     private ArrowEffect arrowEffect;
     private List<Holder<MobEffect>> ownEffects;
 
@@ -140,6 +143,11 @@ public enum MonsterForm {
     public Conversion conversion() { return conversion; }
     /** Null when no landing site gives this form. */
     public Landing landing() { return landing; }
+    /**
+     * Whether a body of this form that lands at {@code site} may stay this form. A variant otherwise keeps itself for
+     * the rest of the sortie; one bound to its homeland, as the zombified piglin to the nether, falls back to its base.
+     */
+    public boolean staysAt(MonsterHabitat.Site site) { return homeland == null || homeland.test(site); }
     /** Null when the form's arrows carry nothing of their own. */
     public ArrowEffect arrowEffect() { return arrowEffect; }
     /**
