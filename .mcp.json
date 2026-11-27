@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "genmc": {
+      "type": "http",
+      "url": "https://genmc.app/api/mcp"
+    }
+  }
+}
