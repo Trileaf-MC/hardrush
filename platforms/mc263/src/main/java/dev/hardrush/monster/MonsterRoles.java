@@ -436,8 +436,8 @@ public final class MonsterRoles {
 
     /**
      * One of the body's {@linkplain MonsterForm#ownEffects own effects}: native monsters hunt by sight line, not light
-     * (docs/plan/怪物夜视.md), and a zombified piglin does not burn. Infinite so it never flickers, without particles so
-     * it never tells a player from a native mob, with an icon so the monster itself knows.
+     * (docs/plan/怪物夜视.md). Infinite so it never flickers, without particles so it never tells a player from a native
+     * mob, with an icon so the monster itself knows.
      */
     static MobEffectInstance ownEffect(Holder<net.minecraft.world.effect.MobEffect> effect) {
         return new MobEffectInstance(effect, MobEffectInstance.INFINITE_DURATION, 0, false, false, true);
