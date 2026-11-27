@@ -4,6 +4,7 @@ import dev.hardrush.disguise.MonsterDisguise;
 import dev.hardrush.monster.MonsterRoles;
 import dev.hardrush.monster.MonsterItems;
 import dev.hardrush.monster.MonsterCompanions;
+import dev.hardrush.monster.MonsterForm;
 import java.util.List;
 import com.mojang.authlib.GameProfile;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -58,6 +59,120 @@ public final class MonsterRoleGameTest {
             test.assertFalse(book.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME), "The name is the item name, not an italic rename");
         }
         test.succeed();
+    }
+
+    /**
+     * Issue #106: a slain monster player rolls its current form's native loot table as a player kill. Fixed seeds keep
+     * it deterministic; every item must come from that form's table, and a death with no player in it never rolls the
+     * zombie's player-kill rarities.
+     */
+    @GameTest(maxTicks=40)
+    public void slainMonsterRollsItsFormsNativeLootAsAPlayerKill(GameTestHelper test) {
+        var monster=actor(test);
+        var human=actor(test);
+        var level=test.getLevel();
+        try {
+            var byHuman=level.damageSources().playerAttack(human);
+            var zombieRare=java.util.Set.of(Items.IRON_INGOT,Items.CARROT,Items.POTATO,Items.BAKED_POTATO);
+            var zombie=java.util.Set.of(Items.ROTTEN_FLESH,Items.IRON_INGOT,Items.CARROT,Items.POTATO,Items.BAKED_POTATO);
+            var skeleton=java.util.Set.of(Items.ARROW,Items.BONE);
+            var stray=java.util.Set.of(Items.ARROW,Items.BONE,Items.TIPPED_ARROW);
+            MonsterRoles.select(monster,"zombie");
+            assertNativeLoot(test,monster,MonsterForm.ZOMBIE,byHuman,human,zombie,Items.ROTTEN_FLESH);
+            for(long seed=1;seed<=200;seed++) {
+                for(var stack:dev.hardrush.monster.MonsterNativeLoot.roll(level,monster,MonsterRoles.nativeModel(monster),
+                        level.damageSources().generic(),null,seed)) {
+                    test.assertFalse(zombieRare.contains(stack.getItem()),"Without a player kill the zombie never drops "+stack+" (seed "+seed+")");
+                }
+            }
+            MonsterRoles.convert(monster,MonsterForm.DROWNED);
+            assertNativeLoot(test,monster,MonsterForm.DROWNED,byHuman,human,java.util.Set.of(Items.ROTTEN_FLESH,Items.COPPER_INGOT),Items.ROTTEN_FLESH);
+            MonsterRoles.select(monster,"skeleton");
+            assertNativeLoot(test,monster,MonsterForm.SKELETON,byHuman,human,skeleton,Items.BONE);
+            MonsterRoles.convert(monster,MonsterForm.STRAY);
+            assertNativeLoot(test,monster,MonsterForm.STRAY,byHuman,human,stray,Items.BONE);
+            MonsterRoles.select(monster,"creeper");
+            assertNativeLoot(test,monster,MonsterForm.CREEPER,byHuman,human,java.util.Set.of(Items.GUNPOWDER),Items.GUNPOWDER);
+        } finally { remove(monster); remove(human); }
+        test.succeed();
+    }
+
+    /** The real death path: a skeleton player another player recently hurt drops its native loot where it stands. */
+    @GameTest(maxTicks=40)
+    public void slainMonsterDropsNativeLootOnlyAfterAnotherPlayersHit(GameTestHelper test) {
+        var hit=actor(test);
+        var unhurt=actor(test);
+        var human=actor(test);
+        var level=test.getLevel();
+        try {
+            MonsterRoles.select(hit,"skeleton");
+            MonsterRoles.select(unhurt,"skeleton");
+            hit.setLastHurtByPlayer(human.getUUID(),100);
+            test.assertTrue(MonsterRoles.recentlyHurtByOtherPlayer(hit) && !MonsterRoles.recentlyHurtByOtherPlayer(unhurt),
+                "Only one skeleton was hurt by another player");
+            var source=level.damageSources().playerAttack(human);
+            // Items another test left nearby must not count as this body's loot.
+            for(var body:List.of(hit,unhurt))
+                for(var item:level.getEntitiesOfClass(ItemEntity.class,body.getBoundingBox().inflate(3)))item.discard();
+            // Without a round worth, slain only rolls the native loot: 20 rolls of 0–2 arrows and 0–2 bones.
+            for(int i=0;i<20;i++)dev.hardrush.monster.MonsterWorthRewards.slain(hit,source);
+            var dropped=level.getEntitiesOfClass(ItemEntity.class,hit.getBoundingBox().inflate(3));
+            test.assertFalse(dropped.isEmpty(),"The slain skeleton drops native loot");
+            for(var item:dropped)test.assertTrue(item.getItem().is(Items.ARROW)||item.getItem().is(Items.BONE),
+                "Only the skeleton's native loot drops, not "+item.getItem());
+            dropped.forEach(ItemEntity::discard);
+            for(int i=0;i<20;i++)dev.hardrush.monster.MonsterWorthRewards.slain(unhurt,level.damageSources().fall());
+            test.assertTrue(level.getEntitiesOfClass(ItemEntity.class,unhurt.getBoundingBox().inflate(3)).isEmpty(),
+                "A death no other player took part in drops nothing");
+        } finally {
+            for(var body:List.of(hit,unhurt))
+                for(var item:level.getEntitiesOfClass(ItemEntity.class,body.getBoundingBox().inflate(3)))item.discard();
+            remove(hit); remove(unhurt); remove(human);
+        }
+        test.succeed();
+    }
+
+    /** Issue #106: a known roll leaves exactly its iron and one stack per brewing material at the body. */
+    @GameTest(maxTicks=40)
+    public void rolledSpoilsLeaveTheirIronAndBrewingMaterialsAtTheBody(GameTestHelper test) {
+        var body=actor(test);
+        var level=test.getLevel();
+        try {
+            // Spoils only ever leave a monster's body.
+            MonsterRoles.select(body,"zombie");
+            for(var item:level.getEntitiesOfClass(ItemEntity.class,body.getBoundingBox().inflate(3)))item.discard();
+            var brewing=new java.util.EnumMap<dev.hardrush.core.round.MonsterSpoils.Material,Integer>(dev.hardrush.core.round.MonsterSpoils.Material.class);
+            brewing.put(dev.hardrush.core.round.MonsterSpoils.Material.NETHER_WART,2);
+            brewing.put(dev.hardrush.core.round.MonsterSpoils.Material.GLASS_BOTTLE,6);
+            brewing.put(dev.hardrush.core.round.MonsterSpoils.Material.GHAST_TEAR,1);
+            dev.hardrush.monster.MonsterWorthRewards.leave(level,body,new dev.hardrush.core.round.MonsterSpoils.Spoils(0,0,4,brewing));
+            var dropped=level.getEntitiesOfClass(ItemEntity.class,body.getBoundingBox().inflate(3));
+            java.util.function.ToIntFunction<net.minecraft.world.item.Item> count=item->dropped.stream()
+                    .filter(entity->entity.getItem().is(item)).mapToInt(entity->entity.getItem().getCount()).sum();
+            test.assertValueEqual(count.applyAsInt(Items.IRON_INGOT),4,"The rolled iron drops");
+            test.assertValueEqual(count.applyAsInt(Items.NETHER_WART),2,"The rolled nether wart drops");
+            test.assertValueEqual(count.applyAsInt(Items.GLASS_BOTTLE),6,"The rolled glass bottles drop");
+            test.assertValueEqual(count.applyAsInt(Items.GHAST_TEAR),1,"The rolled ghast tear drops");
+            test.assertValueEqual(dropped.size(),4,"Nothing else drops: no book below its level, one stack per kind");
+            dropped.forEach(ItemEntity::discard);
+        } finally { remove(body); }
+        test.succeed();
+    }
+
+    private static void assertNativeLoot(GameTestHelper test,ServerPlayer monster,MonsterForm form,net.minecraft.world.damagesource.DamageSource source,
+            Player killer,java.util.Set<net.minecraft.world.item.Item> allowed,net.minecraft.world.item.Item main) {
+        test.assertValueEqual(MonsterRoles.currentForm(monster),form,"The body has taken the form under test");
+        MonsterRoles.syncNativeContext(monster);
+        var model=MonsterRoles.nativeModel(monster);
+        test.assertTrue(model!=null,"The "+form+" has a native model");
+        boolean sawMain=false;
+        for(long seed=1;seed<=200;seed++) {
+            for(var stack:dev.hardrush.monster.MonsterNativeLoot.roll(test.getLevel(),monster,model,source,killer,seed)) {
+                test.assertTrue(allowed.contains(stack.getItem()),"The "+form+" drops only its native loot, not "+stack+" (seed "+seed+")");
+                sawMain|=stack.is(main);
+            }
+        }
+        test.assertTrue(sawMain,"Some of 200 seeds roll the "+form+"'s main drop");
     }
 
     @GameTest(maxTicks=200)
@@ -324,6 +439,8 @@ public final class MonsterRoleGameTest {
                 rules.set(net.minecraft.world.level.gamerules.GameRules.MOB_GRIEFING,true,level.getServer());
                 for(var pos:planks)level.setBlockAndUpdate(pos,Blocks.OAK_PLANKS.defaultBlockState());
                 double walkingSpeed=creeper.getAttributeValue(Attributes.MOVEMENT_SPEED);
+                // A human's earlier hit would make any other death a player kill; the creeper's own blast still pays nothing.
+                creeper.setLastHurtByPlayer(human.getUUID(),100);
                 test.assertTrue(MonsterRoles.ignite(creeper),"Native creeper fuse starts");
                 test.assertTrue(MonsterRoles.ignite(creeper),"Repeated held input keeps the same native fuse active");
                 test.assertTrue(walkingSpeed>0,"Creeper walking speed is positive");
@@ -336,6 +453,9 @@ public final class MonsterRoleGameTest {
                 test.assertTrue(pig.getHealth()<pigHealth,"Native animals receive the native blast damage");
                 var loot=level.getEntitiesOfClass(ItemEntity.class,creeper.getBoundingBox().inflate(5));
                 test.assertTrue(loot.stream().noneMatch(item -> item.getItem().is(Items.FLINT_AND_STEEL)),"Bound role controls do not drop as loot");
+                // Gunpowder rolls 0–2, so this catches a lost self-detonation gate on about two runs in three; outside a
+                // round there is no worth, so experience and spoils cannot be observed here.
+                test.assertTrue(loot.stream().noneMatch(item -> item.getItem().is(Items.GUNPOWDER)),"A creeper's own blast leaves no native loot");
             } finally {
                 rules.set(net.minecraft.world.level.gamerules.GameRules.MOB_GRIEFING,griefing,level.getServer());
                 pig.discard(); remove(creeper); remove(human);

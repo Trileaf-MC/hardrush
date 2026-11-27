@@ -123,6 +123,20 @@ class MonsterPauseTest {
         assertThrows(IllegalArgumentException.class, () -> MonsterWallet.EMPTY.park("x".repeat(MonsterWallet.MAX_PARKED_TEXT + 1)));
     }
 
+    @Test void aCancelledResumptionTakesBackOnlyTheInvestmentItFroze() {
+        var engine = engine(RULES, MonsterWallet.EMPTY.credit(40).chooseRole(RULES, MonsterRole.ZOMBIE)
+                .buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 8));
+        assertEquals(8_000, engine.view().participants().get(monster).wallet().sortieInvestment());
+        accept(engine, engine.proposeMonsterReturn(UUID.randomUUID(), round, monster, 1, 3, BODY));
+        accept(engine, engine.proposeShopPurchase(UUID.randomUUID(), round, monster, 1, 3, ShopOffer.ADULT_EGG, 16));
+        accept(engine, engine.proposeMonsterDeploy(UUID.randomUUID(), round, monster, 1, 3));
+        assertEquals(24_000, engine.view().participants().get(monster).wallet().sortieInvestment());
+        accept(engine, engine.proposeMonsterDeployCancelled(UUID.randomUUID(), round, monster, 1, 4));
+        var camp = engine.view().participants().get(monster).wallet();
+        assertEquals(8_000, camp.sortieInvestment(), "Back to the paused sortie's investment");
+        assertEquals(1, camp.ordered(ShopOffer.ADULT_EGG));
+    }
+
     private static RulesConfig rules(Map<String, Double> values) {
         return new RulesConfig(RULES.schemaVersion(), RULES.mode(), RULES.minecraftVersion(), RULES.difficulty(),
                 RULES.generationRule(), values, RULES.startCountdownMillis(),

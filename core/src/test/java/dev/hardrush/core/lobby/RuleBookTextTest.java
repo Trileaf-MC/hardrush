@@ -107,6 +107,20 @@ class RuleBookTextTest {
         assertTrue(RuleBookText.pages(legacy).stream().noneMatch(text -> text.startsWith("苦力怕解锁")));
     }
 
+    @Test void theWorthPageNamesInvestmentAndSpoilsOnlyWhenTheRoundHasThem() {
+        var worth = page(RuleBookText.pages(RulesConfig.defaults()), "身价");
+        assertEquals("身价\n\n出击时的经验等级就是身价：从 10 级起，出击带上的怪物币开销和伤害人类都会让它上涨，最高 30 级。\n\n"
+                + "被玩家击杀时掉出经验和铁锭；满 15 级再掉一本附魔书，身价越高还会掉炼药材料。", worth);
+        assertTrue(wrappedLines(worth) <= 14, wrappedLines(worth) + " lines: " + worth);
+
+        var encoded = RulesConfig.defaults().encode();
+        for (var key : List.of("coinsPerLevel", "permanentPermille", "levelsPerIron"))
+            encoded = encoded.replaceAll("combat\\.worth\\." + key + "=[^\n]*\n", "");
+        var legacy = page(RuleBookText.pages(RulesConfig.decode(encoded)), "身价");
+        assertEquals("身价\n\n出击时的经验等级就是身价：从 10 级起，伤害人类会上涨，最高 30 级。\n\n被玩家击杀时掉出经验，满 15 级再掉一本附魔书。", legacy);
+        assertTrue(wrappedLines(legacy) <= 14);
+    }
+
     @Test void everyPageFitsTheFourteenLinesABookShows() {
         // A written book never scrolls: BookViewScreen shows 14 lines of 114 pixels and clips the rest.
         for (var mode : GameMode.values())

@@ -62,7 +62,11 @@ public final class RuleBookText {
             if (dev.hardrush.core.round.Bounty.enabled(rules)) pages.add("悬赏\n\n速通推进得越远，悬赏星级越高，击杀怪物玩家也会加一点；每条命重新计算。\n\n"
                     + "星级越高，能同时追他的怪物越多，怪物出击带得越好、三连射冷却越短，打他也越赚：★★★★★ 是 ★☆☆☆☆ 的 " + multiplier(rules)
                     + " 倍。头戴不祥旗帜的是头号悬赏。");
-            if (MonsterWorth.enabled(rules)) pages.add("身价\n\n出击时的经验等级就是身价：从 " + (long) value(rules, MonsterWorth.BASE_LEVEL, 10)
+            if (MonsterWorth.spoilsEnabled(rules)) pages.add("身价\n\n出击时的经验等级就是身价：从 " + (long) value(rules, MonsterWorth.BASE_LEVEL, 10)
+                    + " 级起，出击带上的怪物币开销和伤害人类都会让它上涨，最高 " + (long) value(rules, MonsterWorth.MAX_LEVEL, 30) + " 级。\n\n"
+                    + "被玩家击杀时掉出经验和铁锭；满 " + (long) value(rules, MonsterWorth.BOOK_MIN_LEVEL, 15)
+                    + " 级再掉一本附魔书，身价越高还会掉炼药材料。");
+            else if (MonsterWorth.enabled(rules)) pages.add("身价\n\n出击时的经验等级就是身价：从 " + (long) value(rules, MonsterWorth.BASE_LEVEL, 10)
                     + " 级起，伤害人类会上涨，最高 " + (long) value(rules, MonsterWorth.MAX_LEVEL, 30) + " 级。\n\n被玩家击杀时掉出经验，满 "
                     + (long) value(rules, MonsterWorth.BOOK_MIN_LEVEL, 15) + " 级再掉一本附魔书。");
             pages.add("复生图腾\n\n人类每阵亡一次、每用掉一个图腾，都会放出 1 个：怪物击杀或逼出的直接归怪物，其余掉在原地，"
