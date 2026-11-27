@@ -17,3 +17,5 @@
 /test-server/
 # Log4j output of unit tests run from a module directory (rotated on every start)
 **/logs/
+# Headless lobby pack build output (scripts/lobby-pack.py)
+/lobby-packs/*/out/
