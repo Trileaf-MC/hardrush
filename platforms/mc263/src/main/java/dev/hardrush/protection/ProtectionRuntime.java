@@ -91,7 +91,7 @@ public final class ProtectionRuntime {
     public static void correct(ServerPlayer player) {
         // Spectators may hover or occupy solid blocks; rejection must not require a survival landing.
         if (PlayerProfiles.isAdministrativeSpectator(player)) spectatorRejected(player);
-        if (PlayerProfiles.building(player)) dev.hardrush.notice.Notices.refuse(player, "建造时只能留在本草稿 · 用 /hardrush lobby 离开工坊");
+        if (PlayerProfiles.building(player)) dev.hardrush.notice.Notices.refuse(player, "建造时只能留在本草稿 · 工坊工具箱里可以离开");
         player.stopRiding();
         player.resetFallDistance(); player.resetCurrentImpulseContext();
         player.setDeltaMovement(Vec3.ZERO);

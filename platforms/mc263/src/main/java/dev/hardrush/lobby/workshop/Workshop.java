@@ -137,7 +137,10 @@ public final class Workshop {
     }
     public static Optional<Workshop> get(MinecraftServer server) { return Optional.ofNullable(SERVICES.get(server)); }
 
-    /** {@code /hardrush lobby} for 2-level operators: the workshop menu, in the lobby or inside a draft. */
+    /**
+     * {@code /hardrush lobby} for 2-level operators: the workshop menu, in the lobby or inside a draft. Players reach the
+     * same menu through the camp's {@link WorkshopTable}; the command stays for consoles and scripts.
+     */
     public static void registerCommands() {
         net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(Commands.literal("hardrush").then(Commands.literal("lobby")
@@ -529,6 +532,7 @@ public final class Workshop {
         tickPastes();
         tickPublishes();
         tickBuilders();
+        WorkshopTable.tick(server);
         checks.tick(this, server.getTickCount());
         view.tick(this, server.getTickCount());
         tickDimensions();
@@ -580,7 +584,7 @@ public final class Workshop {
             var name = Notices.key(draft(id).map(Draft::name).orElse(id));
             switch (stage) {
                 case CONFIRM -> {
-                    if (publisher != null) Notices.personal(publisher, "草稿 " + name + " 已打包好 · 在 /hardrush lobby 的草稿页确认作者后写入"
+                    if (publisher != null) Notices.personal(publisher, "草稿 " + name + " 已打包好 · 在「大厅工坊」的草稿页确认作者后写入"
                             + (job.warnings().isEmpty() ? "" : "\n提醒：\n· " + String.join("\n· ", PublishJob.shown(job.warnings()))));
                 }
                 case DONE -> {
@@ -633,7 +637,7 @@ public final class Workshop {
             persist(ready);
             var importer = importers.remove(id);
             var player = importer == null ? null : server.getPlayerList().getPlayer(importer);
-            if (player != null) Notices.personal(player, "草稿 " + Notices.key(ready.name()) + " 已建好 · 输入 /hardrush lobby 进入"
+            if (player != null) Notices.personal(player, "草稿 " + Notices.key(ready.name()) + " 已建好 · 右键营地里的「大厅工坊」制图台进入"
                     + (content.notes().isEmpty() ? "" : "\n· " + String.join("\n· ", content.notes())));
         }
     }

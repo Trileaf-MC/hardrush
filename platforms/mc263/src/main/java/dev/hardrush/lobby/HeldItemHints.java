@@ -33,7 +33,8 @@ public final class HeldItemHints {
             CampKit::heldHint,
             dev.hardrush.revival.RevivalTotems::heldHint,
             dev.hardrush.revival.FallenCompass::heldHint,
-            dev.hardrush.observe.Spyglass::heldHint);
+            dev.hardrush.observe.Spyglass::heldHint,
+            dev.hardrush.lobby.workshop.WorkshopTable::heldHint);
     /**
      * The usage last flashed by each viewer's arbiter; absent while the hand holds nothing special. Kept per arbiter,
      * which lives as long as the player's connection, so a reconnect shows the held item again.
