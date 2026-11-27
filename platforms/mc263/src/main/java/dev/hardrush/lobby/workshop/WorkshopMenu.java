@@ -12,8 +12,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Items;
 
 /**
- * The {@code /hardrush lobby} chest (design 12): the draft list, a draft's page (enter, publish, delete), its publish
- * page and the new-draft page. Buttons a player may not use are greyed out with the reason in their lore.
+ * The workshop chest (design 12), opened by the camp's {@link WorkshopTable} or {@code /hardrush lobby}: the draft
+ * list, a draft's page (enter, publish, delete), its publish page and the new-draft page. Buttons a player may not
+ * use are greyed out with the reason in their lore.
  * The pack library, install and roll-back live in {@link LobbyAdminMenu}.
  */
 final class WorkshopMenu {

@@ -1566,6 +1566,8 @@ public final class PlayerProfiles implements AutoCloseable {
                 if (!belongsToRound.test(landing.level()) || !dev.hardrush.world.RoundWorldBundle.safeStanding(landing.level(), net.minecraft.core.BlockPos.containing(landing.position())))
                     throw new IllegalStateException("本轮入场落点未就绪或不安全，保留档案并留厅核验");
                 var spawn = landing.position();
+                // The camp's workshop table is a projection, never something to carry into the round.
+                dev.hardrush.lobby.workshop.WorkshopTable.strip(player);
                 if (!player.teleportTo(landing.level(), spawn.x, spawn.y, spawn.z, Set.of(), landing.yaw(), 0, true)) {
                     throw new IllegalStateException("本轮新生命入场传送被拒绝");
                 }

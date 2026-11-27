@@ -52,18 +52,21 @@ import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * The builder's tools (design 4.4), all vanilla items marked with {@code minecraft:custom_data}: the toolbox (a chest
- * in hotbar slot 9 that opens the workshop's tool chest instead of being placed), marker items (armor stands vanilla
- * places as markers) and the binding wand (a stick: right-click a block or entity to bind it). Right-clicking a marker
+ * in hotbar slot 9 that opens the workshop's tool chest instead of being placed), the {@link Checklist} (a book in
+ * slot 7 naming what blocks publishing), marker items (armor stands vanilla places as markers) and the binding wand
+ * (a stick: right-click a block or entity to bind it). Right-clicking a marker
  * armor stand edits it instead of dressing it. The network adapter ({@code WorkshopToolMixin}) routes builders' clicks
  * here; everything else stays vanilla.
  */
 public final class Toolkit {
     static final String TOOL = "hardrush_tool";
-    static final String TOOLBOX = "toolbox", WAND = "wand";
-    public static final int TOOLBOX_SLOT = 8, WAND_SLOT = 7;
+    static final String TOOLBOX = "toolbox", WAND = "wand", CHECKLIST = "checklist";
+    public static final int TOOLBOX_SLOT = 8, WAND_SLOT = 7, CHECKLIST_SLOT = 6;
+    /** A kept tool missing from a builder, counted in ticks until it is given back. */
+    record Missing(UUID player, String kind) {}
     /** Generous creative reach: the client already limits it, this only rejects nonsense. */
     private static final double REACH = 10;
-    /** A toolbox missing this long is given back; shorter gaps are a creative inventory move in progress. */
+    /** A toolbox or checklist missing this long is given back; shorter gaps are a creative inventory move in progress. */
     static final int RESTORE_TICKS = 10;
     static final int INTERACTION_SIZES[][] = {{1, 1}, {1, 2}, {2, 2}, {3, 3}};
 
@@ -81,7 +84,7 @@ public final class Toolkit {
                 List.of("右键方块：把它绑定为某个功能", "右键实体：给它绑定或解除功能"));
     }
 
-    private static ItemStack tool(ItemStack stack, String kind, String name, List<String> lore) {
+    static ItemStack tool(ItemStack stack, String kind, String name, List<String> lore) {
         var data = new CompoundTag();
         data.putString(TOOL, kind);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(data));
@@ -99,38 +102,50 @@ public final class Toolkit {
     }
     static boolean is(ItemStack stack, String kind) { return kind(stack).filter(kind::equals).isPresent(); }
 
-    /** Hands a builder who just arrived the toolbox and the wand. */
-    static void give(ServerPlayer player) {
+    /** Hands a builder who just arrived the toolbox, the checklist and the wand. */
+    static void give(ServerPlayer player, ItemStack checklist) {
         player.getInventory().setItem(TOOLBOX_SLOT, toolbox());
+        player.getInventory().setItem(CHECKLIST_SLOT, checklist.copy());
         player.getInventory().setItem(WAND_SLOT, wand());
         player.inventoryMenu.sendAllDataToRemote();
     }
 
     /**
-     * Keeps every builder's toolbox: taken back out of any other container they have open, dropped copies vanish, and
-     * a builder without one gets it back in slot 9 after {@link #RESTORE_TICKS}.
+     * Keeps every builder's toolbox and checklist: taken back out of any other container they have open, dropped copies
+     * vanish, a builder without one gets it back in its slot after {@link #RESTORE_TICKS}, and a checklist that no
+     * longer reads like {@code checklist} (the latest check) is rewritten in place.
      */
-    static void keep(ServerPlayer player, java.util.Map<UUID, Integer> missing) {
+    static void keep(ServerPlayer player, java.util.Map<Missing, Integer> missing, ItemStack checklist) {
         var menu = player.containerMenu;
         if (menu != player.inventoryMenu && !(menu instanceof ButtonMenu)) {
             for (var slot : menu.slots)
-                if (slot.container != player.getInventory() && is(slot.getItem(), TOOLBOX)) slot.set(ItemStack.EMPTY);
+                if (slot.container != player.getInventory() && (is(slot.getItem(), TOOLBOX) || is(slot.getItem(), CHECKLIST))) slot.set(ItemStack.EMPTY);
         }
         var level = (ServerLevel) player.level();
         for (var item : level.getEntitiesOfClass(ItemEntity.class, player.getBoundingBox().inflate(16), e -> kind(e.getItem()).isPresent()))
             item.discard();
+        keepOne(player, missing, TOOLBOX, TOOLBOX_SLOT, Toolkit::toolbox, null);
+        keepOne(player, missing, CHECKLIST, CHECKLIST_SLOT, checklist::copy, checklist);
+    }
+
+    /** One kept tool: duplicates go, a stale copy is refreshed to {@code current} (when given), a lost one comes back. */
+    private static void keepOne(ServerPlayer player, java.util.Map<Missing, Integer> missing, String kind, int home,
+                                java.util.function.Supplier<ItemStack> make, ItemStack current) {
         var inventory = player.getInventory();
-        int found = is(menu.getCarried(), TOOLBOX) ? 1 : 0;
+        var key = new Missing(player.getUUID(), kind);
+        int found = is(player.containerMenu.getCarried(), kind) ? 1 : 0;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
-            if (!is(inventory.getItem(i), TOOLBOX)) continue;
+            var stack = inventory.getItem(i);
+            if (!is(stack, kind)) continue;
             if (found++ > 0) inventory.setItem(i, ItemStack.EMPTY);
+            else if (current != null && !ItemStack.isSameItemSameComponents(stack, current)) inventory.setItem(i, current.copy());
         }
-        if (found > 0) { missing.remove(player.getUUID()); return; }
-        int ticks = missing.merge(player.getUUID(), 1, Integer::sum);
+        if (found > 0) { missing.remove(key); return; }
+        int ticks = missing.merge(key, 1, Integer::sum);
         if (ticks < RESTORE_TICKS) return;
-        missing.remove(player.getUUID());
-        var displaced = inventory.getItem(TOOLBOX_SLOT);
-        inventory.setItem(TOOLBOX_SLOT, toolbox());
+        missing.remove(key);
+        var displaced = inventory.getItem(home);
+        inventory.setItem(home, make.get());
         // A full creative inventory loses the displaced copy; creative items cost nothing.
         if (!displaced.isEmpty()) inventory.add(displaced);
         player.inventoryMenu.sendAllDataToRemote();
@@ -138,10 +153,13 @@ public final class Toolkit {
 
     // ---- Network entry points (server thread) -------------------------------------------------------------------
 
-    /** A right-click in the air. Consumed when it was the toolbox. */
+    /** A right-click in the air. Consumed when it was the toolbox or the checklist. */
     public static boolean useItem(ServerPlayer player, InteractionHand hand) {
-        if (!PlayerProfiles.building(player) || !is(player.getItemInHand(hand), TOOLBOX)) return false;
-        openToolbox(player);
+        if (!PlayerProfiles.building(player)) return false;
+        var held = player.getItemInHand(hand);
+        if (is(held, TOOLBOX)) openToolbox(player);
+        else if (is(held, CHECKLIST)) useChecklist(player);
+        else return false;
         return true;
     }
 
@@ -161,6 +179,7 @@ public final class Toolkit {
         var kind = main != null ? main : held;
         var pos = hit.getBlockPos();
         if (kind.equals(TOOLBOX)) openToolbox(player);
+        else if (kind.equals(CHECKLIST)) useChecklist(player);
         else if (kind.equals(WAND) && reachable(player, net.minecraft.world.phys.Vec3.atCenterOf(pos)))
             WandMenus.block(player, pos);
         return true;
@@ -338,6 +357,10 @@ public final class Toolkit {
     static void openToolbox(ServerPlayer player) {
         var workshop = Workshop.get(player.level().getServer()).orElse(null);
         if (workshop != null) ToolboxMenu.open(workshop, player);
+    }
+
+    static void useChecklist(ServerPlayer player) {
+        Workshop.get(player.level().getServer()).ifPresent(workshop -> Checklist.use(workshop, player));
     }
 
     /** The marker items of one toolbox category, in function order. */

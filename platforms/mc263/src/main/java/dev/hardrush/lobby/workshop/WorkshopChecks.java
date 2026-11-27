@@ -21,8 +21,8 @@ import net.minecraft.world.BossEvent;
 /**
  * The workshop's light acceptance check (design 9, last paragraph): every {@link #PERIOD} ticks, each draft somebody
  * builds in is checked with {@link MarkerScan#preview}, the same rules as publishing over the markers whose chunks are
- * loaded. Builders see the outcome on their status bar and in the toolbox checklist; markers with problems change
- * colour ({@link MarkerView}).
+ * loaded. Builders see the outcome on their status bar, which names what blocks publishing, and on their
+ * {@link Checklist} item; markers with problems change colour ({@link MarkerView}).
  *
  * <p>Only loaded chunks: a 256×256 draft is never loaded whole while building, and the light check must not load it.
  * The chunks around builders are loaded anyway, so what they are working on is always checked; a function bound only in
@@ -30,21 +30,37 @@ import net.minecraft.world.BossEvent;
  */
 final class WorkshopChecks {
     static final int PERIOD = 40;
+    /** How many blocking problems the status bar names before "and N more". */
+    static final int SHOWN_IN_BAR = 3;
 
-    /** {@code flagged}: cells problems point at, for colouring markers. */
-    record Result(List<Problem> problems, Set<Cell> flagged) {
-        Result { problems = List.copyOf(problems); flagged = Set.copyOf(flagged); }
+    /**
+     * {@code flagged}: cells problems point at, for colouring markers. {@code counts}: how many of each function the
+     * loaded part of the draft binds, so the checklist knows how many markers are still missing.
+     */
+    record Result(List<Problem> problems, Set<Cell> flagged, Map<LobbyFunction, Integer> counts) {
+        Result { problems = List.copyOf(problems); flagged = Set.copyOf(flagged); counts = Map.copyOf(counts); }
         long errors() { return problems.stream().filter(p -> p.severity() == Severity.ERROR).count(); }
         long warnings() { return problems.size() - errors(); }
+        List<Problem> blocking() { return problems.stream().filter(p -> p.severity() == Severity.ERROR).toList(); }
+        int count(LobbyFunction f) { return counts.getOrDefault(f, 0); }
     }
 
     private final Map<String, Result> results = new HashMap<>();
     private final Map<String, ServerBossEvent> bars = new HashMap<>();
 
+    /** The checklist item for each checked draft, rebuilt only when a check reads differently. */
+    private final Map<String, net.minecraft.world.item.ItemStack> checklists = new HashMap<>();
+
     Optional<Result> result(String draftId) { return Optional.ofNullable(results.get(draftId)); }
+
+    /** The checklist builders of {@code draftId} carry now; do not modify it. */
+    net.minecraft.world.item.ItemStack checklist(String draftId) {
+        return checklists.computeIfAbsent(draftId, id -> Checklist.item(results.get(id)));
+    }
 
     void forget(net.minecraft.server.MinecraftServer server, String draftId) {
         results.remove(draftId);
+        checklists.remove(draftId);
         var bar = bars.remove(draftId);
         if (bar != null) StatusBars.hideEverywhere(server, bar);
     }
@@ -73,8 +89,14 @@ final class WorkshopChecks {
         var scan = MarkerScan.preview(level, area, dev.hardrush.HardRushProperties.lobbyMaxSize());
         var flagged = new HashSet<Cell>();
         for (var p : scan.problems()) if (p.where() != null) flagged.add(p.where());
-        var result = new Result(scan.problems(), flagged);
-        results.put(draft.id(), result);
+        var counts = new java.util.EnumMap<LobbyFunction, Integer>(LobbyFunction.class);
+        for (var f : LobbyFunction.values()) counts.put(f, scan.plan().count(f));
+        var result = new Result(scan.problems(), flagged, counts);
+        var before = results.put(draft.id(), result);
+        if (before == null || !before.problems().equals(result.problems())) checklists.remove(draft.id());
+        // Turning publishable is worth a word to everybody building it; the bar alone turns green quietly.
+        if (before != null && before.errors() > 0 && result.errors() == 0)
+            for (var builder : workshop.builders(draft.id())) dev.hardrush.notice.Notices.hint(builder, "「" + draft.name() + "」的阻断项都处理好了 · 可以发布");
         // Builders arrive at the first central landing they placed (design 11.2).
         var central = scan.plan().points(LobbyFunction.LANDING_CENTRAL);
         if (!central.isEmpty() && !central.getFirst().equals(draft.entry())) workshop.updateEntry(draft.id(), central.getFirst());
@@ -87,7 +109,7 @@ final class WorkshopChecks {
         var bar = bars.computeIfAbsent(draft.id(), id -> new ServerBossEvent(UUID.randomUUID(), Component.empty(),
                 BossEvent.BossBarColor.GREEN, BossEvent.BossBarOverlay.PROGRESS));
         long errors = result.errors(), warnings = result.warnings();
-        String text = errors > 0 ? "「" + draft.name() + "」还缺 " + errors + " 项 · 工具箱里看验收清单"
+        String text = errors > 0 ? "「" + draft.name() + "」不能发布 · " + dev.hardrush.core.lobby.plan.PublishBlockers.summary(result.blocking(), SHOWN_IN_BAR) + " · 右键验收清单"
                 : "「" + draft.name() + "」可以发布" + (warnings > 0 ? " · " + warnings + " 条提醒" : "");
         bar.setName(Component.literal(text));
         bar.setColor(errors > 0 ? BossEvent.BossBarColor.RED : BossEvent.BossBarColor.GREEN);

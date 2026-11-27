@@ -8,6 +8,7 @@ import dev.hardrush.lobby.ButtonMenu;
 import dev.hardrush.lobby.workshop.Draft;
 import dev.hardrush.lobby.workshop.Toolkit;
 import dev.hardrush.lobby.workshop.Workshop;
+import dev.hardrush.lobby.workshop.WorkshopTable;
 import dev.hardrush.player.PlayerProfiles;
 import dev.hardrush.round.RoundRuntime;
 import dev.hardrush.round.RoundSession;
@@ -24,6 +25,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
@@ -60,12 +62,23 @@ public final class WorkshopGameTest {
                 .thenExecute(() -> {
                     test.assertTrue(workshop(f).drafts().isEmpty(), "A fresh world has no drafts");
                     test.assertTrue(workshop(f).enter(f.b.player, "draft1").isPresent(), "Nothing to enter yet");
+                    test.assertValueEqual(tables(f.a.player), 0, "No workshop table without the permission");
                     op(f, f.a, PermissionLevel.GAMEMASTERS);
-                    packet(f.a.player, "hardrush lobby");
+                })
+                .thenWaitUntil(() -> f.await(tables(f.a.player) == 1, "A 2-level operator in camp is handed the workshop table"))
+                .thenExecute(() -> {
+                    test.assertValueEqual(tables(f.b.player), 0, "Others carry no workshop table");
+                    var inventory = f.a.player.getInventory();
+                    int slot = -1;
+                    for (int i = 0; i < 9; i++) if (WorkshopTable.is(inventory.getItem(i))) slot = i;
+                    test.assertTrue(slot >= 0, "The table is in the hotbar");
+                    inventory.setSelectedSlot(slot);
+                    f.a.player.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, 0, 0, 0));
                 })
                 .thenIdle(2)
                 .thenExecute(() -> {
-                    test.assertTrue(ButtonMenu.isMenu(f.a.player), "/hardrush lobby opens the workshop chest for a 2-level operator in camp");
+                    test.assertTrue(ButtonMenu.isMenu(f.a.player), "Right-clicking the workshop table opens the workshop chest for a 2-level operator in camp");
+                    test.assertValueEqual(tables(f.a.player), 1, "…and the table stays");
                     test.assertValueEqual(workshop(f).drafts().size(), 1, "The first look at an empty workshop starts a draft from the current lobby");
                     f.a.player.closeContainer();
                     packet(f.b.player, "hardrush lobby");
@@ -175,7 +188,37 @@ public final class WorkshopGameTest {
                 })
                 .thenWaitUntil(() -> f.await(f.ready(f.a) && f.idle(), "The returned body prepares normally"))
                 .thenExecute(() -> { f.place(f.a, Landing.CENTRAL); })
-                .thenWaitUntil(() -> f.await(!f.ready(f.a) && f.idle(), "And steps out again"));
+                .thenWaitUntil(() -> f.await(!f.ready(f.a) && f.idle(), "And steps out again"))
+                .thenExecute(() -> {
+                    test.assertValueEqual(tables(f.a.player), 1, "The body back from the workshop carries the table again");
+                    test.assertTrue(workshop(f).enter(f.a.player, "draft2").isEmpty(), "Enter the blank draft");
+                    f.a.acknowledge();
+                    test.assertValueEqual(tables(f.a.player), 0, "No workshop table inside a draft");
+                    // A hotbar stack the tools push aside, and the checklist in hand.
+                    f.a.player.getInventory().setItem(0, new ItemStack(Items.DIAMOND_BLOCK, 64));
+                    f.a.player.getInventory().setSelectedSlot(Toolkit.CHECKLIST_SLOT);
+                    f.a.player.connection.handleUseItem(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, 0, 0, 0));
+                })
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    var inventory = f.a.player.getInventory();
+                    for (int i = 0; i < Toolkit.CHECKLIST_SLOT; i++)
+                        test.assertTrue(inventory.getItem(i).is(Items.ARMOR_STAND), "The checklist fills the free hotbar with missing markers: slot " + i + " " + inventory.getItem(i));
+                    test.assertTrue(inventory.getItem(1).getHoverName().getString().contains("集结区"),
+                            "…free slots first, in problem order: " + inventory.getItem(1).getHoverName().getString());
+                    test.assertValueEqual(inventory.countItem(Items.DIAMOND_BLOCK), 64, "The pushed-aside stack moved to the backpack");
+                    boolean ominous = false;
+                    for (int i = 9; i < 36; i++) {
+                        var state = inventory.getItem(i).get(net.minecraft.core.component.DataComponents.BLOCK_STATE);
+                        ominous |= inventory.getItem(i).is(Items.VAULT) && state != null && "true".equals(state.properties().get("ominous"));
+                    }
+                    test.assertTrue(ominous, "Missing vaults come with the vault block in the state they need");
+                    var checklist = inventory.getItem(Toolkit.CHECKLIST_SLOT).getHoverName().getString();
+                    test.assertTrue(checklist.contains("挡着发布"), "The checklist's name counts the blocking problems: " + checklist);
+                    var bar = dev.hardrush.notice.StatusBars.shown(f.a.player).map(b -> b.getName().getString()).orElse("");
+                    test.assertTrue(bar.contains("不能发布") && bar.contains("缺【集结区】"), "The status bar names what blocks publishing: " + bar);
+                    workshop(f).leave(f.a.player, null);
+                });
         WorkshopToolSteps.run(test, f, sequence);
         sequence.thenExecute(() -> f.a.disconnect());
         f.a.login(sequence);
@@ -203,6 +246,9 @@ public final class WorkshopGameTest {
                     test.assertValueEqual(f.a.player.gameMode.getGameModeForPlayer(), GameType.ADVENTURE, "…in adventure mode");
                     test.assertValueEqual(f.a.player.getInventory().countItem(Items.DIAMOND_BLOCK), 0, "…without creative items");
                     test.assertFalse(PlayerProfiles.building(f.a.player), "…and not building");
+                })
+                .thenWaitUntil(() -> f.await(tables(f.a.player) == 1, "The camp body carries the workshop table again"))
+                .thenExecute(() -> {
                     // The challenge starting sends builders back; the draft stays.
                     s.before = Body.of(f.a.player);
                     enter(test, f, "draft1");
@@ -218,6 +264,7 @@ public final class WorkshopGameTest {
                         && !PlayerProfiles.building(f.a.player) && f.idle(), "The challenge starts and the builder goes back"))
                 .thenExecute(() -> {
                     test.assertTrue(LobbyWorld.isLobby((ServerLevel) f.a.player.level()), "Sent back to camp");
+                    test.assertValueEqual(tables(f.b.player), 0, "A 2-level operator entering the challenge leaves the workshop table in camp");
                     s.before.assertSame(test, f.a.player, "body sent back by the challenge");
                     test.assertTrue(workshop(f).draft("draft1").isPresent(), "The draft stays");
                     test.assertTrue(workshop(f).enter(f.a.player, "draft1").isPresent(), "No building while the challenge runs");
@@ -288,8 +335,16 @@ public final class WorkshopGameTest {
         var inventory = f.a.player.getInventory();
         int items = 0;
         for (int i = 0; i < inventory.getContainerSize(); i++) if (!inventory.getItem(i).isEmpty()) items++;
-        test.assertTrue(items == 2 && Toolkit.kind(inventory.getItem(Toolkit.TOOLBOX_SLOT)).orElse("").equals("toolbox")
-                && Toolkit.kind(inventory.getItem(Toolkit.WAND_SLOT)).orElse("").equals("wand"), "…holding only the toolbox and the wand");
+        test.assertTrue(items == 3 && Toolkit.kind(inventory.getItem(Toolkit.TOOLBOX_SLOT)).orElse("").equals("toolbox")
+                && Toolkit.kind(inventory.getItem(Toolkit.CHECKLIST_SLOT)).orElse("").equals("checklist")
+                && Toolkit.kind(inventory.getItem(Toolkit.WAND_SLOT)).orElse("").equals("wand"), "…holding only the toolbox, the checklist and the wand");
+    }
+    /** Workshop tables on the body, the cursor included. */
+    static int tables(ServerPlayer player) {
+        int n = WorkshopTable.is(player.containerMenu.getCarried()) ? 1 : 0;
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++)
+            if (WorkshopTable.is(player.getInventory().getItem(i))) n += player.getInventory().getItem(i).getCount();
+        return n;
     }
     static void op(HumanEntryGameTest.Fixture f, HumanEntryGameTest.Fixture.Peer peer, PermissionLevel level) {
         f.server.getPlayerList().op(new NameAndId(peer.profile), Optional.of(LevelBasedPermissionSet.forLevel(level)), Optional.empty());
