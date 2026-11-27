@@ -28,7 +28,7 @@ import javax.imageio.ImageIO;
  *
  * <p>The vanilla texture is read from the local client JAR and the result is written under
  * {@code .local/}; derived Mojang art is not committed. The uploaded result is pinned in
- * {@code platforms/mc263/src/main/resources/hardrush/owner-skins.json}.
+ * {@code platforms/mc263/src/main/resources/hardrush/monster-skins.json}.
  *
  * <pre>
  * java scripts/OwnerSkinGenerator.java generate [--client-jar JAR] [--out DIR]
@@ -39,7 +39,9 @@ import javax.imageio.ImageIO;
  * <p>Publishing: upload {@code DIR/skeleton.png} or {@code DIR/creeper_charged.png} as a classic-model skin, for example
  * {@code curl -F file=@skeleton.png -F variant=classic -F visibility=unlisted
  * https://api.mineskin.org/v2/generate}, download the returned textures.minecraft.net URL and
- * {@code compare} it with the generated file before pinning the property value.
+ * {@code compare} it with the generated file before pinning the property value and its
+ * signature: other players' clients ignore an unsigned skin, so a TAB head would fall back to
+ * the default skin.
  */
 public final class OwnerSkinGenerator {
     private static final String VANILLA_SKELETON = "assets/minecraft/textures/entity/skeleton/skeleton.png";
