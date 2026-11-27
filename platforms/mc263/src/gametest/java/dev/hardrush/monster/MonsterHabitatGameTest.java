@@ -232,8 +232,9 @@ public final class MonsterHabitatGameTest {
             MonsterRoles.convert(p, MonsterForm.ZOMBIFIED_PIGLIN);
             test.assertTrue(MonsterRoles.settle(p, false, true), "A retrack's landing turns it as well");
             test.assertValueEqual(MonsterRoles.currentForm(p), MonsterForm.HUSK, "into the desert's husk");
+            // Sky light follows a block change on the light engine's own schedule, later under a loaded suite: wait for it.
             level.setBlockAndUpdate(roof, Blocks.STONE.defaultBlockState());
-        }).thenIdle(5).thenExecute(() -> {
+        }).thenWaitUntil(() -> test.assertTrue(!level.canSeeSky(feet), "The roof's shadow reaches the feet")).thenExecute(() -> {
             var site = MonsterHabitat.at(level, feet, false);
             test.assertTrue(!site.openSky(), "A roof hides the sky");
             assertSettles(test, p, "zombie", MonsterForm.ZOMBIE);
@@ -250,7 +251,7 @@ public final class MonsterHabitatGameTest {
             test.assertTrue(site.snowing() && !site.openSky(), "Snow falls on snowy plains, the roof still on: " + site);
             assertSettles(test, p, "skeleton", MonsterForm.SKELETON);
             level.setBlockAndUpdate(roof, Blocks.AIR.defaultBlockState());
-        }).thenIdle(5).thenExecute(() -> {
+        }).thenWaitUntil(() -> test.assertTrue(level.canSeeSky(feet), "Sky light is back at the feet")).thenExecute(() -> {
             var site = MonsterHabitat.at(level, feet, false);
             test.assertTrue(site.snowing() && site.openSky(), "Under the open snowy sky: " + site);
             assertSettles(test, p, "skeleton", MonsterForm.STRAY);
