@@ -15,25 +15,23 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.BellBlock;
 import net.minecraft.world.level.block.Blocks;
 
-/** docs/plan/钟声显形.md: vanilla's bell reveals monster players as raiders, then rests. The look stays a manual check. */
+/** docs/plan/钟声显形.md: vanilla's bell reveals monster players as raiders, every time it rings. The look stays a manual check. */
 public final class MonsterBellGameTest {
     /** Vanilla resonates from the fifth tick for forty more, then glows; a margin covers the tick the ring lands in. */
     private static final int REVEAL_TICKS = 50;
 
     @GameTest(maxTicks = 400)
-    public void aRungBellRevealsMonsterPlayersOnlyAndThenRests(GameTestHelper test) {
+    public void aRungBellRevealsMonsterPlayersOnlyEveryTime(GameTestHelper test) {
         var monster = MonsterRoleGameTest.actor(test);
         // Two more actors join the first one's arena, a few blocks from the bell.
         var partner = MonsterRoleGameTest.actor(test);
         var human = MonsterRoleGameTest.actor(test);
         var level = monster.level();
         var bell = monster.blockPosition().east(2);
-        var other = bell.north(3);
         var zombie = new Zombie[1];
         Runnable cleanup = () -> {
             if (zombie[0] != null) zombie[0].discard();
             level.setBlockAndUpdate(bell, Blocks.AIR.defaultBlockState());
-            level.setBlockAndUpdate(other, Blocks.AIR.defaultBlockState());
             MonsterRoleGameTest.remove(monster); MonsterRoleGameTest.remove(partner); MonsterRoleGameTest.remove(human);
         };
         test.startSequence()
@@ -56,7 +54,6 @@ public final class MonsterBellGameTest {
                 .thenExecute(guarded(cleanup, () -> {
                     test.assertTrue(monster.hasEffect(MobEffects.GLOWING), "The bell reveals the monster player");
                     test.assertTrue(monster.isCurrentlyGlowing(), "The disguise mirrors the owner's glow");
-                    // The rest is recorded after the whole glow pass, so a second monster player is not filtered out.
                     test.assertTrue(partner.hasEffect(MobEffects.GLOWING), "Every monster player in range glows");
                     test.assertFalse(human.hasEffect(MobEffects.GLOWING), "A human never glows");
                     test.assertFalse(zombie[0].hasEffect(MobEffects.GLOWING), "A native zombie is no raider and stays dark");
@@ -65,13 +62,8 @@ public final class MonsterBellGameTest {
                 }))
                 .thenIdle(REVEAL_TICKS)
                 .thenExecute(guarded(cleanup, () -> {
-                    test.assertFalse(monster.hasEffect(MobEffects.GLOWING), "A bell that just revealed someone rests");
-                    level.setBlockAndUpdate(other, Blocks.BELL.defaultBlockState());
-                    ring(level, other);
-                }))
-                .thenIdle(REVEAL_TICKS)
-                .thenExecute(guarded(cleanup, () -> {
-                    test.assertTrue(monster.hasEffect(MobEffects.GLOWING), "Another bell keeps its own rest");
+                    test.assertTrue(monster.hasEffect(MobEffects.GLOWING) && partner.hasEffect(MobEffects.GLOWING),
+                            "A bell never rests: ringing it again reveals again");
                     cleanup.run();
                 }))
                 .thenSucceed();

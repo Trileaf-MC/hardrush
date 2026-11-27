@@ -47,7 +47,7 @@ public final class RuleBookText {
                     + "人类有几颗星，最多就有几只怪物同时追他，满员时排队。\n\n人类用打火石或火焰弹右键苦力怕，可以强行点燃它。");
             pages.add("钟声\n\n敲钟时，若 " + BellAlarm.RESONATE_RADIUS + " 格内有怪物玩家，钟会嗡嗡共鸣，随后 "
                     + BellAlarm.REVEAL_RADIUS + " 格内的怪物玩家发光 " + BellAlarm.GLOW_SECONDS + " 秒，随从不发光。女巫、掠夺者等原版袭击者也会引起共鸣。\n\n"
-                    + "让怪物显形后，这口钟 " + BellAlarm.restSeconds() + " 秒内只响不共鸣。");
+                    + "钟没有冷却，敲几次就能显形几次。");
             pages.add("角色\n\n僵尸追二星以上的人类时自带刷怪蛋，困难难度下能敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
                     + "骷髅潜行拉满弓触发三连射，陷进细雪会化身流浪者。\n\n苦力怕按住引爆器（打火石）引爆，也能用它点燃原版苦力怕。");
             if (MonsterCoins.creeperPaid(rules)) pages.add("苦力怕解锁\n\n苦力怕每次出击要先右键展位的苦力怕石像，付 "
