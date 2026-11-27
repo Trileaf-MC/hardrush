@@ -112,6 +112,32 @@ public final class SafeDeploymentGameTest {
         test.succeed();
     }
 
+    /** Up a ten-block pillar nothing reaches the quarry and every landing lies far below it: the search says it is up high. */
+    @GameTest(maxTicks=300)
+    public void aQuarryUpAPillarIsReportedElevated(GameTestHelper test) {
+        var fixture = new Fixture(test, test.getLevel(), 226);
+        try (var ignored = fixture.empty()) {
+            fixture.flat(Blocks.STONE, 34);
+            for (int y = 0; y < 10; y++) fixture.level.setBlock(fixture.feet.above(y), Blocks.STONE.defaultBlockState(), 2);
+            var top = fixture.target.add(0, 10, 0);
+            var clock = new AtomicLong();
+            var search = fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(top), List.of(top), clock);
+            test.assertFalse(search.elevated(), "Nothing is known before a sweep completes");
+            for (int i = 0; i < 38 && !search.elevated(); i++) { search.tick(); clock.addAndGet(TICK); }
+            test.assertValueEqual(search.result().status(), SafeDeployment.Status.PENDING, "Still searching: the fallback is not due yet");
+            test.assertTrue(search.elevated(), "One sweep tells the quarry is up high");
+            var result = complete(search, clock);
+            test.assertTrue(result.fallback(), "The far fallback still answers at five seconds: " + result);
+
+            var groundClock = new AtomicLong();
+            var ground = fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target.add(12, 0, 0)),
+                    List.of(fixture.target.add(12, 0, 0)), groundClock);
+            test.assertValueEqual(complete(ground, groundClock).status(), SafeDeployment.Status.FOUND, "On flat ground a walk is found");
+            test.assertFalse(ground.elevated(), "A quarry on flat ground is not up high");
+        }
+        test.succeed();
+    }
+
     @GameTest(maxTicks=400)
     public void theNetherRoofIsOnlyUsedWhenTheQuarryIsAlreadyUpThere(GameTestHelper test) {
         var nether = new Fixture(test, test.getLevel().getServer().getLevel(Level.NETHER), 120);
@@ -259,10 +285,11 @@ public final class SafeDeploymentGameTest {
     }
 
     @GameTest(maxTicks=400)
-    public void atSeaOnlyAZombieRisesAndOnlyAgainstADriftingQuarry(GameTestHelper test) {
+    public void atSeaOnlyAZombieRisesBesideADrifterOrAheadOfARower(GameTestHelper test) {
         var fixture = new Fixture(test, test.getLevel(), 240);
         try (var ignored = fixture.empty()) {
-            fixture.sea(20, 12, 34);
+            // Water far enough east for a drowned to rise on a rowing quarry's course.
+            fixture.sea(36, 12, 40);
             var drifting = SafeDeployment.Quarry.afloat(fixture.target, new Vec3(.5, 0, 0));
             var clock = new AtomicLong();
             var search = fixture.search(MonsterRole.ZOMBIE, drifting, List.of(fixture.target), clock);
@@ -277,14 +304,21 @@ public final class SafeDeploymentGameTest {
             fixture.level.setBlock(BlockPos.containing(risen.position()).above(3), Blocks.STONE.defaultBlockState(), 2);
             test.assertFalse(search.revalidate(), "Losing the water cover revokes departure");
 
+            // Rowing east at eight blocks a second: the drowned rises two to three and a half seconds down its course.
+            var rower = SafeDeployment.Quarry.afloat(fixture.target, new Vec3(8, 0, 0));
             var rowingClock = new AtomicLong();
-            var rowing = complete(fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.afloat(fixture.target, new Vec3(8, 0, 0)),
-                    List.of(fixture.target), rowingClock), rowingClock);
-            test.assertValueEqual(rowing.status(), SafeDeployment.Status.FAILED, "A rowing quarry is never chased by a drowned");
-            test.assertValueEqual(rowing.candidates(), 0, "Nothing is inspected while it rows; the shore is not used either");
-            for (var kind : List.of(MonsterRole.SKELETON, MonsterRole.CREEPER)) {
+            var rowingSearch = fixture.search(MonsterRole.ZOMBIE, rower, List.of(fixture.target), rowingClock);
+            var rowing = complete(rowingSearch, rowingClock);
+            test.assertValueEqual(rowing.status(), SafeDeployment.Status.FOUND, "A rowing quarry is met ahead by a drowned");
+            test.assertTrue(rowing.submerged() && !rowing.fallback(), "The landing is under water: " + rowing);
+            var ahead = rowing.position().subtract(fixture.target).multiply(1, 0, 1);
+            test.assertTrue(ahead.length() >= 15 && ahead.length() <= 29, "Sixteen to twenty-eight blocks ahead: " + ahead.length());
+            test.assertTrue(ahead.normalize().dot(new Vec3(1, 0, 0)) >= .65, "On its course east: " + ahead);
+            test.assertTrue(SafeDeployment.canSubmergeAt(fixture.level, fixture.hunter, rowing.position()), "The whole body and two blocks above are water");
+            test.assertTrue(rowingSearch.revalidate(), "Unchanged water passes departure revalidation farther off than beside a drifter");
+            for (var kind : List.of(MonsterRole.SKELETON, MonsterRole.CREEPER)) for (var quarry : List.of(drifting, rower)) {
                 var waitClock = new AtomicLong();
-                var waiting = complete(fixture.search(kind, drifting, List.of(fixture.target), waitClock), waitClock);
+                var waiting = complete(fixture.search(kind, quarry, List.of(fixture.target), waitClock), waitClock);
                 test.assertValueEqual(waiting.status(), SafeDeployment.Status.FAILED, kind + " waits for the quarry to land instead of the shore");
                 test.assertValueEqual(waiting.candidates(), 0, kind + " inspects nothing at sea");
             }

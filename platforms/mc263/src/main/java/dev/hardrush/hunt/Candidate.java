@@ -13,6 +13,8 @@ final class Candidate {
     SafeDeployment.Landing landing;
     /** A breach's way in: the cell of the quarry's space beyond its wall or under its floor. */
     BlockPos exit;
+    /** A sea landing on a cruising quarry's course, which may lie farther off than one beside a drifting quarry. */
+    boolean ahead;
     /** A breach through the exit's ceiling rather than a wall beside it. */
     boolean above;
     /** A breach into a passage one block high, where the quarry lies prone. */

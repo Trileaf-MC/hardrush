@@ -27,12 +27,15 @@ final class WalkLanding implements LandingStrategy {
     private final ServerPlayer player;
     private final ArrayDeque<Candidate> queue = new ArrayDeque<>();
     private Candidate best, closest;
+    /** How many candidates of this sweep the terrain admitted, and whether every one lay well under the quarry. */
+    private int admitted;
+    private boolean allBelow;
 
     WalkLanding(ServerLevel level, ServerPlayer player) { this.level = level; this.player = player; }
 
     @Override
     public void begin(Sweep sweep) {
-        best = null; closest = null;
+        best = null; closest = null; admitted = 0; allBelow = true;
         var quarry = sweep.quarry;
         var seen = new HashSet<BlockPos>();
         var list = new ArrayList<Candidate>();
@@ -72,6 +75,8 @@ final class WalkLanding implements LandingStrategy {
 
     @Override
     public Candidate best() { return best; }
+    /** Every spot this sweep's terrain admitted, at least one, lay {@link SafeDeployment#ELEVATED_DROP} or more under the quarry. */
+    boolean below() { return admitted > 0 && allBelow; }
     /** The spot this sweep could walk closest to the quarry from, when none reached it; or {@code null}. */
     Candidate closest() { return closest; }
 
@@ -127,6 +132,8 @@ final class WalkLanding implements LandingStrategy {
     private void judge(Sweep sweep, Candidate candidate) {
         if (!SafeDeployment.canDeployAt(level, player, candidate.point)) return;
         sweep.judged();
+        admitted++;
+        if (candidate.point.y > sweep.quarry.position().y - SafeDeployment.ELEVATED_DROP + EPSILON) allBelow = false;
         var path = sweep.path(candidate.point);
         double length = path != null && path.canReach() ? SafeDeployment.length(path) : Double.POSITIVE_INFINITY;
         double reach = reach(sweep, candidate.point, path);

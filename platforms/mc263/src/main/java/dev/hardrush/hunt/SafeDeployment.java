@@ -59,6 +59,16 @@ public final class SafeDeployment {
     static final int TRAIL_CANDIDATES = 12, AHEAD_COLUMNS = 8, RING_COLUMNS = 16, OUTER_COLUMNS = 8, FLOORS_PER_COLUMN = 2;
     /** At sea a drowned may only rise from the water this close; it cannot walk, so there is no path to check. */
     public static final int SEA_RADIUS = 20;
+    /**
+     * Ahead of a cruising quarry a drowned rises at most this far off, and no nearer than {@link #SEA_AHEAD_NEAR}: the
+     * boat keeps going between the search and the departure.
+     */
+    public static final int SEA_AHEAD_RADIUS = 32, SEA_AHEAD_NEAR = 16;
+    /** Seconds of the quarry's cruise ahead of it that the drowned rises at, nearest to farthest. */
+    static final double SEA_AHEAD_FROM = 2, SEA_AHEAD_TO = 3.5;
+    static final int SEA_AHEAD_COLUMNS = 8;
+    /** A quarry this far over every spot a walk could land on is up where only a skeleton's arrows reach it. */
+    static final double ELEVATED_DROP = 5;
     /** Blocks per second over five seconds: swimming, fishing, drifting or the odd nudge, not rowing. */
     public static final double DRIFTING_SPEED = 2.0;
     /** Water that must cover the head, so the drowned lurks unseen like a native one. */
@@ -151,6 +161,8 @@ public final class SafeDeployment {
         public boolean moving() { return velocity.horizontalDistance() >= MOVING_SPEED; }
         /** Slow enough at sea that a drowned rising from the water can still close in. */
         public boolean drifting() { return cruise.horizontalDistance() <= DRIFTING_SPEED; }
+        /** {@link #drifting()} of a live player, read from its footprints alone, without building the whole quarry. */
+        public static boolean drifting(ServerPlayer player) { return HuntTrails.velocity(player, 5).horizontalDistance() <= DRIFTING_SPEED; }
     }
 
     /** Off its feet and in the water, or aboard something floating on it. Wading on a riverbed is land. */
@@ -202,6 +214,7 @@ public final class SafeDeployment {
         private LandingStrategy bestBy;
         /** This sweep's closest walkable spot, and the latest sweep's one that answers at five seconds. */
         private Candidate closest, lastClosest;
+        private boolean elevated;
 
         public Search(ServerLevel level, ServerPlayer player, MonsterRole kind, Quarry quarry, List<Vec3> humans,
                       RandomGenerator random, LongSupplier clock) {
@@ -231,6 +244,12 @@ public final class SafeDeployment {
                     : new Result(status, found.point, candidates, found.landing, found.above, found.crawlway);
         }
         public long started() { return started; }
+        /**
+         * The latest completed sweep on land found no landing at all, while every spot its walk admitted lay five blocks
+         * or more under the quarry's feet (and there was at least one): the quarry is up where only arrows reach.
+         * Unchanged while a sweep is under way and after a landing is found.
+         */
+        public boolean elevated() { return elevated; }
         public ServerLevel level() { return level; }
         public Result tick() { return tick(quarry, humans); }
 
@@ -298,6 +317,7 @@ public final class SafeDeployment {
         }
 
         private Result finish(long now) {
+            if (stages.contains(walk)) elevated = best == null && walk.below();
             sweep = null;
             if (best != null) return found(best, bestBy);
             if (closest != null) lastClosest = closest;

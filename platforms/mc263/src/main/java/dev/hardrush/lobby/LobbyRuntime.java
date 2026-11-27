@@ -59,7 +59,7 @@ public final class LobbyRuntime {
         int sortie;
         ServerLevel level;
         SafeDeployment.Search search;
-        boolean cancelled, seaTipShown;
+        boolean cancelled, seaTipShown, highTipShown;
         /** 0 while it holds one of the quarry's hunt slots; otherwise its place in that quarry's queue. */
         int queued;
         /** When the 60-second search window counts from: the click, or later when a long queue left too little of it. */
@@ -1309,10 +1309,18 @@ public final class LobbyRuntime {
                                     attempt.seaTipShown = true;
                                     Notices.hint(observer, "换成僵尸可以化身溺尸，从水下出击");
                                 }
-                            } else state = name + " 在海上，正在寻找水下出击位置";
-                        } else state = quarry.onGround()
-                                ? "正在寻找 " + name + " 附近的最佳出击位置 · " + Notices.key(waited) + " 秒" + cancel
-                                : name + " 不在地面，等落地后出击" + cancel;
+                            } else state = SafeDeployment.Quarry.drifting(quarry) ? name + " 在海上，正在寻找水下出击位置"
+                                    : name + " 在海上，正在寻找航线前方的水下出击位置";
+                        } else {
+                            state = quarry.onGround()
+                                    ? "正在寻找 " + name + " 附近的最佳出击位置 · " + Notices.key(waited) + " 秒" + cancel
+                                    : name + " 不在地面，等落地后出击" + cancel;
+                            // Up on a pillar or a sky box, only a skeleton's arrows reach it from the ground below.
+                            if (attempt.identity.kind() != MonsterRole.SKELETON && !attempt.highTipShown && attempt.search.elevated()) {
+                                attempt.highTipShown = true;
+                                Notices.hint(observer, name + " 在高处 · 换成骷髅可以从下面射到");
+                            }
+                        }
                         hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, state, now + 300);
                     } else if (attempt != null || b.committing.contains(p.id()) || b.resumptions.containsKey(p.id()))
                         hints.offer("hunt", dev.hardrush.core.lobby.LobbyHints.Priority.PROGRESS, "正在出击……", now + 300);
