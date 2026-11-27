@@ -15,6 +15,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntitySpawnRequest;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.PathNavigationRegion;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
@@ -45,13 +46,15 @@ final class Sweep {
     final StructureStart lair;
     private final Walker walker;
     private final Runnable judged;
+    /** Whether the search's previous land sweep walked somewhere (the first sweep counts as if it had). */
+    final boolean walkedBefore;
     private List<Vec3> humans;
     private QuarrySpace space;
 
     Sweep(ServerLevel level, ServerPlayer player, MonsterRole kind, SafeDeployment.Quarry quarry, List<Vec3> humans,
-          RandomGenerator random, LongSupplier clock, Walker walker, Runnable judged) {
+          RandomGenerator random, LongSupplier clock, Walker walker, Runnable judged, boolean walkedBefore) {
         this.level = level; this.player = player; this.kind = kind; this.quarry = quarry; this.humans = humans;
-        this.random = random; this.clock = clock; this.walker = walker; this.judged = judged;
+        this.random = random; this.clock = clock; this.walker = walker; this.judged = judged; this.walkedBefore = walkedBefore;
         var center = BlockPos.containing(quarry.position());
         int reach = SafeDeployment.FALLBACK_RADIUS + SafeDeployment.FALLBACK_PATH + 8;
         region = new PathNavigationRegion(level, center.offset(-reach, -reach, -reach), center.offset(reach, reach, reach));
@@ -92,7 +95,10 @@ final class Sweep {
         return true;
     }
 
-    boolean empty(BlockPos pos) {
+    boolean empty(BlockPos pos) { return empty(level, pos); }
+
+    /** Nothing a body collides with in this block. */
+    static boolean empty(BlockGetter level, BlockPos pos) {
         return level.getBlockState(pos).getCollisionShape(level, pos).isEmpty();
     }
 

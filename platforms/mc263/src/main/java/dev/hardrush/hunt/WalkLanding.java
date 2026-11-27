@@ -92,19 +92,19 @@ final class WalkLanding implements LandingStrategy {
         var quarry = sweep.quarry;
         int x = Mth.floor(quarry.position().x + Math.cos(angle) * radius);
         int z = Mth.floor(quarry.position().z + Math.sin(angle) * radius);
-        for (var floor : floors(sweep, x, z, SafeDeployment.FLOORS_PER_COLUMN))
+        for (var floor : floors(sweep, x, z, SafeDeployment.FLOORS_PER_COLUMN, 8, 24))
             sweep.offer(list, seen, Vec3.atBottomCenterOf(floor), false, SafeDeployment.FALLBACK_RADIUS);
     }
 
     /**
-     * The at most {@code limit} floors of column {@code (x, z)} nearest the quarry's height, from eight blocks above it
-     * to twenty-four below: open cells with room to stand over something solid. None in a chunk not loaded yet.
+     * The at most {@code limit} floors of column {@code (x, z)} nearest the quarry's height, from {@code up} blocks above
+     * it to {@code down} below: open cells with room to stand over something solid. None in a chunk not loaded yet.
      */
-    static List<BlockPos> floors(Sweep sweep, int x, int z, int limit) {
+    static List<BlockPos> floors(Sweep sweep, int x, int z, int limit, int up, int down) {
         var level = sweep.level;
         if (level.getChunkSource().getChunkNow(x >> 4, z >> 4) == null) return List.of();
         int qy = Mth.floor(sweep.quarry.position().y);
-        int top = Math.min(qy + 8, level.getMaxY() - 2), bottom = Math.max(qy - 24, level.getMinY() + 1);
+        int top = Math.min(qy + up, level.getMaxY() - 2), bottom = Math.max(qy - down, level.getMinY() + 1);
         var floors = new ArrayList<BlockPos>();
         var cursor = new BlockPos.MutableBlockPos();
         for (int y = top; y >= bottom; y--) {

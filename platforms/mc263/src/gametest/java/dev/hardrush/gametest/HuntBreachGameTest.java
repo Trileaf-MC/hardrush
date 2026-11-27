@@ -105,8 +105,14 @@ public final class HuntBreachGameTest {
             test.assertTrue(stance.getY() == f.feet.getY() && (dx == 5 && dz <= 5 || dz == 5 && dx <= 5), "Right outside the wall: " + stance);
             test.assertTrue(result.position().distanceTo(f.target) >= SafeDeployment.BREACH_OPEN_NEAR, "At least four blocks off");
             test.assertTrue(search.revalidate(), "Unchanged terrain passes departure revalidation");
-            test.assertFalse(search.revalidate(f.target, List.of(f.target, result.position().add(3.5, 0, 0))),
-                    "A human closer than four blocks revokes it");
+            // A second human inside, right behind the wall the stance faces: the wall hides it, so only the distance counts.
+            var inward = Math.abs(stance.getX() - f.feet.getX()) == 5
+                    ? new Vec3(-Math.signum(stance.getX() - f.feet.getX()), 0, 0) : new Vec3(0, 0, -Math.signum(stance.getZ() - f.feet.getZ()));
+            var behind = result.position().add(inward.scale(2));
+            test.assertTrue(f.level.getBlockState(BlockPos.containing(behind)).isAir()
+                    && f.level.getBlockState(BlockPos.containing(result.position().add(inward))).is(Blocks.OAK_PLANKS),
+                    "The second human stands inside, the plank wall between: " + behind);
+            test.assertFalse(search.revalidate(f.target, List.of(f.target, behind)), "A human closer than four blocks revokes it, wall or not");
         }
         test.succeed();
     }
@@ -121,6 +127,9 @@ public final class HuntBreachGameTest {
             var clock = new AtomicLong();
             var result = complete(f.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(f.target), clock), clock);
             test.assertTrue(!result.breached() && !result.burrowed(), "No breach behind glass: " + result);
+            // Ice is half transparent too: vanilla gives it a full visual shape, but it is see-through.
+            f.hut(Blocks.ICE);
+            test.assertFalse(f.breach(new BreachLanding.Spot(f.feet.south(5), f.feet.south(3), false, false)), "Seen through ice");
         }
         test.succeed();
     }
@@ -234,7 +243,8 @@ public final class HuntBreachGameTest {
             var spot = BlockPos.containing(result.position());
             test.assertTrue(spot.getY() == f.feet.getY() && spot.getZ() == f.feet.getZ()
                     && spot.getX() <= f.feet.getX() - 5 && spot.getX() >= f.feet.getX() - 6, "At the tunnel's far end: " + spot);
-            test.assertTrue(clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS, "Taken before the fallback is due: " + clock.get());
+            test.assertTrue(clock.get() >= SafeDeployment.SWEEP_INTERVAL_NANOS && clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS,
+                    "Taken in the second sweep, before the fallback is due: " + clock.get());
         } finally {
             f.level.getGameRules().set(GameRules.MOB_GRIEFING, griefing, f.level.getServer());
         }
@@ -254,9 +264,17 @@ public final class HuntBreachGameTest {
             var search = f.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(f.target), clock);
             var result = complete(search, clock);
             test.assertTrue(result.breached(), "The hut is breached: " + result);
-            var digging = f.target.add(-5, 0, 0);
-            test.assertTrue(digging.distanceTo(f.target) <= result.position().distanceTo(f.target), "The hunter is as close as the breach");
+            // The hunter digs outside the opposite wall, mirrored through the quarry: as far off, never the same spot.
+            var away = result.position().subtract(f.target).multiply(1, 0, 1);
+            var digging = f.target.subtract(away);
+            test.assertTrue(!BlockPos.containing(digging).equals(BlockPos.containing(result.position()))
+                    && f.level.getBlockState(BlockPos.containing(digging)).isAir(), "Outside the other wall: " + digging + " / " + result.position());
             test.assertFalse(search.improves(f.level, digging, f.target), "No closer: the hunter stays at its own wall");
+            double d = away.length();
+            test.assertFalse(search.improves(f.level, f.target.subtract(away.scale((d + .5) / d)), f.target),
+                    "Only half a block closer is not worth the move");
+            test.assertTrue(search.improves(f.level, f.target.subtract(away.scale((d + 1.5) / d)), f.target),
+                    "A block and a half closer is");
             test.assertTrue(search.improves(f.level, f.target.add(-30, 0, 0), f.target), "From thirty blocks off it goes");
             var nether = f.level.getServer().getLevel(net.minecraft.world.level.Level.NETHER);
             test.assertTrue(search.improves(nether, digging, f.target), "From another dimension it goes");
@@ -294,6 +312,60 @@ public final class HuntBreachGameTest {
         test.succeed();
     }
 
+    /** Gravel or sand would fall once the pocket beside it is hollowed: no ceiling or wall of it is ever dug through. */
+    @GameTest(maxTicks = 300)
+    public void fallingBlocksAreNeverDugThrough(GameTestHelper test) {
+        var crawl = new Fixture(test, 60);
+        var tunnel = new Fixture(test, 60);
+        try (var ignored = crawl.unprotected()) {
+            crawl.crawlway(7, 1);
+            var roof = new BreachLanding.Spot(crawl.feet.above(2), crawl.feet, true, false);
+            test.assertTrue(crawl.breach(roof), "A stone roof is dug through");
+            crawl.fill(crawl.feet.offset(-14, 1, -14), crawl.feet.offset(14, 1, 14), Blocks.GRAVEL);
+            test.assertFalse(crawl.breach(roof), "A gravel roof is not");
+            var clock = new AtomicLong();
+            var result = complete(crawl.search(MonsterRole.ZOMBIE, crawl.prone(Vec3.ZERO), clock), clock);
+            test.assertTrue(!result.breached() && !result.burrowed(), "Nothing over a gravel roof: " + result);
+
+            tunnel.tunnel(7);
+            var pocket = new BreachLanding.Spot(tunnel.feet.east(2), tunnel.feet, false, true);
+            test.assertTrue(tunnel.breach(pocket), "A stone wall is dug through");
+            for (var wall : List.of(tunnel.feet.east(), tunnel.feet.east().above())) {
+                tunnel.level.setBlock(wall, Blocks.GRAVEL.defaultBlockState(), 2);
+                test.assertFalse(tunnel.breach(pocket), "A gravel wall is not: " + wall);
+                tunnel.level.setBlock(wall, Blocks.STONE.defaultBlockState(), 2);
+            }
+        }
+        test.succeed();
+    }
+
+    /**
+     * A skeleton up on a pillar six blocks off cannot walk down, but it has a clear shot: like a walk landing judged for
+     * a skeleton, that already reaches the quarry, so a retrack leaves it there. A zombie on the same pillar goes.
+     */
+    @GameTest(maxTicks = 300)
+    public void aSkeletonWithAClearShotIsNotMoved(GameTestHelper test) {
+        var f = new Fixture(test, 60);
+        try (var ignored = f.unprotected()) {
+            f.ground(32);
+            // Before any search: this arena's chunks do not tick, so later block changes would leave stale path types.
+            f.fill(f.feet.east(6), f.feet.east(6).above(4), Blocks.STONE);
+            var perch = f.target.add(6, 5, 0);
+            for (var kind : List.of(MonsterRole.ZOMBIE, MonsterRole.SKELETON)) {
+                var clock = new AtomicLong();
+                var search = f.search(kind, SafeDeployment.Quarry.standing(f.target), clock);
+                var result = complete(search, clock);
+                test.assertTrue(result.status() == SafeDeployment.Status.FOUND && result.landing() == SafeDeployment.Landing.WALK,
+                        kind + " gets a walk landing: " + result.landing() + " " + result);
+                test.assertTrue(perch.distanceTo(f.target) <= result.position().distanceTo(f.target) + SafeDeployment.RETRACK_GAIN,
+                        "The perch is not a block farther than the landing: " + result.position().distanceTo(f.target));
+                if (kind == MonsterRole.SKELETON) test.assertFalse(search.improves(f.level, perch, f.target), "A skeleton with a clear shot stays");
+                else test.assertTrue(search.improves(f.level, perch, f.target), "A zombie that cannot climb down goes");
+            }
+        }
+        test.succeed();
+    }
+
     /** Without mob griefing no breach of any kind is offered: nobody could dig through. */
     @GameTest(maxTicks = 400)
     public void withoutMobGriefingNoBreachOfAnyKind(GameTestHelper test) {
@@ -315,10 +387,11 @@ public final class HuntBreachGameTest {
                     new Case("open air beside", hut, new BreachLanding.Spot(hut.feet.south(5), hut.feet.south(3), false, false)),
                     new Case("open air overhead", box, new BreachLanding.Spot(box.feet.above(3), box.feet.above(), true, false)),
                     new Case("open air on a crawlway's roof", crawl, new BreachLanding.Spot(crawl.feet.above(2), crawl.feet, true, false)));
+            // With griefing the spots are checked against the rules only; each terrain's full search has its own test.
             for (var c : cases) test.assertTrue(c.fixture().breach(c.spot()), "With griefing: " + c.what());
             level.getGameRules().set(GameRules.MOB_GRIEFING, false, level.getServer());
             for (var c : cases) test.assertFalse(c.fixture().breach(c.spot()), "Without griefing: " + c.what());
-            for (var fixture : List.of(tunnel, hut, box)) {
+            for (var fixture : List.of(tunnel, crawl, hut, box)) {
                 var clock = new AtomicLong();
                 var result = complete(fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target), clock), clock);
                 test.assertTrue(!result.breached() && !result.burrowed(), "No breach is searched without griefing: " + result);

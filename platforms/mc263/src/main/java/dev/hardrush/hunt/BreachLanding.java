@@ -19,6 +19,7 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.PathNavigationRegion;
 import net.minecraft.world.level.block.FallingBlock;
+import net.minecraft.world.level.block.HalfTransparentBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
@@ -62,9 +63,9 @@ public final class BreachLanding implements LandingStrategy {
 
     BreachLanding(ServerLevel level, ServerPlayer player) { this.level = level; this.player = player; }
 
-    /** Only where the game rule lets mobs grief. */
+    /** Only where the game rule lets mobs grief, and never in a protected level: {@link #fits} assumes both. */
     @Override
-    public boolean applies(Sweep sweep) { return HuntBurrows.allowed(sweep.level); }
+    public boolean applies(Sweep sweep) { return HuntBurrows.allowed(sweep.level) && !ProtectionRuntime.protectedLevel(sweep.level); }
 
     /** The whole scan of the quarry's space: its own tick, like any stage after the first. */
     @Override
@@ -73,18 +74,22 @@ public final class BreachLanding implements LandingStrategy {
         queue.clear(); queue.addAll(candidates(sweep));
     }
 
-    /** Sight for the best few, in order of score; the first one nobody sees is this sweep's breach. */
+    /**
+     * Sight for the best few, in order of score; the first one nobody sees is this sweep's breach. A pocket needs no
+     * sight check. At least one candidate per tick, then no more once the tick's budget is spent, like {@link Sweep#drain}.
+     * Only the open-air candidates whose sight was judged count for {@link SafeDeployment.Result#candidates}.
+     */
     @Override
     public boolean step(Sweep sweep, long tickStartedNanos) {
-        while (!queue.isEmpty()) {
+        for (int judged = 0; !queue.isEmpty(); judged++) {
+            if (judged > 0 && sweep.clock.getAsLong() - tickStartedNanos >= SafeDeployment.TICK_BUDGET_NANOS) return false;
             var candidate = queue.poll();
-            sweep.judged();
-            if (candidate.landing == SafeDeployment.Landing.BURROW
-                    || unseen(sweep.region, candidate.point, sweep.quarry.position(), sweep.humans())) {
-                best = candidate; break;
+            if (candidate.landing != SafeDeployment.Landing.BURROW) {
+                sweep.judged();
+                if (!unseen(sweep.region, candidate.point, sweep.quarry.position(), sweep.humans())) continue;
             }
+            best = candidate; queue.clear();
         }
-        queue.clear();
         return true;
     }
 
@@ -98,7 +103,7 @@ public final class BreachLanding implements LandingStrategy {
 
     /**
      * From every cell of the quarry's space within {@link SafeDeployment#BREACH_STEPS} steps, the stance beyond each
-     * wall beside it and the one above its ceiling; the best {@link SafeDeployment#BURROW_CANDIDATES} that pass every
+     * wall beside it and the one above its ceiling; the best {@link SafeDeployment#BREACH_CANDIDATES} that pass every
      * rule but sight. A creeper, which cannot dig itself out, only lands in the open.
      */
     private List<Candidate> candidates(Sweep sweep) {
@@ -125,7 +130,7 @@ public final class BreachLanding implements LandingStrategy {
             }
         }
         found.sort(Comparator.comparingDouble((Candidate candidate) -> candidate.score).reversed());
-        return found.subList(0, Math.min(SafeDeployment.BURROW_CANDIDATES, found.size()));
+        return found.subList(0, Math.min(SafeDeployment.BREACH_CANDIDATES, found.size()));
     }
 
     /** Plain ground at the stance can only be a pocket; anything else can only be open air. */
@@ -147,7 +152,7 @@ public final class BreachLanding implements LandingStrategy {
         var quarry = sweep.quarry;
         var point = spot.point();
         double distance = point.distanceTo(quarry.position());
-        double ideal = spot.above() ? SafeDeployment.IDEAL_ABOVE : SafeDeployment.IDEAL_BURROW;
+        double ideal = spot.above() ? SafeDeployment.BREACH_IDEAL_ABOVE : SafeDeployment.BREACH_IDEAL_BESIDE;
         double score = 1 - Math.min(1, Math.abs(distance - ideal) / 6.0);
         boolean digging = quarry.digging().horizontalDistanceSqr() > EPSILON;
         if (!spot.above()) {
@@ -185,10 +190,10 @@ public final class BreachLanding implements LandingStrategy {
      * column of air is at most two blocks high over a safe floor. The wall or ceiling is fully solid, diggable by a
      * monster's hands, with no fluid around it. A pocket is plain ground sealed by opaque ground on every side; open air
      * lies outside the quarry's space and admits the hunter's body. Distances: two to ten blocks from the quarry and two
-     * from every human, but four from both for open air beside a wall.
+     * from every human, but four from both for open air beside a wall. The game rule and the level's protection are
+     * the caller's to check ({@link #applies}, {@link #canBreachAt}).
      */
     static boolean fits(ServerLevel level, ServerPlayer player, Spot spot, QuarrySpace space, Vec3 target, List<Vec3> humans) {
-        if (ProtectionRuntime.protectedLevel(level) || !HuntBurrows.allowed(level)) return false;
         var stance = spot.stance();
         var exit = spot.exit();
         if (spot.above()) {
@@ -199,9 +204,9 @@ public final class BreachLanding implements LandingStrategy {
         }
         // Cheapest first: most cells of a wide cave fail on distance alone.
         var point = spot.point();
-        double near = spot.above() || spot.pocket() ? SafeDeployment.BURROW_NEAR : SafeDeployment.BREACH_OPEN_NEAR;
+        double near = spot.above() || spot.pocket() ? SafeDeployment.BREACH_NEAR : SafeDeployment.BREACH_OPEN_NEAR;
         double distance = point.distanceTo(target);
-        if (distance < near - EPSILON || distance > SafeDeployment.BURROW_FAR + EPSILON) return false;
+        if (distance < near - EPSILON || distance > SafeDeployment.BREACH_FAR + EPSILON) return false;
         for (var human : humans) if (point.distanceToSqr(human) < near * near - EPSILON) return false;
         int ceiling = level.getMinY() + level.dimensionType().logicalHeight();
         if (target.y < ceiling && point.y >= ceiling) return false;
@@ -214,7 +219,9 @@ public final class BreachLanding implements LandingStrategy {
         var barrier = spot.barrier();
         for (var cell : barrier) {
             var state = level.getBlockState(cell);
-            if (!net.minecraft.world.level.block.Block.isShapeFullBlock(state.getCollisionShape(level, cell))
+            // Not loose either: hollowing the pocket next to it would let it fall onto the quarry or out of the floor.
+            if (state.getBlock() instanceof FallingBlock
+                    || !net.minecraft.world.level.block.Block.isShapeFullBlock(state.getCollisionShape(level, cell))
                     || MonsterDiggable.verdict(level, cell, cap, max) != MonsterDiggable.Verdict.DIGGABLE
                     || level.getServer().isUnderSpawnProtection(level, cell, player)) return false;
             for (var side : Direction.values()) if (!level.getFluidState(cell.relative(side)).isEmpty()) return false;
@@ -222,20 +229,20 @@ public final class BreachLanding implements LandingStrategy {
         if (spot.above()) {
             // Dropping through the ceiling lands on a safe floor at most three blocks down.
             var ground = exit.below();
-            if (empty(level, ground)) {
+            if (Sweep.empty(level, ground)) {
                 if (!QuarrySpace.open(level, ground)) return false;
                 ground = ground.below();
-                if (empty(level, ground)) return false;
+                if (Sweep.empty(level, ground)) return false;
             }
             var floor = level.getBlockState(ground);
             if (EntityTypes.PLAYER.isBlockDangerous(floor) || !floor.getFluidState().isEmpty()) return false;
         } else {
-            if (empty(level, exit.below())) return false;
+            if (Sweep.empty(level, exit.below())) return false;
             // Nothing to refill the opened wall.
             if (level.getBlockState(barrier.getLast().above()).getBlock() instanceof FallingBlock) return false;
         }
         var under = level.getBlockState(stance.below());
-        if (empty(level, stance.below()) || EntityTypes.PLAYER.isBlockDangerous(under)) return false;
+        if (Sweep.empty(level, stance.below()) || EntityTypes.PLAYER.isBlockDangerous(under)) return false;
         var body = List.of(stance, stance.above());
         if (!spot.pocket()) {
             for (var cell : body) if (space.contains(cell)) return false;
@@ -252,10 +259,6 @@ public final class BreachLanding implements LandingStrategy {
         }
         // Nothing to drop into the hollowed pocket.
         return !(level.getBlockState(stance.above(2)).getBlock() instanceof FallingBlock);
-    }
-
-    private static boolean empty(ServerLevel level, BlockPos pos) {
-        return level.getBlockState(pos).getCollisionShape(level, pos).isEmpty();
     }
 
     /**
@@ -279,14 +282,16 @@ public final class BreachLanding implements LandingStrategy {
     /**
      * What a look passes through: vanilla's visual shapes ({@code ClipContext.Block.VISUAL}), so glass, panes and bars
      * hide nothing and a fence's gaps show. Leaves, doors, trapdoors and fence gates are see-through in places although
-     * vanilla gives them solid visual shapes, so they hide nothing either.
+     * vanilla gives them solid visual shapes, and so are the other half-transparent blocks (ice, slime, honey), so
+     * they hide nothing either.
      */
     private static final class Sight extends ClipContext {
         Sight(Vec3 from, Vec3 to) { super(from, to, ClipContext.Block.VISUAL, ClipContext.Fluid.NONE, CollisionContext.empty()); }
 
         @Override
         public VoxelShape getBlockShape(BlockState state, BlockGetter level, BlockPos pos) {
-            if (state.is(BlockTags.LEAVES) || state.is(BlockTags.DOORS) || state.is(BlockTags.TRAPDOORS) || state.is(BlockTags.FENCE_GATES))
+            if (state.getBlock() instanceof HalfTransparentBlock || state.is(BlockTags.LEAVES) || state.is(BlockTags.DOORS)
+                    || state.is(BlockTags.TRAPDOORS) || state.is(BlockTags.FENCE_GATES))
                 return Shapes.empty();
             return super.getBlockShape(state, level, pos);
         }

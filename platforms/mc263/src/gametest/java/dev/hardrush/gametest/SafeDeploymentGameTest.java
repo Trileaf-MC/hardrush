@@ -177,7 +177,9 @@ public final class SafeDeploymentGameTest {
             test.assertValueEqual(result.status(), SafeDeployment.Status.FOUND, "A small platform still yields a landing");
             test.assertValueEqual(result.landing(), SafeDeployment.Landing.NEAR, "The landing is a near one: " + result);
             test.assertTrue(!result.fallback() && !result.breached() && !result.burrowed(), "Neither a fallback nor a breach");
-            test.assertTrue(clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS, "Taken at once: " + clock.get());
+            // Never in the first sweep: the walk's random columns get a second draw before settling for five blocks.
+            test.assertTrue(clock.get() >= SafeDeployment.SWEEP_INTERVAL_NANOS && clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS,
+                    "Taken in the second sweep, before the fallback is due: " + clock.get());
             var spot = BlockPos.containing(result.position());
             test.assertTrue(spot.getY() == fixture.feet.getY() && (Math.abs(spot.getX() - fixture.feet.getX()) == 4
                     || Math.abs(spot.getZ() - fixture.feet.getZ()) == 4), "On the platform's rim: " + spot);
@@ -199,11 +201,14 @@ public final class SafeDeploymentGameTest {
             fixture.platform(3);
             var clock = new AtomicLong();
             var search = fixture.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(fixture.target), List.of(fixture.target), clock);
-            for (int i = 0; i < 90 && clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS - TICK; i++) { search.tick(); clock.addAndGet(TICK); }
-            test.assertValueEqual(search.result().status(), SafeDeployment.Status.PENDING, "Nothing at all within five seconds");
-            test.assertTrue(search.result().landing() != SafeDeployment.Landing.NEAR, "Never a near landing");
+            // Two full sweeps run in these five seconds, the second one with its near stage; neither finds anything.
+            for (int i = 0; i < 100 && clock.get() < SafeDeployment.FALLBACK_AFTER_NANOS; i++) {
+                search.tick(); clock.addAndGet(TICK);
+                test.assertValueEqual(search.result().status(), SafeDeployment.Status.PENDING, "Nothing at all within five seconds");
+            }
+            // Floating in the void there is no ground for a fallback either: nothing but the full wait's end.
             var result = complete(search, clock);
-            test.assertTrue(result.landing() != SafeDeployment.Landing.NEAR, "Never a near landing: " + result);
+            test.assertValueEqual(result.status(), SafeDeployment.Status.FAILED, "No landing ever, near or otherwise: " + result);
         }
         test.succeed();
     }

@@ -13,7 +13,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The quarry's space: every open cell ({@link #open}) connected to the quarry's body cell within
- * {@link SafeDeployment#BURROW_RADIUS} blocks, explored breadth first until {@link SafeDeployment#BURROW_VISITS} cells
+ * {@link SafeDeployment#BREACH_RADIUS} blocks, explored breadth first until {@link SafeDeployment#BREACH_VISITS} cells
  * (open or not) have been looked at. Read once, from the world as it is now.
  */
 final class QuarrySpace {
@@ -32,13 +32,13 @@ final class QuarrySpace {
         var visited = new HashSet<BlockPos>();
         var queue = new ArrayDeque<BlockPos>();
         visited.add(start); queue.add(start); space.steps.put(start, 0);
-        while (!queue.isEmpty() && visited.size() < SafeDeployment.BURROW_VISITS) {
+        while (!queue.isEmpty() && visited.size() < SafeDeployment.BREACH_VISITS) {
             var cell = queue.poll();
             space.explored.add(cell);
             int next = space.steps.get(cell) + 1;
             for (var side : Direction.values()) {
                 var neighbour = cell.relative(side);
-                if (neighbour.distToCenterSqr(position) > SafeDeployment.BURROW_RADIUS * SafeDeployment.BURROW_RADIUS
+                if (neighbour.distToCenterSqr(position) > SafeDeployment.BREACH_RADIUS * SafeDeployment.BREACH_RADIUS
                         || !visited.add(neighbour) || !open(level, neighbour)) continue;
                 queue.add(neighbour);
                 space.steps.put(neighbour, next);

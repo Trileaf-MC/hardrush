@@ -24,6 +24,10 @@ final class NearLanding implements LandingStrategy {
 
     NearLanding(ServerLevel level, ServerPlayer player) { this.level = level; this.player = player; }
 
+    /** Only once the previous land sweep's walk found nothing either; never in the search's first sweep. */
+    @Override
+    public boolean applies(Sweep sweep) { return !sweep.walkedBefore; }
+
     /**
      * The floor nearest the quarry's height in every column within {@link SafeDeployment#NEAR_RADIUS} blocks, when it
      * is on the quarry's own level ({@link SafeDeployment#NEAR_RISE} up or down), at least
@@ -35,12 +39,11 @@ final class NearLanding implements LandingStrategy {
     public void begin(Sweep sweep) {
         best = null;
         var quarry = sweep.quarry.position();
-        int cx = Mth.floor(quarry.x), cz = Mth.floor(quarry.z), qy = Mth.floor(quarry.y), r = SafeDeployment.NEAR_RADIUS;
+        int cx = Mth.floor(quarry.x), cz = Mth.floor(quarry.z), r = SafeDeployment.NEAR_RADIUS, rise = SafeDeployment.NEAR_RISE;
         var list = new ArrayList<Candidate>();
         for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) {
             if (dx * dx + dz * dz > r * r) continue;
-            for (BlockPos floor : WalkLanding.floors(sweep, cx + dx, cz + dz, 1)) {
-                if (Math.abs(floor.getY() - qy) > SafeDeployment.NEAR_RISE) continue;
+            for (BlockPos floor : WalkLanding.floors(sweep, cx + dx, cz + dz, 1, rise, rise)) {
                 var point = Vec3.atBottomCenterOf(floor);
                 if (allowed(point, quarry, sweep.humans()) && SafeDeployment.canDeployAt(level, player, point))
                     list.add(new Candidate(point, false));

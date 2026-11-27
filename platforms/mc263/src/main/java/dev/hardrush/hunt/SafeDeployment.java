@@ -36,6 +36,8 @@ public final class SafeDeployment {
      * landing without a wall in between is ever closer.
      */
     public static final int NEAR_HUMAN_DISTANCE = 5;
+    /** A retrack only moves a hunter whose new landing is at least this much closer to the quarry, in blocks. */
+    public static final double RETRACK_GAIN = 1;
     /** Near landings are looked for in the columns this far (horizontally) around the quarry, the farthest few judged. */
     static final int NEAR_RADIUS = 8, NEAR_CANDIDATES = 12;
     /** A near landing stands on the quarry's own level: at most this many blocks above or below its feet. */
@@ -77,17 +79,17 @@ public final class SafeDeployment {
     /** One sweep never queues more pathfinding than this; earlier sources (trail, ahead, inner ring) win. */
     public static final int MAX_CANDIDATES = 48;
     /** A breach lies this far from the quarry (stance floor to feet), and at least the near one from every human. */
-    public static final double BURROW_NEAR = 2, BURROW_FAR = 10;
+    public static final double BREACH_NEAR = 2, BREACH_FAR = 10;
     /** Open air behind a wall keeps this far from the quarry and from every human instead. */
     public static final double BREACH_OPEN_NEAR = 4;
     /** The distance a breach beside a wall, or above a ceiling, scores best at. */
-    static final double IDEAL_BURROW = 4, IDEAL_ABOVE = 3;
+    static final double BREACH_IDEAL_BESIDE = 4, BREACH_IDEAL_ABOVE = 3;
     /** A breach's exit lies at most this many steps into the quarry's space. */
     public static final int BREACH_STEPS = 12;
     /** Humans farther than this from an open-air breach cannot give it away. */
     public static final double SIGHT_RANGE = 32;
     /** How far the quarry's own space is explored for walls, in blocks and in cells; how many breaches get a sight check. */
-    static final int BURROW_RADIUS = 11, BURROW_VISITS = 1024, BURROW_CANDIDATES = 12;
+    static final int BREACH_RADIUS = 11, BREACH_VISITS = 1024, BREACH_CANDIDATES = 12;
     static final double EPSILON = 1.0E-7;
     private static final Set<ResourceKey<Structure>> LAIRS = Set.of(BuiltinStructures.FORTRESS, BuiltinStructures.BASTION_REMNANT,
             BuiltinStructures.WOODLAND_MANSION, BuiltinStructures.MINESHAFT, BuiltinStructures.MINESHAFT_MESA,
@@ -215,6 +217,12 @@ public final class SafeDeployment {
         /** This sweep's closest walkable spot, and the latest sweep's one that answers at five seconds. */
         private Candidate closest, lastClosest;
         private boolean elevated;
+        /**
+         * Whether the latest completed land sweep's walk found a landing; the search's first sweep counts as if the one
+         * before it had. A near landing is only tried once two sweeps in a row walked nowhere: the walk's columns are
+         * drawn at random, and one unlucky draw in a cave must not settle for five blocks.
+         */
+        private boolean walkedLastSweep = true;
 
         public Search(ServerLevel level, ServerPlayer player, MonsterRole kind, Quarry quarry, List<Vec3> humans,
                       RandomGenerator random, LongSupplier clock) {
@@ -289,31 +297,27 @@ public final class SafeDeployment {
 
         /**
          * Whether moving a hunter already out in the world to the found landing brings it any closer: always from another
-         * dimension or from farther away. From as close or closer, only when the landing is one walking reaches the quarry
-         * from ({@code WALK} or {@code NEAR}) while the hunter, where it stands, cannot walk to the quarry within
-         * {@link #MAX_PATH} blocks: nearer in a straight line, but with rock in between. A hunter that cannot be walked
-         * from at all (no floor under its body, sealed in) cannot walk there. Uses this search's own pathfinding agent once.
+         * dimension, or when the landing is at least {@link #RETRACK_GAIN} closer to {@code target}. Otherwise only when
+         * the landing is one walking reaches the quarry from ({@code WALK} or {@code NEAR}) while the hunter, where it
+         * stands, does not reach it the way a walk landing is judged ({@link WalkLanding#reach}: a walk within
+         * {@link #MAX_PATH} blocks, or for a skeleton a clear shot within bow range): nearer in a straight line, but with
+         * rock in between. A hunter that cannot be walked from at all (no room for its body, no floor) does not reach it.
+         * The walk and the shot are judged against this search's latest quarry, with its own pathfinding agent, once.
          */
         public boolean improves(ServerLevel hunterLevel, Vec3 hunter, Vec3 target) {
             if (status != Status.FOUND || hunterLevel != level) return true;
-            if (hunter.distanceTo(target) > found.point.distanceTo(target)) return true;
+            if (hunter.distanceTo(target) > found.point.distanceTo(target) + RETRACK_GAIN) return true;
             if (found.landing != Landing.WALK && found.landing != Landing.NEAR) return false;
-            return !walks(hunter, target);
+            return !reaches(hunter);
         }
 
-        private boolean walks(Vec3 hunter, Vec3 target) {
-            var center = BlockPos.containing(target);
-            int reach = FALLBACK_RADIUS + FALLBACK_PATH + 8;
-            var region = new PathNavigationRegion(level, center.offset(-reach, -reach, -reach), center.offset(reach, reach, reach));
+        private boolean reaches(Vec3 hunter) {
+            var here = new Sweep(level, player, kind, quarry, humans, random, clock, walker, () -> {}, true);
             // Vanilla starts the walk from the body's own cell (WalkNodeEvaluator.getStart), so that cell and the one
             // above must be open and the one below solid; otherwise this hunter cannot be walked from at all.
             var body = BlockPos.containing(hunter.x, hunter.y + .5, hunter.z);
-            for (var cell : new BlockPos[]{body, body.above()})
-                if (!region.getBlockState(cell).getCollisionShape(region, cell).isEmpty()) return false;
-            var floor = body.below();
-            if (region.getBlockState(floor).getCollisionShape(region, floor).isEmpty()) return false;
-            var path = walker.path(region, ground(region, target), hunter);
-            return path != null && path.canReach() && length(path) <= MAX_PATH + EPSILON;
+            if (!Sweep.empty(here.region, body) || !Sweep.empty(here.region, body.above()) || Sweep.empty(here.region, body.below())) return false;
+            return Double.isFinite(WalkLanding.reach(here, hunter, here.path(hunter)));
         }
 
         /** Facing the quarry, so the monster knows which way to go the moment it lands. */
@@ -328,7 +332,7 @@ public final class SafeDeployment {
 
         private void begin(long now) {
             sweepStarted = now; best = null; bestBy = null; closest = null;
-            sweep = new Sweep(level, player, kind, quarry, humans, random, clock, walker, () -> candidates++);
+            sweep = new Sweep(level, player, kind, quarry, humans, random, clock, walker, () -> candidates++, walkedLastSweep);
             stages = sweep.quarry.atSea() ? List.of(sea) : List.of(walk, breach, near);
             stage = 0; begun = false;
         }
@@ -346,7 +350,7 @@ public final class SafeDeployment {
         }
 
         private Result finish(long now) {
-            if (stages.contains(walk)) elevated = best == null && walk.below();
+            if (stages.contains(walk)) { elevated = best == null && walk.below(); walkedLastSweep = walk.best() != null; }
             sweep = null;
             if (best != null) return found(best, bestBy);
             if (closest != null) lastClosest = closest;

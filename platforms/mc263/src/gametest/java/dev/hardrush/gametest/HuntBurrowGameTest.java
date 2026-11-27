@@ -39,7 +39,7 @@ public final class HuntBurrowGameTest {
             var pocket = BlockPos.containing(result.position());
             test.assertValueEqual(pocket, f.feet.east(2), "The quarry tunnelling east meets the burrow right ahead");
             double distance = result.position().distanceTo(f.target);
-            test.assertTrue(distance >= SafeDeployment.BURROW_NEAR && distance <= SafeDeployment.BURROW_FAR, "Two to ten blocks away: " + distance);
+            test.assertTrue(distance >= SafeDeployment.BREACH_NEAR && distance <= SafeDeployment.BREACH_FAR, "Two to ten blocks away: " + distance);
             test.assertTrue(f.is(pocket, Blocks.STONE) && f.is(pocket.above(), Blocks.STONE), "The search itself never hollows anything");
             test.assertTrue(search.revalidate(), "Unchanged terrain passes departure revalidation");
             test.assertFalse(search.revalidate(f.target, List.of(result.position().add(1.5, 0, 0))), "A human closer than two blocks revokes it");
@@ -173,7 +173,8 @@ public final class HuntBurrowGameTest {
             test.assertTrue(plain.status() == SafeDeployment.Status.FOUND && plain.landing() == SafeDeployment.Landing.NEAR
                     && !plain.fallback() && !plain.burrowed(), "Without burrows the tunnel's far end is a near landing: " + plain);
             test.assertTrue(plain.position().distanceTo(f.target) >= SafeDeployment.NEAR_HUMAN_DISTANCE - 1e-6, "Five blocks off or more");
-            test.assertTrue(plainClock.get() < SafeDeployment.FALLBACK_AFTER_NANOS, "Taken before the fallback is due: " + plainClock.get());
+            test.assertTrue(plainClock.get() >= SafeDeployment.SWEEP_INTERVAL_NANOS && plainClock.get() < SafeDeployment.FALLBACK_AFTER_NANOS,
+                    "Taken in the second sweep, before the fallback is due: " + plainClock.get());
             f.level.getGameRules().set(GameRules.MOB_GRIEFING, true, f.level.getServer());
             var clock = new AtomicLong();
             var result = complete(f.search(MonsterRole.ZOMBIE, f.digging(new Vec3(1, 0, 0)), List.of(f.target), clock), clock);
