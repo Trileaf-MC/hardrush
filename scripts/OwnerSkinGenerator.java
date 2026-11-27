@@ -9,7 +9,8 @@ import java.util.zip.ZipFile;
 import javax.imageio.ImageIO;
 
 /**
- * Builds owner-only player skins for skeleton-type monster forms from the vanilla mob texture.
+ * Builds owner-only player skins for monster forms from the vanilla mob textures: the skeleton, and the
+ * charged creeper a creeper player sees itself as once it carries a lightning charge.
  *
  * <p>The vanilla client forces the player's base skin layer opaque
  * ({@code SkinTextureDownloader.processLegacySkin -> setNoAlpha}); transparent pixels keep
@@ -18,6 +19,12 @@ import javax.imageio.ImageIO;
  * bones stay as they are, the gaps between them become a dark "body cavity", and the 2-pixel
  * vanilla limbs sit in the middle of the 4-pixel player limbs with shaded sides, so they read
  * as thin bones. Ribs and spine are repeated on the jacket layer for relief in third person.
+ *
+ * <p>The charged creeper keeps the creeper's own mottled hide on the base layer (the creeper has no arms and
+ * short legs, so the limbs continue the body's pattern and end in the creeper's feet) and paints the brighter
+ * streaks of the charge texture on the jacket, sleeves and trousers. Those outer layers stand off the body
+ * like the native charge layer does, and the sleeve is what the owner sees in first person. The head's outer
+ * layer stays clear so the face reads as a plain creeper.
  *
  * <p>The vanilla texture is read from the local client JAR and the result is written under
  * {@code .local/}; derived Mojang art is not committed. The uploaded result is pinned in
@@ -29,13 +36,19 @@ import javax.imageio.ImageIO;
  * java scripts/OwnerSkinGenerator.java compare EXPECTED.png ACTUAL.png
  * </pre>
  *
- * <p>Publishing: upload {@code DIR/skeleton.png} as a classic-model skin, for example
+ * <p>Publishing: upload {@code DIR/skeleton.png} or {@code DIR/creeper_charged.png} as a classic-model skin, for example
  * {@code curl -F file=@skeleton.png -F variant=classic -F visibility=unlisted
  * https://api.mineskin.org/v2/generate}, download the returned textures.minecraft.net URL and
  * {@code compare} it with the generated file before pinning the property value.
  */
 public final class OwnerSkinGenerator {
     private static final String VANILLA_SKELETON = "assets/minecraft/textures/entity/skeleton/skeleton.png";
+    private static final String VANILLA_CREEPER = "assets/minecraft/textures/entity/creeper/creeper.png";
+    private static final String VANILLA_CHARGE = "assets/minecraft/textures/entity/creeper/creeper_armor.png";
+    /** Green level of the charge texture's darkest streak that is still drawn, and of one drawn at full strength. */
+    private static final int CHARGE_FAINT = 58, CHARGE_FULL = 200;
+    /** How far a drawn streak is lifted toward white; the native layer is additive, a skin layer is not. */
+    private static final double CHARGE_LIFT = 0.35;
     /** Brightness kept on the shaded sides of a thin bone limb. */
     private static final double LIMB_SHADE = 0.38;
     /** Sum of RGB below which an opaque base pixel counts as "black" in {@link #check}. */
@@ -66,6 +79,15 @@ public final class OwnerSkinGenerator {
     private static final Box RIGHT_LEG = new Box(0, 16, 4, 12, 4);
     private static final Box LEFT_LEG = new Box(16, 48, 4, 12, 4);
     private static final Box JACKET = new Box(16, 32, 8, 12, 4);
+    private static final Box RIGHT_SLEEVE = new Box(40, 32, 4, 12, 4);
+    private static final Box LEFT_SLEEVE = new Box(48, 48, 4, 12, 4);
+    private static final Box RIGHT_TROUSER = new Box(0, 32, 4, 12, 4);
+    private static final Box LEFT_TROUSER = new Box(0, 48, 4, 12, 4);
+
+    // Vanilla creeper (64x32): head and body match the player boxes; the four legs are 4x6x4.
+    private static final Box CREEPER_HEAD = new Box(0, 0, 8, 8, 8);
+    private static final Box CREEPER_BODY = new Box(16, 16, 8, 12, 4);
+    private static final Box CREEPER_LEG = new Box(0, 16, 4, 6, 4);
     private static final List<Box> BASE_BOXES = List.of(HEAD, BODY, RIGHT_ARM, LEFT_ARM, RIGHT_LEG, LEFT_LEG);
 
     public static void main(String[] args) throws IOException {
@@ -74,7 +96,7 @@ public final class OwnerSkinGenerator {
             case "generate" -> generate(args);
             case "check" -> {
                 if (args.length != 2) throw usage();
-                List<String> problems = check(read(Path.of(args[1])));
+                List<String> problems = check(read(Path.of(args[1])), true);
                 if (!problems.isEmpty()) throw new IllegalStateException(String.join("\n", problems));
                 System.out.println("ok: every used base pixel is opaque and not black");
             }
@@ -106,19 +128,31 @@ public final class OwnerSkinGenerator {
             }
         }
         if (jar == null) jar = defaultClientJar(root);
-        BufferedImage vanilla;
-        try (var zip = new ZipFile(jar.toFile())) {
-            var entry = zip.getEntry(VANILLA_SKELETON);
-            if (entry == null) throw new IllegalStateException(VANILLA_SKELETON + " not found in " + jar);
-            try (var input = zip.getInputStream(entry)) { vanilla = ImageIO.read(input); }
-        }
-        BufferedImage skin = skeleton(vanilla);
-        List<String> problems = check(skin);
-        if (!problems.isEmpty()) throw new IllegalStateException(String.join("\n", problems));
         Files.createDirectories(out);
-        Path file = out.resolve("skeleton.png");
+        try (var zip = new ZipFile(jar.toFile())) {
+            write(out.resolve("skeleton.png"), skeleton(texture(zip, VANILLA_SKELETON)), true);
+            write(out.resolve("creeper_charged.png"),
+                chargedCreeper(texture(zip, VANILLA_CREEPER), texture(zip, VANILLA_CHARGE)), false);
+        }
+        System.out.println("wrote skeleton.png and creeper_charged.png to " + out + " from " + jar);
+    }
+
+    private static BufferedImage texture(ZipFile zip, String name) throws IOException {
+        var entry = zip.getEntry(name);
+        if (entry == null) throw new IllegalStateException(name + " not found in " + zip.getName());
+        try (var input = zip.getInputStream(entry)) {
+            // Indexed vanilla textures are read through their palette.
+            BufferedImage image = ImageIO.read(input);
+            var argb = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) argb.setRGB(x, y, image.getRGB(x, y));
+            return argb;
+        }
+    }
+
+    private static void write(Path file, BufferedImage skin, boolean noBlack) throws IOException {
+        List<String> problems = check(skin, noBlack);
+        if (!problems.isEmpty()) throw new IllegalStateException(file.getFileName() + ":\n" + String.join("\n", problems));
         ImageIO.write(skin, "png", file.toFile());
-        System.out.println("wrote " + file + " from " + jar);
     }
 
     private static Path defaultClientJar(Path root) throws IOException {
@@ -147,6 +181,63 @@ public final class OwnerSkinGenerator {
         thinLimb(vanilla, SKELETON_LEG, skin, RIGHT_LEG, false);
         thinLimb(vanilla, SKELETON_LEG, skin, LEFT_LEG, true);
         return skin;
+    }
+
+    static BufferedImage chargedCreeper(BufferedImage creeper, BufferedImage charge) {
+        if (creeper.getWidth() != 64 || creeper.getHeight() != 32 || charge.getWidth() != 64 || charge.getHeight() != 32) {
+            throw new IllegalStateException("Expected the 64x32 vanilla creeper and charge textures");
+        }
+        var skin = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        copyFilled(creeper, CREEPER_HEAD, skin, HEAD);
+        copyFilled(creeper, CREEPER_BODY, skin, BODY);
+        creeperLimb(creeper, skin, RIGHT_ARM, 0, 0, false);
+        creeperLimb(creeper, skin, LEFT_ARM, 4, 0, false);
+        creeperLimb(creeper, skin, RIGHT_LEG, 0, 6, true);
+        creeperLimb(creeper, skin, LEFT_LEG, 4, 6, true);
+        for (Box layer : List.of(JACKET, RIGHT_SLEEVE, LEFT_SLEEVE, RIGHT_TROUSER, LEFT_TROUSER)) charge(charge, skin, layer);
+        return skin;
+    }
+
+    /**
+     * A player limb in the creeper's hide. Its long faces continue the body's pattern, taken {@code column} pixels
+     * into the body's wide faces and {@code row} pixels down; a leg ends in the creeper's own foot, and both ends
+     * of a limb are the creeper's leg ends.
+     */
+    private static void creeperLimb(BufferedImage creeper, BufferedImage skin, Box target, int column, int row, boolean foot) {
+        int[][] body = CREEPER_BODY.faces();
+        int[][] leg = CREEPER_LEG.faces();
+        int[][] faces = target.faces();
+        for (int face = 0; face < 6; face++) {
+            int[] t = faces[face];
+            for (int y = 0; y < t[3]; y++) {
+                for (int x = 0; x < t[2]; x++) {
+                    int pixel;
+                    if (face < 2) pixel = creeper.getRGB(leg[face][0] + x, leg[face][1] + y);
+                    else if (foot && y >= t[3] - CREEPER_LEG.h()) pixel = creeper.getRGB(leg[face][0] + x, leg[face][1] + y - (t[3] - CREEPER_LEG.h()));
+                    else pixel = creeper.getRGB(body[face][0] + (body[face][2] > t[2] ? column : 0) + x, body[face][1] + (row + y) % CREEPER_BODY.h());
+                    skin.setRGB(t[0] + x, t[1] + y, pixel | 0xFF000000);
+                }
+            }
+        }
+    }
+
+    /** The charge texture tiles, so an outer box takes the streaks that lie under its own place in the skin. */
+    private static void charge(BufferedImage charge, BufferedImage skin, Box layer) {
+        for (int[] face : layer.faces()) {
+            for (int y = face[1]; y < face[1] + face[3]; y++) {
+                for (int x = face[0]; x < face[0] + face[2]; x++) {
+                    int pixel = charge.getRGB(x % charge.getWidth(), y % charge.getHeight());
+                    int green = (pixel >> 8) & 0xFF;
+                    if (!opaque(pixel) || green < CHARGE_FAINT) continue;
+                    int alpha = (int) (110 + 145 * Math.min(1.0, (double) (green - CHARGE_FAINT) / (CHARGE_FULL - CHARGE_FAINT)));
+                    skin.setRGB(x, y, alpha << 24 | lift((pixel >> 16) & 0xFF) << 16 | lift(green) << 8 | lift(pixel & 0xFF));
+                }
+            }
+        }
+    }
+
+    private static int lift(int channel) {
+        return (int) (channel + (255 - channel) * CHARGE_LIFT);
     }
 
     /** Same-size box: vanilla pixels as they are, see-through gaps become the body cavity. */
@@ -236,9 +327,10 @@ public final class OwnerSkinGenerator {
 
     /**
      * Every pixel the player model draws from the base layer must be painted on purpose: the client
-     * would otherwise force it opaque and show its stored RGB, usually black.
+     * would otherwise force it opaque and show its stored RGB, usually black. {@code noBlack} also rejects black
+     * pixels, for a skin whose source has none; a creeper's face is black on purpose.
      */
-    static List<String> check(BufferedImage skin) {
+    static List<String> check(BufferedImage skin, boolean noBlack) {
         var problems = new ArrayList<String>();
         if (skin.getWidth() != 64 || skin.getHeight() != 64) problems.add("Skin must be 64x64");
         else for (Box box : BASE_BOXES) {
@@ -248,7 +340,7 @@ public final class OwnerSkinGenerator {
                         int pixel = skin.getRGB(x, y);
                         int sum = ((pixel >> 16) & 0xFF) + ((pixel >> 8) & 0xFF) + (pixel & 0xFF);
                         if (!opaque(pixel)) problems.add("Transparent base pixel at " + x + "," + y);
-                        else if (sum < BLACK_RGB_SUM) problems.add("Black base pixel at " + x + "," + y);
+                        else if (noBlack && sum < BLACK_RGB_SUM) problems.add("Black base pixel at " + x + "," + y);
                     }
                 }
             }

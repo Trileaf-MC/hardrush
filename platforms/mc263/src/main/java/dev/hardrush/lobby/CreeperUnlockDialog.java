@@ -21,7 +21,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * A creeper booth bound to a block or a tagged entity shows no price of its own, so paying for the ticket
- * (docs/plan/苦力怕付费解锁.md §1) goes through this native dialog's button rather than the click itself. Each dialog
+ * (docs/plan/苦力怕付费解锁.md §1), and then for its charge (§7), goes through this native dialog's button rather than the click itself. Each dialog
  * carries a one-off offer: its button pays only for the round, price and spot the player was shown, and only once.
  */
 final class CreeperUnlockDialog {
@@ -33,7 +33,8 @@ final class CreeperUnlockDialog {
     /** The latest offer shown to each player; a newer dialog replaces it. */
     private static final Map<UUID, Offer> OFFERS = new ConcurrentHashMap<>();
 
-    record Offer(UUID id, UUID round, int price, Vec3 at, long shownAt) {}
+    /** {@code charge}: the offer is for the lightning charge of an unlocked creeper rather than for the unlock. */
+    record Offer(UUID id, UUID round, int price, Vec3 at, long shownAt, boolean charge) {}
 
     private CreeperUnlockDialog() {}
 
@@ -41,13 +42,16 @@ final class CreeperUnlockDialog {
 
     static void show(ServerPlayer player, Offer offer, int coins, Optional<String> discarded) {
         OFFERS.put(player.getUUID(), offer);
-        var title = Component.literal("解锁苦力怕");
-        var body = Component.literal("花 " + offer.price() + " 怪物币解锁一次苦力怕出击（现有 " + coins + "）。\n\n"
-                + "苦力怕只追三星以上的人类；返回营地不用重新付，自爆或倒下后要重新解锁。"
-                + discarded.map(parked -> "\n\n暂存的 " + parked + " 连同装备和身价会作废。").orElse(""));
+        var title = Component.literal(offer.charge() ? "引雷带电" : "解锁苦力怕");
+        var body = Component.literal(offer.charge()
+                ? "花 " + offer.price() + " 怪物币让这次出击的苦力怕带电（现有 " + coins + "）。\n\n"
+                        + "闪电苦力怕的爆炸威力翻倍；和出击资格一样，自爆或倒下后才用掉。"
+                : "花 " + offer.price() + " 怪物币解锁一次苦力怕出击（现有 " + coins + "）。\n\n"
+                        + "苦力怕只追三星以上的人类；返回营地不用重新付，自爆或倒下后要重新解锁。"
+                        + discarded.map(parked -> "\n\n暂存的 " + parked + " 连同装备和身价会作废。").orElse(""));
         var common = new CommonDialogData(title, Optional.of(title), true, false, DialogAction.CLOSE,
                 List.of(new PlainMessage(body, 250)), List.of());
-        var pay = new ActionButton(new CommonButtonData(Component.literal("付 " + offer.price() + " 怪物币解锁"), 150),
+        var pay = new ActionButton(new CommonButtonData(Component.literal("付 " + offer.price() + " 怪物币" + (offer.charge() ? "引雷" : "解锁")), 150),
                 Optional.of(new StaticAction(DialogClicks.click(ACTIONS, "pay/" + offer.id()))));
         var cancel = new ActionButton(new CommonButtonData(Component.literal("算了"), 150), Optional.empty());
         player.connection.send(new ClientboundShowDialogPacket(Holder.direct(new MultiActionDialog(common, List.of(pay, cancel), Optional.empty(), 2))));

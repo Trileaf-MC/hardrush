@@ -50,7 +50,7 @@ public final class RuleBookText {
                     + "钟没有冷却，敲几次就能显形几次。");
             pages.add("角色\n\n僵尸追二星以上的人类时自带刷怪蛋，困难难度下能敲开木门（约 12 秒），泡在水里会化身溺尸。\n\n"
                     + "骷髅潜行拉满弓触发三连射，陷进细雪会化身流浪者。\n\n苦力怕按住引爆器（打火石）引爆，也能用它点燃原版苦力怕。");
-            if (MonsterCoins.creeperPaid(rules)) pages.add("苦力怕解锁\n\n苦力怕每次出击要先右键展位的苦力怕石像，付 "
+            if (MonsterCoins.creeperPaid(rules)) pages.add("苦力怕解锁\n\n苦力怕每次出击要先右键展位里关在笼中的苦力怕，付 "
                     + MonsterCoins.creeperUnlockPrice(rules) + " 怪物币解锁。它只追三星以上的人类。\n\n"
                     + "返回营地不用重新付；自爆或倒下后要重新解锁。");
             pages.add("挖掘\n\n僵尸和骷髅按住左键挖掘，一次挖开 1×2，跟人类空手挖一样快，拿着什么都一样；石头、泥土、下界岩这类天然方块最长 "

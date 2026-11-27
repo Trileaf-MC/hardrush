@@ -376,7 +376,8 @@ public final class MonsterRoles {
         }
         // Witch potions are drunk by the monster itself (docs/plan/女巫药水与药水盲盒.md).
         MonsterPotions.give(player, kit, rules, form.role);
-        if (form == MonsterForm.CREEPER && kit.carried(dev.hardrush.core.round.ShopOffer.CHARGED) > 0) MonsterCreeper.charge(player);
+        // The charge is the ticket's grade, so a fresh or resumed creeper sortie reads it from the wallet.
+        if (form == MonsterForm.CREEPER && kit.creeperTicket().charged()) MonsterCreeper.charge(player);
         if (form.zombie()) addBoxes(player, kit.carried(dev.hardrush.core.round.ShopOffer.MONSTER_BOX));
     }
 

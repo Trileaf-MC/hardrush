@@ -31,6 +31,13 @@
       "texture": "http://textures.minecraft.net/texture/aa3f9bdb3e9ff1ddb0eb81b19430c29d0f6e458b75c257df415cde4f105958b7",
       "model": "classic",
       "value": "ewogICJ0aW1lc3RhbXAiIDogMTcyNjkzOTIxMTAxNSwKICAicHJvZmlsZUlkIiA6ICJhODEzMzJmNjA5MmE0NDQ1Yjk1YzVhZGFjNDA2OTQzYiIsCiAgInByb2ZpbGVOYW1lIiA6ICJTbmFwcHliM2FzdCIsCiAgInNpZ25hdHVyZVJlcXVpcmVkIiA6IHRydWUsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS9hYTNmOWJkYjNlOWZmMWRkYjBlYjgxYjE5NDMwYzI5ZDBmNmU0NThiNzVjMjU3ZGY0MTVjZGU0ZjEwNTk1OGI3IgogICAgfQogIH0KfQ=="
+    },
+    "creeper_charged": {
+      "source": "https://api.mineskin.org/v2/skins/8dd5b917484b4c1bb567cd9b33266e5e",
+      "generator": "scripts/OwnerSkinGenerator.java",
+      "texture": "http://textures.minecraft.net/texture/7c376e5763decd5cb43095e61f33963ffe512d5a4b12440801921b1ed8dacd6a",
+      "model": "classic",
+      "value": "ewogICJ0aW1lc3RhbXAiIDogMTc5NTc2MDU5ODcxNiwKICAicHJvZmlsZUlkIiA6ICJlZmI1ZWQ2YjVjOTU0ODBlYWFmMjAyZDIxOWVmNjBjNSIsCiAgInByb2ZpbGVOYW1lIiA6ICJNaWtlSHdhazAwMSIsCiAgInNpZ25hdHVyZVJlcXVpcmVkIiA6IHRydWUsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS83YzM3NmU1NzYzZGVjZDVjYjQzMDk1ZTYxZjMzOTYzZmZlNTEyZDVhNGIxMjQ0MDgwMTkyMWIxZWQ4ZGFjZDZhIgogICAgfQogIH0KfQ=="
     }
   }
 }

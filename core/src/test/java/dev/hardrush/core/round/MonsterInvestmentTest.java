@@ -40,12 +40,12 @@ class MonsterInvestmentTest {
     }
 
     @Test void theCreeperUnlockCountsOnceForAFreshSortieOnly() {
-        var deployed = chosen(MonsterRole.CREEPER, 40).unlockCreeper(40).deploy(RULES, MonsterRole.CREEPER);
-        assertEquals(40_000, deployed.sortieInvestment());
+        var deployed = chosen(MonsterRole.CREEPER, 35).unlockCreeper(35).deploy(RULES, MonsterRole.CREEPER);
+        assertEquals(35_000, deployed.sortieInvestment());
         var resumed = deployed.park("creeper-body").deploy(RULES, MonsterRole.CREEPER);
-        assertEquals(40_000, resumed.sortieInvestment(), "a resumed sortie does not pay for the unlock again");
+        assertEquals(35_000, resumed.sortieInvestment(), "a resumed sortie does not pay for the unlock again");
         // Without a ticket the creeper's sortie counts nothing for it.
-        assertEquals(0, chosen(MonsterRole.CREEPER, 40).deploy(RULES, MonsterRole.CREEPER).sortieInvestment());
+        assertEquals(0, chosen(MonsterRole.CREEPER, 35).deploy(RULES, MonsterRole.CREEPER).sortieInvestment());
     }
 
     @Test void aFullSoulcatcherCountsATenthOfItsPriceForTheZombieAlone() {
@@ -100,7 +100,6 @@ class MonsterInvestmentTest {
     @Test void theInvestmentLastsUntilTheNextFreshDeployment() {
         var deployed = zombie(100).buy(RULES, MonsterRole.ZOMBIE, ShopOffer.ADULT_EGG, 8).deploy(RULES, MonsterRole.ZOMBIE);
         assertEquals(8_000, deployed.park("zombie-body").sortieInvestment());
-        assertEquals(8_000, deployed.keepUnspent().sortieInvestment());
         var ended = deployed.endSortie();
         assertEquals(8_000, ended.sortieInvestment(), "a slain body is settled after its sortie ends");
         assertEquals(8_000, ended.credit(5).spendCoins(2).becameMonster(6).creditDamage(UUID.randomUUID(), 1_000, 1000, 20_000)
@@ -116,13 +115,35 @@ class MonsterInvestmentTest {
         assertEquals(8_000, next.sortieInvestment(), "nothing of the resumed sortie is left over");
     }
 
-    @Test void aChargeTheCreeperBroughtBackUnusedCountsItsFirstPriceAgain() {
-        var deployed = chosen(MonsterRole.CREEPER, 80).unlockCreeper(40)
-                .buy(RULES, MonsterRole.CREEPER, ShopOffer.CHARGED, 40).deploy(RULES, MonsterRole.CREEPER);
-        assertEquals(80_000, deployed.sortieInvestment(), "the unlock and the charge");
-        var back = deployed.keepUnspent().endSortie();
-        assertEquals(1, back.ordered(ShopOffer.CHARGED));
-        assertEquals(80_000, back.deploy(RULES, MonsterRole.CREEPER).sortieInvestment(), "the charge counts 40, not 80");
+    @Test void aChargedTicketCountsItsChargeOnEveryFreshSortie() {
+        var deployed = chosen(MonsterRole.CREEPER, 75).unlockCreeper(35).chargeCreeper(RULES, 40)
+                .deploy(RULES, MonsterRole.CREEPER);
+        assertEquals(75_000, deployed.sortieInvestment(), "the unlock and the charge");
+        var back = deployed.endSortie();
+        assertEquals(CreeperTicket.CHARGED, back.creeperTicket());
+        assertEquals(75_000, back.deploy(RULES, MonsterRole.CREEPER).sortieInvestment(), "counted once per fresh sortie");
+    }
+
+    @Test void aLightningChargeCountsAtTheBoothPriceFromTheNextFreshSortie() {
+        var deployed = chosen(MonsterRole.CREEPER, 35).unlockCreeper(35).deploy(RULES, MonsterRole.CREEPER);
+        var struck = deployed.struckByLightning();
+        assertEquals(35_000, struck.sortieInvestment());
+        assertEquals(35_000, struck.park("creeper-body").deploy(RULES, MonsterRole.CREEPER).sortieInvestment());
+        assertEquals(75_000, struck.endSortie().deploy(RULES, MonsterRole.CREEPER).sortieInvestment());
+    }
+
+    @Test void aChargeBoughtDuringAPauseCountsAtOnceAndNotAgainOnResuming() {
+        var parked = chosen(MonsterRole.CREEPER, 75).unlockCreeper(35).deploy(RULES, MonsterRole.CREEPER).park("creeper-body");
+        assertEquals(35_000, parked.sortieInvestment());
+        var charged = parked.chargeCreeper(RULES, 40);
+        assertEquals(0, charged.coins());
+        assertEquals(75_000, charged.sortieInvestment());
+        assertEquals(75_000, charged.deploy(RULES, MonsterRole.CREEPER).sortieInvestment());
+
+        var legacy = MonsterWorthTest.withoutSpoils();
+        var old = MonsterWallet.EMPTY.credit(75).chooseRole(legacy, MonsterRole.CREEPER).unlockCreeper(35)
+                .deploy(legacy, MonsterRole.CREEPER).park("creeper-body");
+        assertEquals(0, old.chargeCreeper(legacy, 40).sortieInvestment(), "rounds without spoils count nothing");
     }
 
     @Test void roundsWithoutSpoilsCountNothing() {
