@@ -297,7 +297,7 @@ public final class PersonalHuntGameTest {
                 })
                 .thenWaitUntil(() -> f.await(!dev.hardrush.hunt.HuntRetracks.resting(f.c.player), "the compass rests off before the burrow retrack"))
                 .thenExecute(() -> test.assertTrue(LobbyRuntime.useRetrack(f.c.player, f.compass(f.c)), "The compass starts a retrack to the sealed quarry"))
-                // The search clock is the fixture's; walking landings never come, so let five seconds pass for the burrow.
+                // The search clock is the fixture's; walking landings never come, and the burrow answers in the same sweep.
                 .thenWaitUntil(() -> { f.searchClock.addAndGet(100_000_000L);
                     // The channel shows on the compass as a cooldown too: wait for the landing itself.
                     f.await(!LobbyRuntime.channeling(f.c.player) && f.c.player.position().distanceTo(f.a.player.position()) <= 10

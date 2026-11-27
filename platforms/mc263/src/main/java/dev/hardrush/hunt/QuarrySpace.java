@@ -12,7 +12,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The quarry's space: every open cell ({@link #open}) connected to the quarry's own cell within
+ * The quarry's space: every open cell ({@link #open}) connected to the quarry's body cell within
  * {@link SafeDeployment#BURROW_RADIUS} blocks, explored breadth first until {@link SafeDeployment#BURROW_VISITS} cells
  * (open or not) have been looked at. Read once, from the world as it is now.
  */
@@ -26,9 +26,8 @@ final class QuarrySpace {
 
     static QuarrySpace explore(ServerLevel level, Vec3 position) {
         var space = new QuarrySpace();
-        // TODO(M2): start from the body's cell (position.y + .5), like MonsterDiggable.bodyCell; a soul sand or slab
-        //  floor makes this the floor block itself, and the space comes out empty.
-        var start = BlockPos.containing(position);
+        // The body's cell, like MonsterDiggable.bodyCell: on soul sand or a slab the feet sink into the floor block.
+        var start = BlockPos.containing(position.x, position.y + .5, position.z);
         if (!open(level, start)) return space;
         var visited = new HashSet<BlockPos>();
         var queue = new ArrayDeque<BlockPos>();

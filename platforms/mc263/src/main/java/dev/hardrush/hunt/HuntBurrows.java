@@ -30,8 +30,8 @@ public final class HuntBurrows {
 
     /**
      * Only where monsters may change the ground: hollowing the pocket is itself a change, and a zombie or skeleton
-     * leaves only by digging. A creeper, which cannot dig, is hidden all the same (a decision of the design): it waits
-     * to be dug into, or explodes where it lies.
+     * leaves only by digging. A creeper, which cannot dig, is never hidden in a pocket; it only lands in the open one
+     * dig away ({@link BreachLanding}), and blasts its way through.
      */
     public static boolean allowed(ServerLevel level) { return MonsterMining.griefing(level); }
 

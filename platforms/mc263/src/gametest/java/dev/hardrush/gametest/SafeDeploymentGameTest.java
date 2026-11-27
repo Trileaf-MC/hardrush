@@ -125,7 +125,7 @@ public final class SafeDeploymentGameTest {
             for (int y = 0; y < 2; y++) nether.level.setBlock(nether.feet.above(y), Blocks.AIR.defaultBlockState(), 2);
             var clock = new AtomicLong();
             var below = complete(nether.search(MonsterRole.ZOMBIE, SafeDeployment.Quarry.standing(nether.target), List.of(nether.target), clock), clock);
-            // Sealed in netherrack, the only way in is a burrow beside it; never the roof above.
+            // Sealed in netherrack, the only way in is a burrow beside or over it; never the roof above.
             test.assertValueEqual(below.status(), SafeDeployment.Status.FOUND, "A sealed quarry under the roof is reached by a burrow");
             test.assertTrue(below.burrowed() && below.position().y < 128, "A quarry under the roof never sends a monster onto it");
             var roof = nether.target.add(0, 8, 0);

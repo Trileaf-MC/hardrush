@@ -57,10 +57,17 @@ public final class SafeDeployment {
     static final int SEA_COLUMNS = 24;
     /** One sweep never queues more pathfinding than this; earlier sources (trail, ahead, inner ring) win. */
     public static final int MAX_CANDIDATES = 48;
-    /** A burrow lies this far from the quarry (pocket floor to feet), and at least the near one from every human. */
+    /** A breach lies this far from the quarry (stance floor to feet), and at least the near one from every human. */
     public static final double BURROW_NEAR = 2, BURROW_FAR = 10;
-    static final double IDEAL_BURROW = 4;
-    /** How far the quarry's own space is explored for walls, in blocks and in cells. */
+    /** Open air behind a wall keeps this far from the quarry and from every human instead. */
+    public static final double BREACH_OPEN_NEAR = 4;
+    /** The distance a breach beside a wall, or above a ceiling, scores best at. */
+    static final double IDEAL_BURROW = 4, IDEAL_ABOVE = 3;
+    /** A breach's exit lies at most this many steps into the quarry's space. */
+    public static final int BREACH_STEPS = 12;
+    /** Humans farther than this from an open-air breach cannot give it away. */
+    public static final double SIGHT_RANGE = 32;
+    /** How far the quarry's own space is explored for walls, in blocks and in cells; how many breaches get a sight check. */
     static final int BURROW_RADIUS = 11, BURROW_VISITS = 1024, BURROW_CANDIDATES = 12;
     static final double EPSILON = 1.0E-7;
     private static final Set<ResourceKey<Structure>> LAIRS = Set.of(BuiltinStructures.FORTRESS, BuiltinStructures.BASTION_REMNANT,
@@ -72,20 +79,22 @@ public final class SafeDeployment {
     /**
      * What kind of landing a search found. {@code WALK}: walking reaches the quarry. {@code FALLBACK}: the closest spot
      * walking could reach, after five seconds. {@code SEA}: under water, where a zombie rises as a drowned.
-     * {@code BURROW}: inside a burrow that is hollowed out only at departure ({@link HuntBurrows#carve}).
-     * {@code NEAR} and {@code BREACH} are not produced yet.
+     * {@code BURROW}: inside a pocket of ground one dig away from the quarry, hollowed out only at departure
+     * ({@link HuntBurrows#carve}). {@code BREACH}: in the open air one dig away, behind a wall or on a roof.
+     * {@code NEAR} is not produced yet.
      */
     public enum Landing { WALK, NEAR, FALLBACK, SEA, BURROW, BREACH }
     /**
      * {@code landing} is {@code null} until something is found. {@code position} is the landing's feet (a burrow's
-     * floor). {@code above}: a breach through the ceiling; {@code crawlway}: the exit's head room is solid. Both are
-     * always {@code false} for now.
+     * floor). For a burrow or breach, {@code above}: through the quarry's ceiling rather than a wall beside it;
+     * {@code crawlway}: into a passage one block high. Both are {@code false} for every other landing.
      */
     public record Result(Status status, Vec3 position, int candidates, Landing landing, boolean above, boolean crawlway) {
         public boolean fallback() { return landing == Landing.FALLBACK; }
         public boolean submerged() { return landing == Landing.SEA; }
         /** A pocket to hollow out at departure, announced by silverfish, where companions do not follow. */
         public boolean burrowed() { return landing == Landing.BURROW; }
+        /** Open air one dig from the quarry: no carving, the species' call, companions as usual. */
         public boolean breached() { return landing == Landing.BREACH; }
     }
 
@@ -150,8 +159,8 @@ public final class SafeDeployment {
     /**
      * Times the search, paces its sweeps and drives each sweep's strategies in order. A sweep's first strategy begins
      * in the sweep's first tick; every later one begins in a tick of its own, after the one before it completed, and is
-     * judged from the next tick on. A walk or sea landing is taken the moment its strategy completes; a burrow, like the
-     * far fallback, only once the search is five seconds old.
+     * judged from the next tick on. A walk, sea or breach landing is taken the moment its strategy completes; only the
+     * far fallback waits until the search is five seconds old.
      */
     public static final class Search {
         private final ServerLevel level;
@@ -179,9 +188,8 @@ public final class SafeDeployment {
         /** This sweep's landing to take at once, from the stage that found it. */
         private Candidate best;
         private LandingStrategy bestBy;
-        // TODO(M2): a burrow is taken at once like any breach; burrow and lastBurrow go away with the five-second wait.
-        /** This sweep's burrow and closest walkable spot, and the latest sweep's ones that answer at five seconds. */
-        private Candidate burrow, lastBurrow, closest, lastClosest;
+        /** This sweep's closest walkable spot, and the latest sweep's one that answers at five seconds. */
+        private Candidate closest, lastClosest;
 
         public Search(ServerLevel level, ServerPlayer player, MonsterRole kind, Quarry quarry, List<Vec3> humans,
                       RandomGenerator random, LongSupplier clock) {
@@ -206,7 +214,8 @@ public final class SafeDeployment {
             breach = new BreachLanding(level, player);
         }
         public Result result() {
-            return new Result(status, found == null ? null : found.point, candidates, found == null ? null : found.landing, false, false);
+            return found == null ? new Result(status, null, candidates, null, false, false)
+                    : new Result(status, found.point, candidates, found.landing, found.above, found.crawlway);
         }
         public long started() { return started; }
         public ServerLevel level() { return level; }
@@ -220,11 +229,7 @@ public final class SafeDeployment {
             if (status != Status.PENDING) return result();
             long tickStarted = clock.getAsLong();
             if (tickStarted - started >= wait) { status = Status.FAILED; return result(); }
-            // The previous sweep's burrow, else its closest spot, answers at exactly five seconds, without another full sweep.
-            if (tickStarted - started >= FALLBACK_AFTER_NANOS && lastBurrow != null && !quarry.atSea()) {
-                if (breach.revalidate(lastBurrow, quarry.position(), humans)) return found(lastBurrow, breach);
-                lastBurrow = null;
-            }
+            // The previous sweep's closest spot answers at exactly five seconds, without another full sweep.
             if (tickStarted - started >= FALLBACK_AFTER_NANOS && lastClosest != null && !quarry.atSea()) {
                 if (walk.revalidate(lastClosest, quarry.position(), humans)) return found(lastClosest, walk);
                 lastClosest = null;
@@ -261,7 +266,7 @@ public final class SafeDeployment {
         }
 
         private void begin(long now) {
-            sweepStarted = now; best = null; bestBy = null; closest = null; burrow = null;
+            sweepStarted = now; best = null; bestBy = null; closest = null;
             sweep = new Sweep(level, player, kind, quarry, humans, random, clock, walker, () -> candidates++);
             stages = sweep.quarry.atSea() ? List.of(sea) : List.of(walk, breach);
             stage = 0; begun = false;
@@ -269,8 +274,7 @@ public final class SafeDeployment {
 
         /** The current stage judged its last candidate: take its landing, or move on to the next stage that applies. */
         private Result completed(LandingStrategy strategy) {
-            if (strategy == breach) burrow = breach.best();
-            else if (strategy.best() != null) { best = strategy.best(); bestBy = strategy; }
+            if (strategy.best() != null) { best = strategy.best(); bestBy = strategy; }
             if (strategy == walk) closest = walk.closest();
             if (best == null) {
                 while (++stage < stages.size()) {
@@ -283,9 +287,7 @@ public final class SafeDeployment {
         private Result finish(long now) {
             sweep = null;
             if (best != null) return found(best, bestBy);
-            if (burrow != null) lastBurrow = burrow;
             if (closest != null) lastClosest = closest;
-            if (now - started >= FALLBACK_AFTER_NANOS && burrow != null) return found(burrow, breach);
             if (now - started >= FALLBACK_AFTER_NANOS && closest != null) return found(closest, walk);
             nextSweep = Math.max(now, sweepStarted + SWEEP_INTERVAL_NANOS);
             return result();

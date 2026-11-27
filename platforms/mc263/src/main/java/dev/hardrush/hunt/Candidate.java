@@ -11,8 +11,12 @@ final class Candidate {
     final boolean trail;
     /** What kind of landing this is once judged; {@code null} until a strategy accepts it. */
     SafeDeployment.Landing landing;
-    /** A burrow's way out: the open cell beside its wall, from which the quarry is walked to. */
+    /** A breach's way in: the cell of the quarry's space beyond its wall or under its floor. */
     BlockPos exit;
+    /** A breach through the exit's ceiling rather than a wall beside it. */
+    boolean above;
+    /** A breach into a passage one block high, where the quarry lies prone. */
+    boolean crawlway;
     double score;
     /** How far a partial path stopped short of the quarry; only meaningful for the closest walk. */
     double gap;
