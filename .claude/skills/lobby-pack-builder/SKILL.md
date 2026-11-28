@@ -31,12 +31,14 @@ lobby-packs/<id>/out/                  构建产物，不进版本库
 
 ### 三个区域和动线
 
-大厅有三块功能区。玩家的动线是 **抵达区 → 穿过怪物庭院 → 集结区**：新玩家先看到能扮演什么怪物，再走去准备。
+大厅有三块功能区。玩家的动线是 **抵达区 → 集结区** 或者 **抵达区 → 怪物庭院**。
+
+抵达区要处于营地地图的差不多中心位置，并且离集结区不能太远。  
 
 | 区域 | 里面有什么 |
 | --- | --- |
 | 抵达区 | 中央落点 `landing_central`（1–16 个）、规则 `rules`、战绩 `history`、可选的状态牌 `status` 和署名牌 `credits` |
-| 怪物庭院 `courtyard` | **庭院设施必须全部放在庭院区域内**：选角展位 `role_zombie`／`role_skeleton`／`role_creeper`、女巫商人 `merchant`、追猎目标展位 `display_slot`、翻页 `page_prev`／`page_next`、两种宝库 `vault`／`ominous_vault`、庭院落点 `landing_monster`。它们共用庭院的开放时间，怪物玩家离开庭院区域追猎就会取消 |
+| 怪物庭院 `courtyard` | **庭院设施必须全部放在庭院区域内**：选角展位 `role_zombie`／`role_skeleton`／`role_creeper`、女巫商人 `merchant`、追猎目标展位 `display_slot`、翻页 `page_prev`／`page_next`、两种宝库 `vault`／`ominous_vault`、庭院落点 `landing_monster` 都必须放在同一个空间内，不要相隔太远或者需要绕道才能互相抵达。因为它们共用庭院的开放时间，怪物玩家离开庭院区域追猎就会取消 |
 | 集结区 `assembly` | 一片专用材质的连片地板，玩家走进去就是“准备”。旁边是复生祭坛：祭坛踏板 `altar_pad`、可选的祭坛落点 `landing_altar` 和光柱 `altar_light` |
 
 ### 每个功能在建筑上要准备什么
@@ -129,4 +131,4 @@ python3 scripts/lobby-pack.py build <id>
 ## 5. 交付
 
 - 提交 `lobby-packs/<id>/` 下的源文件和 `preview.png`（`out/` 不进版本库）。提交说明里写上 genMC 工程的地址，方便以后接着改。
-- 自动验收只管“能发布、功能齐全、站得住”。观感、动线和手感需要人进游戏看：把 `out/` 里的 `.hrlobby` 放进测试服的 `hardrush/lobby/packs/` 安装。按 AGENTS.md 的约定，把需要人工确认的内容追加到 `docs/人工客户端测试/` 最新一篇待测试的文档里，不要自己用真实客户端去测。
+- 自动验收只管“能发布、功能齐全、站得住”。观感、动线和手感需要人进游戏看：把 `out/` 里的 `.hrlobby` 放进测试服的 `hardrush/lobby/packs/` 安装。
